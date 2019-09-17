@@ -36,7 +36,7 @@ public abstract class BrokerStats extends AbstractCruiseControlResponse {
     return _isBrokerStatsEstimated;
   }
 
-  private String getJSONString() {
+  protected String getJSONString() {
     Gson gson = new Gson();
     Map<String, Object> jsonStructure = getJsonStructure();
     jsonStructure.put(VERSION, JSON_VERSION);
@@ -55,16 +55,5 @@ public abstract class BrokerStats extends AbstractCruiseControlResponse {
     _cachedJSONResponse = getJSONString();
     _cachedPlainTextResponse = toString();
     discardIrrelevantResponse();
-  }
-
-  @Override
-  public void discardIrrelevantResponse(CruiseControlParameters parameters) {
-    if (_cachedJSONResponse == null || _cachedPlainTextResponse == null) {
-      discardIrrelevantAndCacheRelevant(parameters);
-      if (_cachedJSONResponse == null || _cachedPlainTextResponse == null) {
-        throw new IllegalStateException("Failed to cache the relevant response.");
-      }
-    }
-    _cachedResponse = parameters.json() ? _cachedJSONResponse : _cachedPlainTextResponse;
   }
 }

@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.SortedMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 
 /**
@@ -16,10 +18,13 @@ import java.util.Map;
  */
 public class BrokerCapacityStats extends BrokerStats {
   private final List<SingleBrokerCapacityStats> _brokerCapacityStats;
+  private final SortedMap<String, BasicCapacityStats> _hostCapacityStats;
 
   public BrokerCapacityStats(KafkaCruiseControlConfig config) {
     super(config);
     _brokerCapacityStats = new ArrayList<>();
+    _hostCapacityStats = new ConcurrentSkipListMap<>();
+
   }
 
   public void addSingleBrokerCapacityStats(String host, int id, boolean isEstimated, double diskCap, double cpuCap, double nwInCap,
@@ -27,6 +32,8 @@ public class BrokerCapacityStats extends BrokerStats {
     SingleBrokerCapacityStats singleBrokerCapacityStats = 
         new SingleBrokerCapacityStats(host, id, isEstimated, diskCap, cpuCap, nwInCap, nwOutCap);
     _brokerCapacityStats.add(singleBrokerCapacityStats);
+    _hostCapacityStats.computeIfAbsent(host, h -> new BasicCapacityStats(0.0, 0.0, 0.0, 0.0))
+    .addBasicStats(singleBrokerCapacityStats.basicCapacityStats());
     _isBrokerStatsEstimated = _isBrokerStatsEstimated || isEstimated;
     _hostFieldLength = Math.max(_hostFieldLength, host.length());
   }
@@ -35,6 +42,7 @@ public class BrokerCapacityStats extends BrokerStats {
   protected void discardIrrelevantResponse() {
     // Discard irrelevant response.
     _brokerCapacityStats.clear();
+    _hostCapacityStats.clear();
   }
 
   /**
@@ -57,6 +65,20 @@ public class BrokerCapacityStats extends BrokerStats {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
+
+    sb.append(String.format("%n%" + _hostFieldLength + "s%26s%15s%25s%25s%20s%20s%20s%n",
+    "HOST", "DISK(MB)/_(%)_", "CPU(%)", "LEADER_NW_IN(KB/s)",
+    "FOLLOWER_NW_IN(KB/s)", "NW_OUT(KB/s)", "PNW_OUT(KB/s)", "LEADERS/REPLICAS"));
+    for (Map.Entry<String, BasicCapacityStats> entry : _hostCapacityStats.entrySet()) {
+    BasicCapacityStats stats = entry.getValue();
+    sb.append(String.format("%" + _hostFieldLength + "s%15s%25s%25s%25s%25s%n",
+          entry.getKey(),
+          stats.diskCapacity(),
+          stats.cpuCapacity(),
+          stats.bytesInCapacity(),
+          stats.bytesOutCapacity()
+      ));
+    }
 
     // put broker stats.
     sb.append(String.format("%n%n%" + _hostFieldLength + "s%15s%25s%25s%25s%25s%n",

@@ -22,7 +22,7 @@ public class BrokerUtilizationStats extends BrokerStats {
   private static final String HOST = "Host";
   private static final String HOSTS = "hosts";
   private final List<SingleBrokerUtilizationStats> _brokerStats;
-  private final SortedMap<String, BasicStats> _hostStats;
+  private final SortedMap<String, BasicUtilizationStats> _hostStats;
 
   public BrokerUtilizationStats(KafkaCruiseControlConfig config) {
     super(config);
@@ -39,9 +39,9 @@ public class BrokerUtilizationStats extends BrokerStats {
                               potentialBytesOutRate, numReplicas, numLeaders, isEstimated, capacity);
     _brokerStats.add(singleBrokerStats);
     _hostFieldLength = Math.max(_hostFieldLength, host.length());
-    _hostStats.computeIfAbsent(host, h -> new BasicStats(0.0, 0.0, 0.0, 0.0,
+    _hostStats.computeIfAbsent(host, h -> new BasicUtilizationStats(0.0, 0.0, 0.0, 0.0,
                                                          0.0, 0.0, 0, 0, 0.0))
-              .addBasicStats(singleBrokerStats.basicStats());
+              .addBasicStats(singleBrokerStats.basicUtilizationStats());
     _isBrokerStatsEstimated = _isBrokerStatsEstimated || isEstimated;
   }
 
@@ -60,7 +60,7 @@ public class BrokerUtilizationStats extends BrokerStats {
     List<Map<String, Object>> hostStats = new ArrayList<>(_hostStats.size());
 
     // host level statistics
-    for (Map.Entry<String, BasicStats> entry : _hostStats.entrySet()) {
+    for (Map.Entry<String, BasicUtilizationStats> entry : _hostStats.entrySet()) {
       Map<String, Object> hostEntry = entry.getValue().getJsonStructure();
       hostEntry.put(HOST, entry.getKey());
       hostStats.add(hostEntry);
@@ -98,8 +98,8 @@ public class BrokerUtilizationStats extends BrokerStats {
     sb.append(String.format("%n%" + _hostFieldLength + "s%26s%15s%25s%25s%20s%20s%20s%n",
                             "HOST", "DISK(MB)/_(%)_", "CPU(%)", "LEADER_NW_IN(KB/s)",
                             "FOLLOWER_NW_IN(KB/s)", "NW_OUT(KB/s)", "PNW_OUT(KB/s)", "LEADERS/REPLICAS"));
-    for (Map.Entry<String, BasicStats> entry : _hostStats.entrySet()) {
-      BasicStats stats = entry.getValue();
+    for (Map.Entry<String, BasicUtilizationStats> entry : _hostStats.entrySet()) {
+      BasicUtilizationStats stats = entry.getValue();
       sb.append(String.format("%" + _hostFieldLength + "s,%19.3f/%05.2f,%14.3f,%24.3f,%24.3f,%19.3f,%19.3f,%14d/%d%n",
                               entry.getKey(),
                               stats.diskUtil(),
@@ -121,15 +121,15 @@ public class BrokerUtilizationStats extends BrokerStats {
       sb.append(String.format("%" + _hostFieldLength + "s,%14d,%19.3f/%05.2f,%14.3f,%24.3f,%24.3f,%19.3f,%19.3f,%14d/%d%n",
                               stats.host(),
                               stats.id(),
-                              stats.basicStats().diskUtil(),
-                              stats.basicStats().diskUtilPct(),
-                              stats.basicStats().cpuUtil(),
-                              stats.basicStats().leaderBytesInRate(),
-                              stats.basicStats().followerBytesInRate(),
-                              stats.basicStats().bytesOutRate(),
-                              stats.basicStats().potentialBytesOutRate(),
-                              stats.basicStats().numLeaders(),
-                              stats.basicStats().numReplicas()));
+                              stats.basicUtilizationStats().diskUtil(),
+                              stats.basicUtilizationStats().diskUtilPct(),
+                              stats.basicUtilizationStats().cpuUtil(),
+                              stats.basicUtilizationStats().leaderBytesInRate(),
+                              stats.basicUtilizationStats().followerBytesInRate(),
+                              stats.basicUtilizationStats().bytesOutRate(),
+                              stats.basicUtilizationStats().potentialBytesOutRate(),
+                              stats.basicUtilizationStats().numLeaders(),
+                              stats.basicUtilizationStats().numReplicas()));
     }
 
     return sb.toString();

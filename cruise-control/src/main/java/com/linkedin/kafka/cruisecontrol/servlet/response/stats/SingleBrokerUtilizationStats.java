@@ -10,7 +10,7 @@ import java.util.Map;
 public class SingleBrokerUtilizationStats extends SingleBrokerStats {
   protected static final String BROKER_STATE = "BrokerState";
   protected final Broker.State _state;
-  protected final BasicStats _basicStats;
+  protected final BasicUtilizationStats _basicStats;
 
   SingleBrokerUtilizationStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
                     double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate, int numReplicas,
@@ -18,7 +18,7 @@ public class SingleBrokerUtilizationStats extends SingleBrokerStats {
         
     super(host, id, isEstimated);
     _state = state;
-    _basicStats = new BasicStats(diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
+    _basicStats = new BasicUtilizationStats(diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
                                  potentialBytesOutRate, numReplicas, numLeaders, capacity);
   }
 
@@ -26,7 +26,7 @@ public class SingleBrokerUtilizationStats extends SingleBrokerStats {
     return _state;
   }
 
-  BasicStats basicStats() {
+  BasicUtilizationStats basicUtilizationStats() {
     return _basicStats;
   }
 

@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 
-class BasicStats {
+class BasicUtilizationStats {
   protected static final String DISK_MB = "DiskMB";
   protected static final String DISK_PCT = "DiskPct";
   protected static final String CPU_PCT = "CpuPct";
@@ -28,7 +28,7 @@ class BasicStats {
   protected int _numLeaders;
   protected double _diskCapacity;
 
-  BasicStats(double diskUtil, double cpuUtil, double leaderBytesInRate,
+  BasicUtilizationStats(double diskUtil, double cpuUtil, double leaderBytesInRate,
              double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
              int numReplicas, int numLeaders, double diskCapacity) {
     _diskUtil = diskUtil < 0.0 ? 0.0 : diskUtil;
@@ -84,7 +84,7 @@ class BasicStats {
     return _diskCapacity;
   }
 
-  void addBasicStats(BasicStats basicStats) {
+  void addBasicStats(BasicUtilizationStats basicStats) {
     _diskUtil += basicStats.diskUtil();
     _cpuUtil += basicStats.cpuUtil();
     _leaderBytesInRate += basicStats.leaderBytesInRate();

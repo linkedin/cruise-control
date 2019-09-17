@@ -41,6 +41,13 @@ class BasicCapacityStats {
     return _bytesOutCapacity;
   }
 
+  void addBasicStats(BasicCapacityStats basicStats) {
+    _diskCapacity += basicStats.diskCapacity();
+    _cpuCapacity += basicStats.cpuCapacity();
+    _bytesInCapacity += basicStats.bytesInCapacity();
+    _bytesOutCapacity += basicStats.bytesOutCapacity();
+  }
+
   /*
    * Return an object that can be further used
    * to encode into JSON
