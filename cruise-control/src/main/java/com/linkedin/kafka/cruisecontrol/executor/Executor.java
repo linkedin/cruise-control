@@ -621,7 +621,8 @@ public class Executor {
       if (demotedBrokers != null) {
         // Add/overwrite the latest demotion time of (non-permanent) demoted brokers (if any).
         demotedBrokers.forEach(id -> {
-          if (_latestDemoteStartTimeMsByBrokerId.get(id) != PERMANENT_TIMESTAMP) {
+          Long demoteStartTime = _latestDemoteStartTimeMsByBrokerId.get(id);
+          if (demoteStartTime != null && demoteStartTime != PERMANENT_TIMESTAMP) {
             _latestDemoteStartTimeMsByBrokerId.put(id, _time.milliseconds());
           }
         });
@@ -629,7 +630,8 @@ public class Executor {
       if (removedBrokers != null) {
         // Add/overwrite the latest removal time of (non-permanent) removed brokers (if any).
         removedBrokers.forEach(id -> {
-          if (_latestRemoveStartTimeMsByBrokerId.get(id) != PERMANENT_TIMESTAMP) {
+          Long removeStartTime = _latestRemoveStartTimeMsByBrokerId.get(id);
+          if (removeStartTime != null && removeStartTime != PERMANENT_TIMESTAMP) {
             _latestRemoveStartTimeMsByBrokerId.put(id, _time.milliseconds());
           }
         });
