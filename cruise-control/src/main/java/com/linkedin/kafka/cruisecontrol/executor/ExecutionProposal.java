@@ -90,13 +90,15 @@ public class ExecutionProposal {
 
   /**
    * Check whether the successful completion of inter-broker replica movement from this proposal is reflected in the current
-   * ordered replicas in the given cluster.
+   * ordered replicas in the given cluster and all replicas are in-sync.
    *
    * @param currentOrderedReplicas Current ordered replica list from the cluster.
+   * @param currentInSyncReplicas Current in-sync replica list from the cluster.
    * @return True if successfully completed, false otherwise.
    */
-  public boolean isInterBrokerMovementCompleted(Node[] currentOrderedReplicas) {
-    return brokerOrderMatched(currentOrderedReplicas, _newReplicas);
+  public boolean isInterBrokerMovementCompleted(Node[] currentOrderedReplicas, Node [] currentInSyncReplicas) {
+    return brokerOrderMatched(currentOrderedReplicas, _newReplicas)
+           && currentInSyncReplicas.length == currentOrderedReplicas.length;
   }
 
   /**
@@ -106,10 +108,12 @@ public class ExecutionProposal {
    * In that case, we treat it as aborted as well.
    *
    * @param currentOrderedReplicas Current ordered replica list from the cluster.
+   * @param currentInSyncReplicas Current in-sync replica list from the cluster.
    * @return True if aborted, false otherwise.
    */
-  public boolean isInterBrokerMovementAborted(Node[] currentOrderedReplicas) {
-    return isInterBrokerMovementCompleted(currentOrderedReplicas) || brokerOrderMatched(currentOrderedReplicas, _oldReplicas);
+  public boolean isInterBrokerMovementAborted(Node[] currentOrderedReplicas, Node [] currentInSyncReplicas) {
+    return isInterBrokerMovementCompleted(currentOrderedReplicas, currentInSyncReplicas)
+           || brokerOrderMatched(currentOrderedReplicas, _oldReplicas);
   }
 
   /**
