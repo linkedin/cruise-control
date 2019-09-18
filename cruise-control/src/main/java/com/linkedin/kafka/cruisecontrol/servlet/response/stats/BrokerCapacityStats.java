@@ -66,12 +66,12 @@ public class BrokerCapacityStats extends BrokerStats {
   public String toString() {
     StringBuilder sb = new StringBuilder();
 
-    sb.append(String.format("%n%" + _hostFieldLength + "s%26s%15s%25s%25s%20s%20s%20s%n",
-    "HOST", "DISK(MB)/_(%)_", "CPU(%)", "LEADER_NW_IN(KB/s)",
-    "FOLLOWER_NW_IN(KB/s)", "NW_OUT(KB/s)", "PNW_OUT(KB/s)", "LEADERS/REPLICAS"));
+    sb.append(String.format("%n%n%" + _hostFieldLength + "s%15s%25s%25s%25s%25s%n",
+                            "HOST", "BROKER", "DISK_CAPACITY(MB)", "CPU_CAPACITY(MB)", "NW_IN_CAPACITY(KB/s)",
+                            "NW_OUT_CAPACITY(KB/s)"));
     for (Map.Entry<String, BasicCapacityStats> entry : _hostCapacityStats.entrySet()) {
     BasicCapacityStats stats = entry.getValue();
-    sb.append(String.format("%" + _hostFieldLength + "s%15s%25s%25s%25s%25s%n",
+    sb.append(String.format("%" + _hostFieldLength + "s,%24.3f,%24.3f,%24.3f,%24.3f%n",
           entry.getKey(),
           stats.diskCapacity(),
           stats.cpuCapacity(),

@@ -56,4 +56,15 @@ public abstract class BrokerStats extends AbstractCruiseControlResponse {
     _cachedPlainTextResponse = toString();
     discardIrrelevantResponse();
   }
+
+  @Override
+  public void discardIrrelevantResponse(CruiseControlParameters parameters) {
+    if (_cachedJSONResponse == null || _cachedPlainTextResponse == null) {
+      discardIrrelevantAndCacheRelevant(parameters);
+      if (_cachedJSONResponse == null || _cachedPlainTextResponse == null) {
+        throw new IllegalStateException("Failed to cache the relevant response.");
+      }
+    }
+    _cachedResponse = parameters.json() ? _cachedJSONResponse : _cachedPlainTextResponse;
+  }
 }
