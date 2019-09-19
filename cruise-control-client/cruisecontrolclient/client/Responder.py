@@ -19,6 +19,9 @@ from urllib.parse import urlencode
 # To inform humans about possibly too-old versions of cruise-control
 import warnings
 
+# To currectly determine version
+import re
+
 
 class CruiseControlResponder(requests.Session):
     """
@@ -93,8 +96,10 @@ class CruiseControlResponder(requests.Session):
             else:
                 # Guess about whether this version of cruise-control supports 202
                 if "Cruise-Control-Version" in response.headers:
+                    # define a regex for extracting only leading digits and periods from the Cruise-Control-Version
+                    non_decimal = re.compile(r'[^\d.]+')
                     integer_semver = lambda x: [int(elem) for elem in x.split('.')]
-                    cc_version = integer_semver(response.headers["Cruise-Control-Version"])
+                    cc_version = integer_semver(non_decimal.sub('', response.headers["Cruise-Control-Version"]))
                     # 202 is supported and was not returned; response final
                     if cc_version >= [2, 0, 61]:
                         return True
