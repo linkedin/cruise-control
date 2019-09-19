@@ -96,6 +96,7 @@ class CruiseControlResponder(requests.Session):
             else:
                 # Guess about whether this version of cruise-control supports 202
                 if "Cruise-Control-Version" in response.headers:
+                    # define a regex for extracting only leading digits and periods from the Cruise-Control-Version
                     non_decimal = re.compile(r'[^\d.]+')
                     integer_semver = lambda x: [int(elem) for elem in x.split('.')]
                     cc_version = integer_semver(non_decimal.sub('', response.headers["Cruise-Control-Version"]))
