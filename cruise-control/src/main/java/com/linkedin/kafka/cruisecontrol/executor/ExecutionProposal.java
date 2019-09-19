@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.kafka.common.Node;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
 /**
@@ -79,13 +80,14 @@ public class ExecutionProposal {
 
   /**
    * Check whether the successful completion of inter-broker replica movement from this proposal is reflected in the current
-   * ordered replicas in the given cluster.
+   * ordered replicas in the given cluster and all replicas are in-sync.
    *
-   * @param currentOrderedReplicas Current ordered replica list from the cluster.
+   * @param partitionInfo Current partition state.
    * @return True if successfully completed, false otherwise.
    */
-  public boolean isInterBrokerMovementCompleted(Node[] currentOrderedReplicas) {
-    return brokerOrderMatched(currentOrderedReplicas, _newReplicas);
+  public boolean isInterBrokerMovementCompleted(PartitionInfo partitionInfo) {
+    return brokerOrderMatched(partitionInfo.replicas(), _newReplicas)
+           && partitionInfo.replicas().length == partitionInfo.inSyncReplicas().length;
   }
 
   /**
@@ -94,11 +96,12 @@ public class ExecutionProposal {
    * There could be a race condition that when we abort a task, it is already completed.
    * In that case, we treat it as aborted as well.
    *
-   * @param currentOrderedReplicas Current ordered replica list from the cluster.
+   * @param partitionInfo Current partition state.
    * @return True if aborted, false otherwise.
    */
-  public boolean isInterBrokerMovementAborted(Node[] currentOrderedReplicas) {
-    return isInterBrokerMovementCompleted(currentOrderedReplicas) || brokerOrderMatched(currentOrderedReplicas, _oldReplicas);
+  public boolean isInterBrokerMovementAborted(PartitionInfo partitionInfo) {
+    return isInterBrokerMovementCompleted(partitionInfo)
+           || brokerOrderMatched(partitionInfo.replicas(), _oldReplicas);
   }
 
   /**
