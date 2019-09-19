@@ -16,6 +16,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Properties;
 import java.util.Set;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult;
@@ -80,8 +81,9 @@ public class ExecutionTaskPlannerTest {
     proposals.add(_leaderMovement2);
     proposals.add(_leaderMovement3);
     proposals.add(_leaderMovement4);
-    ExecutionTaskPlanner planner = new ExecutionTaskPlanner(null, Collections.emptyList(),
-            new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
+    Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
+    props.setProperty(KafkaCruiseControlConfig.DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG, "");
+    ExecutionTaskPlanner planner = new ExecutionTaskPlanner(null, new KafkaCruiseControlConfig(props));
 
     Set<PartitionInfo> partitions = new HashSet<>();
     for (ExecutionProposal proposal : proposals) {
@@ -118,21 +120,25 @@ public class ExecutionTaskPlannerTest {
     proposals.add(_partitionMovement4);
     // Test different execution strategies.
     ExecutionTaskPlanner basePlanner = new ExecutionTaskPlanner(
-            null,
-            null,
-            new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
-    ExecutionTaskPlanner postponeUrpPlanner = new ExecutionTaskPlanner(
-            null,
-            Collections.singletonList(PostponeUrpReplicaMovementStrategy.class.getName()),
-            new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
-    ExecutionTaskPlanner prioritizeLargeMovementPlanner = new ExecutionTaskPlanner(null,
-            Arrays.asList(PrioritizeLargeReplicaMovementStrategy.class.getName(),
-            BaseReplicaMovementStrategy.class.getName()),
-            new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
-    ExecutionTaskPlanner prioritizeSmallMovementPlanner = new ExecutionTaskPlanner(null,
-            Arrays.asList(PrioritizeSmallReplicaMovementStrategy.class.getName(),
-            BaseReplicaMovementStrategy.class.getName()),
-            new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
+        null,
+        new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
+
+    Properties postponeUrpProps = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
+    postponeUrpProps.setProperty(KafkaCruiseControlConfig.DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG,
+                                 PostponeUrpReplicaMovementStrategy.class.getName().toString());
+    ExecutionTaskPlanner postponeUrpPlanner = new ExecutionTaskPlanner(null, new KafkaCruiseControlConfig(postponeUrpProps));
+
+    Properties prioritizeLargeMovementProps = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
+    prioritizeLargeMovementProps.setProperty(KafkaCruiseControlConfig.DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG,
+                                             String.format("%s,%s", PrioritizeLargeReplicaMovementStrategy.class.getName(),
+                                                           BaseReplicaMovementStrategy.class.getName()));
+    ExecutionTaskPlanner prioritizeLargeMovementPlanner = new ExecutionTaskPlanner(null, new KafkaCruiseControlConfig(prioritizeLargeMovementProps));
+
+    Properties prioritizeSmallMovementProps = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
+    prioritizeSmallMovementProps.setProperty(KafkaCruiseControlConfig.DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG,
+                                             String.format("%s,%s", PrioritizeSmallReplicaMovementStrategy.class.getName(),
+                                                           BaseReplicaMovementStrategy.class.getName()));
+    ExecutionTaskPlanner prioritizeSmallMovementPlanner = new ExecutionTaskPlanner(null, new KafkaCruiseControlConfig(prioritizeSmallMovementProps));
 
     Set<PartitionInfo> partitions = new HashSet<>();
     partitions.add(generatePartitionInfo(_partitionMovement1, true));
@@ -179,8 +185,8 @@ public class ExecutionTaskPlannerTest {
     proposals.add(_partitionMovement2);
     proposals.add(_partitionMovement3);
     proposals.add(_partitionMovement4);
-    ExecutionTaskPlanner planner = new ExecutionTaskPlanner(null, null,
-            new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
+    ExecutionTaskPlanner planner = new ExecutionTaskPlanner(null,
+                                                            new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
 
     Set<PartitionInfo> partitions = new HashSet<>();
     partitions.add(generatePartitionInfo(_partitionMovement1, true));
@@ -272,8 +278,8 @@ public class ExecutionTaskPlannerTest {
                                           Collections.<String>emptySet());
 
 
-    ExecutionTaskPlanner planner = new ExecutionTaskPlanner(mockAdminClient, Collections.emptyList(),
-            new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
+    ExecutionTaskPlanner planner = new ExecutionTaskPlanner(mockAdminClient,
+                                                            new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
     planner.addExecutionProposals(proposals, expectedCluster, null);
     assertEquals(1, planner.remainingLeadershipMovements().size());
     assertEquals(2, planner.remainingIntraBrokerReplicaMovements().size());
@@ -287,8 +293,8 @@ public class ExecutionTaskPlannerTest {
     List<ExecutionProposal> proposals = new ArrayList<>();
     proposals.add(_leaderMovement1);
     proposals.add(_partitionMovement1);
-    ExecutionTaskPlanner planner = new ExecutionTaskPlanner(null, Collections.emptyList(),
-            new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
+    ExecutionTaskPlanner planner = new ExecutionTaskPlanner(null,
+                                                            new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
 
     Set<PartitionInfo> partitions = new HashSet<>();
 

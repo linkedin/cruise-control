@@ -70,6 +70,8 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   public static final boolean DEFAULT_ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG = true;
   public static final String DEFAULT_BROKER_FAILURES_CLASS = BrokerFailures.class.getName();
   public static final String DEFAULT_GOAL_VIOLATIONS_CLASS = GoalViolations.class.getName();
+  // Assumption: Each replica move request has a size smaller than 1MB / 1250 = 800 bytes. (1MB = default zNode size limit)
+  public static final int DEFAULT_MAX_CLUSTER_PARTITION_MOVEMENTS_CONFIG = 1250;
 
   private static final ConfigDef CONFIG;
 
@@ -512,6 +514,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final String NUM_CONCURRENT_LEADER_MOVEMENTS_DOC = "The maximum number of leader " +
       "movements the executor will take as one batch. This is mainly because the ZNode has a 1 MB size upper limit. And it " +
       "will also reduce the controller burden.";
+
+  /**
+   * <code>max.cluster.partition.movements</code>
+   */
+  public static final String MAX_CLUSTER_PARTITION_MOVEMENTS_CONFIG = "max.cluster.partition.movements";
+  private static final String MAX_CLUSTER_PARTITION_MOVEMENTS_DOC = "The maximum number of allowed partition movements in"
+      + " cluster. This global limit cannot be exceeded regardless of the per-broker replica movement concurrency.";
 
   /**
    * <code>default.replication.throttle</code>
@@ -1366,6 +1375,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 atLeast(1),
                 ConfigDef.Importance.MEDIUM,
                 NUM_CONCURRENT_LEADER_MOVEMENTS_DOC)
+        .define(MAX_CLUSTER_PARTITION_MOVEMENTS_CONFIG,
+                ConfigDef.Type.INT,
+                DEFAULT_MAX_CLUSTER_PARTITION_MOVEMENTS_CONFIG,
+                atLeast(5),
+                ConfigDef.Importance.MEDIUM,
+                MAX_CLUSTER_PARTITION_MOVEMENTS_DOC)
         .define(DEFAULT_REPLICATION_THROTTLE_CONFIG,
                 ConfigDef.Type.LONG,
                 null,
@@ -1801,25 +1816,23 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   /**
    * Sanity check for
    * <ul>
-   * <li>{@link KafkaCruiseControlConfig#GOALS_CONFIG} and
-   * {@link KafkaCruiseControlConfig#INTRA_BROKER_GOALS_CONFIG} are non-empty.</li>
-   * <li>Case insensitive goal names.</li>
-   * <li>{@link KafkaCruiseControlConfig#DEFAULT_GOALS_CONFIG} is non-empty.</li>
-   * <li>{@link KafkaCruiseControlConfig#SELF_HEALING_GOALS_CONFIG} is a sublist of
-   * {@link KafkaCruiseControlConfig#GOALS_CONFIG}.</li>
-   * <li>{@link KafkaCruiseControlConfig#ANOMALY_DETECTION_GOALS_CONFIG} is a sublist of
-   * (1) {@link KafkaCruiseControlConfig#SELF_HEALING_GOALS_CONFIG} if it is not empty,
-   * (2) {@link KafkaCruiseControlConfig#DEFAULT_GOALS_CONFIG} otherwise.</li>
+   *   <li>{@link #GOALS_CONFIG} and {@link #INTRA_BROKER_GOALS_CONFIG} are non-empty.</li>
+   *   <li>Case insensitive goal names.</li>
+   *   <li>{@link #DEFAULT_GOALS_CONFIG} is non-empty.</li>
+   *   <li>{@link #SELF_HEALING_GOALS_CONFIG} is a sublist of {@link #GOALS_CONFIG}.</li>
+   *   <li>{@link #ANOMALY_DETECTION_GOALS_CONFIG} is a sublist of
+   *   (1) {@link #SELF_HEALING_GOALS_CONFIG} if it is not empty,
+   *   (2) {@link #DEFAULT_GOALS_CONFIG} otherwise.</li>
    * </ul>
    */
   private void sanityCheckGoalNames() {
-    List<String> goalNames = getList(KafkaCruiseControlConfig.GOALS_CONFIG);
+    List<String> goalNames = getList(GOALS_CONFIG);
     // Ensure that goals are non-empty.
     if (goalNames.isEmpty()) {
       throw new ConfigException("Attempt to configure goals configuration with an empty list of goals.");
     }
 
-    List<String> intraBrokerGoalNames = getList(KafkaCruiseControlConfig.INTRA_BROKER_GOALS_CONFIG);
+    List<String> intraBrokerGoalNames = getList(INTRA_BROKER_GOALS_CONFIG);
     // Ensure that intra-broker goals are non-empty.
     if (intraBrokerGoalNames.isEmpty()) {
       throw new ConfigException("Attempt to configure intra-broker goals configuration with an empty list of goals.");
@@ -1838,21 +1851,21 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     }
 
     // Ensure that default goals is non-empty.
-    List<String> defaultGoalNames = getList(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG);
+    List<String> defaultGoalNames = getList(DEFAULT_GOALS_CONFIG);
     if (defaultGoalNames.isEmpty()) {
       throw new ConfigException("Attempt to configure default goals configuration with an empty list of goals.");
     }
 
     // Ensure that goals used for self-healing are supported goals.
-    List<String> selfHealingGoalNames = getList(KafkaCruiseControlConfig.SELF_HEALING_GOALS_CONFIG);
+    List<String> selfHealingGoalNames = getList(SELF_HEALING_GOALS_CONFIG);
     if (selfHealingGoalNames.stream().anyMatch(g -> !defaultGoalNames.contains(g))) {
       throw new ConfigException(String.format("Attempt to configure self healing goals with unsupported goals (%s:%s and %s:%s).",
-                                              KafkaCruiseControlConfig.SELF_HEALING_GOALS_CONFIG, selfHealingGoalNames,
-                                              KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG, defaultGoalNames));
+                                              SELF_HEALING_GOALS_CONFIG, selfHealingGoalNames,
+                                              DEFAULT_GOALS_CONFIG, defaultGoalNames));
     }
 
     // Ensure that goals used for anomaly detection are a subset of goals used for fixing the anomaly.
-    List<String> anomalyDetectionGoalNames = getList(KafkaCruiseControlConfig.ANOMALY_DETECTION_GOALS_CONFIG);
+    List<String> anomalyDetectionGoalNames = getList(ANOMALY_DETECTION_GOALS_CONFIG);
     if (anomalyDetectionGoalNames.stream().anyMatch(g -> selfHealingGoalNames.isEmpty() ? !defaultGoalNames.contains(g)
                                                                                         : !selfHealingGoalNames.contains(g))) {
       throw new ConfigException("Attempt to configure anomaly detection goals as a superset of self healing goals.");
@@ -1860,57 +1873,76 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   }
 
   /**
+   Sanity check to ensure that
+   * <ul>
+   *   <li>{@link #MAX_CLUSTER_PARTITION_MOVEMENTS_CONFIG} > {@link #NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG}</li>
+   *   <li>{@link #MAX_CLUSTER_PARTITION_MOVEMENTS_CONFIG} > {@link #NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG}</li>
+   * </ul>
+   */
+  private void sanityCheckConcurrency() {
+    int maxClusterPartitionMovementConcurrency = getInt(MAX_CLUSTER_PARTITION_MOVEMENTS_CONFIG);
+    int interBrokerPartitionMovementConcurrency = getInt(NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG);
+    int intraBrokerPartitionMovementConcurrency = getInt(NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG);
+
+    if (interBrokerPartitionMovementConcurrency >= maxClusterPartitionMovementConcurrency) {
+      throw new ConfigException("Inter-broker partition movement concurrency [" + interBrokerPartitionMovementConcurrency
+                                + "] must be smaller than the maximum number of allowed partition movements in cluster ["
+                                + maxClusterPartitionMovementConcurrency + "].");
+    }
+
+    if (intraBrokerPartitionMovementConcurrency >= maxClusterPartitionMovementConcurrency) {
+      throw new ConfigException("Intra-broker partition movement concurrency [" + intraBrokerPartitionMovementConcurrency
+                                + "] must be smaller than the maximum number of allowed partition movements in cluster ["
+                                + maxClusterPartitionMovementConcurrency + "].");
+    }
+  }
+  /**
    * Sanity check to ensure that
    * <ul>
-   *   <li>{@link KafkaCruiseControlConfig#METADATA_MAX_AGE_CONFIG} is not longer than
-   *   {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG},</li>
-   *   <li>sampling frequency per partition window is within the limits -- i.e.
-   *   ({@link KafkaCruiseControlConfig#PARTITION_METRICS_WINDOW_MS_CONFIG} /
-   *   {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}) <= {@link Byte#MAX_VALUE}, and</li>
-   *   <li>sampling frequency per broker window is within the limits -- i.e.
-   *   ({@link KafkaCruiseControlConfig#BROKER_METRICS_WINDOW_MS_CONFIG} /
-   *   {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}) <= {@link Byte#MAX_VALUE}, and</li>
+   *   <li>{@link #METADATA_MAX_AGE_CONFIG} is not longer than {@link #METRIC_SAMPLING_INTERVAL_MS_CONFIG},</li>
+   *   <li>sampling frequency per partition window is within the limits -- i.e. ({@link #PARTITION_METRICS_WINDOW_MS_CONFIG} /
+   *   {@link #METRIC_SAMPLING_INTERVAL_MS_CONFIG}) <= {@link Byte#MAX_VALUE}, and</li>
+   *   <li>sampling frequency per broker window is within the limits -- i.e. ({@link #BROKER_METRICS_WINDOW_MS_CONFIG} /
+   *   {@link #METRIC_SAMPLING_INTERVAL_MS_CONFIG}) <= {@link Byte#MAX_VALUE}, and</li>
    *   <li>{@link CruiseControlMetricsReporterConfig#CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG} is not longer than
-   *   {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}</li>
+   *   {@link #METRIC_SAMPLING_INTERVAL_MS_CONFIG}</li>
    * </ul>
    *
    * Sampling process involves a potential metadata update if the current metadata is stale. The configuration
-   * {@link KafkaCruiseControlConfig#METADATA_MAX_AGE_CONFIG} indicates the timeout of such a metadata update. Hence,
-   * this subprocess of the sampling process cannot be set with a timeout larger than the total sampling timeout of
-   * {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}.
+   * {@link #METADATA_MAX_AGE_CONFIG} indicates the timeout of such a metadata update. Hence, this subprocess of the sampling
+   * process cannot be set with a timeout larger than the total sampling timeout of {@link #METRIC_SAMPLING_INTERVAL_MS_CONFIG}.
    *
    * The number of samples at a given window cannot exceed a predefined maximum limit.
    *
-   * The metrics reporting interval should not be larger than the metrics sampling interval in order to ensure there is always data to be collected.
+   * The metrics reporting interval should not be larger than the metrics sampling interval in order to ensure there is always
+   * data to be collected.
    */
   private void sanityCheckSamplingPeriod(Map<?, ?> originals) {
-    long samplingIntervalMs = getLong(KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG);
-    long metadataTimeoutMs = getLong(KafkaCruiseControlConfig.METADATA_MAX_AGE_CONFIG);
-    if (metadataTimeoutMs >  samplingIntervalMs) {
+    long samplingIntervalMs = getLong(METRIC_SAMPLING_INTERVAL_MS_CONFIG);
+    long metadataTimeoutMs = getLong(METADATA_MAX_AGE_CONFIG);
+    if (metadataTimeoutMs > samplingIntervalMs) {
       throw new ConfigException("Attempt to set metadata refresh timeout [" + metadataTimeoutMs +
                                 "] to be longer than sampling period [" + samplingIntervalMs + "].");
     }
 
     // Ensure that the sampling frequency per partition window is within the limits.
-    long partitionSampleWindowMs = getLong(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG);
+    long partitionSampleWindowMs = getLong(PARTITION_METRICS_WINDOW_MS_CONFIG);
     short partitionSamplingFrequency = (short) (partitionSampleWindowMs / samplingIntervalMs);
     if (partitionSamplingFrequency > Byte.MAX_VALUE) {
       throw new ConfigException(String.format("Configured sampling frequency (%d) exceeds the maximum allowed value (%d). "
                                               + "Decrease the value of %s or increase the value of %s to ensure that their"
                                               + " ratio is under this limit.", partitionSamplingFrequency, Byte.MAX_VALUE,
-                                              KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG,
-                                              KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG));
+                                              PARTITION_METRICS_WINDOW_MS_CONFIG, METRIC_SAMPLING_INTERVAL_MS_CONFIG));
     }
 
     // Ensure that the sampling frequency per broker window is within the limits.
-    long brokerSampleWindowMs = getLong(KafkaCruiseControlConfig.BROKER_METRICS_WINDOW_MS_CONFIG);
+    long brokerSampleWindowMs = getLong(BROKER_METRICS_WINDOW_MS_CONFIG);
     short brokerSamplingFrequency = (short) (brokerSampleWindowMs / samplingIntervalMs);
     if (brokerSamplingFrequency > Byte.MAX_VALUE) {
       throw new ConfigException(String.format("Configured sampling frequency (%d) exceeds the maximum allowed value (%d). "
                                               + "Decrease the value of %s or increase the value of %s to ensure that their"
                                               + " ratio is under this limit.", brokerSamplingFrequency, Byte.MAX_VALUE,
-                                              KafkaCruiseControlConfig.BROKER_METRICS_WINDOW_MS_CONFIG,
-                                              KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG));
+                                              BROKER_METRICS_WINDOW_MS_CONFIG, METRIC_SAMPLING_INTERVAL_MS_CONFIG));
     }
 
     // Ensure that the metrics reporter reports more often that the sample fetcher samples.
@@ -1922,19 +1954,18 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                                               + "metrics can be properly sampled.",
                                               reportingIntervalMs, samplingIntervalMs,
                                               CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG,
-                                              KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG));
+                                              METRIC_SAMPLING_INTERVAL_MS_CONFIG));
     }
   }
 
   public KafkaCruiseControlConfig(Map<?, ?> originals) {
-    super(CONFIG, originals);
-    sanityCheckGoalNames();
-    sanityCheckSamplingPeriod(originals);
+    this(originals, true);
   }
 
   public KafkaCruiseControlConfig(Map<?, ?> originals, boolean doLog) {
     super(CONFIG, originals, doLog);
     sanityCheckGoalNames();
     sanityCheckSamplingPeriod(originals);
+    sanityCheckConcurrency();
   }
 }

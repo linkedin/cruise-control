@@ -71,11 +71,9 @@ public class ExecutionTaskPlanner {
   /**
    *
    * @param adminClient The adminClient to send describeReplicaLogDirs request.
-   * @param defaultReplicaMovementStrategies  List of replica movement strategies.
    * @param config The config object that holds all the Cruise Control related configs.
    */
-  public ExecutionTaskPlanner(AdminClient adminClient, List<String> defaultReplicaMovementStrategies,
-                              KafkaCruiseControlConfig config) {
+  public ExecutionTaskPlanner(AdminClient adminClient, KafkaCruiseControlConfig config) {
     _executionId = 0L;
     _interPartMoveTaskByBrokerId = new HashMap<>();
     _intraPartMoveTaskByBrokerId = new HashMap<>();
@@ -84,6 +82,7 @@ public class ExecutionTaskPlanner {
     _remainingLeadershipMovements = new HashMap<>();
     _config = config;
     _adminClient = adminClient;
+    List<String> defaultReplicaMovementStrategies = config.getList(KafkaCruiseControlConfig.DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG);
     if (defaultReplicaMovementStrategies == null || defaultReplicaMovementStrategies.isEmpty()) {
       _defaultReplicaMovementTaskStrategy = new BaseReplicaMovementStrategy();
     } else {
