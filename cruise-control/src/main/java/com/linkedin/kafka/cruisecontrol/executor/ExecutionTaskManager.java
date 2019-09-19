@@ -46,7 +46,7 @@ public class ExecutionTaskManager {
   private final int _defaultIntraBrokerPartitionMovementConcurrency;
   private Integer _requestedIntraBrokerPartitionMovementConcurrency;
   private final int _defaultLeadershipMovementConcurrency;
-  private final int _maxClusterPartitionMovementConcurrency;
+  private final int _maxNumClusterMovementConcurrency;
   private Integer _requestedLeadershipMovementConcurrency;
   private final Set<Integer> _brokersToSkipConcurrencyCheck;
   private boolean _isKafkaAssignerMode;
@@ -71,7 +71,7 @@ public class ExecutionTaskManager {
     _defaultInterBrokerPartitionMovementConcurrency = config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG);
     _defaultIntraBrokerPartitionMovementConcurrency = config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG);
     _defaultLeadershipMovementConcurrency = config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
-    _maxClusterPartitionMovementConcurrency = config.getInt(KafkaCruiseControlConfig.MAX_CLUSTER_PARTITION_MOVEMENTS_CONFIG);
+    _maxNumClusterMovementConcurrency = config.getInt(KafkaCruiseControlConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
     _brokersToSkipConcurrencyCheck = new HashSet<>();
     _isKafkaAssignerMode = false;
     _requestedInterBrokerPartitionMovementConcurrency = null;
@@ -81,45 +81,52 @@ public class ExecutionTaskManager {
 
   /**
    * Dynamically set the inter-broker partition movement concurrency per broker.
-   * Ensure that the requested concurrency is smaller than the maximum number of allowed partition movements in cluster.
+   * Ensure that the requested concurrency is smaller than the maximum number of allowed movements in cluster.
    *
    * @param requestedInterBrokerPartitionMovementConcurrency The maximum number of concurrent inter-broker partition movements per broker
    *                                                         (if null, use {@link #_defaultInterBrokerPartitionMovementConcurrency}).
    */
   public synchronized void setRequestedInterBrokerPartitionMovementConcurrency(Integer requestedInterBrokerPartitionMovementConcurrency) {
     if (requestedInterBrokerPartitionMovementConcurrency != null
-        && requestedInterBrokerPartitionMovementConcurrency >= _maxClusterPartitionMovementConcurrency) {
+        && requestedInterBrokerPartitionMovementConcurrency >= _maxNumClusterMovementConcurrency) {
       throw new IllegalArgumentException("Attempt to set inter-broker partition movement concurrency ["
-                                         + requestedInterBrokerPartitionMovementConcurrency + "] to greater than or equal to the maximum number"
-                                         + " of allowed partition movements in cluster [" + _maxClusterPartitionMovementConcurrency + "].");
+                                         + requestedInterBrokerPartitionMovementConcurrency + "] to greater than or equal to the maximum"
+                                         + " number of allowed movements in cluster [" + _maxNumClusterMovementConcurrency + "].");
     }
     _requestedInterBrokerPartitionMovementConcurrency = requestedInterBrokerPartitionMovementConcurrency;
   }
 
   /**
    * Dynamically set the intra-broker partition movement concurrency.
-   * Ensure that the requested concurrency is smaller than the maximum number of allowed partition movements in cluster.
+   * Ensure that the requested concurrency is smaller than the maximum number of allowed movements in cluster.
    *
    * @param requestedIntraBrokerPartitionMovementConcurrency The maximum number of concurrent intra-broker partition movements
    *                                                         (if null, use {@link #_defaultIntraBrokerPartitionMovementConcurrency}).
    */
   public synchronized void setRequestedIntraBrokerPartitionMovementConcurrency(Integer requestedIntraBrokerPartitionMovementConcurrency) {
     if (requestedIntraBrokerPartitionMovementConcurrency != null
-        && requestedIntraBrokerPartitionMovementConcurrency >= _maxClusterPartitionMovementConcurrency) {
+        && requestedIntraBrokerPartitionMovementConcurrency >= _maxNumClusterMovementConcurrency) {
       throw new IllegalArgumentException("Attempt to set intra-broker partition movement concurrency ["
-                                         + requestedIntraBrokerPartitionMovementConcurrency + "] to greater than or equal to the maximum number"
-                                         + " of allowed partition movements in cluster [" + _maxClusterPartitionMovementConcurrency + "].");
+                                         + requestedIntraBrokerPartitionMovementConcurrency + "] to greater than or equal to the maximum"
+                                         + " number of allowed movements in cluster [" + _maxNumClusterMovementConcurrency + "].");
     }
     _requestedIntraBrokerPartitionMovementConcurrency = requestedIntraBrokerPartitionMovementConcurrency;
   }
 
   /**
    * Dynamically set the leadership movement concurrency.
+   * Ensure that the requested concurrency is not greater than the maximum number of allowed movements in cluster.
    *
    * @param requestedLeadershipMovementConcurrency The maximum number of concurrent leader movements
    *                                               (if null, {@link #_defaultLeadershipMovementConcurrency}).
    */
   public synchronized void setRequestedLeadershipMovementConcurrency(Integer requestedLeadershipMovementConcurrency) {
+    if (requestedLeadershipMovementConcurrency != null
+        && requestedLeadershipMovementConcurrency > _maxNumClusterMovementConcurrency) {
+      throw new IllegalArgumentException("Attempt to set leadership movement concurrency ["
+                                         + requestedLeadershipMovementConcurrency + "] to greater than the maximum number "
+                                         + "of allowed movements in cluster [" + _maxNumClusterMovementConcurrency + "].");
+    }
     _requestedLeadershipMovementConcurrency = requestedLeadershipMovementConcurrency;
   }
 
@@ -164,7 +171,7 @@ public class ExecutionTaskManager {
     }
 
     int numThrottledBrokers = brokersWithReplicaMoves.size() - numUnthrottledBrokers;
-    return Math.max(1, (_maxClusterPartitionMovementConcurrency - (numThrottledBrokers * throttledConcurrency)) / numUnthrottledBrokers);
+    return Math.max(1, (_maxNumClusterMovementConcurrency - (numThrottledBrokers * throttledConcurrency)) / numUnthrottledBrokers);
   }
 
   /**
@@ -178,11 +185,11 @@ public class ExecutionTaskManager {
   private Map<Integer, Integer> brokersReadyForReplicaMovement(Map<Integer, Integer> inProgressReplicaMovementsByBrokerId,
                                                                int throttledConcurrency) {
     int totalThrottledPartitionMovementConcurrency = inProgressReplicaMovementsByBrokerId.size() * throttledConcurrency;
-    if (totalThrottledPartitionMovementConcurrency > _maxClusterPartitionMovementConcurrency) {
-      LOG.error("Total throttled partition movement concurrency ({}) is greater than the maximum number of allowed partition"
+    if (totalThrottledPartitionMovementConcurrency > _maxNumClusterMovementConcurrency) {
+      LOG.error("Total throttled partition movement concurrency ({}) is greater than the maximum number of allowed "
                 + " movements in cluster ({}). Please decrease the per-broker partition movement concurrency ({}) to avoid "
                 + "a potential ZooKeeper zNode file size limit violation during replica moves.",
-                totalThrottledPartitionMovementConcurrency, _maxClusterPartitionMovementConcurrency, throttledConcurrency);
+                totalThrottledPartitionMovementConcurrency, _maxNumClusterMovementConcurrency, throttledConcurrency);
     }
     Map<Integer, Integer> readyBrokers = new HashMap<>(inProgressReplicaMovementsByBrokerId.size());
     int unthrottledConcurrency = unthrottledConcurrency(inProgressReplicaMovementsByBrokerId.keySet(), throttledConcurrency);
@@ -208,7 +215,7 @@ public class ExecutionTaskManager {
    *
    * @param proposals the execution proposals to execute.
    * @param brokersToSkipConcurrencyCheck Brokers that do not need to be throttled when moving the partitions. Note that
-   *                                      there will still be some throttling based on {@link #_maxClusterPartitionMovementConcurrency}
+   *                                      there would still be some throttling based on {@link #_maxNumClusterMovementConcurrency}
    *                                      to ensure that default ZooKeeper zNode file size limit is not exceeded.
    * @param cluster Cluster state.
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.

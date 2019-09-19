@@ -71,7 +71,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   public static final String DEFAULT_BROKER_FAILURES_CLASS = BrokerFailures.class.getName();
   public static final String DEFAULT_GOAL_VIOLATIONS_CLASS = GoalViolations.class.getName();
   // Assumption: Each replica move request has a size smaller than 1MB / 1250 = 800 bytes. (1MB = default zNode size limit)
-  public static final int DEFAULT_MAX_CLUSTER_PARTITION_MOVEMENTS_CONFIG = 1250;
+  public static final int DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG = 1250;
 
   private static final ConfigDef CONFIG;
 
@@ -509,18 +509,19 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   /**
    * <code>num.concurrent.leader.movements</code>
    */
-  public static final String NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG =
-      "num.concurrent.leader.movements";
+  public static final String NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG = "num.concurrent.leader.movements";
   private static final String NUM_CONCURRENT_LEADER_MOVEMENTS_DOC = "The maximum number of leader " +
       "movements the executor will take as one batch. This is mainly because the ZNode has a 1 MB size upper limit. And it " +
       "will also reduce the controller burden.";
 
   /**
-   * <code>max.cluster.partition.movements</code>
+   * <code>max.num.cluster.movements</code>
    */
-  public static final String MAX_CLUSTER_PARTITION_MOVEMENTS_CONFIG = "max.cluster.partition.movements";
-  private static final String MAX_CLUSTER_PARTITION_MOVEMENTS_DOC = "The maximum number of allowed partition movements in"
-      + " cluster. This global limit cannot be exceeded regardless of the per-broker replica movement concurrency.";
+  public static final String MAX_NUM_CLUSTER_MOVEMENTS_CONFIG = "max.num.cluster.movements";
+  private static final String MAX_NUM_CLUSTER_MOVEMENTS_DOC = "The maximum number of allowed movements (e.g. partition,"
+      + " leadership) in cluster. This global limit cannot be exceeded regardless of the per-broker replica movement "
+      + "concurrency. When determining this limit, ensure that the (number-of-allowed-movements * maximum-size-of-each-request)"
+      + " is smaller than the default zNode size limit.";
 
   /**
    * <code>default.replication.throttle</code>
@@ -1375,12 +1376,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 atLeast(1),
                 ConfigDef.Importance.MEDIUM,
                 NUM_CONCURRENT_LEADER_MOVEMENTS_DOC)
-        .define(MAX_CLUSTER_PARTITION_MOVEMENTS_CONFIG,
+        .define(MAX_NUM_CLUSTER_MOVEMENTS_CONFIG,
                 ConfigDef.Type.INT,
-                DEFAULT_MAX_CLUSTER_PARTITION_MOVEMENTS_CONFIG,
+                DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG,
                 atLeast(5),
                 ConfigDef.Importance.MEDIUM,
-                MAX_CLUSTER_PARTITION_MOVEMENTS_DOC)
+                MAX_NUM_CLUSTER_MOVEMENTS_DOC)
         .define(DEFAULT_REPLICATION_THROTTLE_CONFIG,
                 ConfigDef.Type.LONG,
                 null,
@@ -1875,24 +1876,32 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   /**
    Sanity check to ensure that
    * <ul>
-   *   <li>{@link #MAX_CLUSTER_PARTITION_MOVEMENTS_CONFIG} > {@link #NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG}</li>
-   *   <li>{@link #MAX_CLUSTER_PARTITION_MOVEMENTS_CONFIG} > {@link #NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG}</li>
+   *   <li>{@link #MAX_NUM_CLUSTER_MOVEMENTS_CONFIG} > {@link #NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG}</li>
+   *   <li>{@link #MAX_NUM_CLUSTER_MOVEMENTS_CONFIG} > {@link #NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG}</li>
+   *   <li>{@link #MAX_NUM_CLUSTER_MOVEMENTS_CONFIG} >= {@link #NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG}</li>
    * </ul>
    */
   private void sanityCheckConcurrency() {
-    int maxClusterPartitionMovementConcurrency = getInt(MAX_CLUSTER_PARTITION_MOVEMENTS_CONFIG);
-    int interBrokerPartitionMovementConcurrency = getInt(NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG);
-    int intraBrokerPartitionMovementConcurrency = getInt(NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG);
+    int maxClusterPartitionMovementConcurrency = getInt(MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
 
+    int interBrokerPartitionMovementConcurrency = getInt(NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG);
     if (interBrokerPartitionMovementConcurrency >= maxClusterPartitionMovementConcurrency) {
       throw new ConfigException("Inter-broker partition movement concurrency [" + interBrokerPartitionMovementConcurrency
-                                + "] must be smaller than the maximum number of allowed partition movements in cluster ["
+                                + "] must be smaller than the maximum number of allowed movements in cluster ["
                                 + maxClusterPartitionMovementConcurrency + "].");
     }
 
+    int intraBrokerPartitionMovementConcurrency = getInt(NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG);
     if (intraBrokerPartitionMovementConcurrency >= maxClusterPartitionMovementConcurrency) {
       throw new ConfigException("Intra-broker partition movement concurrency [" + intraBrokerPartitionMovementConcurrency
-                                + "] must be smaller than the maximum number of allowed partition movements in cluster ["
+                                + "] must be smaller than the maximum number of allowed movements in cluster ["
+                                + maxClusterPartitionMovementConcurrency + "].");
+    }
+
+    int leadershipMovementConcurrency = getInt(NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
+    if (leadershipMovementConcurrency > maxClusterPartitionMovementConcurrency) {
+      throw new ConfigException("Leadership movement concurrency [" + leadershipMovementConcurrency
+                                + "] cannot be greater than the maximum number of allowed movements in cluster ["
                                 + maxClusterPartitionMovementConcurrency + "].");
     }
   }
