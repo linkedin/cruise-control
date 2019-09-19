@@ -150,12 +150,7 @@ public class Executor {
     String zkConnect = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
     boolean zkSecurityEnabled = config.getBoolean(KafkaCruiseControlConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
     _zkUtils = KafkaCruiseControlUtils.createZkUtils(zkConnect, zkSecurityEnabled);
-    _executionTaskManager =
-        new ExecutionTaskManager(config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG),
-                                 config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG),
-                                 config.getList(KafkaCruiseControlConfig.DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG),
-                                 dropwizardMetricRegistry,
-                                 time);
+    _executionTaskManager = new ExecutionTaskManager(dropwizardMetricRegistry, time, config);
     _metadataClient = metadataClient != null ? metadataClient
                                              : new MetadataClient(config,
                                                                   new Metadata(METADATA_REFRESH_BACKOFF, METADATA_EXPIRY_MS, false),

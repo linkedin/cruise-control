@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.codahale.metrics.MetricRegistry;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import java.util.Collection;
 import java.util.HashMap;
@@ -15,6 +16,8 @@ import java.util.Set;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Time;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State;
@@ -31,6 +34,7 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.Exe
  * The execution task manager is thread-safe.
  */
 public class ExecutionTaskManager {
+  private static final Logger LOG = LoggerFactory.getLogger(ExecutionTaskManager.class);
   private final Map<Integer, Integer> _inProgressInterBrokerReplicaMovementsByBrokerId;
   private final Set<TopicPartition> _inProgressPartitionsForInterBrokerMovement;
   private final ExecutionTaskTracker _executionTaskTracker;
@@ -38,6 +42,7 @@ public class ExecutionTaskManager {
   private final int _defaultInterBrokerPartitionMovementConcurrency;
   private final int _defaultLeadershipMovementConcurrency;
   private Integer _requestedInterBrokerPartitionMovementConcurrency;
+  private final int _maxNumClusterMovementConcurrency;
   private Integer _requestedLeadershipMovementConcurrency;
   private final Set<Integer> _brokersToSkipConcurrencyCheck;
   private boolean _isKafkaAssignerMode;
@@ -45,25 +50,18 @@ public class ExecutionTaskManager {
   /**
    * The constructor of The Execution task manager.
    *
-   * @param defaultInterBrokerPartitionMovementConcurrency The maximum number of concurrent inter-broker partition movements per broker.
-   *                                                       It can be overwritten by user parameter upon post request.
-   * @param defaultLeadershipMovementConcurrency The maximum number of concurrent leadership movements per batch. It can
-   *                                             be overwritten by user parameter upon post request.
-   * @param replicaMovementStrategies The strategies used to determine the execution order of inter-broker replica movement tasks.
    * @param dropwizardMetricRegistry The metric registry.
    * @param time The time object to get the time.
+   * @param config config object that holds all Kafka Cruise control related configs
    */
-  public ExecutionTaskManager(int defaultInterBrokerPartitionMovementConcurrency,
-                              int defaultLeadershipMovementConcurrency,
-                              List<String> replicaMovementStrategies,
-                              MetricRegistry dropwizardMetricRegistry,
-                              Time time) {
+  public ExecutionTaskManager(MetricRegistry dropwizardMetricRegistry, Time time, KafkaCruiseControlConfig config) {
     _inProgressInterBrokerReplicaMovementsByBrokerId = new HashMap<>();
     _inProgressPartitionsForInterBrokerMovement = new HashSet<>();
     _executionTaskTracker = new ExecutionTaskTracker(dropwizardMetricRegistry, time);
-    _executionTaskPlanner = new ExecutionTaskPlanner(replicaMovementStrategies);
-    _defaultInterBrokerPartitionMovementConcurrency = defaultInterBrokerPartitionMovementConcurrency;
-    _defaultLeadershipMovementConcurrency = defaultLeadershipMovementConcurrency;
+    _executionTaskPlanner = new ExecutionTaskPlanner(config);
+    _defaultInterBrokerPartitionMovementConcurrency = config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG);
+    _defaultLeadershipMovementConcurrency = config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
+    _maxNumClusterMovementConcurrency = config.getInt(KafkaCruiseControlConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
     _brokersToSkipConcurrencyCheck = new HashSet<>();
     _isKafkaAssignerMode = false;
     _requestedInterBrokerPartitionMovementConcurrency = null;
@@ -72,21 +70,35 @@ public class ExecutionTaskManager {
 
   /**
    * Dynamically set the inter-broker partition movement concurrency per broker.
+   * Ensure that the requested concurrency is smaller than the maximum number of allowed movements in cluster.
    *
    * @param requestedInterBrokerPartitionMovementConcurrency The maximum number of concurrent inter-broker partition movements per broker
    *                                                         (if null, use {@link #_defaultInterBrokerPartitionMovementConcurrency}).
    */
   public synchronized void setRequestedInterBrokerPartitionMovementConcurrency(Integer requestedInterBrokerPartitionMovementConcurrency) {
+    if (requestedInterBrokerPartitionMovementConcurrency != null
+        && requestedInterBrokerPartitionMovementConcurrency >= _maxNumClusterMovementConcurrency) {
+      throw new IllegalArgumentException("Attempt to set inter-broker partition movement concurrency ["
+                                         + requestedInterBrokerPartitionMovementConcurrency + "] to greater than or equal to the maximum"
+                                         + " number of allowed movements in cluster [" + _maxNumClusterMovementConcurrency + "].");
+    }
     _requestedInterBrokerPartitionMovementConcurrency = requestedInterBrokerPartitionMovementConcurrency;
   }
 
   /**
    * Dynamically set the leadership movement concurrency.
+   * Ensure that the requested concurrency is not greater than the maximum number of allowed movements in cluster.
    *
    * @param requestedLeadershipMovementConcurrency The maximum number of concurrent leader movements
    *                                               (if null, {@link #_defaultLeadershipMovementConcurrency}).
    */
   public synchronized void setRequestedLeadershipMovementConcurrency(Integer requestedLeadershipMovementConcurrency) {
+    if (requestedLeadershipMovementConcurrency != null
+        && requestedLeadershipMovementConcurrency > _maxNumClusterMovementConcurrency) {
+      throw new IllegalArgumentException("Attempt to set leadership movement concurrency ["
+                                         + requestedLeadershipMovementConcurrency + "] to greater than the maximum number "
+                                         + "of allowed movements in cluster [" + _maxNumClusterMovementConcurrency + "].");
+    }
     _requestedLeadershipMovementConcurrency = requestedLeadershipMovementConcurrency;
   }
 
@@ -109,27 +121,41 @@ public class ExecutionTaskManager {
     return _executionTaskPlanner.getInterBrokerReplicaMovementTasks(brokersReadyForReplicaMovement, _inProgressPartitionsForInterBrokerMovement);
   }
 
+  private int unthrottledConcurrency(Set<Integer> brokersWithReplicaMoves, int throttledConcurrency) {
+    int numUnthrottledBrokers = (int) brokersWithReplicaMoves.stream().filter(_brokersToSkipConcurrencyCheck::contains).count();
+    if (numUnthrottledBrokers == 0) {
+      // All brokers are throttled.
+      return Integer.MAX_VALUE;
+    }
+
+    int numThrottledBrokers = brokersWithReplicaMoves.size() - numUnthrottledBrokers;
+    return Math.max(1, (_maxNumClusterMovementConcurrency - (numThrottledBrokers * throttledConcurrency)) / numUnthrottledBrokers);
+  }
+
   /**
    * Based on replica movement concurrency requirement and number of ongoing replica movements, calculate how many
    * new replica movements can be triggered on each broker.
    *
    * @param inProgressReplicaMovementsByBrokerId Number of ongoing replica movements in each broker.
-   * @param movementConcurrency The required per-broker replica movement concurrency.
+   * @param throttledConcurrency The throttled concurrency of per-broker replica movement.
    * @return A map of how many new replica movements can be triggered for each broker.
    */
   private Map<Integer, Integer> brokersReadyForReplicaMovement(Map<Integer, Integer> inProgressReplicaMovementsByBrokerId,
-                                                               int movementConcurrency) {
-    Map<Integer, Integer> readyBrokers = new HashMap<>(inProgressReplicaMovementsByBrokerId.size());
-    for (Map.Entry<Integer, Integer> entry : inProgressReplicaMovementsByBrokerId.entrySet()) {
-      // We skip the concurrency level check if caller requested so.
-      // This is useful when we detected a broker failure and want to move all its partitions to the
-      // rest of the brokers.
-      if (_brokersToSkipConcurrencyCheck.contains(entry.getKey())) {
-        readyBrokers.put(entry.getKey(), Integer.MAX_VALUE);
-      } else {
-        readyBrokers.put(entry.getKey(), Math.max(0, movementConcurrency - entry.getValue()));
-      }
+                                                               int throttledConcurrency) {
+    int totalThrottledPartitionMovementConcurrency = inProgressReplicaMovementsByBrokerId.size() * throttledConcurrency;
+    if (totalThrottledPartitionMovementConcurrency > _maxNumClusterMovementConcurrency) {
+      LOG.error("Total throttled partition movement concurrency ({}) is greater than the maximum number of allowed "
+                + " movements in cluster ({}). Please decrease the per-broker partition movement concurrency ({}) to avoid "
+                + "a potential ZooKeeper zNode file size limit violation during replica moves.",
+                totalThrottledPartitionMovementConcurrency, _maxNumClusterMovementConcurrency, throttledConcurrency);
     }
+    Map<Integer, Integer> readyBrokers = new HashMap<>(inProgressReplicaMovementsByBrokerId.size());
+    int unthrottledConcurrency = unthrottledConcurrency(inProgressReplicaMovementsByBrokerId.keySet(), throttledConcurrency);
+    inProgressReplicaMovementsByBrokerId.forEach((bid, inProgressReplicaMovements) -> {
+      int brokerConcurrency = _brokersToSkipConcurrencyCheck.contains(bid) ? unthrottledConcurrency : throttledConcurrency;
+      readyBrokers.put(bid, Math.max(0, brokerConcurrency - inProgressReplicaMovements));
+    });
+
     return readyBrokers;
   }
 
@@ -146,7 +172,9 @@ public class ExecutionTaskManager {
    * check privilege state with the new broker set.
    *
    * @param proposals the execution proposals to execute.
-   * @param brokersToSkipConcurrencyCheck the brokers that does not need to be throttled when move the partitions.
+   * @param brokersToSkipConcurrencyCheck Brokers that do not need to be throttled when moving the partitions. Note that
+   *                                      there would still be some throttling based on {@link #_maxNumClusterMovementConcurrency}
+   *                                      to ensure that default ZooKeeper zNode file size limit is not exceeded.
    * @param cluster Cluster state.
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    */

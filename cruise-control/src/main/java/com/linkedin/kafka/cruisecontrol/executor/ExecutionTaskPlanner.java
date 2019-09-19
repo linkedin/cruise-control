@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import java.util.ArrayList;
@@ -53,11 +54,16 @@ public class ExecutionTaskPlanner {
   private long _executionId;
   private ReplicaMovementStrategy _defaultReplicaMovementTaskStrategy;
 
-  public ExecutionTaskPlanner(List<String> defaultReplicaMovementStrategies) {
+  /**
+   *
+   * @param config The config object that holds all the Cruise Control related configs.
+   */
+  public ExecutionTaskPlanner(KafkaCruiseControlConfig config) {
     _executionId = 0L;
     _interPartMoveTaskByBrokerId = new HashMap<>();
     _remainingInterBrokerReplicaMovements = new TreeSet<>();
     _remainingLeadershipMovements = new HashMap<>();
+    List<String> defaultReplicaMovementStrategies = config.getList(KafkaCruiseControlConfig.DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG);
     if (defaultReplicaMovementStrategies == null || defaultReplicaMovementStrategies.isEmpty()) {
       _defaultReplicaMovementTaskStrategy = new BaseReplicaMovementStrategy();
     } else {
