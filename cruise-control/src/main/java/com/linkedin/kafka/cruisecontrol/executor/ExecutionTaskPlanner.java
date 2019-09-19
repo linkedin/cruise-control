@@ -173,7 +173,7 @@ public class ExecutionTaskPlanner {
         LOG.trace("Ignored the attempt to move non-existing partition for topic partition: {}", tp);
         continue;
       }
-      if (!proposal.isInterBrokerMovementCompleted(partitionInfo.replicas(), partitionInfo.inSyncReplicas())) {
+      if (!proposal.isInterBrokerMovementCompleted(partitionInfo)) {
         long replicaActionExecutionId = _executionId++;
         ExecutionTask executionTask = new ExecutionTask(replicaActionExecutionId, proposal, INTER_BROKER_REPLICA_ACTION);
         _remainingInterBrokerReplicaMovements.add(executionTask);
