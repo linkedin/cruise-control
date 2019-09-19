@@ -61,26 +61,28 @@ public class SamplingUtils {
 
   /**
    * Estimate the leader CPU utilization of the partition using its metric sample based on the static model defined via
-   * {@link ModelUtils#estimateLeaderCpuUtil(double, double, double, double, double, double)} and the given number of
+   * {@link ModelUtils#estimateLeaderCpuUtilPerCore(double, double, double, double, double, double)} and the given number of
    * CPU cores.
    *
    * @param pms Metric sample of partition.
    * @param brokerLoad Load information for the broker that the leader of the partition resides.
    * @param commonMetricDef Definitions to look up the metric info.
    * @param numCpuCores Number of CPU cores.
-   * @return The estimated CPU utilization of the leader for the partition based on the static model.
+   * @return The estimated CPU utilization of the leader for the partition based on the static model, or {@code null}
+   * if estimation is not possible.
    */
-  private static double estimateLeaderCpuUtil(PartitionMetricSample pms, BrokerLoad brokerLoad, MetricDef commonMetricDef, short numCpuCores) {
+  private static Double estimateLeaderCpuUtil(PartitionMetricSample pms, BrokerLoad brokerLoad, MetricDef commonMetricDef, short numCpuCores) {
     double partitionBytesInRate = pms.metricValue(commonMetricDef.metricInfo(KafkaMetricDef.LEADER_BYTES_IN.name()).id());
     double partitionBytesOutRate = pms.metricValue(commonMetricDef.metricInfo(KafkaMetricDef.LEADER_BYTES_OUT.name()).id());
     double partitionReplicationBytesOutRate = pms.metricValue(commonMetricDef.metricInfo(KafkaMetricDef.REPLICATION_BYTES_OUT_RATE.name()).id());
     double brokerTotalBytesOut = brokerLoad.brokerMetric(ALL_TOPIC_BYTES_OUT) + brokerLoad.brokerMetric(ALL_TOPIC_REPLICATION_BYTES_OUT);
-    return numCpuCores * ModelUtils.estimateLeaderCpuUtil(brokerLoad.brokerMetric(BROKER_CPU_UTIL),
-                                                          brokerLoad.brokerMetric(ALL_TOPIC_BYTES_IN),
-                                                          brokerTotalBytesOut,
-                                                          brokerLoad.brokerMetric(ALL_TOPIC_REPLICATION_BYTES_IN),
-                                                          partitionBytesInRate,
-                                                          partitionBytesOutRate + partitionReplicationBytesOutRate);
+    Double estimatedLeaderCpuUtilPerCore = ModelUtils.estimateLeaderCpuUtilPerCore(brokerLoad.brokerMetric(BROKER_CPU_UTIL),
+                                                                                   brokerLoad.brokerMetric(ALL_TOPIC_BYTES_IN),
+                                                                                   brokerTotalBytesOut,
+                                                                                   brokerLoad.brokerMetric(ALL_TOPIC_REPLICATION_BYTES_IN),
+                                                                                   partitionBytesInRate,
+                                                                                   partitionBytesOutRate + partitionReplicationBytesOutRate);
+    return estimatedLeaderCpuUtilPerCore != null ? numCpuCores * estimatedLeaderCpuUtilPerCore : null;
   }
 
   /**
@@ -208,9 +210,17 @@ public class SamplingUtils {
       pms.record(metricInfo, sampleValue);
     }
     // Fill in disk and CPU utilization, which are not topic metric types.
-    double partitionSize = brokerLoad.partitionMetric(tpWithDotHandled.topic(), tpWithDotHandled.partition(), PARTITION_SIZE);
+    Double partitionSize = brokerLoad.partitionMetric(tpWithDotHandled.topic(), tpWithDotHandled.partition(), PARTITION_SIZE);
+    if (partitionSize == null) {
+      skippedPartitionByBroker.merge(leaderId, 1, Integer::sum);
+      return null;
+    }
     pms.record(commonMetricDef.metricInfo(KafkaMetricDef.DISK_USAGE.name()), partitionSize);
-    double estimatedLeaderCpuUtil = estimateLeaderCpuUtil(pms, brokerLoad, commonMetricDef, cachedNumCoresByBroker.get(leaderId));
+    Double estimatedLeaderCpuUtil = estimateLeaderCpuUtil(pms, brokerLoad, commonMetricDef, cachedNumCoresByBroker.get(leaderId));
+    if (estimatedLeaderCpuUtil == null) {
+      skippedPartitionByBroker.merge(leaderId, 1, Integer::sum);
+      return null;
+    }
     pms.record(commonMetricDef.metricInfo(KafkaMetricDef.CPU_USAGE.name()), estimatedLeaderCpuUtil);
     pms.close(maxMetricTimestamp);
     return pms;
