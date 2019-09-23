@@ -44,11 +44,7 @@ class GetBrokerStatsRunnable extends OperationRunnable {
   @Override
   protected BrokerStats getResult() throws Exception {
     if (_isCapacityStats) {
-      if (_start != DEFAULT_START_TIME_FOR_CLUSTER_MODEL) {
-        return _kafkaCruiseControl.brokerCapacityStats(_config);
-      }
       return _kafkaCruiseControl.brokerCapacityStats(_config);
-
     }
 
     // Check whether the cached broker stats is still valid.
