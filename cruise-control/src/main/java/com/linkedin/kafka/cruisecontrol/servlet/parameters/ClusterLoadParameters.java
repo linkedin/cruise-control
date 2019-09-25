@@ -16,7 +16,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.END_MS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.START_MS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.ALLOW_CAPACITY_ESTIMATION_PARAM;
-
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CAPACITY_PARAM;
 
 /**
  * Parameters for {@link CruiseControlEndPoint#LOAD}
@@ -39,6 +39,7 @@ public class ClusterLoadParameters extends AbstractParameters {
     validParameterNames.add(TIME_PARAM);
     validParameterNames.add(END_MS_PARAM);
     validParameterNames.add(START_MS_PARAM);
+    validParameterNames.add(CAPACITY_PARAM);
     validParameterNames.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
     validParameterNames.addAll(AbstractParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
     CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
@@ -47,7 +48,7 @@ public class ClusterLoadParameters extends AbstractParameters {
   protected long _startMs;
   protected ModelCompletenessRequirements _requirements;
   protected boolean _allowCapacityEstimation;
-  private boolean _capacity;
+  protected boolean _capacity;
 
 
   public ClusterLoadParameters() {
