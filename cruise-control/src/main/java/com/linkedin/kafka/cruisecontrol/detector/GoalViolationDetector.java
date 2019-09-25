@@ -19,16 +19,12 @@ import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
-import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
-import java.util.SortedMap;
-import java.util.TreeMap;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.TopicPartition;
@@ -36,6 +32,10 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.balancednessCostByGoal;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.MAX_BALANCEDNESS_SCORE;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.shouldSkipAnomalyDetection;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.EXECUTOR;
 
 
@@ -47,7 +47,7 @@ public class GoalViolationDetector implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(GoalViolationDetector.class);
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final LoadMonitor _loadMonitor;
-  private final SortedMap<Integer, Goal> _goals;
+  private final List<Goal> _detectionGoals;
   private final Time _time;
   private final Queue<Anomaly> _anomalies;
   private ModelGeneration _lastCheckedModelGeneration;
@@ -56,6 +56,8 @@ public class GoalViolationDetector implements Runnable {
   private final boolean _excludeRecentlyDemotedBrokers;
   private final boolean _excludeRecentlyRemovedBrokers;
   private final List<String> _selfHealingGoals;
+  private final Map<String, Double> _balancednessCostByGoal;
+  private volatile double _balancednessScore;
 
   public GoalViolationDetector(KafkaCruiseControlConfig config,
                                LoadMonitor loadMonitor,
@@ -65,7 +67,7 @@ public class GoalViolationDetector implements Runnable {
                                List<String> selfHealingGoals) {
     _loadMonitor = loadMonitor;
     // Notice that we use a separate set of Goal instances for anomaly detector to avoid interference.
-    _goals = getDetectorGoalsMap(config);
+    _detectionGoals = config.getConfiguredInstances(KafkaCruiseControlConfig.ANOMALY_DETECTION_GOALS_CONFIG, Goal.class);
     _anomalies = anomalies;
     _time = time;
     _excludedTopics = Pattern.compile(config.getString(KafkaCruiseControlConfig.TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG));
@@ -74,26 +76,17 @@ public class GoalViolationDetector implements Runnable {
     _excludeRecentlyRemovedBrokers = config.getBoolean(KafkaCruiseControlConfig.GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
     _kafkaCruiseControl = kafkaCruiseControl;
     _selfHealingGoals = selfHealingGoals;
+    _balancednessCostByGoal = balancednessCostByGoal(_detectionGoals,
+                                                     config.getDouble(KafkaCruiseControlConfig.GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG),
+                                                     config.getDouble(KafkaCruiseControlConfig.GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_CONFIG));
+    _balancednessScore = MAX_BALANCEDNESS_SCORE;
   }
 
-  private SortedMap<Integer, Goal> getDetectorGoalsMap(KafkaCruiseControlConfig config) {
-    List<String> allGoals = config.getList(KafkaCruiseControlConfig.GOALS_CONFIG);
-    Map<String, Integer> priorityMap = new HashMap<>();
-    int i = 0;
-    for (String goalClass : allGoals) {
-      priorityMap.put(goalClass, i++);
-    }
-    List<Goal> goals = config.getConfiguredInstances(KafkaCruiseControlConfig.ANOMALY_DETECTION_GOALS_CONFIG, Goal.class);
-    SortedMap<Integer, Goal> orderedGoals = new TreeMap<>();
-    for (Goal goal: goals) {
-      Integer priority = priorityMap.get(goal.getClass().getName());
-      if (priority == null) {
-        throw new IllegalArgumentException(goal.getClass().getName() + " is defined in " + KafkaCruiseControlConfig.ANOMALY_DETECTION_GOALS_CONFIG
-                                               + " but not found in " + KafkaCruiseControlConfig.GOALS_CONFIG);
-      }
-      orderedGoals.put(priorityMap.get(goal.getClass().getName()), goal);
-    }
-    return orderedGoals;
+  /**
+   * @return A metric to quantify how well the load distribution on a cluster satisfies the {@link #_detectionGoals}.
+   */
+  public double balancednessScore() {
+    return _balancednessScore;
   }
 
   /**
@@ -115,20 +108,15 @@ public class GoalViolationDetector implements Runnable {
       return true;
     }
 
-    LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
-    if (!ViolationUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
-      LOG.info("Skipping goal violation detection because load monitor is in {} state.", loadMonitorTaskRunnerState);
+    Set<Integer> deadBrokersWithReplicas = _loadMonitor.deadBrokersWithReplicas(MAX_METADATA_WAIT_MS);
+    if (!deadBrokersWithReplicas.isEmpty()) {
+      LOG.info("Skipping goal violation detection because there are dead brokers in the cluster, flawed brokers: {}",
+               deadBrokersWithReplicas);
+      setBalancednessWithOfflineReplicas();
       return true;
     }
 
-    ExecutorState.State executorState = _kafkaCruiseControl.state(
-        new OperationProgress(), Collections.singleton(EXECUTOR)).executorState().state();
-    if (executorState != ExecutorState.State.NO_TASK_IN_PROGRESS) {
-      LOG.info("Skipping goal violation detection because the executor is in {} state.", executorState);
-      return true;
-    }
-
-    return false;
+    return shouldSkipAnomalyDetection(_loadMonitor, _kafkaCruiseControl);
   }
 
   @Override
@@ -158,10 +146,9 @@ public class GoalViolationDetector implements Runnable {
       Set<Integer> excludedBrokersForReplicaMove = _excludeRecentlyRemovedBrokers ? executorState.recentlyRemovedBrokers()
                                                                                   : Collections.emptySet();
 
-      for (Map.Entry<Integer, Goal> entry : _goals.entrySet()) {
-        Goal goal = entry.getValue();
+      for (Goal goal : _detectionGoals) {
         if (_loadMonitor.meetCompletenessRequirements(goal.clusterModelCompletenessRequirements())) {
-          LOG.debug("Detecting if {} is violated.", entry.getValue().name());
+          LOG.debug("Detecting if {} is violated.", goal.name());
           // Because the model generation could be slow, We only get new cluster model if needed.
           if (newModelNeeded) {
             if (clusterModelSemaphore != null) {
@@ -175,10 +162,8 @@ public class GoalViolationDetector implements Runnable {
                                                      new OperationProgress());
 
             // If the clusterModel contains dead brokers, goal violation detector will ignore any goal violations.
-            // Detection and fix for dead brokers is the responsibility of broker failure detector and its self-healer.
-            if (!clusterModel.deadBrokers().isEmpty()) {
-              LOG.info("Skipping goal violation detection due to dead brokers {}, which are reported by broker failure "
-                       + "detector, and fixed if its self healing configuration is enabled.", clusterModel.deadBrokers());
+            // Detection and fix for dead brokers is the responsibility of broker failure detector.
+            if (skipDueToDeadBrokers(clusterModel)) {
               return;
             }
             KafkaCruiseControl.sanityCheckCapacityEstimation(_allowCapacityEstimation,
@@ -190,11 +175,13 @@ public class GoalViolationDetector implements Runnable {
           LOG.warn("Skipping goal violation detection for {} because load completeness requirement is not met.", goal);
         }
       }
-      if (!goalViolations.violatedGoalsByFixability().isEmpty()) {
+      Map<Boolean, List<String>> violatedGoalsByFixability = goalViolations.violatedGoalsByFixability();
+      if (!violatedGoalsByFixability.isEmpty()) {
         _anomalies.add(goalViolations);
       }
+      refreshBalancednessScore(violatedGoalsByFixability);
     } catch (NotEnoughValidWindowsException nevwe) {
-      LOG.debug("Skipping goal violation detection because there are not enough valid windows.");
+      LOG.debug("Skipping goal violation detection because there are not enough valid windows.", nevwe);
     } catch (KafkaCruiseControlException kcce) {
       LOG.warn("Goal violation detector received exception", kcce);
     } catch (Exception e) {
@@ -208,6 +195,31 @@ public class GoalViolationDetector implements Runnable {
         }
       }
       LOG.debug("Goal violation detection finished.");
+    }
+  }
+
+  /**
+   * @param clusterModel The state of the cluster.
+   * @return True to skip goal violation detection due to dead brokers in the cluster model.
+   */
+  private boolean skipDueToDeadBrokers(ClusterModel clusterModel) {
+    if (!clusterModel.deadBrokers().isEmpty()) {
+      LOG.info("Skipping goal violation detection due to dead brokers {}, which are reported by broker failure "
+               + "detector, and fixed if its self healing configuration is enabled.", clusterModel.deadBrokers());
+      setBalancednessWithOfflineReplicas();
+      return true;
+    }
+    return false;
+  }
+
+  private void setBalancednessWithOfflineReplicas() {
+    _balancednessScore = 0.0;
+  }
+
+  private void refreshBalancednessScore(Map<Boolean, List<String>> violatedGoalsByFixability) {
+    _balancednessScore = MAX_BALANCEDNESS_SCORE;
+    for (List<String> violatedGoals : violatedGoalsByFixability.values()) {
+      violatedGoals.forEach(violatedGoal -> _balancednessScore -= _balancednessCostByGoal.get(violatedGoal));
     }
   }
 

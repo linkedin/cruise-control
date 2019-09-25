@@ -9,7 +9,6 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.SampleStore;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 import java.util.List;
-import java.util.concurrent.TimeoutException;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -236,16 +235,11 @@ class BootstrapTask implements Runnable {
       do {
         long samplingPeriodStartMs = nextSamplingPeriodStartMs(now);
         long samplingPeriodEndMs = nextSamplingPeriodEndMs(now);
-        try {
-          boolean hasSamplingError =
-              _metricFetcherManager.fetchPartitionMetricSamples(samplingPeriodStartMs, samplingPeriodEndMs,
-                                                                _samplingIntervalMs, _sampleStore);
-          if (hasSamplingError) {
-            LOG.warn("Bootstrap encountered error when sampling from {} to {}, skipping...", samplingPeriodStartMs,
-                     samplingPeriodEndMs);
-          }
-        } catch (TimeoutException e) {
-          LOG.warn("Bootstrap timed out when sampling from {} to {}, skipping...", samplingPeriodStartMs,
+        boolean hasSamplingError =
+            _metricFetcherManager.fetchPartitionMetricSamples(samplingPeriodStartMs, samplingPeriodEndMs,
+                                                              _samplingIntervalMs, _sampleStore);
+        if (hasSamplingError) {
+          LOG.warn("Bootstrap encountered error when sampling from {} to {}, skipping...", samplingPeriodStartMs,
                    samplingPeriodEndMs);
         }
         _loadMonitorTaskRunner.setBootstrapProgress(progress());

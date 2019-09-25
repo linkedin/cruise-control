@@ -23,7 +23,6 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationPar
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.regex.Pattern;
 
 
 /**
@@ -50,7 +49,7 @@ import java.util.regex.Pattern;
  * boolean, Integer, Integer, boolean, java.util.regex.Pattern,
  * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean, boolean,
  * boolean, Set)}</li>
- * <li>{@link KafkaCruiseControl#updateTopicConfiguration(java.util.regex.Pattern, java.util.List, short, boolean,
+ * <li>{@link KafkaCruiseControl#updateTopicReplicationFactor(java.util.Map, java.util.List, boolean,
  * ModelCompletenessRequirements, OperationProgress, boolean, Integer, Integer, boolean,
  * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, boolean, boolean, boolean, String)}</li>
  * </ul>
@@ -164,7 +163,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#updateTopicConfiguration(Pattern, java.util.List, short, boolean, ModelCompletenessRequirements,
+   * @see KafkaCruiseControl#updateTopicReplicationFactor(java.util.Map, java.util.List, boolean, ModelCompletenessRequirements,
    * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean,
    * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy,
    * boolean, boolean, boolean, String)}

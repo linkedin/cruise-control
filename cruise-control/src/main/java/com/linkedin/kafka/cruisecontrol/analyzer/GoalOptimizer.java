@@ -21,13 +21,10 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
-import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -48,6 +45,7 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.balancednessCostByGoal;
 import static com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.BOOTSTRAPPING;
 import static com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.LOADING;
 
@@ -56,20 +54,11 @@ import static com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunne
  * A class for optimizing goals in the given order of priority.
  */
 public class GoalOptimizer implements Runnable {
-  private static final String NUM_INTER_BROKER_REPLICA_MOVEMENTS = "numReplicaMovements";
-  private static final String INTER_BROKER_DATA_TO_MOVE_MB = "dataToMoveMB";
-  private static final String NUM_LEADER_MOVEMENTS = "numLeaderMovements";
-  private static final String RECENT_WINDOWS = "recentWindows";
-  private static final String MONITORED_PARTITIONS_PERCENTAGE = "monitoredPartitionsPercentage";
-  private static final String EXCLUDED_TOPICS = "excludedTopics";
-  private static final String EXCLUDED_BROKERS_FOR_LEADERSHIP = "excludedBrokersForLeadership";
-  private static final String EXCLUDED_BROKERS_FOR_REPLICA_MOVE = "excludedBrokersForReplicaMove";
   private static final Logger LOG = LoggerFactory.getLogger(GoalOptimizer.class);
   private final List<Goal> _goalsByPriority;
   private final BalancingConstraint _balancingConstraint;
   private final Pattern _defaultExcludedTopics;
   private final LoadMonitor _loadMonitor;
-
   private final Time _time;
   private final int _numPrecomputingThreads;
   private final long _proposalExpirationMs;
@@ -81,11 +70,15 @@ public class GoalOptimizer implements Runnable {
   private volatile OptimizerResult _cachedProposals;
   private volatile boolean _shutdown = false;
   private Thread _proposalPrecomputingSchedulerThread;
+  // TODO: Make allowing/disallowing capacity estimation during proposal precomputation configurable.
+  private final boolean _allowCapacityEstimationDuringProposalPrecomputing;
   private final Timer _proposalComputationTimer;
   private final ModelCompletenessRequirements _defaultModelCompletenessRequirements;
   private final ModelCompletenessRequirements _requirementsWithAvailableValidWindows;
   private final Executor _executor;
   private volatile boolean _hasOngoingExplicitPrecomputation;
+  private final double _priorityWeight;
+  private final double _strictnessWeight;
 
   /**
    * Constructor for Goal Optimizer takes the goals as input. The order of the list determines the priority of goals
@@ -123,6 +116,9 @@ public class GoalOptimizer implements Runnable {
     _proposalComputationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("GoalOptimizer", "proposal-computation-timer"));
     _executor = executor;
     _hasOngoingExplicitPrecomputation = false;
+    _priorityWeight = config.getDouble(KafkaCruiseControlConfig.GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG);
+    _strictnessWeight = config.getDouble(KafkaCruiseControlConfig.GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_CONFIG);
+    _allowCapacityEstimationDuringProposalPrecomputing = true;
   }
 
   @Override
@@ -154,8 +150,8 @@ public class GoalOptimizer implements Runnable {
             clearCachedProposal();
 
             long start = System.nanoTime();
-            // Proposal precomputation runs with the default topics to exclude.
-            computeCachedProposal();
+            // Proposal precomputation runs with the default topics to exclude, and allows capacity estimation.
+            computeCachedProposal(_allowCapacityEstimationDuringProposalPrecomputing);
             _proposalComputationTimer.update(System.nanoTime() - start, TimeUnit.NANOSECONDS);
           } else {
             LOG.debug("Skipping proposal precomputing because the cached proposal result is still valid. "
@@ -184,9 +180,9 @@ public class GoalOptimizer implements Runnable {
     return _numPrecomputingThreads > 0 ? _numPrecomputingThreads : 2;
   }
 
-  private void computeCachedProposal() {
+  private void computeCachedProposal(boolean allowCapacityEstimation) {
     long start = _time.milliseconds();
-    Future future = _proposalPrecomputingExecutor.submit(new ProposalCandidateComputer());
+    Future future = _proposalPrecomputingExecutor.submit(new ProposalCandidateComputer(allowCapacityEstimation));
 
     try {
       boolean done = false;
@@ -287,13 +283,13 @@ public class GoalOptimizer implements Runnable {
         while (!validCachedProposal()) {
           try {
             operationProgress.clear();
-            if (_numPrecomputingThreads > 0) {
+            if (_numPrecomputingThreads > 0 && (allowCapacityEstimation || !_allowCapacityEstimationDuringProposalPrecomputing)) {
               // Wake up the proposal precomputing scheduler and wait for the cache update.
               _proposalPrecomputingSchedulerThread.interrupt();
             } else if (!_hasOngoingExplicitPrecomputation) {
               // Submit background computation if there is no ongoing explicit precomputation and wait for the cache update.
               _hasOngoingExplicitPrecomputation = true;
-              _proposalPrecomputingExecutor.submit(this::computeCachedProposal);
+              _proposalPrecomputingExecutor.submit(() -> computeCachedProposal(allowCapacityEstimation));
             }
             operationProgress.refer(_proposalPrecomputingProgress);
             _cacheLock.wait();
@@ -311,9 +307,7 @@ public class GoalOptimizer implements Runnable {
         LOG.debug("Returning optimization result from cache. Model generation (cached: {}, current: {}).",
                   _cachedProposals.modelGeneration(), _loadMonitor.clusterModelGeneration());
       }
-      // If the cached proposals are estimated, and the user requested for no estimation, we invalidate the cache and
-      // calculate cached proposals just once. If the returned result still involves an estimation, throw an exception.
-      KafkaCruiseControl.sanityCheckCapacityEstimation(allowCapacityEstimation, _cachedProposals.capacityEstimationInfoByBrokerId());
+
       return _cachedProposals;
     }
   }
@@ -402,6 +396,8 @@ public class GoalOptimizer implements Runnable {
       throws KafkaCruiseControlException {
     if (clusterModel == null) {
       throw new IllegalArgumentException("The cluster model cannot be null");
+    } else if (goalsByPriority.isEmpty()) {
+      throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");
     }
 
     // Sanity check for optimizing goals.
@@ -420,7 +416,7 @@ public class GoalOptimizer implements Runnable {
     Set<Goal> optimizedGoals = new HashSet<>(goalsByPriority.size());
     Set<String> violatedGoalNamesBeforeOptimization = new HashSet<>();
     Set<String> violatedGoalNamesAfterOptimization = new HashSet<>();
-    Map<Goal, ClusterModelStats> statsByGoalPriority = new LinkedHashMap<>(goalsByPriority.size());
+    LinkedHashMap<Goal, ClusterModelStats> statsByGoalPriority = new LinkedHashMap<>(goalsByPriority.size());
     Map<TopicPartition, List<Integer>> preOptimizedReplicaDistribution = null;
     Map<TopicPartition, Integer> preOptimizedLeaderDistribution = null;
     Set<String> excludedTopics = excludedTopics(clusterModel, requestedExcludedTopics);
@@ -457,7 +453,6 @@ public class GoalOptimizer implements Runnable {
       }
     }
 
-    clusterModel.sanityCheck();
     // Broker level stats in the final cluster state.
     if (LOG.isTraceEnabled()) {
       LOG.trace("Broker level stats after optimization: {}%n", clusterModel.brokerStats(null));
@@ -480,7 +475,8 @@ public class GoalOptimizer implements Runnable {
                                clusterModel.generation(),
                                clusterModel.getClusterStats(_balancingConstraint),
                                clusterModel.capacityEstimationInfoByBrokerId(),
-                               optimizationOptions);
+                               optimizationOptions,
+                               balancednessCostByGoal(goalsByPriority, _priorityWeight, _strictnessWeight));
   }
 
   private Set<String> excludedTopics(ClusterModel clusterModel, Pattern requestedExcludedTopics) {
@@ -531,165 +527,12 @@ public class GoalOptimizer implements Runnable {
   }
 
   /**
-   * A class for representing the results of goal optimizer. The results include stats by goal priority and
-   * optimization proposals.
-   */
-  public static class OptimizerResult {
-    private final Map<String, Goal.ClusterModelStatsComparator> _clusterModelStatsComparatorByGoalName;
-    private final Map<String, ClusterModelStats> _statsByGoalName;
-    private final Set<ExecutionProposal> _proposals;
-    private final Set<String> _violatedGoalNamesBeforeOptimization;
-    private final Set<String> _violatedGoalNamesAfterOptimization;
-    private final BrokerStats _brokerStatsBeforeOptimization;
-    private final BrokerStats _brokerStatsAfterOptimization;
-    private final ModelGeneration _modelGeneration;
-    private final ClusterModelStats _clusterModelStats;
-    private final Map<Integer, String> _capacityEstimationInfoByBrokerId;
-    private final OptimizationOptions _optimizationOptions;
-
-    OptimizerResult(Map<Goal, ClusterModelStats> statsByGoalPriority,
-                    Set<String> violatedGoalNamesBeforeOptimization,
-                    Set<String> violatedGoalNamesAfterOptimization,
-                    Set<ExecutionProposal> proposals,
-                    BrokerStats brokerStatsBeforeOptimization,
-                    BrokerStats brokerStatsAfterOptimization,
-                    ModelGeneration modelGeneration,
-                    ClusterModelStats clusterModelStats,
-                    Map<Integer, String> capacityEstimationInfoByBrokerId,
-                    OptimizationOptions optimizationOptions) {
-      _clusterModelStatsComparatorByGoalName = new LinkedHashMap<>(statsByGoalPriority.size());
-      _statsByGoalName = new LinkedHashMap<>(statsByGoalPriority.size());
-      for (Map.Entry<Goal, ClusterModelStats> entry : statsByGoalPriority.entrySet()) {
-        String goalName = entry.getKey().name();
-        Goal.ClusterModelStatsComparator comparator = entry.getKey().clusterModelStatsComparator();
-        _clusterModelStatsComparatorByGoalName.put(goalName, comparator);
-        _statsByGoalName.put(goalName, entry.getValue());
-      }
-
-      _violatedGoalNamesBeforeOptimization = violatedGoalNamesBeforeOptimization;
-      _violatedGoalNamesAfterOptimization = violatedGoalNamesAfterOptimization;
-      _proposals = proposals;
-      _brokerStatsBeforeOptimization = brokerStatsBeforeOptimization;
-      _brokerStatsAfterOptimization = brokerStatsAfterOptimization;
-      _modelGeneration = modelGeneration;
-      _clusterModelStats = clusterModelStats;
-      _capacityEstimationInfoByBrokerId = capacityEstimationInfoByBrokerId;
-      _optimizationOptions = optimizationOptions;
-    }
-
-    public Map<String, Goal.ClusterModelStatsComparator> clusterModelStatsComparatorByGoalName() {
-      return _clusterModelStatsComparatorByGoalName;
-    }
-
-    public Map<String, ClusterModelStats> statsByGoalName() {
-      return _statsByGoalName;
-    }
-
-    public Set<ExecutionProposal> goalProposals() {
-      return _proposals;
-    }
-
-    public Set<String> violatedGoalsBeforeOptimization() {
-      return _violatedGoalNamesBeforeOptimization;
-    }
-
-    public Set<String> violatedGoalsAfterOptimization() {
-      return _violatedGoalNamesAfterOptimization;
-    }
-
-    public ModelGeneration modelGeneration() {
-      return _modelGeneration;
-    }
-
-    public ClusterModelStats clusterModelStats() {
-      return _clusterModelStats;
-    }
-
-    public BrokerStats brokerStatsBeforeOptimization() {
-      return _brokerStatsBeforeOptimization;
-    }
-
-    public BrokerStats brokerStatsAfterOptimization() {
-      return _brokerStatsAfterOptimization;
-    }
-
-    public boolean isCapacityEstimated() {
-      return !_capacityEstimationInfoByBrokerId.isEmpty();
-    }
-
-    public Map<Integer, String> capacityEstimationInfoByBrokerId() {
-      return Collections.unmodifiableMap(_capacityEstimationInfoByBrokerId);
-    }
-
-    public Set<String> excludedTopics() {
-      return _optimizationOptions.excludedTopics();
-    }
-
-    public Set<Integer> excludedBrokersForLeadership() {
-      return _optimizationOptions.excludedBrokersForLeadership();
-    }
-
-    public Set<Integer> excludedBrokersForReplicaMove() {
-      return _optimizationOptions.excludedBrokersForReplicaMove();
-    }
-
-    /**
-     * The topics whose replication factor has been changed by proposals.
-     */
-    public Set<String> topicsWithReplicationFactorChange() {
-      Set<String> topics = new HashSet<>(_proposals.size());
-      _proposals.stream().filter(p -> p.newReplicas().size() != p.oldReplicas().size()).forEach(p -> topics.add(p.topic()));
-      return topics;
-    }
-
-    private List<Number> getMovementStats() {
-      Integer numInterBrokerReplicaMovements = 0;
-      Integer numLeaderMovements = 0;
-      long interBrokerDataToMove = 0L;
-      for (ExecutionProposal p : _proposals) {
-        if (!p.replicasToAdd().isEmpty() || !p.replicasToRemove().isEmpty()) {
-          numInterBrokerReplicaMovements++;
-          interBrokerDataToMove += p.dataToMoveInMB();
-        } else {
-          numLeaderMovements++;
-        }
-      }
-      return Arrays.asList(numInterBrokerReplicaMovements, interBrokerDataToMove,
-                           numLeaderMovements);
-    }
-
-    public String getProposalSummary() {
-      List<Number> moveStats = getMovementStats();
-      return String.format("%n%nOptimization has %d inter-broker replica(%d MB) moves and %d leadership moves with a "
-                           + "cluster model of %d recent windows and %.3f%% of the partitions covered.%nExcluded Topics: "
-                           + "%s.%nExcluded Brokers For Leadership: %s.%nExcluded Brokers For Replica Move: %s.%nCounts: %s",
-                           moveStats.get(0).intValue(), moveStats.get(1).longValue(), moveStats.get(2).intValue(),
-                           _clusterModelStats.numSnapshotWindows(), _clusterModelStats.monitoredPartitionsPercentage() * 100,
-                           excludedTopics(), excludedBrokersForLeadership(), excludedBrokersForReplicaMove(),
-                           _clusterModelStats.toStringCounts());
-    }
-
-    public Map<String, Object> getProposalSummaryForJson() {
-      List<Number> moveStats = getMovementStats();
-      Map<String, Object> ret = new HashMap<>();
-      ret.put(NUM_INTER_BROKER_REPLICA_MOVEMENTS, moveStats.get(0).intValue());
-      ret.put(INTER_BROKER_DATA_TO_MOVE_MB, moveStats.get(1).longValue());
-      ret.put(NUM_LEADER_MOVEMENTS, moveStats.get(2).intValue());
-      ret.put(RECENT_WINDOWS, _clusterModelStats.numSnapshotWindows());
-      ret.put(MONITORED_PARTITIONS_PERCENTAGE, _clusterModelStats.monitoredPartitionsPercentage() * 100.0);
-      ret.put(EXCLUDED_TOPICS, excludedTopics());
-      ret.put(EXCLUDED_BROKERS_FOR_LEADERSHIP, excludedBrokersForLeadership());
-      ret.put(EXCLUDED_BROKERS_FOR_REPLICA_MOVE, excludedBrokersForReplicaMove());
-      return ret;
-    }
-  }
-
-  /**
    * A class that precomputes the proposal candidates and find the cached proposals.
    */
   private class ProposalCandidateComputer implements Runnable {
-    ProposalCandidateComputer() {
-
+    private final boolean _allowCapacityEstimation;
+    ProposalCandidateComputer(boolean allowCapacityEstimation) {
+      _allowCapacityEstimation = allowCapacityEstimation;
     }
 
     @Override
@@ -708,6 +551,7 @@ public class GoalOptimizer implements Runnable {
         ModelCompletenessRequirements requirements = _loadMonitor.meetCompletenessRequirements(_defaultModelCompletenessRequirements) ?
                                                      _defaultModelCompletenessRequirements : _requirementsWithAvailableValidWindows;
         ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), requirements, operationProgress);
+        KafkaCruiseControl.sanityCheckCapacityEstimation(_allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
         if (!clusterModel.topics().isEmpty()) {
           OptimizerResult result = optimizations(clusterModel, _goalsByPriority, operationProgress);
           LOG.debug("Generated a proposal candidate in {} ms.", _time.milliseconds() - startMs);

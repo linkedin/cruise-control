@@ -8,7 +8,7 @@ import com.linkedin.kafka.cruisecontrol.common.Resource;
 
 
 /**
- * These are the resources derived from the base resources used by the various goals to perform balancing.  This is a
+ * These are the resources derived from the base resources used by the various goals to perform balancing. This is a
  * super set of the Resources enumeration.
  */
 public enum RawAndDerivedResource {

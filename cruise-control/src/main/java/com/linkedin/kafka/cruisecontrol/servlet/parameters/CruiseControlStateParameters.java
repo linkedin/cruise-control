@@ -7,8 +7,15 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import java.io.UnsupportedEncodingException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SUBSTATES_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.VERBOSE_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SUPER_VERBOSE_PARAM;
 
 
 /**
@@ -20,6 +27,15 @@ import java.util.Set;
  * </pre>
  */
 public class CruiseControlStateParameters extends AbstractParameters {
+  protected static final SortedSet<String> CASE_INSENSITIVE_PARAMETER_NAMES;
+  static {
+    SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    validParameterNames.add(SUBSTATES_PARAM);
+    validParameterNames.add(VERBOSE_PARAM);
+    validParameterNames.add(SUPER_VERBOSE_PARAM);
+    validParameterNames.addAll(AbstractParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
+  }
   protected Set<CruiseControlState.SubState> _substates;
   protected boolean _isVerbose;
   protected boolean _isSuperVerbose;
@@ -40,10 +56,6 @@ public class CruiseControlStateParameters extends AbstractParameters {
     return _substates;
   }
 
-  public void setSubstates(Set<CruiseControlState.SubState> substates) {
-    _substates = substates;
-  }
-
   public boolean isVerbose() {
     return _isVerbose;
   }
@@ -55,5 +67,10 @@ public class CruiseControlStateParameters extends AbstractParameters {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
+  }
+
+  @Override
+  public SortedSet<String> caseInsensitiveParameterNames() {
+    return CASE_INSENSITIVE_PARAMETER_NAMES;
   }
 }

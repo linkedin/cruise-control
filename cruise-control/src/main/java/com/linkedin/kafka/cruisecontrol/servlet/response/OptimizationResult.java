@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
@@ -41,19 +41,18 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
   protected static final String VIOLATED = "VIOLATED";
   protected static final String FIXED = "FIXED";
   protected static final String NO_ACTION = "NO-ACTION";
-  protected GoalOptimizer.OptimizerResult _optimizerResult;
+  protected OptimizerResult _optimizerResult;
   protected String _cachedJSONResponse;
   protected String _cachedPlaintextResponse;
 
-  public OptimizationResult(GoalOptimizer.OptimizerResult optimizerResult,
-                            KafkaCruiseControlConfig config) {
+  public OptimizationResult(OptimizerResult optimizerResult, KafkaCruiseControlConfig config) {
     super(config);
     _optimizerResult = optimizerResult;
     _cachedJSONResponse = null;
     _cachedPlaintextResponse = null;
   }
 
-  public GoalOptimizer.OptimizerResult optimizerResult() {
+  public OptimizerResult optimizerResult() {
     return _optimizerResult;
   }
 
@@ -84,8 +83,8 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
       case DEMOTE_BROKER:
         return String.format("%n%nCluster load after demoting broker %s:%n", ((DemoteBrokerParameters) parameters).brokerIds());
       case TOPIC_CONFIGURATION:
-        return String.format("%n%nCluster load after updating replication factor of topics %s to %d:%n",
-                             _optimizerResult.topicsWithReplicationFactorChange(), ((TopicConfigurationParameters) parameters).replicationFactor());
+        return String.format("%n%nCluster load after updating replication factor of topics %s%n",
+                             _optimizerResult.topicsWithReplicationFactorChange());
       default:
         LOG.error("Unrecognized endpoint.");
         return "Unrecognized endpoint.";
@@ -110,7 +109,12 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
   @Override
   protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
     // Cache relevant response.
-    boolean isVerbose = ((KafkaOptimizationParameters) parameters).isVerbose();
+    boolean isVerbose;
+    if (parameters.endPoint() == CruiseControlEndPoint.TOPIC_CONFIGURATION) {
+      isVerbose = ((TopicConfigurationParameters) parameters).topicReplicationFactorChangeParameters().isVerbose();
+    } else {
+      isVerbose = ((KafkaOptimizationParameters) parameters).isVerbose();
+    }
     _cachedResponse = parameters.json() ? getJSONString(isVerbose) : getPlaintext(isVerbose, getPlaintextPretext(parameters));
     if (parameters.json()) {
       _cachedJSONResponse = _cachedResponse;

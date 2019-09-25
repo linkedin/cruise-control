@@ -5,17 +5,25 @@
 package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.Anomaly;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
+import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
+import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
+import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import java.util.ArrayList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
  * A util class for Anomaly Detectors.
  */
 public class AnomalyDetectorUtils {
+  private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetectorUtils.class);
+  public static final long MAX_METADATA_WAIT_MS = 60000L;
   public static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures(null,
                                                                     null,
                                                                     true,
@@ -48,5 +56,30 @@ public class AnomalyDetectorUtils {
       selfHealingGoalNames.add(goal.name());
     }
     return selfHealingGoalNames;
+  }
+
+  /**
+   * Skip anomaly detection if any of the following is true:
+   * <ul>
+   * <li>Load monitor is not ready.</li>
+   * <li>There is an ongoing execution.</li>
+   * </ul>
+   *
+   * @return True to skip anomaly detection, false otherwise.
+   */
+  static boolean shouldSkipAnomalyDetection(LoadMonitor loadMonitor, KafkaCruiseControl kafkaCruiseControl) {
+    LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = loadMonitor.taskRunnerState();
+    if (!ViolationUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
+      LOG.info("Skipping anomaly detection because load monitor is in {} state.", loadMonitorTaskRunnerState);
+      return true;
+    }
+
+    ExecutorState.State executionState = kafkaCruiseControl.executionState();
+    if (executionState != ExecutorState.State.NO_TASK_IN_PROGRESS) {
+      LOG.info("Skipping anomaly detection because the executor is in {} state.", executionState);
+      return true;
+    }
+
+    return false;
   }
 }

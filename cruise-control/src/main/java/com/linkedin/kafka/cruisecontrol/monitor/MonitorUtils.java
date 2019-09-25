@@ -16,7 +16,7 @@ import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ModelUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionEntity;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionEntity;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrapolation;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,8 +43,8 @@ import static java.lang.Thread.sleep;
  * A util class for Monitor.
  */
 public class MonitorUtils {
-  // A utility variable for utilization conversion of [0, 1.0] -> [0, 100.0].
-  public static final double TO_PERCENTAGE_UTILIZATION = 100.0;
+  // A utility variable for conversion of unit interval to percentage -- i.e. [0, 1.0] -> [0, 100.0].
+  public static final double UNIT_INTERVAL_TO_PERCENTAGE = 100.0;
   private static final Logger LOG = LoggerFactory.getLogger(MonitorUtils.class);
 
   private MonitorUtils() {
@@ -75,15 +75,15 @@ public class MonitorUtils {
       }
     }
     MetricValues followerCpu = new MetricValues(aggregatedMetricValues.length());
-    MetricValues totalNetworkIn =
+    MetricValues leaderBytesInRate =
         aggregatedMetricValues.valuesForGroup(Resource.NW_IN.name(), KafkaMetricDef.commonMetricDef(), false);
-    MetricValues totalNetworkOut =
+    MetricValues leaderBytesOutRate =
         aggregatedMetricValues.valuesForGroup(Resource.NW_OUT.name(), KafkaMetricDef.commonMetricDef(), false);
-    MetricValues totalCpuUsage = aggregatedMetricValues.valuesFor(KafkaMetricDef.commonMetricDefId(CPU_USAGE));
+    MetricValues leaderCpuUtilization = aggregatedMetricValues.valuesFor(KafkaMetricDef.commonMetricDefId(CPU_USAGE));
     for (int i = 0; i < aggregatedMetricValues.length(); i++) {
-      double followerCpuUtil = ModelUtils.getFollowerCpuUtilFromLeaderLoad(totalNetworkIn.get(i),
-                                                                           totalNetworkOut.get(i),
-                                                                           totalCpuUsage.get(i));
+      double followerCpuUtil = ModelUtils.getFollowerCpuUtilFromLeaderLoad(leaderBytesInRate.get(i),
+                                                                           leaderBytesOutRate.get(i),
+                                                                           leaderCpuUtilization.get(i));
       followerCpu.set(i, followerCpuUtil);
     }
     for (short nwOutMetricId : KafkaMetricDef.resourceToMetricIds(Resource.NW_OUT)) {
@@ -214,7 +214,7 @@ public class MonitorUtils {
     short cpuUsageId = KafkaMetricDef.commonMetricDefId(KafkaMetricDef.CPU_USAGE);
     MetricValues cpuUsage = aggregatedMetricValues.valuesFor(cpuUsageId);
     for (int i = 0; i < cpuUsage.length(); i++) {
-      cpuUsage.set(i, cpuUsage.get(i) * TO_PERCENTAGE_UTILIZATION);
+      cpuUsage.set(i, cpuUsage.get(i) * UNIT_INTERVAL_TO_PERCENTAGE);
     }
   }
 
@@ -277,7 +277,7 @@ public class MonitorUtils {
    * @param node The node whose rack is requested.
    * @return Rack of the given node if the corresponding value is not null and not empty, the host of the node otherwise.
    */
-  static String getRackHandleNull(Node node) {
+  public static String getRackHandleNull(Node node) {
     return node.rack() == null || node.rack().isEmpty() ? node.host() : node.rack();
   }
 

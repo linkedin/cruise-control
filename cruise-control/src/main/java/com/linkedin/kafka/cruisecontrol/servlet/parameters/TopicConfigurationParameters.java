@@ -5,11 +5,17 @@
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
+import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
+import java.util.Collections;
 import java.util.Map;
-import java.util.regex.Pattern;
+import java.util.SortedSet;
+import java.util.TreeSet;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.areAllParametersNull;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REVIEW_ID_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicReplicationFactorChangeParameters.maybeBuildTopicReplicationFactorChangeParameters;
 
 
 /**
@@ -17,6 +23,20 @@ import java.util.regex.Pattern;
  *
  * <ul>
  *   <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
+ *   <li>If topics to change replication factor and target replication factor is not specified in URL, they can also be
+ *   specified in request body. The body format is expected to be valid JSON format. e.g.
+ *    <pre><code>
+ *   {
+ *       replication_factor: {
+ *           topic_by_replication_factor : {
+ *               target_replication_factor_1 : topic_regex_1,
+ *               target_replication_factor_2 : topic_regex_2,
+ *               ...
+ *       }
+ *   }
+ *   </code></pre>
+ *   If user specifies new replication factor in both URL (via combination of `topic` and `replication_factor` parameter)
+ *   and body, an exception will be thrown.</li>
  * </ul>
  *
  * <pre>
@@ -29,16 +49,18 @@ import java.util.regex.Pattern;
  *    &amp;review_id=[id]
  * </pre>
  */
-public class TopicConfigurationParameters extends GoalBasedOptimizationParameters {
-  protected Pattern _topic;
-  protected short _replicationFactor;
-  protected boolean _skipRackAwarenessCheck;
+public class TopicConfigurationParameters extends AbstractParameters {
+  protected static final SortedSet<String> CASE_INSENSITIVE_PARAMETER_NAMES;
+  static {
+    SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    validParameterNames.add(REVIEW_ID_PARAM);
+    validParameterNames.addAll(TopicReplicationFactorChangeParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    validParameterNames.addAll(AbstractParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
+  }
   protected Integer _reviewId;
-  protected boolean _dryRun;
-  protected Integer _concurrentInterBrokerPartitionMovements;
-  protected Integer _concurrentLeaderMovements;
-  protected boolean _skipHardGoalCheck;
-  protected ReplicaMovementStrategy _replicaMovementStrategy;
+  protected TopicReplicationFactorChangeParameters _topicReplicationFactorChangeParameters;
+  protected Map<String, ?> _configs;
 
   public TopicConfigurationParameters() {
     super();
@@ -47,55 +69,14 @@ public class TopicConfigurationParameters extends GoalBasedOptimizationParameter
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _topic = ParameterUtils.topic(_request);
-    if (_topic == null) {
-      throw new IllegalArgumentException("Topic to update configuration is not specified.");
-    }
-    _replicationFactor = ParameterUtils.replicationFactor(_request);
-    if (_replicationFactor < 1) {
-      throw new IllegalArgumentException("Target replication factor cannot be set to smaller than 1.");
-    }
     boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
-    _skipRackAwarenessCheck = ParameterUtils.skipRackAwarenessCheck(_request);
-    _dryRun = ParameterUtils.getDryRun(_request);
-    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
-    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
-    _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
-    _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
+    _topicReplicationFactorChangeParameters = maybeBuildTopicReplicationFactorChangeParameters(_configs);
+    if (areAllParametersNull(_topicReplicationFactorChangeParameters)) {
+      throw new UserRequestException("Nothing executable found in request.");
+    }
   }
 
-  public Pattern topic() {
-    return _topic;
-  }
-
-  public short replicationFactor() {
-    return _replicationFactor;
-  }
-
-  public boolean skipRackAwarenessCheck() {
-    return _skipRackAwarenessCheck;
-  }
-
-  public boolean dryRun() {
-    return _dryRun;
-  }
-
-  public Integer concurrentInterBrokerPartitionMovements() {
-    return _concurrentInterBrokerPartitionMovements;
-  }
-
-  public Integer concurrentLeaderMovements() {
-    return _concurrentLeaderMovements;
-  }
-
-  public boolean skipHardGoalCheck() {
-    return _skipHardGoalCheck;
-  }
-
-  public ReplicaMovementStrategy replicaMovementStrategy() {
-    return _replicaMovementStrategy;
-  }
 
   @Override
   public void setReviewId(int reviewId) {
@@ -109,5 +90,22 @@ public class TopicConfigurationParameters extends GoalBasedOptimizationParameter
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
+    _configs = configs;
+  }
+
+  public TopicReplicationFactorChangeParameters topicReplicationFactorChangeParameters() {
+    return _topicReplicationFactorChangeParameters;
+  }
+
+  /**
+   * Supported topic configuration type to be changed via {@link CruiseControlEndPoint#TOPIC_CONFIGURATION} endpoint.
+   */
+  public enum TopicConfigurationType {
+    REPLICATION_FACTOR
+  }
+
+  @Override
+  public SortedSet<String> caseInsensitiveParameterNames() {
+    return CASE_INSENSITIVE_PARAMETER_NAMES;
   }
 }

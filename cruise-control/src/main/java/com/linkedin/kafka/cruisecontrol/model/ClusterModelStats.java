@@ -18,6 +18,8 @@ import java.util.Set;
 import java.util.function.Function;
 import org.apache.kafka.common.TopicPartition;
 
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVAL_TO_PERCENTAGE;
+
 
 public class ClusterModelStats {
   private final Map<Statistic, Map<Resource, Double>> _resourceUtilizationStats;
@@ -35,7 +37,7 @@ public class ClusterModelStats {
   private BalancingConstraint _balancingConstraint;
   private double[][] _utilizationMatrix;
   private int _numSnapshotWindows;
-  private double _monitoredPartitionsPercentage;
+  private double _monitoredPartitionsRatio;
 
   /**
    * Constructor for analysis stats.
@@ -73,7 +75,7 @@ public class ClusterModelStats {
     numForAvgTopicReplicas(clusterModel);
     _utilizationMatrix = clusterModel.utilizationMatrix();
     _numSnapshotWindows = clusterModel.load().numWindows();
-    _monitoredPartitionsPercentage = clusterModel.monitoredPartitionsPercentage();
+    _monitoredPartitionsRatio = clusterModel.monitoredPartitionsRatio();
     return this;
   }
 
@@ -166,7 +168,7 @@ public class ClusterModelStats {
    * Get the monitored partition percentage of this cluster model;
    */
   public double monitoredPartitionsPercentage() {
-    return _monitoredPartitionsPercentage;
+    return _monitoredPartitionsRatio * UNIT_INTERVAL_TO_PERCENTAGE;
   }
 
   /**

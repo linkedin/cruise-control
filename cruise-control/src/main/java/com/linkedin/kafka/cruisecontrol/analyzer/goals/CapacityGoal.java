@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.sortReplicasInAscendingOrderByBrokerResourceUtilization;
 
 
 /**
@@ -298,7 +299,7 @@ public abstract class CapacityGoal extends AbstractGoal {
         }
         // Get followers of this leader and sort them in ascending order by their broker resource utilization.
         List<Replica> followers = clusterModel.partition(leader.topicPartition()).followers();
-        clusterModel.sortReplicasInAscendingOrderByBrokerResourceUtilization(followers, currentResource);
+        sortReplicasInAscendingOrderByBrokerResourceUtilization(followers, currentResource);
         List<Broker> eligibleBrokers = followers.stream().map(Replica::broker).collect(Collectors.toList());
 
         Broker b = maybeApplyBalancingAction(clusterModel, leader, eligibleBrokers,

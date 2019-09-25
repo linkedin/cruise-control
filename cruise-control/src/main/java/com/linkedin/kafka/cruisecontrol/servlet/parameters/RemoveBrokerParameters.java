@@ -6,8 +6,14 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.THROTTLE_REMOVED_BROKER_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DESTINATION_BROKER_IDS_PARAM;
 
 
 /**
@@ -27,6 +33,14 @@ import java.util.Set;
  * </pre>
  */
 public class RemoveBrokerParameters extends AddedOrRemovedBrokerParameters {
+  protected static final SortedSet<String> CASE_INSENSITIVE_PARAMETER_NAMES;
+  static {
+    SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    validParameterNames.add(THROTTLE_REMOVED_BROKER_PARAM);
+    validParameterNames.add(DESTINATION_BROKER_IDS_PARAM);
+    validParameterNames.addAll(AddedOrRemovedBrokerParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
+  }
   protected boolean _throttleRemovedBrokers;
   protected Set<Integer> _destinationBrokerIds;
 
@@ -52,6 +66,11 @@ public class RemoveBrokerParameters extends AddedOrRemovedBrokerParameters {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
+  }
+
+  @Override
+  public SortedSet<String> caseInsensitiveParameterNames() {
+    return CASE_INSENSITIVE_PARAMETER_NAMES;
   }
 }
 

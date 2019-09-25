@@ -9,32 +9,21 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicReplicationFactorChangeParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.List;
 
-import java.util.regex.Pattern;
+import java.util.Map;
 
 /**
- * The async runnable for {@link KafkaCruiseControl#updateTopicConfiguration(Pattern, List, short, boolean, ModelCompletenessRequirements,
+ * The async runnable for {@link KafkaCruiseControl#updateTopicReplicationFactor(Map, List, boolean, ModelCompletenessRequirements,
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, ReplicaMovementStrategy,
  * boolean, boolean, boolean, String)}.
  */
 public class UpdateTopicConfigurationRunnable extends OperationRunnable {
-  private final Pattern _topic;
-  private final short _replicationFactor;
-  private final boolean _skipRackAwarenessCheck;
+  private final TopicReplicationFactorChangeParameters _topicReplicationFactorChangeParameters;
   private final String _uuid;
   private final KafkaCruiseControlConfig _config;
-  private final List<String> _goals;
-  private final boolean _dryRun;
-  private final ModelCompletenessRequirements _modelCompletenessRequirements;
-  private final boolean _allowCapacityEstimation;
-  private final Integer _concurrentInterBrokerPartitionMovements;
-  private final Integer _concurrentLeaderMovements;
-  private final boolean _skipHardGoalCheck;
-  private final boolean _excludeRecentlyDemotedBrokers;
-  private final boolean _excludeRecentlyRemovedBrokers;
-  private final ReplicaMovementStrategy _replicaMovementStrategy;
 
   UpdateTopicConfigurationRunnable(KafkaCruiseControl kafkaCruiseControl,
                                    OperationFuture future,
@@ -42,40 +31,32 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
                                    TopicConfigurationParameters parameters,
                                    KafkaCruiseControlConfig config) {
     super(kafkaCruiseControl, future);
+    _topicReplicationFactorChangeParameters = parameters.topicReplicationFactorChangeParameters();
     _uuid = uuid;
-    _topic = parameters.topic();
-    _goals = parameters.goals();
-    _replicationFactor = parameters.replicationFactor();
-    _skipRackAwarenessCheck = parameters.skipRackAwarenessCheck();
-    _dryRun = parameters.dryRun();
-    _modelCompletenessRequirements = parameters.modelCompletenessRequirements();
-    _allowCapacityEstimation = parameters.allowCapacityEstimation();
-    _concurrentInterBrokerPartitionMovements = parameters.concurrentInterBrokerPartitionMovements();
-    _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
-    _skipHardGoalCheck = parameters.skipHardGoalCheck();
-    _replicaMovementStrategy = parameters.replicaMovementStrategy();
-    _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
-    _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
     _config = config;
   }
 
   @Override
   protected OptimizationResult getResult() throws Exception {
-    return new OptimizationResult(_kafkaCruiseControl.updateTopicConfiguration(_topic,
-                                                                               _goals,
-                                                                               _replicationFactor,
-                                                                               _skipRackAwarenessCheck,
-                                                                               _modelCompletenessRequirements,
-                                                                               _future.operationProgress(),
-                                                                               _allowCapacityEstimation,
-                                                                               _concurrentInterBrokerPartitionMovements,
-                                                                               _concurrentLeaderMovements,
-                                                                               _skipHardGoalCheck,
-                                                                               _replicaMovementStrategy,
-                                                                               _excludeRecentlyDemotedBrokers,
-                                                                               _excludeRecentlyRemovedBrokers,
-                                                                               _dryRun,
-                                                                               _uuid),
-                                  _config);
+    if (_topicReplicationFactorChangeParameters != null) {
+      return new OptimizationResult(
+          _kafkaCruiseControl.updateTopicReplicationFactor(_topicReplicationFactorChangeParameters.topicPatternByReplicationFactor(),
+                                                           _topicReplicationFactorChangeParameters.goals(),
+                                                           _topicReplicationFactorChangeParameters.skipRackAwarenessCheck(),
+                                                           _topicReplicationFactorChangeParameters.modelCompletenessRequirements(),
+                                                           _future.operationProgress(),
+                                                           _topicReplicationFactorChangeParameters.allowCapacityEstimation(),
+                                                           _topicReplicationFactorChangeParameters.concurrentInterBrokerPartitionMovements(),
+                                                           _topicReplicationFactorChangeParameters.concurrentLeaderMovements(),
+                                                           _topicReplicationFactorChangeParameters.skipHardGoalCheck(),
+                                                           _topicReplicationFactorChangeParameters.replicaMovementStrategy(),
+                                                           _topicReplicationFactorChangeParameters.excludeRecentlyDemotedBrokers(),
+                                                           _topicReplicationFactorChangeParameters.excludeRecentlyRemovedBrokers(),
+                                                           _topicReplicationFactorChangeParameters.dryRun(),
+                                                           _uuid),
+          _config);
+    }
+    // Never reaches here.
+    throw new IllegalArgumentException("Nothing executable found in request.");
   }
 }

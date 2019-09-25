@@ -35,42 +35,6 @@ public class GoalUtils {
   }
 
   /**
-   * Check whether the execution of a {@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#INTER_BROKER_REPLICA_MOVEMENT}
-   * action is eligible for the given replica in the given clusterModel to the given candidate broker.
-   *
-   * Invariant-1: If there are new brokers, an eligible candidate that triggers an action must be a new broker.
-   *
-   * @param clusterModel The state of the cluster.
-   * @param replica  Replica to check for action eligibility.
-   * @param candidateId Candidate broker id.
-   * @param optimizationOptions Options to take into account while moving the given replica.
-   * @return True if the candidate broker is eligible, false otherwise.
-   */
-  static boolean isEligibleForReplicaMove(ClusterModel clusterModel,
-                                          Replica replica,
-                                          int candidateId,
-                                          OptimizationOptions optimizationOptions) {
-    // Check eligibility for leadership
-    if (optimizationOptions.excludedBrokersForLeadership().contains(candidateId)
-        && replica.originalBroker().isAlive() && replica.isLeader()) {
-      return false;
-    }
-
-    // Check eligibility for replica move
-    if (optimizationOptions.excludedBrokersForReplicaMove().contains(candidateId)
-        && replica.originalBroker().isAlive()) {
-      return false;
-    }
-
-    if (clusterModel.newBrokers().isEmpty()) {
-      return true;
-    }
-
-    Broker candidateBroker = clusterModel.broker(candidateId);
-    return candidateBroker.isNew() || candidateBroker == replica.originalBroker();
-  }
-
-  /**
    * Filter out the given excluded brokers from the original brokers (if needed). If the user explicitly specified the
    * eligible destination brokers, and the action is not leadership movement, then retain only the brokers in the
    * requested destination brokers. Otherwise, if the action is:
@@ -78,7 +42,7 @@ public class GoalUtils {
    * <li>{@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#LEADERSHIP_MOVEMENT}, then brokers excluded for
    * leadership are not eligible.</li>
    * <li>{@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#INTER_BROKER_REPLICA_MOVEMENT} for a leader replica,
-   * then unless the source leader replica is dead, brokers excluded for leadership are not eligible.</li>
+   * then brokers excluded for leadership are not eligible.</li>
    * </ul>
    *
    * Note that this function supports only the above actions.
@@ -95,8 +59,7 @@ public class GoalUtils {
     Set<Integer> requestedDestinationBrokerIds = optimizationOptions.requestedDestinationBrokerIds();
     if (requestedDestinationBrokerIds.isEmpty() || (action == ActionType.LEADERSHIP_MOVEMENT)) {
       Set<Integer> excludedBrokers = optimizationOptions.excludedBrokersForLeadership();
-      if (!excludedBrokers.isEmpty()
-          && (action == ActionType.LEADERSHIP_MOVEMENT || (replica.originalBroker().isAlive() && replica.isLeader()))) {
+      if (!excludedBrokers.isEmpty() && (action == ActionType.LEADERSHIP_MOVEMENT || replica.isLeader())) {
         originalBrokers.removeIf(broker -> excludedBrokers.contains(broker.id()));
       }
     } else {
@@ -110,24 +73,21 @@ public class GoalUtils {
    * eligible destination brokers, and the action is not leadership movement, then retain only the brokers in the
    * requested destination brokers. Otherwise, if the action is:
    * <ul>
-   * <li>{@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#INTER_BROKER_REPLICA_MOVEMENT}, then unless the source replica
-   * is dead, brokers excluded for replica move are not eligible.</li>
+   * <li>{@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#INTER_BROKER_REPLICA_MOVEMENT}, then brokers
+   * excluded for replica move are not eligible.</li>
    * </ul>
    *
    * @param originalBrokers Original list of brokers to be filtered.
    * @param optimizationOptions Options to take into account while filtering out brokers.
-   * @param replica Replica affected from the action.
    * @param action Action that affects the given replica.
    */
   private static void filterOutBrokersExcludedForReplicaMove(List<Broker> originalBrokers,
                                                              OptimizationOptions optimizationOptions,
-                                                             Replica replica,
                                                              ActionType action) {
     Set<Integer> requestedDestinationBrokerIds = optimizationOptions.requestedDestinationBrokerIds();
     if (requestedDestinationBrokerIds.isEmpty()) {
       Set<Integer> excludedBrokers = optimizationOptions.excludedBrokersForReplicaMove();
-      if (!excludedBrokers.isEmpty() && action == ActionType.INTER_BROKER_REPLICA_MOVEMENT
-          && replica.originalBroker().isAlive()) {
+      if (!excludedBrokers.isEmpty() && action == ActionType.INTER_BROKER_REPLICA_MOVEMENT) {
         originalBrokers.removeIf(broker -> excludedBrokers.contains(broker.id()));
       }
     } else if (action != ActionType.LEADERSHIP_MOVEMENT) {
@@ -156,10 +116,9 @@ public class GoalUtils {
                                       Collection<Broker> candidates,
                                       ActionType action,
                                       OptimizationOptions optimizationOptions) {
-
     List<Broker> eligibleBrokers = new ArrayList<>(candidates);
     filterOutBrokersExcludedForLeadership(eligibleBrokers, optimizationOptions, replica, action);
-    filterOutBrokersExcludedForReplicaMove(eligibleBrokers, optimizationOptions, replica, action);
+    filterOutBrokersExcludedForReplicaMove(eligibleBrokers, optimizationOptions, action);
     if (!optimizationOptions.requestedDestinationBrokerIds().isEmpty()) {
       return eligibleBrokers;
     }
@@ -312,5 +271,21 @@ public class GoalUtils {
   public static double utilizationPercentage(Broker broker, Resource resource) {
     double brokerCapacity = broker.capacityFor(resource);
     return brokerCapacity > 0 ? broker.load().expectedUtilizationFor(resource) / brokerCapacity : DEAD_BROKER_UTILIZATION;
+  }
+
+  /**
+   * Sort replicas in ascending order of resource quantity present in the broker that they reside in terms of the
+   * requested resource.
+   *
+   * @param replicas A list of replicas to be sorted by the amount of resources that their broker contains.
+   * @param resource Resource for which the given replicas will be sorted.
+   */
+  static void sortReplicasInAscendingOrderByBrokerResourceUtilization(List<Replica> replicas, Resource resource) {
+    replicas.sort((r1, r2) -> {
+      double expectedBrokerLoad1 = r1.broker().load().expectedUtilizationFor(resource);
+      double expectedBrokerLoad2 = r2.broker().load().expectedUtilizationFor(resource);
+      int result = Double.compare(expectedBrokerLoad1, expectedBrokerLoad2);
+      return result == 0 ? Integer.compare(r1.broker().id(), r2.broker().id()) : result;
+    });
   }
 }

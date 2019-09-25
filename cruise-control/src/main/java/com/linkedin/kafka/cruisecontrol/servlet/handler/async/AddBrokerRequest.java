@@ -12,7 +12,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 
 
 public class AddBrokerRequest extends AbstractAsyncRequest {
-  private AddBrokerParameters _parameters;
+  protected AddBrokerParameters _parameters;
 
   public AddBrokerRequest() {
     super();

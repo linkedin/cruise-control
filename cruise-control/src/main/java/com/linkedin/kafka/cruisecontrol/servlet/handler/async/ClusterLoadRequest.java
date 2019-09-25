@@ -12,7 +12,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 
 
 public class ClusterLoadRequest extends AbstractAsyncRequest {
-  private ClusterLoadParameters _parameters;
+  protected ClusterLoadParameters _parameters;
 
   public ClusterLoadRequest() {
     super();

@@ -12,7 +12,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 
 
 public class PartitionLoadRequest extends AbstractAsyncRequest {
-  private PartitionLoadParameters _parameters;
+  protected PartitionLoadParameters _parameters;
 
   public PartitionLoadRequest() {
     super();

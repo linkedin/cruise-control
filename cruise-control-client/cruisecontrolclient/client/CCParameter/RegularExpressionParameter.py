@@ -1,15 +1,15 @@
 import re
-from typing import Union
+from typing import Union, Pattern
 
 from cruisecontrolclient.client.CCParameter.Parameter import AbstractParameter
 
 
 class AbstractRegularExpressionParameter(AbstractParameter):
-    def __init__(self, value: Union[str, re.Pattern]):
+    def __init__(self, value: Union[str, Pattern]):
         AbstractParameter.__init__(self, value)
 
     def validate_value(self):
-        if type(self.value) == re.Pattern:
+        if isinstance(self.value, Pattern):
             # If we've been passed a re.Pattern, obtain the string that comprised
             # this re.Pattern, and store that string as our value.
             #
@@ -29,19 +29,21 @@ class AbstractRegularExpressionParameter(AbstractParameter):
 
 class ExcludedTopicsParameter(AbstractRegularExpressionParameter):
     """excluded_topics=[pattern]"""
-    name = 'excluded_topics'
-    description = 'A regular expression matching which topics to exclude from this endpoint\'s action'
+
+    name = "excluded_topics"
+    description = "A regular expression matching which topics to exclude from this endpoint's action"
     argparse_properties = {
-        'args': ('--excluded-topics', '--exclude-topics', '--exclude-topic'),
-        'kwargs': dict(help=description, metavar='REGEX')
+        "args": ("--excluded-topics", "--exclude-topics", "--exclude-topic"),
+        "kwargs": dict(help=description, metavar="REGEX"),
     }
 
 
 class TopicParameter(AbstractRegularExpressionParameter):
     """topic=[topic]"""
-    name = 'topic'
-    description = 'A regular expression matching the desired topics'
+
+    name = "topic"
+    description = "A regular expression matching the desired topics"
     argparse_properties = {
-        'args': ('--topic',),
-        'kwargs': dict(help=description, metavar='REGEX')
+        "args": ("--topic",),
+        "kwargs": dict(help=description, metavar="REGEX"),
     }

@@ -10,7 +10,7 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggreg
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.BrokerEntity;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

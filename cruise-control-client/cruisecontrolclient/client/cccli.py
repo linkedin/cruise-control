@@ -9,26 +9,24 @@ import argparse
 # To be able to easily pass around the available endpoints and parameters
 from cruisecontrolclient.client.ExecutionContext import ExecutionContext
 
-# Convenience functions for displaying the retrieved Response
-from cruisecontrolclient.client.Display import display_response
-
 # To be able to instantiate Endpoint objects
 import cruisecontrolclient.client.Endpoint as Endpoint
 
-# To be able to make requests and get a response given a URL to cruise-control
-from cruisecontrolclient.client.Responder import AbstractResponder, JSONDisplayingResponderGet, \
-    JSONDisplayingResponderPost
-
-# To be able to compose a URL to hand to requests
-from cruisecontrolclient.client.Query import generate_url_from_cc_socket_address
+# To be able to make long-running requests to cruise-control
+from cruisecontrolclient.client.Responder import CruiseControlResponder
 
 
 def get_endpoint(args: argparse.Namespace,
                  execution_context: ExecutionContext) -> Endpoint.AbstractEndpoint:
-    # Deepcopy the args so that we can delete keys from it as we handle them.
+    # Use a __dict__ view of args for a more pythonic processing idiom.
     #
-    # Otherwise successive iterations will step on each other's toes.
-    arg_dict = vars(args)
+    # Also, shallow copy this dict, since otherwise deletions of keys from
+    # this dict would have the unintended consequence of mutating `args` outside
+    # of the scope of this function.
+    #
+    # A deep copy is not needed here since in this method we're only ever
+    # removing properties, not mutating the objects which those properties reference.
+    arg_dict = vars(args).copy()
 
     # If we have a broker list, we need to make it into a comma-separated list
     # and pass it to the Endpoint at instantiation.
@@ -73,16 +71,6 @@ def get_endpoint(args: argparse.Namespace,
     # We added this parameter already; don't attempt to add it again
     if 'destination_broker' in arg_dict:
         del arg_dict['destination_broker']
-
-    # Handle hacking in json=true, if the user hasn't specified
-    #
-    # This is because it is easier to know when a JSON response is final,
-    # compared to a text response.
-    #
-    # In fact, because it is not possible programmatically to know when a
-    # text response is final, Responder actually does not support text responses.
-    if not endpoint.has_param('json'):
-        endpoint.add_param('json', 'true')
 
     # Handle add-parameter and remove-parameter flags
     #
@@ -142,19 +130,6 @@ def get_endpoint(args: argparse.Namespace,
             endpoint.remove_param(parameter)
 
     return endpoint
-
-
-def get_responder(endpoint: Endpoint.AbstractEndpoint,
-                  url: str) -> AbstractResponder:
-    # Handle instantiating the correct Responder
-    if endpoint.http_method == "GET":
-        json_responder = JSONDisplayingResponderGet(url)
-    elif endpoint.http_method == "POST":
-        json_responder = JSONDisplayingResponderPost(url)
-    else:
-        raise ValueError(f"Unexpected http_method {endpoint.http_method} in endpoint")
-
-    return json_responder
 
 
 def build_argument_parser(execution_context: ExecutionContext) -> argparse.ArgumentParser:
@@ -245,16 +220,10 @@ def main():
     # Get the socket address for the cruise-control we're communicating with
     cc_socket_address = args.socket_address
 
-    # Generate the correct URL from the endpoint and the socket address
-    url = generate_url_from_cc_socket_address(cc_socket_address=cc_socket_address,
-                                              endpoint=endpoint)
-
-    # Get a responder from the given URL and endpoint
-    json_responder = get_responder(endpoint=endpoint, url=url)
-
     # Retrieve the response and display it
-    response = json_responder.retrieve_response()
-    display_response(response)
+    json_responder = CruiseControlResponder()
+    response = json_responder.retrieve_response_from_Endpoint(cc_socket_address, endpoint)
+    print(response.text)
 
 
 if __name__ == "__main__":

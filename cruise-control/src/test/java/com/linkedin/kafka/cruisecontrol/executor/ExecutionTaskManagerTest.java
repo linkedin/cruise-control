@@ -5,6 +5,8 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.codahale.metrics.MetricRegistry;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -42,8 +44,9 @@ public class ExecutionTaskManagerTest {
   @Test
   public void testStateChangeSequences() {
     TopicPartition tp = new TopicPartition("topic", 0);
-    ExecutionTaskManager taskManager = new ExecutionTaskManager(1, 1,
-                                                                null, new MetricRegistry(), new SystemTime());
+    ExecutionTaskManager taskManager = new ExecutionTaskManager(new MetricRegistry(), new SystemTime(),
+                                                                new KafkaCruiseControlConfig(
+                                                                    KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
 
     List<List<ExecutionTask.State>> testSequences = new ArrayList<>();
     // Completed successfully.

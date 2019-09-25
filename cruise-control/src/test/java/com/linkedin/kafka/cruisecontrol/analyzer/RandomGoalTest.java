@@ -37,7 +37,9 @@ import java.util.Map;
 
 import java.util.Properties;
 import java.util.Random;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.slf4j.Logger;
@@ -53,6 +55,9 @@ import static org.junit.Assert.assertTrue;
 @RunWith(Parameterized.class)
 public class RandomGoalTest {
   private static final Logger LOG = LoggerFactory.getLogger(RandomGoalTest.class);
+
+  @Rule
+  public ExpectedException _expected = ExpectedException.none();
 
   private static final Random RANDOM = new Random(34534534);
 
@@ -172,7 +177,13 @@ public class RandomGoalTest {
     ClusterModel clusterModel = RandomCluster.generate(clusterProperties);
     RandomCluster.populate(clusterModel, clusterProperties, TestConstants.Distribution.EXPONENTIAL);
 
-    assertTrue("Random Goal Test failed to improve the existing state.",
-        OptimizationVerifier.executeGoalsFor(_balancingConstraint, clusterModel, _goalNameByPriority, _verifications));
+    if (!_goalNameByPriority.isEmpty()) {
+      assertTrue("Random Goal Test failed to improve the existing state.",
+          OptimizationVerifier.executeGoalsFor(_balancingConstraint, clusterModel, _goalNameByPriority, _verifications));
+    } else {
+      _expected.expect(IllegalArgumentException.class);
+      assertTrue("IllegalArgumentException is expected for empty goal names.",
+          OptimizationVerifier.executeGoalsFor(_balancingConstraint, clusterModel, _goalNameByPriority, _verifications));
+    }
   }
 }

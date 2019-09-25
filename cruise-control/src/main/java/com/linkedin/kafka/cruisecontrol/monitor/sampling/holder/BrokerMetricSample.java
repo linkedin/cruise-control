@@ -2,7 +2,7 @@
  * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
-package com.linkedin.kafka.cruisecontrol.monitor.sampling;
+package com.linkedin.kafka.cruisecontrol.monitor.sampling.holder;
 
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.cruisecontrol.monitor.sampling.MetricSample;
@@ -19,8 +19,8 @@ import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMet
  * The class hosting all the broker level metrics in {@link KafkaMetricDef}.
  */
 public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
-  static final byte MIN_SUPPORTED_VERSION = 4;
-  static final byte LATEST_SUPPORTED_VERSION = 5;
+  public static final byte MIN_SUPPORTED_VERSION = 4;
+  public static final byte LATEST_SUPPORTED_VERSION = 5;
   private final byte _deserializationVersion;
 
   /**

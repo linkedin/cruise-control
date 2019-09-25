@@ -145,9 +145,9 @@ class OptimizationVerifier {
                                                     EasyMock.mock(Executor.class));
 
     List<Goal> goalsOfFirstPass = null;
-    GoalOptimizer.OptimizerResult resultOfFirstPass = null;
+    OptimizerResult resultOfFirstPass = null;
     List<Goal> goalsOfSecondPass = null;
-    GoalOptimizer.OptimizerResult resultOfSecondPass = null;
+    OptimizerResult resultOfSecondPass = null;
 
     if (!separateHardGoalsAndSoftGoals) {
       goalsOfFirstPass = goalByPriority;
@@ -217,7 +217,7 @@ class OptimizationVerifier {
     return true;
   }
 
-  private static boolean verifyGoalViolations(GoalOptimizer.OptimizerResult optimizerResult) {
+  private static boolean verifyGoalViolations(OptimizerResult optimizerResult) {
     // Check if there are still goals violated after the optimization.
     if (!optimizerResult.violatedGoalsAfterOptimization().isEmpty()) {
       LOG.error("Failed to optimize goal {}", optimizerResult.violatedGoalsAfterOptimization());
@@ -241,8 +241,8 @@ class OptimizationVerifier {
     return true;
   }
 
-  private static boolean verifySoftGoalReplicaMovements(GoalOptimizer.OptimizerResult result,
-                                                        GoalOptimizer.OptimizerResult resultOfPreviousPass,
+  private static boolean verifySoftGoalReplicaMovements(OptimizerResult result,
+                                                        OptimizerResult resultOfPreviousPass,
                                                         SortedSet<Broker> deadBrokers,
                                                         List<Goal> goalByPriority) {
     // If there is any hard goal, skip the check since hard goal is allowed to move non-immigrant online replicas in
@@ -305,7 +305,7 @@ class OptimizationVerifier {
     return true;
   }
 
-  private static boolean verifyRegression(GoalOptimizer.OptimizerResult optimizerResult,
+  private static boolean verifyRegression(OptimizerResult optimizerResult,
                                           ClusterModelStats preOptimizationStats) {
     // Check whether test has failed for rebalance: fails if rebalance caused a worse goal state after rebalance.
     Map<String, ClusterModelStats> statsByGoalName = optimizerResult.statsByGoalName();

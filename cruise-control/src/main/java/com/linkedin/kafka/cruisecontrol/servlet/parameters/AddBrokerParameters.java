@@ -6,7 +6,12 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
+import java.util.Collections;
 import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.THROTTLE_ADDED_BROKER_PARAM;
 
 
 /**
@@ -26,6 +31,13 @@ import java.util.Map;
  * </pre>
  */
 public class AddBrokerParameters extends AddedOrRemovedBrokerParameters {
+  protected static final SortedSet<String> CASE_INSENSITIVE_PARAMETER_NAMES;
+  static {
+    SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    validParameterNames.add(THROTTLE_ADDED_BROKER_PARAM);
+    validParameterNames.addAll(AddedOrRemovedBrokerParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
+  }
   protected boolean _throttleAddedBrokers;
 
   public AddBrokerParameters() {
@@ -45,5 +57,10 @@ public class AddBrokerParameters extends AddedOrRemovedBrokerParameters {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
+  }
+
+  @Override
+  public SortedSet<String> caseInsensitiveParameterNames() {
+    return CASE_INSENSITIVE_PARAMETER_NAMES;
   }
 }

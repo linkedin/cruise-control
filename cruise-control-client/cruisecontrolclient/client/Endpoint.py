@@ -8,10 +8,7 @@ from abc import ABCMeta
 import cruisecontrolclient.client.CCParameter as CCParameter
 
 # To allow us to make more-precise type hints
-from typing import Callable, ClassVar, Dict, List, Tuple, Union  # noqa
-
-# To help us generate the right parameter string from a dict of parameters
-from urllib.parse import urlencode
+from typing import Callable, ClassVar, Dict, List, Tuple, Union
 
 
 class AbstractEndpoint(metaclass=ABCMeta):
@@ -133,17 +130,13 @@ class AbstractEndpoint(metaclass=ABCMeta):
         elif parameter_name in self.parameter_name_to_value:
             self.parameter_name_to_value.pop(parameter_name)
 
-    def compose_endpoint(self) -> str:
+    def get_composed_params(self) -> Dict[str, Union[bool, int, str]]:
         """
-        Returns a valid URL suffix of this endpoint and any parameters
-        that have been defined for it.
+        Returns a requests-compatible dictionary of this Endpoint's current parameters.
 
-        Note that the ordering of the parameters is not guaranteed.
-
-        :return: A string like:
-            'rebalance?dryrun=false&allow_capacity_estimation=false&concurrent_partition_movements_per_broker=5'
-            'state'
-            'stop_proposal_execution'
+        :return: A dict like:
+            {'json': True,
+             'allow_capacity_estimation': False}
         """
         # All parameter:value mappings that have been specified for this endpoint.
         #
@@ -159,12 +152,7 @@ class AbstractEndpoint(metaclass=ABCMeta):
         if self.parameter_name_to_value:
             combined_parameter_to_value.update(self.parameter_name_to_value)
 
-        # If we have any mappings, urlencode them and return the full string
-        if combined_parameter_to_value:
-            return f"{self.name}?{urlencode(combined_parameter_to_value)}"
-        # Otherwise, just return this Endpoint's name
-        else:
-            return self.name
+        return combined_parameter_to_value
 
 
 class AddBrokerEndpoint(AbstractEndpoint):
@@ -533,11 +521,21 @@ class TopicConfigurationEndpoint(AbstractEndpoint):
     http_method = "POST"
     can_execute_proposal = True
     available_Parameters = (
+        CCParameter.AllowCapacityEstimationParameter,
+        CCParameter.ConcurrentLeaderMovementsParameter,
+        CCParameter.ConcurrentPartitionMovementsPerBrokerParameter,
+        CCParameter.DryRunParameter,
+        CCParameter.ExcludeRecentlyDemotedBrokersParameter,
+        CCParameter.ExcludeRecentlyRemovedBrokersParameter,
+        CCParameter.GoalsParameter,
         CCParameter.JSONParameter,
+        CCParameter.SkipHardGoalCheckParameter,
         CCParameter.SkipRackAwarenessCheckParameter,
+        CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.ReplicationFactorParameter,
         CCParameter.ReviewIDParameter,
-        CCParameter.TopicParameter
+        CCParameter.TopicParameter,
+        CCParameter.VerboseParameter
     )
     argparse_properties = {
         'args': (name,),

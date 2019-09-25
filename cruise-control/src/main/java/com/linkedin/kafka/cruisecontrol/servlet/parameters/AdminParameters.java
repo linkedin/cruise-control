@@ -7,9 +7,18 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
+import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
+import java.util.Collections;
 import java.util.Map;
-import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.areAllParametersNull;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REVIEW_ID_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ChangeExecutionConcurrencyParameters.maybeBuildChangeExecutionConcurrencyParameters;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.DropRecentBrokersParameters.maybeBuildDropRecentBrokersParameters;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.UpdateSelfHealingParameters.maybeBuildUpdateSelfHealingParameters;
 
 
 /**
@@ -27,13 +36,21 @@ import java.util.Set;
  * </pre>
  */
 public class AdminParameters extends AbstractParameters {
-  protected Set<AnomalyType> _disableSelfHealingFor;
-  protected Set<AnomalyType> _enableSelfHealingFor;
-  protected Integer _concurrentInterBrokerPartitionMovements;
-  protected Integer _concurrentLeaderMovements;
+  protected static final SortedSet<String> CASE_INSENSITIVE_PARAMETER_NAMES;
+  static {
+    SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    validParameterNames.add(REVIEW_ID_PARAM);
+    validParameterNames.addAll(DropRecentBrokersParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    validParameterNames.addAll(UpdateSelfHealingParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    validParameterNames.addAll(ChangeExecutionConcurrencyParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    validParameterNames.addAll(AbstractParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
+  }
   protected Integer _reviewId;
-  protected Set<Integer> _dropRecentlyRemovedBrokers;
-  protected Set<Integer> _dropRecentlyDemotedBrokers;
+  protected Map<String, ?> _configs;
+  protected DropRecentBrokersParameters _dropBrokersParameters;
+  protected UpdateSelfHealingParameters _updateSelfHealingParameters;
+  protected ChangeExecutionConcurrencyParameters _changeExecutionConcurrencyParameters;
 
   public AdminParameters() {
     super();
@@ -42,15 +59,14 @@ public class AdminParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    Map<Boolean, Set<AnomalyType>> selfHealingFor = ParameterUtils.selfHealingFor(_request);
-    _enableSelfHealingFor = selfHealingFor.get(true);
-    _disableSelfHealingFor = selfHealingFor.get(false);
-    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
-    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
-    _dropRecentlyRemovedBrokers = ParameterUtils.dropRecentlyRemovedBrokers(_request);
-    _dropRecentlyDemotedBrokers = ParameterUtils.dropRecentlyDemotedBrokers(_request);
     boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
+    _dropBrokersParameters = maybeBuildDropRecentBrokersParameters(_configs);
+    _updateSelfHealingParameters = maybeBuildUpdateSelfHealingParameters(_configs);
+    _changeExecutionConcurrencyParameters = maybeBuildChangeExecutionConcurrencyParameters(_configs);
+    if (areAllParametersNull(_dropBrokersParameters, _updateSelfHealingParameters, _changeExecutionConcurrencyParameters)) {
+      throw new UserRequestException("Nothing executable found in request.");
+    }
   }
 
   @Override
@@ -62,32 +78,33 @@ public class AdminParameters extends AbstractParameters {
     return _reviewId;
   }
 
-  public Set<AnomalyType> disableSelfHealingFor() {
-    return _disableSelfHealingFor;
+  public DropRecentBrokersParameters dropRecentBrokersParameters() {
+    return _dropBrokersParameters;
   }
 
-  public Set<AnomalyType> enableSelfHealingFor() {
-    return _enableSelfHealingFor;
+  public UpdateSelfHealingParameters updateSelfHealingParameters() {
+    return _updateSelfHealingParameters;
   }
 
-  public Integer concurrentInterBrokerPartitionMovements() {
-    return _concurrentInterBrokerPartitionMovements;
-  }
-
-  public Integer concurrentLeaderMovements() {
-    return _concurrentLeaderMovements;
-  }
-
-  public Set<Integer> dropRecentlyRemovedBrokers() {
-    return _dropRecentlyRemovedBrokers;
-  }
-
-  public Set<Integer> dropRecentlyDemotedBrokers() {
-    return _dropRecentlyDemotedBrokers;
+  public ChangeExecutionConcurrencyParameters changeExecutionConcurrencyParameters() {
+    return _changeExecutionConcurrencyParameters;
   }
 
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
+    _configs = configs;
+  }
+
+  @Override
+  public SortedSet<String> caseInsensitiveParameterNames() {
+    return CASE_INSENSITIVE_PARAMETER_NAMES;
+  }
+
+  /**
+   * Supported topic configuration type to be changed via {@link CruiseControlEndPoint#ADMIN} endpoint.
+   */
+  public enum AdminType {
+    UPDATE_SELF_HEALING, CHANGE_CONCURRENCY, DROP_RECENT_BROKERS
   }
 }

@@ -4,6 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.google.gson.Gson;
+import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
@@ -17,8 +19,6 @@ import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -44,6 +45,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.REQUEST_URI;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.getClientIpAddress;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters.TopicConfigurationType.REPLICATION_FACTOR;
 import static com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus.APPROVED;
 import static com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus.DISCARDED;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.writeErrorResponse;
@@ -108,6 +110,7 @@ public class ParameterUtils {
   public static final String FETCH_COMPLETED_TASK_PARAM = "fetch_completed_task";
   private static final int MAX_REASON_LENGTH = 50;
   public static final long DEFAULT_START_TIME_FOR_CLUSTER_MODEL = -1L;
+  public static final String TOPIC_BY_REPLICATION_FACTOR = "topic_by_replication_factor";
 
   public static final String STOP_PROPOSAL_PARAMETER_OBJECT_CONFIG = "stop.proposal.parameter.object";
   public static final String BOOTSTRAP_PARAMETER_OBJECT_CONFIG = "bootstrap.parameter.object";
@@ -127,212 +130,6 @@ public class ParameterUtils {
   public static final String ADMIN_PARAMETER_OBJECT_CONFIG = "admin.parameter.object";
   public static final String REVIEW_PARAMETER_OBJECT_CONFIG = "review.parameter.object";
   public static final String TOPIC_CONFIGURATION_PARAMETER_OBJECT_CONFIG = "topic.configuration.parameter.object";
-  private static final Map<CruiseControlEndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
-
-  static {
-    Map<CruiseControlEndPoint, Set<String>> validParamNames = new HashMap<>();
-
-    Set<String> bootstrap = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    bootstrap.add(START_MS_PARAM);
-    bootstrap.add(END_MS_PARAM);
-    bootstrap.add(CLEAR_METRICS_PARAM);
-    bootstrap.add(JSON_PARAM);
-
-    Set<String> train = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    train.add(START_MS_PARAM);
-    train.add(END_MS_PARAM);
-    train.add(JSON_PARAM);
-
-    Set<String> load = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    load.add(TIME_PARAM);
-    load.add(START_MS_PARAM);
-    load.add(END_MS_PARAM);
-    load.add(JSON_PARAM);
-    load.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
-
-    Set<String> partitionLoad = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    partitionLoad.add(RESOURCE_PARAM);
-    partitionLoad.add(START_MS_PARAM);
-    partitionLoad.add(END_MS_PARAM);
-    partitionLoad.add(ENTRIES_PARAM);
-    partitionLoad.add(JSON_PARAM);
-    partitionLoad.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
-    partitionLoad.add(MAX_LOAD_PARAM);
-    partitionLoad.add(AVG_LOAD_PARAM);
-    partitionLoad.add(TOPIC_PARAM);
-    partitionLoad.add(PARTITION_PARAM);
-    partitionLoad.add(MIN_VALID_PARTITION_RATIO_PARAM);
-    partitionLoad.add(BROKER_ID_PARAM);
-
-    Set<String> proposals = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    proposals.add(VERBOSE_PARAM);
-    proposals.add(IGNORE_PROPOSAL_CACHE_PARAM);
-    proposals.add(DATA_FROM_PARAM);
-    proposals.add(GOALS_PARAM);
-    proposals.add(KAFKA_ASSIGNER_MODE_PARAM);
-    proposals.add(JSON_PARAM);
-    proposals.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
-    proposals.add(EXCLUDED_TOPICS_PARAM);
-    proposals.add(USE_READY_DEFAULT_GOALS_PARAM);
-    proposals.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
-    proposals.add(EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM);
-    proposals.add(DESTINATION_BROKER_IDS_PARAM);
-
-    Set<String> state = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    state.add(VERBOSE_PARAM);
-    state.add(SUPER_VERBOSE_PARAM);
-    state.add(JSON_PARAM);
-    state.add(SUBSTATES_PARAM);
-
-    Set<String> addOrRemoveBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    addOrRemoveBroker.add(BROKER_ID_PARAM);
-    addOrRemoveBroker.add(DRY_RUN_PARAM);
-    addOrRemoveBroker.add(DATA_FROM_PARAM);
-    addOrRemoveBroker.add(GOALS_PARAM);
-    addOrRemoveBroker.add(KAFKA_ASSIGNER_MODE_PARAM);
-    addOrRemoveBroker.add(JSON_PARAM);
-    addOrRemoveBroker.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
-    addOrRemoveBroker.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
-    addOrRemoveBroker.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
-    addOrRemoveBroker.add(SKIP_HARD_GOAL_CHECK_PARAM);
-    addOrRemoveBroker.add(EXCLUDED_TOPICS_PARAM);
-    addOrRemoveBroker.add(USE_READY_DEFAULT_GOALS_PARAM);
-    addOrRemoveBroker.add(VERBOSE_PARAM);
-    addOrRemoveBroker.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
-    addOrRemoveBroker.add(EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM);
-    addOrRemoveBroker.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
-    addOrRemoveBroker.add(REVIEW_ID_PARAM);
-
-    Set<String> addBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    addBroker.add(THROTTLE_ADDED_BROKER_PARAM);
-    addBroker.addAll(addOrRemoveBroker);
-
-    Set<String> removeBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    removeBroker.add(THROTTLE_REMOVED_BROKER_PARAM);
-    removeBroker.add(DESTINATION_BROKER_IDS_PARAM);
-    removeBroker.addAll(addOrRemoveBroker);
-
-    Set<String> demoteBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    demoteBroker.add(BROKER_ID_PARAM);
-    demoteBroker.add(DRY_RUN_PARAM);
-    demoteBroker.add(JSON_PARAM);
-    demoteBroker.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
-    demoteBroker.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
-    demoteBroker.add(VERBOSE_PARAM);
-    demoteBroker.add(SKIP_URP_DEMOTION_PARAM);
-    demoteBroker.add(EXCLUDE_FOLLOWER_DEMOTION_PARAM);
-    demoteBroker.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
-    demoteBroker.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
-    demoteBroker.add(REVIEW_ID_PARAM);
-
-    Set<String> rebalance = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    rebalance.add(DRY_RUN_PARAM);
-    rebalance.add(GOALS_PARAM);
-    rebalance.add(KAFKA_ASSIGNER_MODE_PARAM);
-    rebalance.add(DATA_FROM_PARAM);
-    rebalance.add(JSON_PARAM);
-    rebalance.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
-    rebalance.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
-    rebalance.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
-    rebalance.add(SKIP_HARD_GOAL_CHECK_PARAM);
-    rebalance.add(EXCLUDED_TOPICS_PARAM);
-    rebalance.add(USE_READY_DEFAULT_GOALS_PARAM);
-    rebalance.add(VERBOSE_PARAM);
-    rebalance.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
-    rebalance.add(EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM);
-    rebalance.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
-    rebalance.add(IGNORE_PROPOSAL_CACHE_PARAM);
-    rebalance.add(REVIEW_ID_PARAM);
-    rebalance.add(DESTINATION_BROKER_IDS_PARAM);
-
-    Set<String> kafkaClusterState = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    kafkaClusterState.add(VERBOSE_PARAM);
-    kafkaClusterState.add(JSON_PARAM);
-    kafkaClusterState.add(TOPIC_PARAM);
-
-    Set<String> pauseSampling = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    pauseSampling.add(REASON_PARAM);
-    pauseSampling.add(JSON_PARAM);
-    pauseSampling.add(REVIEW_ID_PARAM);
-
-    Set<String> resumeSampling = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    resumeSampling.add(REASON_PARAM);
-    resumeSampling.add(JSON_PARAM);
-    resumeSampling.add(REVIEW_ID_PARAM);
-
-    Set<String> stopProposalExecution = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    stopProposalExecution.add(JSON_PARAM);
-    stopProposalExecution.add(REVIEW_ID_PARAM);
-
-    Set<String> userTasks = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    userTasks.add(JSON_PARAM);
-    userTasks.add(USER_TASK_IDS_PARAM);
-    userTasks.add(CLIENT_IDS_PARAM);
-    userTasks.add(ENTRIES_PARAM);
-    userTasks.add(ENDPOINTS_PARAM);
-    userTasks.add(TYPES_PARAM);
-    userTasks.add(FETCH_COMPLETED_TASK_PARAM);
-
-    Set<String> admin = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    admin.add(JSON_PARAM);
-    admin.add(DISABLE_SELF_HEALING_FOR_PARAM);
-    admin.add(ENABLE_SELF_HEALING_FOR_PARAM);
-    admin.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
-    admin.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
-    admin.add(DROP_RECENTLY_REMOVED_BROKERS_PARAM);
-    admin.add(DROP_RECENTLY_DEMOTED_BROKERS_PARAM);
-    admin.add(REVIEW_ID_PARAM);
-
-    Set<String> review = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    review.add(APPROVE_PARAM);
-    review.add(DISCARD_PARAM);
-    review.add(REASON_PARAM);
-    review.add(JSON_PARAM);
-
-    Set<String> reviewBoard = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    reviewBoard.add(JSON_PARAM);
-    reviewBoard.add(REVIEW_IDS_PARAM);
-
-    Set<String> topicConfiguration = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    topicConfiguration.add(JSON_PARAM);
-    topicConfiguration.add(TOPIC_PARAM);
-    topicConfiguration.add(REPLICATION_FACTOR_PARAM);
-    topicConfiguration.add(SKIP_RACK_AWARENESS_CHECK_PARAM);
-    topicConfiguration.add(DRY_RUN_PARAM);
-    topicConfiguration.add(GOALS_PARAM);
-    topicConfiguration.add(DATA_FROM_PARAM);
-    topicConfiguration.add(SKIP_HARD_GOAL_CHECK_PARAM);
-    topicConfiguration.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
-    topicConfiguration.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
-    topicConfiguration.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
-    topicConfiguration.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
-    topicConfiguration.add(EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM);
-    topicConfiguration.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
-    topicConfiguration.add(VERBOSE_PARAM);
-    topicConfiguration.add(REVIEW_ID_PARAM);
-
-    validParamNames.put(BOOTSTRAP, Collections.unmodifiableSet(bootstrap));
-    validParamNames.put(TRAIN, Collections.unmodifiableSet(train));
-    validParamNames.put(LOAD, Collections.unmodifiableSet(load));
-    validParamNames.put(PARTITION_LOAD, Collections.unmodifiableSet(partitionLoad));
-    validParamNames.put(PROPOSALS, Collections.unmodifiableSet(proposals));
-    validParamNames.put(STATE, Collections.unmodifiableSet(state));
-    validParamNames.put(ADD_BROKER, Collections.unmodifiableSet(addBroker));
-    validParamNames.put(REMOVE_BROKER, Collections.unmodifiableSet(removeBroker));
-    validParamNames.put(DEMOTE_BROKER, Collections.unmodifiableSet(demoteBroker));
-    validParamNames.put(REBALANCE, Collections.unmodifiableSet(rebalance));
-    validParamNames.put(STOP_PROPOSAL_EXECUTION, Collections.unmodifiableSet(stopProposalExecution));
-    validParamNames.put(PAUSE_SAMPLING, Collections.unmodifiableSet(pauseSampling));
-    validParamNames.put(RESUME_SAMPLING, Collections.unmodifiableSet(resumeSampling));
-    validParamNames.put(KAFKA_CLUSTER_STATE, Collections.unmodifiableSet(kafkaClusterState));
-    validParamNames.put(USER_TASKS, Collections.unmodifiableSet(userTasks));
-    validParamNames.put(ADMIN, Collections.unmodifiableSet(admin));
-    validParamNames.put(REVIEW, Collections.unmodifiableSet(review));
-    validParamNames.put(REVIEW_BOARD, Collections.unmodifiableSet(reviewBoard));
-    validParamNames.put(TOPIC_CONFIGURATION, Collections.unmodifiableSet(topicConfiguration));
-
-    VALID_ENDPOINT_PARAM_NAMES = Collections.unmodifiableMap(validParamNames);
-  }
 
   private ParameterUtils() {
   }
@@ -361,18 +158,28 @@ public class ParameterUtils {
 
   static void handleParameterParseException(Exception e,
                                             HttpServletResponse response,
-                                            String errorMsg,
+                                            String errorMessage,
                                             boolean json,
                                             KafkaCruiseControlConfig config) throws IOException {
-    StringWriter sw = new StringWriter();
-    e.printStackTrace(new PrintWriter(sw));
-    writeErrorResponse(response, sw.toString(), errorMsg, SC_BAD_REQUEST, json, config);
+    writeErrorResponse(response, e, errorMessage, SC_BAD_REQUEST, json, config);
   }
 
-  public static boolean hasValidParameters(HttpServletRequest request, HttpServletResponse response, KafkaCruiseControlConfig config)
-      throws IOException {
+  /**
+   * Check whether the request has valid parameter names. If not, populate the HTTP response with the corresponding
+   * error message and return false, return true otherwise.
+   *
+   * @param request HTTP request received by Cruise Control.
+   * @param response HTTP response of Cruise Control. Populated in case of an error.
+   * @param config The configurations for Cruise Control.
+   * @param parameters Request parameters
+   * @return True if the request has valid parameter names, false otherwise (and response is populated).
+   */
+  public static boolean hasValidParameterNames(HttpServletRequest request,
+                                               HttpServletResponse response,
+                                               KafkaCruiseControlConfig config,
+                                               CruiseControlParameters parameters) throws IOException {
     CruiseControlEndPoint endPoint = endPoint(request);
-    Set<String> validParamNames = VALID_ENDPOINT_PARAM_NAMES.get(endPoint);
+    Set<String> validParamNames = parameters.caseInsensitiveParameterNames();
     Set<String> userParams = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     userParams.addAll(request.getParameterMap().keySet());
     if (validParamNames != null) {
@@ -381,9 +188,9 @@ public class ParameterUtils {
 
     if (!userParams.isEmpty()) {
       // User request specifies parameters that are not a subset of the valid parameters.
-      String errorResp = String.format("Unrecognized endpoint parameters in %s %s request: %s.",
-                                       endPoint, request.getMethod(), userParams.toString());
-      writeErrorResponse(response, "", errorResp, SC_BAD_REQUEST, wantJSON(request), config);
+      String errorMessage = String.format("Unrecognized endpoint parameters in %s %s request: %s.",
+                                          endPoint, request.getMethod(), userParams.toString());
+      writeErrorResponse(response, null, errorMessage, SC_BAD_REQUEST, wantJSON(request), config);
       return false;
     }
     return true;
@@ -396,12 +203,12 @@ public class ParameterUtils {
     return parameterMap.keySet().stream().filter(parameter::equalsIgnoreCase).findFirst().orElse(null);
   }
 
-  private static boolean getBooleanParam(HttpServletRequest request, String parameter, boolean defaultIfMissing) {
+  public static boolean getBooleanParam(HttpServletRequest request, String parameter, boolean defaultIfMissing) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), parameter);
     return parameterString == null ? defaultIfMissing : Boolean.parseBoolean(request.getParameter(parameterString));
   }
 
-  private static List<String> getListParam(HttpServletRequest request, String parameter) throws UnsupportedEncodingException {
+  public static List<String> getListParam(HttpServletRequest request, String parameter) throws UnsupportedEncodingException {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), parameter);
     List<String> retList = parameterString == null ? new ArrayList<>()
                                                    : Arrays.asList(urlDecode(request.getParameter(parameterString)).split(","));
@@ -527,6 +334,60 @@ public class ParameterUtils {
     return parameterString == null ? null : Pattern.compile(request.getParameter(parameterString));
   }
 
+  @SuppressWarnings("unchecked")
+  private static Map<Short, Pattern> topicPatternByReplicationFactorFromBody(HttpServletRequest request) {
+    Map<Short, Pattern> topicPatternByReplicationFactor;
+    try {
+      Gson gson = new Gson();
+      Map<String, Object> json = gson.fromJson(request.getReader(), Map.class);
+      if (json == null) {
+        return null;
+      }
+      String replicationFactorKey = REPLICATION_FACTOR.name().toLowerCase();
+      if (!json.containsKey(replicationFactorKey)) {
+        return null;
+      }
+      Map<String, Object> replicationFactorParams = (Map<String, Object>) json.get(replicationFactorKey);
+      if (!replicationFactorParams.containsKey(TOPIC_BY_REPLICATION_FACTOR)) {
+        return null;
+      }
+      topicPatternByReplicationFactor = new HashMap<>();
+      for (Map.Entry<String, String> entry : ((Map<String, String>) replicationFactorParams.get(TOPIC_BY_REPLICATION_FACTOR)).entrySet()) {
+        short replicationFactor = Short.parseShort(entry.getKey().trim());
+        Pattern topicPattern = Pattern.compile(entry.getValue().trim());
+        topicPatternByReplicationFactor.putIfAbsent(replicationFactor, topicPattern);
+      }
+    } catch (IOException ioe) {
+      throw new UserRequestException(String.format("Illegal value for field %s in body, please specify in pairs of \"target replication "
+                                                   + "factor\" : \"topic name regex\".", TOPIC_BY_REPLICATION_FACTOR));
+    }
+    return topicPatternByReplicationFactor;
+  }
+
+    static Map<Short, Pattern> topicPatternByReplicationFactor(HttpServletRequest request) {
+    Pattern topic = topic(request);
+    Short replicationFactor = replicationFactor(request);
+    Map<Short, Pattern> topicPatternByReplicationFactorFromBody = topicPatternByReplicationFactorFromBody(request);
+    if (topicPatternByReplicationFactorFromBody != null) {
+      if (topic != null || replicationFactor != null) {
+        throw new UserRequestException("Requesting topic replication factor change from both HTTP request parameter and body"
+                                       + " is forbidden.");
+      }
+      return topicPatternByReplicationFactorFromBody;
+    } else {
+      if (topic == null && replicationFactor != null) {
+        throw new UserRequestException("Topic is not specified in URL while target replication factor is specified.");
+      }
+      if ((topic != null && replicationFactor == null)) {
+        throw new UserRequestException("Topic's replication factor is not specified in URL while subject topic is specified.");
+      }
+      if (topic != null) {
+        return Collections.singletonMap(replicationFactor, topic);
+      }
+    }
+    return Collections.emptyMap();
+  }
+
   static Double minValidPartitionRatio(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), MIN_VALID_PARTITION_RATIO_PARAM);
     if (parameterString == null) {
@@ -541,7 +402,7 @@ public class ParameterUtils {
     }
   }
 
-  static String resourceString(HttpServletRequest request) {
+  public static String resourceString(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), RESOURCE_PARAM);
     return parameterString == null ? DEFAULT_PARTITION_LOAD_RESOURCE : request.getParameter(parameterString);
   }
@@ -557,7 +418,7 @@ public class ParameterUtils {
                                                                               : request.getParameter(parameterString), ip, currentUtcDate());
   }
 
-  private static Set<String> parseParamToStringSet(HttpServletRequest request, String param) throws UnsupportedEncodingException {
+  public static Set<String> parseParamToStringSet(HttpServletRequest request, String param) throws UnsupportedEncodingException {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), param);
     Set<String> paramsString = parameterString == null
                                ? new HashSet<>(0)
@@ -566,7 +427,7 @@ public class ParameterUtils {
     return paramsString;
   }
 
-  private static Set<Integer> parseParamToIntegerSet(HttpServletRequest request, String param) throws UnsupportedEncodingException {
+  public static Set<Integer> parseParamToIntegerSet(HttpServletRequest request, String param) throws UnsupportedEncodingException {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), param);
 
     return parameterString == null ? new HashSet<>(0)
@@ -628,7 +489,7 @@ public class ParameterUtils {
     intersection.retainAll(disableSelfHealingFor);
     if (!intersection.isEmpty()) {
       throw new UserRequestException(String.format("The same anomaly cannot be specified in both disable and"
-                                                   + "enable parameters. Intersection: %s.", intersection));
+                                                   + " enable parameters. Intersection: %s.", intersection));
     }
 
     Map<Boolean, Set<AnomalyType>> selfHealingFor = new HashMap<>(2);
@@ -939,16 +800,26 @@ public class ParameterUtils {
     return getBooleanParam(request, EXCLUDE_FOLLOWER_DEMOTION_PARAM, false);
   }
 
-  static short replicationFactor(HttpServletRequest request) {
+  static Short replicationFactor(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), REPLICATION_FACTOR_PARAM);
     if (parameterString == null) {
-      throw new UserRequestException("Topic's replication factor is not specified.");
+      return null;
     }
     return Short.parseShort(request.getParameter(parameterString));
   }
 
   static boolean fetchCompletedTask(HttpServletRequest request) {
     return getBooleanParam(request, FETCH_COMPLETED_TASK_PARAM, false);
+  }
+
+  /**
+   * Check whether all the passed-in parameters are null or not.
+   *
+   * @param parameters Arbitrary number of parameters to check.
+   * @return True if all parameters are null; false otherwise.
+   */
+  public static boolean areAllParametersNull(CruiseControlParameters... parameters) {
+    return Arrays.stream(parameters).allMatch(Objects::isNull);
   }
 
   public enum DataFrom {

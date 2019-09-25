@@ -193,6 +193,7 @@ public class Replica implements Serializable, Comparable<Replica> {
    * Update the CPU load as the replica becomes follower. Return the CPU load change.
    *
    * @param leadershipNwOutLoad the leadership network outbound bytes rate.
+   * @param updateLoad whether the change to the load should actually be made to the replica
    * @return the cpu load change.
    */
   private MetricValues computeCpuLoadAsFollower(AggregatedMetricValues leadershipNwOutLoad, boolean updateLoad) {
