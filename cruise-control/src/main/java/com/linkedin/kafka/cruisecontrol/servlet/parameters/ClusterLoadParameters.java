@@ -50,7 +50,6 @@ public class ClusterLoadParameters extends AbstractParameters {
   protected boolean _allowCapacityEstimation;
   protected boolean _capacity;
 
-
   public ClusterLoadParameters() {
     super();
   }
@@ -95,5 +94,4 @@ public class ClusterLoadParameters extends AbstractParameters {
   public SortedSet<String> caseInsensitiveParameterNames() {
     return CASE_INSENSITIVE_PARAMETER_NAMES;
   }
-  
 }
