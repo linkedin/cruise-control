@@ -1181,7 +1181,10 @@ public class KafkaCruiseControl {
     }
   }
 
-
+  /**
+   * Return the capacity stats of brokers and hosts
+   * @param config the configuration of Cruise Control.
+   */
   public BrokerStats brokerCapacityStats(KafkaCruiseControlConfig config) throws Exception {
     return _loadMonitor.brokerCapacityStats(config);
   }

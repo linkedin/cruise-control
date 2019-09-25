@@ -36,8 +36,8 @@ public class SingleBrokerUtilizationStats extends SingleBrokerStats {
    */
   public Map<String, Object> getJsonStructure() {
     Map<String, Object> entry = _basicStats.getJsonStructure();
-    entry.put(hostKey(), host());
-    entry.put(brokerKey(), id());
+    entry.put(HOST, host());
+    entry.put(BROKER, id());
     entry.put(BROKER_STATE, _state);
     return entry;
   }

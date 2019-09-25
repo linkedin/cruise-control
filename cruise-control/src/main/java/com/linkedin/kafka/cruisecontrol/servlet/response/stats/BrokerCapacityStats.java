@@ -24,7 +24,6 @@ public class BrokerCapacityStats extends BrokerStats {
     super(config);
     _brokerCapacityStats = new ArrayList<>();
     _hostCapacityStats = new ConcurrentSkipListMap<>();
-
   }
 
   public void addSingleBrokerCapacityStats(String host, int id, boolean isEstimated, double diskCap, double cpuCap, double nwInCap,
@@ -33,7 +32,7 @@ public class BrokerCapacityStats extends BrokerStats {
         new SingleBrokerCapacityStats(host, id, isEstimated, diskCap, cpuCap, nwInCap, nwOutCap);
     _brokerCapacityStats.add(singleBrokerCapacityStats);
     _hostCapacityStats.computeIfAbsent(host, h -> new BasicCapacityStats(0.0, 0.0, 0.0, 0.0))
-    .addBasicStats(singleBrokerCapacityStats.basicCapacityStats());
+                      .addBasicStats(singleBrokerCapacityStats.basicCapacityStats());
     _isBrokerStatsEstimated = _isBrokerStatsEstimated || isEstimated;
     _hostFieldLength = Math.max(_hostFieldLength, host.length());
   }
@@ -69,6 +68,7 @@ public class BrokerCapacityStats extends BrokerStats {
     sb.append(String.format("%n%n%" + _hostFieldLength + "s%25s%25s%25s%25s%n",
                             "HOST", "DISK_CAPACITY(MB)", "CPU_CAPACITY(MB)", "NW_IN_CAPACITY(KB/s)",
                             "NW_OUT_CAPACITY(KB/s)"));
+    
     for (Map.Entry<String, BasicCapacityStats> entry : _hostCapacityStats.entrySet()) {
     BasicCapacityStats stats = entry.getValue();
     sb.append(String.format("%" + _hostFieldLength + "s,%24.3f,%24.3f,%24.3f,%24.3f%n",
@@ -76,8 +76,7 @@ public class BrokerCapacityStats extends BrokerStats {
           stats.diskCapacity(),
           stats.cpuCapacity(),
           stats.bytesInCapacity(),
-          stats.bytesOutCapacity()
-      ));
+          stats.bytesOutCapacity()));
     }
 
     // put broker stats.

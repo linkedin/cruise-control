@@ -8,8 +8,8 @@ import java.util.Map;
 
 
 public class SingleBrokerStats {
-    private static final String HOST = "Host";
-    private static final String BROKER = "Broker";
+    protected static final String HOST = "Host";
+    protected static final String BROKER = "Broker";
 
     private final String _host;
     private final int _id;
@@ -27,14 +27,6 @@ public class SingleBrokerStats {
 
     public int id() {
         return _id;
-    }
-
-    protected String hostKey() {
-        return HOST;
-    }
-
-    protected String brokerKey() {
-        return BROKER;
     }
 
     public boolean isEstimated() {

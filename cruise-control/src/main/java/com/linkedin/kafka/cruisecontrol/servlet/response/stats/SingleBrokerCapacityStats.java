@@ -24,8 +24,8 @@ public class SingleBrokerCapacityStats extends SingleBrokerStats {
    */
   public Map<String, Object> getJsonStructure() {
     Map<String, Object> entry = _basicCapacityStats.getJsonStructure();
-    entry.put(hostKey(), host());
-    entry.put(brokerKey(), id());
+    entry.put(HOST, host());
+    entry.put(BROKER, id());
     return entry;
   }
 }

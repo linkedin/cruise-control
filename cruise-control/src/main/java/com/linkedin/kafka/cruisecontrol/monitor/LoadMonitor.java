@@ -613,11 +613,14 @@ public class LoadMonitor {
     return totalNumPartitions > 0 ? metricSampleAggregationResult.completeness().validEntityRatio() : 0.0;
   }
 
+  /**
+   * Return the broker stats related to capacity information
+   */
   public BrokerCapacityStats brokerCapacityStats(KafkaCruiseControlConfig config) {
     MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
     List<Node> clusterNodes = new ArrayList<>(clusterAndGeneration.cluster().nodes());
     BrokerCapacityStats brokerCapacityStats = new BrokerCapacityStats(config);
-    for (Node node: clusterNodes) {
+    for (Node node : clusterNodes) {
       String rack = getRackHandleNull(node);
       BrokerCapacityInfo brokerCapacityInfo = _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id());
       Map<Resource, Double> capacities = brokerCapacityInfo.capacity();
