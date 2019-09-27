@@ -199,7 +199,7 @@ public class RackAwareGoal extends AbstractGoal {
     // Filter out some replicas based on optimization options.
     new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
                                                      optimizationOptions.onlyMoveImmigrantReplicas())
-                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
+                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
                               .trackSortedReplicasFor(replicaSortName(this, false, false), clusterModel);
   }
 
@@ -215,18 +215,14 @@ public class RackAwareGoal extends AbstractGoal {
   @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
       throws OptimizationFailureException {
-    try {
-      // One pass is sufficient to satisfy or alert impossibility of this goal.
-      // Sanity check to confirm that the final distribution is rack aware.
-      ensureRackAware(clusterModel, excludedTopics);
-      // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
-      GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
-      // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
-      GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
-      finish();
-    } finally {
-      clusterModel.clearSortedReplicas();
-    }
+    // One pass is sufficient to satisfy or alert impossibility of this goal.
+    // Sanity check to confirm that the final distribution is rack aware.
+    ensureRackAware(clusterModel, excludedTopics);
+    // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
+    GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
+    // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
+    GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
+    finish();
   }
 
   @Override

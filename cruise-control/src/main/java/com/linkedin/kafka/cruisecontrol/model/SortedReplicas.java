@@ -22,17 +22,18 @@ import java.util.function.Function;
  *  <ul>
  *     <li>
  *      <tt>ScoreFunction</tt>(optional): the score function generates a score for each replica to sort. The replicas are
- *      sorted based on their score in ascending order. Those who want a descending order need to use the descending iterator
- *      of {@link #sortedReplicas(boolean)}.
+ *      sorted based on their score in ascending order.
  *    </li>
  *    <li>
  *      <tt>SelectionFunction</tt>(optional): the selection function decides which replicas to include in the sorted
- *      replica list. For example, in some cases, the users may only want to have sorted leader replicas.
+ *      replica list. For example, in some cases, the users may only want to have sorted leader replicas. Note there can
+ *      be multiple selection functions, only replica which satisfies requirement of all selection functions will be included.
  *    </li>
  *    <li>
  *      <tt>PriorityFunction</tt>(optional): the priority function allows users to prioritize certain replicas in the
- *      sorted replicas. The replicas will be sorted by their priority first. The replicas with the same priority are
- *      then sorted with their score from the <tt>scoreFunction</tt>.
+ *      sorted replicas. The replicas will be sorted by their priority first. There can be multiple priority functions,
+ *      which will be applied one by one based on the order in {@link this#_priorityFuncs} to resolve priority between two replicas.
+ *      In the end, the replicas with the same priority are sorted with their score from the <tt>scoreFunction</tt>.
  *      Note that if a priority function is provided, the <tt>SortedSet</tt> returned by the
  *      {@link #sortedReplicas(boolean)} is no longer binary searchable based on the score.
  *    </li>
@@ -98,7 +99,8 @@ public class SortedReplicas {
    * Get the sorted replicas in the ascending order of their priority and score.
    * This method initialize the sorted replicas if it hasn't been initialized.
    *
-   * @param clone whether return a clone of the replica set or the set itself.
+   * @param clone whether return a clone of the replica set or the set itself. In general, the clone should be avoided
+   *              whenever possible, it is only needed where the sorted replica will be updated in the middle of being iterated.
    * @return the sorted replicas in the ascending order of their priority and score.
    */
   public SortedSet<Replica> sortedReplicas(boolean clone) {
@@ -133,17 +135,16 @@ public class SortedReplicas {
   }
 
   /**
-   * Add a new replicas to the sorted replicas. It has no impact if this {@link SortedReplicas} has not been
-   * initialized.
+   * Add a new replicas to the sorted replicas. The replica will be included if it satisfies the requirement of all
+   * selection functions. It has no impact if this {@link SortedReplicas} has not been initialized.
    *
    * @param replica the replica to add.
    */
   public void add(Replica replica) {
     if (_initialized) {
-      if (_selectionFuncs != null && _selectionFuncs.stream().anyMatch(func -> !func.apply(replica))) {
-        return;
+      if (_selectionFuncs == null || _selectionFuncs.stream().allMatch(func -> func.apply(replica))) {
+        _sortedReplicas.add(replica);
       }
-       _sortedReplicas.add(replica);
     }
   }
 

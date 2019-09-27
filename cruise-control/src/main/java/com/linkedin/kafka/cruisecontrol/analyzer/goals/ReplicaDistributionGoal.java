@@ -12,7 +12,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
-import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
@@ -124,33 +123,14 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
     for (Broker broker : clusterModel.brokers()) {
       new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
                                                        optimizationOptions.onlyMoveImmigrantReplicas())
-                                .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(optimizationOptions.excludedTopics()))
+                                .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(optimizationOptions.excludedTopics()))
                                 .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrantOrOfflineReplicas(),
                                                        !clusterModel.selfHealingEligibleReplicas().isEmpty() && broker.isAlive())
                                 .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas())
-                                .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants())
+                                .maybeAddPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants(),
+                                                      !optimizationOptions.onlyMoveImmigrantReplicas())
                                 .setScoreFunc(ReplicaSortFunctionFactory.sortByMetricGroupValue(DISK.name()))
                                 .trackSortedReplicasFor(replicaSortName(this, false, false), broker);
-    }
-  }
-
-  /**
-   * Update goal state after one round of self-healing / rebalance.
-   * @param clusterModel The state of the cluster.
-   * @param excludedTopics The topics that should be excluded from the optimization proposal.
-   */
-  @Override
-  protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws OptimizationFailureException {
-    try {
-      super.updateGoalState(clusterModel, excludedTopics);
-    } catch (OptimizationFailureException ofe) {
-      clusterModel.untrackSortedReplicas(name());
-      throw ofe;
-    }
-    // Clean up memory usage.
-    if (_finished) {
-      clusterModel.untrackSortedReplicas(name());
     }
   }
 

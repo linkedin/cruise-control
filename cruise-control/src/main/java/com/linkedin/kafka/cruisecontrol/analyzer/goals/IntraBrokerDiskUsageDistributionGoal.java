@@ -92,12 +92,12 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
 
     // Sort all the replicas for each disk based on disk utilization.
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
-    new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
+    new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
                               .addSelectionFunc(ReplicaSortFunctionFactory.selectOnlineReplicas())
                               .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeDiskImmigrants())
                               .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(RESOURCE.name()))
                               .trackSortedReplicasFor(replicaSortName(this, true, false), clusterModel);
-    new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
+    new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
                               .addSelectionFunc(ReplicaSortFunctionFactory.selectOnlineReplicas())
                               .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeDiskImmigrants())
                               .setScoreFunc(ReplicaSortFunctionFactory.sortByMetricGroupValue(RESOURCE.name()))
@@ -138,7 +138,6 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
       LOG.warn("Disks {} are below balance lower limit after optimization.", disksBelowBalanceLowerLimit);
       _succeeded = false;
     }
-    clusterModel.clearSortedReplicas();
     finish();
   }
 

@@ -123,7 +123,7 @@ public class IntraBrokerRebalanceTest {
     // Test: Multiple Goals.
     p.add(params(testId++, jbodCluster, goalNameByPriority, balancingConstraint, Collections.emptySet(), verifications));
 
-    // -- TEST DECK #2: CLUSTER WITH DEAD&BROKER BROKER.
+    // -- TEST DECK #2: CLUSTER WITH DEAD&BROKEN BROKER.
     Set<String> excludedTopics = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(T1, T2)));
     // Test: Single Goal.
     for (int i = 0; i < goalNameByPriority.size(); i++) {

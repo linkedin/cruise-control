@@ -457,7 +457,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     helper.maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectFollowers(), followersOnly)
           .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectLeaders(), leadersOnly)
           .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(), immigrantsOnly)
-          .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
+          .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
           .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas());
     if (isAscending) {
       helper.addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBelowLimit(resource(), loadLimit))
@@ -705,9 +705,10 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                                      optimizationOptions.onlyMoveImmigrantReplicas())
                               .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrantOrOfflineReplicas(),
                                                      !clusterModel.selfHealingEligibleReplicas().isEmpty() && broker.isAlive())
-                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
+                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
                               .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas())
-                              .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants())
+                              .maybeAddPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants(),
+                                                    !optimizationOptions.onlyMoveImmigrantReplicas())
                               .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(resource().name()))
                               .trackSortedReplicasFor(replicaSortName(this, true, actionType == LEADERSHIP_MOVEMENT), broker);
     SortedSet<Replica> replicasToMove = broker.trackedSortedReplicas(replicaSortName(this, true, actionType == LEADERSHIP_MOVEMENT)).sortedReplicas(true);

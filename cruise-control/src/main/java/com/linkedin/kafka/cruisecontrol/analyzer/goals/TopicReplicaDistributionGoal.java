@@ -265,7 +265,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     for (Broker broker : clusterModel.brokers()) {
       new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
                                                        optimizationOptions.onlyMoveImmigrantReplicas())
-                                .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(optimizationOptions.excludedTopics()))
+                                .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(optimizationOptions.excludedTopics()))
                                 .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrantOrOfflineReplicas(),
                                                        !clusterModel.selfHealingEligibleReplicas().isEmpty() && broker.isAlive())
                                 .trackSortedReplicasFor(replicaSortName(this, false, false), broker);
@@ -322,20 +322,15 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
       GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
     } catch (OptimizationFailureException ofe) {
       if (_fixOfflineReplicasOnly) {
-        clusterModel.clearSortedReplicas();
         throw ofe;
       }
       _fixOfflineReplicasOnly = true;
       LOG.info("Ignoring topic replica balance limit to move replicas from dead brokers/disks.");
       return;
     }
-    try {
-      // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
-      GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
-      finish();
-    } finally {
-      clusterModel.clearSortedReplicas();
-    }
+    // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
+    GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
+    finish();
   }
 
   @Override

@@ -168,7 +168,7 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
     _overLimitBrokerIds = new HashSet<>();
     // Sort leader replicas for each broker.
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
-    new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
+    new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
                               .addSelectionFunc(ReplicaSortFunctionFactory.selectLeaders())
                               .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(Resource.NW_IN.toString()))
                               .trackSortedReplicasFor(replicaSortName(this, true, true), clusterModel);
@@ -188,7 +188,6 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
       LOG.warn("There were still {} brokers over the limit.", _overLimitBrokerIds.size());
       _succeeded = false;
     }
-    clusterModel.clearSortedReplicas();
     finish();
   }
 

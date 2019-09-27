@@ -170,7 +170,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
     // Filter out some replicas based on optimization options.
     new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
                                                      optimizationOptions.onlyMoveImmigrantReplicas())
-                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
+                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
                               .trackSortedReplicasFor(replicaSortName(this, false, false), clusterModel);
   }
 
@@ -197,24 +197,18 @@ public class ReplicaCapacityGoal extends AbstractGoal {
    */
   @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics) throws OptimizationFailureException {
-    try {
-      // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
-      GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
-      // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
-      GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
+    // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
+    GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
+    // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
+    GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
 
-      if (!_isSelfHealingMode) {
-        // One pass in non-self-healing mode is sufficient to satisfy or alert impossibility of this goal.
-        // Sanity check to confirm that the final distribution has less than the allowed number of replicas per broker.
-        ensureReplicaCapacitySatisfied(clusterModel);
-        clusterModel.clearSortedReplicas();
-        finish();
-      } else {
-        _isSelfHealingMode = false;
-      }
-    } catch (Exception e) {
-      clusterModel.clearSortedReplicas();
-      throw e;
+    if (!_isSelfHealingMode) {
+      // One pass in non-self-healing mode is sufficient to satisfy or alert impossibility of this goal.
+      // Sanity check to confirm that the final distribution has less than the allowed number of replicas per broker.
+      ensureReplicaCapacitySatisfied(clusterModel);
+      finish();
+    } else {
+      _isSelfHealingMode = false;
     }
   }
 

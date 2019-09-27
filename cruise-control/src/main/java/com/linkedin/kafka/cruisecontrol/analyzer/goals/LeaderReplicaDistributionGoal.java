@@ -245,7 +245,7 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
     int balanceUpperLimit = _fixOfflineReplicasOnly ? 0 : _balanceUpperLimit;
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     String replicaSortName = replicaSortName(this, false, !_fixOfflineReplicasOnly);
-    new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
+    new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
                               .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectLeaders(), !_fixOfflineReplicasOnly)
                               .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectOfflineReplicas(), _fixOfflineReplicasOnly)
                               .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
@@ -279,9 +279,9 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
   }
 
   private boolean rebalanceByMovingLeaderReplicasIn(Broker broker,
-                                                   ClusterModel clusterModel,
-                                                   Set<Goal> optimizedGoals,
-                                                   OptimizationOptions optimizationOptions) {
+                                                    ClusterModel clusterModel,
+                                                    Set<Goal> optimizedGoals,
+                                                    OptimizationOptions optimizationOptions) {
     if (optimizationOptions.excludedBrokersForLeadership().contains(broker.id())) {
       return true;
     }
@@ -300,7 +300,7 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     boolean onlyMoveImmigrantReplicas = optimizationOptions.onlyMoveImmigrantReplicas();
     String replicaSortName = replicaSortName(this, false, true);
-    new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
+    new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
                               .addSelectionFunc(ReplicaSortFunctionFactory.selectLeaders())
                               .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
                                                      !clusterModel.brokenBrokers().isEmpty() || onlyMoveImmigrantReplicas)

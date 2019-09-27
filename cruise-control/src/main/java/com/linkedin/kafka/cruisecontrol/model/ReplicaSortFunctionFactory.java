@@ -138,23 +138,23 @@ public class ReplicaSortFunctionFactory {
   }
 
   /**
-   * @return a selection function that only includes replicas which should not be excluded.
+   * @return a selection function that filters out replicas which are online and from topics which should be excluded.
    */
-  public static Function<Replica, Boolean> selectReplicasNotFromExcludedTopics(Set<String> excludedTopics) {
-    return r ->  !excludedTopics.contains(r.topicPartition().topic()) || r.isOriginalOffline();
+  public static Function<Replica, Boolean> selectReplicasBasedOnExcludedTopics(Set<String> excludedTopics) {
+    return r -> r.isOriginalOffline() || !excludedTopics.contains(r.topicPartition().topic());
   }
 
   /**
    * @return a selection function that only includes replicas whose metric value for certain resource is above limit.
    */
-  public static Function<Replica, Boolean> selectReplicasAboveLimit(Resource resource, Double limit) {
-    return r ->  r.load().expectedUtilizationFor(resource) > limit;
+  public static Function<Replica, Boolean> selectReplicasAboveLimit(Resource resource, double limit) {
+    return r -> r.load().expectedUtilizationFor(resource) > limit;
   }
 
   /**
    * @return a selection function that only includes replicas whose metric value for certain resource is below limit.
    */
-  public static Function<Replica, Boolean> selectReplicasBelowLimit(Resource resource, Double limit) {
-    return r ->  r.load().expectedUtilizationFor(resource) < limit;
+  public static Function<Replica, Boolean> selectReplicasBelowLimit(Resource resource, double limit) {
+    return r -> r.load().expectedUtilizationFor(resource) < limit;
   }
 }

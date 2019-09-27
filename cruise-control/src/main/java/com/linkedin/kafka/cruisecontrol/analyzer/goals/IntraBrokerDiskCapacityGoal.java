@@ -84,7 +84,7 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
 
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     // Sort all the replicas for each disk based on disk utilization.
-    new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
+    new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
                               .addSelectionFunc(ReplicaSortFunctionFactory.selectOnlineReplicas())
                               .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeDiskImmigrants())
                               .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(RESOURCE.name()))
@@ -213,21 +213,17 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
    */
   @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics) throws OptimizationFailureException {
-    try {
-      for (Broker broker : brokersToBalance(clusterModel)) {
-        for (Disk disk : broker.disks()) {
-          if (disk.isAlive() && isUtilizationOverLimit(disk)) {
-            // The utilization of the host for the resource is over the capacity limit.
-            throw new OptimizationFailureException(String.format(
-                "Optimization for goal %s failed because utilization for disk %s on broker %d is still above capacity limit.",
-                name(), disk, broker.id()));
-          }
+    for (Broker broker : brokersToBalance(clusterModel)) {
+      for (Disk disk : broker.disks()) {
+        if (disk.isAlive() && isUtilizationOverLimit(disk)) {
+          // The utilization of the host for the resource is over the capacity limit.
+          throw new OptimizationFailureException(String.format(
+              "Optimization for goal %s failed because utilization for disk %s on broker %d is still above capacity limit.",
+              name(), disk, broker.id()));
         }
       }
-      finish();
-    } finally {
-      clusterModel.clearSortedReplicas();
     }
+    finish();
   }
 
   @Override

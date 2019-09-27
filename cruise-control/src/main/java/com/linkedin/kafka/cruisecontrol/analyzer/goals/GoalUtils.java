@@ -350,7 +350,7 @@ public class GoalUtils {
 
   /**
    * Generate the name of {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas}, which can be used to retrieve sorted
-   * replicas in {@link ClusterModel}/{@link Broker}//{@link Disk}.
+   * replicas in {@link ClusterModel}/{@link Broker}/{@link Disk}.
    *
    * @param goal The {@link Goal} which requests for new {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas}.
    * @param reverse Whether the {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas} tracks replicas in descending order or not.

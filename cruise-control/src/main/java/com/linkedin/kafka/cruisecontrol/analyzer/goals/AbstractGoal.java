@@ -67,40 +67,44 @@ public abstract class AbstractGoal implements Goal {
   @Override
   public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, OptimizationOptions optimizationOptions)
       throws OptimizationFailureException {
-    _succeeded = true;
-    LOG.debug("Starting optimization for {}.", name());
-    // Initialize pre-optimized stats.
-    ClusterModelStats statsBeforeOptimization = clusterModel.getClusterStats(_balancingConstraint);
-    LOG.trace("[PRE - {}] {}", name(), statsBeforeOptimization);
-    _finished = false;
-    long goalStartTime = System.currentTimeMillis();
-    initGoalState(clusterModel, optimizationOptions);
-    SortedSet<Broker> brokenBrokers = clusterModel.brokenBrokers();
+    try {
+      _succeeded = true;
+      LOG.debug("Starting optimization for {}.", name());
+      // Initialize pre-optimized stats.
+      ClusterModelStats statsBeforeOptimization = clusterModel.getClusterStats(_balancingConstraint);
+      LOG.trace("[PRE - {}] {}", name(), statsBeforeOptimization);
+      _finished = false;
+      long goalStartTime = System.currentTimeMillis();
+      initGoalState(clusterModel, optimizationOptions);
+      SortedSet<Broker> brokenBrokers = clusterModel.brokenBrokers();
 
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
-    while (!_finished) {
-      for (Broker broker : brokersToBalance(clusterModel)) {
-        rebalanceForBroker(broker, clusterModel, optimizedGoals, optimizationOptions);
+      Set<String> excludedTopics = optimizationOptions.excludedTopics();
+      while (!_finished) {
+        for (Broker broker : brokersToBalance(clusterModel)) {
+          rebalanceForBroker(broker, clusterModel, optimizedGoals, optimizationOptions);
+        }
+        updateGoalState(clusterModel, excludedTopics);
       }
-      updateGoalState(clusterModel, excludedTopics);
-    }
-    ClusterModelStats statsAfterOptimization = clusterModel.getClusterStats(_balancingConstraint);
-    LOG.trace("[POST - {}] {}", name(), statsAfterOptimization);
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Finished optimization for {} in {}ms.", name(), System.currentTimeMillis() - goalStartTime);
-    }
-    LOG.trace("Cluster after optimization is {}", clusterModel);
-    // We only ensure the optimization did not make stats worse when it is not self-healing.
-    if (brokenBrokers.isEmpty()) {
-      ClusterModelStatsComparator comparator = clusterModelStatsComparator();
-      // Throw exception when the stats before optimization is preferred.
-      if (comparator.compare(statsAfterOptimization, statsBeforeOptimization) < 0) {
-        throw new OptimizationFailureException("Optimization for Goal " + name() + " failed because the optimized"
-                                               + "result is worse than before. Detail reason: "
-                                               + comparator.explainLastComparison());
+      ClusterModelStats statsAfterOptimization = clusterModel.getClusterStats(_balancingConstraint);
+      LOG.trace("[POST - {}] {}", name(), statsAfterOptimization);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Finished optimization for {} in {}ms.", name(), System.currentTimeMillis() - goalStartTime);
       }
+      LOG.trace("Cluster after optimization is {}", clusterModel);
+      // We only ensure the optimization did not make stats worse when it is not self-healing.
+      if (brokenBrokers.isEmpty()) {
+        ClusterModelStatsComparator comparator = clusterModelStatsComparator();
+        // Throw exception when the stats before optimization is preferred.
+        if (comparator.compare(statsAfterOptimization, statsBeforeOptimization) < 0) {
+          throw new OptimizationFailureException("Optimization for Goal " + name() + " failed because the optimized "
+                                                 + "result is worse than before. Detail reason: " + comparator.explainLastComparison());
+        }
+      }
+      return _succeeded;
+    } finally {
+      // Clear any sorted replicas tracked in the process of optimization.
+      clusterModel.clearSortedReplicas();
     }
-    return _succeeded;
   }
 
   @Override

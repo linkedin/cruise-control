@@ -180,17 +180,17 @@ public abstract class CapacityGoal extends AbstractGoal {
     boolean onlyMoveImmigrantReplicas = optimizationOptions.onlyMoveImmigrantReplicas();
     // Sort all replicas for each broker based on resource utilization.
     new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(), onlyMoveImmigrantReplicas)
-                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
+                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
                               .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas())
-                              .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants())
+                              .maybeAddPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants(), !onlyMoveImmigrantReplicas)
                               .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(resource().name()))
                               .trackSortedReplicasFor(replicaSortName(this, true, false), clusterModel);
 
     // Sort leader replicas for each broker based on resource utilization.
     new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectLeaders())
-                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
+                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
                               .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(), onlyMoveImmigrantReplicas)
-                              .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants())
+                              .maybeAddPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants(), !onlyMoveImmigrantReplicas)
                               .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(resource().name()))
                               .trackSortedReplicasFor(replicaSortName(this, true, true), clusterModel);
   }
@@ -205,18 +205,14 @@ public abstract class CapacityGoal extends AbstractGoal {
   @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
       throws OptimizationFailureException {
-    try {
-      // Ensure the resource utilization is under capacity limit.
-      // While proposals exclude the excludedTopics, the utilization still considers replicas of the excludedTopics.
-      ensureUtilizationUnderCapacity(clusterModel);
-      // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
-      GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
-      // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
-      GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
-      finish();
-    } finally {
-      clusterModel.clearSortedReplicas();
-    }
+    // Ensure the resource utilization is under capacity limit.
+    // While proposals exclude the excludedTopics, the utilization still considers replicas of the excludedTopics.
+    ensureUtilizationUnderCapacity(clusterModel);
+    // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
+    GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
+    // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
+    GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
+    finish();
   }
 
   @Override
