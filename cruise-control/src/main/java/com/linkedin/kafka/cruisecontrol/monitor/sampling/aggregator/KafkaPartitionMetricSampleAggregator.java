@@ -187,7 +187,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
                                  1,
                                  _maxAllowedExtrapolationsPerPartition,
                                  allPartitions(clusterAndGeneration.cluster()),
-                                 AggregationOptions.Granularity.ENTITY_GROUP,
+                                 AggregationOptions.Granularity.ENTITY,
                                  true);
     MetricSampleCompleteness<String, PartitionEntity> completeness = completeness(-1, Long.MAX_VALUE, options);
     return windowIndicesToWindows(completeness.validWindowIndices(), _windowMs);
@@ -206,7 +206,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
                                  1,
                                  _maxAllowedExtrapolationsPerPartition,
                                  allPartitions(clusterAndGeneration.cluster()),
-                                 AggregationOptions.Granularity.ENTITY_GROUP,
+                                 AggregationOptions.Granularity.ENTITY,
                                  true);
     MetricSampleCompleteness<String, PartitionEntity> completeness = completeness(-1, Long.MAX_VALUE, options);
     return completeness.validEntityRatio();
@@ -224,7 +224,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
                                  1,
                                  _maxAllowedExtrapolationsPerPartition,
                                  allPartitions(clusterAndGeneration.cluster()),
-                                 AggregationOptions.Granularity.ENTITY_GROUP,
+                                 AggregationOptions.Granularity.ENTITY,
                                  true);
     MetricSampleCompleteness<String, PartitionEntity> completeness = completeness(-1, Long.MAX_VALUE, options);
     return windowIndicesToWindows(completeness.validEntityRatioWithGroupGranularityByWindowIndex(), _windowMs);
@@ -296,7 +296,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
                                     requirements.minRequiredNumWindows(),
                                     _maxAllowedExtrapolationsPerPartition,
                                     allPartitions,
-                                    AggregationOptions.Granularity.ENTITY_GROUP,
+                                    AggregationOptions.Granularity.ENTITY,
                                     requirements.includeAllTopics());
   }
 
