@@ -37,9 +37,9 @@ public abstract class AbstractCruiseControlResponse implements CruiseControlResp
   @Override
   public void writeSuccessResponse(CruiseControlParameters parameters, HttpServletResponse response) throws IOException {
     boolean json = parameters.json();
-    boolean json_schema_in_header = parameters.json_schema_in_header();
+    boolean jsonSchemaInHeader = parameters.jsonSchemaInHeader();
     discardIrrelevantResponse(parameters);
-    if (json && json_schema_in_header) {
+    if (json && jsonSchemaInHeader) {
       String schema = getJsonSchema();
       writeResponseToOutputStream(response, SC_OK, json, schema, _cachedResponse, _config);
     } else {
@@ -83,7 +83,9 @@ public abstract class AbstractCruiseControlResponse implements CruiseControlResp
       for (int i = 0; i < arr.size(); i++) {
         node = arr.get(i);
         result.append(convertNodeToStringSchemaNode(node, null));
-        if (i != arr.size() - 1) result.append(",");
+        if (i != arr.size() - 1) {
+          result.append(",");
+        }
       }
       result.append("]}");
     } else if (node.isJsonPrimitive()) {
@@ -104,10 +106,14 @@ public abstract class AbstractCruiseControlResponse implements CruiseControlResp
         JsonElement child = entry.getValue();
 
         result.append(convertNodeToStringSchemaNode(child, key));
-        if (iterator.hasNext()) result.append(",");
+        if (iterator.hasNext()) {
+          result.append(",");
+        }
       }
       result.append("}}");
-    } else if (node.isJsonNull()) result.append("}");
+    } else if (node.isJsonNull()) {
+      result.append("}");
+    }
 
     return result.toString();
   }

@@ -44,7 +44,7 @@ public abstract class AbstractParameters implements CruiseControlParameters {
   protected KafkaCruiseControlConfig _config;
   // Common to all parameters, expected to be populated via initParameters.
   protected boolean _json = false;
-  protected boolean _json_schema_in_header = false;
+  protected boolean _jsonSchemaInHeader = false;
   protected EndPoint _endPoint = null;
 
   public AbstractParameters() {
@@ -55,7 +55,7 @@ public abstract class AbstractParameters implements CruiseControlParameters {
     _initialized = true;
     _endPoint = ParameterUtils.endPoint(_request);
     _json = ParameterUtils.wantJSON(_request);
-    _json_schema_in_header = ParameterUtils.wantJSONSchemaInHeader(_request);
+    _jsonSchemaInHeader = ParameterUtils.wantJSONSchemaInHeader(_request);
   }
 
   @Override
@@ -83,8 +83,8 @@ public abstract class AbstractParameters implements CruiseControlParameters {
   }
 
   @Override
-  public boolean json_schema_in_header() {
-    return _json_schema_in_header;
+  public boolean jsonSchemaInHeader() {
+    return _jsonSchemaInHeader;
   }
 
   @Override
