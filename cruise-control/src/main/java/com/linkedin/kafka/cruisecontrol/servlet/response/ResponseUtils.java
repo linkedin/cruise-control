@@ -57,11 +57,24 @@ public class ResponseUtils {
                                           boolean json,
                                           String responseMessage,
                                           KafkaCruiseControlConfig config)
+    throws IOException {
+    writeResponseToOutputStream(response, responseCode, json, null, responseMessage, config);
+  }
+
+  static void writeResponseToOutputStream(HttpServletResponse response,
+                                          int responseCode,
+                                          boolean json,
+                                          String responseJsonSchema,
+                                          String responseMessage,
+                                          KafkaCruiseControlConfig config)
       throws IOException {
     OutputStream out = response.getOutputStream();
     setResponseCode(response, responseCode, json, config);
     response.addHeader("Cruise-Control-Version", KafkaCruiseControl.cruiseControlVersion());
     response.addHeader("Cruise-Control-Commit_Id", KafkaCruiseControl.cruiseControlCommitId());
+    if (responseJsonSchema != null) {
+      response.addHeader("Cruise-Control-JSON-Schema", responseJsonSchema);
+    }
     response.setContentLength(responseMessage.length());
     out.write(responseMessage.getBytes(StandardCharsets.UTF_8));
     out.flush();

@@ -9,7 +9,6 @@ import com.linkedin.cruisecontrol.servlet.EndPoint;
 import java.util.SortedSet;
 import javax.servlet.http.HttpServletResponse;
 
-
 /**
  * This is the interface of the parameters used by Cruise Control. Users can implement this interface and add the
  * implementation class name to Cruise Control parameters configuration so that Cruise Control will take the parameters
@@ -35,6 +34,11 @@ public interface CruiseControlParameters extends CruiseControlConfigurable {
    * @return True if requested response is in JSON, false otherwise.
    */
   boolean json();
+
+  /**
+   * @return True if requested response should contain a JSON schema in the header, false otherwise.
+   */
+  boolean json_schema_in_header();
 
   /**
    * @param reviewId The review id.

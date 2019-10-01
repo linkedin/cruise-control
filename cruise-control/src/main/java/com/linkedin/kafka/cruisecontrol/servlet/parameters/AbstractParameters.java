@@ -20,8 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.KAFKA_CRUISE_CONTROL_HTTP_SERVLET_REQUEST_OBJECT_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.handleParameterParseException;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.JSON_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.*;
 
 
 /**
@@ -34,6 +33,7 @@ public abstract class AbstractParameters implements CruiseControlParameters {
   static {
     SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     validParameterNames.add(JSON_PARAM);
+    validParameterNames.add(JSON_SCHEMA_IN_HEADER);
     CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
 
   }
@@ -42,6 +42,7 @@ public abstract class AbstractParameters implements CruiseControlParameters {
   protected KafkaCruiseControlConfig _config;
   // Common to all parameters, expected to be populated via initParameters.
   protected boolean _json = false;
+  protected boolean _json_schema_in_header = false;
   protected EndPoint _endPoint = null;
 
   public AbstractParameters() {
@@ -52,6 +53,7 @@ public abstract class AbstractParameters implements CruiseControlParameters {
     _initialized = true;
     _endPoint = ParameterUtils.endPoint(_request);
     _json = ParameterUtils.wantJSON(_request);
+    _json_schema_in_header = ParameterUtils.wantJSONSchemaInHeader(_request);
   }
 
   @Override
@@ -76,6 +78,11 @@ public abstract class AbstractParameters implements CruiseControlParameters {
   @Override
   public boolean json() {
     return _json;
+  }
+
+  @Override
+  public boolean json_schema_in_header() {
+    return _json_schema_in_header;
   }
 
   @Override
