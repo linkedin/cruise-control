@@ -9,6 +9,7 @@ import com.linkedin.cruisecontrol.servlet.EndPoint;
 import java.util.SortedSet;
 import javax.servlet.http.HttpServletResponse;
 
+
 /**
  * This is the interface of the parameters used by Cruise Control. Users can implement this interface and add the
  * implementation class name to Cruise Control parameters configuration so that Cruise Control will take the parameters
