@@ -131,15 +131,23 @@ public class BrokerLoad {
     return convertUnit ? convertUnit(rawMetricValue, rawMetricType) : rawMetricValue;
   }
 
-  public double partitionMetric(String dotHandledTopic, int partition, RawMetricType rawMetricType) {
+  /**
+   * Get partition metric with the given name for the partition from given topic and partition number. If the partition
+   * metric does not exist for given dot-handled topic name and partition, return {@code null}.
+   *
+   * @param dotHandledTopic Dot-handled topic name.
+   * @param partition Partition number.
+   * @param rawMetricType Raw metric type.
+   */
+  public Double partitionMetric(String dotHandledTopic, int partition, RawMetricType rawMetricType) {
     sanityCheckMetricScope(rawMetricType, PARTITION);
     RawMetricsHolder metricsHolder = _dotHandledPartitionMetrics.get(new TopicPartition(dotHandledTopic, partition));
     if (metricsHolder == null || metricsHolder.metricValue(rawMetricType) == null) {
-      throw new IllegalArgumentException(String.format("Partition metric %s does not exist for dot handled topic name %s"
-                                                       + " and partition %d.", rawMetricType, dotHandledTopic, partition));
-    } else {
-      return convertUnit(metricsHolder.metricValue(rawMetricType).value(), rawMetricType);
+      LOG.error("Partition metric {} does not exist for dot handled topic {} and partition {}.",
+                rawMetricType, dotHandledTopic, partition);
+      return null;
     }
+    return convertUnit(metricsHolder.metricValue(rawMetricType).value(), rawMetricType);
   }
 
   /**
