@@ -34,7 +34,7 @@ import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC2;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.*;
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.*;
-import static com.linkedin.kafka.cruisecontrol.model.ModelUtils.estimateLeaderCpuUtil;
+import static com.linkedin.kafka.cruisecontrol.model.ModelUtils.estimateLeaderCpuUtilPerCore;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -83,31 +83,31 @@ public class CruiseControlMetricsProcessorTest {
   private static final Map<TopicPartition, Double> CPU_UTIL = new HashMap<>(4);
   static {
     CPU_UTIL.put(T1P0, MOCK_NUM_CPU_CORES *
-                       estimateLeaderCpuUtil(B0_CPU,
-                                             B0_ALL_TOPIC_BYTES_IN,
+                       estimateLeaderCpuUtilPerCore(B0_CPU,
+                                                    B0_ALL_TOPIC_BYTES_IN,
                                              B0_ALL_TOPIC_BYTES_OUT + B0_TOPIC1_REPLICATION_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT,
-                                             B0_TOPIC1_REPLICATION_BYTES_IN,
-                                             B0_TOPIC1_BYTES_IN,
+                                                    B0_TOPIC1_REPLICATION_BYTES_IN,
+                                                    B0_TOPIC1_BYTES_IN,
                                              B0_TOPIC1_BYTES_OUT + B0_TOPIC1_REPLICATION_BYTES_OUT));
     CPU_UTIL.put(T1P1, MOCK_NUM_CPU_CORES *
-                       estimateLeaderCpuUtil(B1_CPU,
-                                             B1_ALL_TOPIC_BYTES_IN,
+                       estimateLeaderCpuUtilPerCore(B1_CPU,
+                                                    B1_ALL_TOPIC_BYTES_IN,
                                              B1_ALL_TOPIC_BYTES_OUT + B1_TOPIC1_REPLICATION_BYTES_OUT,
                                              B1_TOPIC1_REPLICATION_BYTES_IN + B1_TOPIC2_REPLICATION_BYTES_IN,
-                                             B1_TOPIC1_BYTES_IN,
+                                                    B1_TOPIC1_BYTES_IN,
                                              B1_TOPIC1_BYTES_OUT + B1_TOPIC1_REPLICATION_BYTES_OUT));
     CPU_UTIL.put(T2P0, MOCK_NUM_CPU_CORES *
-                       estimateLeaderCpuUtil(B0_CPU,
-                                             B0_ALL_TOPIC_BYTES_IN,
+                       estimateLeaderCpuUtilPerCore(B0_CPU,
+                                                    B0_ALL_TOPIC_BYTES_IN,
                                              B0_ALL_TOPIC_BYTES_OUT + B0_TOPIC1_REPLICATION_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT,
-                                             B0_TOPIC1_REPLICATION_BYTES_IN,
+                                                    B0_TOPIC1_REPLICATION_BYTES_IN,
                                              B0_TOPIC2_BYTES_IN / 2,
                                              (B0_TOPIC2_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT) / 2));
     CPU_UTIL.put(T2P1, MOCK_NUM_CPU_CORES *
-                       estimateLeaderCpuUtil(B0_CPU,
-                                             B0_ALL_TOPIC_BYTES_IN,
+                       estimateLeaderCpuUtilPerCore(B0_CPU,
+                                                    B0_ALL_TOPIC_BYTES_IN,
                                              B0_ALL_TOPIC_BYTES_OUT + B0_TOPIC1_REPLICATION_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT,
-                                             B0_TOPIC1_REPLICATION_BYTES_IN,
+                                                    B0_TOPIC1_REPLICATION_BYTES_IN,
                                              B0_TOPIC2_BYTES_IN / 2,
                                              (B0_TOPIC2_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT) / 2));
   }
