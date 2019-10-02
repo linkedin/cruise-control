@@ -153,7 +153,7 @@ public class LoadMonitorTest {
     MetadataClient.ClusterAndGeneration clusterAndGeneration = loadMonitor.refreshClusterAndGeneration();
     LoadMonitorState state = loadMonitor.state(new OperationProgress(), clusterAndGeneration);
     // Both partitions for topic 0 should be valid.
-    assertEquals(2, state.numValidPartitions());
+    assertEquals(3, state.numValidPartitions());
     // Both topic should be valid in the first window.
     assertEquals(1, state.numValidWindows());
     // There should be 2 monitored windows.
@@ -310,7 +310,7 @@ public class LoadMonitorTest {
     }
 
     ClusterModel clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements2, new OperationProgress());
-    assertNull(clusterModel.partition(T1P0));
+    assertNotNull(clusterModel.partition(T1P0));
     assertNull(clusterModel.partition(T1P1));
     assertEquals(1, clusterModel.partition(T0P0).leader().load().numWindows());
     assertEquals(3, clusterModel.partition(T0P0).leader().load().expectedUtilizationFor(Resource.DISK), 0.0);
@@ -359,7 +359,7 @@ public class LoadMonitorTest {
     }
 
     ClusterModel clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements2, new OperationProgress());
-    assertNull(clusterModel.partition(T1P0));
+    assertNotNull(clusterModel.partition(T1P0));
     assertNull(clusterModel.partition(T1P1));
     assertEquals(2, clusterModel.partition(T0P0).leader().load().numWindows());
     assertEquals(13, clusterModel.partition(T0P0).leader().load().expectedUtilizationFor(Resource.DISK), 0.0);
@@ -375,7 +375,7 @@ public class LoadMonitorTest {
     }
 
     clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements4, new OperationProgress());
-    assertNull(clusterModel.partition(T1P0));
+    assertNotNull(clusterModel.partition(T1P0));
     assertNull(clusterModel.partition(T1P1));
     assertEquals(2, clusterModel.partition(T0P0).leader().load().numWindows());
     assertEquals(13, clusterModel.partition(T0P0).leader().load().expectedUtilizationFor(Resource.DISK), 0.0);
@@ -419,7 +419,7 @@ public class LoadMonitorTest {
     assertEquals(20, clusterModel.partition(T1P1).leader().load().expectedUtilizationFor(Resource.NW_OUT), 0.0);
 
     clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements2, new OperationProgress());
-    assertNull(clusterModel.partition(T1P0));
+    assertNotNull(clusterModel.partition(T1P0));
     assertNull(clusterModel.partition(T1P1));
     assertEquals(2, clusterModel.partition(T0P0).leader().load().numWindows());
     assertEquals(13, clusterModel.partition(T0P0).leader().load().expectedUtilizationFor(Resource.DISK), 0.0);
@@ -435,7 +435,7 @@ public class LoadMonitorTest {
     }
 
     clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements4, new OperationProgress());
-    assertNull(clusterModel.partition(T1P0));
+    assertNotNull(clusterModel.partition(T1P0));
     assertNull(clusterModel.partition(T1P1));
     assertEquals(2, clusterModel.partition(T0P0).leader().load().numWindows());
     assertEquals(13, clusterModel.partition(T0P0).leader().load().expectedUtilizationFor(Resource.DISK), 0.0);
