@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
+import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -15,7 +16,8 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.ExecutionTasksSummary;
 
 public class ExecutorState {
-  private static final String TRIGGERED_TASK_ID = "triggeredTaskId";
+  private static final String TRIGGERED_USER_TASK_ID = "triggeredUserTaskId";
+  private static final String TRIGGERED_SELF_HEALING_TASK_ID = "triggeredSelfHealingTaskId";
   private static final String STATE = "state";
   private static final String RECENTLY_DEMOTED_BROKERS = "recentlyDemotedBrokers";
   private static final String RECENTLY_REMOVED_BROKERS = "recentlyRemovedBrokers";
@@ -220,6 +222,20 @@ public class ExecutorState {
     return taskList;
   }
 
+  private void populateUuidFieldInJsonStructure(Map<String, Object> execState, String uuid) {
+    if (isUuidFromSelfHealing(uuid)) {
+      execState.put(TRIGGERED_SELF_HEALING_TASK_ID, uuid);
+      execState.put(TRIGGERED_USER_TASK_ID, "");
+    } else {
+      execState.put(TRIGGERED_SELF_HEALING_TASK_ID, "");
+      execState.put(TRIGGERED_USER_TASK_ID, uuid);
+    }
+  }
+
+  private boolean isUuidFromSelfHealing(String uuid) {
+    return AnomalyType.cachedValues().stream().anyMatch(anomalyType -> uuid.startsWith(anomalyType.toString()));
+  }
+
   /**
    * Return an object that can be further used to encode into JSON
    */
@@ -238,10 +254,10 @@ public class ExecutorState {
       case NO_TASK_IN_PROGRESS:
         break;
       case STARTING_EXECUTION:
-        execState.put(TRIGGERED_TASK_ID, _uuid);
+        populateUuidFieldInJsonStructure(execState, _uuid);
         break;
       case LEADER_MOVEMENT_TASK_IN_PROGRESS:
-        execState.put(TRIGGERED_TASK_ID, _uuid);
+        populateUuidFieldInJsonStructure(execState, _uuid);
         execState.put(MAXIMUM_CONCURRENT_LEADER_MOVEMENTS, _maximumConcurrentLeaderMovements);
         execState.put(NUM_PENDING_LEADERSHIP_MOVEMENTS, _executionTasksSummary.taskStat().get(LEADER_ACTION).get(PENDING));
         execState.put(NUM_FINISHED_LEADERSHIP_MOVEMENTS, numFinishedMovements(LEADER_ACTION));
@@ -252,7 +268,7 @@ public class ExecutorState {
         break;
       case INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS:
         interBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTER_BROKER_REPLICA_ACTION);
-        execState.put(TRIGGERED_TASK_ID, _uuid);
+        populateUuidFieldInJsonStructure(execState, _uuid);
         execState.put(MAXIMUM_CONCURRENT_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER, _maximumConcurrentInterBrokerPartitionMovementsPerBroker);
         execState.put(NUM_IN_PROGRESS_INTER_BROKER_PARTITION_MOVEMENTS, interBrokerPartitionMovementStats.get(IN_PROGRESS));
         execState.put(NUM_ABORTING_INTER_BROKER_PARTITION_MOVEMENTS, interBrokerPartitionMovementStats.get(ABORTING));
@@ -272,7 +288,7 @@ public class ExecutorState {
         break;
       case INTRA_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS:
         intraBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION);
-        execState.put(TRIGGERED_TASK_ID, _uuid);
+        populateUuidFieldInJsonStructure(execState, _uuid);
         execState.put(MAXIMUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER, _maximumConcurrentIntraBrokerPartitionMovementsPerBroker);
         execState.put(NUM_IN_PROGRESS_INTRA_BROKER_PARTITION_MOVEMENTS, intraBrokerPartitionMovementStats.get(IN_PROGRESS));
         execState.put(NUM_ABORTING_INTRA_BROKER_PARTITION_MOVEMENTS, intraBrokerPartitionMovementStats.get(ABORTING));
@@ -293,7 +309,7 @@ public class ExecutorState {
       case STOPPING_EXECUTION:
         interBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTER_BROKER_REPLICA_ACTION);
         intraBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION);
-        execState.put(TRIGGERED_TASK_ID, _uuid);
+        populateUuidFieldInJsonStructure(execState, _uuid);
         execState.put(MAXIMUM_CONCURRENT_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER, _maximumConcurrentInterBrokerPartitionMovementsPerBroker);
         execState.put(MAXIMUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER, _maximumConcurrentIntraBrokerPartitionMovementsPerBroker);
         execState.put(MAXIMUM_CONCURRENT_LEADER_MOVEMENTS, _maximumConcurrentLeaderMovements);
@@ -333,12 +349,14 @@ public class ExecutorState {
       case NO_TASK_IN_PROGRESS:
         return String.format("{%s: %s%s%s}", STATE, _state, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case STARTING_EXECUTION:
-        return String.format("{%s: %s, %s: %s%s%s}", STATE, _state, TRIGGERED_TASK_ID,
+        return String.format("{%s: %s, %s: %s%s%s}", STATE, _state,
+                             isUuidFromSelfHealing(_uuid) ? TRIGGERED_SELF_HEALING_TASK_ID : TRIGGERED_USER_TASK_ID,
                              _uuid, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case LEADER_MOVEMENT_TASK_IN_PROGRESS:
         return String.format("{%s: %s, finished/total leadership movements: %d/%d, maximum concurrent leadership movements: %d, %s: %s%s%s}",
                              STATE, _state, numFinishedMovements(LEADER_ACTION), numTotalMovements(LEADER_ACTION),
-                             _maximumConcurrentLeaderMovements, TRIGGERED_TASK_ID, _uuid, recentlyDemotedBrokers, recentlyRemovedBrokers);
+                             _maximumConcurrentLeaderMovements, isUuidFromSelfHealing(_uuid) ? TRIGGERED_SELF_HEALING_TASK_ID : TRIGGERED_USER_TASK_ID,
+                             _uuid, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS:
         interBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTER_BROKER_REPLICA_ACTION);
         return String.format("{%s: %s, pending/in-progress/aborting/finished/total inter-broker partition movement %d/%d/%d/%d/%d," +
@@ -351,7 +369,8 @@ public class ExecutorState {
                              numTotalMovements(INTER_BROKER_REPLICA_ACTION),
                              _executionTasksSummary.finishedInterBrokerDataMovementInMB(),
                              numTotalInterBrokerDataToMove(), _maximumConcurrentInterBrokerPartitionMovementsPerBroker,
-                             TRIGGERED_TASK_ID, _uuid, recentlyDemotedBrokers, recentlyRemovedBrokers);
+                             isUuidFromSelfHealing(_uuid) ? TRIGGERED_SELF_HEALING_TASK_ID : TRIGGERED_USER_TASK_ID, _uuid,
+                             recentlyDemotedBrokers, recentlyRemovedBrokers);
       case INTRA_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS:
         intraBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION);
         return String.format("{%s: %s, pending/in-progress/aborting/finished/total intra-broker partition movement %d/%d/%d/%d/%d," +
@@ -364,7 +383,8 @@ public class ExecutorState {
                 numTotalMovements(INTRA_BROKER_REPLICA_ACTION),
                 _executionTasksSummary.finishedIntraBrokerDataMovementInMB(),
                 numTotalIntraBrokerDataToMove(), _maximumConcurrentIntraBrokerPartitionMovementsPerBroker,
-                TRIGGERED_TASK_ID, _uuid, recentlyDemotedBrokers, recentlyRemovedBrokers);
+                isUuidFromSelfHealing(_uuid) ? TRIGGERED_SELF_HEALING_TASK_ID : TRIGGERED_USER_TASK_ID, _uuid,
+                recentlyDemotedBrokers, recentlyRemovedBrokers);
       case STOPPING_EXECUTION:
         interBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTER_BROKER_REPLICA_ACTION);
         intraBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION);
@@ -387,7 +407,8 @@ public class ExecutorState {
                              _maximumConcurrentIntraBrokerPartitionMovementsPerBroker,
                              _maximumConcurrentInterBrokerPartitionMovementsPerBroker,
                              _maximumConcurrentLeaderMovements,
-                             TRIGGERED_TASK_ID, _uuid, recentlyDemotedBrokers, recentlyRemovedBrokers);
+                             isUuidFromSelfHealing(_uuid) ? TRIGGERED_SELF_HEALING_TASK_ID : TRIGGERED_USER_TASK_ID, _uuid,
+                             recentlyDemotedBrokers, recentlyRemovedBrokers);
       default:
         throw new IllegalStateException("This should never happen");
     }
