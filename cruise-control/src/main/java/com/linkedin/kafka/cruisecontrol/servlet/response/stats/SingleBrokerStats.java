@@ -4,9 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.response.stats;
 
-import java.util.Map;
-
-
 public class SingleBrokerStats {
     protected static final String HOST = "Host";
     protected static final String BROKER = "Broker";

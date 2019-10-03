@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.servlet.response.stats;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
-import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
