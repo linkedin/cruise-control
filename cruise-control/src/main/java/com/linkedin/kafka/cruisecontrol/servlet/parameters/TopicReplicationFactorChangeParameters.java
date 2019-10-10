@@ -19,6 +19,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DRY_RUN_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_HARD_GOAL_CHECK_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_LEADER_MOVEMENTS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICA_MOVEMENT_STRATEGIES_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICATION_THROTTLE_PARAM;
@@ -38,6 +39,7 @@ public class TopicReplicationFactorChangeParameters extends GoalBasedOptimizatio
     validParameterNames.add(DRY_RUN_PARAM);
     validParameterNames.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
     validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    validParameterNames.add(EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
     validParameterNames.add(SKIP_HARD_GOAL_CHECK_PARAM);
     validParameterNames.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
     validParameterNames.add(REPLICATION_THROTTLE_PARAM);
@@ -49,6 +51,7 @@ public class TopicReplicationFactorChangeParameters extends GoalBasedOptimizatio
   protected boolean _dryRun;
   protected Integer _concurrentInterBrokerPartitionMovements;
   protected Integer _concurrentLeaderMovements;
+  protected Long _executionProgressCheckIntervalMs;
   protected boolean _skipHardGoalCheck;
   protected ReplicaMovementStrategy _replicaMovementStrategy;
   protected Long _replicationThrottle;
@@ -68,6 +71,7 @@ public class TopicReplicationFactorChangeParameters extends GoalBasedOptimizatio
     _dryRun = ParameterUtils.getDryRun(_request);
     _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true, false);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false, false);
+    _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_request);
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
     _replicationThrottle = ParameterUtils.replicationThrottle(_request, _config);
@@ -106,6 +110,10 @@ public class TopicReplicationFactorChangeParameters extends GoalBasedOptimizatio
 
   public Integer concurrentInterBrokerPartitionMovements() {
     return _concurrentInterBrokerPartitionMovements;
+  }
+
+  public Long executionProgressCheckIntervalMs() {
+    return _executionProgressCheckIntervalMs;
   }
 
   public Integer concurrentLeaderMovements() {

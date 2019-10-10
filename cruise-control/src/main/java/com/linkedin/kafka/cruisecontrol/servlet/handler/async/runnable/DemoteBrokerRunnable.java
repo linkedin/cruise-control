@@ -41,6 +41,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
   protected final boolean _dryRun;
   protected final boolean _allowCapacityEstimation;
   protected final Integer _concurrentLeaderMovements;
+  protected final Long _executionProgressCheckIntervalMs;
   protected final boolean _skipUrpDemotion;
   protected final boolean _excludeFollowerDemotion;
   protected final Long _replicationThrottle;
@@ -58,6 +59,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
     _dryRun = parameters.dryRun();
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
+    _executionProgressCheckIntervalMs = parameters.executionProgressCheckIntervalMs();
     _skipUrpDemotion = parameters.skipUrpDemotion();
     _excludeFollowerDemotion = parameters.excludeFollowerDemotion();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
@@ -141,7 +143,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
       OptimizerResult result = _kafkaCruiseControl.optimizations(clusterModel, goalsByPriority, operationProgress, null, optimizationOptions);
       if (!_dryRun) {
         _kafkaCruiseControl.executeDemotion(result.goalProposals(), _brokerIds, _concurrentLeaderMovements, clusterModel.brokers().size(),
-                                            _replicaMovementStrategy, _replicationThrottle, _uuid);
+                                            _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle, _uuid);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {

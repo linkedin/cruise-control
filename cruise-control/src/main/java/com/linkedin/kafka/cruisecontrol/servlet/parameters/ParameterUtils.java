@@ -88,6 +88,7 @@ public class ParameterUtils {
   public static final String REPLICATION_THROTTLE_PARAM = "replication_throttle";
   public static final String IGNORE_PROPOSAL_CACHE_PARAM = "ignore_proposal_cache";
   public static final String USE_READY_DEFAULT_GOALS_PARAM = "use_ready_default_goals";
+  public static final String EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM = "execution_progress_check_interval_ms";
   public static final String CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM = "concurrent_partition_movements_per_broker";
   public static final String CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM = "concurrent_intra_broker_partition_movements";
   public static final String CONCURRENT_LEADER_MOVEMENTS_PARAM = "concurrent_leader_movements";
@@ -647,6 +648,17 @@ public class ParameterUtils {
     }
 
     return reviewId;
+  }
+
+  /**
+   * Get the execution progress check interval in milliseconds. Default: {@code null}.
+   *
+   * @param request The Http request.
+   * @return Execution progress check interval in milliseconds.
+   */
+  static Long executionProgressCheckIntervalMs(HttpServletRequest request) {
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
+    return parameterString == null ? null : Long.parseLong(request.getParameter(parameterString));
   }
 
   /**
