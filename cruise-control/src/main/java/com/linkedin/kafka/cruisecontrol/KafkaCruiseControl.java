@@ -461,7 +461,7 @@ public class KafkaCruiseControl {
                                             false,
                                             Collections.emptySet());
       if (!dryRun) {
-        executeDemotion(result.goalProposals(), brokerIds, concurrentLeaderMovements, replicaMovementStrategy, uuid);
+        executeDemotion(result.goalProposals(), brokerIds, concurrentLeaderMovements, clusterModel.brokers().size(), replicaMovementStrategy, uuid);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
@@ -866,6 +866,7 @@ public class KafkaCruiseControl {
    * @param demotedBrokers Brokers to be demoted.
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
+   * @param brokerCount Number of brokers in the cluster.
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
    *                                (if null, use default.replica.movement.strategies).
    * @param uuid UUID of the execution.
@@ -873,14 +874,17 @@ public class KafkaCruiseControl {
   private void executeDemotion(Set<ExecutionProposal> proposals,
                                Set<Integer> demotedBrokers,
                                Integer concurrentLeaderMovements,
+                               int brokerCount,
                                ReplicaMovementStrategy replicaMovementStrategy,
                                String uuid) {
     if (hasProposalsToExecute(proposals, uuid)) {
-      // (1) Kafka Assigner mode is irrelevant for demoting. (2) Ensure that replica swaps within partitions, which are
-      // prerequisites for broker demotion and does not trigger data move, are throttled by concurrentLeaderMovements.
+      // (1) Kafka Assigner mode is irrelevant for demoting.
+      // (2) Ensure that replica swaps within partitions, which are prerequisites for broker demotion and does not trigger data move,
+      //     are throttled by concurrentLeaderMovements and config max.num.cluster.movements.
       int concurrentSwaps = concurrentLeaderMovements != null
                             ? concurrentLeaderMovements
                             : _config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
+      concurrentSwaps = Math.min(_config.getInt(KafkaCruiseControlConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG) / brokerCount, concurrentSwaps);
 
       // Set the execution mode, add execution proposals, and start execution.
       _executor.setExecutionMode(false);
