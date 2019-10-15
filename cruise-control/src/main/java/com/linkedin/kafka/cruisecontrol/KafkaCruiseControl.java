@@ -323,7 +323,8 @@ public class KafkaCruiseControl {
    * Dynamically set the interval between checking and updating (if needed) the progress of an initiated execution.
    *
    * @param requestedExecutionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
-   *                                                 execution (if null, use {@link Executor#MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS}).
+   *                                                  execution (if null, use the default execution progress check interval
+   *                                                  of Executor).
    */
   public void setRequestedExecutionProgressCheckIntervalMs(Long requestedExecutionProgressCheckIntervalMs) {
     _executor.setRequestedExecutionProgressCheckIntervalMs(requestedExecutionProgressCheckIntervalMs);

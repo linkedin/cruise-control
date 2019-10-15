@@ -42,6 +42,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.currentUtcDate;
+import static com.linkedin.kafka.cruisecontrol.executor.Executor.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.*;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.GET_METHOD;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
@@ -653,12 +654,26 @@ public class ParameterUtils {
   /**
    * Get the execution progress check interval in milliseconds. Default: {@code null}.
    *
+   * To prevent setting this value to a very small value by mistake, ensure that the requested execution progress check interval
+   * is not smaller than {@link com.linkedin.kafka.cruisecontrol.executor.Executor#MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS}
+   *
    * @param request The Http request.
    * @return Execution progress check interval in milliseconds.
    */
   static Long executionProgressCheckIntervalMs(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
-    return parameterString == null ? null : Long.parseLong(request.getParameter(parameterString));
+    if (parameterString == null) {
+      return null;
+    }
+
+    long executionProgressCheckIntervalMs = Long.parseLong(request.getParameter(parameterString));
+    if (executionProgressCheckIntervalMs < MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS) {
+      throw new IllegalArgumentException("Attempt to set execution progress check interval [" + executionProgressCheckIntervalMs
+          + "ms] to smaller than the minimum execution progress check interval in cluster ["
+          + MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS + "ms].");
+    }
+
+    return executionProgressCheckIntervalMs;
   }
 
   /**

@@ -204,15 +204,15 @@ public class Executor {
    * the {@link #MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS}.
    *
    * @param requestedExecutionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
-   *                                                 execution (if null, use {@link #MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS}).
+   *                                                  execution (if null, use {@link #_defaultExecutionProgressCheckIntervalMs}).
    */
   public synchronized void setRequestedExecutionProgressCheckIntervalMs(Long requestedExecutionProgressCheckIntervalMs) {
     if (requestedExecutionProgressCheckIntervalMs != null
         && requestedExecutionProgressCheckIntervalMs < MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS) {
       throw new IllegalArgumentException("Attempt to set execution progress check interval ["
                                          + requestedExecutionProgressCheckIntervalMs
-                                         + "] to smaller than the minimum execution progress check interval in cluster ["
-                                         + MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS + "].");
+                                         + "ms] to smaller than the minimum execution progress check interval in cluster ["
+                                         + MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS + "ms].");
     }
     _requestedExecutionProgressCheckIntervalMs = requestedExecutionProgressCheckIntervalMs;
   }
