@@ -36,7 +36,7 @@ public class SortedReplicasHelper {
   private Function<Replica, Double> _scoreFunc;
 
   public SortedReplicasHelper() {
-    _selectionFuncs = new HashSet<>();
+    _selectionFuncs = new LinkedHashSet<>();
     _priorityFuncs = new LinkedHashSet<>();
   }
 

@@ -138,6 +138,8 @@ public class ReplicaSortFunctionFactory {
   }
 
   /**
+   * @param excludedTopics Topics excluded from partition movements.
+   *
    * @return a selection function that filters out replicas which are online and from topics which should be excluded.
    */
   public static Function<Replica, Boolean> selectReplicasBasedOnExcludedTopics(Set<String> excludedTopics) {
@@ -145,6 +147,9 @@ public class ReplicaSortFunctionFactory {
   }
 
   /**
+   * @param resource The resource to check.
+   * @param limit The resource limit used to filter replicas.
+   *
    * @return a selection function that only includes replicas whose metric value for certain resource is above limit.
    */
   public static Function<Replica, Boolean> selectReplicasAboveLimit(Resource resource, double limit) {
@@ -152,6 +157,9 @@ public class ReplicaSortFunctionFactory {
   }
 
   /**
+   * @param resource The resource to check.
+   * @param limit The resource limit used to filter replicas.
+   *
    * @return a selection function that only includes replicas whose metric value for certain resource is below limit.
    */
   public static Function<Replica, Boolean> selectReplicasBelowLimit(Resource resource, double limit) {

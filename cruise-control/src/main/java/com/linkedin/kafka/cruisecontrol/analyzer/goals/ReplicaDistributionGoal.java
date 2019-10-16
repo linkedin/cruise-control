@@ -123,9 +123,9 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
     for (Broker broker : clusterModel.brokers()) {
       new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
                                                        optimizationOptions.onlyMoveImmigrantReplicas())
-                                .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(optimizationOptions.excludedTopics()))
                                 .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrantOrOfflineReplicas(),
                                                        !clusterModel.selfHealingEligibleReplicas().isEmpty() && broker.isAlive())
+                                .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(optimizationOptions.excludedTopics()))
                                 .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas())
                                 .maybeAddPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants(),
                                                       !optimizationOptions.onlyMoveImmigrantReplicas())
