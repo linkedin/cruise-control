@@ -44,6 +44,7 @@ public class AddBrokersRunnable extends OperationRunnable {
   protected final boolean _allowCapacityEstimation;
   protected final Integer _concurrentInterBrokerPartitionMovements;
   protected final Integer _concurrentLeaderMovements;
+  protected final Long _executionProgressCheckIntervalMs;
   protected final boolean _skipHardGoalCheck;
   protected final Pattern _excludedTopics;
   protected final String _uuid;
@@ -65,6 +66,7 @@ public class AddBrokersRunnable extends OperationRunnable {
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
     _concurrentInterBrokerPartitionMovements = parameters.concurrentInterBrokerPartitionMovements();
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
+    _executionProgressCheckIntervalMs = parameters.executionProgressCheckIntervalMs();
     _skipHardGoalCheck = parameters.skipHardGoalCheck();
     _excludedTopics = parameters.excludedTopics();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
@@ -130,6 +132,7 @@ public class AddBrokersRunnable extends OperationRunnable {
                                              _concurrentInterBrokerPartitionMovements,
                                              null,
                                              _concurrentLeaderMovements,
+                                             _executionProgressCheckIntervalMs,
                                              _replicaMovementStrategy,
                                              _replicationThrottle,
                                              _uuid);

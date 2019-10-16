@@ -31,6 +31,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXCLUDED_TOPICS;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_CONCURRENT_MOVEMENTS;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_SKIP_HARD_GOAL_CHECK;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_MODEL_COMPLETENESS_REQUIREMENTS;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.isKafkaAssignerMode;
@@ -51,6 +52,7 @@ public class RemoveBrokersRunnable extends OperationRunnable {
   protected final boolean _allowCapacityEstimation;
   protected final Integer _concurrentInterBrokerPartitionMovements;
   protected final Integer _concurrentLeaderMovements;
+  protected final Long _executionProgressCheckIntervalMs;
   protected final boolean _skipHardGoalCheck;
   protected final Pattern _excludedTopics;
   protected final String _uuid;
@@ -79,6 +81,7 @@ public class RemoveBrokersRunnable extends OperationRunnable {
     _allowCapacityEstimation = allowCapacityEstimation;
     _concurrentInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _concurrentLeaderMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
+    _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
     _skipHardGoalCheck = SELF_HEALING_SKIP_HARD_GOAL_CHECK;
     _excludedTopics = SELF_HEALING_EXCLUDED_TOPICS;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
@@ -102,6 +105,7 @@ public class RemoveBrokersRunnable extends OperationRunnable {
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
     _concurrentInterBrokerPartitionMovements = parameters.concurrentInterBrokerPartitionMovements();
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
+    _executionProgressCheckIntervalMs = parameters.executionProgressCheckIntervalMs();
     _skipHardGoalCheck = parameters.skipHardGoalCheck();
     _excludedTopics = parameters.excludedTopics();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
@@ -163,8 +167,8 @@ public class RemoveBrokersRunnable extends OperationRunnable {
       OptimizerResult result = _kafkaCruiseControl.optimizations(clusterModel, goalsByPriority, operationProgress, null, optimizationOptions);
       if (!_dryRun) {
         _kafkaCruiseControl.executeRemoval(result.goalProposals(), _throttleRemovedBrokers, _removedBrokerIds, isKafkaAssignerMode(_goals),
-                                           _concurrentInterBrokerPartitionMovements, _concurrentLeaderMovements, _replicaMovementStrategy,
-                                           _replicationThrottle, _uuid);
+                                           _concurrentInterBrokerPartitionMovements, _concurrentLeaderMovements,
+                                           _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle, _uuid);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {

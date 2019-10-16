@@ -39,6 +39,7 @@ public class RunnableUtils {
   public static final ReplicaMovementStrategy SELF_HEALING_REPLICA_MOVEMENT_STRATEGY = null;
   public static final Pattern SELF_HEALING_EXCLUDED_TOPICS = null;
   public static final Integer SELF_HEALING_CONCURRENT_MOVEMENTS = null;
+  public static final Long SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS = null;
   public static final boolean SELF_HEALING_SKIP_HARD_GOAL_CHECK = false;
   public static final ModelCompletenessRequirements SELF_HEALING_MODEL_COMPLETENESS_REQUIREMENTS = null;
   private static final Set<String> KAFKA_ASSIGNER_GOALS =

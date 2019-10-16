@@ -32,8 +32,9 @@ public class AdminRequest extends AbstractSyncRequest {
   /**
    * Handle the admin requests:
    * <ul>
-   * <li>Dynamically change the partition and leadership concurrency of an ongoing execution. Has no effect if Executor
-   * is in {@link com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State#NO_TASK_IN_PROGRESS} state.</li>
+   * <li>Dynamically change the partition and leadership concurrency and the interval between checking and updating
+   * (if needed) the progress of an ongoing execution. Has no effect if Executor is in
+   * {@link com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State#NO_TASK_IN_PROGRESS} state.</li>
    * <li>Enable/disable the specified anomaly detectors.</li>
    * <li>Drop selected recently removed/demoted brokers.</li>
    * </ul>
@@ -88,6 +89,14 @@ public class AdminRequest extends AbstractSyncRequest {
       sb.append(String.format("Leadership movement concurrency is set to %d%n", concurrentLeaderMovements));
       LOG.info("Leadership movement concurrency is set to: {} by user.", concurrentLeaderMovements);
     }
+    // 4. Change the interval between checking and updating (if needed) the progress of an initiated execution.
+    Long executionProgressCheckIntervalMs = changeExecutionConcurrencyParameters.executionProgressCheckIntervalMs();
+    if (executionProgressCheckIntervalMs != null) {
+      _kafkaCruiseControl.setRequestedExecutionProgressCheckIntervalMs(executionProgressCheckIntervalMs);
+      sb.append(String.format("Execution progress check interval is set to %dMs%n", executionProgressCheckIntervalMs));
+      LOG.info("Execution progress check interval is set to: {}Ms by user.", executionProgressCheckIntervalMs);
+    }
+
     return sb.toString();
   }
 

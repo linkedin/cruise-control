@@ -320,6 +320,17 @@ public class KafkaCruiseControl {
   }
 
   /**
+   * Dynamically set the interval between checking and updating (if needed) the progress of an initiated execution.
+   *
+   * @param requestedExecutionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
+   *                                                  execution (if null, use the default execution progress check interval
+   *                                                  of Executor).
+   */
+  public void setRequestedExecutionProgressCheckIntervalMs(Long requestedExecutionProgressCheckIntervalMs) {
+    _executor.setRequestedExecutionProgressCheckIntervalMs(requestedExecutionProgressCheckIntervalMs);
+  }
+
+  /**
    * Dynamically set the inter-broker partition movement concurrency per broker.
    *
    * @param requestedInterBrokerPartitionMovementConcurrency The maximum number of concurrent inter-broker partition movements
@@ -456,6 +467,8 @@ public class KafkaCruiseControl {
    *                                                (if null, use num.concurrent.intra.broker.partition.movements).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
+   * @param executionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
+   *                                         execution (if null, use execution.progress.check.interval.ms).
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
    *                                (if null, use default.replica.movement.strategies).
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
@@ -468,6 +481,7 @@ public class KafkaCruiseControl {
                                Integer concurrentInterBrokerPartitionMovements,
                                Integer concurrentIntraBrokerPartitionMovements,
                                Integer concurrentLeaderMovements,
+                               Long executionProgressCheckIntervalMs,
                                ReplicaMovementStrategy replicaMovementStrategy,
                                Long replicationThrottle,
                                String uuid) {
@@ -476,7 +490,8 @@ public class KafkaCruiseControl {
       _executor.setExecutionMode(isKafkaAssignerMode);
       _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor,
                                  concurrentInterBrokerPartitionMovements, concurrentIntraBrokerPartitionMovements,
-                                 concurrentLeaderMovements, replicaMovementStrategy, replicationThrottle, uuid);
+                                 concurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy,
+                                 replicationThrottle, uuid);
     }
   }
 
@@ -490,6 +505,8 @@ public class KafkaCruiseControl {
    *                                                (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
+   * @param executionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
+   *                                         execution (if null, use execution.progress.check.interval.ms).
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
    *                                (if null, use default.replica.movement.strategies).
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
@@ -502,6 +519,7 @@ public class KafkaCruiseControl {
                              boolean isKafkaAssignerMode,
                              Integer concurrentInterBrokerPartitionMovements,
                              Integer concurrentLeaderMovements,
+                             Long executionProgressCheckIntervalMs,
                              ReplicaMovementStrategy replicaMovementStrategy,
                              Long replicationThrottle,
                              String uuid) {
@@ -510,7 +528,8 @@ public class KafkaCruiseControl {
       _executor.setExecutionMode(isKafkaAssignerMode);
       _executor.executeProposals(proposals, throttleDecommissionedBroker ? Collections.emptySet() : removedBrokers,
                                  removedBrokers, _loadMonitor, concurrentInterBrokerPartitionMovements, 0,
-                                 concurrentLeaderMovements, replicaMovementStrategy, replicationThrottle, uuid);
+                                 concurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy,
+                                 replicationThrottle, uuid);
     }
   }
 
@@ -521,6 +540,8 @@ public class KafkaCruiseControl {
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
    * @param brokerCount Number of brokers in the cluster.
+   * @param executionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
+   *                                         execution (if null, use execution.progress.check.interval.ms).
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
    *                                (if null, use default.replica.movement.strategies).
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
@@ -531,6 +552,7 @@ public class KafkaCruiseControl {
                               Set<Integer> demotedBrokers,
                               Integer concurrentLeaderMovements,
                               int brokerCount,
+                              Long executionProgressCheckIntervalMs,
                               ReplicaMovementStrategy replicaMovementStrategy,
                               Long replicationThrottle,
                               String uuid) {
@@ -546,7 +568,7 @@ public class KafkaCruiseControl {
       // Set the execution mode, add execution proposals, and start execution.
       _executor.setExecutionMode(false);
       _executor.executeDemoteProposals(proposals, demotedBrokers, _loadMonitor, concurrentSwaps, concurrentLeaderMovements,
-                                       replicaMovementStrategy, replicationThrottle, uuid);
+                                       executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle, uuid);
     }
   }
 

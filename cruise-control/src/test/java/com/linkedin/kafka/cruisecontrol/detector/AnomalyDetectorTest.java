@@ -44,6 +44,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXCLUDED_TOPICS;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_CONCURRENT_MOVEMENTS;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
 
@@ -249,6 +250,7 @@ public class AnomalyDetectorTest {
                                               EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
                                               EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
                                               EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
+                                              EasyMock.eq(SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS),
                                               EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
                                               EasyMock.eq(null),
                                               EasyMock.anyString());
@@ -276,6 +278,7 @@ public class AnomalyDetectorTest {
                                               EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
                                               EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
                                               EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
+                                              EasyMock.eq(SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS),
                                               EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
                                               EasyMock.eq(null),
                                               EasyMock.anyString());

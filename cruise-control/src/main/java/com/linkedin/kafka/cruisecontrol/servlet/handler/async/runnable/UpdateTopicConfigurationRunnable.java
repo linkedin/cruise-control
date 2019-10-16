@@ -69,6 +69,7 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
                                        _topicReplicationFactorChangeParameters.allowCapacityEstimation(),
                                        _topicReplicationFactorChangeParameters.concurrentInterBrokerPartitionMovements(),
                                        _topicReplicationFactorChangeParameters.concurrentLeaderMovements(),
+                                       _topicReplicationFactorChangeParameters.executionProgressCheckIntervalMs(),
                                        _topicReplicationFactorChangeParameters.skipHardGoalCheck(),
                                        _topicReplicationFactorChangeParameters.replicaMovementStrategy(),
                                        _topicReplicationFactorChangeParameters.replicationThrottle(),
@@ -116,6 +117,8 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
    *                                                (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
+   * @param executionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
+   *                                         execution (if null, use execution.progress.check.interval.ms).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
    *                                (if null, use default.replica.movement.strategies).
@@ -135,6 +138,7 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
                                                       boolean allowCapacityEstimation,
                                                       Integer concurrentInterBrokerPartitionMovements,
                                                       Integer concurrentLeaderMovements,
+                                                      Long executionProgressCheckIntervalMs,
                                                       boolean skipHardGoalCheck,
                                                       ReplicaMovementStrategy replicaMovementStrategy,
                                                       Long replicationThrottle,
@@ -199,7 +203,8 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
       result = _kafkaCruiseControl.optimizations(clusterModel, goalsByPriority, operationProgress, initReplicaDistribution, optimizationOptions);
       if (!dryRun) {
         _kafkaCruiseControl.executeProposals(result.goalProposals(), Collections.emptySet(), false, concurrentInterBrokerPartitionMovements,
-                                             0, concurrentLeaderMovements, replicaMovementStrategy, replicationThrottle, _uuid);
+                                             0, concurrentLeaderMovements, executionProgressCheckIntervalMs,
+                                             replicaMovementStrategy, replicationThrottle, _uuid);
       }
     } catch (KafkaCruiseControlException kcce) {
       throw kcce;
