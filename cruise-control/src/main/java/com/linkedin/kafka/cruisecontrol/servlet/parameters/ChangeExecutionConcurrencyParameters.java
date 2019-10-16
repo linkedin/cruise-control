@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_LEADER_MOVEMENTS_PARAM;
 
@@ -23,11 +24,13 @@ public class ChangeExecutionConcurrencyParameters  extends AbstractParameters {
   protected static final SortedSet<String> CASE_INSENSITIVE_PARAMETER_NAMES;
   static {
     SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    validParameterNames.add(EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
     validParameterNames.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
     validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
     validParameterNames.addAll(AbstractParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
     CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
   }
+  protected Long _executionProgressCheckIntervalMs;
   protected Integer _concurrentInterBrokerPartitionMovements;
   protected Integer _concurrentLeaderMovements;
 
@@ -38,6 +41,7 @@ public class ChangeExecutionConcurrencyParameters  extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
+    _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_request);
     _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
   }
@@ -54,11 +58,16 @@ public class ChangeExecutionConcurrencyParameters  extends AbstractParameters {
     changeExecutionConcurrencyParameters.configure(configs);
     changeExecutionConcurrencyParameters.initParameters();
     // At least new concurrency for one type of task should be explicitly specified in the request; otherwise, return null.
-    if (changeExecutionConcurrencyParameters.concurrentInterBrokerPartitionMovements() == null
+    if (changeExecutionConcurrencyParameters.executionProgressCheckIntervalMs() == null
+        && changeExecutionConcurrencyParameters.concurrentInterBrokerPartitionMovements() == null
         && changeExecutionConcurrencyParameters.concurrentLeaderMovements() == null) {
       return null;
     }
     return changeExecutionConcurrencyParameters;
+  }
+
+  public Long executionProgressCheckIntervalMs() {
+    return _executionProgressCheckIntervalMs;
   }
 
   public Integer concurrentInterBrokerPartitionMovements() {
