@@ -48,8 +48,8 @@ Cruise control allows specifying hard goals and soft goals. A hard goal is one t
 * Attempt to evenly distribute partitions of a specific topic across all brokers 
 * Attempt to evenly distribute replicas (globally) across all brokers
 * Attempt to evenly distribute leader replicas (globally) across all brokers
-* (only in migrate_to_kafka_2_0 branch) Disk utilization must be within pre-defined thresholds for each disk within a broker
-* (only in migrate_to_kafka_2_0 branch) Attempt to evenly distribute disk utilization across disks of each broker
+* Disk utilization must be within pre-defined thresholds for each disk within a broker (not available in `kafka_0_11_and_1_0` branch)
+* Attempt to evenly distribute disk utilization across disks of each broker (not available in `kafka_0_11_and_1_0` branch)
 
 At a high level, the goal optimization logic is as follows: 
 ```
