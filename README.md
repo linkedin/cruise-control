@@ -33,21 +33,21 @@ Cruise Control for Apache Kafka
     * Goal violation
     * Broker failure detection
     * Metric anomaly detection
-    * Disk failure detection(only available in `migrate_to_kafka_2_0` branch)
+    * Disk failure detection (not available in `kafka_0_11_and_1_0` branch)
   
   * Admin operations, including:
     * Add brokers
     * Decommission brokers
     * Demote brokers
     * Rebalance the cluster
-    * Fix offline replicas(only available in `migrate_to_kafka_2_0` branch)
+    * Fix offline replicas (not available in `kafka_0_11_and_1_0` branch)
     * Perform preferred leader election (PLE)
 
 ### Environment Requirements
-* The current `master` branch of Cruise Control is compatible with Apache Kafka `0.11.0.0` and `1.0` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `0.1.*`)
-* The `migrate_to_kafka_2_0` branch of Cruise Control is compatible with Apache Kafka `1.1` and `2.0.0` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.0.*`)
+* The current `master` branch of Cruise Control is compatible with Apache Kafka `1.1` and `2.0.0` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.0.*`)
+* The `kafka_0_11_and_1_0` branch of Cruise Control is compatible with  Apache Kafka `0.11.0.0` and `1.0`(i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `0.1.*`)
 * `message.format.version` `0.10.0` and above is needed
-* The `master` and `migrate_to_kafka_2_0` branch compile with `Scala 2.11`
+* The `master` and `kafka_0_11_and_1_0` branch compile with `Scala 2.11`
 * Support for Apache Kafka `2.1+` is in progress.
 
 ### Quick Start ###
@@ -163,15 +163,15 @@ The goals in Cruise Control are pluggable with different priorities. The default
  * **TopicReplicaDistributionGoal** - Attempts to maintain an even distribution of any topic's partitions across the entire cluster.
  * **PreferredLeaderElectionGoal** - Simply move the leaders to the first replica of each partition.
  * **KafkaAssignerDiskUsageDistributionGoal** - (Kafka-assigner mode) Attempts to distribute disk usage evenly among brokers based on swap.
- * **IntraBrokerDiskCapacityGoal** - (Rebalance-disk mode, only available in `migrate_to_kafka_2_0` branch) Ensures that Disk space usage of each disk is below a given threshold.
- * **IntraBrokerDiskUsageDistributionGoal** - (Rebalance-disk mode, only available in `migrate_to_kafka_2_0` branch) Attempts to keep the Disk space usage variance among disks within a certain range relative to the average broker Disk utilization.
+ * **IntraBrokerDiskCapacityGoal** - (Rebalance-disk mode, not available in `kafka_0_11_and_1_0` branch) Ensures that Disk space usage of each disk is below a given threshold.
+ * **IntraBrokerDiskUsageDistributionGoal** - (Rebalance-disk mode, not available in `kafka_0_11_and_1_0` branch) Attempts to keep the Disk space usage variance among disks within a certain range relative to the average broker Disk utilization.
 
 #### Anomaly Notifier ####
 The anomaly notifier allows users to be notified when an anomaly is detected. Anomalies include:
  * Broker failure
  * Goal violation
  * Metric anomaly
- * Disk failure(only available in `migrate_to_kafka_2_0` branch)
+ * Disk failure (not available in `kafka_0_11_and_1_0` branch)
  
 In addition to anomaly notifications users can specify actions to be taken in response to an anomaly. The following actions are supported:
  * **fix** - fix the problem right away
