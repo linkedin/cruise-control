@@ -119,13 +119,13 @@ public class SlowBrokers extends KafkaAnomaly {
     if (_slowBrokers == null || _slowBrokers.isEmpty()) {
       throw new IllegalArgumentException("Missing broker ids for slow broker anomaly.");
     }
-    _fixable = (Boolean)configs.get(SlowBrokerDetector.SLOW_BROKERS_FIXABLE_CONFIG);
+    _fixable = (Boolean) configs.get(SlowBrokerDetector.SLOW_BROKERS_FIXABLE_CONFIG);
     if (_fixable == null) {
       throw new IllegalArgumentException(String.format("Missing %s for slow broker anomaly.", SlowBrokerDetector.SLOW_BROKERS_FIXABLE_CONFIG));
     }
     if (_fixable) {
       Boolean removeSlowBroker = (Boolean) configs.get(SlowBrokerDetector.REMOVE_SLOW_BROKERS_CONFIG);
-      if (_fixable == null) {
+      if (removeSlowBroker == null) {
         throw new IllegalArgumentException(String.format("Missing %s for slow broker anomaly.", SlowBrokerDetector.REMOVE_SLOW_BROKERS_CONFIG));
       }
       _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));

@@ -8,7 +8,6 @@ import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomaly;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
-import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -34,7 +33,6 @@ public class KafkaMetricAnomaly extends KafkaAnomaly implements MetricAnomaly<Br
   protected Short _metricId;
   protected List<Long> _windows;
   protected String _anomalyId;
-  protected OptimizationResult _optimizationResult;
 
   public KafkaMetricAnomaly() {
   }

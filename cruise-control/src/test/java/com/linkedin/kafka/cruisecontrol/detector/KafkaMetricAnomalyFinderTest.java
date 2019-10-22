@@ -151,7 +151,7 @@ public class KafkaMetricAnomalyFinderTest {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.METRIC_ANOMALY_FINDER_CLASSES_CONFIG, KafkaMetricAnomalyFinder.class.getName());
     props.setProperty(METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG, "95.0");
-    props.setProperty(METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG, "2.0");
+    props.setProperty(METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG, "5.0");
     props.setProperty(METRIC_ANOMALY_UPPER_MARGIN_CONFIG, "0.5");
     props.setProperty(METRIC_ANOMALY_LOWER_MARGIN_CONFIG, "0.2");
     props.setProperty(CruiseControlConfig.METRIC_ANOMALY_FINDER_METRICS_CONFIG,
@@ -162,6 +162,8 @@ public class KafkaMetricAnomalyFinderTest {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(props);
 
     KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
+    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(config);
+    EasyMock.replay(mockKafkaCruiseControl);
     Map<String, Object> originalConfigs = new HashMap<>(config.originals());
     originalConfigs.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
 

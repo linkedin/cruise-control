@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
-import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;

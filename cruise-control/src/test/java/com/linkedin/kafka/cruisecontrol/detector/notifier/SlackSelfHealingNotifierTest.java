@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.BrokerFailureDetector.FAILED_BROKERS_OBJECT_CONFIG;
 import static org.junit.Assert.assertEquals;
 
@@ -43,8 +44,9 @@ public class SlackSelfHealingNotifierTest {
         Map<Integer, Long> failedBrokers = new HashMap<>();
         failedBrokers.put(1, 200L);
         failedBrokers.put(2, 400L);
-        Map<String, Object> parameterConfigOverrides = new HashMap<>(2);
+        Map<String, Object> parameterConfigOverrides = new HashMap<>(3);
         parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
+        parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_CONFIG, 200L);
         parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, failedBrokers);
         FAILURES = kafkaCruiseControlConfig.getConfiguredInstance(KafkaCruiseControlConfig.BROKER_FAILURES_CLASS_CONFIG,
                                                                   BrokerFailures.class,

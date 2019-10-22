@@ -18,10 +18,13 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistri
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.common.KafkaNetworkClientProvider;
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import com.linkedin.kafka.cruisecontrol.detector.DiskFailures;
@@ -1452,7 +1455,10 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                     .add(CpuUsageDistributionGoal.class.getName())
                     .add(LeaderReplicaDistributionGoal.class.getName())
                     .add(LeaderBytesInDistributionGoal.class.getName())
-                    .add(TopicReplicaDistributionGoal.class.getName()).toString(),
+                    .add(TopicReplicaDistributionGoal.class.getName())
+                    .add(KafkaAssignerDiskUsageDistributionGoal.class.getName())
+                    .add(KafkaAssignerEvenRackAwareGoal.class.getName())
+                    .add(PreferredLeaderElectionGoal.class.getName()).toString(),
                 ConfigDef.Importance.HIGH,
                 GOALS_DOC)
         .define(INTRA_BROKER_GOALS_CONFIG,
