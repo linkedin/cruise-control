@@ -25,11 +25,12 @@ public class MetricAnomalyFinderUtils {
   public static boolean isDataSufficient(int sampleCount,
                                          double upperPercentile,
                                          double lowerPercentile) {
-    if(upperPercentile>=100.0 || upperPercentile <=0.0 || lowerPercentile>=100.0 || lowerPercentile <=0.0)
+    if (upperPercentile >= 100.0 || upperPercentile <= 0.0 || lowerPercentile >= 100.0 || lowerPercentile <= 0.0) {
       throw new IllegalArgumentException("Invalid percentile.");
+    }
 
-    int minNumValues = (int) Math.ceil (100 / (upperPercentile > 50.0? (100- upperPercentile) : upperPercentile));
-    minNumValues = Math.max(minNumValues, (int) Math.ceil (100 / (lowerPercentile > 50.0? (100- lowerPercentile) : lowerPercentile)));
+    int minNumValues = (int) Math.ceil(100 / (upperPercentile > 50.0 ? (100 - upperPercentile) : upperPercentile));
+    minNumValues = Math.max(minNumValues, (int) Math.ceil(100 / (lowerPercentile > 50.0 ? (100 - lowerPercentile) : lowerPercentile)));
 
     return sampleCount >= minNumValues;
   }
