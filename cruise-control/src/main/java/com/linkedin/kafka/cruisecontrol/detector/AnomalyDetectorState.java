@@ -24,7 +24,6 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.utcDateFor;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.SEC_TO_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector.METRIC_REGISTRY_NAME;
-import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getAnomalyType;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.GOAL_VIOLATION;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.METRIC_ANOMALY;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.BROKER_FAILURE;
@@ -40,6 +39,7 @@ public class AnomalyDetectorState {
   private static final String FIXABLE_VIOLATED_GOALS = "fixableViolatedGoals";
   private static final String UNFIXABLE_VIOLATED_GOALS = "unfixableViolatedGoals";
   private static final String FAILED_BROKERS_BY_TIME_MS = "failedBrokersByTimeMs";
+  private static final String SLOW_BROKERS_BY_TIME_MS = "slowBrokersByTimeMs";
   private static final String FAILED_DISKS_BY_TIME_MS = "failedDisksByTimeMs";
   private static final String DESCRIPTION = "description";
   private static final String SELF_HEALING_ENABLED = "selfHealingEnabled";
@@ -49,6 +49,7 @@ public class AnomalyDetectorState {
   private static final String RECENT_BROKER_FAILURES = "recentBrokerFailures";
   private static final String RECENT_METRIC_ANOMALIES = "recentMetricAnomalies";
   private static final String RECENT_DISK_FAILURES = "recentDiskFailures";
+  private static final String RECENT_SLOW_BROKERS = "recentSlowBrokers";
   private static final String ONGOING_SELF_HEALING_ANOMALY = "ongoingSelfHealingAnomaly";
   private static final String OPTIMIZATION_RESULT = "optimizationResult";
   private static final String METRICS = "metrics";
@@ -123,7 +124,9 @@ public class AnomalyDetectorState {
       _anomalyRateByType.put(AnomalyType.METRIC_ANOMALY,
                              dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "metric-anomaly-rate")));
       _anomalyRateByType.put(AnomalyType.DISK_FAILURE,
-          dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "disk-failure-rate")));
+                             dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "disk-failure-rate")));
+      _anomalyRateByType.put(AnomalyType.SLOW_BROKER,
+                             dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "slow-broker-rate")));
     } else {
       _anomalyRateByType = new HashMap<>(AnomalyType.cachedValues().size());
       AnomalyType.cachedValues().forEach(anomalyType -> _anomalyRateByType.put(anomalyType, new Meter()));
@@ -265,8 +268,8 @@ public class AnomalyDetectorState {
    * @param anomaly The anomaly to handle.
    * @param status A status information regarding how the anomaly was handled.
    */
-  synchronized void onAnomalyHandle(Anomaly anomaly, AnomalyState.Status status) {
-    AnomalyType anomalyType = getAnomalyType(anomaly);
+  synchronized void onAnomalyHandle(KafkaAnomaly anomaly, AnomalyState.Status status) {
+    AnomalyType anomalyType = anomaly.anomalyType();
     String anomalyId = anomaly.anomalyId();
 
     if (status == AnomalyState.Status.FIX_STARTED) {
@@ -328,6 +331,13 @@ public class AnomalyDetectorState {
           anomalyDetails.put(OPTIMIZATION_RESULT, metricAnomaly.optimizationResult(isJson));
         }
         break;
+      case SLOW_BROKER:
+        SlowBrokers slowBrokers = (SlowBrokers) anomalyState.anomaly();
+        anomalyDetails.put(SLOW_BROKERS_BY_TIME_MS, slowBrokers.slowBrokers());
+        if (hasFixStarted) {
+          anomalyDetails.put(OPTIMIZATION_RESULT, slowBrokers.optimizationResult(isJson));
+        }
+        break;
       default:
         throw new IllegalStateException("Unrecognized anomaly type " + anomalyType);
     }
@@ -361,7 +371,7 @@ public class AnomalyDetectorState {
   }
 
   public synchronized Map<String, Object> getJsonStructure() {
-    Map<String, Object> anomalyDetectorState = new HashMap<>(_recentAnomaliesByType.size() + (_ongoingSelfHealingAnomaly == null ? 5 : 6));
+    Map<String, Object> anomalyDetectorState = new HashMap<>(_recentAnomaliesByType.size() + (_ongoingSelfHealingAnomaly == null ? 10 : 11));
     Map<Boolean, Set<String>> selfHealingByEnableStatus = getSelfHealingByEnableStatus();
     anomalyDetectorState.put(SELF_HEALING_ENABLED, selfHealingByEnableStatus.get(true));
     anomalyDetectorState.put(SELF_HEALING_DISABLED, selfHealingByEnableStatus.get(false));
@@ -370,6 +380,7 @@ public class AnomalyDetectorState {
     anomalyDetectorState.put(RECENT_BROKER_FAILURES, recentAnomalies(BROKER_FAILURE, true));
     anomalyDetectorState.put(RECENT_METRIC_ANOMALIES, recentAnomalies(METRIC_ANOMALY, true));
     anomalyDetectorState.put(RECENT_DISK_FAILURES, recentAnomalies(AnomalyType.DISK_FAILURE, true));
+    anomalyDetectorState.put(RECENT_SLOW_BROKERS, recentAnomalies(AnomalyType.SLOW_BROKER, true));
     anomalyDetectorState.put(METRICS, metrics());
     if (_ongoingSelfHealingAnomaly != null) {
       anomalyDetectorState.put(ONGOING_SELF_HEALING_ANOMALY, _ongoingSelfHealingAnomaly.anomalyId());
@@ -381,7 +392,7 @@ public class AnomalyDetectorState {
   @Override
   public synchronized String toString() {
     Map<Boolean, Set<String>> selfHealingByEnableStatus = getSelfHealingByEnableStatus();
-    return String.format("{%s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%.3f}%n",
+    return String.format("{%s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%.3f}%n",
                          SELF_HEALING_ENABLED, selfHealingByEnableStatus.get(true),
                          SELF_HEALING_DISABLED, selfHealingByEnableStatus.get(false),
                          SELF_HEALING_ENABLED_RATIO, selfHealingEnabledRatio(),
@@ -389,6 +400,7 @@ public class AnomalyDetectorState {
                          RECENT_BROKER_FAILURES, recentAnomalies(BROKER_FAILURE, false),
                          RECENT_METRIC_ANOMALIES, recentAnomalies(METRIC_ANOMALY, false),
                          RECENT_DISK_FAILURES, recentAnomalies(AnomalyType.DISK_FAILURE, false),
+                         RECENT_SLOW_BROKERS, recentAnomalies(AnomalyType.SLOW_BROKER, false),
                          METRICS, _metrics,
                          ONGOING_SELF_HEALING_ANOMALY, _ongoingSelfHealingAnomaly == null
                                                        ? "None" : _ongoingSelfHealingAnomaly.anomalyId(),

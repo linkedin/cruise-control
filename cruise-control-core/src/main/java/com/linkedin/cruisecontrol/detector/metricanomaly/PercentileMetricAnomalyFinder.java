@@ -20,6 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.cruisecontrol.CruiseControlUtils.toPrettyTime;
+import static com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyFinderUtils.isDataSufficient;
+import static com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyFinderUtils.SIGNIFICANT_METRIC_VALUE_THRESHOLD;
 
 
 /**
@@ -35,7 +37,6 @@ import static com.linkedin.cruisecontrol.CruiseControlUtils.toPrettyTime;
 public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements MetricAnomalyFinder<E> {
   private static final Logger LOG = LoggerFactory.getLogger(PercentileMetricAnomalyFinder.class);
   // Ensure that no metric anomaly is generated unless the upper percentile metric value is a significant metric value.
-  private static final double SIGNIFICANT_METRIC_VALUE_THRESHOLD = 1;
   private final Percentile _percentile;
   protected double _anomalyUpperMargin;
   protected double _anomalyLowerMargin;
@@ -140,7 +141,9 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
       throw new IllegalArgumentException("Metrics history or current metrics cannot be null.");
     }
 
-    if (metricsHistoryByEntity.isEmpty() || !isDataSufficient(metricsHistoryByEntity.values().iterator().next())) {
+    if (metricsHistoryByEntity.isEmpty() ||
+        !isDataSufficient(metricsHistoryByEntity.values().iterator().next().metricValues().length(),
+                          _anomalyUpperPercentile, _anomalyLowerPercentile)) {
       return Collections.emptySet();
     }
 
@@ -186,12 +189,5 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
     _interestedMetrics = new HashSet<>(Arrays.asList(trimmedMetrics.split(",")));
     // In case there is an empty string metric.
     _interestedMetrics.removeIf(String::isEmpty);
-  }
-
-  private boolean isDataSufficient(ValuesAndExtrapolations history) {
-    int minNumValues = (int) (100 / (100 - _anomalyUpperPercentile));
-    minNumValues = Math.max(minNumValues, (int) (100 / (100 - _anomalyLowerPercentile)));
-
-    return history.metricValues().length() >= minNumValues;
   }
 }

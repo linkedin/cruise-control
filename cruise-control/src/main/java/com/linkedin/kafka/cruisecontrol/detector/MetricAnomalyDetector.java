@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
-import com.linkedin.cruisecontrol.detector.Anomaly;
+import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomaly;
 import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyFinder;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
@@ -28,12 +28,16 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAF
  */
 public class MetricAnomalyDetector implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(MetricAnomalyDetector.class);
+  public static final String METRIC_ANOMALY_DESCRIPTION_CONFIG = "metric.anomaly.description";
+  public static final String METRIC_ANOMALY_TIME_WINDOW_CONFIG = "metric.anomaly.time.window";
+  public static final String METRIC_ANOMALY_BROKER_ENTITY_CONFIG = "metric.anomaly.broker.entity";
+  public static final String METRIC_ANOMALY_METRIC_ID_CONFIG = "metric.anomaly.metric.id";
   private final LoadMonitor _loadMonitor;
-  private final Queue<Anomaly> _anomalies;
+  private final Queue<KafkaAnomaly> _anomalies;
   private final List<MetricAnomalyFinder> _kafkaMetricAnomalyFinders;
 
   public MetricAnomalyDetector(LoadMonitor loadMonitor,
-                               Queue<Anomaly> anomalies,
+                               Queue<KafkaAnomaly> anomalies,
                                KafkaCruiseControl kafkaCruiseControl) {
     _loadMonitor = loadMonitor;
     _anomalies = anomalies;
@@ -52,7 +56,7 @@ public class MetricAnomalyDetector implements Runnable {
     try {
       // Check if the load monitor is ready.
       LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
-      if (!ViolationUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
+      if (!AnomalyUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
         LOG.info("Skipping metric anomaly detection because load monitor is in {} state.", loadMonitorTaskRunnerState);
         return;
       }
@@ -62,7 +66,9 @@ public class MetricAnomalyDetector implements Runnable {
       Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker = _loadMonitor.currentBrokerMetricValues();
 
       for (MetricAnomalyFinder<BrokerEntity> kafkaMetricAnomalyFinder : _kafkaMetricAnomalyFinders) {
-        _anomalies.addAll(kafkaMetricAnomalyFinder.metricAnomalies(metricsHistoryByBroker, currentMetricsByBroker));
+        for (MetricAnomaly<BrokerEntity> metricAnomaly: kafkaMetricAnomalyFinder.metricAnomalies(metricsHistoryByBroker, currentMetricsByBroker)) {
+          _anomalies.add((KafkaMetricAnomaly) metricAnomaly);
+        }
       }
 
     } catch (Exception e) {

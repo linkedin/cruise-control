@@ -5,55 +5,38 @@
 package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomaly;
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getAnomalyType;
+import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_DESCRIPTION_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_BROKER_ENTITY_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_METRIC_ID_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_TIME_WINDOW_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.METRIC_ANOMALY;
 
 
 /**
  * A class that holds Kafka metric anomalies.
  * A Kafka metric anomaly indicates unexpected rapid changes in metric values of a broker.
  */
-public class KafkaMetricAnomaly implements MetricAnomaly<BrokerEntity> {
-  private static final String ID_PREFIX = AnomalyType.METRIC_ANOMALY.toString();
+public class KafkaMetricAnomaly extends KafkaAnomaly implements MetricAnomaly<BrokerEntity> {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaMetricAnomaly.class);
-  private final KafkaCruiseControl _kafkaCruiseControl;
-  private final String _description;
-  private final BrokerEntity _brokerEntity;
-  private final Short _metricId;
-  private final List<Long> _windows;
-  private final String _anomalyId;
-  private OptimizationResult _optimizationResult;
+  protected static final String ID_PREFIX = METRIC_ANOMALY.toString();
+  protected String _description;
+  protected BrokerEntity _brokerEntity;
+  protected Short _metricId;
+  protected List<Long> _windows;
+  protected String _anomalyId;
+  protected OptimizationResult _optimizationResult;
 
-  /**
-   * Kafka Metric anomaly
-   *
-   * @param kafkaCruiseControl The Kafka Cruise Control instance.
-   * @param description The details on why this is identified as an anomaly.
-   * @param brokerEntity The broker for which the anomaly was identified.
-   * @param metricId The metric id  for which the anomaly was identified.
-   * @param windows Thw list of windows tha the anomaly was observed.
-   */
-  public KafkaMetricAnomaly(KafkaCruiseControl kafkaCruiseControl,
-                            String description,
-                            BrokerEntity brokerEntity,
-                            Short metricId,
-                            List<Long> windows) {
-    _kafkaCruiseControl = kafkaCruiseControl;
-    _description = description;
-    _brokerEntity = brokerEntity;
-    _metricId = metricId;
-    _windows = windows;
-    _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
-    _optimizationResult = null;
+  public KafkaMetricAnomaly() {
   }
 
   /**
@@ -106,7 +89,7 @@ public class KafkaMetricAnomaly implements MetricAnomaly<BrokerEntity> {
   @Override
   public String toString() {
     return String.format("%s anomaly with id: %s Metric Anomaly windows: %s description: %s",
-                         getAnomalyType(this), anomalyId(), _windows, _description);
+                         METRIC_ANOMALY, anomalyId(), _windows, _description);
   }
 
   /**
@@ -120,5 +103,22 @@ public class KafkaMetricAnomaly implements MetricAnomaly<BrokerEntity> {
       return null;
     }
     return isJson ? _optimizationResult.cachedJSONResponse() : _optimizationResult.cachedPlaintextResponse();
+  }
+
+  @Override
+  public AnomalyType anomalyType() {
+    return METRIC_ANOMALY;
+  }
+
+  @SuppressWarnings("unchecked")
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
+    _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
+    _description = (String) configs.get(METRIC_ANOMALY_DESCRIPTION_CONFIG);
+    _brokerEntity = (BrokerEntity) configs.get(METRIC_ANOMALY_BROKER_ENTITY_CONFIG);
+    _metricId = (Short) configs.get(METRIC_ANOMALY_METRIC_ID_CONFIG);
+    _windows = (List<Long>) configs.get(METRIC_ANOMALY_TIME_WINDOW_CONFIG);
+    _optimizationResult = null;
   }
 }

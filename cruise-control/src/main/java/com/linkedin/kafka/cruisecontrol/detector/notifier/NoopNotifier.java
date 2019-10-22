@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import com.linkedin.kafka.cruisecontrol.detector.DiskFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
+import com.linkedin.kafka.cruisecontrol.detector.SlowBrokers;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -44,6 +45,11 @@ public class NoopNotifier implements AnomalyNotifier {
 
   @Override
   public AnomalyNotificationResult onDiskFailure(DiskFailures diskFailures) {
+    return AnomalyNotificationResult.ignore();
+  }
+
+  @Override
+  public AnomalyNotificationResult onSlowBrokers(SlowBrokers slowBrokers) {
     return AnomalyNotificationResult.ignore();
   }
 

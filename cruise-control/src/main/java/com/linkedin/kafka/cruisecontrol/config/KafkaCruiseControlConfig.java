@@ -24,7 +24,10 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.common.KafkaNetworkClientProvider;
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
+import com.linkedin.kafka.cruisecontrol.detector.DiskFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
+import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
+import com.linkedin.kafka.cruisecontrol.detector.SlowBrokers;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorNoopNotifier;
 import com.linkedin.kafka.cruisecontrol.detector.NoopMetricAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.NoopNotifier;
@@ -65,11 +68,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final String DEFAULT_NETWORK_CLIENT_PROVIDER_CLASS = KafkaNetworkClientProvider.class.getName();
   private static final String DEFAULT_EXECUTOR_NOTIFIER_CLASS = ExecutorNoopNotifier.class.getName();
   private static final String DEFAULT_METRIC_ANOMALY_FINDER_CLASS = NoopMetricAnomalyFinder.class.getName();
-  public static final boolean DEFAULT_GOAL_VIOLATION_EXCLUDE_RECENT_BROKERS_CONFIG = true;
-  public static final boolean DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG = true;
+  public static final boolean DEFAULT_SELF_HEALING_EXCLUDE_RECENT_BROKERS_CONFIG = true;
   public static final boolean DEFAULT_ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG = true;
   public static final String DEFAULT_BROKER_FAILURES_CLASS = BrokerFailures.class.getName();
   public static final String DEFAULT_GOAL_VIOLATIONS_CLASS = GoalViolations.class.getName();
+  public static final String DEFAULT_METRIC_ANOMALY_CLASS = KafkaMetricAnomaly.class.getName();
+  public static final String DEFAULT_SLOW_BROKERS_CLASS = SlowBrokers.class.getName();
+  public static final String DEFAULT_DISK_FAILURES_CLASS = DiskFailures.class.getName();
   // Assumption: Each replica move request has a size smaller than 1MB / 1250 = 800 bytes. (1MB = default zNode size limit)
   public static final int DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG = 1250;
 
@@ -252,6 +257,28 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   public static final String GOAL_VIOLATIONS_CLASS_CONFIG = "goal.violations.class";
   private static final String GOAL_VIOLATIONS_CLASS_DOC = String.format("The %s class that extends goal violations.",
                                                                         DEFAULT_GOAL_VIOLATIONS_CLASS);
+
+  /**
+   * <code>slow.brokers.class</code>
+   */
+  public static final String SLOW_BROKERS_CLASS_CONFIG = "slow.brokers.class";
+  private static final String SLOW_BROKERS_CLASS_DOC = String.format("The %s class that extends slow brokers.",
+                                                                     DEFAULT_SLOW_BROKERS_CLASS);
+
+  /**
+   * <code>disk.failures.class</code>
+   */
+  public static final String DISK_FAILURES_CLASS_CONFIG = "disk.failures.class";
+  private static final String DISK_FAILURES_CLASS_DOC = String.format("The %s class that extends disk failures.",
+                                                                      DEFAULT_DISK_FAILURES_CLASS);
+
+  /**
+   * <code>metric.anomaly.class</code>
+   */
+  public static final String METRIC_ANOMALY_CLASS_CONFIG = "metric.anomaly.class";
+  private static final String METRIC_ANOMALY_CLASS_DOC = String.format("The %s class that extends metric anomaly.",
+                                                                       DEFAULT_METRIC_ANOMALY_CLASS);
+
   /**
    * <code>min.valid.partition.ratio</code>
    */
@@ -638,32 +665,18 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "violated.";
 
   /**
-   * <code>broker.failure.exclude.recently.demoted.brokers</code>
+   * <code>self.healing.exclude.recently.demoted.brokers</code>
    */
-  public static final String BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG = "broker.failure.exclude.recently.demoted.brokers";
+  public static final String SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG = "self.healing.exclude.recently.demoted.brokers";
   private static final String BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_DOC = "True if recently demoted brokers "
-      + "are excluded from optimizations during broker failure self healing, false otherwise.";
+      + "are excluded from optimizations during self healing, false otherwise.";
 
   /**
-   * <code>broker.failure.exclude.recently.removed.brokers</code>
+   * <code>self.healing.exclude.recently.removed.brokers</code>
    */
-  public static final String BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG = "broker.failure.exclude.recently.removed.brokers";
-  private static final String BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_DOC = "True if recently removed brokers "
-      + "are excluded from optimizations during broker failure self healing, false otherwise.";
-
-  /**
-   * <code>goal.violation.exclude.recently.demoted.brokers</code>
-   */
-  public static final String GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG = "goal.violation.exclude.recently.demoted.brokers";
-  private static final String GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_DOC = "True if recently demoted brokers "
-      + "are excluded from optimizations during goal violation self healing, false otherwise.";
-
-  /**
-   * <code>goal.violation.exclude.recently.removed.brokers</code>
-   */
-  public static final String GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG = "goal.violation.exclude.recently.removed.brokers";
-  private static final String GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_DOC = "True if recently removed brokers "
-      + "are excluded from optimizations during goal violation self healing, false otherwise.";
+  public static final String SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG = "self.healing.exclude.recently.removed.brokers";
+  private static final String SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_DOC = "True if recently removed brokers "
+      + "are excluded from optimizations during self healing, false otherwise.";
 
   /**
    * <code>failed.brokers.zk.path</code>
@@ -1183,6 +1196,21 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 DEFAULT_GOAL_VIOLATIONS_CLASS,
                 ConfigDef.Importance.MEDIUM,
                 GOAL_VIOLATIONS_CLASS_DOC)
+        .define(DISK_FAILURES_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_DISK_FAILURES_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                DISK_FAILURES_CLASS_DOC)
+        .define(SLOW_BROKERS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_SLOW_BROKERS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                SLOW_BROKERS_CLASS_DOC)
+        .define(METRIC_ANOMALY_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_METRIC_ANOMALY_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                METRIC_ANOMALY_CLASS_DOC)
         .define(GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG,
                 ConfigDef.Type.DOUBLE,
                 1.1,
@@ -1690,26 +1718,16 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                     .add(DiskCapacityGoal.class.getName()).toString(),
                 ConfigDef.Importance.MEDIUM,
                 ANOMALY_DETECTION_GOALS_DOC)
-        .define(BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG,
+        .define(SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG,
                 ConfigDef.Type.BOOLEAN,
-                DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG,
+                DEFAULT_SELF_HEALING_EXCLUDE_RECENT_BROKERS_CONFIG,
                 ConfigDef.Importance.MEDIUM,
                 BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_DOC)
-        .define(BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG,
+        .define(SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG,
                 ConfigDef.Type.BOOLEAN,
-                DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG,
+                DEFAULT_SELF_HEALING_EXCLUDE_RECENT_BROKERS_CONFIG,
                 ConfigDef.Importance.MEDIUM,
-                BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_DOC)
-        .define(GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG,
-                ConfigDef.Type.BOOLEAN,
-                DEFAULT_GOAL_VIOLATION_EXCLUDE_RECENT_BROKERS_CONFIG,
-                ConfigDef.Importance.MEDIUM,
-                GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_DOC)
-        .define(GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG,
-                ConfigDef.Type.BOOLEAN,
-                DEFAULT_GOAL_VIOLATION_EXCLUDE_RECENT_BROKERS_CONFIG,
-                ConfigDef.Importance.MEDIUM,
-                GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_DOC)
+                SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_DOC)
         .define(FAILED_BROKERS_ZK_PATH_CONFIG,
                 ConfigDef.Type.STRING,
                 DEFAULT_FAILED_BROKERS_ZK_PATH,

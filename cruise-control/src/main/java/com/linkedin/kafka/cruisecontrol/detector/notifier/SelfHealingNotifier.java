@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import com.linkedin.kafka.cruisecontrol.detector.DiskFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
+import com.linkedin.kafka.cruisecontrol.detector.SlowBrokers;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateStr
  * <li>The goal violations will trigger an immediate fix.</li>
  * <li>The metric anomalies will trigger an immediate fix.</li>
  * <li>The disk failures will trigger an immediate fix.</li>
+ * <li>The slow brokers will trigger an immediate fix.</li>
  * <li>The broker failures are handled in the following way:
  *   <ol>
  *     <li>If a broker disappears from a cluster at timestamp <b>T</b>, the detector will start down counting.</li>
@@ -44,6 +46,9 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateStr
  * <li>{@link #SELF_HEALING_GOAL_VIOLATION_ENABLED_CONFIG}: Enable self healing for goal violation detector.</li>
  * <li>{@link #SELF_HEALING_METRIC_ANOMALY_ENABLED_CONFIG}: Enable self healing for metric anomaly detector.</li>
  * <li>{@link #SELF_HEALING_DISK_FAILURE_ENABLED_CONFIG}: Enable self healing for disk failure detector.</li>
+ * <li>{@link #SELF_HEALING_SLOW_BROKERS_ENABLED_CONFIG}: Enable self healing for slow broker detector.</li>
+ * <li>{@link #SELF_HEALING_SLOW_BROKERS_REMOVAL_ENABLED_CONFIG}: Enable broker removal as self healing operation for slow
+ * broker detector.</li>
  * </ul>
  */
 public class SelfHealingNotifier implements AnomalyNotifier {
@@ -53,6 +58,8 @@ public class SelfHealingNotifier implements AnomalyNotifier {
   public static final String SELF_HEALING_GOAL_VIOLATION_ENABLED_CONFIG = "self.healing.goal.violation.enabled";
   public static final String SELF_HEALING_METRIC_ANOMALY_ENABLED_CONFIG = "self.healing.metric.anomaly.enabled";
   public static final String SELF_HEALING_DISK_FAILURE_ENABLED_CONFIG = "self.healing.disk.failure.enabled";
+  public static final String SELF_HEALING_SLOW_BROKERS_ENABLED_CONFIG = "self.healing.slow.brokers.enabled";
+  public static final String SELF_HEALING_SLOW_BROKERS_REMOVAL_ENABLED_CONFIG = "self.healing.slow.brokers.removal.enabled";
   public static final String BROKER_FAILURE_SELF_HEALING_THRESHOLD_MS_CONFIG = "broker.failure.self.healing.threshold.ms";
   static final long DEFAULT_ALERT_THRESHOLD_MS = 900000;
   static final long DEFAULT_AUTO_FIX_THRESHOLD_MS = 1800000;
@@ -65,6 +72,7 @@ public class SelfHealingNotifier implements AnomalyNotifier {
   protected final Map<AnomalyType, Long> _selfHealingEnabledHistoricalDurationMs;
   protected long _brokerFailureAlertThresholdMs;
   protected long _selfHealingThresholdMs;
+  protected boolean _slowBrokerRemovalEnabled;
 
   public SelfHealingNotifier() {
     this(new SystemTime());
@@ -96,7 +104,7 @@ public class SelfHealingNotifier implements AnomalyNotifier {
   public AnomalyNotificationResult onGoalViolation(GoalViolations goalViolations) {
     boolean autoFixTriggered = _selfHealingEnabled.get(AnomalyType.GOAL_VIOLATION);
     boolean selfHealingTriggered = autoFixTriggered && !hasUnfixableGoals(goalViolations);
-    alert(goalViolations, selfHealingTriggered, System.currentTimeMillis(), AnomalyType.GOAL_VIOLATION);
+    alert(goalViolations, selfHealingTriggered, _time.milliseconds(), AnomalyType.GOAL_VIOLATION);
 
     if (autoFixTriggered) {
       if (selfHealingTriggered) {
@@ -112,14 +120,22 @@ public class SelfHealingNotifier implements AnomalyNotifier {
   @Override
   public AnomalyNotificationResult onMetricAnomaly(KafkaMetricAnomaly metricAnomaly) {
     boolean autoFixTriggered = _selfHealingEnabled.get(AnomalyType.METRIC_ANOMALY);
-    alert(metricAnomaly, autoFixTriggered, System.currentTimeMillis(), AnomalyType.METRIC_ANOMALY);
+    alert(metricAnomaly, autoFixTriggered, _time.milliseconds(), AnomalyType.METRIC_ANOMALY);
     return autoFixTriggered ? AnomalyNotificationResult.fix() : AnomalyNotificationResult.ignore();
   }
 
   @Override
   public AnomalyNotificationResult onDiskFailure(DiskFailures diskFailures) {
-    alert(diskFailures, _selfHealingEnabled.get(AnomalyType.DISK_FAILURE), System.currentTimeMillis(), AnomalyType.DISK_FAILURE);
+    alert(diskFailures, _selfHealingEnabled.get(AnomalyType.DISK_FAILURE), _time.milliseconds(), AnomalyType.DISK_FAILURE);
     return _selfHealingEnabled.get(AnomalyType.DISK_FAILURE) ? AnomalyNotificationResult.fix() : AnomalyNotificationResult.ignore();
+  }
+
+  @Override
+  public AnomalyNotificationResult onSlowBrokers(SlowBrokers slowBrokers) {
+    boolean triggerAutoFix = _selfHealingEnabled.get(AnomalyType.SLOW_BROKER) && slowBrokers.fixable() &&
+                             (!slowBrokers.removeSlowBrokers() || _slowBrokerRemovalEnabled);
+    alert(slowBrokers, triggerAutoFix, _time.milliseconds(), AnomalyType.SLOW_BROKER);
+    return triggerAutoFix ? AnomalyNotificationResult.fix() : AnomalyNotificationResult.ignore();
   }
 
   @Override
@@ -253,8 +269,14 @@ public class SelfHealingNotifier implements AnomalyNotifier {
     _selfHealingEnabled.put(AnomalyType.DISK_FAILURE, selfHealingDiskFailuresEnabledString == null
                                                       ? selfHealingAllEnabled
                                                       : Boolean.parseBoolean(selfHealingDiskFailuresEnabledString));
+    String selfHealingSlowBrokersEnabledString = (String) config.get(SELF_HEALING_SLOW_BROKERS_ENABLED_CONFIG);
+    _selfHealingEnabled.put(AnomalyType.SLOW_BROKER, selfHealingSlowBrokersEnabledString == null
+                                                     ? selfHealingAllEnabled
+                                                     : Boolean.parseBoolean(selfHealingSlowBrokersEnabledString));
     // Set self-healing current state start time.
     _selfHealingEnabled.forEach((key, value) -> _selfHealingStateChangeTimeMs.get(value).put(key, _notifierStartTimeMs));
+    // Config for slow broker removal.
+    _slowBrokerRemovalEnabled = Boolean.parseBoolean((String) config.get(SELF_HEALING_SLOW_BROKERS_REMOVAL_ENABLED_CONFIG));
   }
 
   @Override

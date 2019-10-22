@@ -4,12 +4,10 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
-import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
@@ -26,32 +24,31 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.DISK_FAILURES_CLASS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.shouldSkipAnomalyDetection;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 
 /**
  * This class detects disk failures.
  **/
 public class DiskFailureDetector implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(DiskFailureDetector.class);
+  public static final String FAILED_DISKS_CONFIG = "failed.disks";
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final AdminClient _adminClient;
   private final LoadMonitor _loadMonitor;
-  private final Queue<Anomaly> _anomalies;
+  private final Queue<KafkaAnomaly> _anomalies;
   private final Time _time;
-  private final boolean _allowCapacityEstimation;
   private int _lastCheckedClusterGeneration;
-  private final boolean _excludeRecentlyDemotedBrokers;
-  private final boolean _excludeRecentlyRemovedBrokers;
-  private final List<String> _selfHealingGoals;
   private final KafkaCruiseControlConfig _config;
 
   public DiskFailureDetector(LoadMonitor loadMonitor,
                              AdminClient adminClient,
-                             Queue<Anomaly> anomalies,
+                             Queue<KafkaAnomaly> anomalies,
                              Time time,
-                             KafkaCruiseControl kafkaCruiseControl,
-                             List<String> selfHealingGoals) {
+                             KafkaCruiseControl kafkaCruiseControl) {
     _loadMonitor = loadMonitor;
     _adminClient = adminClient;
     _anomalies = anomalies;
@@ -59,10 +56,6 @@ public class DiskFailureDetector implements Runnable {
     _lastCheckedClusterGeneration = -1;
     _kafkaCruiseControl = kafkaCruiseControl;
     KafkaCruiseControlConfig config = _kafkaCruiseControl.config();
-    _allowCapacityEstimation = config.getBoolean(KafkaCruiseControlConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
-    _excludeRecentlyDemotedBrokers = config.getBoolean(KafkaCruiseControlConfig.BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
-    _excludeRecentlyRemovedBrokers = config.getBoolean(KafkaCruiseControlConfig.BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
-    _selfHealingGoals = selfHealingGoals;
     _config = config;
   }
 
@@ -117,12 +110,14 @@ public class DiskFailureDetector implements Runnable {
         }
       });
       if (!failedDisksByBroker.isEmpty()) {
-        _anomalies.add(new DiskFailures(_kafkaCruiseControl,
-                                        failedDisksByBroker,
-                                        _allowCapacityEstimation,
-                                        _excludeRecentlyDemotedBrokers,
-                                        _excludeRecentlyRemovedBrokers,
-                                        _selfHealingGoals));
+        Map<String, Object> parameterConfigOverrides = new HashMap<>(3);
+        parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl);
+        parameterConfigOverrides.put(FAILED_DISKS_CONFIG, failedDisksByBroker);
+        parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_CONFIG, _time.milliseconds());
+        DiskFailures diskFailures = _config.getConfiguredInstance(DISK_FAILURES_CLASS_CONFIG,
+                                                                  DiskFailures.class,
+                                                                  parameterConfigOverrides);
+        _anomalies.add(diskFailures);
       }
     } catch (Exception e) {
       LOG.error("Unexpected exception", e);

@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import com.linkedin.kafka.cruisecontrol.detector.DiskFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
+import com.linkedin.kafka.cruisecontrol.detector.SlowBrokers;
 import java.util.Map;
 import org.apache.kafka.common.annotation.InterfaceStability;
 
@@ -51,6 +52,15 @@ public interface AnomalyNotifier extends CruiseControlConfigurable {
    * perform a delayed check.
    */
   AnomalyNotificationResult onDiskFailure(DiskFailures diskFailures);
+
+  /**
+   * This method is called when a slow broker is detected.
+   *
+   * @param slowBrokers the detected slow brokers.
+   * @return The notification result that asks Cruise Control to perform one of the following behaviors: ignore, fix or
+   * perform a delayed check.
+   */
+  AnomalyNotificationResult onSlowBrokers(SlowBrokers slowBrokers);
 
   /**
    * Check whether the self healing is enabled for different anomaly types.
