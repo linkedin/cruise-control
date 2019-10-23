@@ -57,7 +57,7 @@ import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
  */
 public class ParameterUtils {
   public static final String JSON_PARAM = "json";
-  public static final String JSON_SCHEMA_IN_HEADER = "json_schema_in_header";
+  public static final String GET_RESPONSE_SCHEMA = "get_response_schema";
   public static final String START_MS_PARAM = "start";
   public static final String END_MS_PARAM = "end";
   public static final String ENTRIES_PARAM = "entries";
@@ -221,8 +221,8 @@ public class ParameterUtils {
     return getBooleanParam(request, JSON_PARAM, false);
   }
 
-  public static boolean wantJSONSchemaInHeader(HttpServletRequest request) {
-    return getBooleanParam(request, JSON_SCHEMA_IN_HEADER, false);
+  public static boolean wantResponseSchema(HttpServletRequest request) {
+    return getBooleanParam(request, GET_RESPONSE_SCHEMA, false);
   }
 
   static boolean allowCapacityEstimation(HttpServletRequest request) {

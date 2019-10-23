@@ -22,7 +22,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.KAFKA_CRUISE_CONTROL_HTTP_SERVLET_REQUEST_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.handleParameterParseException;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.JSON_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.JSON_SCHEMA_IN_HEADER;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.GET_RESPONSE_SCHEMA;
 
 
 /**
@@ -35,7 +35,7 @@ public abstract class AbstractParameters implements CruiseControlParameters {
   static {
     SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     validParameterNames.add(JSON_PARAM);
-    validParameterNames.add(JSON_SCHEMA_IN_HEADER);
+    validParameterNames.add(GET_RESPONSE_SCHEMA);
     CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
 
   }
@@ -44,7 +44,7 @@ public abstract class AbstractParameters implements CruiseControlParameters {
   protected KafkaCruiseControlConfig _config;
   // Common to all parameters, expected to be populated via initParameters.
   protected boolean _json = false;
-  protected boolean _jsonSchemaInHeader = false;
+  protected boolean _wantResponseSchema = false;
   protected EndPoint _endPoint = null;
 
   public AbstractParameters() {
@@ -55,7 +55,7 @@ public abstract class AbstractParameters implements CruiseControlParameters {
     _initialized = true;
     _endPoint = ParameterUtils.endPoint(_request);
     _json = ParameterUtils.wantJSON(_request);
-    _jsonSchemaInHeader = ParameterUtils.wantJSONSchemaInHeader(_request);
+    _wantResponseSchema = ParameterUtils.wantResponseSchema(_request);
   }
 
   @Override
@@ -83,8 +83,8 @@ public abstract class AbstractParameters implements CruiseControlParameters {
   }
 
   @Override
-  public boolean jsonSchemaInHeader() {
-    return _jsonSchemaInHeader;
+  public boolean wantResponseSchema() {
+    return _wantResponseSchema;
   }
 
   @Override

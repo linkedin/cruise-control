@@ -37,9 +37,9 @@ public abstract class AbstractCruiseControlResponse implements CruiseControlResp
   @Override
   public void writeSuccessResponse(CruiseControlParameters parameters, HttpServletResponse response) throws IOException {
     boolean json = parameters.json();
-    boolean jsonSchemaInHeader = parameters.jsonSchemaInHeader();
+    boolean wantResponseSchema = parameters.wantResponseSchema();
     discardIrrelevantResponse(parameters);
-    if (json && jsonSchemaInHeader) {
+    if (json && wantResponseSchema) {
       String schema = getJsonSchema();
       writeResponseToOutputStream(response, SC_OK, json, schema, _cachedResponse, _config);
     } else {
@@ -89,7 +89,6 @@ public abstract class AbstractCruiseControlResponse implements CruiseControlResp
       }
       result.append("]}");
     } else if (node.isJsonPrimitive()) {
-      node.isJsonPrimitive();
       if (node.getAsJsonPrimitive().isBoolean()) {
         result.append("boolean\" }");
       } else if (node.getAsJsonPrimitive().isNumber()) {
