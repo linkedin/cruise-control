@@ -474,6 +474,7 @@ public class KafkaCruiseControl {
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
    *                            when executing proposals (if null, no throttling is applied).
    * @param uuid UUID of the execution.
+   * @param reason Reason of the execution.
    */
   public void executeProposals(Set<ExecutionProposal> proposals,
                                Set<Integer> unthrottledBrokers,
@@ -484,14 +485,15 @@ public class KafkaCruiseControl {
                                Long executionProgressCheckIntervalMs,
                                ReplicaMovementStrategy replicaMovementStrategy,
                                Long replicationThrottle,
-                               String uuid) {
+                               String uuid,
+                               String reason) {
     if (hasProposalsToExecute(proposals, uuid)) {
       // Set the execution mode, add execution proposals, and start execution.
       _executor.setExecutionMode(isKafkaAssignerMode);
       _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor,
                                  concurrentInterBrokerPartitionMovements, concurrentIntraBrokerPartitionMovements,
                                  concurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy,
-                                 replicationThrottle, uuid);
+                                 replicationThrottle, uuid, reason);
     }
   }
 
@@ -512,6 +514,7 @@ public class KafkaCruiseControl {
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
    *                            when executing remove operations (if null, no throttling is applied).
    * @param uuid UUID of the execution.
+   * @param reason Reason of the execution.
    */
   public void executeRemoval(Set<ExecutionProposal> proposals,
                              boolean throttleDecommissionedBroker,
@@ -522,14 +525,15 @@ public class KafkaCruiseControl {
                              Long executionProgressCheckIntervalMs,
                              ReplicaMovementStrategy replicaMovementStrategy,
                              Long replicationThrottle,
-                             String uuid) {
+                             String uuid,
+                             String reason) {
     if (hasProposalsToExecute(proposals, uuid)) {
       // Set the execution mode, add execution proposals, and start execution.
       _executor.setExecutionMode(isKafkaAssignerMode);
       _executor.executeProposals(proposals, throttleDecommissionedBroker ? Collections.emptySet() : removedBrokers,
                                  removedBrokers, _loadMonitor, concurrentInterBrokerPartitionMovements, 0,
                                  concurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy,
-                                 replicationThrottle, uuid);
+                                 replicationThrottle, uuid, reason);
     }
   }
 
@@ -547,6 +551,7 @@ public class KafkaCruiseControl {
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
    *                            when executing demote operations (if null, no throttling is applied).
    * @param uuid UUID of the execution.
+   * @param reason Reason of the execution.
    */
   public void executeDemotion(Set<ExecutionProposal> proposals,
                               Set<Integer> demotedBrokers,
@@ -555,7 +560,8 @@ public class KafkaCruiseControl {
                               Long executionProgressCheckIntervalMs,
                               ReplicaMovementStrategy replicaMovementStrategy,
                               Long replicationThrottle,
-                              String uuid) {
+                              String uuid,
+                              String reason) {
     if (hasProposalsToExecute(proposals, uuid)) {
       // (1) Kafka Assigner mode is irrelevant for demoting.
       // (2) Ensure that replica swaps within partitions, which are prerequisites for broker demotion and does not trigger data move,
@@ -568,7 +574,7 @@ public class KafkaCruiseControl {
       // Set the execution mode, add execution proposals, and start execution.
       _executor.setExecutionMode(false);
       _executor.executeDemoteProposals(proposals, demotedBrokers, _loadMonitor, concurrentSwaps, concurrentLeaderMovements,
-                                       executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle, uuid);
+                                       executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle, uuid, reason);
     }
   }
 

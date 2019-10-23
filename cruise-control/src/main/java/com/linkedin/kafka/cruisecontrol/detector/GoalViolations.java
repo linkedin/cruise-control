@@ -115,7 +115,8 @@ public class GoalViolations extends KafkaAnomaly implements CruiseControlConfigu
       _excludeRecentlyRemovedBrokers = config.getBoolean(GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
       _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
       _rebalanceRunnable = new RebalanceRunnable(kafkaCruiseControl, getSelfHealingGoalNames(config), allowCapacityEstimation,
-                                                 _excludeRecentlyDemotedBrokers, _excludeRecentlyRemovedBrokers, _anomalyId);
+                                                 _excludeRecentlyDemotedBrokers, _excludeRecentlyRemovedBrokers, _anomalyId,
+                                                 String.format("Self healing for goal violation : %s", this));
     }
   }
 }

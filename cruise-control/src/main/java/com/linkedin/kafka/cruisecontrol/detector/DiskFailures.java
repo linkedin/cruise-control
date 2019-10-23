@@ -37,7 +37,8 @@ public class DiskFailures extends KafkaAnomaly {
     _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
     _optimizationResult = null;
     _fixOfflineReplicasRunnable = new FixOfflineReplicasRunnable(kafkaCruiseControl, selfHealingGoals, allowCapacityEstimation,
-                                                                 excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, _anomalyId);
+                                                                 excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, _anomalyId,
+                                                                 String.format("Self healing for disk failure : %s", this));
   }
 
   /**

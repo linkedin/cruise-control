@@ -93,7 +93,8 @@ public class BrokerFailures extends KafkaAnomaly implements CruiseControlConfigu
                                                            allowCapacityEstimation,
                                                            excludeRecentlyDemotedBrokers,
                                                            excludeRecentlyRemovedBrokers,
-                                                           _anomalyId)
+                                                           _anomalyId,
+                                                           String.format("Self healing for broker failure : %s", this))
                                : null;
     }
   }

@@ -47,7 +47,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicReplicati
  *    &amp;concurrent_leader_movements=[POSITIVE-INTEGER]&amp;exclude_recently_demoted_brokers=[true/false]
  *    &amp;exclude_recently_removed_brokers=[true/false]&amp;replica_movement_strategies=[strategy1,strategy2...]
  *    &amp;review_id=[id]&amp;replication_throttle=[bytes_per_second]
- *    &amp;execution_progress_check_interval_ms=[interval_in_ms]
+ *    &amp;execution_progress_check_interval_ms=[interval_in_ms]&amp;reason=[reason-for-request]
  * </pre>
  */
 public class TopicConfigurationParameters extends AbstractParameters {

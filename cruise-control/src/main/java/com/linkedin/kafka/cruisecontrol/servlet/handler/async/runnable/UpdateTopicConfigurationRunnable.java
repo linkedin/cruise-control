@@ -75,7 +75,8 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
                                        _topicReplicationFactorChangeParameters.replicationThrottle(),
                                        _topicReplicationFactorChangeParameters.excludeRecentlyDemotedBrokers(),
                                        _topicReplicationFactorChangeParameters.excludeRecentlyRemovedBrokers(),
-                                       _topicReplicationFactorChangeParameters.dryRun()),
+                                       _topicReplicationFactorChangeParameters.dryRun(),
+                                       _topicReplicationFactorChangeParameters.reason()),
           _kafkaCruiseControl.config());
     }
     // Never reaches here.
@@ -127,6 +128,7 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
    * @param dryRun Whether it is a dry run or not.
+   * @param reason Reason of execution.
    *
    * @return The optimization result.
    * @throws KafkaCruiseControlException When any exception occurred during the topic configuration updating.
@@ -144,7 +146,8 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
                                                       Long replicationThrottle,
                                                       boolean excludeRecentlyDemotedBrokers,
                                                       boolean excludeRecentlyRemovedBrokers,
-                                                      boolean dryRun)
+                                                      boolean dryRun,
+                                                      String reason)
       throws KafkaCruiseControlException {
     _kafkaCruiseControl.sanityCheckDryRun(dryRun);
     sanityCheckGoals(goals, skipHardGoalCheck, _kafkaCruiseControl.config());
@@ -204,7 +207,7 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
       if (!dryRun) {
         _kafkaCruiseControl.executeProposals(result.goalProposals(), Collections.emptySet(), false, concurrentInterBrokerPartitionMovements,
                                              0, concurrentLeaderMovements, executionProgressCheckIntervalMs,
-                                             replicaMovementStrategy, replicationThrottle, _uuid);
+                                             replicaMovementStrategy, replicationThrottle, _uuid, reason);
       }
     } catch (KafkaCruiseControlException kcce) {
       throw kcce;

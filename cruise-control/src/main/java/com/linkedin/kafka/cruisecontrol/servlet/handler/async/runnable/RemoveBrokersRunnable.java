@@ -56,6 +56,7 @@ public class RemoveBrokersRunnable extends OperationRunnable {
   protected final boolean _skipHardGoalCheck;
   protected final Pattern _excludedTopics;
   protected final String _uuid;
+  protected final String _reason;
   protected final boolean _excludeRecentlyDemotedBrokers;
   protected final boolean _excludeRecentlyRemovedBrokers;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
@@ -70,7 +71,8 @@ public class RemoveBrokersRunnable extends OperationRunnable {
                                boolean allowCapacityEstimation,
                                boolean excludeRecentlyDemotedBrokers,
                                boolean excludeRecentlyRemovedBrokers,
-                               String anomalyId) {
+                               String anomalyId,
+                               String reason) {
     super(kafkaCruiseControl, new OperationFuture("Broker Failure Self-Healing"));
     _removedBrokerIds = removedBrokerIds;
     _dryRun = SELF_HEALING_DRYRUN;
@@ -87,6 +89,7 @@ public class RemoveBrokersRunnable extends OperationRunnable {
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
     _replicationThrottle = kafkaCruiseControl.config().getLong(KafkaCruiseControlConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
     _uuid = anomalyId;
+    _reason = reason;
     _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
     _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
   }
@@ -111,6 +114,7 @@ public class RemoveBrokersRunnable extends OperationRunnable {
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
     _replicationThrottle = parameters.replicationThrottle();
     _uuid = uuid;
+    _reason = parameters.reason();
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
   }
@@ -168,7 +172,7 @@ public class RemoveBrokersRunnable extends OperationRunnable {
       if (!_dryRun) {
         _kafkaCruiseControl.executeRemoval(result.goalProposals(), _throttleRemovedBrokers, _removedBrokerIds, isKafkaAssignerMode(_goals),
                                            _concurrentInterBrokerPartitionMovements, _concurrentLeaderMovements,
-                                           _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle, _uuid);
+                                           _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle, _uuid, _reason);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {

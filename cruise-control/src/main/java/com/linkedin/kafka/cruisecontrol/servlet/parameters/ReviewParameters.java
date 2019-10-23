@@ -46,7 +46,7 @@ public class ReviewParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _reason = ParameterUtils.reason(_request);
+    _reason = ParameterUtils.reason(_request, false);
     _reviewRequests = ParameterUtils.reviewRequests(_request);
   }
 
