@@ -45,7 +45,10 @@ import java.util.Collection;
 import java.util.List;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.currentUtcDate;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION_LOGGER;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.DATE_FORMAT;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.TIME_ZONE;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*;
@@ -72,7 +75,9 @@ public class Executor {
   private static final long PERMANENT_TIMESTAMP = 0L;
   // The maximum time to wait for a leader movement to finish. A leader movement will be marked as failed if
   // it takes longer than this time to finish.
-  private static final long LEADER_ACTION_TIMEOUT_MS = 180000L;
+  static final long LEADER_ACTION_TIMEOUT_MS = 180000L;
+  // The minimal data movement rate(in MB/s) for any replica movements.
+  static final double MIN_REPLICA_MOVEMENT_RATE = 0.1;
   private static final String ZK_EXECUTOR_METRIC_GROUP = "CruiseControlExecutor";
   private static final String ZK_EXECUTOR_METRIC_TYPE = "Executor";
   // The execution progress is controlled by the ExecutionTaskManager.
@@ -764,21 +769,25 @@ public class Executor {
         // If the finished task was triggered by a user request, update task status in user task manager; if task is triggered
         // by an anomaly self-healing, update the task status in anomaly detector.
         if (userTaskInfo != null) {
-          _userTaskManager.markTaskExecutionFinished(_uuid);
+          _userTaskManager.markTaskExecutionFinished(_uuid, _executorState.state() == STOPPING_EXECUTION || _executionException != null);
         } else {
           _anomalyDetector.markSelfHealingFinished(_uuid);
         }
         _loadMonitor.resumeMetricSampling(String.format("Resumed-By-Cruise-Control-After-Completed-Execution (Date: %s)", currentUtcDate()));
 
-        // If execution encountered exception and isn't stopped, it's considered successful.
-        boolean executionSucceeded = _executorState.state() != STOPPING_EXECUTION && _executionException == null;
-        // If we are here, either we succeeded, or we are stopped or had exception. Send notification to user.
-        ExecutorNotification notification = new ExecutorNotification(_executionStartMs, _time.milliseconds(),
-                                                                     userTaskInfo, _uuid, _stopRequested.get(),
-                                                                     _executionStoppedByUser.get(),
-                                                                     _executionException, executionSucceeded);
-        _executorNotifier.sendNotification(notification);
-        OPERATION_LOG.info("Task [{}] execution finishes.", _uuid);
+        if (_executorState.state() == STOPPING_EXECUTION) {
+          String alertMessage = String.format("Task [%s] execution is stopped by %s.", _uuid, _executionStoppedByUser.get() ? "user" : "cruise control");
+          _executorNotifier.sendAlert(alertMessage);
+          OPERATION_LOG.warn(alertMessage);
+        } else if (_executionException != null) {
+          String alertMessage = String.format("Task [%s] execution is interrupted with exception %s.", _uuid, _executionException.getMessage());
+          _executorNotifier.sendAlert(alertMessage);
+          OPERATION_LOG.warn(alertMessage);
+        } else {
+          String message = String.format("Task [%s] execution finishes.", _uuid);
+          _executorNotifier.sendNotification(message);
+          OPERATION_LOG.info(message);
+        }
         // Clear completed execution.
         clearCompletedExecution();
       }
@@ -1045,14 +1054,22 @@ public class Executor {
             // Check to see if the task is done.
             finishedTasks.add(task);
             _executionTaskManager.markTaskDone(task);
-          } else if (maybeMarkTaskAsDeadOrAborting(cluster, logDirInfoByTask, task)) {
-            // Only add the dead or aborted tasks to execute if it is not a leadership movement.
-            if (task.type() != LEADER_ACTION) {
-              deadOrAbortingTasks.add(task);
+          } else {
+            if (task.shouldReportExecutionTooSlow(_time.milliseconds())) {
+              _executorNotifier.sendAlert(String.format("Task [%s] starts at %s and it takes too long to finish.%nTask detail: %s.",
+                                                        task.executionId(), toDateString(task.startTime(), DATE_FORMAT, TIME_ZONE), task));
+              // Mute the task to prevent sending the same alert repeatedly.
+              task.mute();
             }
-            // A dead or aborted task is considered as finished.
-            if (task.state() == DEAD || task.state() == ABORTED) {
-              finishedTasks.add(task);
+            if (maybeMarkTaskAsDeadOrAborting(cluster, logDirInfoByTask, task)) {
+              // Only add the dead or aborted tasks to execute if it is not a leadership movement.
+              if (task.type() != LEADER_ACTION) {
+                deadOrAbortingTasks.add(task);
+              }
+              // A dead or aborted task is considered as finished.
+              if (task.state() == DEAD || task.state() == ABORTED) {
+                finishedTasks.add(task);
+              }
             }
           }
         }

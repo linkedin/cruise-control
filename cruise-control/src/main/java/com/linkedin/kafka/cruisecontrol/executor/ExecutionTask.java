@@ -53,6 +53,8 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   private State _state;
   private long _startTime;
   private long _endTime;
+  private long _expectedEndTime;
+  private boolean _muted;
 
   static {
     VALID_TRANSFER.put(PENDING, new HashSet<>(Collections.singleton(IN_PROGRESS)));
@@ -69,9 +71,10 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
    * @param executionId The execution id of the proposal so we can keep track of the task when execute it.
    * @param proposal The corresponding balancing proposal of this task.
    * @param brokerId The broker to operate on if the task is of type {@link TaskType#INTRA_BROKER_REPLICA_ACTION}.
-   * @param type the {@link TaskType} of this task.
+   * @param type The {@link TaskType} of this task.
+   * @param maxExecutionTime The maximal execution time.
    */
-  public ExecutionTask(long executionId, ExecutionProposal proposal, Integer brokerId, TaskType type) {
+  public ExecutionTask(long executionId, ExecutionProposal proposal, Integer brokerId, TaskType type, long maxExecutionTime) {
     if (type != TaskType.INTRA_BROKER_REPLICA_ACTION && brokerId != null) {
       throw new IllegalArgumentException("Broker id is specified for non-intra-broker task.");
     }
@@ -82,10 +85,12 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
     _type = type;
     _startTime = -1L;
     _endTime = -1L;
+    _expectedEndTime = maxExecutionTime;
+    _muted = false;
   }
 
-  public ExecutionTask(long executionId, ExecutionProposal proposal, TaskType type) {
-    this(executionId, proposal, null, type);
+  public ExecutionTask(long executionId, ExecutionProposal proposal, TaskType type, long maxExecutionTime) {
+    this(executionId, proposal, null, type, maxExecutionTime);
   }
 
   /**
@@ -160,6 +165,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
     ensureValidTransfer(IN_PROGRESS);
     this._state = IN_PROGRESS;
     _startTime = now;
+    _expectedEndTime += now;
   }
 
   /**
@@ -195,6 +201,20 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
     ensureValidTransfer(COMPLETED);
     this._state = COMPLETED;
     _endTime = now;
+  }
+
+  /**
+   * Check whether the execution time of the task is too long.
+   */
+  public boolean shouldReportExecutionTooSlow(long now) {
+    return !_muted && (_state == IN_PROGRESS || _state == ABORTING) && now > _expectedEndTime;
+  }
+
+  /**
+   * Mute the task. If the task is muted, {@link #shouldReportExecutionTooSlow} will always return false.
+   */
+  public void mute() {
+    _muted = true;
   }
 
   @Override

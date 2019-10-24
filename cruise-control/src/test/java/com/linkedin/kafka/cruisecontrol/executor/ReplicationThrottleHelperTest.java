@@ -61,7 +61,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
   }
 
   private ExecutionTask inProgressTaskForProposal(long id, ExecutionProposal proposal) {
-    ExecutionTask task = new ExecutionTask(id, proposal, ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION);
+    ExecutionTask task = new ExecutionTask(id, proposal, ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION, 0);
     task.inProgress(0);
     return task;
   }

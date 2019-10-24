@@ -12,7 +12,6 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
-import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
@@ -47,14 +46,9 @@ import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC2;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC3;
-import static com.linkedin.kafka.cruisecontrol.executor.ExecutorNotification.ActionAgent.USER;
-import static com.linkedin.kafka.cruisecontrol.executor.ExecutorNotification.ActionAgent.EXECUTION_COMPLETION;
-import static com.linkedin.kafka.cruisecontrol.executor.ExecutorNotification.ActionAgent.CRUISE_CONTROL;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertNotNull;
 
 public class ExecutorTest extends CCKafkaIntegrationTestHarness {
   private static final int PARTITION = 0;
@@ -232,35 +226,17 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
   }
 
   @Test
-  public void testExecutorSendNotificationForUserTask() throws InterruptedException {
-    Collection<ExecutionProposal> proposals = getBasicProposals();
-    String uuid = "user-task-uuid";
-    executeAndVerifyNotification(proposals, uuid, USER, EXECUTION_COMPLETION, true);
-  }
-
-  @Test
-  public void testExecutorSendNotificationForSelfHealing() throws InterruptedException {
-    Collection<ExecutionProposal> proposals = getBasicProposals();
-    String uuid = AnomalyType.GOAL_VIOLATION.toString() + "-uuid";
-    executeAndVerifyNotification(proposals, uuid, CRUISE_CONTROL, EXECUTION_COMPLETION, false);
-  }
-
-  private void executeAndVerifyNotification(Collection<ExecutionProposal> proposalsToExecute,
-                                            String uuid,
-                                            ExecutorNotification.ActionAgent startedBy,
-                                            ExecutorNotification.ActionAgent endedBy,
-                                            boolean expectUserTaskInfo) {
-
+  public void testExecutorSendNotificationForTask() throws InterruptedException {
+    Collection<ExecutionProposal> proposalsToExecute = getBasicProposals();
     KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
     UserTaskManager.UserTaskInfo mockUserTaskInfo = EasyMock.mock(UserTaskManager.UserTaskInfo.class);
     UserTaskManager mockUserTaskManager = EasyMock.mock(UserTaskManager.class);
     ExecutorNotifier mockExecutorNotifier = EasyMock.mock(ExecutorNotifier.class);
-    Capture<ExecutorNotification> captureNotification = Capture.newInstance(CaptureType.FIRST);
+    Capture<String> captureNotification = Capture.newInstance(CaptureType.FIRST);
 
     EasyMock.expect(mockUserTaskInfo.endPoint()).andReturn(CruiseControlEndPoint.REBALANCE).once();
-    EasyMock.expect(mockUserTaskManager.markTaskExecutionBegan(uuid))
-        .andReturn(expectUserTaskInfo ? mockUserTaskInfo : null).once();
-    mockUserTaskManager.markTaskExecutionFinished(uuid);
+    EasyMock.expect(mockUserTaskManager.markTaskExecutionBegan(RANDOM_UUID)).andReturn(null).once();
+    mockUserTaskManager.markTaskExecutionFinished(RANDOM_UUID, EasyMock.anyBoolean());
     mockExecutorNotifier.sendNotification(EasyMock.capture(captureNotification));
 
     EasyMock.replay(mockUserTaskInfo);
@@ -268,22 +244,15 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     EasyMock.replay(mockExecutorNotifier);
 
     Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), null, 86400000L,
-                                     43200000L, mockExecutorNotifier, mockUserTaskManager, getMockAnomalyDetector(uuid));
+                                     43200000L, mockExecutorNotifier, mockUserTaskManager, getMockAnomalyDetector(RANDOM_UUID));
     executor.setExecutionMode(false);
     executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, EasyMock.mock(LoadMonitor.class), null,
                               null, null, null,
-                              null, null, uuid);
+                              null, null, RANDOM_UUID);
     waitUntilExecutionFinishes(executor);
 
-    ExecutorNotification notification = captureNotification.getValue();
-    assertEquals(notification.startedBy(), startedBy);
-    assertEquals(notification.endedBy(), endedBy);
-    assertEquals(notification.actionUuid(), uuid);
-    if (expectUserTaskInfo) {
-      assertNotNull(notification.userTaskInfo());
-    } else {
-      assertNull(notification.userTaskInfo());
-    }
+    String notification = captureNotification.getValue();
+    assertTrue(notification.contains(RANDOM_UUID));
   }
 
   private Collection<ExecutionProposal> getBasicProposals() throws InterruptedException {
@@ -349,7 +318,7 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
 
   private UserTaskManager getMockUserTaskManager(String uuid) {
     UserTaskManager mockUserTaskManager = EasyMock.mock(UserTaskManager.class);
-    mockUserTaskManager.markTaskExecutionFinished(uuid);
+    mockUserTaskManager.markTaskExecutionFinished(uuid, EasyMock.anyBoolean());
     EasyMock.expect(mockUserTaskManager.markTaskExecutionBegan(uuid)).andReturn(null).anyTimes();
     EasyMock.replay(mockUserTaskManager);
     return mockUserTaskManager;

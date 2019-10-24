@@ -35,6 +35,8 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*;
+import static com.linkedin.kafka.cruisecontrol.executor.Executor.LEADER_ACTION_TIMEOUT_MS;
+import static com.linkedin.kafka.cruisecontrol.executor.Executor.MIN_REPLICA_MOVEMENT_RATE;
 import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.ReplicaLogDirInfo;
 
 /**
@@ -174,7 +176,8 @@ public class ExecutionTaskPlanner {
       }
       if (!proposal.isInterBrokerMovementCompleted(partitionInfo)) {
         long replicaActionExecutionId = _executionId++;
-        ExecutionTask executionTask = new ExecutionTask(replicaActionExecutionId, proposal, INTER_BROKER_REPLICA_ACTION);
+        ExecutionTask executionTask = new ExecutionTask(replicaActionExecutionId, proposal, INTER_BROKER_REPLICA_ACTION,
+                                                        Math.round(proposal.dataToMoveInMB() / MIN_REPLICA_MOVEMENT_RATE));
         _remainingInterBrokerReplicaMovements.add(executionTask);
         LOG.trace("Added action {} as replica proposal {}", replicaActionExecutionId, proposal);
       }
@@ -218,7 +221,8 @@ public class ExecutionTaskPlanner {
           String currentLogdir = currentLogdirByReplica.get(new TopicPartitionReplica(proposal.topic(), proposal.partitionId(), r.brokerId()));
           if (currentLogdir != null && !currentLogdir.equals(r.logdir())) {
             long replicaActionExecutionId = _executionId++;
-            ExecutionTask task = new ExecutionTask(replicaActionExecutionId, proposal, r.brokerId(), INTRA_BROKER_REPLICA_ACTION);
+            ExecutionTask task = new ExecutionTask(replicaActionExecutionId, proposal, r.brokerId(), INTRA_BROKER_REPLICA_ACTION,
+                                                   Math.round(proposal.dataToMoveInMB() / MIN_REPLICA_MOVEMENT_RATE));
             _intraPartMoveTaskByBrokerId.putIfAbsent(r.brokerId(), new TreeSet<>());
             _intraPartMoveTaskByBrokerId.get(r.brokerId()).add(task);
             _remainingIntraBrokerReplicaMovements.add(task);
@@ -241,7 +245,7 @@ public class ExecutionTaskPlanner {
         if (currentLeader != null && currentLeader.id() != proposal.newLeader().brokerId()) {
           // Get the execution Id for the leader action proposal execution;
           long leaderActionExecutionId = _executionId++;
-          ExecutionTask leaderActionTask = new ExecutionTask(leaderActionExecutionId, proposal, LEADER_ACTION);
+          ExecutionTask leaderActionTask = new ExecutionTask(leaderActionExecutionId, proposal, LEADER_ACTION, LEADER_ACTION_TIMEOUT_MS / 2);
           _remainingLeadershipMovements.put(leaderActionExecutionId, leaderActionTask);
           LOG.trace("Added action {} as leader proposal {}", leaderActionExecutionId, proposal);
         }
