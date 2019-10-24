@@ -236,7 +236,7 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
 
     EasyMock.expect(mockUserTaskInfo.endPoint()).andReturn(CruiseControlEndPoint.REBALANCE).once();
     EasyMock.expect(mockUserTaskManager.markTaskExecutionBegan(RANDOM_UUID)).andReturn(null).once();
-    mockUserTaskManager.markTaskExecutionFinished(RANDOM_UUID, EasyMock.anyBoolean());
+    mockUserTaskManager.markTaskExecutionFinished(RANDOM_UUID, false);
     mockExecutorNotifier.sendNotification(EasyMock.capture(captureNotification));
 
     EasyMock.replay(mockUserTaskInfo);
@@ -318,7 +318,7 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
 
   private UserTaskManager getMockUserTaskManager(String uuid) {
     UserTaskManager mockUserTaskManager = EasyMock.mock(UserTaskManager.class);
-    mockUserTaskManager.markTaskExecutionFinished(uuid, EasyMock.anyBoolean());
+    mockUserTaskManager.markTaskExecutionFinished(uuid, false);
     EasyMock.expect(mockUserTaskManager.markTaskExecutionBegan(uuid)).andReturn(null).anyTimes();
     EasyMock.replay(mockUserTaskManager);
     return mockUserTaskManager;
