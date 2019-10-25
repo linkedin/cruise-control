@@ -117,6 +117,7 @@ public class ParameterUtils {
   public static final String REPLICATION_FACTOR_PARAM = "replication_factor";
   public static final String SKIP_RACK_AWARENESS_CHECK_PARAM = "skip_rack_awareness_check";
   public static final String FETCH_COMPLETED_TASK_PARAM = "fetch_completed_task";
+  public static final String FORCE_STOP_PARAM = "force_stop";
   private static final int MAX_REASON_LENGTH = 50;
   private static final String DELIMITER_BETWEEN_BROKER_ID_AND_LOGDIR = "-";
   public static final long DEFAULT_START_TIME_FOR_CLUSTER_MODEL = -1L;
@@ -314,6 +315,10 @@ public class ParameterUtils {
 
   static boolean getDryRun(HttpServletRequest request) {
     return getBooleanParam(request, DRY_RUN_PARAM, true);
+  }
+
+  static boolean forceExecutionStop(HttpServletRequest request) {
+    return getBooleanParam(request, FORCE_STOP_PARAM, false);
   }
 
   static boolean throttleAddedOrRemovedBrokers(HttpServletRequest request, EndPoint endPoint) {

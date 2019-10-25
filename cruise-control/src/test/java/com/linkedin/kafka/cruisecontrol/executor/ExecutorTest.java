@@ -226,6 +226,57 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
   }
 
   @Test
+  public void testForceStopExecution() throws InterruptedException {
+    createTopics();
+    // The proposal tries to swap replicas.
+    ExecutionProposal proposal = new ExecutionProposal(TP1, 0, new ReplicaPlacementInfo(1),
+                                                       Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(1)),
+                                                       Arrays.asList(new ReplicaPlacementInfo(1), new ReplicaPlacementInfo(0)));
+
+    KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
+    Time time = new MockTime();
+    MetadataClient mockMetadataClient = EasyMock.createMock(MetadataClient.class);
+    // Fake the metadata to never change so the leader movement will timeout.
+    Node node0 = new Node(0, "host0", 100);
+    Node node1 = new Node(1, "host1", 100);
+    Node[] replicas = new Node[2];
+    replicas[0] = node0;
+    replicas[1] = node1;
+    PartitionInfo partitionInfo = new PartitionInfo(TP1.topic(), TP1.partition(), node1, replicas, replicas);
+    Cluster cluster = new Cluster("id", Arrays.asList(node0, node1), Collections.singleton(partitionInfo),
+                                  Collections.emptySet(), Collections.emptySet());
+    MetadataClient.ClusterAndGeneration clusterAndGeneration = new MetadataClient.ClusterAndGeneration(cluster, 0);
+    EasyMock.expect(mockMetadataClient.refreshMetadata()).andReturn(clusterAndGeneration).anyTimes();
+    EasyMock.expect(mockMetadataClient.cluster()).andReturn(clusterAndGeneration.cluster()).anyTimes();
+    EasyMock.replay(mockMetadataClient);
+
+    Collection<ExecutionProposal> proposalsToExecute = Collections.singletonList(proposal);
+    Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient, 86400000L,
+                                     43200000L, null, getMockUserTaskManager(RANDOM_UUID),
+                                     getMockAnomalyDetector(RANDOM_UUID));
+    executor.setExecutionMode(false);
+    executor.executeProposals(proposalsToExecute,
+                              Collections.emptySet(),
+                              null,
+                              EasyMock.mock(LoadMonitor.class),
+                              null,
+                              null,
+                              null,
+                              null,
+                              null,
+                              null,
+                              RANDOM_UUID);
+    // Wait until the inter-broker replica movement task hang.
+    while (executor.state().state() != ExecutorState.State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS) {
+      Thread.sleep(10);
+    }
+    // Force execution to stop.
+    executor.userTriggeredStopExecution(true);
+    // The execution should finish.
+    waitUntilExecutionFinishes(executor);
+  }
+
+  @Test
   public void testExecutorSendNotificationForTask() throws InterruptedException {
     Collection<ExecutionProposal> proposalsToExecute = getBasicProposals();
     KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());

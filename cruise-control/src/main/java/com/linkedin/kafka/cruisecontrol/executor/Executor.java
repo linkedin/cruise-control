@@ -87,6 +87,7 @@ public class Executor {
 
   // Some state for external service to query
   private final AtomicBoolean _stopRequested;
+  private final AtomicBoolean _forceStop;
   private final Time _time;
   private volatile boolean _hasOngoingExecution;
   private volatile ExecutorState _executorState;
@@ -180,6 +181,7 @@ public class Executor {
     _latestRemoveStartTimeMsByBrokerId = new ConcurrentHashMap<>();
     _executorState = ExecutorState.noTaskInProgress(recentlyDemotedBrokers(), recentlyRemovedBrokers());
     _stopRequested = new AtomicBoolean(false);
+    _forceStop = new AtomicBoolean(false);
     _hasOngoingExecution = false;
     _uuid = null;
     _executorNotifier = executorNotifier != null ? executorNotifier
@@ -519,6 +521,7 @@ public class Executor {
     _hasOngoingExecution = true;
     _anomalyDetector.maybeClearOngoingAnomalyDetectionTimeMs();
     _stopRequested.set(false);
+    _forceStop.set(false);
     _executionStoppedByUser.set(false);
     if (_isKafkaAssignerMode) {
       _numExecutionStartedInKafkaAssignerMode.incrementAndGet();
@@ -551,9 +554,11 @@ public class Executor {
 
   /**
    * Request the executor to stop any ongoing execution.
+   *
+   * @param forceExecutionStop Whether force execution to stop.
    */
-  public synchronized void userTriggeredStopExecution() {
-    if (stopExecution()) {
+  public synchronized void userTriggeredStopExecution(boolean forceExecutionStop) {
+    if (stopExecution(forceExecutionStop)) {
       LOG.info("User requested to stop the ongoing proposal execution.");
       _numExecutionStoppedByUser.incrementAndGet();
       _executionStoppedByUser.set(true);
@@ -563,10 +568,12 @@ public class Executor {
   /**
    * Request the executor to stop any ongoing execution.
    *
+   * @param forceExecutionStop Whether force execution to stop.
    * @return True if the flag to stop the execution is set after the call (i.e. was not set already), false otherwise.
    */
-  private synchronized boolean stopExecution() {
-    if (_stopRequested.compareAndSet(false, true)) {
+  private synchronized boolean stopExecution(boolean forceExecutionStop) {
+    if (_stopRequested.compareAndSet(false, true) &&
+        (!forceExecutionStop || _forceStop.compareAndSet(false, true))) {
       _numExecutionStopped.incrementAndGet();
       _executionTaskManager.setStopRequested();
       return true;
@@ -756,6 +763,16 @@ public class Executor {
           moveLeaderships();
           updateOngoingExecutionState();
         }
+
+        // 4. Delete tasks from Zookeeper if needed.
+        if (_state == STOPPING_EXECUTION && _forceStop.get()) {
+          // Delete znode of ongoing replica movement tasks.
+          _kafkaZkClient.deletePartitionReassignment();
+          // delete znode of ongoing leadership movement tasks.
+          _kafkaZkClient.deletePreferredReplicaElection();
+          // Delete controller znode to trigger a controller re-election.
+          _kafkaZkClient.deleteController();
+        }
       } catch (Throwable t) {
         LOG.error("Executor got exception during execution", t);
         _executionException = t;
@@ -801,6 +818,7 @@ public class Executor {
       _executorState = ExecutorState.noTaskInProgress(_recentlyDemotedBrokers, _recentlyRemovedBrokers);
       _hasOngoingExecution = false;
       _stopRequested.set(false);
+      _forceStop.set(false);
       _executionStoppedByUser.set(false);
     }
 
@@ -1044,7 +1062,11 @@ public class Executor {
         List<ExecutionTask> deadOrAbortingTasks = new ArrayList<>();
         for (ExecutionTask task : _executionTaskManager.inExecutionTasks()) {
           TopicPartition tp = task.proposal().topicPartition();
-          if (cluster.partition(tp) == null) {
+          if (_forceStop.get()) {
+            LOG.debug("Task {} is marked as dead to force execution to stop.", task);
+            finishedTasks.add(task);
+            _executionTaskManager.markTaskDead(task);
+          } else if (cluster.partition(tp) == null) {
             // Handle topic deletion during the execution.
             LOG.debug("Task {} is marked as finished because the topic has been deleted", task);
             finishedTasks.add(task);
@@ -1074,7 +1096,7 @@ public class Executor {
           // ExecutorAdminUtils.executeReplicaReassignmentTasks(_kafkaZkClient, deadOrAbortingTasks);
           if (!_stopRequested.get()) {
             // If there is task aborted or dead, we stop the execution.
-            stopExecution();
+            stopExecution(false);
           }
         }
         updateOngoingExecutionState();

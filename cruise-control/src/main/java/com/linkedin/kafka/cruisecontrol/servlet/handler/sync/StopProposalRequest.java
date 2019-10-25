@@ -22,7 +22,7 @@ public class StopProposalRequest extends AbstractSyncRequest {
 
   @Override
   protected StopProposalResult handle() {
-    _kafkaCruiseControl.userTriggeredStopExecution();
+    _kafkaCruiseControl.userTriggeredStopExecution(_parameters.forceExecutionStop());
     return new StopProposalResult(_kafkaCruiseControl.config());
   }
 
