@@ -17,6 +17,7 @@ import java.util.TreeSet;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DRY_RUN_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.BROKER_ID_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_LEADER_MOVEMENTS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_URP_DEMOTION_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.EXCLUDE_FOLLOWER_DEMOTION_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICA_MOVEMENT_STRATEGIES_PARAM;
@@ -36,7 +37,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *    &amp;concurrent_leader_movements=[POSITIVE-INTEGER]&amp;allow_capacity_estimation=[true/false]&amp;json=[true/false]
  *    &amp;skip_urp_demotion=[true/false]&amp;exclude_follower_demotion=[true/false]&amp;verbose=[true/false]
  *    &amp;exclude_recently_demoted_brokers=[true/false]&amp;replica_movement_strategies=[strategy1,strategy2...]
- *    &amp;review_id=[id]
+ *    &amp;review_id=[id]&amp;execution_progress_check_interval_ms=[interval_in_ms]
  * </pre>
  */
 public class DemoteBrokerParameters extends KafkaOptimizationParameters {
@@ -46,6 +47,7 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
     validParameterNames.add(DRY_RUN_PARAM);
     validParameterNames.add(BROKER_ID_PARAM);
     validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    validParameterNames.add(EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
     validParameterNames.add(SKIP_URP_DEMOTION_PARAM);
     validParameterNames.add(EXCLUDE_FOLLOWER_DEMOTION_PARAM);
     validParameterNames.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
@@ -56,6 +58,7 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
   protected boolean _dryRun;
   protected Set<Integer> _brokerIds;
   protected Integer _concurrentLeaderMovements;
+  protected Long _executionProgressCheckIntervalMs;
   protected boolean _skipUrpDemotion;
   protected boolean _excludeFollowerDemotion;
   protected ReplicaMovementStrategy _replicaMovementStrategy;
@@ -71,6 +74,7 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
     _brokerIds = ParameterUtils.brokerIds(_request, false);
     _dryRun = ParameterUtils.getDryRun(_request);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
+    _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_request);
     _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_request);
     _skipUrpDemotion = ParameterUtils.skipUrpDemotion(_request);
     _excludeFollowerDemotion = ParameterUtils.excludeFollowerDemotion(_request);
@@ -98,6 +102,10 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
 
   public Integer concurrentLeaderMovements() {
     return _concurrentLeaderMovements;
+  }
+
+  public Long executionProgressCheckIntervalMs() {
+    return _executionProgressCheckIntervalMs;
   }
 
   public boolean skipUrpDemotion() {

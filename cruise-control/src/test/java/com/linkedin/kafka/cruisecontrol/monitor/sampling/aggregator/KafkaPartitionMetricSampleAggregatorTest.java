@@ -360,7 +360,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     TestContext ctx = setupScenario3();
     KafkaPartitionMetricSampleAggregator aggregator = ctx.aggregator();
     MetadataClient.ClusterAndGeneration clusterAndGeneration = ctx.clusterAndGeneration(0);
-    SortedSet<Long> validWindows = aggregator.validWindows(clusterAndGeneration, 0.5);
+    SortedSet<Long> validWindows = aggregator.validWindows(clusterAndGeneration, 0.75);
     assertEquals("Should have two invalid windows.", NUM_WINDOWS - 2, validWindows.size());
     assertValidWindows(validWindows, NUM_WINDOWS, Arrays.asList(6, 7));
   }
@@ -371,7 +371,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     KafkaPartitionMetricSampleAggregator aggregator = ctx.aggregator();
     MetadataClient.ClusterAndGeneration clusterAndGeneration = ctx.clusterAndGeneration(0);
 
-    SortedSet<Long> validWindows = aggregator.validWindows(clusterAndGeneration, 0.5);
+    SortedSet<Long> validWindows = aggregator.validWindows(clusterAndGeneration, 0.75);
     assertEquals("Should have two invalid windows.", NUM_WINDOWS - 2, validWindows.size());
     assertValidWindows(validWindows, NUM_WINDOWS, Arrays.asList(6, 7));
   }
@@ -386,17 +386,17 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     ctx = setupScenario2();
     aggregator = ctx.aggregator();
     clusterAndGeneration = ctx.clusterAndGeneration(0);
-    assertEquals(0.5, aggregator.monitoredPercentage(clusterAndGeneration), 0.01);
+    assertEquals(0.75, aggregator.monitoredPercentage(clusterAndGeneration), 0.01);
 
     ctx = setupScenario3();
     aggregator = ctx.aggregator();
     clusterAndGeneration = ctx.clusterAndGeneration(0);
-    assertEquals((double) 2 / 6, aggregator.monitoredPercentage(clusterAndGeneration), 0.01);
+    assertEquals((double) 4 / 6, aggregator.monitoredPercentage(clusterAndGeneration), 0.01);
 
     ctx = setupScenario4();
     aggregator = ctx.aggregator();
     clusterAndGeneration = ctx.clusterAndGeneration(0);
-    assertEquals((double) 2 / 6, aggregator.monitoredPercentage(clusterAndGeneration), 0.01);
+    assertEquals((double) 4 / 6, aggregator.monitoredPercentage(clusterAndGeneration), 0.01);
   }
 
   @Test

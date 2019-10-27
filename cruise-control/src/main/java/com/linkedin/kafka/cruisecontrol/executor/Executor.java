@@ -61,13 +61,18 @@ public class Executor {
   private static final Logger OPERATION_LOG = LoggerFactory.getLogger(OPERATION_LOGGER);
   private static final long EXECUTION_HISTORY_SCANNER_PERIOD_SECONDS = 5;
   private static final long EXECUTION_HISTORY_SCANNER_INITIAL_DELAY_SECONDS = 0;
+  // TODO: Make this configurable.
+  public static final long MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS = 5000L;
+  // A special timestamp to indicate that a broker is a permanent part of recently removed or demoted broker set.
+  private static final long PERMANENT_TIMESTAMP = 0L;
   // The maximum time to wait for a leader movement to finish. A leader movement will be marked as failed if
   // it takes longer than this time to finish.
   private static final long LEADER_ACTION_TIMEOUT_MS = 180000L;
   // The execution progress is controlled by the ExecutionTaskManager.
   private final ExecutionTaskManager _executionTaskManager;
   private final MetadataClient _metadataClient;
-  private final long _statusCheckingIntervalMs;
+  private final long _defaultExecutionProgressCheckIntervalMs;
+  private Long _requestedExecutionProgressCheckIntervalMs;
   private final ExecutorService _proposalExecutor;
   private static final long ZK_UTILS_CLOSE_TIMEOUT_MS = 10000L;
   private ZkUtils _zkUtils;
@@ -156,7 +161,8 @@ public class Executor {
                                                                   new Metadata(METADATA_REFRESH_BACKOFF, METADATA_EXPIRY_MS, false),
                                                                   -1L,
                                                                   time);
-    _statusCheckingIntervalMs = config.getLong(KafkaCruiseControlConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
+    _defaultExecutionProgressCheckIntervalMs = config.getLong(KafkaCruiseControlConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
+    _requestedExecutionProgressCheckIntervalMs = null;
     _proposalExecutor =
         Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("ProposalExecutor", false, LOG));
     _latestDemoteStartTimeMsByBrokerId = new ConcurrentHashMap<>();
@@ -178,6 +184,33 @@ public class Executor {
                                                          EXECUTION_HISTORY_SCANNER_INITIAL_DELAY_SECONDS,
                                                          EXECUTION_HISTORY_SCANNER_PERIOD_SECONDS,
                                                          TimeUnit.SECONDS);
+  }
+
+  /**
+   * Dynamically set the interval between checking and updating (if needed) the progress of an initiated execution.
+   * To prevent setting this value to a very small value by mistake, ensure that the requested interval is greater than
+   * the {@link #MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS}.
+   *
+   * @param requestedExecutionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
+   *                                                  execution (if null, use {@link #_defaultExecutionProgressCheckIntervalMs}).
+   */
+  public synchronized void setRequestedExecutionProgressCheckIntervalMs(Long requestedExecutionProgressCheckIntervalMs) {
+    if (requestedExecutionProgressCheckIntervalMs != null
+        && requestedExecutionProgressCheckIntervalMs < MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS) {
+      throw new IllegalArgumentException("Attempt to set execution progress check interval ["
+                                         + requestedExecutionProgressCheckIntervalMs
+                                         + "ms] to smaller than the minimum execution progress check interval in cluster ["
+                                         + MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS + "ms].");
+    }
+    _requestedExecutionProgressCheckIntervalMs = requestedExecutionProgressCheckIntervalMs;
+  }
+
+  /**
+   * @return The interval between checking and updating (if needed) the progress of an initiated execution.
+   */
+  public long executionProgressCheckIntervalMs() {
+    return _requestedExecutionProgressCheckIntervalMs == null ? _defaultExecutionProgressCheckIntervalMs
+                                                              : _requestedExecutionProgressCheckIntervalMs;
   }
 
   /**
@@ -278,6 +311,8 @@ public class Executor {
    *                                                         per broker(if null, use num.concurrent.partition.movements.per.broker).
    * @param requestedLeadershipMovementConcurrency The maximum number of concurrent leader movements
    *                                               (if null, use num.concurrent.leader.movements).
+   * @param requestedExecutionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
+   *                                                  execution (if null, use execution.progress.check.interval.ms).
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    * @param uuid UUID of the execution.
    */
@@ -287,10 +322,11 @@ public class Executor {
                                             LoadMonitor loadMonitor,
                                             Integer requestedInterBrokerPartitionMovementConcurrency,
                                             Integer requestedLeadershipMovementConcurrency,
+                                            Long requestedExecutionProgressCheckIntervalMs,
                                             ReplicaMovementStrategy replicaMovementStrategy,
                                             String uuid) {
     initProposalExecution(proposals, unthrottledBrokers, loadMonitor, requestedInterBrokerPartitionMovementConcurrency,
-                          requestedLeadershipMovementConcurrency, replicaMovementStrategy, uuid);
+                          requestedLeadershipMovementConcurrency, requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid);
     startExecution(loadMonitor, null, removedBrokers);
   }
 
@@ -299,6 +335,7 @@ public class Executor {
                                                   LoadMonitor loadMonitor,
                                                   Integer requestedInterBrokerPartitionMovementConcurrency,
                                                   Integer requestedLeadershipMovementConcurrency,
+                                                  Long requestedExecutionProgressCheckIntervalMs,
                                                   ReplicaMovementStrategy replicaMovementStrategy,
                                                   String uuid) {
     if (_hasOngoingExecution) {
@@ -316,6 +353,7 @@ public class Executor {
                                                 replicaMovementStrategy);
     setRequestedInterBrokerPartitionMovementConcurrency(requestedInterBrokerPartitionMovementConcurrency);
     setRequestedLeadershipMovementConcurrency(requestedLeadershipMovementConcurrency);
+    setRequestedExecutionProgressCheckIntervalMs(requestedExecutionProgressCheckIntervalMs);
     _uuid = uuid;
   }
 
@@ -328,6 +366,8 @@ public class Executor {
    * @param concurrentSwaps The number of concurrent swap operations per broker.
    * @param requestedLeadershipMovementConcurrency The maximum number of concurrent leader movements
    *                                               (if null, use num.concurrent.leader.movements).
+   * @param requestedExecutionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
+   *                                                  execution (if null, use execution.progress.check.interval.ms).
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    * @param uuid UUID of the execution.
    */
@@ -336,10 +376,11 @@ public class Executor {
                                                   LoadMonitor loadMonitor,
                                                   Integer concurrentSwaps,
                                                   Integer requestedLeadershipMovementConcurrency,
+                                                  Long requestedExecutionProgressCheckIntervalMs,
                                                   ReplicaMovementStrategy replicaMovementStrategy,
                                                   String uuid) {
     initProposalExecution(proposals, demotedBrokers, loadMonitor, concurrentSwaps, requestedLeadershipMovementConcurrency,
-                          replicaMovementStrategy, uuid);
+                          requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid);
     startExecution(loadMonitor, demotedBrokers, null);
   }
 
@@ -560,7 +601,7 @@ public class Executor {
             _loadMonitor.pauseMetricSampling(String.format("Paused-By-Cruise-Control-Before-Starting-Execution (Date: %s)", currentUtcDate()));
             break;
           } catch (IllegalStateException e) {
-            Thread.sleep(_statusCheckingIntervalMs);
+            Thread.sleep(executionProgressCheckIntervalMs());
             LOG.debug("Waiting for the load monitor to be ready to initialize the execution.", e);
           }
         }
@@ -784,7 +825,7 @@ public class Executor {
         // If there is no finished tasks, we need to check if anything is blocked.
         maybeReexecuteTasks();
         try {
-          Thread.sleep(_statusCheckingIntervalMs);
+          Thread.sleep(executionProgressCheckIntervalMs());
         } catch (InterruptedException e) {
           // let it go
         }

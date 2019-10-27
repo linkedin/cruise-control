@@ -15,7 +15,7 @@ import java.util.Set;
 /**
  * The async runnable for {@link KafkaCruiseControl#demoteBrokers(Set, boolean,
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, boolean, boolean,
- * ReplicaMovementStrategy, String, boolean)}
+ * Long, ReplicaMovementStrategy, String, boolean)}
  */
 public class DemoteBrokerRunnable extends OperationRunnable {
   private final Set<Integer> _brokerIds;
@@ -56,6 +56,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
                                                                     _concurrentLeaderMovements,
                                                                     _skipUrpDemotion,
                                                                     _excludeFollowerDemotion,
+                                                                    null,
                                                                     _replicaMovementStrategy,
                                                                     _uuid,
                                                                     _excludeRecentlyDemotedBrokers),

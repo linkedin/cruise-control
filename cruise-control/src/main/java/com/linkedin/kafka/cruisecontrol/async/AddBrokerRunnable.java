@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
 
 /**
  * The async runnable for {@link KafkaCruiseControl#addBrokers(Set, boolean, boolean, List, ModelCompletenessRequirements,
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, Pattern,
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, Pattern, Long,
  * ReplicaMovementStrategy, String, boolean, boolean)}
  */
 class AddBrokerRunnable extends OperationRunnable {
@@ -73,6 +73,7 @@ class AddBrokerRunnable extends OperationRunnable {
                                                                  _concurrentLeaderMovements,
                                                                  _skipHardGoalCheck,
                                                                  _excludedTopics,
+                                                                 null,
                                                                  _replicaMovementStrategy,
                                                                  _uuid,
                                                                  _excludeRecentlyDemotedBrokers,

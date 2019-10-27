@@ -40,6 +40,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.currentUtcDate;
+import static com.linkedin.kafka.cruisecontrol.executor.Executor.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.*;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.GET_METHOD;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
@@ -85,6 +86,7 @@ public class ParameterUtils {
   public static final String THROTTLE_REMOVED_BROKER_PARAM = "throttle_removed_broker";
   public static final String IGNORE_PROPOSAL_CACHE_PARAM = "ignore_proposal_cache";
   public static final String USE_READY_DEFAULT_GOALS_PARAM = "use_ready_default_goals";
+  public static final String EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM = "execution_progress_check_interval_ms";
   public static final String CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM = "concurrent_partition_movements_per_broker";
   public static final String CONCURRENT_LEADER_MOVEMENTS_PARAM = "concurrent_leader_movements";
   public static final String DEFAULT_PARTITION_LOAD_RESOURCE = "disk";
@@ -607,6 +609,34 @@ public class ParameterUtils {
   }
 
   /**
+   * Get the execution progress check interval in milliseconds. Default: {@code null}.
+   *
+   * To prevent setting this value to a very small value by mistake, ensure that the requested execution progress check interval
+   * is not smaller than {@link com.linkedin.kafka.cruisecontrol.executor.Executor#MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS}
+   *
+   * @param request The Http request.
+   * @return Execution progress check interval in milliseconds.
+   */
+  static Long executionProgressCheckIntervalMs(HttpServletRequest request) {
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
+    if (parameterString == null) {
+      return null;
+    }
+
+    long executionProgressCheckIntervalMs = Long.parseLong(request.getParameter(parameterString));
+    if (executionProgressCheckIntervalMs < MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS) {
+      throw new IllegalArgumentException("Attempt to set execution progress check interval [" + executionProgressCheckIntervalMs
+          + "ms] to smaller than the minimum execution progress check interval in cluster ["
+          + MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS + "ms].");
+    }
+
+    return executionProgressCheckIntervalMs;
+  }
+
+  /**
+   * Get the execution concurrency requirement dynamically set from the Http request.
+   *
+   * @param request                        The Http request.
    * @param isPartitionMovement True if partition movement per broker, false if the total leader movement.
    */
   static Integer concurrentMovements(HttpServletRequest request, boolean isPartitionMovement) {
