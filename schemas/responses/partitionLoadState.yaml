@@ -1,0 +1,34 @@
+PartitionLoadState:
+  type: object
+  properties:
+    version:
+      type: integer
+      format: int32
+    records:
+      type: array
+      items:
+        type: object
+        properties:
+          topic:
+            type: string
+          partition:
+            type: integer
+            format: int32
+          leader:
+            type: integer
+            format: int32
+          followers:
+            type: array
+            items:
+              type: integer
+              format: int32
+          cpu:
+            type: double
+          networkInbound:
+            type: double
+          networkOutbound:
+            type: double
+          disk:
+            type: double
+          msg_in:
+            type: double

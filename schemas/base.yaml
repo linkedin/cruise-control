@@ -1,0 +1,6 @@
+openapi: 3.0.0
+info:
+  title: Cruise Control API
+  description: Cruise-control is the first of its kind to fully automate the dynamic workload rebalance and self-healing of a kafka cluster. It provides great value to Kafka users by simplifying the operation of Kafka clusters.
+  version: 19.10.0
+paths:
