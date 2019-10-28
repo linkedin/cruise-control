@@ -1,0 +1,103 @@
+/partition_load:
+  get:
+    summary: Get the resource load for each partition
+    parameters:
+      - name: resource
+        in: query
+        description: The host and broker-level resource by which to sort the cruise-control response
+        schema:
+          type: string
+          enum:
+            - cpu
+            - networkInbound
+            - networkOutbound
+            - disk
+      - name: start
+        in: query
+        description: The timestamp in milliseconds since the Epoch to use as the start
+        schema:
+          type: integer
+          format: int64
+      - name: end
+        in: query
+        description: The timestamp in milliseconds since the Epoch to use as the end
+        schema:
+          type: integer
+          format: int64
+      - name: entries
+        in: query
+        description: The number of entries to show in the response
+        schema:
+          type: integer
+          format: int32
+      - name: topic
+        in: query
+        description: A regular expression used to match the desired topics
+        schema:
+          type: string
+      - name: partition
+        in: query
+        description: The partition or [start]-[end] partitions to return
+        schema:
+          oneOf:
+            - type: integer
+              format: int32
+              example:
+                - value: 0
+                - summary: returns 0th partition
+            - type: string
+              pattern: '^[0-9]+-[0-9]+$'
+              example:
+              - value: '0-9'
+              - summary: 0 is the start index and 9 is the end index of the partition boundaries
+      - name: min_valid_partition_ratio
+        in: query
+        description: The minimum required ratio of monitored topics, in range [0.0, 1.0]
+        schema:
+          type: number
+          format: double
+          minimum: 0.0
+          maximum: 1.0
+      - name: allow_capacity_estimation
+        in: query
+        description: Whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information
+        schema:
+          type: boolean
+      - name: max_load
+        in: query
+        description: If true, the maximum load is returned
+        schema:
+          type: boolean
+      - name: avg_load
+        in: query
+        description: If true, the average load is returned
+        schema:
+          type: boolean
+      - name: brokerid
+        in: query
+        description: Set of broker ids used to filter partition load for the report
+        schema:
+          type: array
+          items:
+            type: integer
+            format: int32
+      - name: json
+        in: query
+        description: If true, cruise-control's response is in JSON format
+        schema:
+          type: boolean
+    responses:
+      '200':
+        description: |-
+          Successful partition load state response
+        content:
+          application/json:
+            schema:
+              $ref: '../responses/partitionLoadState.yaml#/PartitionLoadState'
+      '202':
+        description: |-
+          Partition load state fetch in progress
+        content:
+          application/json:
+            schema:
+              $ref: '../responses/progressResult.yaml#/ProgressResult'
