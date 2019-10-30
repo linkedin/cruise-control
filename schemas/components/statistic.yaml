@@ -1,0 +1,12 @@
+Statistic:
+  type: object
+  properties:
+    potentialNwOut:
+      type: number
+      format: double
+    replicas:
+      type: number
+    leaderReplicas:
+      type: number
+    topicReplicas:
+      type: number

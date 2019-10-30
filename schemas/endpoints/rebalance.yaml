@@ -1,0 +1,151 @@
+RebalanceEndpoint:
+  post:
+    summary: Rebalance a Kafka cluster based on goals
+    parameters:
+      - name: dryrun
+        in: query
+        description: Whether dry-run the request or not	
+        schema: 
+          type: boolean
+          default: true
+      - name: goals
+        in: query
+        description: list of goals used to generate proposal
+        schema: 
+          type: array
+          items:
+            type: string
+          # default is every goal
+      - name: allow_capacity_estimation
+        in: query
+        description: Whether to allow broker capacity to be estimated
+        schema: 
+          type: boolean
+          default: false
+      - name: concurrent_partition_movements_per_broker
+        in: query
+        description: The upper bound of ongoing replica movements going into/out of each broker	
+        schema: 
+          type: integer
+          format: int32
+          minimum: 1
+      - name: concurrent_intra_broker_partition_movements
+        in: query
+        description: The upper bound of ongoing replica movements between disks within each broker	
+        schema: 
+          type: integer
+          format: int32
+          minimum: 1
+      - name: concurrent_leader_movements
+        in: query
+        description: The upper bound of ongoing leadership movements	
+        schema: 
+          type: integer
+          format: int32
+          minimum: 1
+      - name: json
+        in: query
+        description: Whether to return in JSON format or not	
+        schema: 
+          type: boolean
+          default: false
+      - name: skip_hard_goal_check
+        in: query
+        description: Whether to allow hard goal be skipped in proposal generation	
+        schema: 
+          type: boolean
+          default: false
+      - name: excluded_topics
+        in: query
+        description: Whether to allow hard goal be skipped in proposal generation	
+        schema: 
+          type: string # topics regex
+          default: null
+      - name: use_ready_default_goals
+        in: query
+        description: Whether to only use ready goals to generate proposal	
+        schema: 
+          type: boolean
+          default: false
+      - name: data_from
+        in: query
+        description: Whether to calculate proposal from available valid partitions or valid windows	
+        schema: 
+          type: string
+          default: VALID_WINDOWS	
+      - name: verbose
+        in: query
+        description: Return detailed state information
+        schema: 
+          type: boolean
+          default: false
+      - name: exclude_recently_demoted_brokers
+        in: query
+        description: Whether to allow leader replicas to be moved to recently demoted broker
+        schema: 
+          type: boolean
+          default: false
+      - name: replica_movement_strategies
+        in: query
+        description: Replica movement strategies to use		
+        schema:
+          type: array
+          items:
+            type: string
+      - name: ignore_proposal_cache
+        in: query
+        description: Whether to ignore the cached proposal or not			
+        schema: 
+          type: boolean
+          default: false
+      - name: destination_broker_ids
+        in: query
+        description: Whether to allow leader replicas to be moved to recently demoted broker
+        schema: 
+          type: array
+          items:
+            type: string
+      - name: kafka_assigner
+        in: query
+        description: Whether to use Kafka assigner mode to general proposal
+        schema: 
+          type: boolean
+          default: false
+      - name: rebalance_disk
+        in: query
+        description: Whether to balance load between brokers or between disks within broker	
+        schema: 
+          type: boolean
+          default: false
+      - name: review_id
+        in: query
+        description: Review id for 2FA
+        schema:
+          type: string
+      - name: replication_throttle
+        in: query
+        description: Upper bound on the bandwidth used to move replicas
+        schema: 
+          type: integer
+          format: int32
+      - name: execution_progress_check_interval_ms
+        in: query
+        description: Execution progress check interval in milliseconds
+        schema:
+          type: integer
+          format: int32
+    responses:
+      '200':
+        description: |-
+          Successful rebalance response
+        content:
+          application/json:
+            schema:
+              $ref: '../responses/optimzationResult.yaml#/OptimizationResult'
+      '202':
+        description: |-
+          Rebalancing in progress
+        content:
+          application/json:
+            schema:
+              $ref: '../responses/progressResult.yaml#/ProgressResult'

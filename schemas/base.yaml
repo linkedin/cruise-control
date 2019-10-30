@@ -4,3 +4,7 @@ info:
   description: Cruise-control is the first of its kind to fully automate the dynamic workload rebalance and self-healing of a kafka cluster. It provides great value to Kafka users by simplifying the operation of Kafka clusters.
   version: 19.10.0
 paths:
+  /kafkacruisecontrol/partition_load:
+    $ref: 'endpoints/partitionLoad.yaml#/PartitionLoadEndpoint'
+  /kafkacruisecontrol/rebalance:
+    $ref: 'endpoints/rebalance.yaml#/RebalanceEndpoint'
