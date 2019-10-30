@@ -1147,17 +1147,17 @@ public class ClusterModel implements Serializable {
       double cpuUsagePercent = UNIT_INTERVAL_TO_PERCENTAGE * broker.load().expectedUtilizationFor(Resource.CPU)
                                / broker.capacityFor(Resource.CPU);
       brokerUtilizationStats.addSingleBrokerUtilizationStats(broker.host().name(),
-                                       broker.id(),
-                                       broker.state(),
-                                       broker.replicas().isEmpty() ? 0 : broker.load().expectedUtilizationFor(Resource.DISK),
-                                       cpuUsagePercent,
-                                       leaderBytesInRate,
-                                       broker.load().expectedUtilizationFor(Resource.NW_IN) - leaderBytesInRate,
-                                       broker.load().expectedUtilizationFor(Resource.NW_OUT),
-                                       potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT),
-                                       broker.replicas().size(), broker.leaderReplicas().size(),
-                                       _capacityEstimationInfoByBrokerId.get(broker.id()) != null,
-                                        broker.capacityFor(Resource.DISK));
+                                                             broker.id(),
+                                                             broker.state(),
+                                                             broker.replicas().isEmpty() ? 0 : broker.load().expectedUtilizationFor(Resource.DISK),
+                                                             cpuUsagePercent,
+                                                             leaderBytesInRate,
+                                                             broker.load().expectedUtilizationFor(Resource.NW_IN) - leaderBytesInRate,
+                                                             broker.load().expectedUtilizationFor(Resource.NW_OUT),
+                                                             potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT),
+                                                             broker.replicas().size(), broker.leaderReplicas().size(),
+                                                             _capacityEstimationInfoByBrokerId.get(broker.id()) != null,
+                                                             broker.capacityFor(Resource.DISK));
     });
     return brokerUtilizationStats;
   }

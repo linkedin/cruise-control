@@ -625,12 +625,12 @@ public class LoadMonitor {
       BrokerCapacityInfo brokerCapacityInfo = _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id());
       Map<Resource, Double> capacities = brokerCapacityInfo.capacity();
       brokerCapacityStats.addSingleBrokerCapacityStats(node.host(), 
-                                               node.id(),
-                                               brokerCapacityInfo.isEstimated(),
-                                               capacities.get(Resource.DISK),
-                                               capacities.get(Resource.CPU),
-                                               capacities.get(Resource.NW_IN),
-                                               capacities.get(Resource.NW_OUT));
+                                                       node.id(),
+                                                       brokerCapacityInfo.isEstimated(),
+                                                       capacities.get(Resource.DISK),
+                                                       capacities.get(Resource.CPU),
+                                                       capacities.get(Resource.NW_IN),
+                                                       capacities.get(Resource.NW_OUT));
     }
     return brokerCapacityStats;
     

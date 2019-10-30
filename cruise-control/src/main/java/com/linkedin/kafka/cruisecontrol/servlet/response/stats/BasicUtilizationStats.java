@@ -9,15 +9,15 @@ import java.util.Map;
 
 
 class BasicUtilizationStats {
-  protected static final String DISK_MB = "DiskMB";
-  protected static final String DISK_PCT = "DiskPct";
-  protected static final String CPU_PCT = "CpuPct";
-  protected static final String LEADER_NW_IN_RATE = "LeaderNwInRate";
-  protected static final String FOLLOWER_NW_IN_RATE = "FollowerNwInRate";
-  protected static final String NW_OUT_RATE = "NwOutRate";
-  protected static final String PNW_OUT_RATE = "PnwOutRate";
-  protected static final String REPLICAS = "Replicas";
-  protected static final String LEADERS = "Leaders";
+  protected static final String DISK_MB = "diskMB";
+  protected static final String DISK_PCT = "diskPct";
+  protected static final String CPU_PCT = "cpuPct";
+  protected static final String LEADER_NW_IN_RATE = "leaderNwInRate";
+  protected static final String FOLLOWER_NW_IN_RATE = "followerNwInRate";
+  protected static final String NW_OUT_RATE = "nwOutRate";
+  protected static final String PNW_OUT_RATE = "pnwOutRate";
+  protected static final String REPLICAS = "replicas";
+  protected static final String LEADERS = "leaders";
   protected double _diskUtil;
   protected double _cpuUtil;
   protected double _leaderBytesInRate;

@@ -8,7 +8,7 @@ import java.util.Map;
 
 
 public class SingleBrokerUtilizationStats extends SingleBrokerStats {
-  protected static final String BROKER_STATE = "BrokerState";
+  protected static final String BROKER_STATE = "brokerState";
   protected final Broker.State _state;
   protected final BasicUtilizationStats _basicStats;
 

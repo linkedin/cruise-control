@@ -5,8 +5,8 @@
 package com.linkedin.kafka.cruisecontrol.servlet.response.stats;
 
 public class SingleBrokerStats {
-    protected static final String HOST = "Host";
-    protected static final String BROKER = "Broker";
+    protected static final String HOST = "host";
+    protected static final String BROKER = "broker";
 
     private final String _host;
     private final int _id;

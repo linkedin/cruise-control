@@ -9,10 +9,10 @@ import java.util.Map;
 
 
 class BasicCapacityStats {
-    private static final String DISK_CAPACITY = "DiskCapacity";
-    private static final String CPU_CAPACITY = "CpuCapacity";
-    private static final String NW_IN_CAPACITY = "NwInCapacity";
-    private static final String NW_OUT_CAPACITY = "NwOutCapacity";
+    private static final String DISK_CAPACITY = "diskCapacity";
+    private static final String CPU_CAPACITY = "cpuCapacity";
+    private static final String NW_IN_CAPACITY = "nwInCapacity";
+    private static final String NW_OUT_CAPACITY = "nwOutCapacity";
     private double _diskCapacity;
     private double _cpuCapacity;
     private double _bytesInCapacity;
