@@ -1,4 +1,4 @@
-/partition_load:
+PartitionLoadEndpoint:
   get:
     summary: Get the resource load for each partition
     parameters:

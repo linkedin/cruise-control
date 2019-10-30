@@ -1,0 +1,26 @@
+ProgressResult:
+  type: object
+  properties:
+    version:
+      type: integer
+      format: int32
+    progress:
+      type: object
+      properties:
+        operation:
+          type: string
+        operationProgress:
+          type: array
+          items:
+            type: object
+            properties:
+              step:
+                type: string
+              description:
+                type: string
+              time-in-ms:
+                type: integer
+                format: int64
+              completionPercentage:
+                type: number
+                format: double
