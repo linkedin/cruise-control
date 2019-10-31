@@ -940,6 +940,45 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   public static final String LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG = "logdir.response.timeout.ms";
   private static final String LOGDIR_RESPONSE_TIMEOUT_MS_DOC = "Timeout in ms for broker logdir to respond";
 
+  /**
+   * <code>leader.movement.timeout.ms</code>
+   */
+  public static final String LEADER_MOVEMENT_TIMEOUT_MS_CONFIG = "leader.movement.timeout.ms";
+  private static final String LEADER_MOVEMENT_TIMEOUT_MS_DOC = "The maximum time to wait for a leader movement to finish. "
+      + "A leader movement will be marked as failed if it takes longer than this time to finish.";
+
+  /**
+   * <code>task.execution.alerting.threshold.ms</code>
+   */
+  public static final String TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG = "task.execution.alerting.threshold.ms";
+
+  /**
+   * <code>inter.broker.replica.movement.rate.alerting.threshold</code>
+   */
+  public static final String INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG =
+      "inter.broker.replica.movement.rate.alerting.threshold";
+  private static final String INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_DOC = "Threshold of data movement rate(in MB/s) "
+      + "for inter-broker replica movement task. If the task's data movement rate is lower than this and the task's execution time exceeds "
+      + "the threshold set via " + TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG + ", an alert will be sent via notifier set by config "
+      + EXECUTOR_NOTIFIER_CLASS_CONFIG;
+
+  /**
+   * <code>intra.broker.replica.movement.rate.alerting.threshold</code>
+   */
+  public static final String INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG =
+      "intra.broker.replica.movement.rate.alerting.threshold";
+  private static final String INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_DOC = "Threshold of data movement rate(in MB/s) "
+      + "for intra-broker replica movement task. If task's data movement rate is lower than this and the task's execution time exceeds "
+      + "the threshold set via " + TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG + ", an alert will be sent via notifier set by config "
+      + EXECUTOR_NOTIFIER_CLASS_CONFIG;
+
+  // Put here to avoid forward reference.
+  private static final String TASK_EXECUTION_ALERTING_THRESHOLD_MS_DOC = "Threshold of execution time to alert a replica/leader movement"
+      + " task. If the task's execution time exceeds this threshold and the data movement rate is lower than the threshold "
+      + "set via " + INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG + "(for inter-broker replica movement task) or "
+      + INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG + "(for intra-broker replica movement task), an alert will be "
+      + "sent via notifier set by config " + EXECUTOR_NOTIFIER_CLASS_CONFIG;
+
   static {
     CONFIG = new ConfigDef()
         .define(WEBSERVER_HTTP_PORT_CONFIG, ConfigDef.Type.INT, 9090, atLeast(0), ConfigDef.Importance.HIGH,
@@ -1739,6 +1778,26 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 10000L,
                 ConfigDef.Importance.LOW,
                 LOGDIR_RESPONSE_TIMEOUT_MS_DOC)
+        .define(LEADER_MOVEMENT_TIMEOUT_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                180000L,
+                ConfigDef.Importance.LOW,
+                LEADER_MOVEMENT_TIMEOUT_MS_DOC)
+        .define(TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                90000L,
+                ConfigDef.Importance.LOW,
+                TASK_EXECUTION_ALERTING_THRESHOLD_MS_DOC)
+        .define(INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG,
+                ConfigDef.Type.DOUBLE,
+                0.1,
+                ConfigDef.Importance.LOW,
+                INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_DOC)
+        .define(INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG,
+                ConfigDef.Type.DOUBLE,
+                0.2,
+                ConfigDef.Importance.LOW,
+                INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_DOC)
         .withClientSslSupport()
         .withClientSaslSupport();
   }
@@ -1874,7 +1933,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   }
 
   /**
-   Sanity check to ensure that
+   * Sanity check to ensure that
    * <ul>
    *   <li>{@link #MAX_NUM_CLUSTER_MOVEMENTS_CONFIG} > {@link #NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG}</li>
    *   <li>{@link #MAX_NUM_CLUSTER_MOVEMENTS_CONFIG} > {@link #NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG}</li>
@@ -1905,6 +1964,19 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                                 + maxClusterPartitionMovementConcurrency + "].");
     }
   }
+
+  /**
+   * Sanity check to ensure that {@link #LEADER_MOVEMENT_TIMEOUT_MS_CONFIG} > {@link #TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG}
+   */
+  private void sanityCheckTaskExecutionAlertingThreshold() {
+    long leaderMovementTimeoutMs = getLong(LEADER_MOVEMENT_TIMEOUT_MS_CONFIG);
+    long taskExecutionAlertingThresholdMs = getLong(TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG);
+    if (taskExecutionAlertingThresholdMs >= leaderMovementTimeoutMs) {
+      throw new ConfigException("Task execution time alerting threshold [" + taskExecutionAlertingThresholdMs
+                                + "ms] cannot be greater than leader movement timeout [" + leaderMovementTimeoutMs + "ms].");
+    }
+  }
+
   /**
    * Sanity check to ensure that
    * <ul>
@@ -1976,5 +2048,6 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     sanityCheckGoalNames();
     sanityCheckSamplingPeriod(originals);
     sanityCheckConcurrency();
+    sanityCheckTaskExecutionAlertingThreshold();
   }
 }

@@ -407,12 +407,13 @@ public class UserTaskManager implements Closeable {
    * Update user task status once the execution is done.
    *
    * @param uuid UUID associated with the in-execution user task.
+   * @param completeWithError Whether the task execution finished with error or not.
    */
-  public synchronized void markTaskExecutionFinished(String uuid, boolean withError) {
+  public synchronized void markTaskExecutionFinished(String uuid, boolean completeWithError) {
     if (!_inExecutionUserTaskInfo.userTaskId().equals(UUID.fromString(uuid))) {
       throw new IllegalStateException(String.format("Task %s is not found in UserTaskManager.", uuid));
     }
-    if (withError) {
+    if (completeWithError) {
       _inExecutionUserTaskInfo.setState(TaskState.COMPLETED_WITH_ERROR);
     } else {
       _inExecutionUserTaskInfo.setState(TaskState.COMPLETED);
