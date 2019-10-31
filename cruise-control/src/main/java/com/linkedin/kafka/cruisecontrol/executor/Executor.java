@@ -84,10 +84,12 @@ public class Executor {
 
   private static final long METADATA_REFRESH_BACKOFF = 100L;
   private static final long METADATA_EXPIRY_MS = Long.MAX_VALUE;
+  private static final int NO_STOP_EXECUTION = 0;
+  private static final int STOP_EXECUTION = 1;
+  private static final int FORCE_STOP_EXECUTION = 2;
 
   // Some state for external service to query
-  private final AtomicBoolean _stopRequested;
-  private final AtomicBoolean _forceStop;
+  private final AtomicInteger _stopSignal;
   private final Time _time;
   private volatile boolean _hasOngoingExecution;
   private volatile ExecutorState _executorState;
@@ -180,8 +182,7 @@ public class Executor {
     _latestDemoteStartTimeMsByBrokerId = new ConcurrentHashMap<>();
     _latestRemoveStartTimeMsByBrokerId = new ConcurrentHashMap<>();
     _executorState = ExecutorState.noTaskInProgress(recentlyDemotedBrokers(), recentlyRemovedBrokers());
-    _stopRequested = new AtomicBoolean(false);
-    _forceStop = new AtomicBoolean(false);
+    _stopSignal = new AtomicInteger(NO_STOP_EXECUTION);
     _hasOngoingExecution = false;
     _uuid = null;
     _executorNotifier = executorNotifier != null ? executorNotifier
@@ -520,8 +521,7 @@ public class Executor {
     sanityCheckOngoingReplicaMovement();
     _hasOngoingExecution = true;
     _anomalyDetector.maybeClearOngoingAnomalyDetectionTimeMs();
-    _stopRequested.set(false);
-    _forceStop.set(false);
+    _stopSignal.set(NO_STOP_EXECUTION);
     _executionStoppedByUser.set(false);
     if (_isKafkaAssignerMode) {
       _numExecutionStartedInKafkaAssignerMode.incrementAndGet();
@@ -572,8 +572,9 @@ public class Executor {
    * @return True if the flag to stop the execution is set after the call (i.e. was not set already), false otherwise.
    */
   private synchronized boolean stopExecution(boolean forceExecutionStop) {
-    if (_stopRequested.compareAndSet(false, true) &&
-        (!forceExecutionStop || _forceStop.compareAndSet(false, true))) {
+    if ((forceExecutionStop && (_stopSignal.compareAndSet(NO_STOP_EXECUTION, FORCE_STOP_EXECUTION) ||
+                                _stopSignal.compareAndSet(STOP_EXECUTION, FORCE_STOP_EXECUTION))) ||
+        (!forceExecutionStop && _stopSignal.compareAndSet(NO_STOP_EXECUTION, STOP_EXECUTION)))  {
       _numExecutionStopped.incrementAndGet();
       _executionTaskManager.setStopRequested();
       return true;
@@ -765,13 +766,8 @@ public class Executor {
         }
 
         // 4. Delete tasks from Zookeeper if needed.
-        if (_state == STOPPING_EXECUTION && _forceStop.get()) {
-          // Delete znode of ongoing replica movement tasks.
-          _kafkaZkClient.deletePartitionReassignment();
-          // delete znode of ongoing leadership movement tasks.
-          _kafkaZkClient.deletePreferredReplicaElection();
-          // Delete controller znode to trigger a controller re-election.
-          _kafkaZkClient.deleteController();
+        if (_state == STOPPING_EXECUTION && _stopSignal.get() == FORCE_STOP_EXECUTION) {
+          deleteZnodesToStopExecution();
         }
       } catch (Throwable t) {
         LOG.error("Executor got exception during execution", t);
@@ -817,13 +813,12 @@ public class Executor {
       // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
       _executorState = ExecutorState.noTaskInProgress(_recentlyDemotedBrokers, _recentlyRemovedBrokers);
       _hasOngoingExecution = false;
-      _stopRequested.set(false);
-      _forceStop.set(false);
+      _stopSignal.set(NO_STOP_EXECUTION);
       _executionStoppedByUser.set(false);
     }
 
     private void updateOngoingExecutionState() {
-      if (!_stopRequested.get()) {
+      if (_stopSignal.get() == NO_STOP_EXECUTION) {
         switch (_state) {
           case LEADER_MOVEMENT_TASK_IN_PROGRESS:
             _executorState = ExecutorState.operationInProgress(LEADER_MOVEMENT_TASK_IN_PROGRESS,
@@ -882,7 +877,7 @@ public class Executor {
 
       int partitionsToMove = numTotalPartitionMovements;
       // Exhaust all the pending partition movements.
-      while ((partitionsToMove > 0 || !_executionTaskManager.inExecutionTasks().isEmpty()) && !_stopRequested.get()) {
+      while ((partitionsToMove > 0 || !_executionTaskManager.inExecutionTasks().isEmpty()) && _stopSignal.get() == NO_STOP_EXECUTION) {
         // Get tasks to execute.
         List<ExecutionTask> tasksToExecute = _executionTaskManager.getInterBrokerReplicaMovementTasks();
         LOG.info("Executor will execute {} task(s)", tasksToExecute.size());
@@ -919,7 +914,7 @@ public class Executor {
       }
       if (_executionTaskManager.inExecutionTasks().isEmpty()) {
         LOG.info("Inter-broker partition movements finished.");
-      } else if (_stopRequested.get()) {
+      } else if (_stopSignal.get() != NO_STOP_EXECUTION) {
         ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary(Collections.emptySet());
         Map<ExecutionTask.State, Integer> partitionMovementTasksByState = executionTasksSummary.taskStat().get(INTER_BROKER_REPLICA_ACTION);
         LOG.info("Inter-broker partition movements stopped. For inter-broker partition movements {} tasks cancelled, {} tasks in-progress, "
@@ -944,7 +939,7 @@ public class Executor {
 
       int partitionsToMove = numTotalPartitionMovements;
       // Exhaust all the pending partition movements.
-      while ((partitionsToMove > 0 || !_executionTaskManager.inExecutionTasks().isEmpty()) && !_stopRequested.get()) {
+      while ((partitionsToMove > 0 || !_executionTaskManager.inExecutionTasks().isEmpty()) && _stopSignal.get() == NO_STOP_EXECUTION) {
         // Get tasks to execute.
         List<ExecutionTask> tasksToExecute = _executionTaskManager.getIntraBrokerReplicaMovementTasks();
         LOG.info("Executor will execute {} task(s)", tasksToExecute.size());
@@ -975,7 +970,7 @@ public class Executor {
       }
       if (_executionTaskManager.inExecutionTasks().isEmpty()) {
         LOG.info("Intra-broker partition movements finished.");
-      } else if (_stopRequested.get()) {
+      } else if (_stopSignal.get() != NO_STOP_EXECUTION) {
         ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary(Collections.emptySet());
         Map<ExecutionTask.State, Integer> partitionMovementTasksByState = executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION);
         LOG.info("Intra-broker partition movements stopped. For intra-broker partition movements {} tasks cancelled, {} tasks in-progress, "
@@ -996,7 +991,7 @@ public class Executor {
       int numTotalLeadershipMovements = _executionTaskManager.numRemainingLeadershipMovements();
       LOG.info("Starting {} leadership movements.", numTotalLeadershipMovements);
       int numFinishedLeadershipMovements = 0;
-      while (_executionTaskManager.numRemainingLeadershipMovements() != 0 && !_stopRequested.get()) {
+      while (_executionTaskManager.numRemainingLeadershipMovements() != 0 && _stopSignal.get() == NO_STOP_EXECUTION) {
         updateOngoingExecutionState();
         numFinishedLeadershipMovements += moveLeadershipInBatch();
         LOG.info("{}/{} ({}%) leadership movements completed.", numFinishedLeadershipMovements,
@@ -1004,7 +999,7 @@ public class Executor {
       }
       if (_executionTaskManager.inExecutionTasks().isEmpty()) {
         LOG.info("Leadership movements finished.");
-      } else if (_stopRequested.get()) {
+      } else if (_stopSignal.get() != NO_STOP_EXECUTION) {
         Map<ExecutionTask.State, Integer> leadershipMovementTasksByState =
             _executionTaskManager.getExecutionTasksSummary(Collections.emptySet()).taskStat().get(LEADER_ACTION);
         LOG.info("Leadership movements stopped. {} tasks cancelled, {} tasks in-progress, {} tasks aborting, {} tasks aborted, "
@@ -1023,18 +1018,27 @@ public class Executor {
       int numLeadershipToMove = leadershipMovementTasks.size();
       LOG.debug("Executing {} leadership movements in a batch.", numLeadershipToMove);
       // Execute the leadership movements.
-      if (!leadershipMovementTasks.isEmpty() && !_stopRequested.get()) {
+      if (!leadershipMovementTasks.isEmpty() && _stopSignal.get() == NO_STOP_EXECUTION) {
         // Mark leadership movements in progress.
         _executionTaskManager.markTasksInProgress(leadershipMovementTasks);
 
         // Run preferred leader election.
         ExecutorUtils.executePreferredLeaderElection(_kafkaZkClient, leadershipMovementTasks);
         LOG.trace("Waiting for leadership movement batch to finish.");
-        while (!_executionTaskManager.inExecutionTasks().isEmpty() && !_stopRequested.get()) {
+        while (!_executionTaskManager.inExecutionTasks().isEmpty() && _stopSignal.get() == NO_STOP_EXECUTION) {
           waitForExecutionTaskToFinish();
         }
       }
       return numLeadershipToMove;
+    }
+
+    private void deleteZnodesToStopExecution() {
+      // Delete znode of ongoing replica movement tasks.
+      _kafkaZkClient.deletePartitionReassignment();
+      // delete znode of ongoing leadership movement tasks.
+      _kafkaZkClient.deletePreferredReplicaElection();
+      // Delete controller znode to trigger a controller re-election.
+      _kafkaZkClient.deleteController();
     }
 
     /**
@@ -1062,7 +1066,7 @@ public class Executor {
         List<ExecutionTask> deadOrAbortingTasks = new ArrayList<>();
         for (ExecutionTask task : _executionTaskManager.inExecutionTasks()) {
           TopicPartition tp = task.proposal().topicPartition();
-          if (_forceStop.get()) {
+          if (_stopSignal.get() == FORCE_STOP_EXECUTION) {
             LOG.debug("Task {} is marked as dead to force execution to stop.", task);
             finishedTasks.add(task);
             _executionTaskManager.markTaskDead(task);
@@ -1094,7 +1098,7 @@ public class Executor {
         if (!deadOrAbortingTasks.isEmpty()) {
           // TODO: re-enable this rollback action when KAFKA-6304 is available.
           // ExecutorAdminUtils.executeReplicaReassignmentTasks(_kafkaZkClient, deadOrAbortingTasks);
-          if (!_stopRequested.get()) {
+          if (_stopSignal.get() == NO_STOP_EXECUTION) {
             // If there is task aborted or dead, we stop the execution.
             stopExecution(false);
           }

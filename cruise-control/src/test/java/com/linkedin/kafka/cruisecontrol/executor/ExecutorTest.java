@@ -57,7 +57,8 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
   private static final TopicPartition TP2 = new TopicPartition(TOPIC2, PARTITION);
   private static final TopicPartition TP3 = new TopicPartition(TOPIC3, PARTITION);
   private static final String RANDOM_UUID = "random_uuid";
-
+  private static final long REMOVAL_HISTORY_RETENTION_TIME_MS = 43200000L;
+  private static final long DEMOTION_HISTORY_RETENTION_TIME_MS = 86400000L;
 
   @Override
   public int clusterSize() {
@@ -200,8 +201,8 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     EasyMock.replay(mockMetadataClient);
 
     Collection<ExecutionProposal> proposalsToExecute = Collections.singletonList(proposal);
-    Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient, 86400000L,
-                                     43200000L, null, getMockUserTaskManager(RANDOM_UUID),
+    Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient, DEMOTION_HISTORY_RETENTION_TIME_MS,
+                                     REMOVAL_HISTORY_RETENTION_TIME_MS, null, getMockUserTaskManager(RANDOM_UUID),
                                      getMockAnomalyDetector(RANDOM_UUID));
     executor.setExecutionMode(false);
     executor.executeProposals(proposalsToExecute,
@@ -251,8 +252,8 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     EasyMock.replay(mockMetadataClient);
 
     Collection<ExecutionProposal> proposalsToExecute = Collections.singletonList(proposal);
-    Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient, 86400000L,
-                                     43200000L, null, getMockUserTaskManager(RANDOM_UUID),
+    Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient, DEMOTION_HISTORY_RETENTION_TIME_MS,
+                                     REMOVAL_HISTORY_RETENTION_TIME_MS, null, getMockUserTaskManager(RANDOM_UUID),
                                      getMockAnomalyDetector(RANDOM_UUID));
     executor.setExecutionMode(false);
     executor.executeProposals(proposalsToExecute,
@@ -294,8 +295,8 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     EasyMock.replay(mockUserTaskManager);
     EasyMock.replay(mockExecutorNotifier);
 
-    Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), null, 86400000L,
-                                     43200000L, mockExecutorNotifier, mockUserTaskManager, getMockAnomalyDetector(RANDOM_UUID));
+    Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), null, DEMOTION_HISTORY_RETENTION_TIME_MS,
+                                     REMOVAL_HISTORY_RETENTION_TIME_MS, mockExecutorNotifier, mockUserTaskManager, getMockAnomalyDetector(RANDOM_UUID));
     executor.setExecutionMode(false);
     executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, EasyMock.mock(LoadMonitor.class), null,
                               null, null, null,
@@ -388,8 +389,8 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
                                          Collection<ExecutionProposal> proposalsToCheck) {
     KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
 
-    Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), null, 86400000L,
-                                     43200000L, null, getMockUserTaskManager(RANDOM_UUID),
+    Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), null, DEMOTION_HISTORY_RETENTION_TIME_MS,
+                                     REMOVAL_HISTORY_RETENTION_TIME_MS, null, getMockUserTaskManager(RANDOM_UUID),
                                      getMockAnomalyDetector(RANDOM_UUID));
     executor.setExecutionMode(false);
     executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, EasyMock.mock(LoadMonitor.class), null,
