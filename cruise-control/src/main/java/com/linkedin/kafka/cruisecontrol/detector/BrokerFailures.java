@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RemoveBrokersRunnable;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
@@ -20,13 +19,14 @@ import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.B
 import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getSelfHealingGoalNames;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.BROKER_FAILURE;
 
 
 /**
  * The broker failures that have been detected.
  */
 public class BrokerFailures extends KafkaAnomaly implements CruiseControlConfigurable {
-  protected static final String ID_PREFIX = AnomalyType.BROKER_FAILURE.toString();
+  protected static final String ID_PREFIX = BROKER_FAILURE.toString();
   protected Map<Integer, Long> _failedBrokers;
   protected String _anomalyId;
   protected RemoveBrokersRunnable _removeBrokersRunnable;
@@ -94,7 +94,7 @@ public class BrokerFailures extends KafkaAnomaly implements CruiseControlConfigu
                                                            excludeRecentlyDemotedBrokers,
                                                            excludeRecentlyRemovedBrokers,
                                                            _anomalyId,
-                                                           String.format("Self healing for broker failure : %s", this))
+                                                           String.format("Self healing for %s: %s", BROKER_FAILURE, this))
                                : null;
     }
   }

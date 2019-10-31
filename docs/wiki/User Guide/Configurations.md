@@ -166,7 +166,7 @@ The following configurations are inherited from the open source Kafka client con
 |two.step.verification.enabled	 | Boolean	 | N	 | false	 | Enable two-step verification for processing POST requests.	 |
 |two.step.purgatory.retention.time.ms	 | Long	 | N	 | 1209600000	 | The maximum time in milliseconds to retain the requests in two-step (verification) purgatory.	 |
 |two.step.purgatory.max.requests	 | Int	 | N	 | 25	 | The maximum number of requests in two-step (verification) purgatory.	 |
-|request.reason.required	 | Boolean	 | N	 | false	 | Require specifying reason via for any non-dryrun POST request.	 |
+|request.reason.required	 | Boolean	 | N	 | false	 | Require specifying reason via for non-dryrun rebalance/add_broker/remove_broker/demote_broker/fix_offline_replicas/topic_configuration request.	 |
 
 ### Configurations under development and testing
 We are still trying to improve cruise control. And following are some configurations that are for development and experiment.
