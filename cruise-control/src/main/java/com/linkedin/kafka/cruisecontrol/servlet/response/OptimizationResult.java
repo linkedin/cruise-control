@@ -24,20 +24,26 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.createJsonStructure;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
 
 public class OptimizationResult extends AbstractCruiseControlResponse {
   private static final Logger LOG = LoggerFactory.getLogger(OptimizationResult.class);
-  protected static final String SUMMARY = "summary";
-  protected static final String PROPOSALS = "proposals";
+  @JsonField
+  public static final String SUMMARY = "summary";
+  @JsonField
+  public static final String PROPOSALS = "proposals";
+  @JsonField
+  public static final String LOAD_AFTER_OPTIMIZATION = "loadAfterOptimization";
+  @JsonField
+  public static final String LOAD_BEFORE_OPTIMIZATION = "loadBeforeOptimization";
+  @JsonField
+  public static final String GOAL_SUMMARY = "goalSummary";
   protected static final String GOAL = "goal";
-  protected static final String GOAL_SUMMARY = "goalSummary";
   protected static final String STATUS = "status";
   protected static final String CLUSTER_MODEL_STATS = "clusterModelStats";
-  protected static final String LOAD_AFTER_OPTIMIZATION = "loadAfterOptimization";
-  protected static final String LOAD_BEFORE_OPTIMIZATION = "loadBeforeOptimization";
   protected static final String VIOLATED = "VIOLATED";
   protected static final String FIXED = "FIXED";
   protected static final String NO_ACTION = "NO-ACTION";
@@ -140,7 +146,7 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
   }
 
   protected String getJSONString(boolean isVerbose) {
-    Map<String, Object> optimizationResult = new HashMap<>();
+    Map<String, Object> optimizationResult = createJsonStructure(this.getClass());
     if (isVerbose) {
       optimizationResult.put(PROPOSALS, _optimizerResult.goalProposals().stream()
                                                         .map(ExecutionProposal::getJsonStructure).collect(Collectors.toSet()));

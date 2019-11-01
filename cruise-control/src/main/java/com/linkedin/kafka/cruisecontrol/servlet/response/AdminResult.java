@@ -8,18 +8,22 @@ import com.google.gson.Gson;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
-import java.util.HashMap;
 import java.util.Map;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.createJsonStructure;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
 
 public class AdminResult extends AbstractCruiseControlResponse {
-  protected static final String SELF_HEALING_ENABLED_BEFORE = "selfHealingEnabledBefore";
-  protected static final String SELF_HEALING_ENABLED_AFTER = "selfHealingEnabledAfter";
-  protected static final String ONGOING_CONCURRENCY_CHANGE_REQUEST = "ongoingConcurrencyChangeRequest";
-  protected static final String DROP_RECENT_BROKERS_REQUEST = "dropRecentBrokersRequest";
+  @JsonField
+  public static final String SELF_HEALING_ENABLED_BEFORE = "selfHealingEnabledBefore";
+  @JsonField
+  public static final String SELF_HEALING_ENABLED_AFTER = "selfHealingEnabledAfter";
+  @JsonField
+  public static final String ONGOING_CONCURRENCY_CHANGE_REQUEST = "ongoingConcurrencyChangeRequest";
+  @JsonField
+  public static final String DROP_RECENT_BROKERS_REQUEST = "dropRecentBrokersRequest";
   protected final Map<AnomalyType, Boolean> _selfHealingEnabledBefore;
   protected final Map<AnomalyType, Boolean> _selfHealingEnabledAfter;
   protected String _ongoingConcurrencyChangeRequest;
@@ -50,17 +54,13 @@ public class AdminResult extends AbstractCruiseControlResponse {
 
   protected String getJSONString() {
     // Set initial capacity to max possible capacity to avoid rehashing.
-    Map<String, Object> jsonStructure = new HashMap<>(5);
+    Map<String, Object> jsonStructure = createJsonStructure(this.getClass());
     if (!_selfHealingEnabledBefore.isEmpty()) {
       jsonStructure.put(SELF_HEALING_ENABLED_BEFORE, _selfHealingEnabledBefore);
       jsonStructure.put(SELF_HEALING_ENABLED_AFTER, _selfHealingEnabledAfter);
     }
-    if (_ongoingConcurrencyChangeRequest != null && !_ongoingConcurrencyChangeRequest.isEmpty()) {
-      jsonStructure.put(ONGOING_CONCURRENCY_CHANGE_REQUEST, _ongoingConcurrencyChangeRequest);
-    }
-    if (_dropRecentBrokersRequest != null && !_dropRecentBrokersRequest.isEmpty()) {
-      jsonStructure.put(DROP_RECENT_BROKERS_REQUEST, _dropRecentBrokersRequest);
-    }
+    jsonStructure.put(ONGOING_CONCURRENCY_CHANGE_REQUEST, _ongoingConcurrencyChangeRequest);
+    jsonStructure.put(DROP_RECENT_BROKERS_REQUEST, _dropRecentBrokersRequest);
     jsonStructure.put(VERSION, JSON_VERSION);
     return new Gson().toJson(jsonStructure);
   }

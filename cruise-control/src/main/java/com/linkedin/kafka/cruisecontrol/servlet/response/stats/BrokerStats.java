@@ -10,13 +10,14 @@ import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.DiskStats;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.AbstractCruiseControlResponse;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonField;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.createJsonStructure;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
@@ -25,9 +26,11 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VE
  * Get broker level stats in human readable format.
  */
 public class BrokerStats extends AbstractCruiseControlResponse {
+  @JsonField
+  public static final String HOSTS = "hosts";
+  @JsonField
+  public static final String BROKERS = "brokers";
   protected static final String HOST = "Host";
-  protected static final String HOSTS = "hosts";
-  protected static final String BROKERS = "brokers";
   protected final List<SingleBrokerStats> _brokerStats;
   protected final SortedMap<String, BasicStats> _hostStats;
   protected int _hostFieldLength;
@@ -99,7 +102,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
     }
 
     // consolidated
-    Map<String, Object> stats = new HashMap<>(2);
+    Map<String, Object> stats = createJsonStructure(this.getClass());
     stats.put(HOSTS, hostStats);
     stats.put(BROKERS, brokerStats);
     return stats;

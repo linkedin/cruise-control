@@ -25,18 +25,20 @@ import java.util.function.Predicate;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.DATE_FORMAT;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.TIME_ZONE;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.createJsonStructure;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 import static java.lang.Math.max;
 
 
 public class UserTaskState extends AbstractCruiseControlResponse {
+  @JsonField
+  public static final String USER_TASKS = "userTasks";
   protected static final String USER_TASK_ID = "UserTaskId";
   protected static final String REQUEST_URL = "RequestURL";
   protected static final String CLIENT_ID = "ClientIdentity";
   protected static final String START_MS = "StartMs";
   protected static final String STATUS = "Status";
-  protected static final String USER_TASKS = "userTasks";
   protected static final String ORIGINAL_RESPONSE = "originalResponse";
   protected final List<UserTaskManager.UserTaskInfo> _userTasks;
 
@@ -52,7 +54,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
                   taskInfo,
                   parameters.fetchCompletedTask() && (taskInfo.state() != UserTaskManager.TaskState.ACTIVE));
     }
-    Map<String, Object> jsonResponse = new HashMap<>();
+    Map<String, Object> jsonResponse = createJsonStructure(this.getClass());
     jsonResponse.put(USER_TASKS, jsonUserTaskList);
     jsonResponse.put(VERSION, JSON_VERSION);
     return new Gson().toJson(jsonResponse);
@@ -72,7 +74,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
   protected void addJSONTask(List<Map<String, Object>> jsonUserTaskList,
                            UserTaskManager.UserTaskInfo userTaskInfo,
                            boolean fetchCompletedTask) {
-    Map<String, Object> jsonObjectMap = new HashMap<>(fetchCompletedTask ? 6 : 5);
+    Map<String, Object> jsonObjectMap = new HashMap<>(6);
     String status = userTaskInfo.state().toString();
     jsonObjectMap.put(USER_TASK_ID, userTaskInfo.userTaskId().toString());
     jsonObjectMap.put(REQUEST_URL, userTaskInfo.requestWithParams());
@@ -80,9 +82,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     jsonObjectMap.put(START_MS, Long.toString(userTaskInfo.startMs()));
     jsonObjectMap.put(STATUS, status);
     // Populate original response of completed task if requested so.
-    if (fetchCompletedTask) {
-      jsonObjectMap.put(ORIGINAL_RESPONSE, completedTaskResponse(userTaskInfo));
-    }
+    jsonObjectMap.put(ORIGINAL_RESPONSE, fetchCompletedTask ? completedTaskResponse(userTaskInfo) : null);
     jsonUserTaskList.add(jsonObjectMap);
   }
 

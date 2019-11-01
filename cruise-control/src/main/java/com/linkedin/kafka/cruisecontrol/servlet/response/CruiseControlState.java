@@ -16,7 +16,6 @@ import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlStateParameters;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import com.google.gson.Gson;
@@ -24,21 +23,27 @@ import java.util.Set;
 import java.util.StringJoiner;
 import org.apache.kafka.common.TopicPartition;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
-import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.NO_TASK_IN_PROGRESS;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.STARTING_EXECUTION;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.createJsonStructure;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
+
 
 public class CruiseControlState extends AbstractCruiseControlResponse {
+  @JsonField
+  public static final String MONITOR_STATE = "MonitorState";
+  @JsonField
+  public static final String EXECUTOR_STATE = "ExecutorState";
+  @JsonField
+  public static final String ANALYZER_STATE = "AnalyzerState";
+  @JsonField
+  public static final String ANOMALY_DETECTOR_STATE = "AnomalyDetectorState";
   protected static final String INTER_BROKER_PARTITION_MOVEMENTS = "inter-broker partition movements";
   protected static final String INTRA_BROKER_PARTITION_MOVEMENTS = "intra-broker partition movements";
   protected static final String LEADERSHIP_MOVEMENTS = "leadership movements";
-  protected static final String MONITOR_STATE = "MonitorState";
-  protected static final String EXECUTOR_STATE = "ExecutorState";
-  protected static final String ANALYZER_STATE = "AnalyzerState";
-  protected static final String ANOMALY_DETECTOR_STATE = "AnomalyDetectorState";
   protected ExecutorState _executorState;
   protected LoadMonitorState _monitorState;
   protected AnalyzerState _analyzerState;
@@ -84,20 +89,11 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
    * to encode into JSON
    */
   public Map<String, Object> getJsonStructure(boolean verbose) {
-    Map<String, Object> cruiseControlState = new HashMap<>();
-    if (_monitorState != null) {
-      cruiseControlState.put(MONITOR_STATE, _monitorState.getJsonStructure(verbose));
-    }
-    if (_executorState != null) {
-      cruiseControlState.put(EXECUTOR_STATE, _executorState.getJsonStructure(verbose));
-    }
-    if (_analyzerState != null) {
-      cruiseControlState.put(ANALYZER_STATE, _analyzerState.getJsonStructure(verbose));
-    }
-    if (_anomalyDetectorState != null) {
-      cruiseControlState.put(ANOMALY_DETECTOR_STATE, _anomalyDetectorState.getJsonStructure());
-    }
-
+    Map<String, Object> cruiseControlState = createJsonStructure(this.getClass());
+    cruiseControlState.put(MONITOR_STATE, _monitorState.getJsonStructure(verbose));
+    cruiseControlState.put(EXECUTOR_STATE, _executorState.getJsonStructure(verbose));
+    cruiseControlState.put(ANALYZER_STATE, _analyzerState.getJsonStructure(verbose));
+    cruiseControlState.put(ANOMALY_DETECTOR_STATE, _anomalyDetectorState.getJsonStructure());
     return cruiseControlState;
   }
 

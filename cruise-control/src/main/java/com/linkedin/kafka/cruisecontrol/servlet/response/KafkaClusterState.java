@@ -39,11 +39,17 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.describeLogDirs;
 import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.createJsonStructure;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
+
 public class KafkaClusterState extends AbstractCruiseControlResponse {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaClusterState.class);
+  @JsonField
+  public static final String KAFKA_BROKER_STATE = "KafkaBrokerState";
+  @JsonField
+  public static final String KAFKA_PARTITION_STATE = "KafkaPartitionState";
   protected static final String TOPIC = "topic";
   protected static final String PARTITION = "partition";
   protected static final String LEADER = "leader";
@@ -55,8 +61,6 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
   protected static final String URP = "urp";
   protected static final String UNDER_MIN_ISR = "under-min-isr";
   protected static final String OTHER = "other";
-  protected static final String KAFKA_BROKER_STATE = "KafkaBrokerState";
-  protected static final String KAFKA_PARTITION_STATE = "KafkaPartitionState";
   protected static final String LEADER_COUNT = "LeaderCountByBrokerId";
   protected static final String OUT_OF_SYNC_COUNT = "OutOfSyncCountByBrokerId";
   protected static final String REPLICA_COUNT = "ReplicaCountByBrokerId";
@@ -207,7 +211,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
   }
 
   protected List<Object> getJsonPartitions(Set<PartitionInfo> partitions) {
-    List<Object> partitionList = new ArrayList<>();
+    List<Object> partitionList = new ArrayList<>(partitions.size());
     for (PartitionInfo partitionInfo : partitions) {
       List<Integer> replicas =
           Arrays.stream(partitionInfo.replicas()).map(Node::id).collect(Collectors.toList());
@@ -218,7 +222,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
       Set<Integer> offlineReplicas =
           Arrays.stream(partitionInfo.offlineReplicas()).map(Node::id).collect(Collectors.toSet());
 
-      Map<String, Object> recordMap = new HashMap<>();
+      Map<String, Object> recordMap = new HashMap<>(7);
       recordMap.put(TOPIC, partitionInfo.topic());
       recordMap.put(PARTITION, partitionInfo.partition());
       recordMap.put(LEADER, partitionInfo.leader() == null ? -1 : partitionInfo.leader().id());
@@ -251,7 +255,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
                              replicaCountByBrokerId,
                              offlineReplicaCountByBrokerId);
 
-    Map<String, Object> kafkaClusterByBrokerState = new HashMap<>();
+    Map<String, Object> kafkaClusterByBrokerState = new HashMap<>(6);
     kafkaClusterByBrokerState.put(LEADER_COUNT, leaderCountByBrokerId);
     kafkaClusterByBrokerState.put(OUT_OF_SYNC_COUNT, outOfSyncCountByBrokerId);
     kafkaClusterByBrokerState.put(REPLICA_COUNT, replicaCountByBrokerId);
@@ -281,19 +285,17 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
                                 topic);
 
     // Write the partition state.
-    Map<String, List> kafkaClusterByPartitionState = new HashMap<>();
+    Map<String, List> kafkaClusterByPartitionState = new HashMap<>(5);
     kafkaClusterByPartitionState.put(OFFLINE, getJsonPartitions(offlinePartitions));
     kafkaClusterByPartitionState.put(WITH_OFFLINE_REPLICAS, getJsonPartitions(partitionsWithOfflineReplicas));
     kafkaClusterByPartitionState.put(URP, getJsonPartitions(underReplicatedPartitions));
     kafkaClusterByPartitionState.put(UNDER_MIN_ISR, getJsonPartitions(underMinIsrPartitions));
-    if (verbose) {
-      kafkaClusterByPartitionState.put(OTHER, getJsonPartitions(otherPartitions));
-    }
+    kafkaClusterByPartitionState.put(OTHER, verbose ? getJsonPartitions(otherPartitions) : null);
 
-    Map<String, Object> cruiseControlState = new HashMap<>();
-    cruiseControlState.put(KAFKA_BROKER_STATE, kafkaClusterByBrokerState);
-    cruiseControlState.put(KAFKA_PARTITION_STATE, kafkaClusterByPartitionState);
-    return cruiseControlState;
+    Map<String, Object> kafkaClusterState = createJsonStructure(this.getClass());
+    kafkaClusterState.put(KAFKA_BROKER_STATE, kafkaClusterByBrokerState);
+    kafkaClusterState.put(KAFKA_PARTITION_STATE, kafkaClusterByPartitionState);
+    return kafkaClusterState;
   }
 
   protected void writeKafkaPartitionState(StringBuilder sb, SortedSet<PartitionInfo> partitions, int topicNameLength) {

@@ -12,6 +12,7 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import javax.servlet.http.HttpServletResponse;
@@ -114,4 +115,25 @@ public class ResponseUtils {
     // Send the CORS Task ID header as part of this error response if 2-step verification is enabled.
     writeResponseToOutputStream(response, responseCode, json, responseMessage, config);
   }
-}
+
+  /**
+   * Based on annotation of {@link JsonField}, populate a {@link Map} contains all the required fields of JSON serialization
+   * for object of the class. All the field value will be {@code null}.
+   *
+   * @param responseClass The class to check.
+   * @return A {@link Map} contains all the required JSON field.
+   */
+  public static Map<String, Object> createJsonStructure(Class responseClass) {
+    Map<String, Object> jsonStructure = new HashMap<>();
+    Arrays.stream(responseClass.getDeclaredFields()).filter(field -> field.isAnnotationPresent(JsonField.class)).forEach(
+        field -> {
+          try {
+            jsonStructure.put((String) field.get(null), null);
+          } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+          }
+        }
+    );
+    return jsonStructure;
+  }
+ }

@@ -17,18 +17,20 @@ import java.util.Set;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.DATE_FORMAT;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.TIME_ZONE;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.createJsonStructure;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 
 
 public class ReviewResult extends AbstractCruiseControlResponse {
+  @JsonField
+  public static final String REQUEST_INFO = "RequestInfo";
   protected static final String ID = "Id";
   protected static final String SUBMITTER_ADDRESS = "SubmitterAddress";
   protected static final String SUBMISSION_TIME_MS = "SubmissionTimeMs";
   protected static final String STATUS = "Status";
   protected static final String ENDPOINT_WITH_PARAMS = "EndpointWithParams";
   protected static final String REASON = "Reason";
-  protected static final String REQUEST_INFO = "RequestInfo";
   protected final Map<Integer, RequestInfo> _requestInfoById;
   protected final Set<Integer> _filteredRequestIds;
 
@@ -111,7 +113,7 @@ public class ReviewResult extends AbstractCruiseControlResponse {
         addJSONRequestInfo(jsonRequestInfoList, entry);
       }
     }
-    Map<String, Object> jsonResponse = new HashMap<>(2);
+    Map<String, Object> jsonResponse = createJsonStructure(this.getClass());
     jsonResponse.put(REQUEST_INFO, jsonRequestInfoList);
     jsonResponse.put(VERSION, JSON_VERSION);
     return new Gson().toJson(jsonResponse);

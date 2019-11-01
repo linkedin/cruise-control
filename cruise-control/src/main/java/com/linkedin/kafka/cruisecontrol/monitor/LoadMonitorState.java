@@ -8,27 +8,43 @@ import com.linkedin.kafka.cruisecontrol.model.LinearRegressionModelParameters;
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrapolation;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner.LoadMonitorTaskRunnerState;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonField;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import org.apache.kafka.common.TopicPartition;
-import java.util.HashMap;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.createJsonStructure;
+
 
 public class LoadMonitorState {
-  private static final String STATE = "state";
-  private static final String REASON_OF_LATEST_PAUSE_OR_RESUME = "reasonOfLatestPauseOrResume";
-  private static final String TRAINED = "trained";
-  private static final String TRAINING_PCT = "trainingPct";
-  private static final String NUM_MONITORED_WINDOWS = "numMonitoredWindows";
-  private static final String MONITORED_WINDOWS = "monitoredWindows";
-  private static final String NUM_VALID_PARTITIONS = "numValidPartitions";
-  private static final String NUM_TOTAL_PARTITIONS = "numTotalPartitions";
-  private static final String MONITORING_COVERAGE_PCT = "monitoringCoveragePct";
-  private static final String NUM_FLAWED_PARTITIONS = "numFlawedPartitions";
-  private static final String BOOTSTRAP_PROGRESS_PCT = "bootstrapProgressPct";
-  private static final String LOADING_PROGRESS_PCT = "loadingProgressPct";
-  private static final String ERROR = "error";
+  @JsonField
+  public static final String STATE = "state";
+  @JsonField
+  public static final String REASON_OF_LATEST_PAUSE_OR_RESUME = "reasonOfLatestPauseOrResume";
+  @JsonField
+  public static final String TRAINED = "trained";
+  @JsonField
+  public static final String TRAINING_PCT = "trainingPct";
+  @JsonField
+  public static final String NUM_MONITORED_WINDOWS = "numMonitoredWindows";
+  @JsonField
+  public static final String MONITORED_WINDOWS = "monitoredWindows";
+  @JsonField
+  public static final String NUM_VALID_PARTITIONS = "numValidPartitions";
+  @JsonField
+  public static final String NUM_TOTAL_PARTITIONS = "numTotalPartitions";
+  @JsonField
+  public static final String MONITORING_COVERAGE_PCT = "monitoringCoveragePct";
+  @JsonField
+  public static final String NUM_FLAWED_PARTITIONS = "numFlawedPartitions";
+  @JsonField
+  public static final String BOOTSTRAP_PROGRESS_PCT = "bootstrapProgressPct";
+  @JsonField
+  public static final String LOADING_PROGRESS_PCT = "loadingProgressPct";
+  @JsonField
+  public static final String ERROR = "error";
   private final LoadMonitorTaskRunnerState _loadMonitorTaskRunnerState;
   private final int _numValidWindows;
   private final SortedMap<Long, Float> _monitoredWindows;
@@ -172,17 +188,19 @@ public class LoadMonitorState {
 
   private void setCommonJsonGenericAttributeCollection(boolean verbose, Map<String, Object> loadMonitorState) {
     loadMonitorState.put(STATE, _loadMonitorTaskRunnerState);
-    loadMonitorState.put(TRAINED, ModelParameters.trainingCompleted());
-    loadMonitorState.put(TRAINING_PCT, ModelParameters.trainingCompleted()
-                                       ? 100.0 : (ModelParameters.modelCoefficientTrainingCompleteness() * 100));
-    loadMonitorState.put(NUM_MONITORED_WINDOWS, _monitoredWindows.size());
-    if (verbose) {
-      loadMonitorState.put(MONITORED_WINDOWS, _monitoredWindows);
+    if (_loadMonitorTaskRunnerState != LoadMonitorTaskRunnerState.NOT_STARTED) {
+      loadMonitorState.put(TRAINED, ModelParameters.trainingCompleted());
+      loadMonitorState.put(TRAINING_PCT, ModelParameters.trainingCompleted()
+                                         ? 100.0 : (ModelParameters.modelCoefficientTrainingCompleteness() * 100));
+      loadMonitorState.put(NUM_MONITORED_WINDOWS, _monitoredWindows.size());
+      loadMonitorState.put(NUM_VALID_PARTITIONS, _numValidMonitoredPartitions);
+      loadMonitorState.put(NUM_TOTAL_PARTITIONS, _totalNumPartitions);
+      loadMonitorState.put(MONITORING_COVERAGE_PCT, nanToZero(validPartitionsRatio() * 100));
+      loadMonitorState.put(NUM_FLAWED_PARTITIONS, _sampleExtrapolations.size());
+      if (verbose) {
+        loadMonitorState.put(MONITORED_WINDOWS, _monitoredWindows);
+      }
     }
-    loadMonitorState.put(NUM_VALID_PARTITIONS, _numValidMonitoredPartitions);
-    loadMonitorState.put(NUM_TOTAL_PARTITIONS, _totalNumPartitions);
-    loadMonitorState.put(MONITORING_COVERAGE_PCT, nanToZero(validPartitionsRatio() * 100));
-    loadMonitorState.put(NUM_FLAWED_PARTITIONS, _sampleExtrapolations.size());
   }
 
   /*
@@ -190,20 +208,9 @@ public class LoadMonitorState {
    * to encode into JSON
    */
   public Map<String, Object> getJsonStructure(boolean verbose) {
-    Map<String, Object> loadMonitorState = new HashMap<>();
+    Map<String, Object> loadMonitorState = createJsonStructure(this.getClass());
     // generic attribute collection
-    switch (_loadMonitorTaskRunnerState) {
-      case RUNNING:
-      case SAMPLING:
-      case PAUSED:
-      case BOOTSTRAPPING:
-      case TRAINING:
-      case LOADING:
-        setCommonJsonGenericAttributeCollection(verbose, loadMonitorState);
-        break;
-      default:
-        break;
-    }
+    setCommonJsonGenericAttributeCollection(verbose, loadMonitorState);
     // specific attribute collection
     switch (_loadMonitorTaskRunnerState) {
       case RUNNING:
@@ -220,7 +227,6 @@ public class LoadMonitorState {
         loadMonitorState.put(LOADING_PROGRESS_PCT, nanToZero(_loadingProgress * 100));
         break;
       default:
-        loadMonitorState.put(STATE, _loadMonitorTaskRunnerState);
         loadMonitorState.put(ERROR, "ILLEGAL_STATE_EXCEPTION");
         break;
     }

@@ -17,17 +17,19 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.createJsonStructure;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
 
 public class PartitionLoadState extends AbstractCruiseControlResponse {
+  @JsonField
+  public static final String RECORDS = "records";
   protected static final String TOPIC = "topic";
   protected static final String PARTITION = "partition";
   protected static final String LEADER = "leader";
   protected static final String FOLLOWERS = "followers";
   protected static final String MSG_IN = "msg_in";
-  protected static final String RECORDS = "records";
   protected final List<Partition> _sortedPartitions;
   protected final boolean _wantMaxLoad;
   protected final boolean _wantAvgLoad;
@@ -105,7 +107,7 @@ public class PartitionLoadState extends AbstractCruiseControlResponse {
   }
 
   protected String getJSONString() {
-    Map<String, Object> partitionMap = new HashMap<>();
+    Map<String, Object> partitionMap = createJsonStructure(this.getClass());
     List<Object> partitionList = new ArrayList<>();
     partitionMap.put(VERSION, JSON_VERSION);
     int numEntries = 0;

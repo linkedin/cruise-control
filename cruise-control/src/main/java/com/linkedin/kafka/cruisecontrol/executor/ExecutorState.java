@@ -5,66 +5,112 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonField;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.HashMap;
 import java.util.Map;
 
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.ExecutionTasksSummary;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.createJsonStructure;
+
 
 public class ExecutorState {
-  private static final String TRIGGERED_USER_TASK_ID = "triggeredUserTaskId";
-  private static final String TRIGGERED_SELF_HEALING_TASK_ID = "triggeredSelfHealingTaskId";
-  private static final String STATE = "state";
-  private static final String RECENTLY_DEMOTED_BROKERS = "recentlyDemotedBrokers";
-  private static final String RECENTLY_REMOVED_BROKERS = "recentlyRemovedBrokers";
+  @JsonField
+  public static final String TRIGGERED_USER_TASK_ID = "triggeredUserTaskId";
+  @JsonField
+  public static final String TRIGGERED_SELF_HEALING_TASK_ID = "triggeredSelfHealingTaskId";
+  @JsonField
+  public static final String STATE = "state";
+  @JsonField
+  public static final String RECENTLY_DEMOTED_BROKERS = "recentlyDemotedBrokers";
+  @JsonField
+  public static final String RECENTLY_REMOVED_BROKERS = "recentlyRemovedBrokers";
 
-  private static final String NUM_TOTAL_LEADERSHIP_MOVEMENTS = "numTotalLeadershipMovements";
-  private static final String NUM_PENDING_LEADERSHIP_MOVEMENTS = "numPendingLeadershipMovements";
-  private static final String NUM_CANCELLED_LEADERSHIP_MOVEMENTS = "numCancelledLeadershipMovements";
-  private static final String NUM_FINISHED_LEADERSHIP_MOVEMENTS = "numFinishedLeadershipMovements";
-  private static final String PENDING_LEADERSHIP_MOVEMENT = "pendingLeadershipMovement";
-  private static final String CANCELLED_LEADERSHIP_MOVEMENT = "cancelledLeadershipMovement";
-  private static final String MAXIMUM_CONCURRENT_LEADER_MOVEMENTS = "maximumConcurrentLeaderMovements";
+  @JsonField
+  public static final String NUM_TOTAL_LEADERSHIP_MOVEMENTS = "numTotalLeadershipMovements";
+  @JsonField
+  public static final String NUM_PENDING_LEADERSHIP_MOVEMENTS = "numPendingLeadershipMovements";
+  @JsonField
+  public static final String NUM_CANCELLED_LEADERSHIP_MOVEMENTS = "numCancelledLeadershipMovements";
+  @JsonField
+  public static final String NUM_FINISHED_LEADERSHIP_MOVEMENTS = "numFinishedLeadershipMovements";
+  @JsonField
+  public static final String PENDING_LEADERSHIP_MOVEMENT = "pendingLeadershipMovement";
+  @JsonField
+  public static final String CANCELLED_LEADERSHIP_MOVEMENT = "cancelledLeadershipMovement";
+  @JsonField
+  public static final String MAXIMUM_CONCURRENT_LEADER_MOVEMENTS = "maximumConcurrentLeaderMovements";
 
-  private static final String NUM_TOTAL_INTER_BROKER_PARTITION_MOVEMENTS = "numTotalPartitionMovements";
-  private static final String NUM_PENDING_INTER_BROKER_PARTITION_MOVEMENTS = "numPendingPartitionMovements";
-  private static final String NUM_CANCELLED_INTER_BROKER_PARTITION_MOVEMENTS = "numCancelledPartitionMovements";
-  private static final String NUM_IN_PROGRESS_INTER_BROKER_PARTITION_MOVEMENTS = "numInProgressPartitionMovements";
-  private static final String NUM_ABORTING_INTER_BROKER_PARTITION_MOVEMENTS = "abortingPartitions";
-  private static final String NUM_FINISHED_INTER_BROKER_PARTITION_MOVEMENTS = "numFinishedPartitionMovements";
-  private static final String IN_PROGRESS_INTER_BROKER_PARTITION_MOVEMENT = "inProgressPartitionMovement";
-  private static final String PENDING_INTER_BROKER_PARTITION_MOVEMENT = "pendingPartitionMovement";
-  private static final String CANCELLED_INTER_BROKER_PARTITION_MOVEMENT = "cancelledPartitionMovement";
-  private static final String DEAD_INTER_BROKER_PARTITION_MOVEMENT = "deadPartitionMovement";
-  private static final String COMPLETED_INTER_BROKER_PARTITION_MOVEMENT = "completedPartitionMovement";
-  private static final String ABORTING_INTER_BROKER_PARTITION_MOVEMENT = "abortingPartitionMovement";
-  private static final String ABORTED_INTER_BROKER_PARTITION_MOVEMENT = "abortedPartitionMovement";
-  private static final String FINISHED_INTER_BROKER_DATA_MOVEMENT = "finishedDataMovement";
-  private static final String TOTAL_INTER_BROKER_DATA_TO_MOVE = "totalDataToMove";
-  private static final String MAXIMUM_CONCURRENT_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER = "maximumConcurrentPartitionMovementsPerBroker";
+  @JsonField
+  public static final String NUM_TOTAL_INTER_BROKER_PARTITION_MOVEMENTS = "numTotalPartitionMovements";
+  @JsonField
+  public static final String NUM_PENDING_INTER_BROKER_PARTITION_MOVEMENTS = "numPendingPartitionMovements";
+  @JsonField
+  public static final String NUM_CANCELLED_INTER_BROKER_PARTITION_MOVEMENTS = "numCancelledPartitionMovements";
+  @JsonField
+  public static final String NUM_IN_PROGRESS_INTER_BROKER_PARTITION_MOVEMENTS = "numInProgressPartitionMovements";
+  @JsonField
+  public static final String NUM_ABORTING_INTER_BROKER_PARTITION_MOVEMENTS = "abortingPartitions";
+  @JsonField
+  public static final String NUM_FINISHED_INTER_BROKER_PARTITION_MOVEMENTS = "numFinishedPartitionMovements";
+  @JsonField
+  public static final String IN_PROGRESS_INTER_BROKER_PARTITION_MOVEMENT = "inProgressPartitionMovement";
+  @JsonField
+  public static final String PENDING_INTER_BROKER_PARTITION_MOVEMENT = "pendingPartitionMovement";
+  @JsonField
+  public static final String CANCELLED_INTER_BROKER_PARTITION_MOVEMENT = "cancelledPartitionMovement";
+  @JsonField
+  public static final String DEAD_INTER_BROKER_PARTITION_MOVEMENT = "deadPartitionMovement";
+  @JsonField
+  public static final String COMPLETED_INTER_BROKER_PARTITION_MOVEMENT = "completedPartitionMovement";
+  @JsonField
+  public static final String ABORTING_INTER_BROKER_PARTITION_MOVEMENT = "abortingPartitionMovement";
+  @JsonField
+  public static final String ABORTED_INTER_BROKER_PARTITION_MOVEMENT = "abortedPartitionMovement";
+  @JsonField
+  public static final String FINISHED_INTER_BROKER_DATA_MOVEMENT = "finishedDataMovement";
+  @JsonField
+  public static final String TOTAL_INTER_BROKER_DATA_TO_MOVE = "totalDataToMove";
+  @JsonField
+  public static final String MAXIMUM_CONCURRENT_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER = "maximumConcurrentPartitionMovementsPerBroker";
 
-  private static final String NUM_TOTAL_INTRA_BROKER_PARTITION_MOVEMENTS = "numTotalIntraBrokerPartitionMovements";
-  private static final String NUM_FINISHED_INTRA_BROKER_PARTITION_MOVEMENTS = "numFinishedIntraBrokerPartitionMovements";
-  private static final String NUM_IN_PROGRESS_INTRA_BROKER_PARTITION_MOVEMENTS = "numInProgressIntraBrokerPartitionMovements";
-  private static final String NUM_ABORTING_INTRA_BROKER_PARTITION_MOVEMENTS = "numAbortingIntraBrokerPartitionMovements";
-  private static final String NUM_PENDING_INTRA_BROKER_PARTITION_MOVEMENTS = "numPendingIntraBrokerPartitionMovements";
-  private static final String NUM_CANCELLED_INTRA_BROKER_PARTITION_MOVEMENTS = "numCancelledIntraBrokerPartitionMovements";
-  private static final String IN_PROGRESS_INTRA_BROKER_PARTITION_MOVEMENT = "inProgressIntraBrokerPartitionMovement";
-  private static final String PENDING_INTRA_BROKER_PARTITION_MOVEMENT = "pendingIntraBrokerPartitionMovement";
-  private static final String CANCELLED_INTRA_BROKER_PARTITION_MOVEMENT = "cancelledIntraBrokerPartitionMovement";
-  private static final String DEAD_INTRA_BROKER_PARTITION_MOVEMENT = "deadIntraBrokerPartitionMovement";
-  private static final String COMPLETED_INTRA_BROKER_PARTITION_MOVEMENT = "completedIntraBrokerPartitionMovement";
-  private static final String ABORTING_INTRA_BROKER_PARTITION_MOVEMENT = "abortingIntraBrokerPartitionMovement";
-  private static final String ABORTED_INTRA_BROKER_PARTITION_MOVEMENT = "abortedIntraBrokerPartitionMovement";
-  private static final String FINISHED_INTRA_BROKER_DATA_MOVEMENT = "finishedIntraBrokerDataMovement";
-  private static final String TOTAL_INTRA_BROKER_DATA_TO_MOVE = "totalIntraBrokerDataToMove";
-  private static final String MAXIMUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER = "maximumConcurrentIntraBrokerPartitionMovementsPerBroker";
-
-  private static final String ERROR = "error";
+  @JsonField
+  public static final String NUM_TOTAL_INTRA_BROKER_PARTITION_MOVEMENTS = "numTotalIntraBrokerPartitionMovements";
+  @JsonField
+  public static final String NUM_FINISHED_INTRA_BROKER_PARTITION_MOVEMENTS = "numFinishedIntraBrokerPartitionMovements";
+  @JsonField
+  public static final String NUM_IN_PROGRESS_INTRA_BROKER_PARTITION_MOVEMENTS = "numInProgressIntraBrokerPartitionMovements";
+  @JsonField
+  public static final String NUM_ABORTING_INTRA_BROKER_PARTITION_MOVEMENTS = "numAbortingIntraBrokerPartitionMovements";
+  @JsonField
+  public static final String NUM_PENDING_INTRA_BROKER_PARTITION_MOVEMENTS = "numPendingIntraBrokerPartitionMovements";
+  @JsonField
+  public static final String NUM_CANCELLED_INTRA_BROKER_PARTITION_MOVEMENTS = "numCancelledIntraBrokerPartitionMovements";
+  @JsonField
+  public static final String IN_PROGRESS_INTRA_BROKER_PARTITION_MOVEMENT = "inProgressIntraBrokerPartitionMovement";
+  @JsonField
+  public static final String PENDING_INTRA_BROKER_PARTITION_MOVEMENT = "pendingIntraBrokerPartitionMovement";
+  @JsonField
+  public static final String CANCELLED_INTRA_BROKER_PARTITION_MOVEMENT = "cancelledIntraBrokerPartitionMovement";
+  @JsonField
+  public static final String DEAD_INTRA_BROKER_PARTITION_MOVEMENT = "deadIntraBrokerPartitionMovement";
+  @JsonField
+  public static final String COMPLETED_INTRA_BROKER_PARTITION_MOVEMENT = "completedIntraBrokerPartitionMovement";
+  @JsonField
+  public static final String ABORTING_INTRA_BROKER_PARTITION_MOVEMENT = "abortingIntraBrokerPartitionMovement";
+  @JsonField
+  public static final String ABORTED_INTRA_BROKER_PARTITION_MOVEMENT = "abortedIntraBrokerPartitionMovement";
+  @JsonField
+  public static final String FINISHED_INTRA_BROKER_DATA_MOVEMENT = "finishedIntraBrokerDataMovement";
+  @JsonField
+  public static final String TOTAL_INTRA_BROKER_DATA_TO_MOVE = "totalIntraBrokerDataToMove";
+  @JsonField
+  public static final String MAXIMUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER = "maximumConcurrentIntraBrokerPartitionMovementsPerBroker";
+  @JsonField
+  public static final String ERROR = "error";
 
   public enum State {
     NO_TASK_IN_PROGRESS,
@@ -240,14 +286,10 @@ public class ExecutorState {
    * Return an object that can be further used to encode into JSON
    */
   public Map<String, Object> getJsonStructure(boolean verbose) {
-    Map<String, Object> execState = new HashMap<>();
+    Map<String, Object> execState = createJsonStructure(this.getClass());
     execState.put(STATE, _state);
-    if (_recentlyDemotedBrokers != null && !_recentlyDemotedBrokers.isEmpty()) {
-      execState.put(RECENTLY_DEMOTED_BROKERS, _recentlyDemotedBrokers);
-    }
-    if (_recentlyRemovedBrokers != null && !_recentlyRemovedBrokers.isEmpty()) {
-      execState.put(RECENTLY_REMOVED_BROKERS, _recentlyRemovedBrokers);
-    }
+    execState.put(RECENTLY_DEMOTED_BROKERS, _recentlyDemotedBrokers);
+    execState.put(RECENTLY_REMOVED_BROKERS, _recentlyRemovedBrokers);
     Map<ExecutionTask.State, Integer> interBrokerPartitionMovementStats;
     Map<ExecutionTask.State, Integer> intraBrokerPartitionMovementStats;
     switch (_state) {

@@ -6,6 +6,7 @@
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonField;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -13,19 +14,24 @@ import java.util.Map;
 import java.util.Set;
 import java.util.HashMap;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.createJsonStructure;
+
 
 /**
  * The state for the analyzer.
  */
 public class AnalyzerState {
-  private static final String IS_PROPOSAL_READY = "isProposalReady";
-  private static final String READY_GOALS = "readyGoals";
+  @JsonField
+  public static final String IS_PROPOSAL_READY = "isProposalReady";
+  @JsonField
+  public static final String READY_GOALS = "readyGoals";
+  @JsonField
+  public static final String GOAL_READINESS = "goalReadiness";
   private static final String STATUS = "status";
   private static final String READY = "ready";
   private static final String NOT_READY = "notReady";
   private static final String NAME = "name";
   private static final String MODEL_COMPLETE_REQUIREMENT = "modelCompleteRequirement";
-  private static final String GOAL_READINESS = "goalReadiness";
   private final boolean _isProposalReady;
   private final Map<Goal, Boolean> _readyGoals;
 
@@ -48,7 +54,7 @@ public class AnalyzerState {
    * to encode into JSON
    */
   public Map<String, Object> getJsonStructure(boolean verbose) {
-    Map<String, Object> analyzerState = new HashMap<>(verbose ? 3 : 2);
+    Map<String, Object> analyzerState = createJsonStructure(this.getClass());
     Set<String> readyGoalNames = new HashSet<>();
     for (Map.Entry<Goal, Boolean> entry : _readyGoals.entrySet()) {
       if (entry.getValue()) {

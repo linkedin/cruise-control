@@ -4,20 +4,31 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.response.stats;
 
-import java.util.HashMap;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonField;
 import java.util.Map;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.createJsonStructure;
 
 
 class BasicStats {
-  protected static final String DISK_MB = "DiskMB";
-  protected static final String DISK_PCT = "DiskPct";
-  protected static final String CPU_PCT = "CpuPct";
-  protected static final String LEADER_NW_IN_RATE = "LeaderNwInRate";
-  protected static final String FOLLOWER_NW_IN_RATE = "FollowerNwInRate";
-  protected static final String NW_OUT_RATE = "NwOutRate";
-  protected static final String PNW_OUT_RATE = "PnwOutRate";
-  protected static final String REPLICAS = "Replicas";
-  protected static final String LEADERS = "Leaders";
+  @JsonField
+  public static final String DISK_MB = "DiskMB";
+  @JsonField
+  public static final String DISK_PCT = "DiskPct";
+  @JsonField
+  public static final String CPU_PCT = "CpuPct";
+  @JsonField
+  public static final String LEADER_NW_IN_RATE = "LeaderNwInRate";
+  @JsonField
+  public static final String FOLLOWER_NW_IN_RATE = "FollowerNwInRate";
+  @JsonField
+  public static final String NW_OUT_RATE = "NwOutRate";
+  @JsonField
+  public static final String PNW_OUT_RATE = "PnwOutRate";
+  @JsonField
+  public static final String REPLICAS = "Replicas";
+  @JsonField
+  public static final String LEADERS = "Leaders";
   protected double _diskUtil;
   protected double _cpuUtil;
   protected double _leaderBytesInRate;
@@ -101,7 +112,7 @@ class BasicStats {
    * to encode into JSON
    */
   public Map<String, Object> getJSONStructure() {
-    Map<String, Object> entry = new HashMap<>(9);
+    Map<String, Object> entry = createJsonStructure(this.getClass());
     entry.put(DISK_MB, diskUtil());
     entry.put(DISK_PCT, diskUtilPct());
     entry.put(CPU_PCT, cpuUtil());

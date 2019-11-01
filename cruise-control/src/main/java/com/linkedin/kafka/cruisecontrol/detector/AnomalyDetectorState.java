@@ -9,6 +9,7 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonField;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -28,9 +29,31 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.get
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.GOAL_VIOLATION;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.METRIC_ANOMALY;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.BROKER_FAILURE;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.createJsonStructure;
+
 
 public class AnomalyDetectorState {
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetectorState.class);
+  @JsonField
+  public static final String SELF_HEALING_ENABLED = "selfHealingEnabled";
+  @JsonField
+  public static final String SELF_HEALING_DISABLED = "selfHealingDisabled";
+  @JsonField
+  public static final String SELF_HEALING_ENABLED_RATIO = "selfHealingEnabledRatio";
+  @JsonField
+  public static final String RECENT_GOAL_VIOLATIONS = "recentGoalViolations";
+  @JsonField
+  public static final String RECENT_BROKER_FAILURES = "recentBrokerFailures";
+  @JsonField
+  public static final String RECENT_METRIC_ANOMALIES = "recentMetricAnomalies";
+  @JsonField
+  public static final String RECENT_DISK_FAILURES = "recentDiskFailures";
+  @JsonField
+  public static final String METRICS = "metrics";
+  @JsonField
+  public static final String ONGOING_SELF_HEALING_ANOMALY = "ongoingSelfHealingAnomaly";
+  @JsonField
+  public static final String BALANCEDNESS_SCORE = "balancednessScore";
   private static final String DETECTION_MS = "detectionMs";
   private static final String DETECTION_DATE = "detectionDate";
   private static final String ANOMALY_ID = "anomalyId";
@@ -42,19 +65,9 @@ public class AnomalyDetectorState {
   private static final String FAILED_BROKERS_BY_TIME_MS = "failedBrokersByTimeMs";
   private static final String FAILED_DISKS_BY_TIME_MS = "failedDisksByTimeMs";
   private static final String DESCRIPTION = "description";
-  private static final String SELF_HEALING_ENABLED = "selfHealingEnabled";
-  private static final String SELF_HEALING_DISABLED = "selfHealingDisabled";
-  private static final String SELF_HEALING_ENABLED_RATIO = "selfHealingEnabledRatio";
-  private static final String RECENT_GOAL_VIOLATIONS = "recentGoalViolations";
-  private static final String RECENT_BROKER_FAILURES = "recentBrokerFailures";
-  private static final String RECENT_METRIC_ANOMALIES = "recentMetricAnomalies";
-  private static final String RECENT_DISK_FAILURES = "recentDiskFailures";
-  private static final String ONGOING_SELF_HEALING_ANOMALY = "ongoingSelfHealingAnomaly";
   private static final String OPTIMIZATION_RESULT = "optimizationResult";
-  private static final String METRICS = "metrics";
   private static final String MEAN_TIME_BETWEEN_ANOMALIES_MS = "meanTimeBetweenAnomaliesMs";
   private static final String MEAN_TIME_TO_START_FIX_MS = "meanTimeToStartFixMs";
-  private static final String BALANCEDNESS_SCORE = "balancednessScore";
   // Package private for testing.
   static final String NUM_SELF_HEALING_STARTED = "numSelfHealingStarted";
   private static final String ONGOING_ANOMALY_DURATION_MS = "ongoingAnomalyDurationMs";
@@ -361,7 +374,7 @@ public class AnomalyDetectorState {
   }
 
   public synchronized Map<String, Object> getJsonStructure() {
-    Map<String, Object> anomalyDetectorState = new HashMap<>(_recentAnomaliesByType.size() + (_ongoingSelfHealingAnomaly == null ? 5 : 6));
+    Map<String, Object> anomalyDetectorState = createJsonStructure(this.getClass());
     Map<Boolean, Set<String>> selfHealingByEnableStatus = getSelfHealingByEnableStatus();
     anomalyDetectorState.put(SELF_HEALING_ENABLED, selfHealingByEnableStatus.get(true));
     anomalyDetectorState.put(SELF_HEALING_DISABLED, selfHealingByEnableStatus.get(false));

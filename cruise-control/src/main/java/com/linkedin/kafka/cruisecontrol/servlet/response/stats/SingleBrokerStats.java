@@ -6,14 +6,22 @@ package com.linkedin.kafka.cruisecontrol.servlet.response.stats;
 
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.DiskStats;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonField;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.createJsonStructure;
+
+
 public class SingleBrokerStats {
-  protected static final String HOST = "Host";
-  protected static final String BROKER = "Broker";
-  protected static final String BROKER_STATE = "BrokerState";
-  protected static final String DISK_STATE = "DiskState";
+  @JsonField
+  public static final String HOST = "Host";
+  @JsonField
+  public static final String BROKER = "Broker";
+  @JsonField
+  public static final String BROKER_STATE = "BrokerState";
+  @JsonField
+  public static final String DISK_STATE = "DiskState";
   protected final String _host;
   protected final int _id;
   protected final Broker.State _state;
@@ -69,7 +77,8 @@ public class SingleBrokerStats {
    * to encode into JSON
    */
   public Map<String, Object> getJSONStructure() {
-    Map<String, Object> entry = _basicStats.getJSONStructure();
+    Map<String, Object> entry = createJsonStructure(this.getClass());
+    _basicStats.getJSONStructure().forEach(entry::put);
     entry.put(HOST, _host);
     entry.put(BROKER, _id);
     entry.put(BROKER_STATE, _state);

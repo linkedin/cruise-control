@@ -17,13 +17,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.createJsonStructure;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.writeResponseToOutputStream;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 import static javax.servlet.http.HttpServletResponse.SC_ACCEPTED;
 
 public class ProgressResult extends AbstractCruiseControlResponse {
-  protected static final String PROGRESS = "progress";
+  @JsonField
+  public static final String PROGRESS = "progress";
   protected static final String OPERATION = "operation";
   protected static final String OPERATION_PROGRESS = "operationProgress";
   protected List<OperationFuture> _futures;
@@ -34,7 +36,7 @@ public class ProgressResult extends AbstractCruiseControlResponse {
   }
 
   protected String getJSONString() {
-    Map<String, Object> jsonResponse = new HashMap<>(2);
+    Map<String, Object> jsonResponse = createJsonStructure(this.getClass());
     jsonResponse.put(VERSION, JSON_VERSION);
     List<Object> progress = new ArrayList<>(_futures.size());
     for (OperationFuture future: _futures) {
