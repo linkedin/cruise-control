@@ -197,6 +197,8 @@ class AdminEndpoint(AbstractEndpoint):
         CCParameter.ConcurrentLeaderMovementsParameter,
         CCParameter.ConcurrentPartitionMovementsPerBrokerParameter,
         CCParameter.DisableSelfHealingForParameter,
+        CCParameter.DropRecentlyDemotedBrokersParameter,
+        CCParameter.DropRecentlyRemovedBrokersParameter,
         CCParameter.EnableSelfHealingForParameter,
         CCParameter.JSONParameter,
         CCParameter.ReviewIDParameter,
