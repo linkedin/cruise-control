@@ -4,16 +4,11 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.response;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
 import com.linkedin.cruisecontrol.servlet.response.CruiseControlResponse;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 
 import java.io.IOException;
-import java.util.Iterator;
-import java.util.Map;
 import javax.servlet.http.HttpServletResponse;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.writeResponseToOutputStream;
