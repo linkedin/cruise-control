@@ -11,7 +11,7 @@ It comes with a command-line interface to the client (`cccli`) (see [README](htt
 
 setuptools.setup(
     name='cruise-control-client',
-    version='1.0.1',
+    version='1.0.2',
     author='mgrubent',
     author_email='mgrubentrejo@linkedin.com',
     description='A Python client for cruise-control',

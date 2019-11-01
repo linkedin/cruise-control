@@ -71,6 +71,34 @@ class DiscardParameter(AbstractCommaSeparatedParameter):
     }
 
 
+class DropRecentlyDemotedBrokersParameter(AbstractCommaSeparatedParameter):
+    """drop_recently_demoted_brokers=[id1,id2...]"""
+    name = 'drop_recently_demoted_brokers'
+    description = 'Comma-separated and/or space-separated list of broker IDs'
+    argparse_properties = {
+        'args': ('--drop-recently-demoted-broker',
+                 '--drop-recently-demoted-brokers',
+                 '--drop-recently-demoted-broker-id',
+                 '--drop-recently-demoted-brokers-ids'),
+        'kwargs': dict(help=description,
+                       nargs='+')
+    }
+
+
+class DropRecentlyRemovedBrokersParameter(AbstractCommaSeparatedParameter):
+    """drop_recently_removed_brokers=[id1,id2...]"""
+    name = 'drop_recently_removed_brokers'
+    description = 'Comma-separated and/or space-separated list of broker IDs'
+    argparse_properties = {
+        'args': ('--drop-recently-removed-broker',
+                 '--drop-recently-removed-brokers',
+                 '--drop-recently-removed-broker-id',
+                 '--drop-recently-removed-brokers-ids'),
+        'kwargs': dict(help=description,
+                       nargs='+')
+    }
+
+
 class EndpointsParameter(AbstractCommaSeparatedParameter):
     """endpoints=[Set-of-{@link EndPoint}]"""
     name = 'endpoints'
