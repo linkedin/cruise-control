@@ -29,7 +29,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *    &amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]&amp;kafka_assigner=[true/false]
  *    &amp;use_ready_default_goals=[true/false]&amp;verbose=[true/false]&amp;exclude_recently_demoted_brokers=[true/false]
  *    &amp;exclude_recently_removed_brokers=[true/false]&amp;replica_movement_strategies=[strategy1,strategy2...]
- *    &amp;destination_broker_ids=[id1,id2...]&amp;review_id=[id]
+ *    &amp;destination_broker_ids=[id1,id2...]&amp;review_id=[id]&amp;get_response_schema=[true/false]
  * </pre>
  */
 public class RemoveBrokerParameters extends AddedOrRemovedBrokerParameters {

@@ -36,7 +36,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *    &amp;concurrent_leader_movements=[POSITIVE-INTEGER]&amp;allow_capacity_estimation=[true/false]&amp;json=[true/false]
  *    &amp;skip_urp_demotion=[true/false]&amp;exclude_follower_demotion=[true/false]&amp;verbose=[true/false]
  *    &amp;exclude_recently_demoted_brokers=[true/false]&amp;replica_movement_strategies=[strategy1,strategy2...]
- *    &amp;review_id=[id]
+ *    &amp;review_id=[id]&amp;get_response_schema=[true/false]
  * </pre>
  */
 public class DemoteBrokerParameters extends KafkaOptimizationParameters {

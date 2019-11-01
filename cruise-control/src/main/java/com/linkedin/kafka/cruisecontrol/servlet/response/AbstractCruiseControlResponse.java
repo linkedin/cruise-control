@@ -39,12 +39,7 @@ public abstract class AbstractCruiseControlResponse implements CruiseControlResp
     boolean json = parameters.json();
     boolean wantResponseSchema = parameters.wantResponseSchema();
     discardIrrelevantResponse(parameters);
-    if (json && wantResponseSchema) {
-      String schema = getJsonSchema();
-      writeResponseToOutputStream(response, SC_OK, json, schema, _cachedResponse, _config);
-    } else {
-      writeResponseToOutputStream(response, SC_OK, json, _cachedResponse, _config);
-    }
+    writeResponseToOutputStream(response, SC_OK, json, wantResponseSchema, _cachedResponse, _config);
   }
 
   @Override
@@ -60,60 +55,5 @@ public abstract class AbstractCruiseControlResponse implements CruiseControlResp
   @Override
   public String cachedResponse() {
     return _cachedResponse;
-  }
-
-  private String getJsonSchema() {
-    JsonElement response = new JsonParser().parse(_cachedResponse);
-    String schema = convertNodeToStringSchemaNode(response, null);
-    return schema;
-  }
-
-  private static String convertNodeToStringSchemaNode(
-          JsonElement node, String key) {
-    StringBuilder result = new StringBuilder();
-
-    if (key != null) {
-      result.append("\"" + key + "\": { \"type\": \"");
-    } else {
-      result.append("{ \"type\": \"");
-    }
-    if (node.isJsonArray()) {
-      result.append("array\", \"items\": [");
-      JsonArray arr = node.getAsJsonArray();
-      for (int i = 0; i < arr.size(); i++) {
-        node = arr.get(i);
-        result.append(convertNodeToStringSchemaNode(node, null));
-        if (i != arr.size() - 1) {
-          result.append(",");
-        }
-      }
-      result.append("]}");
-    } else if (node.isJsonPrimitive()) {
-      if (node.getAsJsonPrimitive().isBoolean()) {
-        result.append("boolean\" }");
-      } else if (node.getAsJsonPrimitive().isNumber()) {
-        result.append("number\" }");
-      } else if (node.getAsJsonPrimitive().isString()) {
-        result.append("string\" }");
-      }
-    } else if (node.isJsonObject()) {
-      result.append("object\", \"properties\": ");
-      result.append("{");
-      for (Iterator<Map.Entry<String, JsonElement>> iterator = node.getAsJsonObject().entrySet().iterator(); iterator.hasNext(); ) {
-        Map.Entry<String, JsonElement> entry = iterator.next();
-        key = entry.getKey();
-        JsonElement child = entry.getValue();
-
-        result.append(convertNodeToStringSchemaNode(child, key));
-        if (iterator.hasNext()) {
-          result.append(",");
-        }
-      }
-      result.append("}}");
-    } else if (node.isJsonNull()) {
-      result.append("}");
-    }
-
-    return result.toString();
   }
 }

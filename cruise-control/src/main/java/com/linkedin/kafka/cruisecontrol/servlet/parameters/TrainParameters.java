@@ -24,6 +24,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  * {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#USE_LINEAR_REGRESSION_MODEL_CONFIG} is true.
  *
  *    GET /kafkacruisecontrol/train?start=[START_TIMESTAMP]&amp;end=[END_TIMESTAMP]&amp;json=[true/false]
+ *    &amp;get_response_schema=[true/false]
  * </pre>
  */
 public class TrainParameters extends AbstractParameters {

@@ -161,8 +161,9 @@ public class ParameterUtils {
                                             HttpServletResponse response,
                                             String errorMessage,
                                             boolean json,
+                                            boolean wantJsonSchema,
                                             KafkaCruiseControlConfig config) throws IOException {
-    writeErrorResponse(response, e, errorMessage, SC_BAD_REQUEST, json, config);
+    writeErrorResponse(response, e, errorMessage, SC_BAD_REQUEST, json, wantJsonSchema, config);
   }
 
   /**
@@ -191,7 +192,7 @@ public class ParameterUtils {
       // User request specifies parameters that are not a subset of the valid parameters.
       String errorMessage = String.format("Unrecognized endpoint parameters in %s %s request: %s.",
                                           endPoint, request.getMethod(), userParams.toString());
-      writeErrorResponse(response, null, errorMessage, SC_BAD_REQUEST, wantJSON(request), config);
+      writeErrorResponse(response, null, errorMessage, SC_BAD_REQUEST, wantJSON(request), wantResponseSchema(request), config);
       return false;
     }
     return true;
