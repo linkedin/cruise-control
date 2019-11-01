@@ -17,7 +17,7 @@ import java.util.Map;
 
 /**
  * The async runnable for {@link KafkaCruiseControl#updateTopicReplicationFactor(Map, List, boolean, ModelCompletenessRequirements,
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, ReplicaMovementStrategy,
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, Long, ReplicaMovementStrategy,
  * boolean, boolean, boolean, String)}.
  */
 public class UpdateTopicConfigurationRunnable extends OperationRunnable {
@@ -49,6 +49,7 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
                                                            _topicReplicationFactorChangeParameters.concurrentInterBrokerPartitionMovements(),
                                                            _topicReplicationFactorChangeParameters.concurrentLeaderMovements(),
                                                            _topicReplicationFactorChangeParameters.skipHardGoalCheck(),
+                                                           _topicReplicationFactorChangeParameters.executionProgressCheckIntervalMs(),
                                                            _topicReplicationFactorChangeParameters.replicaMovementStrategy(),
                                                            _topicReplicationFactorChangeParameters.excludeRecentlyDemotedBrokers(),
                                                            _topicReplicationFactorChangeParameters.excludeRecentlyRemovedBrokers(),

@@ -18,6 +18,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.KAFKA_ASSIGNER_MODE_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_LEADER_MOVEMENTS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_HARD_GOAL_CHECK_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICA_MOVEMENT_STRATEGIES_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.IGNORE_PROPOSAL_CACHE_PARAM;
@@ -40,7 +41,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *    &amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]&amp;verbose=[true/false]
  *    &amp;exclude_recently_demoted_brokers=[true/false]&amp;exclude_recently_removed_brokers=[true/false]
  *    &amp;replica_movement_strategies=[strategy1,strategy2...]&amp;ignore_proposal_cache=[true/false]
- *    &amp;destination_broker_ids=[id1,id2...]&amp;kafka_assigner=[true/false]&amp;review_id=[id]
+ *    &amp;destination_broker_ids=[id1,id2...]&amp;kafka_assigner=[true/false]&amp;review_id=[id]&amp;execution_progress_check_interval_ms=[interval_in_ms]
  *    &amp;get_response_schema=[true/false]
  * </pre>
  */
@@ -52,6 +53,7 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
     validParameterNames.add(DRY_RUN_PARAM);
     validParameterNames.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
     validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    validParameterNames.add(EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
     validParameterNames.add(SKIP_HARD_GOAL_CHECK_PARAM);
     validParameterNames.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
     validParameterNames.add(IGNORE_PROPOSAL_CACHE_PARAM);
@@ -63,6 +65,7 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
   protected boolean _dryRun;
   protected Integer _concurrentInterBrokerPartitionMovements;
   protected Integer _concurrentLeaderMovements;
+  protected Long _executionProgressCheckIntervalMs;
   protected boolean _skipHardGoalCheck;
   protected ReplicaMovementStrategy _replicaMovementStrategy;
   protected boolean _ignoreProposalCache;
@@ -79,6 +82,7 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
     _dryRun = ParameterUtils.getDryRun(_request);
     _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
+    _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_request);
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
     _ignoreProposalCache = ParameterUtils.ignoreProposalCache(_request);
@@ -102,6 +106,10 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
 
   public Integer concurrentInterBrokerPartitionMovements() {
     return _concurrentInterBrokerPartitionMovements;
+  }
+
+  public Long executionProgressCheckIntervalMs() {
+    return _executionProgressCheckIntervalMs;
   }
 
   public Integer concurrentLeaderMovements() {

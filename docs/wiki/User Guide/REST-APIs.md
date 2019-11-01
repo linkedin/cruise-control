@@ -342,7 +342,7 @@ Like adding brokers, users can choose whether to throttle the removed broker dur
 **Note if the topics specified in `excluded_topics` has replicas on the removed broker, the replicas will still get moved off the broker.**
 
 ### Fix offline replicas in Kafka cluster
-The following POST request moves all the offline replicas from dead disks/brokers. **This endpoint is available only in `migrate_to_kafka_2_0` branch.** 
+The following POST request moves all the offline replicas from dead disks/brokers. **This endpoint is not available in `kafka_0_11_and_1_0` branch.** 
 
 
     POST /kafkacruisecontrol/fix_offline_replicas
@@ -377,7 +377,7 @@ The following POST request moves all the leader replicas away from a list of bro
 
     POST /kafkacruisecontrol/demote_broker?brokerid=[id1, id2...]
 
-In `migrate_to_kafka_2_0` branch, user can also request to move all the leader replicas away from the a list of disks via 
+User can also request to move all the leader replicas away from the a list of disks via 
 
      POST /kafkacruisecontrol/demote_broker?brokerid_and_logdirs=[id1-logdir1, id2-logdir2...]
 

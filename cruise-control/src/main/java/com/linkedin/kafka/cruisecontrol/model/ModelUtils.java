@@ -5,12 +5,15 @@
 package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
  * The util class for model.
  */
 public class ModelUtils {
+  private static final Logger LOG = LoggerFactory.getLogger(ModelUtils.class);
   public static final String BROKER_ID = "brokerid";
   public static final String BROKER_STATE = "brokerstate";
   public static final String REPLICAS = "replicas";
@@ -57,7 +60,8 @@ public class ModelUtils {
   }
 
   /**
-   * Estimate the leader CPU utilization for the partition with the given information as a double in [0.0,1.0].
+   * Estimate the leader CPU utilization for the partition with the given information as a Double in [0.0,1.0], or
+   * {@code null} if estimation is not possible due to inconsistency between partition and broker-level byte rates.
    *
    * @param brokerCpuUtil A double in [0.0,1.0], representing the CPU usage of the broker hosting the partition leader.
    * @param brokerLeaderBytesInRate Leader bytes in rate in the broker.
@@ -65,14 +69,15 @@ public class ModelUtils {
    * @param brokerFollowerBytesInRate Follower bytes in rate in the broker.
    * @param partitionBytesInRate Leader bytes in rate for the partition.
    * @param partitionBytesOutRate Total bytes out rate (i.e. leader/replication bytes out) for the partition.
-   * @return Estimated CPU utilization of the leader replica of the partition as a double in [0.0,1.0].
+   * @return Estimated CPU utilization of the leader replica of the partition as a Double in [0.0,1.0], or {@code null}
+   * if estimation is not possible due to inconsistency between partition and broker-level byte rates.
    */
-  public static double estimateLeaderCpuUtil(double brokerCpuUtil,
-                                             double brokerLeaderBytesInRate,
-                                             double brokerLeaderBytesOutRate,
-                                             double brokerFollowerBytesInRate,
-                                             double partitionBytesInRate,
-                                             double partitionBytesOutRate) {
+  public static Double estimateLeaderCpuUtilPerCore(double brokerCpuUtil,
+                                                    double brokerLeaderBytesInRate,
+                                                    double brokerLeaderBytesOutRate,
+                                                    double brokerFollowerBytesInRate,
+                                                    double partitionBytesInRate,
+                                                    double partitionBytesOutRate) {
     if (_useLinearRegressionModel) {
       return estimateLeaderCpuUtilUsingLinearRegressionModel(partitionBytesInRate, partitionBytesOutRate);
     } else {
@@ -80,12 +85,14 @@ public class ModelUtils {
         return 0.0;
       } else if (brokerLeaderBytesInRate * ALLOWED_METRIC_ERROR_FACTOR < partitionBytesInRate
                  && brokerLeaderBytesInRate > UNSTABLE_METRIC_THROUGHPUT_THRESHOLD) {
-        throw new IllegalArgumentException(String.format("The partition bytes in rate %f is greater than the broker "
-                                                         + "bytes in rate %f", partitionBytesInRate, brokerLeaderBytesInRate));
+        LOG.error("Partition bytes in rate {} is greater than broker bytes in rate {}.",
+                  partitionBytesInRate, brokerLeaderBytesInRate);
+        return null;
       } else if (brokerLeaderBytesOutRate * ALLOWED_METRIC_ERROR_FACTOR < partitionBytesOutRate
                  && brokerLeaderBytesOutRate > UNSTABLE_METRIC_THROUGHPUT_THRESHOLD) {
-        throw new IllegalArgumentException(String.format("The partition bytes out rate %f is greater than the broker "
-                                                         + "bytes out rate %f", partitionBytesOutRate, brokerLeaderBytesOutRate));
+        LOG.error("Partition bytes out rate {} is greater than broker bytes out rate {}.",
+                  partitionBytesOutRate, brokerLeaderBytesOutRate);
+        return null;
       } else {
         double brokerLeaderBytesInContribution = ModelParameters.CPU_WEIGHT_OF_LEADER_BYTES_IN_RATE * brokerLeaderBytesInRate;
         double brokerLeaderBytesOutContribution = ModelParameters.CPU_WEIGHT_OF_LEADER_BYTES_OUT_RATE * brokerLeaderBytesOutRate;
