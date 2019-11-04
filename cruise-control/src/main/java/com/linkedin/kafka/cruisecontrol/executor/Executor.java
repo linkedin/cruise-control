@@ -559,7 +559,7 @@ public class Executor {
    */
   public synchronized void userTriggeredStopExecution(boolean forceExecutionStop) {
     if (stopExecution(forceExecutionStop)) {
-      LOG.info("User requested to stop the ongoing proposal execution.");
+      LOG.info("User requested to stop the ongoing proposal execution" + (forceExecutionStop ? " forcefully." : "."));
       _numExecutionStoppedByUser.incrementAndGet();
       _executionStoppedByUser.set(true);
     }
@@ -1034,10 +1034,13 @@ public class Executor {
 
     private void deleteZnodesToStopExecution() {
       // Delete znode of ongoing replica movement tasks.
+      LOG.info("Deleting znode for ongoing replica movements {}.", _kafkaZkClient.getPartitionReassignment());
       _kafkaZkClient.deletePartitionReassignment();
       // delete znode of ongoing leadership movement tasks.
+      LOG.info("Deleting znode for ongoing leadership changes {}.", _kafkaZkClient.getPreferredReplicaElection());
       _kafkaZkClient.deletePreferredReplicaElection();
       // Delete controller znode to trigger a controller re-election.
+      LOG.info("Deleting controller znode to re-elect a new controller. Old controller is {}.", _kafkaZkClient.getControllerId());
       _kafkaZkClient.deleteController();
     }
 
@@ -1100,6 +1103,8 @@ public class Executor {
           // ExecutorAdminUtils.executeReplicaReassignmentTasks(_kafkaZkClient, deadOrAbortingTasks);
           if (_stopSignal.get() == NO_STOP_EXECUTION) {
             // If there is task aborted or dead, we stop the execution.
+            LOG.info("Stop the ongoing proposal execution due to {} tasks are in dead or aborting status.\nTask details: {}",
+                     deadOrAbortingTasks.size(), deadOrAbortingTasks);
             stopExecution(false);
           }
         }
