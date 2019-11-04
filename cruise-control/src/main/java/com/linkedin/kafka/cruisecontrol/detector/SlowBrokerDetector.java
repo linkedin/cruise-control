@@ -56,6 +56,7 @@ public class SlowBrokerDetector implements Runnable {
   public static final String SLOW_BROKERS_OBJECT_CONFIG = "slow.brokers.object";
   public static final String REMOVE_SLOW_BROKERS_CONFIG = "remove.slow.brokers";
   public static final String SLOW_BROKERS_FIXABLE_CONFIG = "slow.brokers.fixable";
+  // Todo: make following configs configurable.
   // The percentile threshold used to compare latest metric value against historical value.
   private static final double HISTORY_METRIC_PERCENTILE_THRESHOLD = 90.0;
   // The margin used to compare latest metric value against historical value.
@@ -208,13 +209,12 @@ public class SlowBrokerDetector implements Runnable {
         // Update slow broker detection time and slowness score.
         Long currentTimeMs = _time.milliseconds();
         _detectedSlowBrokers.putIfAbsent(brokerId, currentTimeMs);
-        Integer slownessScore = _brokerSlownessScore.compute(brokerId, (k, v) -> (v == null) ? 1 : v + 1);
+        Integer slownessScore = _brokerSlownessScore.compute(brokerId,
+                                                             (k, v) -> (v == null) ? 1 : Math.min(v + 1, SLOW_BROKER_DECOMMISSION_SCORE));
 
         // Report anomaly if slowness score reaches threshold for broker decommission/demotion.
         if (slownessScore == SLOW_BROKER_DECOMMISSION_SCORE) {
           brokersToRemove.put(brokerId, _detectedSlowBrokers.get(brokerId));
-          _detectedSlowBrokers.remove(brokerId);
-          _brokerSlownessScore.remove(brokerId);
         } else if (slownessScore == SLOW_BROKER_DEMOTION_SCORE) {
           brokersToDemote.put(brokerId, _detectedSlowBrokers.get(brokerId));
         }
