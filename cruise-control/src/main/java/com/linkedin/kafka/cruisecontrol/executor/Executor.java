@@ -1196,7 +1196,7 @@ public class Executor {
               _executionTaskManager.markTaskDead(task);
               LOG.warn("Killing execution for task {} because the target leader is down", task);
               return true;
-            } else if (_time.milliseconds() > task.startTime() + _leaderMovementTimeoutMs) {
+            } else if (_time.milliseconds() > task.startTimeMs() + _leaderMovementTimeoutMs) {
               _executionTaskManager.markTaskDead(task);
               LOG.warn("Failed task {} because it took longer than {} to finish.", task, _leaderMovementTimeoutMs);
               return true;

@@ -957,7 +957,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    */
   public static final String INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG =
       "inter.broker.replica.movement.rate.alerting.threshold";
-  private static final String INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_DOC = "Threshold of data movement rate(in MB/s) "
+  private static final String INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_DOC = "Threshold of data movement rate (in MB/s) "
       + "for inter-broker replica movement task. If the task's data movement rate is lower than this and the task's execution time exceeds "
       + "the threshold set via " + TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG + ", an alert will be sent via notifier set by config "
       + EXECUTOR_NOTIFIER_CLASS_CONFIG;
@@ -967,7 +967,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    */
   public static final String INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG =
       "intra.broker.replica.movement.rate.alerting.threshold";
-  private static final String INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_DOC = "Threshold of data movement rate(in MB/s) "
+  private static final String INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_DOC = "Threshold of data movement rate (in MB/s) "
       + "for intra-broker replica movement task. If task's data movement rate is lower than this and the task's execution time exceeds "
       + "the threshold set via " + TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG + ", an alert will be sent via notifier set by config "
       + EXECUTOR_NOTIFIER_CLASS_CONFIG;
@@ -975,8 +975,8 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   // Put here to avoid forward reference.
   private static final String TASK_EXECUTION_ALERTING_THRESHOLD_MS_DOC = "Threshold of execution time to alert a replica/leader movement"
       + " task. If the task's execution time exceeds this threshold and the data movement rate is lower than the threshold "
-      + "set via " + INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG + "(for inter-broker replica movement task) or "
-      + INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG + "(for intra-broker replica movement task), an alert will be "
+      + "set via " + INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG + " (for inter-broker replica movement task) or "
+      + INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG + " (for intra-broker replica movement task), an alert will be "
       + "sent via notifier set by config " + EXECUTOR_NOTIFIER_CLASS_CONFIG;
 
   static {

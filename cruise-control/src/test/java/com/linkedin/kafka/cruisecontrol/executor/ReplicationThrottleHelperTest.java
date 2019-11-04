@@ -31,6 +31,7 @@ import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
 import static org.junit.Assert.assertEquals;
 
 public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness {
+  private static final long TASK_EXECUTION_ALERTING_THRESHOLD_MS = 100L;
 
   @Override
   public int clusterSize() {
@@ -61,7 +62,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
   }
 
   private ExecutionTask inProgressTaskForProposal(long id, ExecutionProposal proposal) {
-    ExecutionTask task = new ExecutionTask(id, proposal, ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION, 100);
+    ExecutionTask task = new ExecutionTask(id, proposal, ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION, TASK_EXECUTION_ALERTING_THRESHOLD_MS);
     task.inProgress(0);
     return task;
   }
