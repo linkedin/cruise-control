@@ -174,6 +174,7 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
                               null,
                               null,
                               null,
+                              true,
                               RANDOM_UUID,
                               "");
     // Wait until the execution to start so the task timestamp is set to time.milliseconds.
@@ -200,6 +201,7 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
                               null,
                               null,
                               null,
+                              true,
                               RANDOM_UUID,
                               "");
     // Wait until the inter-broker replica movement task hang.
@@ -333,7 +335,7 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     executor.setExecutionMode(false);
     executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, EasyMock.mock(LoadMonitor.class), null,
                               null, null, null,
-                              null, null, RANDOM_UUID, "");
+                              null, null, true, RANDOM_UUID, "");
 
     Map<TopicPartition, Integer> replicationFactors = new HashMap<>();
     for (ExecutionProposal proposal : proposalsToCheck) {

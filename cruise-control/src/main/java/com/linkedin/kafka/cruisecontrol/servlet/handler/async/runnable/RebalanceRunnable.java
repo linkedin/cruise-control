@@ -138,7 +138,7 @@ public class RebalanceRunnable extends OperationRunnable {
       _kafkaCruiseControl.executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(_goals),
                                            _concurrentInterBrokerPartitionMovements, _concurrentIntraBrokerPartitionMovements,
                                            _concurrentLeaderMovements, _executionProgressCheckIntervalMs, _replicaMovementStrategy,
-                                           _replicationThrottle, _uuid, _reason);
+                                           _replicationThrottle, !_isTriggeredByGoalViolation, _uuid, _reason);
     }
     return result;
   }

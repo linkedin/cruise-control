@@ -57,6 +57,7 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
   protected final boolean _excludeRecentlyRemovedBrokers;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Long _replicationThrottle;
+  protected final boolean _isTriggeredByUserRequest;
 
   /**
    * Constructor to be used for creating a runnable for self-healing.
@@ -84,6 +85,7 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
     _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
     _replicationThrottle = kafkaCruiseControl.config().getLong(DEFAULT_REPLICATION_THROTTLE_CONFIG);
+    _isTriggeredByUserRequest = false;
   }
 
   public FixOfflineReplicasRunnable(KafkaCruiseControl kafkaCruiseControl,
@@ -106,6 +108,7 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
     _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
     _replicationThrottle = parameters.replicationThrottle();
+    _isTriggeredByUserRequest = true;
   }
 
   @Override
@@ -165,6 +168,7 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
                                              _executionProgressCheckIntervalMs,
                                              _replicaMovementStrategy,
                                              _replicationThrottle,
+                                             _isTriggeredByUserRequest,
                                              _uuid,
                                              _reason);
       }

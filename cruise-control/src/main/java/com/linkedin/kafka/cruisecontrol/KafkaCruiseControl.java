@@ -473,6 +473,7 @@ public class KafkaCruiseControl {
    *                                (if null, use default.replica.movement.strategies).
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
    *                            when executing proposals (if null, no throttling is applied).
+   * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
    * @param reason Reason of the execution.
    */
@@ -485,6 +486,7 @@ public class KafkaCruiseControl {
                                Long executionProgressCheckIntervalMs,
                                ReplicaMovementStrategy replicaMovementStrategy,
                                Long replicationThrottle,
+                               boolean isTriggeredByUserRequest,
                                String uuid,
                                String reason) {
     if (hasProposalsToExecute(proposals, uuid)) {
@@ -493,7 +495,7 @@ public class KafkaCruiseControl {
       _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor,
                                  concurrentInterBrokerPartitionMovements, concurrentIntraBrokerPartitionMovements,
                                  concurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy,
-                                 replicationThrottle, uuid, reason);
+                                 replicationThrottle, isTriggeredByUserRequest, uuid, reason);
     }
   }
 
@@ -513,6 +515,7 @@ public class KafkaCruiseControl {
    *                                (if null, use default.replica.movement.strategies).
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
    *                            when executing remove operations (if null, no throttling is applied).
+   * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
    * @param reason Reason of the execution.
    */
@@ -525,6 +528,7 @@ public class KafkaCruiseControl {
                              Long executionProgressCheckIntervalMs,
                              ReplicaMovementStrategy replicaMovementStrategy,
                              Long replicationThrottle,
+                             boolean isTriggeredByUserRequest,
                              String uuid,
                              String reason) {
     if (hasProposalsToExecute(proposals, uuid)) {
@@ -533,7 +537,7 @@ public class KafkaCruiseControl {
       _executor.executeProposals(proposals, throttleDecommissionedBroker ? Collections.emptySet() : removedBrokers,
                                  removedBrokers, _loadMonitor, concurrentInterBrokerPartitionMovements, 0,
                                  concurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy,
-                                 replicationThrottle, uuid, reason);
+                                 replicationThrottle, isTriggeredByUserRequest, uuid, reason);
     }
   }
 
@@ -550,6 +554,7 @@ public class KafkaCruiseControl {
    *                                (if null, use default.replica.movement.strategies).
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
    *                            when executing demote operations (if null, no throttling is applied).
+   * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
    * @param reason Reason of the execution.
    */
@@ -560,6 +565,7 @@ public class KafkaCruiseControl {
                               Long executionProgressCheckIntervalMs,
                               ReplicaMovementStrategy replicaMovementStrategy,
                               Long replicationThrottle,
+                              boolean isTriggeredByUserRequest,
                               String uuid,
                               String reason) {
     if (hasProposalsToExecute(proposals, uuid)) {
@@ -574,7 +580,8 @@ public class KafkaCruiseControl {
       // Set the execution mode, add execution proposals, and start execution.
       _executor.setExecutionMode(false);
       _executor.executeDemoteProposals(proposals, demotedBrokers, _loadMonitor, concurrentSwaps, concurrentLeaderMovements,
-                                       executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle, uuid, reason);
+                                       executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle,
+                                       isTriggeredByUserRequest, uuid, reason);
     }
   }
 

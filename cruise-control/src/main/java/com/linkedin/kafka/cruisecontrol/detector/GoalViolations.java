@@ -33,7 +33,6 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.GOA
  */
 public class GoalViolations extends KafkaAnomaly implements CruiseControlConfigurable {
   private static final Logger LOG = LoggerFactory.getLogger(GoalViolations.class);
-  protected static final String ID_PREFIX = GOAL_VIOLATION.toString();
   // The priority order of goals is maintained here.
   protected Map<Boolean, List<String>> _violatedGoalsByFixability;
   protected boolean _excludeRecentlyDemotedBrokers;
@@ -113,7 +112,7 @@ public class GoalViolations extends KafkaAnomaly implements CruiseControlConfigu
       boolean allowCapacityEstimation = config.getBoolean(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
       _excludeRecentlyDemotedBrokers = config.getBoolean(GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
       _excludeRecentlyRemovedBrokers = config.getBoolean(GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
-      _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
+      _anomalyId = UUID.randomUUID().toString();
       _rebalanceRunnable = new RebalanceRunnable(kafkaCruiseControl, getSelfHealingGoalNames(config), allowCapacityEstimation,
                                                  _excludeRecentlyDemotedBrokers, _excludeRecentlyRemovedBrokers, _anomalyId,
                                                  String.format("Self healing for %s: %s", GOAL_VIOLATION, this));

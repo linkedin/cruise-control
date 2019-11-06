@@ -137,6 +137,7 @@ public class AddBrokersRunnable extends OperationRunnable {
                                              _executionProgressCheckIntervalMs,
                                              _replicaMovementStrategy,
                                              _replicationThrottle,
+                                             true,
                                              _uuid,
                                              _reason);
       }

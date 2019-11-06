@@ -26,7 +26,6 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.BRO
  * The broker failures that have been detected.
  */
 public class BrokerFailures extends KafkaAnomaly implements CruiseControlConfigurable {
-  protected static final String ID_PREFIX = BROKER_FAILURE.toString();
   protected Map<Integer, Long> _failedBrokers;
   protected String _anomalyId;
   protected RemoveBrokersRunnable _removeBrokersRunnable;
@@ -80,7 +79,7 @@ public class BrokerFailures extends KafkaAnomaly implements CruiseControlConfigu
       if (_failedBrokers != null && _failedBrokers.isEmpty()) {
         throw new IllegalArgumentException("Missing broker ids for failed brokers.");
       }
-      _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
+      _anomalyId = UUID.randomUUID().toString();
       _optimizationResult = null;
       KafkaCruiseControlConfig config = kafkaCruiseControl.config();
       boolean allowCapacityEstimation = config.getBoolean(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);

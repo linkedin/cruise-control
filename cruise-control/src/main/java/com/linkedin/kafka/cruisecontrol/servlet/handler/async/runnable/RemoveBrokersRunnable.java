@@ -61,6 +61,7 @@ public class RemoveBrokersRunnable extends OperationRunnable {
   protected final boolean _excludeRecentlyRemovedBrokers;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Long _replicationThrottle;
+  protected final boolean _isTriggeredByUserRequest;
 
   /**
    * Constructor to be used for creating a runnable for self-healing.
@@ -92,6 +93,7 @@ public class RemoveBrokersRunnable extends OperationRunnable {
     _reason = reason;
     _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
     _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
+    _isTriggeredByUserRequest = false;
   }
 
   public RemoveBrokersRunnable(KafkaCruiseControl kafkaCruiseControl,
@@ -117,6 +119,7 @@ public class RemoveBrokersRunnable extends OperationRunnable {
     _reason = parameters.reason();
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
+    _isTriggeredByUserRequest = true;
   }
 
   @Override
@@ -172,7 +175,8 @@ public class RemoveBrokersRunnable extends OperationRunnable {
       if (!_dryRun) {
         _kafkaCruiseControl.executeRemoval(result.goalProposals(), _throttleRemovedBrokers, _removedBrokerIds, isKafkaAssignerMode(_goals),
                                            _concurrentInterBrokerPartitionMovements, _concurrentLeaderMovements,
-                                           _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle, _uuid, _reason);
+                                           _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle,
+                                           _isTriggeredByUserRequest, _uuid, _reason);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {

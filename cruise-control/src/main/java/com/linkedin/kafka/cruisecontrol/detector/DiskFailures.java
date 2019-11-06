@@ -19,7 +19,6 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.DIS
  * The disk failures that have been detected.
  */
 public class DiskFailures extends KafkaAnomaly {
-  private static final String ID_PREFIX = DISK_FAILURE.toString();
   private final Map<Integer, Map<String, Long>> _failedDisksByBroker;
   private final String _anomalyId;
   private final FixOfflineReplicasRunnable _fixOfflineReplicasRunnable;
@@ -34,7 +33,7 @@ public class DiskFailures extends KafkaAnomaly {
       throw new IllegalArgumentException("Unable to create disk failure anomaly with no failed disk specified.");
     }
     _failedDisksByBroker = failedDisksByBroker;
-    _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
+    _anomalyId = UUID.randomUUID().toString();
     _optimizationResult = null;
     _fixOfflineReplicasRunnable = new FixOfflineReplicasRunnable(kafkaCruiseControl, selfHealingGoals, allowCapacityEstimation,
                                                                  excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, _anomalyId,
