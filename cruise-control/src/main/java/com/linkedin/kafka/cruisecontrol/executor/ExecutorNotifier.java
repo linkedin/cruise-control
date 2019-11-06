@@ -8,13 +8,21 @@ import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import org.apache.kafka.common.annotation.InterfaceStability;
 
 /**
- * For sending notification about executor completion status.
+ * The interface for {@link Executor} to use to send notifications.
  */
 @InterfaceStability.Evolving
 public interface ExecutorNotifier extends CruiseControlConfigurable {
   /**
-   * When an execution completes successfully or is stopped this method should be called
-   * @param notification Information to be sent.
+   * Send out a notification when needed.
+   *
+   * @param message Information to be sent.
    */
-  void sendNotification(ExecutorNotification notification);
+  void sendNotification(String message);
+
+  /**
+   * Send out an alert when needed.
+   *
+   * @param alertMessage Information to be sent.
+   */
+  void sendAlert(String alertMessage);
 }

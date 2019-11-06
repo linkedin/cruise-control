@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.DATE_FORMAT;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.TIME_ZONE;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.*;
 
 
@@ -51,8 +54,10 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   // _brokerId is only relevant for intra-broker replica action, otherwise it will be -1.
   private final int _brokerId;
   private State _state;
-  private long _startTime;
-  private long _endTime;
+  private long _startTimeMs;
+  private long _endTimeMs;
+  private long _alertTimeMs;
+  private boolean _slowExecutionReported;
 
   static {
     VALID_TRANSFER.put(PENDING, new HashSet<>(Collections.singleton(IN_PROGRESS)));
@@ -69,23 +74,31 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
    * @param executionId The execution id of the proposal so we can keep track of the task when execute it.
    * @param proposal The corresponding balancing proposal of this task.
    * @param brokerId The broker to operate on if the task is of type {@link TaskType#INTRA_BROKER_REPLICA_ACTION}.
-   * @param type the {@link TaskType} of this task.
+   * @param type The {@link TaskType} of this task.
+   * @param executionAlertingThresholdMs The alerting threshold of task execution time. If the execution time exceeds this
+   *                                     threshold, {@link #maybeReportExecutionTooSlow(long, ExecutorNotifier)} will be called.
    */
-  public ExecutionTask(long executionId, ExecutionProposal proposal, Integer brokerId, TaskType type) {
+  public ExecutionTask(long executionId, ExecutionProposal proposal, Integer brokerId, TaskType type, long executionAlertingThresholdMs) {
     if (type != TaskType.INTRA_BROKER_REPLICA_ACTION && brokerId != null) {
       throw new IllegalArgumentException("Broker id is specified for non-intra-broker task.");
+    }
+    if (executionAlertingThresholdMs <= 0) {
+      throw new IllegalArgumentException(String.format("Non-positive execution alerting threshold %d is set for task %d.",
+                                                       executionAlertingThresholdMs, executionId));
     }
     _executionId = executionId;
     _proposal = proposal;
     _brokerId =  brokerId == null ? -1 : brokerId;
     _state = State.PENDING;
     _type = type;
-    _startTime = -1L;
-    _endTime = -1L;
+    _startTimeMs = -1L;
+    _endTimeMs = -1L;
+    _alertTimeMs = executionAlertingThresholdMs;
+    _slowExecutionReported = false;
   }
 
-  public ExecutionTask(long executionId, ExecutionProposal proposal, TaskType type) {
-    this(executionId, proposal, null, type);
+  public ExecutionTask(long executionId, ExecutionProposal proposal, TaskType type, long executionAlertingThresholdMs) {
+    this(executionId, proposal, null, type, executionAlertingThresholdMs);
   }
 
   /**
@@ -135,15 +148,15 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   /**
    * @return the timestamp that the task started.
    */
-  public long startTime() {
-    return _startTime;
+  public long startTimeMs() {
+    return _startTimeMs;
   }
 
   /**
    * @return the timestamp that the task finishes.
    */
-  public long endTime() {
-    return _endTime;
+  public long endTimeMs() {
+    return _endTimeMs;
   }
 
   /**
@@ -155,20 +168,25 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
 
   /**
    * Mark task in progress.
+   *
+   * @param now Current system time.
    */
   public void inProgress(long now) {
     ensureValidTransfer(IN_PROGRESS);
     this._state = IN_PROGRESS;
-    _startTime = now;
+    _startTimeMs = now;
+    _alertTimeMs += now;
   }
 
   /**
    * Kill the task.
+   *
+   * @param now Current system time.
    */
   public void kill(long now) {
     ensureValidTransfer(DEAD);
     this._state = DEAD;
-    _endTime = now;
+    _endTimeMs = now;
   }
 
   /**
@@ -181,20 +199,43 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
 
   /**
    * Change the task state to aborted.
+   *
+   * @param now Current system time.
    */
   public void aborted(long now) {
     ensureValidTransfer(ABORTED);
     this._state = ABORTED;
-    _endTime = now;
+    _endTimeMs = now;
   }
 
   /**
    * Change the task state to completed.
+   *
+   * @param now Current system time.
    */
   public void completed(long now) {
     ensureValidTransfer(COMPLETED);
     this._state = COMPLETED;
-    _endTime = now;
+    _endTimeMs = now;
+  }
+
+  /**
+   * Send out an alert if the task's execution time exceeds alerting threshold.
+   * Note the alert will be sent out only for the first time the slow execution is detected.
+   *
+   * @param now Current system time.
+   * @param executorNotifier The notifier to send out alert.
+   */
+  public void maybeReportExecutionTooSlow(long now, ExecutorNotifier executorNotifier) {
+    if (_slowExecutionReported) {
+      return;
+    }
+    if ((_state == IN_PROGRESS || _state == ABORTING) && now > _alertTimeMs) {
+      executorNotifier.sendAlert(String.format("Task [%s] starts at %s and it takes too long to finish.%nTask detail: %s.",
+                                               _executionId, toDateString(_startTimeMs, DATE_FORMAT, TIME_ZONE), this));
+      // Mute the task to prevent sending the same alert repeatedly.
+      _slowExecutionReported = true;
+    }
   }
 
   @Override
