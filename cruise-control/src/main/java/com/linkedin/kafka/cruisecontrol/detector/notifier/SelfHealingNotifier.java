@@ -101,7 +101,7 @@ public class SelfHealingNotifier implements AnomalyNotifier {
   public AnomalyNotificationResult onGoalViolation(GoalViolations goalViolations) {
     boolean autoFixTriggered = _selfHealingEnabled.get(AnomalyType.GOAL_VIOLATION);
     boolean selfHealingTriggered = autoFixTriggered && !hasUnfixableGoals(goalViolations);
-    alert(goalViolations, selfHealingTriggered, System.currentTimeMillis(), AnomalyType.GOAL_VIOLATION);
+    alert(goalViolations, selfHealingTriggered, _time.milliseconds(), AnomalyType.GOAL_VIOLATION);
 
     if (autoFixTriggered) {
       if (selfHealingTriggered) {
@@ -116,14 +116,14 @@ public class SelfHealingNotifier implements AnomalyNotifier {
 
   @Override
   public AnomalyNotificationResult onMetricAnomaly(KafkaMetricAnomaly metricAnomaly) {
-    boolean autoFixTriggered = _selfHealingEnabled.get(AnomalyType.METRIC_ANOMALY);
-    alert(metricAnomaly, autoFixTriggered, System.currentTimeMillis(), AnomalyType.METRIC_ANOMALY);
+    boolean autoFixTriggered = _selfHealingEnabled.get(AnomalyType.METRIC_ANOMALY) && metricAnomaly.fixable();
+    alert(metricAnomaly, autoFixTriggered, _time.milliseconds(), AnomalyType.METRIC_ANOMALY);
     return autoFixTriggered ? AnomalyNotificationResult.fix() : AnomalyNotificationResult.ignore();
   }
 
   @Override
   public AnomalyNotificationResult onDiskFailure(DiskFailures diskFailures) {
-    alert(diskFailures, _selfHealingEnabled.get(AnomalyType.DISK_FAILURE), System.currentTimeMillis(), AnomalyType.DISK_FAILURE);
+    alert(diskFailures, _selfHealingEnabled.get(AnomalyType.DISK_FAILURE), _time.milliseconds(), AnomalyType.DISK_FAILURE);
     return _selfHealingEnabled.get(AnomalyType.DISK_FAILURE) ? AnomalyNotificationResult.fix() : AnomalyNotificationResult.ignore();
   }
 

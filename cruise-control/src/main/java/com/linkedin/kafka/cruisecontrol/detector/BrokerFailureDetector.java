@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
-import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -28,9 +27,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.collection.JavaConversions;
 
-import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ZK_SESSION_TIMEOUT;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ZK_CONNECTION_TIMEOUT;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 import static java.util.stream.Collectors.toSet;
 
@@ -40,7 +40,7 @@ import static java.util.stream.Collectors.toSet;
  */
 public class BrokerFailureDetector {
   private static final Logger LOG = LoggerFactory.getLogger(BrokerFailureDetector.class);
-  public static final String FAILED_BROKERS_OBJECT_CONFIG = "failed.brokers.object.config";
+  public static final String FAILED_BROKERS_OBJECT_CONFIG = "failed.brokers.object";
   private static final String ZK_BROKER_FAILURE_METRIC_GROUP = "CruiseControlAnomaly";
   private static final String ZK_BROKER_FAILURE_METRIC_TYPE = "BrokerFailure";
   private final KafkaCruiseControl _kafkaCruiseControl;
@@ -48,9 +48,9 @@ public class BrokerFailureDetector {
   private final ZkClient _zkClient;
   private final KafkaZkClient _kafkaZkClient;
   private final Map<Integer, Long> _failedBrokers;
-  private final Queue<Anomaly> _anomalies;
+  private final Queue<KafkaAnomaly> _anomalies;
 
-  public BrokerFailureDetector(Queue<Anomaly> anomalies,
+  public BrokerFailureDetector(Queue<KafkaAnomaly> anomalies,
                                KafkaCruiseControl kafkaCruiseControl) {
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
     String zkUrl = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
@@ -176,9 +176,10 @@ public class BrokerFailureDetector {
 
   private void reportBrokerFailures() {
     if (!_failedBrokers.isEmpty()) {
-      Map<String, Object> parameterConfigOverrides = new HashMap<>(2);
+      Map<String, Object> parameterConfigOverrides = new HashMap<>(3);
       parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl);
       parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, failedBrokers());
+      parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_CONFIG, _kafkaCruiseControl.timeMs());
 
       BrokerFailures brokerFailures = _kafkaCruiseControl.config().getConfiguredInstance(KafkaCruiseControlConfig.BROKER_FAILURES_CLASS_CONFIG,
                                                                                          BrokerFailures.class,

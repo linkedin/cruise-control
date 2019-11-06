@@ -5,39 +5,33 @@
 package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.FixOfflineReplicasRunnable;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getSelfHealingGoalNames;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyUtils.extractKafkaCruiseControlObjectFromConfig;
+import static com.linkedin.kafka.cruisecontrol.detector.DiskFailureDetector.FAILED_DISKS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.DISK_FAILURE;
+
 
 /**
  * The disk failures that have been detected.
  */
 public class DiskFailures extends KafkaAnomaly {
-  private final Map<Integer, Map<String, Long>> _failedDisksByBroker;
-  private final String _anomalyId;
-  private final FixOfflineReplicasRunnable _fixOfflineReplicasRunnable;
+  protected Map<Integer, Map<String, Long>> _failedDisksByBroker;
+  protected String _anomalyId;
+  protected FixOfflineReplicasRunnable _fixOfflineReplicasRunnable;
 
-  public DiskFailures(KafkaCruiseControl kafkaCruiseControl,
-                      Map<Integer, Map<String, Long>> failedDisksByBroker,
-                      boolean allowCapacityEstimation,
-                      boolean excludeRecentlyDemotedBrokers,
-                      boolean excludeRecentlyRemovedBrokers,
-                      List<String> selfHealingGoals) {
-    if (failedDisksByBroker == null || failedDisksByBroker.isEmpty()) {
-      throw new IllegalArgumentException("Unable to create disk failure anomaly with no failed disk specified.");
-    }
-    _failedDisksByBroker = failedDisksByBroker;
-    _anomalyId = UUID.randomUUID().toString();
-    _optimizationResult = null;
-    _fixOfflineReplicasRunnable = new FixOfflineReplicasRunnable(kafkaCruiseControl, selfHealingGoals, allowCapacityEstimation,
-                                                                 excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, _anomalyId,
-                                                                 String.format("Self healing for %s: %s", DISK_FAILURE, this));
+  public DiskFailures() {
   }
 
   /**
@@ -62,6 +56,11 @@ public class DiskFailures extends KafkaAnomaly {
   }
 
   @Override
+  public AnomalyType anomalyType() {
+    return AnomalyType.DISK_FAILURE;
+  }
+
+  @Override
   public String toString() {
     StringBuilder sb = new StringBuilder().append("{\n");
     _failedDisksByBroker.forEach((brokerId, failures) -> {
@@ -71,5 +70,29 @@ public class DiskFailures extends KafkaAnomaly {
     });
     sb.append("}");
     return sb.toString();
+  }
+
+  @SuppressWarnings("unchecked")
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
+    KafkaCruiseControl kafkaCruiseControl = extractKafkaCruiseControlObjectFromConfig(configs, DISK_FAILURE);
+    _failedDisksByBroker = (Map<Integer, Map<String, Long>>) configs.get(FAILED_DISKS_CONFIG);
+    if (_failedDisksByBroker == null || _failedDisksByBroker.isEmpty()) {
+      throw new IllegalArgumentException("Unable to create disk failure anomaly with no failed disk specified.");
+    }
+    _anomalyId = UUID.randomUUID().toString();
+    _optimizationResult = null;
+    KafkaCruiseControlConfig config = kafkaCruiseControl.config();
+    boolean allowCapacityEstimation = config.getBoolean(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
+    boolean excludeRecentlyDemotedBrokers = config.getBoolean(SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
+    boolean excludeRecentlyRemovedBrokers = config.getBoolean(SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
+    _fixOfflineReplicasRunnable = new FixOfflineReplicasRunnable(kafkaCruiseControl,
+                                                                 getSelfHealingGoalNames(config),
+                                                                 allowCapacityEstimation,
+                                                                 excludeRecentlyDemotedBrokers,
+                                                                 excludeRecentlyRemovedBrokers,
+                                                                 _anomalyId,
+                                                                 String.format("Self healing for %s: %s", DISK_FAILURE, this));
   }
 }

@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
@@ -29,6 +30,12 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPr
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ensureDisjoint;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
 import static com.linkedin.kafka.cruisecontrol.model.Disk.State.DEMOTED;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_DRYRUN;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_CONCURRENT_MOVEMENTS;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_SKIP_URP_DEMOTION;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXCLUDE_FOLLOWER_DEMOTION;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL;
 
 
@@ -50,6 +57,33 @@ public class DemoteBrokerRunnable extends OperationRunnable {
   protected final boolean _excludeRecentlyDemotedBrokers;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Map<Integer, Set<String>> _brokerIdAndLogdirs;
+  protected final boolean _isTriggeredByUserRequest;
+
+  /**
+   * Constructor to be used for creating a runnable for self-healing.
+   */
+  public DemoteBrokerRunnable(KafkaCruiseControl kafkaCruiseControl,
+                              Set<Integer> demotedBrokerIds,
+                              boolean allowCapacityEstimation,
+                              boolean excludeRecentlyDemotedBrokers,
+                              String anomalyId,
+                              String reason) {
+    super(kafkaCruiseControl, new OperationFuture("Slow Broker Self-Healing"));
+    _brokerIds = demotedBrokerIds;
+    _dryRun = SELF_HEALING_DRYRUN;
+    _allowCapacityEstimation = allowCapacityEstimation;
+    _concurrentLeaderMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
+    _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
+    _skipUrpDemotion = SELF_HEALING_SKIP_URP_DEMOTION;
+    _excludeFollowerDemotion = SELF_HEALING_EXCLUDE_FOLLOWER_DEMOTION;
+    _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
+    _replicationThrottle = kafkaCruiseControl.config().getLong(KafkaCruiseControlConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
+    _uuid = anomalyId;
+    _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
+    _brokerIdAndLogdirs = Collections.emptyMap();
+    _reason = reason;
+    _isTriggeredByUserRequest = false;
+  }
 
   public DemoteBrokerRunnable(KafkaCruiseControl kafkaCruiseControl,
                               OperationFuture future,
@@ -69,6 +103,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
     _reason = parameters.reason();
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _brokerIdAndLogdirs = parameters.brokerIdAndLogdirs();
+    _isTriggeredByUserRequest = true;
   }
 
   @Override
@@ -145,7 +180,8 @@ public class DemoteBrokerRunnable extends OperationRunnable {
       OptimizerResult result = _kafkaCruiseControl.optimizations(clusterModel, goalsByPriority, operationProgress, null, optimizationOptions);
       if (!_dryRun) {
         _kafkaCruiseControl.executeDemotion(result.goalProposals(), _brokerIds, _concurrentLeaderMovements, clusterModel.brokers().size(),
-                                            _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle, true, _uuid, _reason);
+                                            _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle, _isTriggeredByUserRequest,
+                                            _uuid, _reason);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {

@@ -8,8 +8,10 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
+import com.linkedin.kafka.cruisecontrol.detector.DiskFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,7 +23,11 @@ import org.easymock.EasyMock;
 import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.BrokerFailureDetector.FAILED_BROKERS_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.DiskFailureDetector.FAILED_DISKS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_BROKER_ENTITIES_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_FIXABLE_CONFIG;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -49,9 +55,10 @@ public class SelfHealingNotifierTest {
     Map<Integer, Long> failedBrokers = new HashMap<>();
     failedBrokers.put(1, failureTime1);
     failedBrokers.put(2, failureTime2);
-    Map<String, Object> parameterConfigOverrides = new HashMap<>(2);
+    Map<String, Object> parameterConfigOverrides = new HashMap<>(3);
     parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
     parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, failedBrokers);
+    parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_CONFIG, failureTime1);
 
     AnomalyNotificationResult result = anomalyNotifier.onBrokerFailure(
         kafkaCruiseControlConfig.getConfiguredInstance(KafkaCruiseControlConfig.BROKER_FAILURES_CLASS_CONFIG,
@@ -126,6 +133,7 @@ public class SelfHealingNotifierTest {
     selfHealingExplicitlyDisabled.put(SelfHealingNotifier.SELF_HEALING_BROKER_FAILURE_ENABLED_CONFIG, "false");
     selfHealingExplicitlyDisabled.put(SelfHealingNotifier.SELF_HEALING_GOAL_VIOLATION_ENABLED_CONFIG, "false");
     selfHealingExplicitlyDisabled.put(SelfHealingNotifier.SELF_HEALING_METRIC_ANOMALY_ENABLED_CONFIG, "false");
+    selfHealingExplicitlyDisabled.put(SelfHealingNotifier.SELF_HEALING_DISK_FAILURE_ENABLED_CONFIG, "false");
     // Set to verify the overriding of specific config over general config
     selfHealingExplicitlyDisabled.put(SelfHealingNotifier.SELF_HEALING_ENABLED_CONFIG, "true");
     anomalyNotifier.configure(selfHealingExplicitlyDisabled);
@@ -137,11 +145,20 @@ public class SelfHealingNotifierTest {
     failedBrokers.put(1, failureTime1);
     failedBrokers.put(2, failureTime2);
 
+    // (2) metric anomaly
+    final long anomalyDetectionTime = 200L;
+    final BrokerEntity brokerWithMetricAnomaly = new BrokerEntity("local", 1);
+
     mockTime.sleep(SelfHealingNotifier.DEFAULT_AUTO_FIX_THRESHOLD_MS + failureTime1);
     anomalyNotifier.resetAlert(AnomalyType.BROKER_FAILURE);
-    Map<String, Object> parameterConfigOverrides = new HashMap<>(2);
+    Map<String, Object> parameterConfigOverrides = new HashMap<>(6);
     parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
     parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, failedBrokers);
+    parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_CONFIG, anomalyDetectionTime);
+    parameterConfigOverrides.put(METRIC_ANOMALY_FIXABLE_CONFIG, false);
+    parameterConfigOverrides.put(METRIC_ANOMALY_BROKER_ENTITIES_CONFIG,
+                                 Collections.singletonMap(brokerWithMetricAnomaly, anomalyDetectionTime));
+    parameterConfigOverrides.put(FAILED_DISKS_CONFIG, Collections.singletonMap(1, Collections.singletonMap("logdir1", failureTime1)));
     AnomalyNotificationResult result = anomalyNotifier.onBrokerFailure(
         kafkaCruiseControlConfig.getConfiguredInstance(KafkaCruiseControlConfig.BROKER_FAILURES_CLASS_CONFIG,
                                                        BrokerFailures.class,
@@ -162,10 +179,21 @@ public class SelfHealingNotifierTest {
 
     // (3) Metric Anomaly
     anomalyNotifier.resetAlert(AnomalyType.METRIC_ANOMALY);
-    result = anomalyNotifier.onMetricAnomaly(new KafkaMetricAnomaly(mockKafkaCruiseControl, "", null, null, null));
+    result = anomalyNotifier.onMetricAnomaly(kafkaCruiseControlConfig.getConfiguredInstance(KafkaCruiseControlConfig.METRIC_ANOMALY_CLASS_CONFIG,
+                                                                                            KafkaMetricAnomaly.class,
+                                                                                            parameterConfigOverrides));
     assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
     assertTrue(anomalyNotifier._alertCalled.get(AnomalyType.METRIC_ANOMALY));
     assertFalse(anomalyNotifier._autoFixTriggered.get(AnomalyType.METRIC_ANOMALY));
+
+    // (4) Disk Failure
+    anomalyNotifier.resetAlert(AnomalyType.DISK_FAILURE);
+    result = anomalyNotifier.onDiskFailure(kafkaCruiseControlConfig.getConfiguredInstance(KafkaCruiseControlConfig.DISK_FAILURES_CLASS_CONFIG,
+                                                                                          DiskFailures.class,
+                                                                                          parameterConfigOverrides));
+    assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
+    assertTrue(anomalyNotifier._alertCalled.get(AnomalyType.DISK_FAILURE));
+    assertFalse(anomalyNotifier._autoFixTriggered.get(AnomalyType.DISK_FAILURE));
   }
 
   private static class TestingBrokerFailureAutoFixNotifier extends SelfHealingNotifier {

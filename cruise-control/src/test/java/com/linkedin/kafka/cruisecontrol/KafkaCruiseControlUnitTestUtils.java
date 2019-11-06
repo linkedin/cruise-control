@@ -10,20 +10,22 @@ import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.KafkaTopicConfigProvider;
+import com.linkedin.kafka.cruisecontrol.detector.KafkaAnomaly;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
+import java.util.Comparator;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.DEFAULT_ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.DEFAULT_GOAL_VIOLATION_EXCLUDE_RECENT_BROKERS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.DEFAULT_SELF_HEALING_EXCLUDE_RECENT_BROKERS_CONFIG;
 
 
 /**
  * A test util class.
  */
 public class KafkaCruiseControlUnitTestUtils {
+  public static final int ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE = 10;
 
   private KafkaCruiseControlUnitTestUtils() {
 
@@ -51,14 +53,10 @@ public class KafkaCruiseControlUnitTestUtils {
     props.setProperty(KafkaCruiseControlConfig.GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG, "2.0");
     props.setProperty(KafkaCruiseControlConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG,
                       Boolean.toString(DEFAULT_ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG));
-    props.setProperty(KafkaCruiseControlConfig.BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG,
-                      Boolean.toString(DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG));
-    props.setProperty(KafkaCruiseControlConfig.BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG,
-                      Boolean.toString(DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG));
-    props.setProperty(KafkaCruiseControlConfig.GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG,
-                      Boolean.toString(DEFAULT_GOAL_VIOLATION_EXCLUDE_RECENT_BROKERS_CONFIG));
-    props.setProperty(KafkaCruiseControlConfig.GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG,
-                      Boolean.toString(DEFAULT_GOAL_VIOLATION_EXCLUDE_RECENT_BROKERS_CONFIG));
+    props.setProperty(KafkaCruiseControlConfig.SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG,
+                      Boolean.toString(DEFAULT_SELF_HEALING_EXCLUDE_RECENT_BROKERS_CONFIG));
+    props.setProperty(KafkaCruiseControlConfig.SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG,
+                      Boolean.toString(DEFAULT_SELF_HEALING_EXCLUDE_RECENT_BROKERS_CONFIG));
     props.setProperty(KafkaCruiseControlConfig.SELF_HEALING_GOALS_CONFIG, "");
     props.setProperty(
         KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG,
@@ -111,5 +109,15 @@ public class KafkaCruiseControlUnitTestUtils {
       }
       aggregatedMetricValues.add(id, metricValues);
     }
+  }
+
+  /**
+   * Get a comparator of anomaly based on anomaly type and anomaly detection time.
+   *
+   * @return The anomaly comparator.
+   */
+  public static Comparator<KafkaAnomaly> anomalyComparator() {
+    return Comparator.comparing((KafkaAnomaly anomaly) -> anomaly.anomalyType().priority())
+                     .thenComparingLong(KafkaAnomaly::detectionTimeMs);
   }
 }

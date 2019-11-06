@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
 import org.junit.Rule;
 import org.junit.Test;
@@ -36,6 +37,7 @@ import static org.junit.Assert.assertEquals;
 
 public class KafkaMetricAnomalyFinderTest {
   private final BrokerEntity _brokerEntity = new BrokerEntity("test-host", 0);
+  private final long _anomalyDetectionTimeMs = 100L;
 
   @Rule
   public ExpectedException _expected = ExpectedException.none();
@@ -60,12 +62,8 @@ public class KafkaMetricAnomalyFinderTest {
     assertTrue("There should be exactly a single metric anomaly", anomalies.size() == 1);
 
     MetricAnomaly<BrokerEntity> anomaly = anomalies.iterator().next();
-    List<Long> expectedWindow = new ArrayList<>();
-    expectedWindow.add(21L);
-
-    assertEquals(55, anomaly.metricId().intValue());
-    assertEquals(_brokerEntity, anomaly.entity());
-    assertEquals(expectedWindow, anomaly.windows());
+    assertTrue(anomaly.entities().keySet().contains(_brokerEntity));
+    assertEquals(_anomalyDetectionTimeMs, (long) anomaly.entities().get(_brokerEntity));
   }
 
   @Test
@@ -151,7 +149,7 @@ public class KafkaMetricAnomalyFinderTest {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.METRIC_ANOMALY_FINDER_CLASSES_CONFIG, KafkaMetricAnomalyFinder.class.getName());
     props.setProperty(METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG, "95.0");
-    props.setProperty(METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG, "2.0");
+    props.setProperty(METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG, "5.0");
     props.setProperty(METRIC_ANOMALY_UPPER_MARGIN_CONFIG, "0.5");
     props.setProperty(METRIC_ANOMALY_LOWER_MARGIN_CONFIG, "0.2");
     props.setProperty(CruiseControlConfig.METRIC_ANOMALY_FINDER_METRICS_CONFIG,
@@ -162,6 +160,11 @@ public class KafkaMetricAnomalyFinderTest {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(props);
 
     KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
+    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(config);
+    EasyMock.replay(mockKafkaCruiseControl);
+    Time mockTime = EasyMock.mock(Time.class);
+    EasyMock.expect(mockTime.milliseconds()).andReturn(_anomalyDetectionTimeMs).anyTimes();
+    EasyMock.replay(mockTime);
     Map<String, Object> originalConfigs = new HashMap<>(config.originals());
     originalConfigs.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
 

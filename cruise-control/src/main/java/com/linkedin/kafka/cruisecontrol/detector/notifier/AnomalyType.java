@@ -11,19 +11,37 @@ import java.util.List;
 
 /**
  * Flags to indicate the type of an anomaly.
+ * Each anomaly type has a priority, which determines order of anomalies being handled by {@link com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector}
+ * The smaller the priority value is, the higher priority the anomaly type has.
  *
+ * Currently supported anomaly types are as follows (in descending order of priority).
  * <ul>
- * <li>{@link #GOAL_VIOLATION}: Violation of anomaly detection goals.</li>
- * <li>{@link #BROKER_FAILURE}: Fail-stop failure of brokers.</li>
- * <li>{@link #METRIC_ANOMALY}: Abnormal changes in broker metrics.</li>
- * <li>{@link #DISK_FAILURE}: Fail-stop failure of disks.</li>
+ *  <li>{@link #BROKER_FAILURE}: Fail-stop failure of brokers.</li>
+ *  <li>{@link #DISK_FAILURE}: Fail-stop failure of disks.</li>
+ *  <li>{@link #METRIC_ANOMALY}: Abnormal changes in broker metrics.</li>
+ *  <li>{@link #GOAL_VIOLATION}: Violation of anomaly detection goals.</li>
  * </ul>
  */
 public enum AnomalyType {
-  GOAL_VIOLATION,
-  BROKER_FAILURE,
-  METRIC_ANOMALY,
-  DISK_FAILURE;
+  BROKER_FAILURE(0),
+  DISK_FAILURE(1),
+  METRIC_ANOMALY(2),
+  GOAL_VIOLATION(3);
+
+  private final int _priority;
+
+  AnomalyType(int priority) {
+    _priority = priority;
+  }
+
+  /**
+   * Get the priority of the anomaly type.
+   *
+   * @return The priority value.
+   */
+  public int priority() {
+    return _priority;
+  }
 
   private static final List<AnomalyType> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 

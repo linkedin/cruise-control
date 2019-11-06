@@ -24,7 +24,6 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.utcDateFor;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.SEC_TO_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector.METRIC_REGISTRY_NAME;
-import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getAnomalyType;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.GOAL_VIOLATION;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.METRIC_ANOMALY;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.BROKER_FAILURE;
@@ -123,7 +122,7 @@ public class AnomalyDetectorState {
       _anomalyRateByType.put(AnomalyType.METRIC_ANOMALY,
                              dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "metric-anomaly-rate")));
       _anomalyRateByType.put(AnomalyType.DISK_FAILURE,
-          dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "disk-failure-rate")));
+                             dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "disk-failure-rate")));
     } else {
       _anomalyRateByType = new HashMap<>(AnomalyType.cachedValues().size());
       AnomalyType.cachedValues().forEach(anomalyType -> _anomalyRateByType.put(anomalyType, new Meter()));
@@ -265,8 +264,8 @@ public class AnomalyDetectorState {
    * @param anomaly The anomaly to handle.
    * @param status A status information regarding how the anomaly was handled.
    */
-  synchronized void onAnomalyHandle(Anomaly anomaly, AnomalyState.Status status) {
-    AnomalyType anomalyType = getAnomalyType(anomaly);
+  synchronized void onAnomalyHandle(KafkaAnomaly anomaly, AnomalyState.Status status) {
+    AnomalyType anomalyType = anomaly.anomalyType();
     String anomalyId = anomaly.anomalyId();
 
     if (status == AnomalyState.Status.FIX_STARTED) {
