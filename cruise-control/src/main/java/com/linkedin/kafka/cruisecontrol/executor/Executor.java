@@ -720,7 +720,7 @@ public class Executor {
       }
       _state = STARTING_EXECUTION;
       _executorState = ExecutorState.executionStarted(_uuid, _reason, _recentlyDemotedBrokers, _recentlyRemovedBrokers, _isTriggeredByUserRequest);
-      OPERATION_LOG.info("Task [{}] execution starts.", _uuid);
+      OPERATION_LOG.info("Task [{}] execution starts. The reason of execution is {}.", _uuid, _reason);
       try {
         // Pause the metric sampling to avoid the loss of accuracy during execution.
         while (true) {
