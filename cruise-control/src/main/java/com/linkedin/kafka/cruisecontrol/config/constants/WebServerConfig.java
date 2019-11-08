@@ -157,6 +157,12 @@ public class WebServerConfig {
       + "async endpoints across all users.";
 
   /**
+   * <code>security.provider</code>
+   */
+  public static final String SECURITY_PROVIDER_CONFIG = "security.provider";
+  private static final String SECURITY_PROVIDER_DOC = "SecurityProvider implementation for defining authentication " +
+          "and authorization rules";
+  /**
    * Define configs for Web Server.
    *
    * @param configDef Config definition.
@@ -264,6 +270,11 @@ public class WebServerConfig {
                             DEFAULT_MAX_ACTIVE_USER_TASKS,
                             atLeast(1),
                             ConfigDef.Importance.HIGH,
-                            MAX_ACTIVE_USER_TASKS_DOC);
+                            MAX_ACTIVE_USER_TASKS_DOC)
+                    .define(SECURITY_PROVIDER_CONFIG,
+                            ConfigDef.Type.CLASS,
+                            null,
+                            ConfigDef.Importance.MEDIUM,
+                            SECURITY_PROVIDER_DOC);
   }
 }

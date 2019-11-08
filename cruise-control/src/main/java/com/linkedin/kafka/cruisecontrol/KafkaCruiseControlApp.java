@@ -10,6 +10,8 @@ import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
+import com.linkedin.kafka.cruisecontrol.servlet.SecurityProvider;
+import org.eclipse.jetty.security.ConstraintSecurityHandler;
 import org.eclipse.jetty.server.NCSARequestLog;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.DefaultServlet;
@@ -65,6 +67,10 @@ public class KafkaCruiseControlApp {
     }
 
     ServletContextHandler contextHandler = createContextHandler();
+    ConstraintSecurityHandler securityHandler = createSecurityHandler();
+    if (securityHandler != null) {
+      contextHandler.setSecurityHandler(securityHandler);
+    }
     _server.setHandler(contextHandler);
 
     setupWebUi(contextHandler);
@@ -151,8 +157,20 @@ public class KafkaCruiseControlApp {
   private ServletContextHandler createContextHandler() {
     // Define context for servlet
     String sessionPath = _config.getString(WebServerConfig.WEBSERVER_SESSION_PATH_CONFIG);
-    ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
+    ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS | ServletContextHandler.SECURITY);
     context.setContextPath(sessionPath);
     return context;
+  }
+
+  private ConstraintSecurityHandler createSecurityHandler() {
+    ConstraintSecurityHandler securityHandler = new ConstraintSecurityHandler();
+    SecurityProvider securityProvider = _config.getConfiguredInstance(WebServerConfig.SECURITY_PROVIDER_CONFIG, SecurityProvider.class);
+    if (securityProvider != null) {
+      securityHandler.setConstraintMappings(securityProvider.getConstraintMappings());
+      securityHandler.setAuthenticator(securityProvider.getAuthenticator());
+      securityHandler.setLoginService(securityProvider.getLoginService());
+      securityHandler.setRoles(securityProvider.getRoles());
+    }
+    return securityHandler;
   }
 }
