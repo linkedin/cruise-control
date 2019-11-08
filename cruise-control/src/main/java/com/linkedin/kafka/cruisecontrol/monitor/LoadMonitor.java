@@ -54,6 +54,7 @@ import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.internals.ClusterResourceListeners;
+import org.apache.kafka.common.utils.LogContext;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,6 +77,7 @@ public class LoadMonitor {
   private static final Logger LOG = LoggerFactory.getLogger(LoadMonitor.class);
   // Metadata TTL is set based on experience -- i.e. a short TTL with large metadata may cause excessive load on brokers.
   private static final long METADATA_TTL = 10000L;
+  private static final long METADATA_REFRESH_BACKOFF = 5000L;
   private final int _numPartitionMetricSampleWindows;
   private final LoadMonitorTaskRunner _loadMonitorTaskRunner;
   private final KafkaPartitionMetricSampleAggregator _partitionMetricSampleAggregator;
@@ -116,10 +118,9 @@ public class LoadMonitor {
                      MetricDef metricDef) {
     this(config,
          new MetadataClient(config,
-                            new Metadata(5000L,
+                            new Metadata(METADATA_REFRESH_BACKOFF,
                                          config.getLong(KafkaCruiseControlConfig.METADATA_MAX_AGE_CONFIG),
-                                         false,
-                                         false,
+                                         new LogContext(),
                                          new ClusterResourceListeners()),
                             METADATA_TTL,
                             time),

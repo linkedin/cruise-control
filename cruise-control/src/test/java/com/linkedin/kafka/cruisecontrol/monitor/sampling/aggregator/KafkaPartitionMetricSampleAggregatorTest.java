@@ -11,6 +11,7 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.Extrapolation;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregationResult;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -19,25 +20,30 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionEntity;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionMetricSample;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.SortedSet;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.common.Cluster;
-import org.apache.kafka.common.Node;
-import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.protocol.Errors;
+import org.apache.kafka.common.record.RecordBatch;
+import org.apache.kafka.common.requests.MetadataResponse;
 import org.junit.Test;
 
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.model.LinearRegressionModelParameters.ModelCoefficient.LEADER_BYTES_OUT;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.getCluster;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.getMetadata;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.NODE_0;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.nodes;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVAL_TO_PERCENTAGE;
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.CPU_USAGE;
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.DISK_USAGE;
@@ -113,7 +119,31 @@ public class KafkaPartitionMetricSampleAggregatorTest {
 
     TopicPartition tp1 = new TopicPartition(TOPIC0 + "1", 0);
     Cluster cluster = getCluster(Arrays.asList(TP, tp1));
-    metadata.update(cluster, Collections.emptySet(), 1);
+
+    List<MetadataResponse.TopicMetadata> topicMetadata = new ArrayList<>(2);
+    topicMetadata.add(new MetadataResponse.TopicMetadata(Errors.NONE,
+                                                         TOPIC0,
+                                                         false,
+                                                         Collections.singletonList(new MetadataResponse.PartitionMetadata(
+                                                             Errors.NONE, PARTITION, NODE_0,
+                                                             Optional.of(RecordBatch.NO_PARTITION_LEADER_EPOCH),
+                                                             Arrays.asList(nodes()), Arrays.asList(nodes()),
+                                                             Collections.emptyList()))));
+    topicMetadata.add(new MetadataResponse.TopicMetadata(Errors.NONE,
+                                                         TOPIC0 + "1",
+                                                         false,
+                                                         Collections.singletonList(new MetadataResponse.PartitionMetadata(
+                                                             Errors.NONE, 0, NODE_0,
+                                                             Optional.of(RecordBatch.NO_PARTITION_LEADER_EPOCH),
+                                                             Arrays.asList(nodes()), Arrays.asList(nodes()),
+                                                             Collections.emptyList()))));
+
+    MetadataResponse metadataResponse = KafkaCruiseControlUtils.prepareMetadataResponse(cluster.nodes(),
+                                                                                        cluster.clusterResource().clusterId(),
+                                                                                        MetadataResponse.NO_CONTROLLER_ID,
+                                                                                        topicMetadata);
+    metadata.update(KafkaCruiseControlUtils.REQUEST_VERSION_UPDATE, metadataResponse, 1);
+
 
     Map<PartitionEntity, ValuesAndExtrapolations> aggregateResult =
         metricSampleAggregator.aggregate(clusterAndGeneration(cluster), Long.MAX_VALUE, new OperationProgress())
@@ -149,7 +179,20 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     TopicPartition tp1 = new TopicPartition(TOPIC0, 1);
     Cluster cluster = getCluster(Arrays.asList(TP, tp1));
     PartitionEntity pe1 = new PartitionEntity(tp1);
-    metadata.update(cluster, Collections.emptySet(), 1);
+
+    List<MetadataResponse.PartitionMetadata> partitionMetadata =
+        Collections.singletonList(new MetadataResponse.PartitionMetadata(Errors.NONE, 1, NODE_0,
+                                                                         Optional.of(RecordBatch.NO_PARTITION_LEADER_EPOCH),
+                                                                         Arrays.asList(nodes()), Arrays.asList(nodes()),
+                                                                         Collections.emptyList()));
+    List<MetadataResponse.TopicMetadata> topicMetadata = Collections.singletonList(
+        new MetadataResponse.TopicMetadata(Errors.NONE, TOPIC0, false, partitionMetadata));
+
+    MetadataResponse metadataResponse = KafkaCruiseControlUtils.prepareMetadataResponse(cluster.nodes(),
+                                                                                        cluster.clusterResource().clusterId(),
+                                                                                        MetadataResponse.NO_CONTROLLER_ID,
+                                                                                        topicMetadata);
+    metadata.update(KafkaCruiseControlUtils.REQUEST_VERSION_UPDATE, metadataResponse, 1);
     populateSampleAggregator(NUM_WINDOWS + 1, MIN_SAMPLES_PER_WINDOW, metricSampleAggregator);
     //Populate partition 1 but leave 1 hole at NUM_WINDOWS'th window.
     CruiseControlUnitTestUtils.populateSampleAggregator(NUM_WINDOWS - 2, MIN_SAMPLES_PER_WINDOW,
@@ -603,26 +646,6 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     props.setProperty(KafkaCruiseControlConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG,
                       Integer.toString(MIN_SAMPLES_PER_WINDOW));
     return props;
-  }
-
-  private Metadata getMetadata(Collection<TopicPartition> partitions) {
-    Metadata metadata = new Metadata(10, 10, false);
-    metadata.update(getCluster(partitions), Collections.emptySet(), 0);
-    return metadata;
-  }
-
-  private Cluster getCluster(Collection<TopicPartition> partitions) {
-    Node node0 = new Node(0, "localhost", 100, "rack0");
-    Node node1 = new Node(1, "localhost", 100, "rack1");
-    Node[] nodes = {node0, node1};
-    Set<Node> allNodes = new HashSet<>(2);
-    allNodes.add(node0);
-    allNodes.add(node1);
-    Set<PartitionInfo> parts = new HashSet<>(partitions.size());
-    for (TopicPartition tp : partitions) {
-      parts.add(new PartitionInfo(tp.topic(), tp.partition(), node0, nodes, nodes));
-    }
-    return new Cluster("cluster_id", allNodes, parts, Collections.emptySet(), Collections.emptySet());
   }
 
   private static class TestContext {
