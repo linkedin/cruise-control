@@ -58,6 +58,7 @@ public class KafkaCruiseControlUtils {
   private static final int HOUR_TO_MS = MIN_TO_MS * 60;
   private static final int DAY_TO_MS = HOUR_TO_MS * 24;
   public static final String OPERATION_LOGGER = "operationLogger";
+  // This will make MetaData.update() trigger a real metadata fetch.
   public static final int REQUEST_VERSION_UPDATE = -1;
 
   private KafkaCruiseControlUtils() {
@@ -255,6 +256,8 @@ public class KafkaCruiseControlUtils {
 
   /**
    * Create an instance of KafkaZkClient with security disabled.
+   * Name of the underlying {@link kafka.zookeeper.ZooKeeperClient} instance is derived using the combination given
+   * metricGroup and metricType with a dash in between.
    *
    * @param connectString Comma separated host:port pairs, each corresponding to a zk server
    * @param metricGroup Metric group
@@ -263,8 +266,9 @@ public class KafkaCruiseControlUtils {
    * @return A new instance of KafkaZkClient
    */
   public static KafkaZkClient createKafkaZkClient(String connectString, String metricGroup, String metricType, boolean zkSecurityEnabled) {
+    String zooKeeperClientName = String.format("%s-%s", metricGroup, metricType);
     return KafkaZkClient.apply(connectString, zkSecurityEnabled, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
-                               new SystemTime(), metricGroup, metricType, Option.apply(null));
+                               new SystemTime(), metricGroup, metricType, Option.apply(zooKeeperClientName));
   }
 
   /**

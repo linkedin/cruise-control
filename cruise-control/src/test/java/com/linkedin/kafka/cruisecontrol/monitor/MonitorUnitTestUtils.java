@@ -85,6 +85,7 @@ public class MonitorUnitTestUtils {
 
   /**
    * Get cluster that consists of {@link #NODE_0} and {@link #NODE_1} to be used in tests.
+   * Partitions to be queried all have leader replica at {@link #NODE_0} and replicas/ISR at {@link #NODES}.
    *
    * @param partitions Partitions to include in the cluster.
    * @return cluster that consists of {@link #NODE_0} and {@link #NODE_1} to be used in tests.
