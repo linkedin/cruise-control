@@ -29,6 +29,7 @@ public class TestConstants {
     UTILIZATION_SEED_BY_RESOURCE = Collections.unmodifiableMap(utilizationSeedByResource);
   }
 
+  public static final double ZERO_BALANCE_PERCENTAGE = 1.00;
   public static final double LOW_BALANCE_PERCENTAGE = 1.05;
   public static final double MEDIUM_BALANCE_PERCENTAGE = 1.25;
   public static final double HIGH_BALANCE_PERCENTAGE = 1.65;

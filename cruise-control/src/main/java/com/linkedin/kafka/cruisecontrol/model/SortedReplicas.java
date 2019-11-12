@@ -5,13 +5,11 @@
 
 package com.linkedin.kafka.cruisecontrol.model;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.NavigableSet;
+import java.util.Set;
+import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.Function;
 
@@ -20,63 +18,77 @@ import java.util.function.Function;
  * A class used by the brokers/disks to host the replicas sorted in a certain order.
  * </p>
  *
- *  The SortedReplicas uses three functions to sort the replicas in the broker/disk.
+ *  The SortedReplicas uses three type of functions to sort the replicas in the broker/disk.
  *  <ul>
  *     <li>
- *      <tt>ScoreFunction</tt>: the score function generates a score for each replica to sort. The replicas are
- *      sorted based on their score in ascending order. Those who want a descending order need to use
- *      the descending iterator of {@link #sortedReplicas()}. As alternatives, {@link #reverselySortedReplicas()}
- *      are provided for convenience.
+ *      <tt>ScoreFunction</tt>(optional): the score function generates a score for each replica to sort. The replicas are
+ *      sorted based on their score in ascending order.
  *    </li>
  *    <li>
  *      <tt>SelectionFunction</tt>(optional): the selection function decides which replicas to include in the sorted
- *      replica list. For example, in some cases, the users may only want to have sorted leader replicas.
+ *      replica list. For example, in some cases, the users may only want to have sorted leader replicas. Note there can
+ *      be multiple selection functions, only replica which satisfies requirement of all selection functions will be included.
  *    </li>
  *    <li>
  *      <tt>PriorityFunction</tt>(optional): the priority function allows users to prioritize certain replicas in the
- *      sorted replicas. The replicas will be sorted by their priority first. The replicas with the same priority are
- *      then sorted with their score from the <tt>scoreFunction</tt>.
- *      Note that if a priority function is provided, the <tt>NavigableSet</tt> returned by the
- *      {@link #sortedReplicas()} is no longer binary searchable based on the score.
+ *      sorted replicas. The replicas will be sorted by their priority first. There can be multiple priority functions,
+ *      which will be applied one by one based on the order in {@link this#_priorityFuncs} to resolve priority between two replicas.
+ *      In the end, the replicas with the same priority are sorted with their score from the <tt>scoreFunction</tt>.
+ *      Note that if a priority function is provided, the <tt>SortedSet</tt> returned by the
+ *      {@link #sortedReplicas(boolean)} is no longer binary searchable based on the score.
  *    </li>
  *  </ul>
  *
  * <p>
- *   The SortedReplicas are initialized lazily, i.e. until one of {@link #sortedReplicas()},
- *   {@link #reverselySortedReplicas()} and {@link #sortedReplicaWrappers()} is invoked, the sorted replicas
+ *   The SortedReplicas are initialized lazily, i.e. until one of {@link #sortedReplicas(boolean)} is invoked, the sorted replicas
  *   will not be populated.
  * </p>
  */
 public class SortedReplicas {
   private final Broker _broker;
   private final Disk _disk;
-  private final Map<Replica, ReplicaWrapper> _replicaWrapperMap;
-  private final NavigableSet<ReplicaWrapper> _sortedReplicas;
-  private final Function<Replica, Boolean> _selectionFunc;
-  private final Function<Replica, Integer> _priorityFunc;
+  private final SortedSet<Replica> _sortedReplicas;
+  private final Set<Function<Replica, Boolean>> _selectionFuncs;
+  private final List<Function<Replica, Integer>> _priorityFuncs;
   private final Function<Replica, Double> _scoreFunc;
+  private final Comparator<Replica> _replicaComparator;
   private boolean _initialized;
 
   SortedReplicas(Broker broker,
-                 Function<Replica, Boolean> selectionFunc,
-                 Function<Replica, Integer> priorityFunction,
+                 Set<Function<Replica, Boolean>> selectionFuncs,
+                 List<Function<Replica, Integer>> priorityFuncs,
                  Function<Replica, Double> scoreFunction) {
-    this(broker, null, selectionFunc, priorityFunction, scoreFunction, true);
+    this(broker, null, selectionFuncs, priorityFuncs, scoreFunction, true);
   }
 
   SortedReplicas(Broker broker,
                  Disk disk,
-                 Function<Replica, Boolean> selectionFunc,
-                 Function<Replica, Integer> priorityFunc,
+                 Set<Function<Replica, Boolean>> selectionFuncs,
+                 List<Function<Replica, Integer>> priorityFuncs,
                  Function<Replica, Double> scoreFunc,
                  boolean initialize) {
     _broker = broker;
     _disk = disk;
-    _sortedReplicas = new TreeSet<>();
-    _replicaWrapperMap = new HashMap<>();
-    _selectionFunc = selectionFunc;
+    _selectionFuncs = selectionFuncs;
     _scoreFunc = scoreFunc;
-    _priorityFunc = priorityFunc;
+    _priorityFuncs = priorityFuncs;
+    _replicaComparator =  (Replica r1, Replica r2) -> {
+      // First apply priority functions.
+      int result = comparePriority(r1, r2);
+      if (result != 0) {
+        return result;
+      }
+      // Then apply score function.
+      if (_scoreFunc != null) {
+        result = Double.compare(_scoreFunc.apply(r1), _scoreFunc.apply(r2));
+        if (result != 0) {
+          return result;
+        }
+      }
+      // Fall back to replica's own comparing method.
+      return r1.compareTo(r2);
+    };
+    _sortedReplicas = new TreeSet<>(_replicaComparator);
     // If the sorted replicas need to be initialized, we set the initialized to false and initialize the replicas
     // lazily. If the sorted replicas do not need to be initialized, we simply set the initialized to true, so that
     // all the methods will function normally.
@@ -84,58 +96,35 @@ public class SortedReplicas {
   }
 
   /**
-   * Get the sorted replica wrappers in the ascending order of their priority and score.
-   * This method initialize the sorted replicas if it hasn't been initialized.
-   * This method is package accessible for testing.
-   *
-   * @return the sorted replicas wrappers in the ascending order of their priority and score.
-   */
-  public NavigableSet<ReplicaWrapper> sortedReplicaWrappers() {
-    ensureInitialize();
-    return Collections.unmodifiableNavigableSet(_sortedReplicas);
-  }
-
-  /**
    * Get the sorted replicas in the ascending order of their priority and score.
    * This method initialize the sorted replicas if it hasn't been initialized.
    *
+   * @param clone whether return a clone of the replica set or the set itself. In general, the clone should be avoided
+   *              whenever possible, it is only needed where the sorted replica will be updated in the middle of being iterated.
    * @return the sorted replicas in the ascending order of their priority and score.
    */
-  public List<Replica> sortedReplicas() {
+  public SortedSet<Replica> sortedReplicas(boolean clone) {
     ensureInitialize();
-    List<Replica> result = new ArrayList<>(_sortedReplicas.size());
-    _sortedReplicas.forEach(rw -> result.add(rw.replica()));
-    return result;
-  }
-
-  /**
-   * Get a list of replicas in the descending order of their priority and score.
-   * This method initialize the sorted replicas if it hasn't been initialized.
-   *
-   * @return a list of replicas in the descending order of their priority and score.
-   */
-  public List<Replica> reverselySortedReplicas() {
-    ensureInitialize();
-    List<Replica> result = new ArrayList<>(_sortedReplicas.size());
-    Iterator<ReplicaWrapper> reverseIter = _sortedReplicas.descendingIterator();
-    while (reverseIter.hasNext()) {
-      result.add(reverseIter.next().replica());
+    if (clone) {
+      SortedSet<Replica> result = new TreeSet<>(_replicaComparator);
+      result.addAll(_sortedReplicas);
+      return result;
     }
-    return result;
+    return Collections.unmodifiableSortedSet(_sortedReplicas);
   }
 
   /**
-   * @return the selection function of this {@link SortedReplicas}
+   * @return the selection functions of this {@link SortedReplicas}
    */
-  public Function<Replica, Boolean> selectionFunction() {
-    return _selectionFunc;
+  public Set<Function<Replica, Boolean>> selectionFunctions() {
+    return _selectionFuncs;
   }
 
   /**
-   * @return the priority function of this {@link SortedReplicas}
+   * @return the priority functions of this {@link SortedReplicas}
    */
-  public Function<Replica, Integer> priorityFunction() {
-    return _priorityFunc;
+  public List<Function<Replica, Integer>> priorityFunctions() {
+    return _priorityFuncs;
   }
 
   /**
@@ -146,17 +135,15 @@ public class SortedReplicas {
   }
 
   /**
-   * Add a new replicas to the sorted replicas. It has no impact if this {@link SortedReplicas} has not been
-   * initialized.
+   * Add a new replicas to the sorted replicas. The replica will be included if it satisfies the requirement of all
+   * selection functions. It has no impact if this {@link SortedReplicas} has not been initialized.
    *
    * @param replica the replica to add.
    */
   public void add(Replica replica) {
     if (_initialized) {
-      if (_selectionFunc == null || _selectionFunc.apply(replica)) {
-        double score = _scoreFunc.apply(replica);
-        ReplicaWrapper rw = new ReplicaWrapper(replica, score, _priorityFunc);
-        add(rw);
+      if (_selectionFuncs == null || _selectionFuncs.stream().allMatch(func -> func.apply(replica))) {
+        _sortedReplicas.add(replica);
       }
     }
   }
@@ -169,10 +156,7 @@ public class SortedReplicas {
    */
   void remove(Replica replica) {
     if (_initialized) {
-      ReplicaWrapper rw = _replicaWrapperMap.remove(replica);
-      if (rw != null) {
-        _sortedReplicas.remove(rw);
-      }
+        _sortedReplicas.remove(replica);
     }
   }
 
@@ -192,11 +176,18 @@ public class SortedReplicas {
     }
   }
 
-  private void add(ReplicaWrapper rw) {
-    ReplicaWrapper old = _replicaWrapperMap.put(rw.replica(), rw);
-    if (old != null) {
-      _sortedReplicas.remove(old);
+  private int comparePriority(Replica replica1, Replica replica2) {
+    if (_priorityFuncs != null) {
+      // Apply priority functions one by one until the priority is resolved.
+      for (Function<Replica, Integer> priorityFunction : _priorityFuncs) {
+        int p1 = priorityFunction.apply(replica1);
+        int p2 = priorityFunction.apply(replica2);
+        int result = Integer.compare(p1, p2);
+        if (result != 0) {
+          return result;
+        }
+      }
     }
-    _sortedReplicas.add(rw);
+    return 0;
   }
 }

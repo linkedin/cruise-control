@@ -535,7 +535,11 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Ask the cluster model to keep track of the replicas sorted with the given score function.
+   * Ask the cluster model to keep track of the replicas sorted with the given selection functions, priority functions and score function.
+   *
+   * The selection functions determine which replicas to be included in the sorted replicas. Then the sort will first
+   * use the priority functions then the score function. The priority functions allow the caller to prioritize a certain
+   * type of replicas, e.g immigrant replicas.
    *
    * It is recommended to use the functions from {@link ReplicaSortFunctionFactory} so the functions can be maintained
    * in a single place.
@@ -546,77 +550,22 @@ public class ClusterModel implements Serializable {
    *
    * The sorted replicas are named using the given sortName, and can be accessed using
    * {@link Broker#trackedSortedReplicas(String)}. If the sorted replicas are no longer needed,
-   * {@link #untrackSortedReplicas(String)} to release memory.
+   * call {@link #untrackSortedReplicas(String)} or {@link #clearSortedReplicas()}to release memory.
    *
-   * @param sortName the name of the sorted replicas.
-   * @param scoreFunction the score function to sort the replicas with the same priority, replicas are sorted in ascending
-   *                      order of score.
-   * @see SortedReplicas
-   */
-  public void trackSortedReplicas(String sortName, Function<Replica, Double> scoreFunction) {
-    trackSortedReplicas(sortName, null, scoreFunction);
-  }
-
-  /**
-   * Ask the cluster model to keep track of the replicas sorted with the given priority function and score function.
-   *
-   * It is recommended to use the functions from {@link ReplicaSortFunctionFactory} so the functions can be maintained
-   * in a single place.
-   *
-   * The sort will first use the priority function then the score function. The priority function allows the
-   * caller to prioritize a certain type of replicas, e.g immigrant replicas.
-   *
-   * The sorted replica will only be updated in the following cases:
-   * 1. A replica is added to or removed from abroker
-   * 2. A replica's role has changed from leader to follower, and vice versa.
-   *
-   * The sorted replicas are named using the given sortName, and can be accessed using
-   * {@link Broker#trackedSortedReplicas(String)}. If the sorted replicas are no longer needed,
-   * {@link #untrackSortedReplicas(String)} to release memory.
-   *
-   * @param sortName the name of the sorted replicas.
-   * @param priorityFunc the priority function to sort the replicas
+   * @param sortName the name of the tracked sorted replicas.
+   * @param selectionFuncs A set of selection functions to decide which replica to include in the sort. If it is {@code null}
+   *                      or empty, all the replicas are to be included.
+   * @param priorityFuncs A list of priority functions to sort the replicas. Priority functions are applied one by one until
+   *                      two replicas are of different priority regards to the current priority function.
    * @param scoreFunc the score function to sort the replicas with the same priority, replicas are sorted in ascending
    *                  order of score.
    * @see SortedReplicas
    */
-  public void trackSortedReplicas(String sortName,
-                                  Function<Replica, Integer> priorityFunc,
-                                  Function<Replica, Double> scoreFunc) {
-    trackSortedReplicas(sortName, null, priorityFunc, scoreFunc);
-  }
-
-  /**
-   * Ask the cluster model to keep track of the replicas sorted with the given priority function and score function.
-   *
-   * The sort will first use the priority function then the score function. The priority function allows the
-   * caller to prioritize a certain type of replicas, e.g immigrant replicas. The selection function determines
-   * which replicas to be included in the sorted replicas.
-   *
-   * It is recommended to use the functions from {@link ReplicaSortFunctionFactory} so the functions can be maintained
-   * in a single place.
-   *
-   * The sorted replica will only be updated in the following cases:
-   * 1. A replica is added to or removed from a broker
-   * 2. A replica's role has changed from leader to follower, and vice versa.
-   *
-   * The sorted replicas are named using the given sortName, and can be accessed using
-   * {@link Broker#trackedSortedReplicas(String)}. If the sorted replicas are no longer needed,
-   * {@link #untrackSortedReplicas(String)} to release memory.
-   *
-   * @param sortName the name of the sorted replicas.
-   * @param selectionFunc the selection function to decide which replicas to include in the sort. If it is {@code null},
-   *                      all the replicas are to be included.
-   * @param priorityFunc the priority function to sort the replicas
-   * @param scoreFunc the score function to sort the replicas with the same priority, replicas are sorted in ascending
-   *                  order of score.
-   * @see SortedReplicas
-   */
-  public void trackSortedReplicas(String sortName,
-                                  Function<Replica, Boolean> selectionFunc,
-                                  Function<Replica, Integer> priorityFunc,
-                                  Function<Replica, Double> scoreFunc) {
-    _brokers.forEach(b -> b.trackSortedReplicas(sortName, selectionFunc, priorityFunc, scoreFunc));
+  void trackSortedReplicas(String sortName,
+                           Set<Function<Replica, Boolean>> selectionFuncs,
+                           List<Function<Replica, Integer>> priorityFuncs,
+                           Function<Replica, Double> scoreFunc) {
+    _brokers.forEach(b -> b.trackSortedReplicas(sortName, selectionFuncs, priorityFuncs, scoreFunc));
   }
 
   /**
@@ -626,6 +575,13 @@ public class ClusterModel implements Serializable {
    */
   public void untrackSortedReplicas(String sortName) {
     _brokers.forEach(b -> b.untrackSortedReplicas(sortName));
+  }
+
+  /**
+   * Clear all cached sorted replicas to release memory.
+   */
+  public void clearSortedReplicas() {
+    _brokers.forEach(Broker::clearSortedReplicas);
   }
 
   /**

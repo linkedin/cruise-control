@@ -17,6 +17,8 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 
+import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
+import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -24,12 +26,12 @@ import java.util.List;
 import java.util.Set;
 
 import java.util.SortedSet;
-import java.util.TreeSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 
 
 /**
@@ -223,6 +225,12 @@ public class PotentialNwOutGoal extends AbstractGoal {
   protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
     // While proposals exclude the excludedTopics, the potential nw_out still considers replicas of the excludedTopics.
     _fixOfflineReplicasOnly = false;
+
+    // Filter out some replicas based on optimization options.
+    new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
+                                                     optimizationOptions.onlyMoveImmigrantReplicas())
+                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(optimizationOptions.excludedTopics()))
+                              .trackSortedReplicasFor(replicaSortName(this, false, false), clusterModel);
   }
 
   /**
@@ -275,18 +283,12 @@ public class PotentialNwOutGoal extends AbstractGoal {
       // Estimated max possible utilization in broker is under the limit and there is no offline replica on broker.
       return;
     }
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     // Get candidate brokers
     Set<Broker> candidateBrokers = _fixOfflineReplicasOnly ?
                                    clusterModel.aliveBrokers() : brokersUnderEstimatedMaxPossibleNwOut(clusterModel);
     // Attempt to move replicas to eligible brokers until either the estimated max possible network out
     // limit requirement is satisfied for the broker or all replicas are checked.
-    SortedSet<Replica> replicas = new TreeSet<>(optimizationOptions.onlyMoveImmigrantReplicas() ? broker.immigrantReplicas() :
-                                                                                                  broker.replicas());
-    for (Replica replica : replicas) {
-      if (shouldExclude(replica, excludedTopics)) {
-        continue;
-      }
+    for (Replica replica : broker.trackedSortedReplicas(replicaSortName(this, false, false)).sortedReplicas(true)) {
       // Find the eligible brokers that this replica is allowed to move. Unless the target broker would go
       // over the potential outbound network capacity the movement will be successful.
       List<Broker> eligibleBrokers = new ArrayList<>(candidateBrokers);

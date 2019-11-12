@@ -5,10 +5,11 @@
 
 package com.linkedin.kafka.cruisecontrol.model;
 
-import com.linkedin.cruisecontrol.metricdef.MetricInfo;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
+import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 
+import java.util.Set;
 import java.util.function.Function;
 
 /**
@@ -20,58 +21,33 @@ public class ReplicaSortFunctionFactory {
   private ReplicaSortFunctionFactory() {
 
   }
+  // Priority functions
   /** Prioritize the immigrant replicas */
   private static final Function<Replica, Integer> PRIORITIZE_IMMIGRANTS = r -> r.originalBroker() != r.broker() ? 0 : 1;
-  /** De-prioritize the immigrant replicas */
-  private static final Function<Replica, Integer> DEPRIORITIZE_IMMIGRANTS = r -> r.originalBroker() != r.broker() ? 1 : 0;
   /** Prioritize the offline replicas */
   private static final Function<Replica, Integer> PRIORITIZE_OFFLINE_REPLICAS = r -> r.isCurrentOffline() ? 0 : 1;
-  /** Prioritize the immigrant replicas */
-  private static final Function<Replica, Integer> DEPRIORITIZE_OFFLINE_REPLICAS = r -> r.isCurrentOffline() ? 1 : 0;
-  /** Prioritize the (1) offline replicas, then (2) the immigrant replicas */
-  private static final Function<Replica, Integer> PRIORITIZE_OFFLINE_REPLICAS_THEN_IMMIGRANTS = r ->
-      r.isCurrentOffline() ? -1 : r.originalBroker() != r.broker() ? 0 : 1;
-  /** Deprioritize the (1) offline replicas, then (2) the immigrant replicas */
-  private static final Function<Replica, Integer> DEPRIORITIZE_OFFLINE_REPLICAS_THEN_IMMIGRANTS = r ->
-      r.isCurrentOffline() ? 1 : r.originalBroker() != r.broker() ? 0 : -1;
   /** Prioritize the disk immigrant replicas */
   private static final Function<Replica, Integer> PRIORITIZE_DISK_IMMIGRANTS = r -> r.originalDisk() != r.disk() ? 0 : 1;
-  /** De-prioritize the disk immigrant replicas */
-  private static final Function<Replica, Integer> DEPRIORITIZE_DISK_IMMIGRANTS = r -> r.originalDisk() != r.disk() ? 1 : 0;
+
+  // Selection functions
   /** Select leaders only */
   private static final Function<Replica, Boolean> SELECT_LEADERS = Replica::isLeader;
+  /** Select followers only */
+  private static final Function<Replica, Boolean> SELECT_FOLLOWERS = r -> !r.isLeader();
   /** Select online replicas only */
   private static final Function<Replica, Boolean> SELECT_ONLINE_REPLICAS = r -> !r.isCurrentOffline();
+  /** Select offline replicas only */
+  private static final Function<Replica, Boolean> SELECT_OFFLINE_REPLICAS = Replica::isCurrentOffline;
   /** Select immigrants only */
   private static final Function<Replica, Boolean> SELECT_IMMIGRANTS = r -> r.originalBroker() != r.broker();
-  /** Select immigrant leaders only */
-  private static final Function<Replica, Boolean> SELECT_IMMIGRANT_LEADERS = r -> r.originalBroker() != r.broker() && r.isLeader();
+  /** Select immigrant or offline replicas only */
+  private static final Function<Replica, Boolean> SELECT_IMMIGRANT_OR_OFFLINE_REPLICAS = r -> r.originalBroker() != r.broker() || r.isCurrentOffline();
 
   // Score functions
   /**
-   * @param metricName the metric name to score
-   * @return a score function to score by the metric value of the given metric name.
-   */
-  public static Function<Replica, Double> sortByMetricValue(String metricName) {
-    return r -> {
-      MetricInfo metricInfo = KafkaMetricDef.commonMetricDef().metricInfo(metricName);
-      MetricValues values = r.load().loadByWindows().valuesFor(metricInfo.id());
-      switch (metricInfo.aggregationFunction()) {
-        case MAX:
-          return (double) values.max();
-        case AVG:
-          return (double) values.avg();
-        case LATEST:
-          return (double) values.latest();
-        default:
-          return (double) values.avg();
-      }
-    };
-  }
-
-  /**
    * @param metricGroup the metric group to score
-   * @return a score function to score by the metric group value of the given metric group.
+   * @return a score function to score by the metric group value of the given metric group in positive way, i.e. the higher
+   *         the metric group value, the higher the score.
    */
   public static Function<Replica, Double> sortByMetricGroupValue(String metricGroup) {
     return r -> {
@@ -79,6 +55,20 @@ public class ReplicaSortFunctionFactory {
                                    .loadByWindows()
                                    .valuesForGroup(metricGroup, KafkaMetricDef.commonMetricDef(), true);
       return (double) metricValues.avg();
+    };
+  }
+
+  /**
+   * @param metricGroup the metric group to score
+   * @return a score function to score by the metric group value of the given metric group in negative way, i.e. the higher
+   *         the metric group value, the lower the score.
+   */
+  public static Function<Replica, Double> reverseSortByMetricGroupValue(String metricGroup) {
+    return r -> {
+      MetricValues metricValues = r.load()
+                                   .loadByWindows()
+                                   .valuesForGroup(metricGroup, KafkaMetricDef.commonMetricDef(), true);
+      return -(double) metricValues.avg();
     };
   }
 
@@ -98,57 +88,10 @@ public class ReplicaSortFunctionFactory {
   }
 
   /**
-   * @return a priority function that prioritize the offline replicas then immigrants.
-   */
-  public static Function<Replica, Integer> prioritizeOfflineReplicasThenImmigrants() {
-    return PRIORITIZE_OFFLINE_REPLICAS_THEN_IMMIGRANTS;
-  }
-
-  /**
-   * This priority function can be used together with {@link SortedReplicas#reverselySortedReplicas()}
-   * to provide sorted replicas in descending order of score and prioritize the immigrant replicas.
-   *
-   * @return a priority function that de-prioritize the immigrants replicas
-   */
-  public static Function<Replica, Integer> deprioritizeImmigrants() {
-    return DEPRIORITIZE_IMMIGRANTS;
-  }
-
-  /**
-   * This priority function can be used together with {@link SortedReplicas#reverselySortedReplicas()}
-   * to provide sorted replicas in descending order of score and prioritize the offline replicas.
-   *
-   * @return a priority function that de-prioritize the offline replicas
-   */
-  public static Function<Replica, Integer> deprioritizeOfflineReplicas() {
-    return DEPRIORITIZE_OFFLINE_REPLICAS;
-  }
-
-  /**
-   * This priority function can be used together with {@link SortedReplicas#reverselySortedReplicas()}
-   * to provide sorted replicas in descending order of score and prioritize the offline replicas then immigrants.
-   *
-   * @return a priority function that de-prioritize the offline immigrants
-   */
-  public static Function<Replica, Integer> deprioritizeOfflineReplicasThenImmigrants() {
-    return DEPRIORITIZE_OFFLINE_REPLICAS_THEN_IMMIGRANTS;
-  }
-
-  /**
    * @return a priority function that prioritize the immigrant replicas to the disk.
    */
   public static Function<Replica, Integer> prioritizeDiskImmigrants() {
     return PRIORITIZE_DISK_IMMIGRANTS;
-  }
-
-  /**
-   * This priority function can be used together with {@link SortedReplicas#reverselySortedReplicas()}
-   * to provide sorted replicas in descending order of score and prioritize the immigrant replicas for the disk.
-   *
-   * @return a priority function that de-prioritize the immigrant replicas to the disk.
-   */
-  public static Function<Replica, Integer> deprioritizeDiskImmigrants() {
-    return DEPRIORITIZE_DISK_IMMIGRANTS;
   }
 
   // Selection functions
@@ -160,10 +103,31 @@ public class ReplicaSortFunctionFactory {
   }
 
   /**
+   * @return a selection function that only includes immigrant replicas and offline replicas.
+   */
+  public static Function<Replica, Boolean> selectImmigrantOrOfflineReplicas() {
+    return SELECT_IMMIGRANT_OR_OFFLINE_REPLICAS;
+  }
+
+  /**
    * @return a selection function that only includes leaders.
    */
   public static Function<Replica, Boolean> selectLeaders() {
     return SELECT_LEADERS;
+  }
+
+  /**
+   * @return a selection function that only includes followers.
+   */
+  public static Function<Replica, Boolean> selectFollowers() {
+    return SELECT_FOLLOWERS;
+  }
+
+  /**
+   * @return a selection function that only includes offline replicas.
+   */
+  public static Function<Replica, Boolean> selectOfflineReplicas() {
+    return SELECT_OFFLINE_REPLICAS;
   }
 
   /**
@@ -174,9 +138,31 @@ public class ReplicaSortFunctionFactory {
   }
 
   /**
-   * @return a selection function that only includes immigrant leader replicas.
+   * @param excludedTopics Topics excluded from partition movements.
+   *
+   * @return a selection function that filters out replicas which are online and from topics which should be excluded.
    */
-  public static Function<Replica, Boolean> selectImmigrantLeaders() {
-    return SELECT_IMMIGRANT_LEADERS;
+  public static Function<Replica, Boolean> selectReplicasBasedOnExcludedTopics(Set<String> excludedTopics) {
+    return r -> r.isOriginalOffline() || !excludedTopics.contains(r.topicPartition().topic());
+  }
+
+  /**
+   * @param resource The resource to check.
+   * @param limit The resource limit used to filter replicas.
+   *
+   * @return a selection function that only includes replicas whose metric value for certain resource is above limit.
+   */
+  public static Function<Replica, Boolean> selectReplicasAboveLimit(Resource resource, double limit) {
+    return r -> r.load().expectedUtilizationFor(resource) > limit;
+  }
+
+  /**
+   * @param resource The resource to check.
+   * @param limit The resource limit used to filter replicas.
+   *
+   * @return a selection function that only includes replicas whose metric value for certain resource is below limit.
+   */
+  public static Function<Replica, Boolean> selectReplicasBelowLimit(Resource resource, double limit) {
+    return r -> r.load().expectedUtilizationFor(resource) < limit;
   }
 }

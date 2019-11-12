@@ -16,6 +16,8 @@ import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
+import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
+import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -30,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionAbstractGoal.ChangeType.*;
 
 /**
@@ -241,17 +244,17 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
 
     int balanceUpperLimit = _fixOfflineReplicasOnly ? 0 : _balanceUpperLimit;
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
-    Set<Replica> candidateReplicas = new HashSet<>(_fixOfflineReplicasOnly ? broker.currentOfflineReplicas()
-                                                                           : broker.leaderReplicas());
-    if ((!_fixOfflineReplicasOnly && !clusterModel.selfHealingEligibleReplicas().isEmpty())
-        || optimizationOptions.onlyMoveImmigrantReplicas()) {
-      candidateReplicas.retainAll(broker.immigrantReplicas());
-    }
+    String replicaSortName = replicaSortName(this, false, !_fixOfflineReplicasOnly);
+    new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectLeaders(), !_fixOfflineReplicasOnly)
+                              .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectOfflineReplicas(), _fixOfflineReplicasOnly)
+                              .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
+                                                     (!_fixOfflineReplicasOnly && !clusterModel.selfHealingEligibleReplicas().isEmpty())
+                                                     || optimizationOptions.onlyMoveImmigrantReplicas())
+                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
+                              .trackSortedReplicasFor(replicaSortName, broker);
+    SortedSet<Replica> candidateReplicas = broker.trackedSortedReplicas(replicaSortName).sortedReplicas(true);
     int numReplicas = candidateReplicas.size();
     for (Replica replica : candidateReplicas) {
-      if (shouldExclude(replica, excludedTopics)) {
-        continue;
-      }
       Broker b = maybeApplyBalancingAction(clusterModel,
                                            replica,
                                            candidateBrokers,
@@ -261,6 +264,7 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
       // Only check if we successfully moved something.
       if (b != null) {
         if (--numReplicas <= balanceUpperLimit) {
+          broker.untrackSortedReplicas(replicaSortName);
           return false;
         }
         // Remove and reinsert the broker so the order is correct.
@@ -270,13 +274,14 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
         }
       }
     }
+    broker.untrackSortedReplicas(replicaSortName);
     return true;
   }
 
   private boolean rebalanceByMovingLeaderReplicasIn(Broker broker,
-                                                   ClusterModel clusterModel,
-                                                   Set<Goal> optimizedGoals,
-                                                   OptimizationOptions optimizationOptions) {
+                                                    ClusterModel clusterModel,
+                                                    Set<Goal> optimizedGoals,
+                                                    OptimizationOptions optimizationOptions) {
     if (optimizationOptions.excludedBrokersForLeadership().contains(broker.id())) {
       return true;
     }
@@ -294,16 +299,16 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
     List<Broker> candidateBrokers = Collections.singletonList(broker);
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     boolean onlyMoveImmigrantReplicas = optimizationOptions.onlyMoveImmigrantReplicas();
+    String replicaSortName = replicaSortName(this, false, true);
+    new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectLeaders())
+                              .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
+                                                     !clusterModel.brokenBrokers().isEmpty() || onlyMoveImmigrantReplicas)
+                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
+                              .trackSortedReplicasFor(replicaSortName, clusterModel);
     int numLeaderReplicas = broker.leaderReplicas().size();
     while (!eligibleBrokers.isEmpty()) {
       Broker sourceBroker = eligibleBrokers.poll();
-      for (Replica replica : new HashSet<>(sourceBroker.leaderReplicas())) {
-        if (shouldExclude(replica, excludedTopics) || broker.replica(replica.topicPartition()) != null) {
-          continue;
-        }
-        if ((!clusterModel.brokenBrokers().isEmpty() || onlyMoveImmigrantReplicas) && !replica.isImmigrant()) {
-          continue;
-        }
+      for (Replica replica : sourceBroker.trackedSortedReplicas(replicaSortName).sortedReplicas(true)) {
         Broker b = maybeApplyBalancingAction(clusterModel,
                                              replica,
                                              candidateBrokers,
@@ -314,6 +319,7 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
         // has nothing to move in. In that case we will never reenqueue that source broker.
         if (b != null) {
           if (++numLeaderReplicas >= _balanceLowerLimit) {
+            clusterModel.untrackSortedReplicas(replicaSortName);
             return false;
           }
           // If the source broker has a lower number of leader replicas than the next broker in the eligible broker
@@ -325,6 +331,7 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
         }
       }
     }
+    clusterModel.untrackSortedReplicas(replicaSortName);
     return true;
   }
 

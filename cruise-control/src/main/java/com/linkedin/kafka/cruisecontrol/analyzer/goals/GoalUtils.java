@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
-import com.linkedin.kafka.cruisecontrol.analyzer.goals.internals.CandidateBroker;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
@@ -185,16 +184,28 @@ public class GoalUtils {
    *
    * @param clusterModel The state of the cluster.
    * @param sourceReplica Source replica for intended swap operation.
-   * @param cb Candidate broker containing candidate replicas to swap with the source replica in the order of attempts to swap.
+   * @param candidateReplicas Candidate replicas (from the same candidate broker) to swap with the source replica in the order
+   *                          of attempts to swap.
+   * @param optimizationOptions Options to take into account while applying the given action.
    * @return Eligible replicas for swap.
    */
-  static SortedSet<Replica> eligibleReplicasForSwap(ClusterModel clusterModel, Replica sourceReplica, CandidateBroker cb) {
-    if (cb.shouldExcludeForLeadership(sourceReplica) || cb.shouldExcludeForReplicaMove(sourceReplica)) {
+  static SortedSet<Replica> eligibleReplicasForSwap(ClusterModel clusterModel,
+                                                    Replica sourceReplica,
+                                                    SortedSet<Replica> candidateReplicas,
+                                                    OptimizationOptions optimizationOptions) {
+    if (candidateReplicas.isEmpty()) {
+      return candidateReplicas;
+    }
+    Broker destinationBroker = candidateReplicas.first().broker();
+    if (optimizationOptions.excludedBrokersForLeadership().contains(destinationBroker.id())
+        && !sourceReplica.isOriginalOffline()
+        && sourceReplica.isLeader()) {
       return Collections.emptySortedSet();
     }
-
-    // Candidate replicas from the same destination broker to swap in the order of attempts to swap.
-    SortedSet<Replica> candidateReplicasToSwapWith = cb.replicas();
+    if (optimizationOptions.excludedBrokersForReplicaMove().contains(destinationBroker.id())
+        && !sourceReplica.isOriginalOffline()) {
+      return Collections.emptySortedSet();
+    }
 
     // CASE#1: All candidate replicas are eligible if any of the following is true:
     // (1) there are no new brokers in the cluster,
@@ -203,19 +214,17 @@ public class GoalUtils {
     // (4) the intended swap is between a replica on a new broker, which originally was in the destination broker, and
     // any replica in the destination broker.
     Broker sourceBroker = sourceReplica.broker();
-    Broker destinationBroker = candidateReplicasToSwapWith.isEmpty() ? null : candidateReplicasToSwapWith.first().broker();
 
     if (clusterModel.newBrokers().isEmpty()
-        || destinationBroker == null
         || (sourceBroker.isNew() && (destinationBroker.isNew() || sourceReplica.originalBroker() == destinationBroker))) {
-      return candidateReplicasToSwapWith;
+      return candidateReplicas;
     }
 
     // CASE#2: A subset of candidate replicas might be eligible if only the destination broker is a new broker and it
     // contains replicas that were originally in the source broker.
     if (destinationBroker.isNew()) {
-      candidateReplicasToSwapWith.removeIf(replica -> replica.originalBroker() != sourceBroker);
-      return candidateReplicasToSwapWith;
+      candidateReplicas.removeIf(replica -> replica.originalBroker() != sourceBroker);
+      return candidateReplicas;
     }
 
     // CASE#3: No swap is possible between old brokers when there are new brokers in the cluster.
@@ -281,31 +290,6 @@ public class GoalUtils {
   }
 
   /**
-   * Get a filtered set of replicas from the given broker based on given filtering requirements.
-   *
-   * @param broker Broker whose replicas will be filters.
-   * @param followersOnly True if replicas should be filtered to ensure that they contain only the followers.
-   * @param leadersOnly True if replicas should be filtered to ensure that they contain only the leaders.
-   * @param immigrantsOnly True if replicas should be filtered to ensure that they contain only the immigrants.
-   * @return A filtered set of replicas from the given broker.
-   */
-  public static Set<Replica> filterReplicas(Broker broker, boolean followersOnly, boolean leadersOnly, boolean immigrantsOnly) {
-    if (leadersOnly) {
-      // Get filtered leaders on the given broker.
-      return followersOnly ? Collections.emptySet() : filterLeaders(broker, immigrantsOnly);
-    }
-
-    Set<Replica> filteredReplicas;
-    if (followersOnly) {
-      filteredReplicas = new HashSet<>(immigrantsOnly ? broker.immigrantReplicas() : broker.replicas());
-      filteredReplicas.removeAll(broker.leaderReplicas());
-    } else {
-      filteredReplicas = immigrantsOnly ? broker.immigrantReplicas() : broker.replicas();
-    }
-    return filteredReplicas;
-  }
-
-  /**
    * Get the utilization percentage of the broker for the given resource, or {@link #DEAD_BROKER_UTILIZATION} if the
    * broker is dead. The utilization percentage for resources is calculated from broker capacity and
    * {@link com.linkedin.kafka.cruisecontrol.model.Load#expectedUtilizationFor(Resource)} .
@@ -362,5 +346,18 @@ public class GoalUtils {
       int result = Double.compare(expectedBrokerLoad1, expectedBrokerLoad2);
       return result == 0 ? Integer.compare(r1.broker().id(), r2.broker().id()) : result;
     });
+  }
+
+  /**
+   * Generate the name of {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas}, which can be used to retrieve sorted
+   * replicas in {@link ClusterModel}/{@link Broker}/{@link Disk}.
+   *
+   * @param goal The {@link Goal} which requests for new {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas}.
+   * @param reverse Whether the {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas} tracks replicas in descending order or not.
+   * @param leaderOnly Whether the {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas} tracks only leader replicas or all replicas.
+   * @return A descriptive name for the {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas}.
+   */
+  static String replicaSortName(Goal goal, boolean reverse, boolean leaderOnly) {
+    return String.format("%s%s%s", goal.name(), reverse ? "-REVERSE" : "", leaderOnly ? "-LEADER" : "");
   }
 }

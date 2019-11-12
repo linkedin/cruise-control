@@ -17,6 +17,8 @@ import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
+import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
+import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -37,6 +39,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA
 import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils.EPSILON;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionAbstractGoal.ChangeType.*;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 
 
 /**
@@ -258,6 +261,15 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
         _avgTopicReplicasOnAliveBroker.remove(topic);
       }
     }
+    // Filter out replicas to be considered for replica movement.
+    for (Broker broker : clusterModel.brokers()) {
+      new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
+                                                       optimizationOptions.onlyMoveImmigrantReplicas())
+                                .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrantOrOfflineReplicas(),
+                                                       !clusterModel.selfHealingEligibleReplicas().isEmpty() && broker.isAlive())
+                                .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(optimizationOptions.excludedTopics()))
+                                .trackSortedReplicasFor(replicaSortName(this, false, false), broker);
+    }
 
     _fixOfflineReplicasOnly = false;
   }
@@ -418,20 +430,10 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     }
   }
 
-  private static SortedSet<Replica> replicasToMoveOut(ClusterModel clusterModel, Broker broker, String topic, OptimizationOptions optimizationOptions) {
+  private SortedSet<Replica> replicasToMoveOut(Broker broker, String topic) {
     SortedSet<Replica> replicasToMoveOut = new TreeSet<>(broker.replicaComparator());
     replicasToMoveOut.addAll(broker.replicasOfTopicInBroker(topic));
-
-    // Cluster has offline replicas, but this broker is alive -- we can move out only the offline and immigrant replicas.
-    if ((!clusterModel.brokenBrokers().isEmpty() && broker.isAlive()) || optimizationOptions.onlyMoveImmigrantReplicas()) {
-      // Return the sorted offline then immigrant replicas.
-      for (Replica replica : replicasToMoveOut) {
-        if (!broker.currentOfflineReplicas().contains(replica) && !broker.immigrantReplicas().contains(replica)) {
-          return replicasToMoveOut.subSet(replicasToMoveOut.first(), replica);
-        }
-      }
-    }
-
+    replicasToMoveOut.retainAll(broker.trackedSortedReplicas(replicaSortName(this, false, false)).sortedReplicas(false));
     return replicasToMoveOut;
   }
 
@@ -440,7 +442,6 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
                                                ClusterModel clusterModel,
                                                Set<Goal> optimizedGoals,
                                                OptimizationOptions optimizationOptions) {
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     // Get the eligible brokers.
     SortedSet<Broker> candidateBrokers = new TreeSet<>(
         Comparator.comparingInt((Broker b) -> b.numReplicasOfTopicInBroker(topic)).thenComparingInt(Broker::id));
@@ -457,12 +458,10 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     int numOfflineTopicReplicas = retainCurrentOfflineBrokerReplicas(broker, replicasOfTopicInBroker).size();
 
     boolean wasUnableToMoveOfflineReplica = false;
-    for (Replica replica : replicasToMoveOut(clusterModel, broker, topic, optimizationOptions)) {
+    for (Replica replica : replicasToMoveOut(broker, topic)) {
       if (wasUnableToMoveOfflineReplica && !replica.isCurrentOffline() && numReplicasOfTopicInBroker <= _balanceUpperLimitByTopic.get(topic)) {
         // Was unable to move offline replicas from the broker, and remaining replica count is under the balance limit.
         return false;
-      } else if (shouldExclude(replica, excludedTopics)) {
-        continue;
       }
 
       boolean wasOffline = replica.isCurrentOffline();
@@ -495,8 +494,6 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
                                               ClusterModel clusterModel,
                                               Set<Goal> optimizedGoals,
                                               OptimizationOptions optimizationOptions) {
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
-
     PriorityQueue<Broker> eligibleBrokers = new PriorityQueue<>((b1, b2) -> {
       // Brokers are sorted by (1) current offline topic replica count then (2) all topic replica count then (3) broker id.
       // B2 Info
@@ -538,13 +535,10 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     // Stop when no topic replicas can be moved in anymore.
     while (!eligibleBrokers.isEmpty()) {
       Broker sourceBroker = eligibleBrokers.poll();
-      SortedSet<Replica> replicasToMove = replicasToMoveOut(clusterModel, sourceBroker, topic, optimizationOptions);
+      SortedSet<Replica> replicasToMove = replicasToMoveOut(sourceBroker, topic);
       int numOfflineTopicReplicas = retainCurrentOfflineBrokerReplicas(sourceBroker, replicasToMove).size();
 
       for (Replica replica : replicasToMove) {
-        if (shouldExclude(replica, excludedTopics)) {
-          continue;
-        }
         boolean wasOffline = replica.isCurrentOffline();
         Broker b = maybeApplyBalancingAction(clusterModel, replica, candidateBrokers, ActionType.INTER_BROKER_REPLICA_MOVEMENT,
                                              optimizedGoals, optimizationOptions);

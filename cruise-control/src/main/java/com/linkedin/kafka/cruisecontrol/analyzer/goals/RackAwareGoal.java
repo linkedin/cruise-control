@@ -16,6 +16,8 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 
+import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
+import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.HashSet;
 import java.util.List;
@@ -32,6 +34,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.BROKER_REJECT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 
 
 /**
@@ -192,6 +195,12 @@ public class RackAwareGoal extends AbstractGoal {
           String.format("[%s] Insufficient number of racks to distribute each replica (Current: %d, Needed: %d).",
                         name(), numAliveRacks, clusterModel.maxReplicationFactor()));
     }
+
+    // Filter out some replicas based on optimization options.
+    new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
+                                                     optimizationOptions.onlyMoveImmigrantReplicas())
+                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
+                              .trackSortedReplicasFor(replicaSortName(this, false, false), clusterModel);
   }
 
   /**
@@ -236,14 +245,8 @@ public class RackAwareGoal extends AbstractGoal {
                                     OptimizationOptions optimizationOptions)
       throws OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
-    boolean onlyMoveImmigrantReplicas = optimizationOptions.onlyMoveImmigrantReplicas();
-    // Satisfy rack awareness requirement. Note that the default replica comparator prioritizes offline replicas.
-    SortedSet<Replica> replicas = new TreeSet<>(broker.replicas());
-    for (Replica replica : replicas) {
-      if ((broker.isAlive() && !broker.currentOfflineReplicas().contains(replica) && satisfiedRackAwareness(replica, clusterModel))
-          || shouldExclude(replica, excludedTopics)
-          || (onlyMoveImmigrantReplicas && !replica.isImmigrant())) {
+    for (Replica replica : broker.trackedSortedReplicas(replicaSortName(this, false, false)).sortedReplicas(true)) {
+      if (broker.isAlive() && !broker.currentOfflineReplicas().contains(replica) && satisfiedRackAwareness(replica, clusterModel)) {
         continue;
       }
       // Rack awareness is violated. Move replica to a broker in another rack.

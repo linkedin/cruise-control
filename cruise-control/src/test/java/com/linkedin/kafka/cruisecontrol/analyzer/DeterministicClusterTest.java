@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.IntraBrokerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
@@ -32,6 +33,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.ArrayList;
@@ -112,11 +114,18 @@ public class DeterministicClusterTest {
 
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(6L));
-    BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     List<OptimizationVerifier.Verification> verifications = Arrays.asList(NEW_BROKERS, BROKEN_BROKERS, REGRESSION);
 
+    // ----------##TEST: REPLICA SWAP OPERATIONS.
+    BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
+    balancingConstraint.setResourceBalancePercentage(TestConstants.ZERO_BALANCE_PERCENTAGE);
+    p.add(params(balancingConstraint, DeterministicCluster.unbalanced4(), Collections.singletonList(DiskUsageDistributionGoal.class.getName()),
+          verifications, null));
+    p.add(params(balancingConstraint, DeterministicCluster.unbalanced4(), Collections.singletonList(IntraBrokerDiskUsageDistributionGoal.class.getName()),
+          verifications, null));
+
+
     // ----------##TEST: BALANCE PERCENTAGES.
-    balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
     List<Double> balancePercentages = new ArrayList<>();
     balancePercentages.add(TestConstants.HIGH_BALANCE_PERCENTAGE);
     balancePercentages.add(TestConstants.MEDIUM_BALANCE_PERCENTAGE);
@@ -124,19 +133,22 @@ public class DeterministicClusterTest {
 
     // -- TEST DECK #1: SMALL CLUSTER.
     for (Double balancePercentage : balancePercentages) {
+      balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
+      balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
       balancingConstraint.setResourceBalancePercentage(balancePercentage);
       p.add(params(balancingConstraint, DeterministicCluster.smallClusterModel(TestConstants.BROKER_CAPACITY),
                    goalNameByPriority, verifications, null));
     }
     // -- TEST DECK #2: MEDIUM CLUSTER.
     for (Double balancePercentage : balancePercentages) {
+      balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
+      balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
       balancingConstraint.setResourceBalancePercentage(balancePercentage);
       p.add(params(balancingConstraint, DeterministicCluster.mediumClusterModel(TestConstants.BROKER_CAPACITY),
                    goalNameByPriority, verifications, null));
     }
 
     // ----------##TEST: CAPACITY THRESHOLD.
-    balancingConstraint.setResourceBalancePercentage(TestConstants.MEDIUM_BALANCE_PERCENTAGE);
     List<Double> capacityThresholds = new ArrayList<>();
     capacityThresholds.add(TestConstants.HIGH_CAPACITY_THRESHOLD);
     capacityThresholds.add(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
@@ -144,12 +156,16 @@ public class DeterministicClusterTest {
 
     // -- TEST DECK #3: SMALL CLUSTER.
     for (Double capacityThreshold : capacityThresholds) {
+      balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
+      balancingConstraint.setResourceBalancePercentage(TestConstants.MEDIUM_BALANCE_PERCENTAGE);
       balancingConstraint.setCapacityThreshold(capacityThreshold);
       p.add(params(balancingConstraint, DeterministicCluster.smallClusterModel(TestConstants.BROKER_CAPACITY),
                    goalNameByPriority, verifications, null));
     }
     // -- TEST DECK #4: MEDIUM CLUSTER.
     for (Double capacityThreshold : capacityThresholds) {
+      balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
+      balancingConstraint.setResourceBalancePercentage(TestConstants.MEDIUM_BALANCE_PERCENTAGE);
       balancingConstraint.setCapacityThreshold(capacityThreshold);
       p.add(params(balancingConstraint, DeterministicCluster.mediumClusterModel(TestConstants.BROKER_CAPACITY),
                    goalNameByPriority, verifications, null));

@@ -17,6 +17,8 @@ import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
+import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
+import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.Collection;
 import java.util.Comparator;
@@ -31,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 
 
 /**
@@ -163,6 +166,12 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
     // While proposals exclude the excludedTopics, the leader bytes in still considers replicas of the excludedTopics.
     _meanLeaderBytesIn = 0.0;
     _overLimitBrokerIds = new HashSet<>();
+    // Sort leader replicas for each broker.
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
+    new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectLeaders())
+                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
+                              .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(Resource.NW_IN.toString()))
+                              .trackSortedReplicasFor(replicaSortName(this, true, true), clusterModel);
   }
 
   @Override
@@ -193,15 +202,8 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
       return;
     }
 
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
-    List<Replica> leaderReplicasSortedByBytesIn = broker.replicas().stream()
-        .filter(Replica::isLeader)
-        .filter(r -> !shouldExclude(r, excludedTopics))
-        .sorted((a, b) -> Double.compare(b.load().expectedUtilizationFor(Resource.NW_IN), a.load().expectedUtilizationFor(Resource.NW_IN)))
-        .collect(Collectors.toList());
-
     boolean overThreshold = true;
-    Iterator<Replica> leaderReplicaIt = leaderReplicasSortedByBytesIn.iterator();
+    Iterator<Replica> leaderReplicaIt = broker.trackedSortedReplicas(replicaSortName(this, true, true)).sortedReplicas(true).iterator();
     while (overThreshold && leaderReplicaIt.hasNext()) {
       Replica leaderReplica = leaderReplicaIt.next();
       List<Replica> onlineFollowers = clusterModel.partition(leaderReplica.topicPartition()).onlineFollowers();

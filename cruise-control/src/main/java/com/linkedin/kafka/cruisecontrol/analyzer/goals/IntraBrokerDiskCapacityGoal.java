@@ -17,6 +17,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Disk;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
+import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -30,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 
 /**
  * Class for achieving the following hard goal:
@@ -79,6 +81,14 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
                                                + existingUtilization + " exceeds allowed capacity " + allowedCapacity);
       }
     }
+
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
+    // Sort all the replicas for each disk based on disk utilization.
+    new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectOnlineReplicas())
+                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
+                              .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeDiskImmigrants())
+                              .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(RESOURCE.name()))
+                              .trackSortedReplicasFor(replicaSortName(this, true, false), clusterModel);
   }
 
   /**
@@ -170,7 +180,6 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
     if (disksOverUtilized.isEmpty()) {
       return;
     }
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     List<Disk> candidateDisks = new ArrayList<>(broker.disks());
     candidateDisks.removeAll(disksOverUtilized);
     candidateDisks.sort(new Comparator<Disk>() {
@@ -183,14 +192,7 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
     });
 
     for (Disk disk : disksOverUtilized) {
-      disk.trackSortedReplicas(name(),
-                               ReplicaSortFunctionFactory.selectOnlineReplicas(),
-                               ReplicaSortFunctionFactory.deprioritizeDiskImmigrants(),
-                               ReplicaSortFunctionFactory.sortByMetricGroupValue(RESOURCE.name()));
-      for (Replica replica : disk.trackedSortedReplicas(name()).reverselySortedReplicas()) {
-        if (shouldExclude(replica, excludedTopics)) {
-          continue;
-        }
+      for (Replica replica : disk.trackedSortedReplicas(replicaSortName(this, true, false)).sortedReplicas(true)) {
         Disk d = maybeMoveReplicaBetweenDisks(clusterModel, replica, candidateDisks, optimizedGoals);
         if (d == null) {
           LOG.debug("Failed to move replica {} to any disk {} in broker {}", replica, candidateDisks, replica.broker());
@@ -199,7 +201,6 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
           break;
         }
       }
-      disk.untrackSortedReplicas(name());
     }
   }
 
@@ -215,10 +216,10 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
     for (Broker broker : brokersToBalance(clusterModel)) {
       for (Disk disk : broker.disks()) {
         if (disk.isAlive() && isUtilizationOverLimit(disk)) {
-            // The utilization of the host for the resource is over the capacity limit.
-            throw new OptimizationFailureException(String.format(
-                "Optimization for goal %s failed because utilization for disk %s on broker %d is still above capacity limit.",
-                name(), disk, broker.id()));
+          // The utilization of the host for the resource is over the capacity limit.
+          throw new OptimizationFailureException(String.format(
+              "Optimization for goal %s failed because utilization for disk %s on broker %d is still above capacity limit.",
+              name(), disk, broker.id()));
         }
       }
     }

@@ -6,7 +6,6 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
-import com.linkedin.kafka.cruisecontrol.analyzer.goals.internals.CandidateBroker;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
@@ -20,13 +19,12 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Load;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
+import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.SortedSet;
@@ -41,7 +39,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionType.INTER_BROKER_REPLICA_MOVEMENT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionType.LEADERSHIP_MOVEMENT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.utilizationPercentage;
-import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.filterReplicas;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ResourceDistributionGoal.ChangeType.ADD;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ResourceDistributionGoal.ChangeType.REMOVE;
 
@@ -58,18 +56,23 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   private boolean _fixOfflineReplicasOnly;
   private double _balanceUpperThreshold;
   private double _balanceLowerThreshold;
+  private final Comparator<Broker> _brokerComparator;
 
   /**
    * Constructor for Resource Distribution Goal.
    */
   public ResourceDistributionGoal() {
-
+    _brokerComparator = (b1, b2) -> {
+      int result = Double.compare(utilizationPercentage(b1, resource()), utilizationPercentage(b2, resource()));
+      return result != 0 ? result : b1.compareTo(b2);
+    };
   }
 
   /**
    * Package private for unit test.
    */
   ResourceDistributionGoal(BalancingConstraint constraint) {
+    this();
     _balancingConstraint = constraint;
   }
 
@@ -220,11 +223,6 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     _fixOfflineReplicasOnly = false;
     _balanceUpperThreshold = computeBalanceUpperThreshold(clusterModel, optimizationOptions);
     _balanceLowerThreshold = computeBalanceLowerThreshold(clusterModel, optimizationOptions);
-    clusterModel.trackSortedReplicas(sortName(),
-                                     optimizationOptions.onlyMoveImmigrantReplicas() ? ReplicaSortFunctionFactory.selectImmigrants()
-                                                                                     : null,
-                                     ReplicaSortFunctionFactory.deprioritizeOfflineReplicasThenImmigrants(),
-                                     ReplicaSortFunctionFactory.sortByMetricGroupValue(resource().name()));
   }
 
   protected double balanceUpperThreshold() {
@@ -273,7 +271,6 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
     } catch (OptimizationFailureException ofe) {
       if (_fixOfflineReplicasOnly) {
-        clusterModel.untrackSortedReplicas(sortName());
         throw ofe;
       }
       _fixOfflineReplicasOnly = true;
@@ -283,7 +280,6 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
     GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
     finish();
-    clusterModel.untrackSortedReplicas(sortName());
   }
 
   @Override
@@ -378,30 +374,23 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     }
 
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
-    Set<Integer> excludedBrokersForLeadership = optimizationOptions.excludedBrokersForLeadership();
-    Set<Integer> excludedBrokersForReplicaMove = optimizationOptions.excludedBrokersForReplicaMove();
     // If this broker is excluded for leadership, then it can move in only followers.
-    boolean moveFollowersOnly = excludedBrokersForLeadership.contains(broker.id());
-    PriorityQueue<CandidateBroker> candidateBrokerPQ = new PriorityQueue<>();
-    // Sort the replicas initially to avoid sorting it every time.
+    boolean moveFollowersOnly = optimizationOptions.excludedBrokersForLeadership().contains(broker.id());
+    PriorityQueue<Broker> candidateBrokerPQ = new PriorityQueue<>(_brokerComparator.reversed());
 
     double clusterUtilization = clusterModel.load().expectedUtilizationFor(resource()) / clusterModel.capacityFor(resource());
+    String replicaSortName = null;
     for (Broker candidate : clusterModel.aliveBrokers()) {
       // Get candidate replicas on candidate broker to try moving load from -- sorted in the order of trial (descending load).
       if (utilizationPercentage(candidate, resource()) > clusterUtilization) {
-        SortedSet<Replica> replicasToMoveIn = sortedCandidateReplicas(candidate,
-                                                                      excludedTopics,
-                                                                      0,
-                                                                      false,
-                                                                      moveFollowersOnly,
-                                                                      moveImmigrantsOnly);
-        CandidateBroker candidateBroker = new CandidateBroker(candidate,
-                                                              resource(),
-                                                              replicasToMoveIn,
-                                                              false,
-                                                              excludedBrokersForLeadership,
-                                                              excludedBrokersForReplicaMove);
-        candidateBrokerPQ.add(candidateBroker);
+        replicaSortName = sortedCandidateReplicas(candidate,
+                                                  excludedTopics,
+                                                  0.0,
+                                                  false,
+                                                  moveFollowersOnly,
+                                                  resource() == Resource.NW_OUT,
+                                                  moveImmigrantsOnly);
+        candidateBrokerPQ.add(candidate);
       }
     }
 
@@ -409,8 +398,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     // for replica movement.
     while (!candidateBrokerPQ.isEmpty() && (actionType == INTER_BROKER_REPLICA_MOVEMENT ||
         (actionType == LEADERSHIP_MOVEMENT && broker.leaderReplicas().size() != broker.replicas().size()))) {
-      CandidateBroker cb = candidateBrokerPQ.poll();
-      SortedSet<Replica> candidateReplicasToReceive = cb.replicas();
+      Broker cb = candidateBrokerPQ.poll();
+      SortedSet<Replica> candidateReplicasToReceive = cb.trackedSortedReplicas(replicaSortName).sortedReplicas(true);
 
       for (Iterator<Replica> iterator = candidateReplicasToReceive.iterator(); iterator.hasNext(); ) {
         Replica replica = iterator.next();
@@ -421,6 +410,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
         // has nothing to move in. In that case we will never reenqueue that source broker.
         if (b != null) {
           if (isLoadAboveBalanceLowerLimit(broker)) {
+            clusterModel.untrackSortedReplicas(replicaSortName);
             return false;
           }
           // Remove the replica from its source broker if it was a replica movement.
@@ -431,13 +421,14 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
           // If the source broker has a lower utilization than the next broker in the eligible broker in the queue,
           // we reenqueue the source broker and switch to the next broker.
           if (!candidateBrokerPQ.isEmpty()
-              && utilizationPercentage(cb.broker(), resource()) < utilizationPercentage(candidateBrokerPQ.peek().broker(), resource())) {
+              && utilizationPercentage(cb, resource()) < utilizationPercentage(candidateBrokerPQ.peek(), resource())) {
             candidateBrokerPQ.add(cb);
             break;
           }
         }
       }
     }
+    clusterModel.untrackSortedReplicas(replicaSortName);
     return true;
   }
 
@@ -451,45 +442,33 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    * @param loadLimit Load limit determining the lower cutoff in descending order, upper cutoff in ascending order.
    * @param isAscending True if sort requested in ascending order, false otherwise.
    * @param followersOnly Candidate replicas contain only the followers.
-   * @param immigrantsOnly Candidate replicas contain only the immigrants.
-   * @return Sorted replicas in the given broker whose (1) topic is not an excluded topic AND (2) do not violate the
-   * given load limit in ascending or descending order.
+   * @param leadersOnly Candidate replicas contain only the leaders.
+   * @param immigrantsOnly Candidate replicas contain only the immigrant replicas.
+   * @return The name of tracked sorted replicas.
    */
-  private SortedSet<Replica> sortedCandidateReplicas(Broker broker,
-                                                     Set<String> excludedTopics,
-                                                     double loadLimit,
-                                                     boolean isAscending,
-                                                     boolean followersOnly,
-                                                     boolean immigrantsOnly) {
-    SortedSet<Replica> candidateReplicas = new TreeSet<>((r1, r2) -> {
-      // Primary sort: by offline / online status
-      boolean isR1Offline = r1.isCurrentOffline();
-      boolean isR2Offline = r2.isCurrentOffline();
-
-      if (isR1Offline && !isR2Offline) {
-        return -1;
-      } else if (!isR1Offline && isR2Offline) {
-        return 1;
-      }
-      int result = isAscending
-                   ? Double.compare(r1.load().expectedUtilizationFor(resource()), r2.load().expectedUtilizationFor(resource()))
-                   : Double.compare(r2.load().expectedUtilizationFor(resource()), r1.load().expectedUtilizationFor(resource()));
-      return result == 0 ? r1.topicPartition().toString().compareTo(r2.topicPartition().toString()) : result;
-    });
-
-    Set<Replica> filteredReplicas = filterReplicas(broker, followersOnly, resource() == Resource.NW_OUT, immigrantsOnly);
-    // The given load limit determines the lower cutoff in descending order, upper cutoff in ascending order.
+  private String sortedCandidateReplicas(Broker broker,
+                                         Set<String> excludedTopics,
+                                         double loadLimit,
+                                         boolean isAscending,
+                                         boolean followersOnly,
+                                         boolean leadersOnly,
+                                         boolean immigrantsOnly) {
+    SortedReplicasHelper helper = new SortedReplicasHelper();
+    helper.maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectFollowers(), followersOnly)
+          .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectLeaders(), leadersOnly)
+          .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(), immigrantsOnly)
+          .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
+          .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas());
     if (isAscending) {
-      candidateReplicas.addAll(filteredReplicas.stream()
-          .filter(r -> !shouldExclude(r, excludedTopics) && r.load().expectedUtilizationFor(resource()) < loadLimit)
-          .collect(Collectors.toSet()));
+      helper.addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBelowLimit(resource(), loadLimit))
+            .setScoreFunc(ReplicaSortFunctionFactory.sortByMetricGroupValue(resource().name()));
     } else {
-      candidateReplicas.addAll(filteredReplicas.stream()
-          .filter(r -> !shouldExclude(r, excludedTopics) && r.load().expectedUtilizationFor(resource()) > loadLimit)
-          .collect(Collectors.toSet()));
+      helper.addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasAboveLimit(resource(), loadLimit))
+            .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(resource().name()));
     }
-
-    return candidateReplicas;
+    String replicaSortName = replicaSortName(this, !isAscending, leadersOnly);
+    helper.trackSortedReplicasFor(replicaSortName, broker);
+    return replicaSortName;
   }
 
   private double getMaxReplicaLoad(SortedSet<Replica> sortedReplicas) {
@@ -506,6 +485,20 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     return maxReplicaLoad;
   }
 
+  private double getMinReplicaLoad(SortedSet<Replica> sortedReplicas) {
+    // Compare the load of the first replica with the first online replica.
+    double minReplicaLoad = sortedReplicas.first().load().expectedUtilizationFor(resource());
+    for (Replica replica : sortedReplicas) {
+      if (replica.isCurrentOffline()) {
+        continue;
+      } else if (replica.load().expectedUtilizationFor(resource()) < minReplicaLoad) {
+        minReplicaLoad = replica.load().expectedUtilizationFor(resource());
+      }
+      break;
+    }
+    return minReplicaLoad;
+  }
+
   private boolean rebalanceBySwappingLoadOut(Broker broker,
                                              ClusterModel clusterModel,
                                              Set<Goal> optimizedGoals,
@@ -517,51 +510,38 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       return true;
     }
 
-    // Get the replicas to rebalance.
-    SortedSet<Replica> sourceReplicas = new TreeSet<>((r1, r2) -> {
-      // Primary sort: by offline / online status
-      boolean isR1Offline = r1.isCurrentOffline();
-      boolean isR2Offline = r2.isCurrentOffline();
-
-      if (isR1Offline && !isR2Offline) {
-        return -1;
-      } else if (!isR1Offline && isR2Offline) {
-        return 1;
-      }
-      int result = Double.compare(r2.load().expectedUtilizationFor(resource()), r1.load().expectedUtilizationFor(resource()));
-      return result == 0 ? r1.topicPartition().toString().compareTo(r2.topicPartition().toString()) : result;
-    });
-
-    sourceReplicas.addAll(filterReplicas(broker, false, resource() == Resource.NW_OUT, moveImmigrantsOnly));
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
+    // Get the replicas to swap.
+    String sourceReplicaSortName = sortedCandidateReplicas(broker,
+                                                           excludedTopics,
+                                                           0.0,
+                                                           false,
+                                                           false,
+                                                           resource() == Resource.NW_OUT,
+                                                           moveImmigrantsOnly);
+    SortedSet<Replica> sourceReplicas = broker.trackedSortedReplicas(sourceReplicaSortName).sortedReplicas(false);
     if (sourceReplicas.isEmpty()) {
       // Source broker has no filtered replica to swap.
+      broker.untrackSortedReplicas(sourceReplicaSortName);
       return true;
     }
-    double maxSourceReplicaLoad = getMaxReplicaLoad(sourceReplicas);
 
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
-    Set<Integer> excludedBrokersForLeadership = optimizationOptions.excludedBrokersForLeadership();
-    Set<Integer> excludedBrokersForReplicaMove = optimizationOptions.excludedBrokersForReplicaMove();
-    // Sort the replicas initially to avoid sorting it every time.
     // If this broker is excluded for leadership, then it can swapped with only followers.
-    boolean swapWithFollowersOnly = excludedBrokersForLeadership.contains(broker.id());
-    PriorityQueue<CandidateBroker> candidateBrokerPQ = new PriorityQueue<>();
+    double maxSourceReplicaLoad = getMaxReplicaLoad(sourceReplicas);
+    boolean swapWithFollowersOnly = optimizationOptions.excludedBrokersForLeadership().contains(broker.id());
+    PriorityQueue<Broker> candidateBrokerPQ = new PriorityQueue<>(_brokerComparator);
+    String candidateReplicaSortName = null;
     for (Broker candidate : clusterModel.aliveBrokersUnderThreshold(resource(), _balanceUpperThreshold)
                                         .stream().filter(b -> !b.replicas().isEmpty()).collect(Collectors.toSet())) {
       // Get candidate replicas on candidate broker to try swapping with -- sorted in the order of trial (ascending load).
-      SortedSet<Replica> replicasToSwapWith = sortedCandidateReplicas(candidate,
-                                                                      excludedTopics,
-                                                                      maxSourceReplicaLoad,
-                                                                      true,
-                                                                      swapWithFollowersOnly,
-                                                                      moveImmigrantsOnly);
-      CandidateBroker candidateBroker = new CandidateBroker(candidate,
-                                                            resource(),
-                                                            replicasToSwapWith,
-                                                            true,
-                                                            excludedBrokersForLeadership,
-                                                            excludedBrokersForReplicaMove);
-      candidateBrokerPQ.add(candidateBroker);
+      candidateReplicaSortName = sortedCandidateReplicas(candidate,
+                                                         excludedTopics,
+                                                         maxSourceReplicaLoad,
+                                                         true,
+                                                         swapWithFollowersOnly,
+                                                         false,
+                                                         moveImmigrantsOnly);
+      candidateBrokerPQ.add(candidate);
     }
 
     while (!candidateBrokerPQ.isEmpty()) {
@@ -570,36 +550,39 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
         break;
       }
 
-      CandidateBroker cb = candidateBrokerPQ.poll();
-      SortedSet<Replica> candidateReplicasToSwapWith = cb.replicas();
-
+      Broker cb = candidateBrokerPQ.poll();
       Replica swappedInReplica = null;
-      Replica swappedOutReplica = null;
       for (Replica sourceReplica : sourceReplicas) {
-        if (shouldExclude(sourceReplica, excludedTopics)) {
-          continue;
-        }
-
         // Try swapping the source with the candidate replicas. Get the swapped in replica if successful, null otherwise.
-        Replica swappedIn = maybeApplySwapAction(clusterModel, sourceReplica, cb, optimizedGoals);
+        Replica swappedIn = maybeApplySwapAction(clusterModel,
+                                                 sourceReplica,
+                                                 cb.trackedSortedReplicas(candidateReplicaSortName).sortedReplicas(false),
+                                                 optimizedGoals,
+                                                 optimizationOptions);
         if (swappedIn != null) {
           if (isLoadUnderBalanceUpperLimit(broker)) {
             // Successfully balanced this broker by swapping in.
+            clusterModel.clearSortedReplicas();
             return false;
           }
           // Add swapped in/out replica for updating the list of replicas in source broker.
           swappedInReplica = swappedIn;
-          swappedOutReplica = sourceReplica;
           break;
         } else if (remainingPerBrokerSwapTimeMs(swapStartTimeMs) <= 0) {
           LOG.debug("Swap load out timeout for source replica {}.", sourceReplica);
+          clusterModel.clearSortedReplicas();
           return true;
         }
       }
 
-      swapUpdate(swappedInReplica, swappedOutReplica, sourceReplicas, candidateReplicasToSwapWith, candidateBrokerPQ, cb);
+      if (swappedInReplica != null) {
+        sourceReplicas = broker.trackedSortedReplicas(sourceReplicaSortName).sortedReplicas(false);
+        // The broker is still considered as an eligible candidate replica, because the swap was successful -- i.e. there
+        // might be other potential candidate replicas on it to swap with.
+        candidateBrokerPQ.add(cb);
+      }
     }
-
+    clusterModel.clearSortedReplicas();
     return true;
   }
 
@@ -613,36 +596,6 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     return PER_BROKER_SWAP_TIMEOUT_MS - (System.currentTimeMillis() - swapStartTimeMs);
   }
 
-  /**
-   * If the swap was successful, update the (1) replicas of the source broker (2) replicas of the candidate broker, and
-   * (3) the priority queue of candidate brokers to swap replicas with.
-   *
-   * @param swappedInReplica the replica swapped in to the source broker from the candidate broker, null otherwise.
-   * @param swappedOutReplica the replica swapped out from the source broker to candidate broker, null otherwise.
-   * @param sourceReplicas replicas of the source broker before the swap.
-   * @param candidateReplicasToSwapWith replicas of the candidate broker before the swap.
-   * @param candidateBrokerPQ a priority queue of candidate brokers to swap replicas with (priority: by broker utilization)
-   * @param cb the candidate broker to swap with.
-   */
-  private void swapUpdate(Replica swappedInReplica,
-                          Replica swappedOutReplica,
-                          SortedSet<Replica> sourceReplicas,
-                          SortedSet<Replica> candidateReplicasToSwapWith,
-                          PriorityQueue<CandidateBroker> candidateBrokerPQ,
-                          CandidateBroker cb) {
-    if (swappedInReplica != null) {
-      // Update the list of replicas in source broker after the swap operations.
-      sourceReplicas.remove(swappedOutReplica);
-      sourceReplicas.add(swappedInReplica);
-      candidateReplicasToSwapWith.remove(swappedInReplica);
-      candidateReplicasToSwapWith.add(swappedOutReplica);
-
-      // The broker is still considered as an eligible candidate replica, because the swap was successful -- i.e. there
-      // might be other potential candidate replicas on it to swap with.
-      candidateBrokerPQ.add(cb);
-    }
-  }
-
   private boolean rebalanceBySwappingLoadIn(Broker broker,
                                             ClusterModel clusterModel,
                                             Set<Goal> optimizedGoals,
@@ -654,50 +607,37 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       return true;
     }
 
-    // Get the replicas to rebalance.
-    SortedSet<Replica> sourceReplicas = new TreeSet<>((r1, r2) -> {
-      // Primary sort: by offline / online status
-      boolean isR1Offline = r1.isCurrentOffline();
-      boolean isR2Offline = r2.isCurrentOffline();
-
-      if (isR1Offline && !isR2Offline) {
-        return -1;
-      } else if (!isR1Offline && isR2Offline) {
-        return 1;
-      }
-      int result = Double.compare(r1.load().expectedUtilizationFor(resource()), r2.load().expectedUtilizationFor(resource()));
-      return result == 0 ? r1.topicPartition().toString().compareTo(r2.topicPartition().toString()) : result;
-    });
-
-    sourceReplicas.addAll(filterReplicas(broker, false, false, moveImmigrantsOnly));
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
+    // Get the replicas to swap.
+    String sourceReplicaSortName = sortedCandidateReplicas(broker,
+                                                           excludedTopics,
+                                                           Double.MAX_VALUE,
+                                                           true,
+                                                           false,
+                                                           false,
+                                                           moveImmigrantsOnly);
+    SortedSet<Replica> sourceReplicas = broker.trackedSortedReplicas(sourceReplicaSortName).sortedReplicas(false);
     if (sourceReplicas.isEmpty()) {
       // Source broker has no filtered replica to swap.
+      broker.untrackSortedReplicas(sourceReplicaSortName);
       return true;
     }
 
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
-    Set<Integer> excludedBrokersForLeadership = optimizationOptions.excludedBrokersForLeadership();
-    Set<Integer> excludedBrokersForReplicaMove = optimizationOptions.excludedBrokersForReplicaMove();
-    // Sort the replicas initially to avoid sorting it every time.
     // If this broker is excluded for leadership, then it can swapped with only followers.
-    boolean swapWithFollowersOnly = excludedBrokersForLeadership.contains(broker.id());
-    PriorityQueue<CandidateBroker> candidateBrokerPQ = new PriorityQueue<>();
+    double minSourceReplicaLoad = getMinReplicaLoad(sourceReplicas);
+    boolean swapWithFollowersOnly = optimizationOptions.excludedBrokersForLeadership().contains(broker.id());
+    PriorityQueue<Broker> candidateBrokerPQ = new PriorityQueue<>(_brokerComparator.reversed());
+    String candidateReplicaSortName = null;
     for (Broker candidate : clusterModel.aliveBrokersOverThreshold(resource(), _balanceLowerThreshold)) {
       // Get candidate replicas on candidate broker to try swapping with -- sorted in the order of trial (descending load).
-      double minSourceReplicaLoad = sourceReplicas.first().load().expectedUtilizationFor(resource());
-      SortedSet<Replica> replicasToSwapWith = sortedCandidateReplicas(candidate,
-                                                                      excludedTopics,
-                                                                      minSourceReplicaLoad,
-                                                                      false,
-                                                                      swapWithFollowersOnly,
-                                                                      moveImmigrantsOnly);
-      CandidateBroker candidateBroker = new CandidateBroker(candidate,
-                                                            resource(),
-                                                            replicasToSwapWith,
-                                                            false,
-                                                            excludedBrokersForLeadership,
-                                                            excludedBrokersForReplicaMove);
-      candidateBrokerPQ.add(candidateBroker);
+      candidateReplicaSortName = sortedCandidateReplicas(candidate,
+                                                         excludedTopics,
+                                                         minSourceReplicaLoad,
+                                                         false,
+                                                         swapWithFollowersOnly,
+                                                         resource() == Resource.NW_OUT,
+                                                         moveImmigrantsOnly);
+      candidateBrokerPQ.add(candidate);
     }
 
     while (!candidateBrokerPQ.isEmpty()) {
@@ -705,40 +645,41 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
         LOG.debug("Swap load in timeout for broker {}.", broker.id());
         break;
       }
-      CandidateBroker cb = candidateBrokerPQ.poll();
-      SortedSet<Replica> candidateReplicasToSwapWith = cb.replicas();
+      Broker cb = candidateBrokerPQ.poll();
 
       Replica swappedInReplica = null;
-      Replica swappedOutReplica = null;
       for (Replica sourceReplica : sourceReplicas) {
-        if (shouldExclude(sourceReplica, excludedTopics)) {
-          continue;
-        }
-        // It does not make sense to swap replicas without utilization from a live broker.
-        double sourceReplicaUtilization = sourceReplica.load().expectedUtilizationFor(resource());
-        if (sourceReplicaUtilization == 0.0) {
-          break;
-        }
         // Try swapping the source with the candidate replicas. Get the swapped in replica if successful, null otherwise.
-        Replica swappedIn = maybeApplySwapAction(clusterModel, sourceReplica, cb, optimizedGoals);
+        SortedSet<Replica> candidateReplicas = cb.trackedSortedReplicas(candidateReplicaSortName).sortedReplicas(false);
+        Replica swappedIn = maybeApplySwapAction(clusterModel,
+                                                 sourceReplica,
+                                                 candidateReplicas,
+                                                 optimizedGoals,
+                                                 optimizationOptions);
         if (swappedIn != null) {
           if (isLoadAboveBalanceLowerLimit(broker)) {
             // Successfully balanced this broker by swapping in.
+            clusterModel.clearSortedReplicas();
             return false;
           }
           // Add swapped in/out replica for updating the list of replicas in source broker.
           swappedInReplica = swappedIn;
-          swappedOutReplica = sourceReplica;
           break;
         } else if (remainingPerBrokerSwapTimeMs(swapStartTimeMs) <= 0) {
           LOG.debug("Swap load in timeout for source replica {}.", sourceReplica);
+          clusterModel.clearSortedReplicas();
           return true;
         }
       }
 
-      swapUpdate(swappedInReplica, swappedOutReplica, sourceReplicas, candidateReplicasToSwapWith, candidateBrokerPQ, cb);
+      if (swappedInReplica != null) {
+        sourceReplicas = broker.trackedSortedReplicas(sourceReplicaSortName).sortedReplicas(false);
+        // The broker is still considered as an eligible candidate replica, because the swap was successful -- i.e. there
+        // might be other potential candidate replicas on it to swap with.
+        candidateBrokerPQ.add(cb);
+      }
     }
-
+    clusterModel.clearSortedReplicas();
     return true;
   }
 
@@ -758,28 +699,22 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     }
 
     // Get the replicas to rebalance.
-    List<Replica> replicasToMove;
-    if (actionType == LEADERSHIP_MOVEMENT) {
-      // Only take leader replicas to move leaders.
-      replicasToMove = new ArrayList<>(broker.leaderReplicas());
-      replicasToMove.sort((r1, r2) -> Double.compare(r2.load().expectedUtilizationFor(resource()),
-                                                     r1.load().expectedUtilizationFor(resource())));
-    } else {
-      // Take all replicas for replica movements.
-      replicasToMove = broker.trackedSortedReplicas(sortName()).reverselySortedReplicas();
-      // If cluster has offline replicas, but this broker is alive, then limit moving replica to offline and immigrant replicas.
-      if (!clusterModel.selfHealingEligibleReplicas().isEmpty() && broker.isAlive()) {
-        replicasToMove = replicasToMove.stream()
-                                       .filter(r -> broker.currentOfflineReplicas().contains(r) || broker.immigrantReplicas().contains(r))
-                                       .collect(Collectors.toList());
-      }
-    }
+    new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectLeaders(),
+                                                     actionType == LEADERSHIP_MOVEMENT)
+                              .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
+                                                     optimizationOptions.onlyMoveImmigrantReplicas())
+                              .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrantOrOfflineReplicas(),
+                                                     !clusterModel.selfHealingEligibleReplicas().isEmpty() && broker.isAlive())
+                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
+                              .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas())
+                              .maybeAddPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants(),
+                                                    !optimizationOptions.onlyMoveImmigrantReplicas())
+                              .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(resource().name()))
+                              .trackSortedReplicasFor(replicaSortName(this, true, actionType == LEADERSHIP_MOVEMENT), broker);
+    SortedSet<Replica> replicasToMove = broker.trackedSortedReplicas(replicaSortName(this, true, actionType == LEADERSHIP_MOVEMENT)).sortedReplicas(true);
 
     // Now let's move things around.
     for (Replica replica : replicasToMove) {
-      if (shouldExclude(replica, excludedTopics)) {
-        continue;
-      }
       // It does not make sense to move an online replica without utilization from a live broker.
       if (replica.load().expectedUtilizationFor(resource()) == 0.0 && !replica.isCurrentOffline()) {
         break;
@@ -803,6 +738,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       // Only check if we successfully moved something.
       if (b != null) {
         if (isLoadUnderBalanceUpperLimit(broker) && !(_fixOfflineReplicasOnly && !broker.currentOfflineReplicas().isEmpty())) {
+          broker.clearSortedReplicas();
           return false;
         }
         // Remove and reinsert the broker so the order is correct.
@@ -815,6 +751,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     // If all the replicas has been moved away from the broker and we still reach here, that means the broker
     // capacity is negative, i.e. the broker is dead. So as long as there is no replicas on the broker anymore
     // we consider it as not over limit.
+    broker.clearSortedReplicas();
     return !broker.replicas().isEmpty();
   }
 
@@ -1018,10 +955,6 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                : _balancingConstraint.resourceBalancePercentage(resource());
 
     return (balancePercentage - 1) * BALANCE_MARGIN;
-  }
-
-  private String sortName() {
-    return name() + "-" + resource().name() + "-ALL";
   }
 
   private class ResourceDistributionGoalStatsComparator implements ClusterModelStatsComparator {

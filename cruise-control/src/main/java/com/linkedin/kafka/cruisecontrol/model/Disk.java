@@ -127,8 +127,8 @@ public class Disk implements Comparable<Disk> {
 
   /**
    * Add replica load to the disk. This is used in cluster model initialization. When first adding replica to disk in
-   * {@link ClusterModel#createReplica(String, int, TopicPartition, int, boolean, boolean, String)}, the replica is load
-   * is not initiated, therefore later in
+   * {@link ClusterModel#createReplica(String, int, TopicPartition, int, boolean, boolean, String, boolean)}, the load of
+   * disk is not initiated, therefore later in
    * {@link ClusterModel#setReplicaLoad(String, int, TopicPartition, AggregatedMetricValues, List)}, disk needs to refresh
    * its utilization with initiated replica load.
    *
@@ -153,26 +153,26 @@ public class Disk implements Comparable<Disk> {
   }
 
   /**
-   * Track the sorted replicas using the given score function. The sort first uses the priority function to
-   * sort the replicas, then use the score function to sort the replicas. The priority function is useful
-   * to priorities a particular type of replicas, e.g leader replicas, immigrant replicas, etc.
+   * Track the sorted replicas using the given selection/priority/score functions.
+   * Selection functions determine whether a replica should be included or not, only replica satisfies all selection functions
+   * will be included.
+   * Then sort replicas first with priority functions, then with score function (i.e. priority functions are first applied one by one
+   * until two replicas are of different priority regards to the current priority function; if all priority are applied and the
+   * replicas are unable to be sorted, the score function will be used and replicas will be sorted in ascending order of score).
+   * The priority functions are useful to priorities particular types of replicas, e.g leader replicas, immigrant replicas, etc.
    *
    * @param sortName the name of the tracked sorted replicas.
-   * @param selectionFunc the selection function to decide which replicas to include.
-   * @param priorityFunc the priority function to sort replicas.
-   * @param scoreFunc the score function to sort replicas.
+   * @param selectionFuncs A set of selection functions to decide which replica to include in the sort. If it is {@code null}
+   *                      or empty, all the replicas are to be included.
+   * @param priorityFuncs A list of priority functions to sort the replicas.
+   * @param scoreFunc the score function to sort the replicas with the same priority, replicas are sorted in ascending
+   *                  order of score.
    */
-  public void trackSortedReplicas(String sortName,
-                                  Function<Replica, Boolean> selectionFunc,
-                                  Function<Replica, Integer> priorityFunc,
+  void trackSortedReplicas(String sortName,
+                                  Set<Function<Replica, Boolean>> selectionFuncs,
+                                  List<Function<Replica, Integer>> priorityFuncs,
                                   Function<Replica, Double> scoreFunc) {
-    _sortedReplicas.putIfAbsent(sortName, new SortedReplicas(_broker, this, selectionFunc, priorityFunc, scoreFunc, true));
-  }
-
-  public void trackSortedReplicas(String sortName,
-                                  Function<Replica, Boolean> selectionFunc,
-                                  Function<Replica, Double> scoreFunc) {
-    _sortedReplicas.putIfAbsent(sortName, new SortedReplicas(_broker, this, selectionFunc, (r1) -> 0, scoreFunc, true));
+    _sortedReplicas.putIfAbsent(sortName, new SortedReplicas(_broker, this, selectionFuncs, priorityFuncs, scoreFunc, true));
   }
 
   /**
@@ -182,6 +182,13 @@ public class Disk implements Comparable<Disk> {
    */
   public void untrackSortedReplicas(String sortName) {
     _sortedReplicas.remove(sortName);
+  }
+
+  /**
+   * Clear all cached sorted replicas. This helps release memory.
+   */
+  public void clearSortedReplicas() {
+    _sortedReplicas.clear();
   }
 
   /**

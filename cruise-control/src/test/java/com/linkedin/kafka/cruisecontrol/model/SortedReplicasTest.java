@@ -6,10 +6,10 @@ package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
+import java.util.SortedSet;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
 
-import java.util.NavigableSet;
 import java.util.Random;
 import java.util.function.Function;
 
@@ -26,36 +26,39 @@ public class SortedReplicasTest {
 
   private static final Function<Replica, Boolean> SELECTION_FUNC = Replica::isLeader;
   private static final Function<Replica, Integer> PRIORITY_FUNC = r -> r.topicPartition().partition() % 5;
-  private static final Function<Replica, Double> SCORE_FUNC = r -> RANDOM.nextDouble();
+  private static final Function<Replica, Double> SCORE_FUNC = r -> r.hashCode() * 0.1;
 
   private static final int NUM_REPLICAS = 100;
 
   @Test
   public void testAddAndRemove() {
     Broker broker = generateBroker(NUM_REPLICAS);
-    broker.trackSortedReplicas(SORT_NAME, SELECTION_FUNC, PRIORITY_FUNC, SCORE_FUNC);
+    new SortedReplicasHelper().addSelectionFunc(SELECTION_FUNC)
+                              .addPriorityFunc(PRIORITY_FUNC)
+                              .setScoreFunc(SCORE_FUNC)
+                              .trackSortedReplicasFor(SORT_NAME, broker);
     SortedReplicas sr = broker.trackedSortedReplicas(SORT_NAME);
 
-    int numReplicas = sr.sortedReplicas().size();
+    int numReplicas = sr.sortedReplicas(false).size();
     Replica replica1 = new Replica(new TopicPartition(TOPIC0, 105), broker, false);
     sr.add(replica1);
     assertEquals("The selection function should have filtered out the replica",
-                 numReplicas, sr.sortedReplicas().size());
+                 numReplicas, sr.sortedReplicas(false).size());
 
     Replica replica2 = new Replica(new TopicPartition(TOPIC0, 103), broker, true);
     sr.add(replica2);
-    assertEquals("The replica should have been added.", numReplicas + 1, sr.sortedReplicas().size());
+    assertEquals("The replica should have been added.", numReplicas + 1, sr.sortedReplicas(false).size());
 
     verifySortedReplicas(sr);
 
     // Removing a none existing replica should not throw exception.
     sr.remove(replica1);
-    assertEquals(numReplicas + 1, sr.sortedReplicas().size());
+    assertEquals(numReplicas + 1, sr.sortedReplicas(false).size());
     verifySortedReplicas(sr);
 
     // Remove an existing replica
     sr.remove(replica2);
-    assertEquals(numReplicas, sr.sortedReplicas().size());
+    assertEquals(numReplicas, sr.sortedReplicas(false).size());
     verifySortedReplicas(sr);
   }
 
@@ -71,8 +74,8 @@ public class SortedReplicasTest {
     assertEquals("The replicas should be sorted lazily", 0, sr.numReplicas());
     sr.remove(replica);
     assertEquals("The replicas should be sorted lazily", 0, sr.numReplicas());
-    NavigableSet<ReplicaWrapper> sortedReplicaWrapperss = sr.sortedReplicaWrappers();
-    assertEquals("There should be ", NUM_REPLICAS, sortedReplicaWrapperss.size());
+    SortedSet<Replica> sortedReplicas = sr.sortedReplicas(false);
+    assertEquals("There should be ", NUM_REPLICAS, sortedReplicas.size());
     assertEquals("The replicas should now be sorted", NUM_REPLICAS, sr.numReplicas());
   }
 
@@ -83,18 +86,20 @@ public class SortedReplicasTest {
     SortedReplicas sr = broker.trackedSortedReplicas(SORT_NAME);
 
     double lastScore = Double.NEGATIVE_INFINITY;
-    for (ReplicaWrapper rw : sr.sortedReplicaWrappers()) {
-      assertTrue(rw.score() >= lastScore);
+    for (Replica r : sr.sortedReplicas(false)) {
+      assertTrue(SCORE_FUNC.apply(r) >= lastScore);
     }
   }
 
   @Test
   public void testPriorityFunction() {
     Broker broker = generateBroker(NUM_REPLICAS);
-    broker.trackSortedReplicas(SORT_NAME, null, PRIORITY_FUNC, SCORE_FUNC);
+    new SortedReplicasHelper().addPriorityFunc(PRIORITY_FUNC)
+                              .setScoreFunc(SCORE_FUNC)
+                              .trackSortedReplicasFor(SORT_NAME, broker);
     SortedReplicas sr = broker.trackedSortedReplicas(SORT_NAME);
 
-    assertEquals(NUM_REPLICAS, sr.sortedReplicas().size());
+    assertEquals(NUM_REPLICAS, sr.sortedReplicas(false).size());
 
     verifySortedReplicas(sr);
   }
@@ -102,10 +107,13 @@ public class SortedReplicasTest {
   @Test
   public void testSelectionFunction() {
     Broker broker = generateBroker(NUM_REPLICAS);
-    broker.trackSortedReplicas(SORT_NAME, SELECTION_FUNC, PRIORITY_FUNC, SCORE_FUNC);
+    new SortedReplicasHelper().addSelectionFunc(SELECTION_FUNC)
+                              .addPriorityFunc(PRIORITY_FUNC)
+                              .setScoreFunc(SCORE_FUNC)
+                              .trackSortedReplicasFor(SORT_NAME, broker);
     SortedReplicas sr = broker.trackedSortedReplicas(SORT_NAME);
 
-    assertEquals(broker.leaderReplicas().size(), sr.sortedReplicas().size());
+    assertEquals(broker.leaderReplicas().size(), sr.sortedReplicas(false).size());
 
     verifySortedReplicas(sr);
   }
@@ -114,28 +122,28 @@ public class SortedReplicasTest {
     int lastPriority = -1;
     double lastScore = Double.NEGATIVE_INFINITY;
     int totalNumPriorities = 0;
-    NavigableSet<ReplicaWrapper> sortedReplicas = sr.sortedReplicaWrappers();
-    for (ReplicaWrapper rw : sortedReplicas) {
+    SortedSet<Replica> sortedReplicas = sr.sortedReplicas(false);
+    for (Replica r : sortedReplicas) {
       // Check the selection correctness.
-      if (sr.selectionFunction() != null) {
-        assertTrue(SELECTION_FUNC.apply(rw.replica()));
+      if (sr.selectionFunctions() != null && !sr.selectionFunctions().isEmpty()) {
+        assertTrue(SELECTION_FUNC.apply(r));
       }
       // Check the prioritization correctness.
-      if (sr.priorityFunction() != null) {
-        int priority = PRIORITY_FUNC.apply(rw.replica());
+      if (sr.priorityFunctions() != null && !sr.priorityFunctions().isEmpty()) {
+        int priority = PRIORITY_FUNC.apply(r);
         assertTrue(lastPriority <= priority);
       }
       // Check the score sorting correctness.
-      if (sr.priorityFunction() != null && lastPriority < PRIORITY_FUNC.apply(rw.replica())) {
-        lastPriority = PRIORITY_FUNC.apply(rw.replica());
-        lastScore = rw.score();
+      if (sr.priorityFunctions() != null && !sr.priorityFunctions().isEmpty() && lastPriority < PRIORITY_FUNC.apply(r)) {
+        lastPriority = PRIORITY_FUNC.apply(r);
+        lastScore = SCORE_FUNC.apply(r);
         totalNumPriorities++;
       } else {
-        assertTrue(lastScore <= rw.score());
+        assertTrue(lastScore <= SCORE_FUNC.apply(r));
       }
     }
 
-    if (sr.priorityFunction() != null) {
+    if (sr.priorityFunctions() != null) {
       assertEquals(5, totalNumPriorities);
     }
   }
