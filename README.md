@@ -45,11 +45,10 @@ Cruise Control for Apache Kafka
     * Fix offline replicas
 
 ### Environment Requirements
-* The current `master` branch of Cruise Control is compatible with Apache Kafka `1.1` and `2.0.0` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.0.*`)
+* The current `master` branch of Cruise Control is compatible with Apache Kafka `1.1`, `2.0`, `2.1`, `2.2`, and `2.3` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.0.*`)
 * The `kafka_0_11_and_1_0` branch of Cruise Control is compatible with  Apache Kafka `0.11.0.0` and `1.0`(i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `0.1.*`)
 * `message.format.version` `0.10.0` and above is needed
 * The `master` and `kafka_0_11_and_1_0` branch compile with `Scala 2.11`
-* Support for Apache Kafka `2.1+` is in progress.
 
 ### Quick Start ###
 0. Get Cruise Control

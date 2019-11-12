@@ -30,18 +30,23 @@ import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import kafka.admin.RackAwareMode;
 import kafka.zk.AdminZkClient;
 import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.internals.ClusterResourceListeners;
+import org.apache.kafka.common.utils.LogContext;
 import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.METADATA_EXPIRY_MS;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.METADATA_REFRESH_BACKOFF;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -85,7 +90,10 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
   @Test
   public void testSimpleFetch() throws InterruptedException {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getLoadMonitorProperties());
-    Metadata metadata = new Metadata(10, 10, false);
+    Metadata metadata = new Metadata(METADATA_REFRESH_BACKOFF,
+                                     METADATA_EXPIRY_MS,
+                                     new LogContext(),
+                                     new ClusterResourceListeners());
     MetadataClient metadataClient = new MetadataClient(config, metadata, -1L, TIME);
     MockPartitionMetricSampleAggregator mockPartitionMetricSampleAggregator =
         new MockPartitionMetricSampleAggregator(config, metadata);
@@ -131,7 +139,10 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
   @Test
   public void testSamplingError() {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getLoadMonitorProperties());
-    Metadata metadata = new Metadata(10, 10, false);
+    Metadata metadata = new Metadata(METADATA_REFRESH_BACKOFF,
+                                     METADATA_EXPIRY_MS,
+                                     new LogContext(),
+                                     new ClusterResourceListeners());
     MetadataClient metadataClient = new MetadataClient(config, metadata, -1L, TIME);
     MockPartitionMetricSampleAggregator mockMetricSampleAggregator =
         new MockPartitionMetricSampleAggregator(config, metadata);
@@ -260,6 +271,10 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
       this._nanos += TimeUnit.NANOSECONDS.convert(ms, TimeUnit.MILLISECONDS);
     }
 
+    @Override
+    public void waitObject(Object obj, Supplier<Boolean> condition, long timeoutMs) throws InterruptedException {
+      // Noop
+    }
   }
 
   private static class MockPartitionMetricSampleAggregator extends KafkaPartitionMetricSampleAggregator {

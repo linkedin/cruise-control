@@ -8,7 +8,7 @@ import java.util
 import java.util.Properties
 
 import kafka.admin.PreferredReplicaLeaderElectionCommand
-import kafka.zk.{AdminZkClient, KafkaZkClient}
+import kafka.zk.{AdminZkClient, KafkaZkClient, ZkVersion}
 import org.apache.kafka.common.TopicPartition
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -88,7 +88,7 @@ object ExecutorUtils {
 
       // We do not use the ReassignPartitionsCommand here because we want to have incremental partition movement.
       if (newReplicaAssignment.nonEmpty)
-        kafkaZkClient.setOrCreatePartitionReassignment(newReplicaAssignment)
+        kafkaZkClient.setOrCreatePartitionReassignment(newReplicaAssignment, ZkVersion.MatchAnyVersion)
     }
   }
 

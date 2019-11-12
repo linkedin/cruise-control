@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.common;
 
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import java.net.InetSocketAddress;
@@ -11,12 +12,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.clients.ApiVersions;
+import org.apache.kafka.clients.ClientDnsLookup;
 import org.apache.kafka.clients.ClientUtils;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.clients.NetworkClient;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.metrics.Metrics;
 import org.apache.kafka.common.network.ChannelBuilder;
+import org.apache.kafka.common.requests.MetadataResponse;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,9 +44,16 @@ public class MetadataClient {
     _refreshMetadataTimeout = config.getLong(KafkaCruiseControlConfig.METADATA_MAX_AGE_CONFIG);
     _time = time;
     List<InetSocketAddress> addresses =
-        ClientUtils.parseAndValidateAddresses(config.getList(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG));
-    _metadata.update(Cluster.bootstrap(addresses), Collections.emptySet(), time.milliseconds());
-    ChannelBuilder channelBuilder = ClientUtils.createChannelBuilder(config);
+        ClientUtils.parseAndValidateAddresses(config.getList(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG),
+                                              ClientDnsLookup.DEFAULT);
+    Cluster bootstrapCluster = Cluster.bootstrap(addresses);
+    MetadataResponse metadataResponse = KafkaCruiseControlUtils.prepareMetadataResponse(bootstrapCluster.nodes(),
+                                                                                        bootstrapCluster.clusterResource().clusterId(),
+                                                                                        MetadataResponse.NO_CONTROLLER_ID,
+                                                                                        Collections.emptyList());
+
+    _metadata.update(KafkaCruiseControlUtils.REQUEST_VERSION_UPDATE, metadataResponse, time.milliseconds());
+    ChannelBuilder channelBuilder = ClientUtils.createChannelBuilder(config, time);
     NetworkClientProvider provider = config.getConfiguredInstance(KafkaCruiseControlConfig.NETWORK_CLIENT_PROVIDER_CLASS_CONFIG,
                                                                   NetworkClientProvider.class);
 
@@ -63,9 +73,6 @@ public class MetadataClient {
                                                   true,
                                                   new ApiVersions());
     _metadataTTL = metadataTTL;
-    // This is a super confusing interface in the Metadata. If we don't set this to false, the metadata.update()
-    // will remove all the topics that are not in the metadata interested topics list.
-    _metadata.addListener((cluster, unavailableTopics) -> _metadata.needMetadataForAllTopics(false));
   }
 
   /**
@@ -81,18 +88,16 @@ public class MetadataClient {
   public synchronized ClusterAndGeneration refreshMetadata(long timeout) {
     // Do not update metadata if the metadata has just been refreshed.
     if (_time.milliseconds() >= _metadata.lastSuccessfulUpdate() + _metadataTTL) {
-      // Cruise Control always fetch metadata for all the topics.
-      _metadata.needMetadataForAllTopics(true);
-      int version = _metadata.requestUpdate();
+      int updateVersion = _metadata.requestUpdate();
       long remaining = timeout;
       Cluster beforeUpdate = _metadata.fetch();
-      boolean isMetadataUpdated = _metadata.version() > version;
+      boolean isMetadataUpdated = _metadata.updateVersion() > updateVersion;
       while (!isMetadataUpdated && remaining > 0) {
         _metadata.requestUpdate();
         long start = _time.milliseconds();
         _networkClient.poll(remaining, start);
         remaining -= (_time.milliseconds() - start);
-        isMetadataUpdated = _metadata.version() > version;
+        isMetadataUpdated = _metadata.updateVersion() > updateVersion;
       }
       if (isMetadataUpdated) {
         if (LOG.isDebugEnabled()) {
@@ -103,7 +108,7 @@ public class MetadataClient {
         }
       } else {
         LOG.warn("Failed to update metadata in {}ms. Using old metadata with version {} and last successful update {}.",
-                 timeout, _metadata.version(), _metadata.lastSuccessfulUpdate());
+                 timeout, _metadata.updateVersion(), _metadata.lastSuccessfulUpdate());
       }
     }
     return new ClusterAndGeneration(_metadata.fetch(), _metadataGeneration.get());

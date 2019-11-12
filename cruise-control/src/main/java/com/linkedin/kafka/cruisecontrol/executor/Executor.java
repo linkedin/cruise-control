@@ -38,6 +38,8 @@ import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.internals.ClusterResourceListeners;
+import org.apache.kafka.common.utils.LogContext;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -168,7 +170,10 @@ public class Executor {
     _executionTaskManager = new ExecutionTaskManager(_adminClient, dropwizardMetricRegistry, time, config);
     _metadataClient = metadataClient != null ? metadataClient
                                              : new MetadataClient(config,
-                                                                  new Metadata(METADATA_REFRESH_BACKOFF, METADATA_EXPIRY_MS, false),
+                                                                  new Metadata(METADATA_REFRESH_BACKOFF,
+                                                                               METADATA_EXPIRY_MS,
+                                                                               new LogContext(),
+                                                                               new ClusterResourceListeners()),
                                                                   -1L,
                                                                   time);
     _defaultExecutionProgressCheckIntervalMs = config.getLong(KafkaCruiseControlConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);

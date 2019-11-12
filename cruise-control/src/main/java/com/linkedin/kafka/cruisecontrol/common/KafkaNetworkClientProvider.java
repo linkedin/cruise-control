@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.common;
 
 import org.apache.kafka.clients.ApiVersions;
+import org.apache.kafka.clients.ClientDnsLookup;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.clients.NetworkClient;
 import org.apache.kafka.common.metrics.Metrics;
@@ -38,7 +39,7 @@ public class KafkaNetworkClientProvider implements NetworkClientProvider {
                                            ApiVersions apiVersions) {
     return new NetworkClient(new Selector(connectionMaxIdleMS, metrics, time, metricGrpPrefix, channelBuilder, new LogContext()),
                              metadata, clientId, maxInFlightRequestsPerConnection, reconnectBackoffMs,
-                             reconnectBackoffMax, socketSendBuffer, socketReceiveBuffer, defaultRequestTimeoutMs, time,
-                             discoverBrokerVersions, apiVersions, new LogContext());
+                             reconnectBackoffMax, socketSendBuffer, socketReceiveBuffer, defaultRequestTimeoutMs,
+                             ClientDnsLookup.DEFAULT, time, discoverBrokerVersions, apiVersions, new LogContext());
   }
 }

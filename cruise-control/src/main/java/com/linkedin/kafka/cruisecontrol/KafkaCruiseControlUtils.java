@@ -24,13 +24,19 @@ import org.apache.kafka.clients.admin.DescribeLogDirsResult;
 import java.util.TimeZone;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.config.SaslConfigs;
+import org.apache.kafka.common.message.MetadataResponseData;
+import org.apache.kafka.common.record.RecordBatch;
+import org.apache.kafka.common.requests.AbstractResponse;
+import org.apache.kafka.common.requests.MetadataResponse;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.SystemTime;
+import scala.Option;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_HARD_GOAL_CHECK_PARAM;
 
@@ -52,6 +58,8 @@ public class KafkaCruiseControlUtils {
   private static final int HOUR_TO_MS = MIN_TO_MS * 60;
   private static final int DAY_TO_MS = HOUR_TO_MS * 24;
   public static final String OPERATION_LOGGER = "operationLogger";
+  // This will make MetaData.update() trigger a real metadata fetch.
+  public static final int REQUEST_VERSION_UPDATE = -1;
 
   private KafkaCruiseControlUtils() {
 
@@ -248,6 +256,8 @@ public class KafkaCruiseControlUtils {
 
   /**
    * Create an instance of KafkaZkClient with security disabled.
+   * Name of the underlying {@link kafka.zookeeper.ZooKeeperClient} instance is derived using the combination given
+   * metricGroup and metricType with a dash in between.
    *
    * @param connectString Comma separated host:port pairs, each corresponding to a zk server
    * @param metricGroup Metric group
@@ -256,8 +266,9 @@ public class KafkaCruiseControlUtils {
    * @return A new instance of KafkaZkClient
    */
   public static KafkaZkClient createKafkaZkClient(String connectString, String metricGroup, String metricType, boolean zkSecurityEnabled) {
+    String zooKeeperClientName = String.format("%s-%s", metricGroup, metricType);
     return KafkaZkClient.apply(connectString, zkSecurityEnabled, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
-        new SystemTime(), metricGroup, metricType);
+                               new SystemTime(), metricGroup, metricType, Option.apply(zooKeeperClientName));
   }
 
   /**
@@ -341,6 +352,57 @@ public class KafkaCruiseControlUtils {
     }
 
     return adminClientConfigs;
+  }
+
+  /**
+   * Generate a {@link MetadataResponseData} with the given information -- e.g. for creating bootstrap and test response.
+   *
+   * @param brokers Brokers in the cluster.
+   * @param clusterId Cluster Id.
+   * @param controllerId Controller Id.
+   * @param topicMetadataList Metadata list for the topics in the cluster.
+   * @return A {@link MetadataResponseData} with the given information.
+   */
+  public static MetadataResponse prepareMetadataResponse(List<Node> brokers,
+                                                         String clusterId,
+                                                         int controllerId,
+                                                         List<MetadataResponse.TopicMetadata> topicMetadataList) {
+    MetadataResponseData responseData = new MetadataResponseData();
+    responseData.setThrottleTimeMs(AbstractResponse.DEFAULT_THROTTLE_TIME);
+    brokers.forEach(broker -> responseData.brokers().add(
+        new MetadataResponseData.MetadataResponseBroker().setNodeId(broker.id())
+                                                         .setHost(broker.host())
+                                                         .setPort(broker.port())
+                                                         .setRack(broker.rack())));
+
+    responseData.setClusterId(clusterId);
+    responseData.setControllerId(controllerId);
+    responseData.setClusterAuthorizedOperations(MetadataResponse.AUTHORIZED_OPERATIONS_OMITTED);
+    topicMetadataList.forEach(topicMetadata -> responseData.topics().add(prepareMetadataResponseTopic(topicMetadata)));
+
+    return new MetadataResponse(responseData);
+  }
+
+  private static MetadataResponseData.MetadataResponseTopic prepareMetadataResponseTopic(MetadataResponse.TopicMetadata topicMetadata) {
+    MetadataResponseData.MetadataResponseTopic metadataResponseTopic = new MetadataResponseData.MetadataResponseTopic();
+    metadataResponseTopic.setErrorCode(topicMetadata.error().code())
+                         .setName(topicMetadata.topic())
+                         .setIsInternal(topicMetadata.isInternal())
+                         .setTopicAuthorizedOperations(topicMetadata.authorizedOperations());
+
+    for (MetadataResponse.PartitionMetadata partitionMetadata : topicMetadata.partitionMetadata()) {
+      metadataResponseTopic.partitions().add(
+          new MetadataResponseData.MetadataResponsePartition()
+              .setErrorCode(partitionMetadata.error().code())
+              .setPartitionIndex(partitionMetadata.partition())
+              .setLeaderId(partitionMetadata.leader() == null ? -1 : partitionMetadata.leader().id())
+              .setLeaderEpoch(partitionMetadata.leaderEpoch().orElse(RecordBatch.NO_PARTITION_LEADER_EPOCH))
+              .setReplicaNodes(partitionMetadata.replicas().stream().map(Node::id).collect(Collectors.toList()))
+              .setIsrNodes(partitionMetadata.isr().stream().map(Node::id).collect(Collectors.toList()))
+              .setOfflineReplicas(partitionMetadata.offlineReplicas().stream().map(Node::id).collect(Collectors.toList())));
+    }
+
+    return metadataResponseTopic;
   }
 
   private static void setPasswordConfigIfExists(KafkaCruiseControlConfig configs, Map<String, Object> props, String name) {
