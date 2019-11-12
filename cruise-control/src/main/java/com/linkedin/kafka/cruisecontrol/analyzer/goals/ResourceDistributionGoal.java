@@ -56,7 +56,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   private boolean _fixOfflineReplicasOnly;
   private double _balanceUpperThreshold;
   private double _balanceLowerThreshold;
-  private Comparator<Broker> _brokerComparator;
+  private final Comparator<Broker> _brokerComparator;
 
   /**
    * Constructor for Resource Distribution Goal.
