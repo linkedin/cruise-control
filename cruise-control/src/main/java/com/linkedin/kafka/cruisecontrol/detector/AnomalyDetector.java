@@ -17,7 +17,6 @@ import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
-import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.Collections;
 import java.util.HashMap;
@@ -62,7 +61,6 @@ public class AnomalyDetector {
   private final long _anomalyDetectionIntervalMs;
   private final LinkedBlockingDeque<Anomaly> _anomalies;
   private volatile boolean _shutdown;
-  private final LoadMonitor _loadMonitor;
   private final AnomalyDetectorState _anomalyDetectorState;
   private final List<String> _selfHealingGoals;
   private final ExecutorService _anomalyLoggerExecutor;
@@ -70,8 +68,7 @@ public class AnomalyDetector {
   private volatile long _numCheckedWithDelay;
   private final Object _shutdownLock;
 
-  public AnomalyDetector(LoadMonitor loadMonitor,
-                         KafkaCruiseControl kafkaCruiseControl,
+  public AnomalyDetector(KafkaCruiseControl kafkaCruiseControl,
                          Time time,
                          MetricRegistry dropwizardMetricRegistry) {
     _anomalies = new LinkedBlockingDeque<>();
@@ -80,14 +77,13 @@ public class AnomalyDetector {
     _anomalyDetectionIntervalMs = config.getLong(KafkaCruiseControlConfig.ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
     _anomalyNotifier = config.getConfiguredInstance(KafkaCruiseControlConfig.ANOMALY_NOTIFIER_CLASS_CONFIG,
                                                     AnomalyNotifier.class);
-    _loadMonitor = loadMonitor;
     _kafkaCruiseControl = kafkaCruiseControl;
     _selfHealingGoals = getSelfHealingGoalNames(config);
     sanityCheckGoals(_selfHealingGoals, false, config);
-    _goalViolationDetector = new GoalViolationDetector(_loadMonitor, _anomalies, time, _kafkaCruiseControl);
-    _brokerFailureDetector = new BrokerFailureDetector(_loadMonitor, _anomalies, time, _kafkaCruiseControl);
-    _metricAnomalyDetector = new MetricAnomalyDetector(_loadMonitor, _anomalies, _kafkaCruiseControl);
-    _diskFailureDetector = new DiskFailureDetector(_loadMonitor, _adminClient, _anomalies, time, _kafkaCruiseControl, _selfHealingGoals);
+    _goalViolationDetector = new GoalViolationDetector(_anomalies, _kafkaCruiseControl);
+    _brokerFailureDetector = new BrokerFailureDetector(_anomalies, _kafkaCruiseControl);
+    _metricAnomalyDetector = new MetricAnomalyDetector(_anomalies, _kafkaCruiseControl);
+    _diskFailureDetector = new DiskFailureDetector(_adminClient, _anomalies, _kafkaCruiseControl, _selfHealingGoals);
     _detectorScheduler = Executors.newScheduledThreadPool(NUM_ANOMALY_DETECTION_THREADS,
                                                           new KafkaCruiseControlThreadFactory(METRIC_REGISTRY_NAME, false, LOG));
     _shutdown = false;
@@ -118,8 +114,7 @@ public class AnomalyDetector {
                   BrokerFailureDetector brokerFailureDetector,
                   MetricAnomalyDetector metricAnomalyDetector,
                   DiskFailureDetector diskFailureDetector,
-                  ScheduledExecutorService detectorScheduler,
-                  LoadMonitor loadMonitor) {
+                  ScheduledExecutorService detectorScheduler) {
     _anomalies = anomalies;
     _adminClient = adminClient;
     _anomalyDetectionIntervalMs = anomalyDetectionIntervalMs;
@@ -131,7 +126,6 @@ public class AnomalyDetector {
     _kafkaCruiseControl = kafkaCruiseControl;
     _detectorScheduler = detectorScheduler;
     _shutdown = false;
-    _loadMonitor = loadMonitor;
     _selfHealingGoals = Collections.emptyList();
     _anomalyLoggerExecutor =
         Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("AnomalyLogger", true, null));
@@ -379,7 +373,7 @@ public class AnomalyDetector {
      * @return true if ready for a fix, false otherwise.
      */
     private boolean isAnomalyInProgressReadyToFix(AnomalyType anomalyType) {
-      LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
+      LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _kafkaCruiseControl.getLoadMonitorTaskRunnerState();
 
       // Fixing anomalies is possible only when (1) the state is not in and unavailable state ( e.g. loading or
       // bootstrapping) and (2) the completeness requirements are met for all goals.

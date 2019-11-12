@@ -106,7 +106,7 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
                                  metadataClient, METRIC_DEF, TIME, dropwizardMetricRegistry, null, sampler);
     LoadMonitorTaskRunner loadMonitorTaskRunner =
         new LoadMonitorTaskRunner(config, fetcherManager, mockPartitionMetricSampleAggregator,
-                                  mockBrokerMetricSampleAggregator, metadataClient, TIME);
+                                  mockBrokerMetricSampleAggregator, metadataClient, null, TIME);
     while (metadata.fetch().topics().size() < NUM_TOPICS) {
       Thread.sleep(10);
       metadataClient.refreshMetadata();
@@ -155,7 +155,7 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
                                  METRIC_DEF, TIME, dropwizardMetricRegistry, null, sampler);
     LoadMonitorTaskRunner loadMonitorTaskRunner =
         new LoadMonitorTaskRunner(config, fetcherManager, mockMetricSampleAggregator, mockBrokerMetricSampleAggregator,
-                                  metadataClient, TIME);
+                                  metadataClient, null, TIME);
     while (metadata.fetch().topics().size() < 100) {
       metadataClient.refreshMetadata();
     }

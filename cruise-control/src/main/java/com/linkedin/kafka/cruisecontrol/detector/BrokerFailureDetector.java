@@ -8,7 +8,6 @@ import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -25,7 +24,6 @@ import org.I0Itec.zkclient.ZkConnection;
 import org.I0Itec.zkclient.exception.ZkMarshallingError;
 import org.I0Itec.zkclient.exception.ZkNodeExistsException;
 import org.I0Itec.zkclient.serialize.ZkSerializer;
-import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.collection.JavaConversions;
@@ -50,13 +48,9 @@ public class BrokerFailureDetector {
   private final ZkClient _zkClient;
   private final KafkaZkClient _kafkaZkClient;
   private final Map<Integer, Long> _failedBrokers;
-  private final LoadMonitor _loadMonitor;
   private final Queue<Anomaly> _anomalies;
-  private final Time _time;
 
-  public BrokerFailureDetector(LoadMonitor loadMonitor,
-                               Queue<Anomaly> anomalies,
-                               Time time,
+  public BrokerFailureDetector(Queue<Anomaly> anomalies,
                                KafkaCruiseControl kafkaCruiseControl) {
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
     String zkUrl = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
@@ -68,9 +62,7 @@ public class BrokerFailureDetector {
                                                                  zkSecurityEnabled);
     _failedBrokers = new HashMap<>();
     _failedBrokersZkPath = config.getString(KafkaCruiseControlConfig.FAILED_BROKERS_ZK_PATH_CONFIG);
-    _loadMonitor = loadMonitor;
     _anomalies = anomalies;
-    _time = time;
     _kafkaCruiseControl = kafkaCruiseControl;
   }
 
@@ -129,14 +121,14 @@ public class BrokerFailureDetector {
   private boolean updateFailedBrokers(Set<Integer> aliveBrokers) {
     // We get the complete broker list from metadata. i.e. any broker that still has a partition assigned to it is
     // included in the broker list. If we cannot update metadata in 60 seconds, skip
-    Set<Integer> currentFailedBrokers = _loadMonitor.brokersWithReplicas(MAX_METADATA_WAIT_MS);
+    Set<Integer> currentFailedBrokers = _kafkaCruiseControl.loadMonitor().brokersWithReplicas(MAX_METADATA_WAIT_MS);
     currentFailedBrokers.removeAll(aliveBrokers);
     LOG.debug("Alive brokers: {}, failed brokers: {}", aliveBrokers, currentFailedBrokers);
     // Remove broker that is no longer failed.
     boolean updated = _failedBrokers.entrySet().removeIf(entry -> !currentFailedBrokers.contains(entry.getKey()));
     // Add broker that has just failed.
     for (Integer brokerId : currentFailedBrokers) {
-      if (_failedBrokers.putIfAbsent(brokerId, _time.milliseconds()) == null) {
+      if (_failedBrokers.putIfAbsent(brokerId, _kafkaCruiseControl.timeMs()) == null) {
         updated = true;
       }
     }

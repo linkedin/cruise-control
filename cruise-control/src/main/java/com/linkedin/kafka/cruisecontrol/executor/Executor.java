@@ -725,7 +725,6 @@ public class Executor {
         // Pause the metric sampling to avoid the loss of accuracy during execution.
         while (true) {
           try {
-            // Ensure that the temporary states in the load monitor are explicitly handled -- e.g. SAMPLING.
             _loadMonitor.pauseMetricSampling(String.format("Paused-By-Cruise-Control-Before-Starting-Execution (Date: %s)", currentUtcDate()));
             break;
           } catch (IllegalStateException e) {
@@ -806,7 +805,6 @@ public class Executor {
         } else {
           _anomalyDetector.markSelfHealingFinished(_uuid);
         }
-        _loadMonitor.resumeMetricSampling(String.format("Resumed-By-Cruise-Control-After-Completed-Execution (Date: %s)", currentUtcDate()));
 
         if (_executorState.state() == STOPPING_EXECUTION) {
           notifyExecutionFinished(String.format("Task [%s] execution is stopped by %s.", _uuid, _executionStoppedByUser.get() ? "user" : "cruise control"),
@@ -842,6 +840,7 @@ public class Executor {
       _hasOngoingExecution = false;
       _stopSignal.set(NO_STOP_EXECUTION);
       _executionStoppedByUser.set(false);
+      _loadMonitor.resumeMetricSampling(String.format("Resumed-By-Cruise-Control-After-Completed-Execution (Date: %s)", currentUtcDate()));
     }
 
     private void updateOngoingExecutionState() {

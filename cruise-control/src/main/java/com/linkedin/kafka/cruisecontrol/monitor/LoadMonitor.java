@@ -24,6 +24,7 @@ import com.linkedin.kafka.cruisecontrol.async.progress.GeneratingClusterModel;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.async.progress.WaitingForClusterModel;
 import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
+import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionEntity;
@@ -109,11 +110,13 @@ public class LoadMonitor {
    *
    * @param config The load monitor configuration.
    * @param time   The time object.
+   * @param executor The proposal executor.
    * @param dropwizardMetricRegistry The sensor registry for cruise control
    * @param metricDef The metric definitions.
    */
   public LoadMonitor(KafkaCruiseControlConfig config,
                      Time time,
+                     Executor executor,
                      MetricRegistry dropwizardMetricRegistry,
                      MetricDef metricDef) {
     this(config,
@@ -126,6 +129,7 @@ public class LoadMonitor {
                             time),
          KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config)),
          time,
+         executor,
          dropwizardMetricRegistry,
          metricDef);
   }
@@ -137,6 +141,7 @@ public class LoadMonitor {
               MetadataClient metadataClient,
               AdminClient adminClient,
               Time time,
+              Executor executor,
               MetricRegistry dropwizardMetricRegistry,
               MetricDef metricDef) {
     _config = config;
@@ -166,8 +171,8 @@ public class LoadMonitor {
         MonitorUtils.combineLoadRequirementOptions(AnalyzerUtils.getGoalsByPriority(config));
 
     _loadMonitorTaskRunner =
-        new LoadMonitorTaskRunner(config, _partitionMetricSampleAggregator, _brokerMetricSampleAggregator,
-                                  _metadataClient, metricDef, time, dropwizardMetricRegistry, _brokerCapacityConfigResolver);
+        new LoadMonitorTaskRunner(config, _partitionMetricSampleAggregator, _brokerMetricSampleAggregator, _metadataClient,
+                                  metricDef, time, dropwizardMetricRegistry, _brokerCapacityConfigResolver, executor);
     _clusterModelCreationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("LoadMonitor",
                                                                                     "cluster-model-creation-timer"));
     _loadMonitorExecutor = Executors.newScheduledThreadPool(2,

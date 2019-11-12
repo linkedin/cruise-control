@@ -9,7 +9,6 @@ import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyFinder;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.Collections;
@@ -28,16 +27,14 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAF
  */
 public class MetricAnomalyDetector implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(MetricAnomalyDetector.class);
-  private final LoadMonitor _loadMonitor;
   private final Queue<Anomaly> _anomalies;
   private final List<MetricAnomalyFinder> _kafkaMetricAnomalyFinders;
+  private final KafkaCruiseControl _kafkaCruiseControl;
 
-  public MetricAnomalyDetector(LoadMonitor loadMonitor,
-                               Queue<Anomaly> anomalies,
+  public MetricAnomalyDetector(Queue<Anomaly> anomalies,
                                KafkaCruiseControl kafkaCruiseControl) {
-    _loadMonitor = loadMonitor;
     _anomalies = anomalies;
-
+    _kafkaCruiseControl = kafkaCruiseControl;
     Map<String, Object> configWithCruiseControlObject = Collections.singletonMap(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG,
                                                                                  kafkaCruiseControl);
     _kafkaMetricAnomalyFinders = kafkaCruiseControl.config().getConfiguredInstances(
@@ -51,15 +48,15 @@ public class MetricAnomalyDetector implements Runnable {
   public void run() {
     try {
       // Check if the load monitor is ready.
-      LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
+      LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _kafkaCruiseControl.getLoadMonitorTaskRunnerState();
       if (!ViolationUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
         LOG.info("Skipping metric anomaly detection because load monitor is in {} state.", loadMonitorTaskRunnerState);
         return;
       }
 
       // Get the historical and current values of broker metrics.
-      Map<BrokerEntity, ValuesAndExtrapolations> metricsHistoryByBroker = _loadMonitor.brokerMetrics().valuesAndExtrapolations();
-      Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker = _loadMonitor.currentBrokerMetricValues();
+      Map<BrokerEntity, ValuesAndExtrapolations> metricsHistoryByBroker = _kafkaCruiseControl.loadMonitor().brokerMetrics().valuesAndExtrapolations();
+      Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker = _kafkaCruiseControl.loadMonitor().currentBrokerMetricValues();
 
       for (MetricAnomalyFinder<BrokerEntity> kafkaMetricAnomalyFinder : _kafkaMetricAnomalyFinders) {
         _anomalies.addAll(kafkaMetricAnomalyFinder.metricAnomalies(metricsHistoryByBroker, currentMetricsByBroker));
