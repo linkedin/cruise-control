@@ -122,6 +122,7 @@ public class ParameterUtils {
   private static final String DELIMITER_BETWEEN_BROKER_ID_AND_LOGDIR = "-";
   public static final long DEFAULT_START_TIME_FOR_CLUSTER_MODEL = -1L;
   public static final String TOPIC_BY_REPLICATION_FACTOR = "topic_by_replication_factor";
+  public static final String NO_REASON_PROVIDED = "No reason provided";
 
   public static final String STOP_PROPOSAL_PARAMETER_OBJECT_CONFIG = "stop.proposal.parameter.object";
   public static final String BOOTSTRAP_PARAMETER_OBJECT_CONFIG = "bootstrap.parameter.object";
@@ -445,14 +446,17 @@ public class ParameterUtils {
     return parameterString == null ? DEFAULT_PARTITION_LOAD_RESOURCE : request.getParameter(parameterString);
   }
 
-  public static String reason(HttpServletRequest request) {
+  public static String reason(HttpServletRequest request, boolean reasonRequired) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), REASON_PARAM);
     if (parameterString != null && parameterString.length() > MAX_REASON_LENGTH) {
       throw new UserRequestException(String.format("Reason cannot be longer than %d characters (attempted: %d).",
                                                    MAX_REASON_LENGTH, parameterString.length()));
     }
     String ip = getClientIpAddress(request);
-    return String.format("%s (Client: %s, Date: %s)", parameterString == null ? "No reason provided"
+    if (parameterString == null && reasonRequired) {
+      throw new UserRequestException("Reason is missing in request.");
+    }
+    return String.format("%s (Client: %s, Date: %s)", parameterString == null ? NO_REASON_PROVIDED
                                                                               : request.getParameter(parameterString), ip, currentUtcDate());
   }
 

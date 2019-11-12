@@ -51,6 +51,7 @@ import org.apache.kafka.common.config.ConfigException;
 
 import static com.linkedin.kafka.cruisecontrol.config.CruiseControlParametersConfig.*;
 import static com.linkedin.kafka.cruisecontrol.config.CruiseControlRequestConfigs.*;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
 import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
 import static org.apache.kafka.common.config.ConfigDef.Range.between;
 
@@ -935,6 +936,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "(verification) purgatory.";
 
   /**
+   * <code>request.reason.required</code>
+   */
+  public static final String REQUEST_REASON_REQUIRED_CONFIG = "request.reason.required";
+  private static final String REQUEST_REASON_REQUIRED_DOC = "Require specifying reason via " + REASON_PARAM + " parameter "
+      + "for non-dryrun rebalance/add_broker/remove_broker/demote_broker/fix_offline_replicas/topic_configuration request.";
+
+  /**
    * <code>logdir.response.timeout.ms</code>
    */
   public static final String LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG = "logdir.response.timeout.ms";
@@ -1119,6 +1127,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 25,
                 atLeast(1),
                 ConfigDef.Importance.MEDIUM, TWO_STEP_PURGATORY_MAX_REQUESTS_DOC)
+        .define(REQUEST_REASON_REQUIRED_CONFIG,
+                ConfigDef.Type.BOOLEAN,
+                false,
+                ConfigDef.Importance.MEDIUM,
+                REQUEST_REASON_REQUIRED_DOC)
         .define(MAX_CACHED_COMPLETED_KAFKA_MONITOR_USER_TASKS_CONFIG,
                 ConfigDef.Type.INT,
                 null,

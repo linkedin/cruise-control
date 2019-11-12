@@ -23,6 +23,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICA_MOVEMENT_STRATEGIES_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICATION_THROTTLE_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REVIEW_ID_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.BROKER_ID_AND_LOGDIRS_PARAM;
 
 
@@ -42,7 +43,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *    &amp;skip_urp_demotion=[true/false]&amp;exclude_follower_demotion=[true/false]&amp;verbose=[true/false]
  *    &amp;exclude_recently_demoted_brokers=[true/false]&amp;replica_movement_strategies=[strategy1,strategy2...]
  *    &amp;brokerid_and_logdirs=[broker_id1-logdir1,broker_id2-logdir2]&amp;review_id=[id]
- *    &amp;replication_throttle=[bytes_per_second]
+ *    &amp;replication_throttle=[bytes_per_second]&amp;reason=[reason-for-request]
  *    &amp;execution_progress_check_interval_ms=[interval_in_ms]
  * </pre>
  */
@@ -51,6 +52,7 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
   static {
     SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     validParameterNames.add(DRY_RUN_PARAM);
+    validParameterNames.add(REASON_PARAM);
     validParameterNames.add(BROKER_ID_PARAM);
     validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
     validParameterNames.add(EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
@@ -73,6 +75,7 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
   protected Long _replicationThrottle;
   protected Integer _reviewId;
   protected Map<Integer, Set<String>> _logdirByBrokerId;
+  protected String _reason;
 
   public DemoteBrokerParameters() {
     super();
@@ -93,6 +96,8 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
     boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
     _logdirByBrokerId = ParameterUtils.brokerIdAndLogdirs(_request);
+    boolean requestReasonRequired = _config.getBoolean(KafkaCruiseControlConfig.REQUEST_REASON_REQUIRED_CONFIG);
+    _reason = ParameterUtils.reason(_request, requestReasonRequired && !_dryRun);
   }
 
   @Override
@@ -138,6 +143,10 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
 
   public Long replicationThrottle() {
     return _replicationThrottle;
+  }
+
+  public String reason() {
+    return _reason;
   }
 
   @Override

@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.FixOfflineReplicasRunnable;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
@@ -14,12 +13,12 @@ import java.util.Map;
 import java.util.UUID;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.DISK_FAILURE;
 
 /**
  * The disk failures that have been detected.
  */
 public class DiskFailures extends KafkaAnomaly {
-  private static final String ID_PREFIX = AnomalyType.DISK_FAILURE.toString();
   private final Map<Integer, Map<String, Long>> _failedDisksByBroker;
   private final String _anomalyId;
   private final FixOfflineReplicasRunnable _fixOfflineReplicasRunnable;
@@ -34,10 +33,11 @@ public class DiskFailures extends KafkaAnomaly {
       throw new IllegalArgumentException("Unable to create disk failure anomaly with no failed disk specified.");
     }
     _failedDisksByBroker = failedDisksByBroker;
-    _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
+    _anomalyId = UUID.randomUUID().toString();
     _optimizationResult = null;
     _fixOfflineReplicasRunnable = new FixOfflineReplicasRunnable(kafkaCruiseControl, selfHealingGoals, allowCapacityEstimation,
-                                                                 excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, _anomalyId);
+                                                                 excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, _anomalyId,
+                                                                 String.format("Self healing for %s: %s", DISK_FAILURE, this));
   }
 
   /**

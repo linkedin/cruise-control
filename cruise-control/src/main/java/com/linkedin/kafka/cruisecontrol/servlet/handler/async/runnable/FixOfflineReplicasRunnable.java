@@ -52,10 +52,12 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
   protected final boolean _skipHardGoalCheck;
   protected final Pattern _excludedTopics;
   protected final String _uuid;
+  protected final String _reason;
   protected final boolean _excludeRecentlyDemotedBrokers;
   protected final boolean _excludeRecentlyRemovedBrokers;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Long _replicationThrottle;
+  protected final boolean _isTriggeredByUserRequest;
 
   /**
    * Constructor to be used for creating a runnable for self-healing.
@@ -65,7 +67,8 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
                                     boolean allowCapacityEstimation,
                                     boolean excludeRecentlyDemotedBrokers,
                                     boolean excludeRecentlyRemovedBrokers,
-                                    String anomalyId) {
+                                    String anomalyId,
+                                    String reason) {
     super(kafkaCruiseControl, new OperationFuture("Disk Failure Self-Healing"));
     _dryRun = SELF_HEALING_DRYRUN;
     _goals = selfHealingGoals;
@@ -77,10 +80,12 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
     _skipHardGoalCheck = SELF_HEALING_SKIP_HARD_GOAL_CHECK;
     _excludedTopics = SELF_HEALING_EXCLUDED_TOPICS;
     _uuid = anomalyId;
+    _reason = reason;
     _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
     _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
     _replicationThrottle = kafkaCruiseControl.config().getLong(DEFAULT_REPLICATION_THROTTLE_CONFIG);
+    _isTriggeredByUserRequest = false;
   }
 
   public FixOfflineReplicasRunnable(KafkaCruiseControl kafkaCruiseControl,
@@ -98,10 +103,12 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
     _skipHardGoalCheck = parameters.skipHardGoalCheck();
     _excludedTopics = parameters.excludedTopics();
     _uuid = uuid;
+    _reason = parameters.reason();
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
     _replicationThrottle = parameters.replicationThrottle();
+    _isTriggeredByUserRequest = true;
   }
 
   @Override
@@ -161,7 +168,9 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
                                              _executionProgressCheckIntervalMs,
                                              _replicaMovementStrategy,
                                              _replicationThrottle,
-                                             _uuid);
+                                             _isTriggeredByUserRequest,
+                                             _uuid,
+                                             _reason);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {

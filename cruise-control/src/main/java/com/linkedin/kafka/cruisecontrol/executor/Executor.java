@@ -11,7 +11,6 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
-import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
@@ -97,6 +96,7 @@ public class Executor {
   private volatile boolean _hasOngoingExecution;
   private volatile ExecutorState _executorState;
   private volatile String _uuid;
+  private volatile String _reason;
   private final ExecutorNotifier _executorNotifier;
 
   private AtomicInteger _numExecutionStopped;
@@ -191,6 +191,7 @@ public class Executor {
     _stopSignal = new AtomicInteger(NO_STOP_EXECUTION);
     _hasOngoingExecution = false;
     _uuid = null;
+    _reason = null;
     _executorNotifier = executorNotifier != null ? executorNotifier
                                                  : config.getConfiguredInstance(KafkaCruiseControlConfig.EXECUTOR_NOTIFIER_CLASS_CONFIG,
                                                                                 ExecutorNotifier.class);
@@ -370,7 +371,9 @@ public class Executor {
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
    *                            when executing a proposal (if null, no throttling is applied).
+   * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
+   * @param reason Reason of the execution.
    */
   public synchronized void executeProposals(Collection<ExecutionProposal> proposals,
                                             Set<Integer> unthrottledBrokers,
@@ -382,11 +385,13 @@ public class Executor {
                                             Long requestedExecutionProgressCheckIntervalMs,
                                             ReplicaMovementStrategy replicaMovementStrategy,
                                             Long replicationThrottle,
-                                            String uuid) {
+                                            boolean isTriggeredByUserRequest,
+                                            String uuid,
+                                            String reason) {
     initProposalExecution(proposals, unthrottledBrokers, loadMonitor, requestedInterBrokerPartitionMovementConcurrency,
                           requestedIntraBrokerPartitionMovementConcurrency, requestedLeadershipMovementConcurrency,
-                          requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid);
-    startExecution(loadMonitor, null, removedBrokers, replicationThrottle);
+                          requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid, reason);
+    startExecution(loadMonitor, null, removedBrokers, replicationThrottle, isTriggeredByUserRequest);
   }
 
   private synchronized void initProposalExecution(Collection<ExecutionProposal> proposals,
@@ -397,7 +402,8 @@ public class Executor {
                                                   Integer requestedLeadershipMovementConcurrency,
                                                   Long requestedExecutionProgressCheckIntervalMs,
                                                   ReplicaMovementStrategy replicaMovementStrategy,
-                                                  String uuid) {
+                                                  String uuid,
+                                                  String reason) {
     if (_hasOngoingExecution) {
       throw new IllegalStateException("Cannot execute new proposals while there is an ongoing execution.");
     }
@@ -416,6 +422,7 @@ public class Executor {
     setRequestedLeadershipMovementConcurrency(requestedLeadershipMovementConcurrency);
     setRequestedExecutionProgressCheckIntervalMs(requestedExecutionProgressCheckIntervalMs);
     _uuid = uuid;
+    _reason = reason;
   }
 
   /**
@@ -432,7 +439,9 @@ public class Executor {
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
    *                            while executing demotion proposals (if null, no throttling is applied).
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
+   * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
+   * @param reason Reason of the execution.
    */
   public synchronized void executeDemoteProposals(Collection<ExecutionProposal> proposals,
                                                   Collection<Integer> demotedBrokers,
@@ -442,10 +451,12 @@ public class Executor {
                                                   Long requestedExecutionProgressCheckIntervalMs,
                                                   ReplicaMovementStrategy replicaMovementStrategy,
                                                   Long replicationThrottle,
-                                                  String uuid) {
+                                                  boolean isTriggeredByUserRequest,
+                                                  String uuid,
+                                                  String reason) {
     initProposalExecution(proposals, demotedBrokers, loadMonitor, concurrentSwaps, 0, requestedLeadershipMovementConcurrency,
-                          requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid);
-    startExecution(loadMonitor, demotedBrokers, null, replicationThrottle);
+                          requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid, reason);
+    startExecution(loadMonitor, demotedBrokers, null, replicationThrottle, isTriggeredByUserRequest);
   }
 
   /**
@@ -518,11 +529,13 @@ public class Executor {
    * @param removedBrokers Brokers to be removed, null if no broker has been removed.
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
    *                            while moving partitions (if null, no throttling is applied).
+   * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    */
   private void startExecution(LoadMonitor loadMonitor,
                               Collection<Integer> demotedBrokers,
                               Collection<Integer> removedBrokers,
-                              Long replicationThrottle) {
+                              Long replicationThrottle,
+                              boolean isTriggeredByUserRequest) {
     _executionStoppedByUser.set(false);
     sanityCheckOngoingReplicaMovement();
     _hasOngoingExecution = true;
@@ -535,7 +548,7 @@ public class Executor {
       _numExecutionStartedInNonKafkaAssignerMode.incrementAndGet();
     }
     _proposalExecutor.submit(
-            new ProposalExecutionRunnable(loadMonitor, demotedBrokers, removedBrokers, replicationThrottle));
+            new ProposalExecutionRunnable(loadMonitor, demotedBrokers, removedBrokers, replicationThrottle, isTriggeredByUserRequest));
   }
 
   /**
@@ -546,6 +559,7 @@ public class Executor {
     if (hasOngoingPartitionReassignments()) {
       _executionTaskManager.clear();
       _uuid = null;
+      _reason = null;
       throw new IllegalStateException("There are ongoing inter-broker partition movements.");
     }
 
@@ -554,6 +568,7 @@ public class Executor {
                                             _adminClient, _config)) {
       _executionTaskManager.clear();
       _uuid = null;
+      _reason = null;
       throw new IllegalStateException("There are ongoing intra-broker partition movements.");
     }
   }
@@ -644,16 +659,16 @@ public class Executor {
     private Set<Integer> _recentlyDemotedBrokers;
     private Set<Integer> _recentlyRemovedBrokers;
     private final Long _replicationThrottle;
-    private final long _executionStartMs;
     private Throwable _executionException;
+    private boolean _isTriggeredByUserRequest;
 
     ProposalExecutionRunnable(LoadMonitor loadMonitor,
                               Collection<Integer> demotedBrokers,
                               Collection<Integer> removedBrokers,
-                              Long replicationThrottle) {
+                              Long replicationThrottle,
+                              boolean isTriggeredByUserRequest) {
       _loadMonitor = loadMonitor;
       _state = NO_TASK_IN_PROGRESS;
-      _executionStartMs = _time.milliseconds();
       _executionException = null;
 
       if (_userTaskManager == null) {
@@ -684,6 +699,7 @@ public class Executor {
       _recentlyDemotedBrokers = recentlyDemotedBrokers();
       _recentlyRemovedBrokers = recentlyRemovedBrokers();
       _replicationThrottle = replicationThrottle;
+      _isTriggeredByUserRequest = isTriggeredByUserRequest;
     }
 
     public void run() {
@@ -696,17 +712,15 @@ public class Executor {
      * Start the actual execution of the proposals in order: First move replicas, then transfer leadership.
      */
     private void execute() {
-      UserTaskManager.UserTaskInfo userTaskInfo;
+      UserTaskManager.UserTaskInfo userTaskInfo = null;
       // If the task is triggered from a user request, mark the task to be in-execution state in user task manager and
       // retrieve the associated user task information.
-      if (AnomalyType.cachedValues().stream().anyMatch(type -> _uuid.startsWith(type.toString()))) {
-        userTaskInfo = null;
-      } else {
+      if (_isTriggeredByUserRequest) {
         userTaskInfo = _userTaskManager.markTaskExecutionBegan(_uuid);
       }
       _state = STARTING_EXECUTION;
-      _executorState = ExecutorState.executionStarted(_uuid, _recentlyDemotedBrokers, _recentlyRemovedBrokers);
-      OPERATION_LOG.info("Task [{}] execution starts.", _uuid);
+      _executorState = ExecutorState.executionStarted(_uuid, _reason, _recentlyDemotedBrokers, _recentlyRemovedBrokers, _isTriggeredByUserRequest);
+      OPERATION_LOG.info("Task [{}] execution starts. The reason of execution is {}.", _uuid, _reason);
       try {
         // Pause the metric sampling to avoid the loss of accuracy during execution.
         while (true) {
@@ -731,8 +745,10 @@ public class Executor {
                                                              _executionTaskManager.intraBrokerPartitionMovementConcurrency(),
                                                              _executionTaskManager.leadershipMovementConcurrency(),
                                                              _uuid,
+                                                             _reason,
                                                              _recentlyDemotedBrokers,
-                                                             _recentlyRemovedBrokers);
+                                                             _recentlyRemovedBrokers,
+                                                             _isTriggeredByUserRequest);
           interBrokerMoveReplicas();
           updateOngoingExecutionState();
         }
@@ -748,8 +764,10 @@ public class Executor {
                                                              _executionTaskManager.intraBrokerPartitionMovementConcurrency(),
                                                              _executionTaskManager.leadershipMovementConcurrency(),
                                                              _uuid,
+                                                             _reason,
                                                              _recentlyDemotedBrokers,
-                                                             _recentlyRemovedBrokers);
+                                                             _recentlyRemovedBrokers,
+                                                             _isTriggeredByUserRequest);
           intraBrokerMoveReplicas();
           updateOngoingExecutionState();
         }
@@ -765,8 +783,10 @@ public class Executor {
                                                              _executionTaskManager.intraBrokerPartitionMovementConcurrency(),
                                                              _executionTaskManager.leadershipMovementConcurrency(),
                                                              _uuid,
+                                                             _reason,
                                                              _recentlyDemotedBrokers,
-                                                             _recentlyRemovedBrokers);
+                                                             _recentlyRemovedBrokers,
+                                                             _isTriggeredByUserRequest);
           moveLeaderships();
           updateOngoingExecutionState();
         }
@@ -815,6 +835,7 @@ public class Executor {
     private void clearCompletedExecution() {
       _executionTaskManager.clear();
       _uuid = null;
+      _reason = null;
       _state = NO_TASK_IN_PROGRESS;
       // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
       _executorState = ExecutorState.noTaskInProgress(_recentlyDemotedBrokers, _recentlyRemovedBrokers);
@@ -834,8 +855,10 @@ public class Executor {
                                                                _executionTaskManager.intraBrokerPartitionMovementConcurrency(),
                                                                _executionTaskManager.leadershipMovementConcurrency(),
                                                                _uuid,
+                                                               _reason,
                                                                _recentlyDemotedBrokers,
-                                                               _recentlyRemovedBrokers);
+                                                               _recentlyRemovedBrokers,
+                                                               _isTriggeredByUserRequest);
             break;
           case INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS:
             _executorState = ExecutorState.operationInProgress(INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS,
@@ -845,8 +868,10 @@ public class Executor {
                                                                _executionTaskManager.intraBrokerPartitionMovementConcurrency(),
                                                                _executionTaskManager.leadershipMovementConcurrency(),
                                                                _uuid,
+                                                               _reason,
                                                                _recentlyDemotedBrokers,
-                                                               _recentlyRemovedBrokers);
+                                                               _recentlyRemovedBrokers,
+                                                               _isTriggeredByUserRequest);
             break;
           case INTRA_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS:
             _executorState = ExecutorState.operationInProgress(INTRA_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS,
@@ -856,8 +881,10 @@ public class Executor {
                                                                _executionTaskManager.intraBrokerPartitionMovementConcurrency(),
                                                                _executionTaskManager.leadershipMovementConcurrency(),
                                                                _uuid,
+                                                               _reason,
                                                                _recentlyDemotedBrokers,
-                                                               _recentlyRemovedBrokers);
+                                                               _recentlyRemovedBrokers,
+                                                               _isTriggeredByUserRequest);
             break;
           default:
             throw new IllegalStateException("Unexpected ongoing execution state " + _state);
@@ -870,8 +897,10 @@ public class Executor {
                                                            _executionTaskManager.intraBrokerPartitionMovementConcurrency(),
                                                            _executionTaskManager.leadershipMovementConcurrency(),
                                                            _uuid,
+                                                           _reason,
                                                            _recentlyDemotedBrokers,
-                                                           _recentlyRemovedBrokers);
+                                                           _recentlyRemovedBrokers,
+                                                           _isTriggeredByUserRequest);
       }
     }
 

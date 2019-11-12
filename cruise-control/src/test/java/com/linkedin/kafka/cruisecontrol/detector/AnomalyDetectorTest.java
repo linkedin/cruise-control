@@ -253,6 +253,8 @@ public class AnomalyDetectorTest {
                                               EasyMock.eq(SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS),
                                               EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
                                               EasyMock.eq(null),
+                                              EasyMock.eq(false),
+                                              EasyMock.anyString(),
                                               EasyMock.anyString());
 
       EasyMock.expect(mockAnomalyNotifier.onGoalViolation(EasyMock.isA(GoalViolations.class))).andReturn(AnomalyNotificationResult.fix());
@@ -281,6 +283,8 @@ public class AnomalyDetectorTest {
                                               EasyMock.eq(SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS),
                                               EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
                                               EasyMock.eq(null),
+                                              EasyMock.eq(false),
+                                              EasyMock.anyString(),
                                               EasyMock.anyString());
 
       EasyMock.expect(mockKafkaCruiseControl.acquireForModelGeneration(EasyMock.anyObject())).andReturn(null);

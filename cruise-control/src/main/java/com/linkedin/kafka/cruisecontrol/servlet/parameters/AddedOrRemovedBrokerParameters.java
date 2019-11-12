@@ -23,7 +23,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_HARD_GOAL_CHECK_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICA_MOVEMENT_STRATEGIES_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REVIEW_ID_PARAM;
-
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
 
 public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizationParameters {
   protected static final SortedSet<String> CASE_INSENSITIVE_PARAMETER_NAMES;
@@ -35,6 +35,7 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
     validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
     validParameterNames.add(EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
     validParameterNames.add(DRY_RUN_PARAM);
+    validParameterNames.add(REASON_PARAM);
     validParameterNames.add(REPLICATION_THROTTLE_PARAM);
     validParameterNames.add(SKIP_HARD_GOAL_CHECK_PARAM);
     validParameterNames.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
@@ -51,6 +52,7 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
   protected boolean _skipHardGoalCheck;
   protected ReplicaMovementStrategy _replicaMovementStrategy;
   protected Integer _reviewId;
+  protected String _reason;
 
   public AddedOrRemovedBrokerParameters() {
     super();
@@ -69,6 +71,8 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
     boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
+    boolean requestReasonRequired = _config.getBoolean(KafkaCruiseControlConfig.REQUEST_REASON_REQUIRED_CONFIG);
+    _reason = ParameterUtils.reason(_request, requestReasonRequired && !_dryRun);
   }
 
   @Override
@@ -110,6 +114,10 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
 
   public ReplicaMovementStrategy replicaMovementStrategy() {
     return _replicaMovementStrategy;
+  }
+
+  public String reason() {
+    return _reason;
   }
 
   @Override

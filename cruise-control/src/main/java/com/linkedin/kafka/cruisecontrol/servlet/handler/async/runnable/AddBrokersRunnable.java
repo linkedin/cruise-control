@@ -48,6 +48,7 @@ public class AddBrokersRunnable extends OperationRunnable {
   protected final boolean _skipHardGoalCheck;
   protected final Pattern _excludedTopics;
   protected final String _uuid;
+  protected final String _reason;
   protected final boolean _excludeRecentlyDemotedBrokers;
   protected final boolean _excludeRecentlyRemovedBrokers;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
@@ -72,6 +73,7 @@ public class AddBrokersRunnable extends OperationRunnable {
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
     _replicationThrottle = parameters.replicationThrottle();
     _uuid = uuid;
+    _reason = parameters.reason();
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
   }
@@ -135,7 +137,9 @@ public class AddBrokersRunnable extends OperationRunnable {
                                              _executionProgressCheckIntervalMs,
                                              _replicaMovementStrategy,
                                              _replicationThrottle,
-                                             _uuid);
+                                             true,
+                                             _uuid,
+                                             _reason);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {

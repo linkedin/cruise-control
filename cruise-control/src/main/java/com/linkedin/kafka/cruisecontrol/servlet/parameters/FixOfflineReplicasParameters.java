@@ -21,6 +21,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICA_MOVEMENT_STRATEGIES_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICATION_THROTTLE_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REVIEW_ID_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
 
 
 /**
@@ -37,7 +38,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *    &amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]&amp;data_from=[valid_windows/valid_partitions]
  *    &amp;replica_movement_strategies=[strategy1,strategy2...]
  *    &amp;replication_throttle=[bytes_per_second]
- *    &amp;review_id=[id]
+ *    &amp;review_id=[id]&amp;reason=[reason-for-request]
  *    &amp;execution_progress_check_interval_ms=[interval_in_ms]
  * </pre>
  */
@@ -46,6 +47,7 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
   static {
     SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     validParameterNames.add(DRY_RUN_PARAM);
+    validParameterNames.add(REASON_PARAM);
     validParameterNames.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
     validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
     validParameterNames.add(EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
@@ -64,6 +66,7 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
   protected ReplicaMovementStrategy _replicaMovementStrategy;
   protected Long _replicationThrottle;
   protected Integer _reviewId;
+  protected String _reason;
 
   public FixOfflineReplicasParameters() {
     super();
@@ -81,6 +84,8 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
     _replicationThrottle = ParameterUtils.replicationThrottle(_request, _config);
     boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
+    boolean requestReasonRequired = _config.getBoolean(KafkaCruiseControlConfig.REQUEST_REASON_REQUIRED_CONFIG);
+    _reason = ParameterUtils.reason(_request, requestReasonRequired && !_dryRun);
   }
 
   @Override
@@ -118,6 +123,10 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
 
   public Long replicationThrottle() {
     return _replicationThrottle;
+  }
+
+  public String reason() {
+    return _reason;
   }
 
   @Override

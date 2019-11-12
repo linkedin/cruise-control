@@ -22,6 +22,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICA_MOVEMENT_STRATEGIES_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICATION_THROTTLE_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REVIEW_ID_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
 
 
 /**
@@ -41,7 +42,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *    &amp;exclude_recently_removed_brokers=[true/false]&amp;replica_movement_strategies=[strategy1,strategy2...]
  *    &amp;ignore_proposal_cache=[true/false]&amp;destination_broker_ids=[id1,id2...]&amp;kafka_assigner=[true/false]
  *    &amp;rebalance_disk=[true/false]&amp;review_id=[id]
- *    &amp;replication_throttle=[bytes_per_second]
+ *    &amp;replication_throttle=[bytes_per_second]&amp;reason=[reason-for-request]
  *    &amp;execution_progress_check_interval_ms=[interval_in_ms]
  * </pre>
  */
@@ -50,6 +51,7 @@ public class RebalanceParameters extends ProposalsParameters {
   static {
     SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     validParameterNames.add(DRY_RUN_PARAM);
+    validParameterNames.add(REASON_PARAM);
     validParameterNames.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
     validParameterNames.add(CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM);
     validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
@@ -70,6 +72,7 @@ public class RebalanceParameters extends ProposalsParameters {
   protected ReplicaMovementStrategy _replicaMovementStrategy;
   protected Long _replicationThrottle;
   protected Integer _reviewId;
+  protected String _reason;
 
   public RebalanceParameters() {
     super();
@@ -91,6 +94,8 @@ public class RebalanceParameters extends ProposalsParameters {
     _replicationThrottle = ParameterUtils.replicationThrottle(_request, _config);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
     _isRebalanceDiskMode =  ParameterUtils.isRebalanceDiskMode(_request);
+    boolean requestReasonRequired = _config.getBoolean(KafkaCruiseControlConfig.REQUEST_REASON_REQUIRED_CONFIG);
+    _reason = ParameterUtils.reason(_request, requestReasonRequired && !_dryRun);
   }
 
   @Override
@@ -132,6 +137,10 @@ public class RebalanceParameters extends ProposalsParameters {
 
   public Long replicationThrottle() {
     return _replicationThrottle;
+  }
+
+  public String reason() {
+    return _reason;
   }
 
   @Override

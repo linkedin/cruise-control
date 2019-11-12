@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
@@ -23,6 +24,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICA_MOVEMENT_STRATEGIES_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICATION_THROTTLE_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
 
 
 /**
@@ -37,6 +39,7 @@ public class TopicReplicationFactorChangeParameters extends GoalBasedOptimizatio
     validParameterNames.add(REPLICATION_FACTOR_PARAM);
     validParameterNames.add(SKIP_RACK_AWARENESS_CHECK_PARAM);
     validParameterNames.add(DRY_RUN_PARAM);
+    validParameterNames.add(REASON_PARAM);
     validParameterNames.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
     validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
     validParameterNames.add(EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
@@ -55,6 +58,7 @@ public class TopicReplicationFactorChangeParameters extends GoalBasedOptimizatio
   protected boolean _skipHardGoalCheck;
   protected ReplicaMovementStrategy _replicaMovementStrategy;
   protected Long _replicationThrottle;
+  protected String _reason;
 
   protected TopicReplicationFactorChangeParameters() {
     super();
@@ -75,6 +79,8 @@ public class TopicReplicationFactorChangeParameters extends GoalBasedOptimizatio
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
     _replicationThrottle = ParameterUtils.replicationThrottle(_request, _config);
+    boolean requestReasonRequired = _config.getBoolean(KafkaCruiseControlConfig.REQUEST_REASON_REQUIRED_CONFIG);
+    _reason = ParameterUtils.reason(_request, requestReasonRequired && !_dryRun);
   }
 
   /**
@@ -130,6 +136,10 @@ public class TopicReplicationFactorChangeParameters extends GoalBasedOptimizatio
 
   public Long replicationThrottle() {
     return _replicationThrottle;
+  }
+
+  public String reason() {
+    return _reason;
   }
 
   @Override
