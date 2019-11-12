@@ -574,9 +574,11 @@ public class KafkaCruiseControl {
 
   /**
    * Request the executor to stop any ongoing execution.
+   *
+   * @param forceExecutionStop Whether force execution to stop.
    */
-  public void userTriggeredStopExecution() {
-    _executor.userTriggeredStopExecution();
+  public void userTriggeredStopExecution(boolean forceExecutionStop) {
+    _executor.userTriggeredStopExecution(forceExecutionStop);
   }
 
   public ExecutorState.State executionState() {

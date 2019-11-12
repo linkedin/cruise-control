@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REVIEW_ID_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.*;
 
 
 /**
@@ -20,11 +20,14 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *
  * <ul>
  *   <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
+ *   <li>Note that setting "force_stop" to true will make Cruise Control forcefully delete znode /admin/reassign_partitions,
+ *   /admin/preferred_replica_election and /controller in order to cancel ongoing the replica/leader movements. It may result
+ *   the subject topics having inconsistent replication factor across partitions. </li>
  * </ul>
  *
  * <pre>
  * Stop the proposal execution.
- *    POST /kafkacruisecontrol/stop_proposal_execution?json=[true/false]&amp;review_id=[id]
+ *    POST /kafkacruisecontrol/stop_proposal_execution?json=[true/false]&amp;review_id=[id]&amp;force_stop=[true/false]
  * </pre>
  */
 public class StopProposalParameters extends AbstractParameters {
@@ -32,10 +35,12 @@ public class StopProposalParameters extends AbstractParameters {
   static {
     SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     validParameterNames.add(REVIEW_ID_PARAM);
+    validParameterNames.add(FORCE_STOP_PARAM);
     validParameterNames.addAll(AbstractParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
     CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
   }
   protected Integer _reviewId;
+  protected boolean _forceExecutionStop;
 
   public StopProposalParameters() {
     super();
@@ -46,6 +51,7 @@ public class StopProposalParameters extends AbstractParameters {
     super.initParameters();
     boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
+    _forceExecutionStop = ParameterUtils.forceExecutionStop(_request);
   }
 
   @Override
@@ -55,6 +61,10 @@ public class StopProposalParameters extends AbstractParameters {
 
   public Integer reviewId() {
     return _reviewId;
+  }
+
+  public boolean forceExecutionStop() {
+    return _forceExecutionStop;
   }
 
   @Override
