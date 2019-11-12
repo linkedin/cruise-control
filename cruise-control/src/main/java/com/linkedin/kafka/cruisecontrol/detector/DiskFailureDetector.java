@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +20,6 @@ import java.util.stream.Collectors;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.protocol.Errors;
-import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,9 +34,7 @@ public class DiskFailureDetector implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(DiskFailureDetector.class);
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final AdminClient _adminClient;
-  private final LoadMonitor _loadMonitor;
   private final Queue<Anomaly> _anomalies;
-  private final Time _time;
   private final boolean _allowCapacityEstimation;
   private int _lastCheckedClusterGeneration;
   private final boolean _excludeRecentlyDemotedBrokers;
@@ -46,16 +42,12 @@ public class DiskFailureDetector implements Runnable {
   private final List<String> _selfHealingGoals;
   private final KafkaCruiseControlConfig _config;
 
-  public DiskFailureDetector(LoadMonitor loadMonitor,
-                             AdminClient adminClient,
+  public DiskFailureDetector(AdminClient adminClient,
                              Queue<Anomaly> anomalies,
-                             Time time,
                              KafkaCruiseControl kafkaCruiseControl,
                              List<String> selfHealingGoals) {
-    _loadMonitor = loadMonitor;
     _adminClient = adminClient;
     _anomalies = anomalies;
-    _time = time;
     _lastCheckedClusterGeneration = -1;
     _kafkaCruiseControl = kafkaCruiseControl;
     KafkaCruiseControlConfig config = _kafkaCruiseControl.config();
@@ -71,29 +63,29 @@ public class DiskFailureDetector implements Runnable {
    * <ul>
    * <li>Cluster model generation has not changed since the last disk failure check.</li>
    * <li>There are dead brokers in the cluster, {@link BrokerFailureDetector} should take care of the anomaly.</li>
-   * <li>{@link AnomalyDetectorUtils#shouldSkipAnomalyDetection(LoadMonitor, KafkaCruiseControl)} returns true.
+   * <li>{@link AnomalyDetectorUtils#shouldSkipAnomalyDetection(KafkaCruiseControl)} returns true.
    * </ul>
    *
    * @return True to skip disk failure detection based on the current state, false otherwise.
    */
   private boolean shouldSkipDiskFailureDetection() {
-    int currentClusterGeneration = _loadMonitor.clusterModelGeneration().clusterGeneration();
+    int currentClusterGeneration = _kafkaCruiseControl.loadMonitor().clusterModelGeneration().clusterGeneration();
     if (currentClusterGeneration == _lastCheckedClusterGeneration) {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Skipping disk failure detection because the model generation hasn't changed. Current model generation {}",
-                  _loadMonitor.clusterModelGeneration());
+                  _kafkaCruiseControl.loadMonitor().clusterModelGeneration());
       }
       return true;
     }
     _lastCheckedClusterGeneration = currentClusterGeneration;
 
-    Set<Integer> deadBrokers = _loadMonitor.deadBrokersWithReplicas(MAX_METADATA_WAIT_MS);
+    Set<Integer> deadBrokers = _kafkaCruiseControl.loadMonitor().deadBrokersWithReplicas(MAX_METADATA_WAIT_MS);
     if (!deadBrokers.isEmpty()) {
       LOG.debug("Skipping disk failure detection because there are dead broker in the cluster, dead broker: {}", deadBrokers);
       return true;
     }
 
-    return shouldSkipAnomalyDetection(_loadMonitor, _kafkaCruiseControl);
+    return shouldSkipAnomalyDetection(_kafkaCruiseControl);
   }
 
   @Override
@@ -103,13 +95,13 @@ public class DiskFailureDetector implements Runnable {
         return;
       }
       Map<Integer, Map<String, Long>> failedDisksByBroker = new HashMap<>();
-      Set<Integer> aliveBrokers = _loadMonitor.kafkaCluster().nodes().stream().mapToInt(Node::id).boxed().collect(Collectors.toSet());
+      Set<Integer> aliveBrokers = _kafkaCruiseControl.kafkaCluster().nodes().stream().mapToInt(Node::id).boxed().collect(Collectors.toSet());
       _adminClient.describeLogDirs(aliveBrokers).values().forEach((broker, future) -> {
         try {
           future.get(_config.getLong(LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG), TimeUnit.MILLISECONDS).forEach((logdir, info) -> {
             if (info.error != Errors.NONE) {
               failedDisksByBroker.putIfAbsent(broker, new HashMap<>());
-              failedDisksByBroker.get(broker).put(logdir, _time.milliseconds());
+              failedDisksByBroker.get(broker).put(logdir, _kafkaCruiseControl.timeMs());
             }
           });
         } catch (TimeoutException | InterruptedException | ExecutionException e) {

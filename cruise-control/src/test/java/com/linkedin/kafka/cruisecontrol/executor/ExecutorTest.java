@@ -14,6 +14,7 @@ import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
+import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import java.util.ArrayList;
@@ -49,6 +50,7 @@ import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC2;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC3;
 import static org.easymock.EasyMock.expectLastCall;
+import static org.easymock.EasyMock.isA;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -158,6 +160,15 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     EasyMock.expect(mockMetadataClient.refreshMetadata()).andReturn(clusterAndGeneration).anyTimes();
     EasyMock.expect(mockMetadataClient.cluster()).andReturn(clusterAndGeneration.cluster()).anyTimes();
     EasyMock.replay(mockMetadataClient);
+    LoadMonitor mockLoadMonitor = EasyMock.mock(LoadMonitor.class);
+    EasyMock.expect(mockLoadMonitor.taskRunnerState())
+            .andReturn(LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING)
+            .anyTimes();
+    mockLoadMonitor.pauseMetricSampling(isA(String.class));
+    expectLastCall().anyTimes();
+    mockLoadMonitor.resumeMetricSampling(isA(String.class));
+    expectLastCall().anyTimes();
+    EasyMock.replay(mockLoadMonitor);
 
     Collection<ExecutionProposal> proposalsToExecute = Collections.singletonList(proposal);
     Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient, DEMOTION_HISTORY_RETENTION_TIME_MS,
@@ -167,7 +178,7 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     executor.executeProposals(proposalsToExecute,
                               Collections.emptySet(),
                               null,
-                              EasyMock.mock(LoadMonitor.class),
+                              mockLoadMonitor,
                               null,
                               null,
                               null,
@@ -194,7 +205,7 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     executor.executeProposals(proposalsToExecute,
                               Collections.emptySet(),
                               null,
-                              EasyMock.mock(LoadMonitor.class),
+                              mockLoadMonitor,
                               null,
                               null,
                               null,
@@ -333,7 +344,17 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
                                      REMOVAL_HISTORY_RETENTION_TIME_MS, mockExecutorNotifier, mockUserTaskManager,
                                      getMockAnomalyDetector(RANDOM_UUID));
     executor.setExecutionMode(false);
-    executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, EasyMock.mock(LoadMonitor.class), null,
+    LoadMonitor mockLoadMonitor = EasyMock.mock(LoadMonitor.class);
+    EasyMock.expect(mockLoadMonitor.taskRunnerState())
+            .andReturn(LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING)
+            .anyTimes();
+    mockLoadMonitor.pauseMetricSampling(isA(String.class));
+    expectLastCall().anyTimes();
+    mockLoadMonitor.resumeMetricSampling(isA(String.class));
+    expectLastCall().anyTimes();
+    EasyMock.replay(mockLoadMonitor);
+
+    executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, mockLoadMonitor, null,
                               null, null, null,
                               null, null, true, RANDOM_UUID, "");
 

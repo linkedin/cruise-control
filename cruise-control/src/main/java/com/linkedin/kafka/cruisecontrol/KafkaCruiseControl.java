@@ -33,6 +33,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
+import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 import java.io.InputStream;
@@ -98,17 +99,23 @@ public class KafkaCruiseControl {
     ModelParameters.init(config);
 
     // Instantiate the components.
-    _loadMonitor = new LoadMonitor(config, _time, dropwizardMetricRegistry, KafkaMetricDef.commonMetricDef());
-    _goalOptimizerExecutor =
-        Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("GoalOptimizerExecutor", true, null));
+    _anomalyDetector = new AnomalyDetector(this, _time, dropwizardMetricRegistry);
     long demotionHistoryRetentionTimeMs = config.getLong(KafkaCruiseControlConfig.DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG);
     long removalHistoryRetentionTimeMs = config.getLong(KafkaCruiseControlConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG);
-    _anomalyDetector = new AnomalyDetector(_loadMonitor, this, _time, dropwizardMetricRegistry);
     _executor = new Executor(config, _time, dropwizardMetricRegistry, demotionHistoryRetentionTimeMs,
                              removalHistoryRetentionTimeMs, _anomalyDetector);
+    _loadMonitor = new LoadMonitor(config, _time, _executor, dropwizardMetricRegistry, KafkaMetricDef.commonMetricDef());
+    _goalOptimizerExecutor =
+        Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("GoalOptimizerExecutor", true, null));
     _goalOptimizer = new GoalOptimizer(config, _loadMonitor, _time, dropwizardMetricRegistry, _executor);
   }
 
+  /**
+   * Get the load monitor.
+   */
+  public LoadMonitor loadMonitor() {
+    return _loadMonitor;
+  }
   /**
    * Refresh the cluster metadata and get the corresponding cluster and generation information.
    *
@@ -116,6 +123,13 @@ public class KafkaCruiseControl {
    */
   public MetadataClient.ClusterAndGeneration refreshClusterAndGeneration() {
     return _loadMonitor.refreshClusterAndGeneration();
+  }
+
+  /**
+   * Get the state of load monitor's task runner.
+   */
+  public LoadMonitorTaskRunner.LoadMonitorTaskRunnerState getLoadMonitorTaskRunnerState() {
+    return _loadMonitor.taskRunnerState();
   }
 
   /**

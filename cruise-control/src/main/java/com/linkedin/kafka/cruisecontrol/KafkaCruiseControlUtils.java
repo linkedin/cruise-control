@@ -7,6 +7,8 @@ package com.linkedin.kafka.cruisecontrol;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
+import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Collection;
@@ -178,6 +180,25 @@ public class KafkaCruiseControlUtils {
                                                          + "parameter to ignore this sanity check.", hardGoals, goals,
                                                          SKIP_HARD_GOAL_CHECK_PARAM));
       }
+    }
+  }
+
+  /**
+   * Check to ensure that if requested cluster model completeness requires non-zero number of valid windows in cluster model,
+   * load monitor should have already finished loading all the samples.
+   * Note that even if only one valid window is required, we still need to wait load monitor finish loading all samples. This
+   * is because sample loading follow time order, i.e. the first window loaded is the oldest window and the load information
+   * in that window is probably stale.
+   *
+   * @param completenessRequirements Requested cluster model completeness requirement.
+   * @param loadMonitorTaskRunnerState Current state of load monitor's task runner.
+   */
+  public static void sanityCheckLoadMonitorReadiness(ModelCompletenessRequirements completenessRequirements,
+                                                     LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState) {
+    if (completenessRequirements.minRequiredNumWindows() > 0 &&
+        loadMonitorTaskRunnerState == LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.LOADING) {
+      throw new IllegalStateException("Unable to generate proposal since load monitor is in "
+                                      + LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.LOADING + " state.");
     }
   }
 

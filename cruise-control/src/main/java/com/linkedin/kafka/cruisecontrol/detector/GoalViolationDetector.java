@@ -18,7 +18,6 @@ import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
-import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import java.util.Collections;
 import java.util.HashSet;
@@ -29,7 +28,6 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,9 +46,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAF
 public class GoalViolationDetector implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(GoalViolationDetector.class);
   private final KafkaCruiseControl _kafkaCruiseControl;
-  private final LoadMonitor _loadMonitor;
   private final List<Goal> _detectionGoals;
-  private final Time _time;
   private final Queue<Anomaly> _anomalies;
   private ModelGeneration _lastCheckedModelGeneration;
   private final Pattern _excludedTopics;
@@ -60,16 +56,12 @@ public class GoalViolationDetector implements Runnable {
   private final Map<String, Double> _balancednessCostByGoal;
   private volatile double _balancednessScore;
 
-  public GoalViolationDetector(LoadMonitor loadMonitor,
-                               Queue<Anomaly> anomalies,
-                               Time time,
+  public GoalViolationDetector(Queue<Anomaly> anomalies,
                                KafkaCruiseControl kafkaCruiseControl) {
-    _loadMonitor = loadMonitor;
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
     // Notice that we use a separate set of Goal instances for anomaly detector to avoid interference.
     _detectionGoals = config.getConfiguredInstances(KafkaCruiseControlConfig.ANOMALY_DETECTION_GOALS_CONFIG, Goal.class);
     _anomalies = anomalies;
-    _time = time;
     _excludedTopics = Pattern.compile(config.getString(KafkaCruiseControlConfig.TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG));
     _allowCapacityEstimation = config.getBoolean(KafkaCruiseControlConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
     _excludeRecentlyDemotedBrokers = config.getBoolean(KafkaCruiseControlConfig.GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
@@ -94,21 +86,21 @@ public class GoalViolationDetector implements Runnable {
    * <li>Cluster model generation has not changed since the last goal violation check.</li>
    * <li>There is offline replicas in the cluster, which means there is dead brokers/disks. In this case
    * {@link BrokerFailureDetector} or {@link DiskFailureDetector} should take care of the anomaly.</li>
-   * <li>{@link AnomalyDetectorUtils#shouldSkipAnomalyDetection(LoadMonitor, KafkaCruiseControl)} returns true.
+   * <li>{@link AnomalyDetectorUtils#shouldSkipAnomalyDetection(KafkaCruiseControl)} returns true.
    * </ul>
    *
    * @return True to skip goal violation detection based on the current state, false otherwise.
    */
   private boolean shouldSkipGoalViolationDetection() {
-    if (_loadMonitor.clusterModelGeneration().equals(_lastCheckedModelGeneration)) {
+    if (_kafkaCruiseControl.loadMonitor().clusterModelGeneration().equals(_lastCheckedModelGeneration)) {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Skipping goal violation detection because the model generation hasn't changed. Current model generation {}",
-                  _loadMonitor.clusterModelGeneration());
+                  _kafkaCruiseControl.loadMonitor().clusterModelGeneration());
       }
       return true;
     }
 
-    Set<Integer> brokersWithOfflineReplicas = _loadMonitor.brokersWithOfflineReplicas(MAX_METADATA_WAIT_MS);
+    Set<Integer> brokersWithOfflineReplicas = _kafkaCruiseControl.loadMonitor().brokersWithOfflineReplicas(MAX_METADATA_WAIT_MS);
     if (!brokersWithOfflineReplicas.isEmpty()) {
       LOG.info("Skipping goal violation detection because there are dead brokers/disks in the cluster, flawed brokers: {}",
                 brokersWithOfflineReplicas);
@@ -116,7 +108,7 @@ public class GoalViolationDetector implements Runnable {
       return true;
     }
 
-    return shouldSkipAnomalyDetection(_loadMonitor, _kafkaCruiseControl);
+    return shouldSkipAnomalyDetection(_kafkaCruiseControl);
   }
 
   @Override
@@ -131,7 +123,6 @@ public class GoalViolationDetector implements Runnable {
       GoalViolations goalViolations = _kafkaCruiseControl.config().getConfiguredInstance(KafkaCruiseControlConfig.GOAL_VIOLATIONS_CLASS_CONFIG,
                                                                                          GoalViolations.class,
                                                                                          parameterConfigOverrides);
-      long now = _time.milliseconds();
       boolean newModelNeeded = true;
       ClusterModel clusterModel = null;
 
@@ -148,19 +139,18 @@ public class GoalViolationDetector implements Runnable {
                                                                                   : Collections.emptySet();
 
       for (Goal goal : _detectionGoals) {
-        if (_loadMonitor.meetCompletenessRequirements(goal.clusterModelCompletenessRequirements())) {
+        if (_kafkaCruiseControl.loadMonitor().meetCompletenessRequirements(goal.clusterModelCompletenessRequirements())) {
           LOG.debug("Detecting if {} is violated.", goal.name());
           // Because the model generation could be slow, We only get new cluster model if needed.
           if (newModelNeeded) {
             if (clusterModelSemaphore != null) {
               clusterModelSemaphore.close();
             }
-            clusterModelSemaphore = _loadMonitor.acquireForModelGeneration(new OperationProgress());
+            clusterModelSemaphore = _kafkaCruiseControl.acquireForModelGeneration(new OperationProgress());
             // Make cluster model null before generating a new cluster model so the current one can be GCed.
             clusterModel = null;
-            clusterModel = _loadMonitor.clusterModel(now,
-                                                     goal.clusterModelCompletenessRequirements(),
-                                                     new OperationProgress());
+            clusterModel = _kafkaCruiseControl.clusterModel(goal.clusterModelCompletenessRequirements(),
+                                                            new OperationProgress());
 
             // If the clusterModel contains dead brokers or disks, goal violation detector will ignore any goal violations.
             // Detection and fix for dead brokers/disks is the responsibility of broker/disk failure detector.
