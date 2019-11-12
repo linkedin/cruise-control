@@ -4,8 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.handler.sync;
 
+import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
+import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AdminParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ChangeExecutionConcurrencyParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.DropRecentBrokersParameters;
@@ -47,8 +48,8 @@ public class AdminRequest extends AbstractSyncRequest {
     String ongoingConcurrencyChangeRequest = processChangeExecutionConcurrencyRequest();
 
     // 2. Enable/disable the specified anomaly detectors.
-    Map<AnomalyType, Boolean> selfHealingBefore = new HashMap<>(AnomalyType.cachedValues().size());
-    Map<AnomalyType, Boolean> selfHealingAfter = new HashMap<>(AnomalyType.cachedValues().size());
+    Map<AnomalyType, Boolean> selfHealingBefore = new HashMap<>(KafkaAnomalyType.cachedValues().size());
+    Map<AnomalyType, Boolean> selfHealingAfter = new HashMap<>(KafkaAnomalyType.cachedValues().size());
     processUpdateSelfHealingRequest(selfHealingBefore, selfHealingAfter);
 
     // 3. Drop selected recently removed/demoted brokers.

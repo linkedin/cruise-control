@@ -20,7 +20,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
 import org.junit.Rule;
 import org.junit.Test;
@@ -161,10 +160,8 @@ public class KafkaMetricAnomalyFinderTest {
 
     KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
     EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(config);
+    EasyMock.expect(mockKafkaCruiseControl.timeMs()).andReturn(_anomalyDetectionTimeMs).anyTimes();
     EasyMock.replay(mockKafkaCruiseControl);
-    Time mockTime = EasyMock.mock(Time.class);
-    EasyMock.expect(mockTime.milliseconds()).andReturn(_anomalyDetectionTimeMs).anyTimes();
-    EasyMock.replay(mockTime);
     Map<String, Object> originalConfigs = new HashMap<>(config.originals());
     originalConfigs.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
 

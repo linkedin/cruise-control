@@ -9,6 +9,11 @@ import com.linkedin.cruisecontrol.model.Entity;
 import java.util.Map;
 
 
+/**
+ * The interface for a metric anomaly.
+ *
+ * @param <E> The type of entity with metric anomaly.
+ */
 public interface MetricAnomaly<E extends Entity> extends Anomaly {
   /**
    * Get the metric anomaly description.

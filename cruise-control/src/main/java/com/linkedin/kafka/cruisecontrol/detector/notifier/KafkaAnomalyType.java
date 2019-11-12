@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector.notifier;
 
+import com.linkedin.cruisecontrol.detector.AnomalyType;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -22,7 +23,7 @@ import java.util.List;
  *  <li>{@link #GOAL_VIOLATION}: Violation of anomaly detection goals.</li>
  * </ul>
  */
-public enum AnomalyType {
+public enum KafkaAnomalyType implements AnomalyType {
   BROKER_FAILURE(0),
   DISK_FAILURE(1),
   METRIC_ANOMALY(2),
@@ -30,26 +31,22 @@ public enum AnomalyType {
 
   private final int _priority;
 
-  AnomalyType(int priority) {
+  KafkaAnomalyType(int priority) {
     _priority = priority;
   }
 
-  /**
-   * Get the priority of the anomaly type.
-   *
-   * @return The priority value.
-   */
+  @Override
   public int priority() {
     return _priority;
   }
 
-  private static final List<AnomalyType> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
+  private static final List<KafkaAnomalyType> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 
   /**
    * Use this instead of values() because values() creates a new array each time.
    * @return enumerated values in the same order as values()
    */
-  public static List<AnomalyType> cachedValues() {
+  public static List<KafkaAnomalyType> cachedValues() {
     return CACHED_VALUES;
   }
 }

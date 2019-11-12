@@ -663,7 +663,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    * <code>self.healing.exclude.recently.demoted.brokers</code>
    */
   public static final String SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG = "self.healing.exclude.recently.demoted.brokers";
-  private static final String BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_DOC = "True if recently demoted brokers "
+  private static final String SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_DOC = "True if recently demoted brokers "
       + "are excluded from optimizations during self healing, false otherwise.";
 
   /**
@@ -1766,7 +1766,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 ConfigDef.Type.BOOLEAN,
                 DEFAULT_SELF_HEALING_EXCLUDE_RECENT_BROKERS_CONFIG,
                 ConfigDef.Importance.MEDIUM,
-                BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_DOC)
+                SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_DOC)
         .define(SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG,
                 ConfigDef.Type.BOOLEAN,
                 DEFAULT_SELF_HEALING_EXCLUDE_RECENT_BROKERS_CONFIG,

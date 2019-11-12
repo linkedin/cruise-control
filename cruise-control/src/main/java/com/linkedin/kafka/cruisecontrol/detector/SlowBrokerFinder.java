@@ -21,13 +21,13 @@ import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyFinderUtils.isDataSufficient;
+import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyFinderUtils.isDataSufficient;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_DESCRIPTION_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_BROKER_ENTITIES_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_FIXABLE_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_DESCRIPTION_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.ALL_TOPIC_BYTES_IN;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.ALL_TOPIC_REPLICATION_BYTES_IN;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_LOG_FLUSH_TIME_MS_999TH;
@@ -157,11 +157,11 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
                                                String description) {
     Map<String, Object> parameterConfigOverrides = new HashMap<>(5);
     parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl);
-    parameterConfigOverrides.put(METRIC_ANOMALY_DESCRIPTION_CONFIG, description);
-    parameterConfigOverrides.put(METRIC_ANOMALY_BROKER_ENTITIES_CONFIG, detectedBrokers);
+    parameterConfigOverrides.put(METRIC_ANOMALY_DESCRIPTION_OBJECT_CONFIG, description);
+    parameterConfigOverrides.put(METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG, detectedBrokers);
     parameterConfigOverrides.put(REMOVE_SLOW_BROKERS_CONFIG, removeSlowBroker);
-    parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_CONFIG, _kafkaCruiseControl.timeMs());
-    parameterConfigOverrides.put(METRIC_ANOMALY_FIXABLE_CONFIG, fixable);
+    parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
+    parameterConfigOverrides.put(METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG, fixable);
     return _kafkaCruiseControl.config().getConfiguredInstance(KafkaCruiseControlConfig.METRIC_ANOMALY_CLASS_CONFIG,
                                                               SlowBrokers.class,
                                                               parameterConfigOverrides);

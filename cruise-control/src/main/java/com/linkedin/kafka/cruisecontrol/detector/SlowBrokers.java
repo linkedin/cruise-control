@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
+import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.DemoteBrokerRunnable;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RemoveBrokersRunnable;
@@ -60,7 +60,7 @@ public class SlowBrokers extends KafkaMetricAnomaly {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    KafkaCruiseControl kafkaCruiseControl = extractKafkaCruiseControlObjectFromConfig(configs, AnomalyType.METRIC_ANOMALY);
+    KafkaCruiseControl kafkaCruiseControl = extractKafkaCruiseControlObjectFromConfig(configs, KafkaAnomalyType.METRIC_ANOMALY);
     if (_fixable) {
       Boolean removeSlowBroker = (Boolean) configs.get(SlowBrokerFinder.REMOVE_SLOW_BROKERS_CONFIG);
       if (removeSlowBroker == null) {

@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
@@ -21,9 +22,9 @@ import org.slf4j.LoggerFactory;
 public class AnomalyDetectorUtils {
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetectorUtils.class);
   public static final String KAFKA_CRUISE_CONTROL_OBJECT_CONFIG = "kafka.cruise.control.object";
-  public static final String ANOMALY_DETECTION_TIME_MS_CONFIG = "anomaly.detection.time.ms";
+  public static final String ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG = "anomaly.detection.time.ms.object";
   public static final long MAX_METADATA_WAIT_MS = 60000L;
-  public static final KafkaAnomaly SHUTDOWN_ANOMALY = new BrokerFailures();
+  public static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures();
 
   private AnomalyDetectorUtils() {
   }

@@ -20,8 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.cruisecontrol.CruiseControlUtils.toPrettyTime;
-import static com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyFinderUtils.isDataSufficient;
-import static com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyFinderUtils.SIGNIFICANT_METRIC_VALUE_THRESHOLD;
+import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyFinderUtils.isDataSufficient;
+import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyFinderUtils.SIGNIFICANT_METRIC_VALUE_THRESHOLD;
 
 
 /**

@@ -55,7 +55,7 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
   @Test
   public void testFailureDetection() throws Exception {
     Time mockTime = getMockTime();
-    Queue<KafkaAnomaly> anomalies = new PriorityBlockingQueue<>(ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE, anomalyComparator());
+    Queue<Anomaly> anomalies = new PriorityBlockingQueue<>(ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE, anomalyComparator());
     BrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime);
     try {
       // Start detection.
@@ -89,7 +89,7 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
   @Test
   public void testDetectorStartWithFailedBrokers() throws Exception {
     Time mockTime = getMockTime();
-    Queue<KafkaAnomaly> anomalies = new PriorityBlockingQueue<>(ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE, anomalyComparator());
+    Queue<Anomaly> anomalies = new PriorityBlockingQueue<>(ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE, anomalyComparator());
     BrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime);
 
     try {
@@ -105,7 +105,7 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
   @Test
   public void testLoadFailedBrokersFromZK() throws Exception {
     Time mockTime = getMockTime();
-    Queue<KafkaAnomaly> anomalies = new PriorityBlockingQueue<>(ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE, anomalyComparator());
+    Queue<Anomaly> anomalies = new PriorityBlockingQueue<>(ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE, anomalyComparator());
     BrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime);
 
     try {
@@ -129,7 +129,7 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
     }
   }
 
-  private BrokerFailureDetector createBrokerFailureDetector(Queue<KafkaAnomaly> anomalies, Time time) {
+  private BrokerFailureDetector createBrokerFailureDetector(Queue<Anomaly> anomalies, Time time) {
     LoadMonitor mockLoadMonitor = EasyMock.mock(LoadMonitor.class);
     KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
     EasyMock.expect(mockLoadMonitor.brokersWithReplicas(anyLong())).andAnswer(() -> new HashSet<>(Arrays.asList(0, 1))).anyTimes();

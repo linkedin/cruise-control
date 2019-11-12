@@ -6,11 +6,12 @@ package com.linkedin.cruisecontrol.detector.metricanomaly;
 /**
  * A util class for metric anomaly finders.
  */
-public class MetricAnomalyFinderUtils {
+public class PercentileMetricAnomalyFinderUtils {
 
+  // Ensure that no metric anomaly is generated unless the upper percentile metric value is a significant metric value.
   public static final double SIGNIFICANT_METRIC_VALUE_THRESHOLD = 1;
 
-  private MetricAnomalyFinderUtils() {
+  private PercentileMetricAnomalyFinderUtils() {
 
   }
 
@@ -25,8 +26,18 @@ public class MetricAnomalyFinderUtils {
   public static boolean isDataSufficient(int sampleCount,
                                          double upperPercentile,
                                          double lowerPercentile) {
-    if (upperPercentile >= 100.0 || upperPercentile <= 0.0 || lowerPercentile >= 100.0 || lowerPercentile <= 0.0) {
-      throw new IllegalArgumentException("Invalid percentile.");
+    if (upperPercentile >= 100.0 || upperPercentile <= 0.0) {
+      throw new IllegalArgumentException(String.format("Provided upper percentile (%f) is invalid, it should be within (0.0, 100.0).",
+                                                       upperPercentile));
+    }
+    if (lowerPercentile >= 100.0 || lowerPercentile <= 0.0) {
+      throw new IllegalArgumentException(String.format("Provided lower percentile (%f) is invalid, it should be within (0.0, 100.0).",
+                                                       lowerPercentile));
+    }
+
+    if (lowerPercentile > lowerPercentile) {
+      throw new IllegalArgumentException(String.format("Provided lower percentile (%f) is larger than upper percentile (%f).",
+                                                       lowerPercentile, upperPercentile));
     }
 
     int minNumValues = (int) Math.ceil(100 / (upperPercentile > 50.0 ? (100 - upperPercentile) : upperPercentile));

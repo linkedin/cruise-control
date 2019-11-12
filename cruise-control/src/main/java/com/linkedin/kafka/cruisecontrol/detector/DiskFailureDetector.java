@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.util.HashMap;
@@ -25,7 +26,7 @@ import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.L
 import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.DISK_FAILURES_CLASS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.shouldSkipAnomalyDetection;
-import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 
 /**
@@ -33,15 +34,15 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAF
  **/
 public class DiskFailureDetector implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(DiskFailureDetector.class);
-  public static final String FAILED_DISKS_CONFIG = "failed.disks";
+  public static final String FAILED_DISKS_OBJECT_CONFIG = "failed.disks.object";
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final AdminClient _adminClient;
-  private final Queue<KafkaAnomaly> _anomalies;
+  private final Queue<Anomaly> _anomalies;
   private int _lastCheckedClusterGeneration;
   private final KafkaCruiseControlConfig _config;
 
   public DiskFailureDetector(AdminClient adminClient,
-                             Queue<KafkaAnomaly> anomalies,
+                             Queue<Anomaly> anomalies,
                              KafkaCruiseControl kafkaCruiseControl) {
     _adminClient = adminClient;
     _anomalies = anomalies;
@@ -103,8 +104,8 @@ public class DiskFailureDetector implements Runnable {
       if (!failedDisksByBroker.isEmpty()) {
         Map<String, Object> parameterConfigOverrides = new HashMap<>(3);
         parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl);
-        parameterConfigOverrides.put(FAILED_DISKS_CONFIG, failedDisksByBroker);
-        parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_CONFIG, _kafkaCruiseControl.timeMs());
+        parameterConfigOverrides.put(FAILED_DISKS_OBJECT_CONFIG, failedDisksByBroker);
+        parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
         DiskFailures diskFailures = _config.getConfiguredInstance(DISK_FAILURES_CLASS_CONFIG,
                                                                   DiskFailures.class,
                                                                   parameterConfigOverrides);

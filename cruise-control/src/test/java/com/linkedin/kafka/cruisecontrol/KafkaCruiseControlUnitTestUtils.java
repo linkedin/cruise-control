@@ -4,13 +4,13 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
+import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.KafkaTopicConfigProvider;
-import com.linkedin.kafka.cruisecontrol.detector.KafkaAnomaly;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
 import java.util.Comparator;
@@ -116,8 +116,8 @@ public class KafkaCruiseControlUnitTestUtils {
    *
    * @return The anomaly comparator.
    */
-  public static Comparator<KafkaAnomaly> anomalyComparator() {
-    return Comparator.comparing((KafkaAnomaly anomaly) -> anomaly.anomalyType().priority())
-                     .thenComparingLong(KafkaAnomaly::detectionTimeMs);
+  public static Comparator<Anomaly> anomalyComparator() {
+    return Comparator.comparing((Anomaly anomaly) -> anomaly.anomalyType().priority())
+                     .thenComparingLong(Anomaly::detectionTimeMs);
   }
 }

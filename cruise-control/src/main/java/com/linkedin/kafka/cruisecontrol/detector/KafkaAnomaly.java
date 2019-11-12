@@ -6,11 +6,10 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import com.linkedin.cruisecontrol.detector.Anomaly;
-import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Map;
 
-import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.*;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
 
 
 /**
@@ -33,18 +32,7 @@ public abstract class KafkaAnomaly implements Anomaly, CruiseControlConfigurable
     return isJson ? _optimizationResult.cachedJSONResponse() : _optimizationResult.cachedPlaintextResponse();
   }
 
-  /**
-   * Get the type of anomaly.
-   *
-   * @return The type of anomaly.
-   */
-  public abstract AnomalyType anomalyType();
-
-  /**
-   * Get the detection time of anomaly.
-   *
-   * @return The detection time of anomaly.
-   */
+  @Override
   public long detectionTimeMs() {
     return _detectionTimeMs;
   }
@@ -56,10 +44,10 @@ public abstract class KafkaAnomaly implements Anomaly, CruiseControlConfigurable
 
   @Override
   public void configure(Map<String, ?> configs) {
-    Long detectionTimeMs = (Long) configs.get(ANOMALY_DETECTION_TIME_MS_CONFIG);
+    Long detectionTimeMs = (Long) configs.get(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG);
     if (detectionTimeMs == null) {
       throw new IllegalArgumentException(String.format("Missing %s when creating anomaly of type %s.",
-                                                       ANOMALY_DETECTION_TIME_MS_CONFIG, anomalyType()));
+                                                       ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, anomalyType()));
     } else {
       _detectionTimeMs = detectionTimeMs;
     }

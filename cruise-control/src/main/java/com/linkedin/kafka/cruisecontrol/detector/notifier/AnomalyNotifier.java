@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.detector.notifier;
 
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
+import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import com.linkedin.kafka.cruisecontrol.detector.DiskFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;

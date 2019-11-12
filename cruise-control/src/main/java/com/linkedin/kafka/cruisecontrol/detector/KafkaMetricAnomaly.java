@@ -4,8 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomaly;
-import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import java.util.Map;
@@ -13,10 +13,10 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_DESCRIPTION_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_BROKER_ENTITIES_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_FIXABLE_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.METRIC_ANOMALY;
+import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_DESCRIPTION_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.METRIC_ANOMALY;
 
 
 /**
@@ -97,12 +97,12 @@ public class KafkaMetricAnomaly extends KafkaAnomaly implements MetricAnomaly<Br
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
     _anomalyId = UUID.randomUUID().toString();
-    _description = (String) configs.get(METRIC_ANOMALY_DESCRIPTION_CONFIG);
-    _fixable = (Boolean) configs.get(METRIC_ANOMALY_FIXABLE_CONFIG);
+    _description = (String) configs.get(METRIC_ANOMALY_DESCRIPTION_OBJECT_CONFIG);
+    _fixable = (Boolean) configs.get(METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG);
     if (_fixable == null) {
-      throw new IllegalArgumentException(String.format("Missing %s for metric anomaly.", METRIC_ANOMALY_FIXABLE_CONFIG));
+      throw new IllegalArgumentException(String.format("Missing %s for metric anomaly.", METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG));
     }
-    _brokerEntitiesWithDetectionTimeMs = (Map<BrokerEntity, Long>) configs.get(METRIC_ANOMALY_BROKER_ENTITIES_CONFIG);
+    _brokerEntitiesWithDetectionTimeMs = (Map<BrokerEntity, Long>) configs.get(METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG);
     if (_brokerEntitiesWithDetectionTimeMs == null || _brokerEntitiesWithDetectionTimeMs.isEmpty()) {
       throw new IllegalArgumentException("Missing broker entities for metric anomaly.");
     }

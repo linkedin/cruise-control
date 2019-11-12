@@ -4,9 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.FixOfflineReplicasRunnable;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
@@ -19,9 +19,8 @@ import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.S
 import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getSelfHealingGoalNames;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyUtils.extractKafkaCruiseControlObjectFromConfig;
-import static com.linkedin.kafka.cruisecontrol.detector.DiskFailureDetector.FAILED_DISKS_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.DISK_FAILURE;
-
+import static com.linkedin.kafka.cruisecontrol.detector.DiskFailureDetector.FAILED_DISKS_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.DISK_FAILURE;
 
 /**
  * The disk failures that have been detected.
@@ -57,7 +56,7 @@ public class DiskFailures extends KafkaAnomaly {
 
   @Override
   public AnomalyType anomalyType() {
-    return AnomalyType.DISK_FAILURE;
+    return DISK_FAILURE;
   }
 
   @Override
@@ -77,7 +76,7 @@ public class DiskFailures extends KafkaAnomaly {
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
     KafkaCruiseControl kafkaCruiseControl = extractKafkaCruiseControlObjectFromConfig(configs, DISK_FAILURE);
-    _failedDisksByBroker = (Map<Integer, Map<String, Long>>) configs.get(FAILED_DISKS_CONFIG);
+    _failedDisksByBroker = (Map<Integer, Map<String, Long>>) configs.get(FAILED_DISKS_OBJECT_CONFIG);
     if (_failedDisksByBroker == null || _failedDisksByBroker.isEmpty()) {
       throw new IllegalArgumentException("Unable to create disk failure anomaly with no failed disk specified.");
     }

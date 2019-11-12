@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
-import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomaly;
+import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyFinder;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
@@ -28,14 +28,14 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX
  */
 public class MetricAnomalyDetector implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(MetricAnomalyDetector.class);
-  public static final String METRIC_ANOMALY_DESCRIPTION_CONFIG = "metric.anomaly.description";
-  public static final String METRIC_ANOMALY_BROKER_ENTITIES_CONFIG = "metric.anomaly.broker.entities";
-  public static final String METRIC_ANOMALY_FIXABLE_CONFIG = "metric.anomaly.fixable";
-  private final Queue<KafkaAnomaly> _anomalies;
+  public static final String METRIC_ANOMALY_DESCRIPTION_OBJECT_CONFIG = "metric.anomaly.description.object";
+  public static final String METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG = "metric.anomaly.broker.entities.object";
+  public static final String METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG = "metric.anomaly.fixable.object";
+  private final Queue<Anomaly> _anomalies;
   private final List<MetricAnomalyFinder> _kafkaMetricAnomalyFinders;
   private final KafkaCruiseControl _kafkaCruiseControl;
 
-  public MetricAnomalyDetector(Queue<KafkaAnomaly> anomalies,
+  public MetricAnomalyDetector(Queue<Anomaly> anomalies,
                                KafkaCruiseControl kafkaCruiseControl) {
     _anomalies = anomalies;
     _kafkaCruiseControl = kafkaCruiseControl;
@@ -80,9 +80,7 @@ public class MetricAnomalyDetector implements Runnable {
       Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker = _kafkaCruiseControl.loadMonitor().currentBrokerMetricValues();
 
       for (MetricAnomalyFinder<BrokerEntity> kafkaMetricAnomalyFinder : _kafkaMetricAnomalyFinders) {
-        for (MetricAnomaly<BrokerEntity> metricAnomaly: kafkaMetricAnomalyFinder.metricAnomalies(metricsHistoryByBroker, currentMetricsByBroker)) {
-          _anomalies.add((KafkaMetricAnomaly) metricAnomaly);
-        }
+        _anomalies.addAll(kafkaMetricAnomalyFinder.metricAnomalies(metricsHistoryByBroker, currentMetricsByBroker));
       }
 
     } catch (Exception e) {

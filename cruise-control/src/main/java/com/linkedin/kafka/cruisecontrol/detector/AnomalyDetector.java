@@ -6,13 +6,15 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
+import com.linkedin.cruisecontrol.detector.Anomaly;
+import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotificationResult;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotifier;
-import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
+import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
@@ -58,7 +60,7 @@ public class AnomalyDetector {
   private final DiskFailureDetector _diskFailureDetector;
   private final ScheduledExecutorService _detectorScheduler;
   private final long _anomalyDetectionIntervalMs;
-  private final PriorityBlockingQueue<KafkaAnomaly> _anomalies;
+  private final PriorityBlockingQueue<Anomaly> _anomalies;
   private volatile boolean _shutdown;
   private final AnomalyDetectorState _anomalyDetectorState;
   private final List<String> _selfHealingGoals;
@@ -73,8 +75,8 @@ public class AnomalyDetector {
     // For anomalies of different types, prioritize handling anomaly of higher priority;
     // otherwise, handle anomaly in order of detected time.
     _anomalies = new PriorityBlockingQueue<>(ANOMALY_QUEUE_INITIAL_CAPACITY,
-                                             Comparator.comparing((KafkaAnomaly anomaly) -> anomaly.anomalyType().priority())
-                                                       .thenComparingLong(KafkaAnomaly::detectionTimeMs));
+                                             Comparator.comparing((Anomaly anomaly) -> anomaly.anomalyType().priority())
+                                                       .thenComparingLong(Anomaly::detectionTimeMs));
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
     _adminClient = KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
     _anomalyDetectionIntervalMs = config.getLong(KafkaCruiseControlConfig.ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
@@ -108,7 +110,7 @@ public class AnomalyDetector {
   /**
    * Package private constructor for unit test.
    */
-  AnomalyDetector(PriorityBlockingQueue<KafkaAnomaly> anomalies,
+  AnomalyDetector(PriorityBlockingQueue<Anomaly> anomalies,
                   AdminClient adminClient,
                   long anomalyDetectionIntervalMs,
                   KafkaCruiseControl kafkaCruiseControl,
@@ -136,7 +138,7 @@ public class AnomalyDetector {
     _numCheckedWithDelay = 0L;
     _shutdownLock = new Object();
     // Add anomaly detector state
-    _anomalyDetectorState = new AnomalyDetectorState(new SystemTime(), new HashMap<>(AnomalyType.cachedValues().size()), 10, null);
+    _anomalyDetectorState = new AnomalyDetectorState(new SystemTime(), new HashMap<>(KafkaAnomalyType.cachedValues().size()), 10, null);
   }
 
   /**
@@ -256,7 +258,7 @@ public class AnomalyDetector {
         boolean postProcessAnomalyInProgress = false;
         _anomalyInProgress = null;
         try {
-          _anomalyInProgress = _anomalies.take();
+          _anomalyInProgress = (KafkaAnomaly) _anomalies.take();
           LOG.trace("Processing anomaly {}.", _anomalyInProgress);
           if (_anomalyInProgress == SHUTDOWN_ANOMALY) {
             // Service has shutdown.
@@ -343,7 +345,7 @@ public class AnomalyDetector {
     private AnomalyNotificationResult notifyAnomalyInProgress(AnomalyType anomalyType) {
       // Call the anomaly notifier to see if a fix is desired.
       AnomalyNotificationResult notificationResult;
-      switch (anomalyType) {
+      switch ((KafkaAnomalyType) anomalyType) {
         case GOAL_VIOLATION:
           GoalViolations goalViolations = (GoalViolations) _anomalyInProgress;
           notificationResult = _anomalyNotifier.onGoalViolation(goalViolations);
@@ -369,14 +371,14 @@ public class AnomalyDetector {
     }
 
     /**
-     * Updates the state of the anomaly in progress and if the anomaly is a {@link AnomalyType#BROKER_FAILURE}, then it
+     * Updates the state of the anomaly in progress and if the anomaly is a {@link KafkaAnomalyType#BROKER_FAILURE}, then it
      * schedules a broker failure detection after the given delay.
      *
      * @param delayMs The delay for broker failure detection.
      */
     private void postProcessAnomalyInProgress(long delayMs) {
       // Anomaly detector does delayed check for broker failures, otherwise it ignores the anomaly.
-      if (_anomalyInProgress.anomalyType() == AnomalyType.BROKER_FAILURE) {
+      if (_anomalyInProgress.anomalyType() == KafkaAnomalyType.BROKER_FAILURE) {
         synchronized (_shutdownLock) {
           if (_shutdown) {
             LOG.debug("Skip delayed checking anomaly {}, because anomaly detector is shutting down.", _anomalyInProgress);
@@ -444,7 +446,7 @@ public class AnomalyDetector {
             }
           } catch (OptimizationFailureException ofe) {
             _anomalyLoggerExecutor.submit(() -> logSelfHealingOperation(anomalyId, ofe, null));
-            skipReportingIfNotUpdated = anomalyType == AnomalyType.BROKER_FAILURE;
+            skipReportingIfNotUpdated = anomalyType == KafkaAnomalyType.BROKER_FAILURE;
             throw ofe;
           } finally {
             handlePostFixAnomaly(isReadyToFix, fixStarted, anomalyId, skipReportingIfNotUpdated);
