@@ -64,6 +64,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
   protected static final String MIN_INSYNC_REPLICAS = "min.insync.replicas";
   protected static final String ONLINE_LOGDIRS = "OnlineLogDirsByBrokerId";
   protected static final String OFFLINE_LOGDIRS = "OfflineLogDirsByBrokerId";
+  protected static final String IS_CONTROLLER = "IsController";
   protected static final int DEFAULT_MIN_INSYNC_REPLICAS = 1;
   protected final Map<String, Properties> _allTopicConfigs;
   protected final Properties _clusterConfigs;
@@ -125,12 +126,12 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
    * @param topicPattern regex of topic to filter partition states by, is null if no filter is to be applied
    */
   protected void populateKafkaPartitionState(Set<PartitionInfo> underReplicatedPartitions,
-                                           Set<PartitionInfo> offlinePartitions,
-                                           Set<PartitionInfo> otherPartitions,
-                                           Set<PartitionInfo> partitionsWithOfflineReplicas,
-                                           Set<PartitionInfo> underMinIsrPartitions,
-                                           boolean verbose,
-                                           Pattern topicPattern) {
+                                             Set<PartitionInfo> offlinePartitions,
+                                             Set<PartitionInfo> otherPartitions,
+                                             Set<PartitionInfo> partitionsWithOfflineReplicas,
+                                             Set<PartitionInfo> underMinIsrPartitions,
+                                             boolean verbose,
+                                             Pattern topicPattern) {
     for (String topic : _kafkaCluster.topics()) {
       if (topicPattern == null || topicPattern.matcher(topic).matches()) {
         int minInsyncReplicas = minInsyncReplicas(topic);
@@ -167,11 +168,13 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
    * @param outOfSyncCountByBrokerId Out of sync replica count by broker id.
    * @param replicaCountByBrokerId Replica count by broker id.
    * @param offlineReplicaCountByBrokerId Offline replica count by broker id.
+   * @param isControllerByBrokerId Controller information by broker id.
    */
   protected void populateKafkaBrokerState(Map<Integer, Integer> leaderCountByBrokerId,
-                                        Map<Integer, Integer> outOfSyncCountByBrokerId,
-                                        Map<Integer, Integer> replicaCountByBrokerId,
-                                        Map<Integer, Integer> offlineReplicaCountByBrokerId) {
+                                          Map<Integer, Integer> outOfSyncCountByBrokerId,
+                                          Map<Integer, Integer> replicaCountByBrokerId,
+                                          Map<Integer, Integer> offlineReplicaCountByBrokerId,
+                                          Map<Integer, Boolean> isControllerByBrokerId) {
     // Part-1: Gather the states of brokers with replicas.
     for (String topic : _kafkaCluster.topics()) {
       for (PartitionInfo partitionInfo : _kafkaCluster.partitionsForTopic(topic)) {
@@ -203,6 +206,12 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
         outOfSyncCountByBrokerId.put(nodeId, 0);
         leaderCountByBrokerId.put(nodeId, 0);
       }
+    }
+    // Part-3: Gather controller information.
+    replicaCountByBrokerId.keySet().forEach(brokerId -> isControllerByBrokerId.put(brokerId, false));
+    Node controller = _kafkaCluster.controller();
+    if (controller != null) {
+      isControllerByBrokerId.put(controller.id(), true);
     }
   }
 
@@ -245,17 +254,20 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     Map<Integer, Integer> outOfSyncCountByBrokerId = new HashMap<>();
     Map<Integer, Integer> replicaCountByBrokerId = new HashMap<>();
     Map<Integer, Integer> offlineReplicaCountByBrokerId = new HashMap<>();
+    Map<Integer, Boolean> isControllerByBrokerId = new HashMap<>();
 
     populateKafkaBrokerState(leaderCountByBrokerId,
                              outOfSyncCountByBrokerId,
                              replicaCountByBrokerId,
-                             offlineReplicaCountByBrokerId);
+                             offlineReplicaCountByBrokerId,
+                             isControllerByBrokerId);
 
     Map<String, Object> kafkaClusterByBrokerState = new HashMap<>();
     kafkaClusterByBrokerState.put(LEADER_COUNT, leaderCountByBrokerId);
     kafkaClusterByBrokerState.put(OUT_OF_SYNC_COUNT, outOfSyncCountByBrokerId);
     kafkaClusterByBrokerState.put(REPLICA_COUNT, replicaCountByBrokerId);
     kafkaClusterByBrokerState.put(OFFLINE_REPLICA_COUNT, offlineReplicaCountByBrokerId);
+    kafkaClusterByBrokerState.put(IS_CONTROLLER, isControllerByBrokerId);
 
     // Broker LogDirs Summary
     Map<Integer, Set<String>> onlineLogDirsByBrokerId = new HashMap<>(replicaCountByBrokerId.keySet().size());
@@ -319,8 +331,8 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
   }
 
   protected void populateKafkaBrokerLogDirState(Map<Integer, Set<String>> onlineLogDirsByBrokerId,
-                                              Map<Integer, Set<String>> offlineLogDirsByBrokerId,
-                                              Set<Integer> brokers)
+                                                Map<Integer, Set<String>> offlineLogDirsByBrokerId,
+                                                Set<Integer> brokers)
       throws ExecutionException, InterruptedException {
     // If the broker does not show up in latest metadata, the broker is dead.
     Set<Integer> aliveBrokers = new HashSet<>(brokers.size());
@@ -381,22 +393,25 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     SortedMap<Integer, Integer> outOfSyncCountByBrokerId = new TreeMap<>();
     SortedMap<Integer, Integer> replicaCountByBrokerId = new TreeMap<>();
     SortedMap<Integer, Integer> offlineReplicaCountByBrokerId = new TreeMap<>();
+    Map<Integer, Boolean> isControllerByBrokerId = new TreeMap<>();
 
     populateKafkaBrokerState(leaderCountByBrokerId,
                              outOfSyncCountByBrokerId,
                              replicaCountByBrokerId,
-                             offlineReplicaCountByBrokerId);
+                             offlineReplicaCountByBrokerId,
+                             isControllerByBrokerId);
 
     String initMessage = "Brokers:";
-    sb.append(String.format("%s%n%20s%20s%20s%20s%20s%n", initMessage, "BROKER", "LEADER(S)", "REPLICAS", "OUT-OF-SYNC", "OFFLINE"));
+    sb.append(String.format("%s%n%20s%20s%20s%20s%20s%20s%n", initMessage, "BROKER", "LEADER(S)", "REPLICAS", "OUT-OF-SYNC", "OFFLINE", "IS_CONTROLLER"));
 
     for (Integer brokerId : replicaCountByBrokerId.keySet()) {
-      sb.append(String.format("%20d%20d%20d%20d%20d%n",
+      sb.append(String.format("%20d%20d%20d%20d%20d%20s%n",
                               brokerId,
                               leaderCountByBrokerId.getOrDefault(brokerId, 0),
                               replicaCountByBrokerId.getOrDefault(brokerId, 0),
                               outOfSyncCountByBrokerId.getOrDefault(brokerId, 0),
-                              offlineReplicaCountByBrokerId.getOrDefault(brokerId, 0)));
+                              offlineReplicaCountByBrokerId.getOrDefault(brokerId, 0),
+                              isControllerByBrokerId.get(brokerId)));
     }
     // Broker LogDirs Summary
     writeKafkaBrokerLogDirState(sb, replicaCountByBrokerId.keySet());
