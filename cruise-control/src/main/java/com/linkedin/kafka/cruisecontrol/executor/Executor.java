@@ -807,13 +807,19 @@ public class Executor {
         }
 
         if (_executorState.state() == STOPPING_EXECUTION) {
-          notifyExecutionFinished(String.format("Task [%s] execution is stopped by %s.", _uuid, _executionStoppedByUser.get() ? "user" : "cruise control"),
+          notifyExecutionFinished(String.format("Task [%s] execution for %s is stopped by %s.", _uuid,
+                                                userTaskInfo != null ? ("user request " + userTaskInfo.requestUrl()) : "self-healing",
+                                                _executionStoppedByUser.get() ? "user" : "cruise control"),
                                   true);
         } else if (_executionException != null) {
-          notifyExecutionFinished(String.format("Task [%s] execution is interrupted with exception %s.", _uuid, _executionException.getMessage()),
+          notifyExecutionFinished(String.format("Task [%s] execution for %s is interrupted with exception %s.", _uuid,
+                                                userTaskInfo != null ? ("user request " + userTaskInfo.requestUrl()) : "self-healing",
+                                                _executionException.getMessage()),
                                   true);
         } else {
-          notifyExecutionFinished(String.format("Task [%s] execution finishes.", _uuid), false);
+          notifyExecutionFinished(String.format("Task [%s] execution for %s finishes.", _uuid,
+                                                userTaskInfo != null ? ("user request " + userTaskInfo.requestUrl()) : "self-healing"),
+                                  false);
         }
         // Clear completed execution.
         clearCompletedExecution();
