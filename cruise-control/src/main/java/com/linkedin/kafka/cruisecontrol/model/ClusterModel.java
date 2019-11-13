@@ -74,6 +74,9 @@ public class ClusterModel implements Serializable {
   /**
    * Constructor for the cluster class. It creates data structures to hold a list of racks, a map for partitions by
    * topic partition, topic replica collocation by topic.
+   *
+   * @param generation Model generation of the cluster
+   * @param monitoredPartitionsRatio Monitored partitions ratio
    */
   public ClusterModel(ModelGeneration generation, double monitoredPartitionsRatio) {
     _generation = generation;
@@ -130,6 +133,9 @@ public class ClusterModel implements Serializable {
 
   /**
    * Get the rack with the rack id if it is found in the cluster; null otherwise.
+   *
+   * @param rackId Id of the requested rack.
+   * @return The rack with the rack id if it is found in the cluster; null otherwise.
    */
   public Rack rack(String rackId) {
     return _racksById.get(rackId);

@@ -32,7 +32,7 @@ import java.util.function.Function;
  *    <li>
  *      <tt>PriorityFunction</tt>(optional): the priority function allows users to prioritize certain replicas in the
  *      sorted replicas. The replicas will be sorted by their priority first. There can be multiple priority functions,
- *      which will be applied one by one based on the order in {@link this#_priorityFuncs} to resolve priority between two replicas.
+ *      which will be applied one by one based on the order in {@link #_priorityFuncs} to resolve priority between two replicas.
  *      In the end, the replicas with the same priority are sorted with their score from the <tt>scoreFunction</tt>.
  *      Note that if a priority function is provided, the <tt>SortedSet</tt> returned by the
  *      {@link #sortedReplicas(boolean)} is no longer binary searchable based on the score.
