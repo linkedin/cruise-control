@@ -27,7 +27,6 @@ import java.util.function.Function;
  *                           .addScoreFunc(addScoreFunc(ReplicaSortFunctionFactory.sortByMetricGroupValue(DISK.name())))
  *                           .trackSortedReplicasFor(sortName, clusterModel)
  * } </pre>
- * </p>
  */
 public class SortedReplicasHelper {
 
