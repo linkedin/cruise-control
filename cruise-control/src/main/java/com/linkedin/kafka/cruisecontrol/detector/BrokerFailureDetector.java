@@ -75,7 +75,7 @@ public class BrokerFailureDetector {
     // Load the failed broker information from zookeeper.
     loadPersistedFailedBrokerList();
     // Detect broker failures.
-    detectBrokerFailures();
+    detectBrokerFailures(false);
     _zkClient.subscribeChildChanges(BrokerIdsZNode.path(), new BrokerFailureListener());
   }
 
@@ -92,8 +92,13 @@ public class BrokerFailureDetector {
     }
   }
 
-  synchronized void detectBrokerFailures() {
-    detectBrokerFailures(aliveBrokers(), false);
+  /**
+   * Detect broker failures. Skip reporting if the failed brokers have not changed and skipReportingIfNotUpdated is true.
+   *
+   * @param skipReportingIfNotUpdated True if broker failure reporting will be skipped if failed brokers have not changed.
+   */
+  synchronized void detectBrokerFailures(boolean skipReportingIfNotUpdated) {
+    detectBrokerFailures(aliveBrokers(), skipReportingIfNotUpdated);
   }
 
   synchronized Map<Integer, Long> failedBrokers() {

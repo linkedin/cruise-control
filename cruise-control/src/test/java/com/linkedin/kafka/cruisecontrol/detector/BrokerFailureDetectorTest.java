@@ -73,11 +73,11 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
                    brokerFailures.failedBrokers());
 
       // Ensure that broker failure is detected as long as the broker is down.
-      detector.detectBrokerFailures();
+      detector.detectBrokerFailures(false);
       assertEquals("One broker failure should have been detected before timeout.", 1, anomalies.size());
       // Bring the broker back
       restartDeadBroker(brokerId);
-      detector.detectBrokerFailures();
+      detector.detectBrokerFailures(true);
       assertTrue(detector.failedBrokers().isEmpty());
     } finally {
       detector.shutdown();

@@ -65,7 +65,7 @@ public class SelfHealingNotifier implements AnomalyNotifier {
   protected final Map<AnomalyType, Long> _selfHealingEnabledHistoricalDurationMs;
   protected long _brokerFailureAlertThresholdMs;
   protected long _selfHealingThresholdMs;
-  // A cache that keeps the recent
+  // A cache that keeps the most recent broker failure for each broker.
   protected final Map<Boolean, Map<Integer, Long>> _latestFailedBrokersByAutoFixTriggered;
 
   public SelfHealingNotifier() {
@@ -195,7 +195,7 @@ public class SelfHealingNotifier implements AnomalyNotifier {
 
     for (Map.Entry<Integer, Long> entry : brokerFailures.failedBrokers().entrySet()) {
       Long failureTime = failedBrokers.get(entry.getKey());
-      if (failureTime == null || failureTime.longValue() == entry.getValue().longValue()) {
+      if (failureTime == null || failureTime.longValue() != entry.getValue().longValue()) {
         failedBrokers.put(entry.getKey(), entry.getValue());
         containsNewAlert = true;
       }

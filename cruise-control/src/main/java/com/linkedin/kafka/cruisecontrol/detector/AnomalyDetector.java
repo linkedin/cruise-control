@@ -267,7 +267,7 @@ public class AnomalyDetector {
           LOG.warn("Unexpected state prevents anomaly detector from handling the anomaly {}.", _anomalyInProgress, ise);
           // An illegal state may indicate a transient process blocking self-healing (e.g. an ongoing execution not
           // started by Cruise Control).
-          postProcessAnomalyInProgress = true;
+          postProcessAnomalyInProgress = false;
         } catch (Throwable t) {
           LOG.error("Uncaught exception in anomaly handler.", t);
           postProcessAnomalyInProgress = true;
@@ -362,18 +362,18 @@ public class AnomalyDetector {
      * Updates the state of the anomaly in progress and if the anomaly is a {@link AnomalyType#BROKER_FAILURE}, then it
      * schedules a broker failure detection after the given delay.
      *
-     * @param delay The delay for broker failure detection.
+     * @param delayMs The delay for broker failure detection.
      */
-    private void postProcessAnomalyInProgress(long delay) {
+    private void postProcessAnomalyInProgress(long delayMs) {
       // Anomaly detector does delayed check for broker failures, otherwise it ignores the anomaly.
       if (getAnomalyType(_anomalyInProgress) == AnomalyType.BROKER_FAILURE) {
         synchronized (_shutdownLock) {
           if (_shutdown) {
             LOG.debug("Skip delayed checking anomaly {}, because anomaly detector is shutting down.", _anomalyInProgress);
           } else {
-            LOG.debug("Scheduling broker failure detection with delay of {} ms", delay);
+            LOG.debug("Scheduling broker failure detection with delay of {} ms", delayMs);
             _numCheckedWithDelay++;
-            _detectorScheduler.schedule(_brokerFailureDetector::detectBrokerFailures, delay, TimeUnit.MILLISECONDS);
+            _detectorScheduler.schedule(() -> _brokerFailureDetector.detectBrokerFailures(false), delayMs, TimeUnit.MILLISECONDS);
             _anomalyDetectorState.onAnomalyHandle(_anomalyInProgress, AnomalyState.Status.CHECK_WITH_DELAY);
           }
         }
@@ -434,30 +434,33 @@ public class AnomalyDetector {
           LOG.info("Skip fixing anomaly {}, because anomaly detector is shutting down.", _anomalyInProgress);
         } else {
           boolean isReadyToFix = isAnomalyInProgressReadyToFix(anomalyType);
-          boolean startedSuccessfully = false;
+          boolean fixStarted = false;
           String anomalyId = _anomalyInProgress.anomalyId();
+          // Upon post-handling the anomaly, skip reporting broker failure if the failed brokers have not changed.
+          boolean skipReportingIfNotUpdated = false;
           try {
             if (isReadyToFix) {
               LOG.info("Fixing anomaly {}", _anomalyInProgress);
-              startedSuccessfully = _anomalyInProgress.fix();
+              fixStarted = _anomalyInProgress.fix();
               String optimizationResult = optimizationResult(anomalyType);
               _anomalyLoggerExecutor.submit(() -> logSelfHealingOperation(anomalyId, null, optimizationResult));
             }
           } catch (OptimizationFailureException ofe) {
             _anomalyLoggerExecutor.submit(() -> logSelfHealingOperation(anomalyId, ofe, null));
+            skipReportingIfNotUpdated = anomalyType == AnomalyType.BROKER_FAILURE;
             throw ofe;
           } finally {
-            handlePostFixAnomaly(isReadyToFix, startedSuccessfully, anomalyId);
+            handlePostFixAnomaly(isReadyToFix, fixStarted, anomalyId, skipReportingIfNotUpdated);
           }
         }
       }
     }
 
-    private void handlePostFixAnomaly(boolean isReadyToFix, boolean startedSuccessfully, String anomalyId) {
+    private void handlePostFixAnomaly(boolean isReadyToFix, boolean fixStarted, String anomalyId, boolean skipReportingIfNotUpdated) {
       if (isReadyToFix) {
-        _anomalyDetectorState.onAnomalyHandle(_anomalyInProgress, startedSuccessfully ? AnomalyState.Status.FIX_STARTED
-                                                                                      : AnomalyState.Status.FIX_FAILED_TO_START);
-        if (startedSuccessfully) {
+        _anomalyDetectorState.onAnomalyHandle(_anomalyInProgress, fixStarted ? AnomalyState.Status.FIX_STARTED
+                                                                             : AnomalyState.Status.FIX_FAILED_TO_START);
+        if (fixStarted) {
           _anomalyDetectorState.incrementNumSelfHealingStarted();
           LOG.info("[{}] Self-healing started successfully.", anomalyId);
         } else {
@@ -475,7 +478,7 @@ public class AnomalyDetector {
       // If there has not been any failed brokers at the time of detecting broker failures, this is a no-op. Otherwise,
       // the call will create a broker failure anomaly. Depending on the time of the first broker failure in that anomaly,
       // it will trigger either a delayed check or a fix.
-      _detectorScheduler.schedule(_brokerFailureDetector::detectBrokerFailures,
+      _detectorScheduler.schedule(() -> _brokerFailureDetector.detectBrokerFailures(skipReportingIfNotUpdated),
                                   isReadyToFix ? 0L : _anomalyDetectionIntervalMs, TimeUnit.MILLISECONDS);
     }
   }
