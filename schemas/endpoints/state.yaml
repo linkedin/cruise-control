@@ -1,0 +1,48 @@
+StateEndpoint:
+  get:
+    summary: Get the state of cruise control
+    parameters:
+      - name: substates
+        in: query
+        description: The substates for which to retrieve state from cruise-control
+        schema:
+          type: array
+          items:
+            type: string
+            enum:
+              - executor
+              - analyzer
+              - monitor
+              - anomaly_detector
+      - name: json
+        in: query
+        description: If true, cruise-control's response is in JSON format
+        schema:
+          type: boolean
+      - name: verbose
+        in: query
+        description: Whether cruise-control's response should return verbose information
+        schema:
+          type: boolean
+          default: false
+      - name: super_verbose
+        in: query
+        description: Whether cruise-control's response should return super-verbose information
+        schema:
+          type: boolean
+          default: false
+    responses:
+      '200':
+        description: |-
+          Successful rebalance response
+        content:
+          application/json:
+            schema:
+              $ref: '../responses/cruiseControlState.yaml#/CruiseControlState'
+      '202':
+        description: |-
+          Rebalancing in progress
+        content:
+          application/json:
+            schema:
+              $ref: '../responses/progressResult.yaml#/ProgressResult'
