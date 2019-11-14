@@ -93,7 +93,7 @@ public class SelfHealingNotifierTest {
                                                        parameterConfigOverrides));
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertEquals(1, result.delay());
-    assertTrue(anomalyNotifier._alertCalled.get(AnomalyType.BROKER_FAILURE));
+    assertFalse(anomalyNotifier._alertCalled.get(AnomalyType.BROKER_FAILURE));
     assertFalse(anomalyNotifier._autoFixTriggered.get(AnomalyType.BROKER_FAILURE));
 
     // Sleep 1 ms

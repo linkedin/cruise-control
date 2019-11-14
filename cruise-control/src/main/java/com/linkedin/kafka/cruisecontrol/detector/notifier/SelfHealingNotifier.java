@@ -65,6 +65,8 @@ public class SelfHealingNotifier implements AnomalyNotifier {
   protected final Map<AnomalyType, Long> _selfHealingEnabledHistoricalDurationMs;
   protected long _brokerFailureAlertThresholdMs;
   protected long _selfHealingThresholdMs;
+  // A cache that keeps the most recent broker failure for each broker.
+  protected final Map<Boolean, Map<Integer, Long>> _latestFailedBrokersByAutoFixTriggered;
 
   public SelfHealingNotifier() {
     this(new SystemTime());
@@ -85,6 +87,9 @@ public class SelfHealingNotifier implements AnomalyNotifier {
     // Init self-healing historical duration.
     _selfHealingEnabledHistoricalDurationMs = new HashMap<>(numAnomalyTypes);
     AnomalyType.cachedValues().forEach(anomalyType -> _selfHealingEnabledHistoricalDurationMs.put(anomalyType, 0L));
+    _latestFailedBrokersByAutoFixTriggered = new HashMap<>(2);
+    _latestFailedBrokersByAutoFixTriggered.put(true, new HashMap<>());
+    _latestFailedBrokersByAutoFixTriggered.put(false, new HashMap<>());
   }
 
   private static boolean hasUnfixableGoals(GoalViolations goalViolations) {
@@ -177,6 +182,28 @@ public class SelfHealingNotifier implements AnomalyNotifier {
     return selfHealingEnabledRatio;
   }
 
+  /**
+   * Check whether the given broker failures with the corresponding autoFixTriggered contains a new failure to alert.
+   *
+   * @param brokerFailures The detected broker failures
+   * @param autoFixTriggered True if auto fix has been triggered, false otherwise.
+   * @return True if any of the broker failures with the corresponding autoFixTriggered has not been alerted, false otherwise.
+   */
+  private boolean hasNewFailureToAlert(BrokerFailures brokerFailures, boolean autoFixTriggered) {
+    Map<Integer, Long> failedBrokers = _latestFailedBrokersByAutoFixTriggered.get(autoFixTriggered);
+    boolean containsNewAlert = false;
+
+    for (Map.Entry<Integer, Long> entry : brokerFailures.failedBrokers().entrySet()) {
+      Long failureTime = failedBrokers.get(entry.getKey());
+      if (failureTime == null || failureTime.longValue() != entry.getValue().longValue()) {
+        failedBrokers.put(entry.getKey(), entry.getValue());
+        containsNewAlert = true;
+      }
+    }
+
+    return containsNewAlert;
+  }
+
   @Override
   public AnomalyNotificationResult onBrokerFailure(BrokerFailures brokerFailures) {
     long earliestFailureTimeMs = Long.MAX_VALUE;
@@ -193,13 +220,17 @@ public class SelfHealingNotifier implements AnomalyNotifier {
       result = AnomalyNotificationResult.check(delayMs);
     } else if (nowMs < selfHealingTimeMs) {
       // Reached alert threshold. Alert but do not fix.
-      alert(brokerFailures, false, selfHealingTimeMs, AnomalyType.BROKER_FAILURE);
+      if (hasNewFailureToAlert(brokerFailures, false)) {
+        alert(brokerFailures, false, selfHealingTimeMs, AnomalyType.BROKER_FAILURE);
+      }
       long delay = selfHealingTimeMs - nowMs;
       result = AnomalyNotificationResult.check(delay);
     } else {
       // Reached auto fix threshold. Alert and fix if self healing is enabled.
       boolean autoFixTriggered = _selfHealingEnabled.get(AnomalyType.BROKER_FAILURE);
-      alert(brokerFailures, autoFixTriggered, selfHealingTimeMs, AnomalyType.BROKER_FAILURE);
+      if (hasNewFailureToAlert(brokerFailures, autoFixTriggered)) {
+        alert(brokerFailures, autoFixTriggered, selfHealingTimeMs, AnomalyType.BROKER_FAILURE);
+      }
       result = autoFixTriggered ? AnomalyNotificationResult.fix() : AnomalyNotificationResult.ignore();
     }
     return result;
