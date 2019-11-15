@@ -169,9 +169,9 @@ public class ExecutionTaskManager {
       // All brokers are throttled.
       return Integer.MAX_VALUE;
     }
-
-    int numThrottledBrokers = brokersWithReplicaMoves.size() - numUnthrottledBrokers;
-    return Math.max(1, (_maxNumClusterMovementConcurrency - (numThrottledBrokers * throttledConcurrency)) / numUnthrottledBrokers);
+    int unthrottledConcurrency = _maxNumClusterMovementConcurrency / numUnthrottledBrokers;
+    LOG.debug("Unthrottled concurrency is {} for {} brokers.", unthrottledConcurrency, numUnthrottledBrokers);
+    return unthrottledConcurrency;
   }
 
   /**
@@ -184,13 +184,6 @@ public class ExecutionTaskManager {
    */
   private Map<Integer, Integer> brokersReadyForReplicaMovement(Map<Integer, Integer> inProgressReplicaMovementsByBrokerId,
                                                                int throttledConcurrency) {
-    int totalThrottledPartitionMovementConcurrency = inProgressReplicaMovementsByBrokerId.size() * throttledConcurrency;
-    if (totalThrottledPartitionMovementConcurrency > _maxNumClusterMovementConcurrency) {
-      LOG.error("Total throttled partition movement concurrency ({}) is greater than the maximum number of allowed "
-                + " movements in cluster ({}). Please decrease the per-broker partition movement concurrency ({}) to avoid "
-                + "a potential ZooKeeper zNode file size limit violation during replica moves.",
-                totalThrottledPartitionMovementConcurrency, _maxNumClusterMovementConcurrency, throttledConcurrency);
-    }
     Map<Integer, Integer> readyBrokers = new HashMap<>(inProgressReplicaMovementsByBrokerId.size());
     int unthrottledConcurrency = unthrottledConcurrency(inProgressReplicaMovementsByBrokerId.keySet(), throttledConcurrency);
     inProgressReplicaMovementsByBrokerId.forEach((bid, inProgressReplicaMovements) -> {
