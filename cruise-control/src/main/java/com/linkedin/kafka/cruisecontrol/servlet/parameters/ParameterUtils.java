@@ -917,7 +917,7 @@ public class ParameterUtils {
   }
 
   static boolean excludeFollowerDemotion(HttpServletRequest request) {
-    return getBooleanParam(request, EXCLUDE_FOLLOWER_DEMOTION_PARAM, false);
+    return getBooleanParam(request, EXCLUDE_FOLLOWER_DEMOTION_PARAM, true);
   }
 
   static Short replicationFactor(HttpServletRequest request) {
