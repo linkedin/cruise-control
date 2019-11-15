@@ -13,11 +13,11 @@ import java.util.Set;
 
 public interface SecurityProvider {
 
-  List<ConstraintMapping> getConstraintMappings();
+  List<ConstraintMapping> constraintMappings();
 
-  LoginService getLoginService();
+  LoginService loginService();
 
-  Authenticator getAuthenticator();
+  Authenticator authenticator();
 
-  Set<String> getRoles();
+  Set<String> roles();
 }

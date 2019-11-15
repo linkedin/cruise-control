@@ -166,10 +166,10 @@ public class KafkaCruiseControlApp {
     ConstraintSecurityHandler securityHandler = new ConstraintSecurityHandler();
     SecurityProvider securityProvider = _config.getConfiguredInstance(WebServerConfig.SECURITY_PROVIDER_CONFIG, SecurityProvider.class);
     if (securityProvider != null) {
-      securityHandler.setConstraintMappings(securityProvider.getConstraintMappings());
-      securityHandler.setAuthenticator(securityProvider.getAuthenticator());
-      securityHandler.setLoginService(securityProvider.getLoginService());
-      securityHandler.setRoles(securityProvider.getRoles());
+      securityHandler.setConstraintMappings(securityProvider.constraintMappings());
+      securityHandler.setAuthenticator(securityProvider.authenticator());
+      securityHandler.setLoginService(securityProvider.loginService());
+      securityHandler.setRoles(securityProvider.roles());
     }
     return securityHandler;
   }

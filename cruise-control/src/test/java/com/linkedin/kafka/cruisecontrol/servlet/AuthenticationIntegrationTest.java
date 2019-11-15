@@ -65,7 +65,7 @@ public class AuthenticationIntegrationTest extends CruiseControlIntegrationTestH
   public static class BasicSecurityProvider implements SecurityProvider {
 
     @Override
-    public List<ConstraintMapping> getConstraintMappings() {
+    public List<ConstraintMapping> constraintMappings() {
       ConstraintMapping mapping = new ConstraintMapping();
       Constraint constraint = new Constraint();
       constraint.setAuthenticate(true);
@@ -78,17 +78,17 @@ public class AuthenticationIntegrationTest extends CruiseControlIntegrationTestH
     }
 
     @Override
-    public LoginService getLoginService() {
+    public LoginService loginService() {
       return new ConstantLoginService();
     }
 
     @Override
-    public Authenticator getAuthenticator() {
+    public Authenticator authenticator() {
       return new BasicAuthenticator();
     }
 
     @Override
-    public Set<String> getRoles() {
+    public Set<String> roles() {
       return Collections.singleton("admin");
     }
 
