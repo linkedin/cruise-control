@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet;
 import com.linkedin.kafka.cruisecontrol.CruiseControlIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import org.apache.http.auth.BasicUserPrincipal;
+import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.security.Authenticator;
 import org.eclipse.jetty.security.ConstraintMapping;
 import org.eclipse.jetty.security.DefaultIdentityService;
@@ -21,6 +22,7 @@ import org.junit.Test;
 
 import javax.security.auth.Subject;
 import javax.servlet.ServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URI;
@@ -38,6 +40,10 @@ public class AuthenticationIntegrationTest extends CruiseControlIntegrationTestH
 
   private static final String TEST_USER = "test";
   private static final String TEST_PASSWORD = "12345";
+  private static final String TEST_BAD_PASSWORD = "bad_password";
+  private static final String ADMIN_ROLE = "admin";
+  private static final String CRUISE_CONTROL_STATE_ENDPOINT = "kafkacruisecontrol/state";
+  private static final String ANY_PATH = "/*";
 
   @Override
   protected Map<String, Object> withConfigs() {
@@ -47,19 +53,19 @@ public class AuthenticationIntegrationTest extends CruiseControlIntegrationTestH
   @Test
   public void testSuccessfulAuthentication() throws IOException, URISyntaxException {
     HttpURLConnection connection = (HttpURLConnection) new URI(_app.serverUrl())
-        .resolve("kafkacruisecontrol/state").toURL().openConnection();
+        .resolve(CRUISE_CONTROL_STATE_ENDPOINT).toURL().openConnection();
     String encoded = Base64.getEncoder().encodeToString((TEST_USER + ":" + TEST_PASSWORD).getBytes(StandardCharsets.UTF_8));
-    connection.setRequestProperty("Authorization", "Basic " + encoded);
-    assertEquals(200, connection.getResponseCode());
+    connection.setRequestProperty(HttpHeader.AUTHORIZATION.asString(), "Basic " + encoded);
+    assertEquals(HttpServletResponse.SC_OK, connection.getResponseCode());
   }
 
   @Test
   public void testUnsuccessfulAuthentication() throws IOException, URISyntaxException {
     HttpURLConnection connection = (HttpURLConnection) new URI(_app.serverUrl())
-        .resolve("kafkacruisecontrol/state").toURL().openConnection();
-    String encoded = Base64.getEncoder().encodeToString((TEST_USER + ":" + "bad_password").getBytes(StandardCharsets.UTF_8));
-    connection.setRequestProperty("Authorization", "Basic " + encoded);
-    assertEquals(401, connection.getResponseCode());
+        .resolve(CRUISE_CONTROL_STATE_ENDPOINT).toURL().openConnection();
+    String encoded = Base64.getEncoder().encodeToString((TEST_USER + ":" + TEST_BAD_PASSWORD).getBytes(StandardCharsets.UTF_8));
+    connection.setRequestProperty(HttpHeader.AUTHORIZATION.asString(), "Basic " + encoded);
+    assertEquals(HttpServletResponse.SC_UNAUTHORIZED, connection.getResponseCode());
   }
 
   public static class BasicSecurityProvider implements SecurityProvider {
@@ -70,9 +76,9 @@ public class AuthenticationIntegrationTest extends CruiseControlIntegrationTestH
       Constraint constraint = new Constraint();
       constraint.setAuthenticate(true);
       constraint.setName(Constraint.__BASIC_AUTH);
-      constraint.setRoles(new String[] {"admin"});
+      constraint.setRoles(new String[] { ADMIN_ROLE });
       mapping.setConstraint(constraint);
-      mapping.setPathSpec("/*");
+      mapping.setPathSpec(ANY_PATH);
 
       return Collections.singletonList(mapping);
     }
@@ -89,7 +95,7 @@ public class AuthenticationIntegrationTest extends CruiseControlIntegrationTestH
 
     @Override
     public Set<String> roles() {
-      return Collections.singleton("admin");
+      return Collections.singleton(ADMIN_ROLE);
     }
 
     private static class ConstantLoginService implements LoginService {
@@ -100,7 +106,7 @@ public class AuthenticationIntegrationTest extends CruiseControlIntegrationTestH
               Collections.emptySet(),
               Collections.singleton(Credential.getCredential(TEST_PASSWORD))),
           new BasicUserPrincipal(TEST_USER),
-          new String[] {"admin"});
+          new String[] { ADMIN_ROLE });
 
       private IdentityService _identityService = new DefaultIdentityService();
 

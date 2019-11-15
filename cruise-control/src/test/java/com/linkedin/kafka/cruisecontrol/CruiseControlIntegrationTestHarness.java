@@ -21,6 +21,9 @@ public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegra
   protected KafkaCruiseControlConfig _config;
   protected KafkaCruiseControlApp _app;
 
+  private static final String LOCALHOST = "localhost";
+  private static final int ANY_PORT = 0;
+
   protected abstract Map<String, Object> withConfigs();
 
   private void setupConfig() {
@@ -38,7 +41,7 @@ public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegra
     super.setUp();
     _brokers.values().forEach(CCEmbeddedBroker::startup);
     setupConfig();
-    _app = new KafkaCruiseControlApp(_config, 0, "0.0.0.0");
+    _app = new KafkaCruiseControlApp(_config, ANY_PORT, LOCALHOST);
     _app.start();
   }
 
