@@ -173,78 +173,77 @@ public class BalancingAction {
   }
 
   /**
-   * Get the destination topic partition to swap with.
+   * @return The destination topic partition to swap with.
    */
   public TopicPartition destinationTopicPartition() {
     return _destinationTp;
   }
 
   /**
-   * Get topic name of the replica to swap with at the destination.
+   * @return Topic name of the replica to swap with at the destination.
    */
   public String destinationTopic() {
     return _destinationTp.topic();
   }
 
   /**
-   * Get the partition Id that is impacted by the balancing action.
+   * @return The partition Id that is impacted by the balancing action.
    */
   public int partitionId() {
     return _tp.partition();
   }
 
   /**
-   * Get topic name of the impacted partition.
+   * @return Topic name of the impacted partition.
    */
   public String topic() {
     return _tp.topic();
   }
 
   /**
-   * Get topic partition.
+   * @return Topic partition.
    */
   public TopicPartition topicPartition() {
     return _tp;
   }
 
   /**
-   * Get the source broker logdir.
+   * @return The source broker logdir.
    */
   public String sourceBrokerLogdir() {
     return _sourceBrokerLogdir;
   }
 
   /**
-   * Get the destination broker logdir.
+   * @return The destination broker logdir.
    */
   public String destinationBrokerLogdir() {
     return _destinationBrokerLogdir;
   }
 
   /**
-   * Get the source broker id that is impacted by the balancing action.
+   * @return The source broker id that is impacted by the balancing action.
    */
   public Integer sourceBrokerId() {
     return _sourceBrokerId;
   }
 
   /**
-   * Get the destination broker Id.
+   * @return The destination broker Id.
    */
   public Integer destinationBrokerId() {
     return _destinationBrokerId;
   }
 
   /**
-   * Get the type of action that provides balancing.
+   * @return The type of action that provides balancing.
    */
   public ActionType balancingAction() {
     return _actionType;
   }
 
   /**
-   * Return an object that can be further used
-   * to encode into JSON
+   * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure() {
     Map<String, Object> proposalMap = new HashMap<>();

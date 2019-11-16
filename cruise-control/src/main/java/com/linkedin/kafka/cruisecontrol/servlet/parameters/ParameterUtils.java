@@ -147,6 +147,10 @@ public class ParameterUtils {
   private ParameterUtils() {
   }
 
+  /**
+   * @param request The Http request.
+   * @return The endpoint specified in the given request.
+   */
   public static CruiseControlEndPoint endPoint(HttpServletRequest request) {
     List<CruiseControlEndPoint> supportedEndpoints;
     switch (request.getMethod()) {
@@ -210,17 +214,32 @@ public class ParameterUtils {
   }
 
   /**
-   * Returns the case sensitive request parameter name, or <code>null</code> if the parameter does not exist.
+   * @return The case sensitive request parameter name, or <code>null</code> if the parameter does not exist.
    */
   public static String caseSensitiveParameterName(Map<String, String[]> parameterMap, String parameter) {
     return parameterMap.keySet().stream().filter(parameter::equalsIgnoreCase).findFirst().orElse(null);
   }
 
+  /**
+   * Get the boolean parameter.
+   *
+   * @param request HTTP request received by Cruise Control.
+   * @param parameter Parameter to parse from the request.
+   * @param defaultIfMissing Default value to set if the request does not contain the parameter.
+   * @return The specified value for the parameter, or defaultIfMissing if the parameter is missing.
+   */
   public static boolean getBooleanParam(HttpServletRequest request, String parameter, boolean defaultIfMissing) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), parameter);
     return parameterString == null ? defaultIfMissing : Boolean.parseBoolean(request.getParameter(parameterString));
   }
 
+  /**
+   * Get the {@link List} parameter.
+   *
+   * @param request HTTP request received by Cruise Control.
+   * @param parameter Parameter to parse from the request.
+   * @return The specified value for the parameter, or empty List if the parameter is missing.
+   */
   public static List<String> getListParam(HttpServletRequest request, String parameter) throws UnsupportedEncodingException {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), parameter);
     List<String> retList = parameterString == null ? new ArrayList<>()
@@ -441,11 +460,26 @@ public class ParameterUtils {
     }
   }
 
+  /**
+   * Get the {@link #RESOURCE_PARAM} from the request.
+   *
+   * @param request HTTP request received by Cruise Control.
+   * @return The resource String from the request, or {@link #DEFAULT_PARTITION_LOAD_RESOURCE} if {@link #RESOURCE_PARAM}
+   * does not exist in the request.
+   */
   public static String resourceString(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), RESOURCE_PARAM);
     return parameterString == null ? DEFAULT_PARTITION_LOAD_RESOURCE : request.getParameter(parameterString);
   }
 
+  /**
+   * Get the {@link #REASON_PARAM} from the request.
+   *
+   * @param request HTTP request received by Cruise Control.
+   * @param reasonRequired True if the {@link #REASON_PARAM} parameter is required, false otherwise.
+   * @return The specified value for the {@link #REASON_PARAM} parameter, or {@link #NO_REASON_PROVIDED} if parameter
+   * does not exist in the request.
+   */
   public static String reason(HttpServletRequest request, boolean reasonRequired) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), REASON_PARAM);
     if (parameterString != null && parameterString.length() > MAX_REASON_LENGTH) {
@@ -460,6 +494,13 @@ public class ParameterUtils {
                                                                               : request.getParameter(parameterString), ip, currentUtcDate());
   }
 
+  /**
+   * Parse the given parameter to a Set of String.
+   *
+   * @param request HTTP request received by Cruise Control.
+   * @param param The name of parameter.
+   * @return Parsed parameter as a Set of String.
+   */
   public static Set<String> parseParamToStringSet(HttpServletRequest request, String param) throws UnsupportedEncodingException {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), param);
     Set<String> paramsString = parameterString == null
@@ -469,6 +510,13 @@ public class ParameterUtils {
     return paramsString;
   }
 
+  /**
+   * Parse the given parameter to a Set of Integer.
+   *
+   * @param request HTTP request received by Cruise Control.
+   * @param param The name of parameter.
+   * @return Parsed parameter as a Set of Integer.
+   */
   public static Set<Integer> parseParamToIntegerSet(HttpServletRequest request, String param) throws UnsupportedEncodingException {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), param);
 
@@ -608,6 +656,13 @@ public class ParameterUtils {
     return goals;
   }
 
+  /**
+   * Get the specified value for the {@link #ENTRIES_PARAM} parameter.
+   *
+   * @param request HTTP request received by Cruise Control.
+   * @return The specified value for the {@link #ENTRIES_PARAM} parameter, or {@link Integer#MAX_VALUE} if the
+   * parameter is missing.
+   */
   public static int entries(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), ENTRIES_PARAM);
     return parameterString == null ? Integer.MAX_VALUE : Integer.parseInt(request.getParameter(parameterString));
@@ -623,6 +678,7 @@ public class ParameterUtils {
 
   /**
    * Default: An empty set.
+   * @return Review Ids.
    */
   public static Set<Integer> reviewIds(HttpServletRequest request) throws UnsupportedEncodingException {
     Set<Integer> reviewIds = parseParamToIntegerSet(request, REVIEW_IDS_PARAM);
@@ -637,6 +693,7 @@ public class ParameterUtils {
 
   /**
    * Mutually exclusive with the other parameters and can only be used if two step verification is enabled.
+   * @return Review Id.
    */
   public static Integer reviewId(HttpServletRequest request, boolean twoStepVerificationEnabled) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), REVIEW_ID_PARAM);
@@ -843,6 +900,7 @@ public class ParameterUtils {
 
   /**
    * Default: An empty set.
+   * @return User task ids.
    */
   public static Set<UUID> userTaskIds(HttpServletRequest request) throws UnsupportedEncodingException {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), USER_TASK_IDS_PARAM);
@@ -853,6 +911,7 @@ public class ParameterUtils {
 
   /**
    * Default: An empty set.
+   * @return Client ids.
    */
   public static Set<String> clientIds(HttpServletRequest request) throws UnsupportedEncodingException {
     Set<String> parsedClientIds = parseParamToStringSet(request, CLIENT_IDS_PARAM);
@@ -862,6 +921,7 @@ public class ParameterUtils {
 
   /**
    * Default: An empty set.
+   * @return Endpoints.
    */
   public static Set<CruiseControlEndPoint> endPoints(HttpServletRequest request) throws UnsupportedEncodingException {
     Set<String> parsedEndPoints = parseParamToStringSet(request, ENDPOINTS_PARAM).stream()
@@ -879,6 +939,7 @@ public class ParameterUtils {
 
   /**
    * Default: An empty set.
+   * @return Types.
    */
   public static Set<UserTaskManager.TaskState> types(HttpServletRequest request) throws UnsupportedEncodingException {
     Set<String> parsedTaskStates = parseParamToStringSet(request, TYPES_PARAM);

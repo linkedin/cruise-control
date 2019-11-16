@@ -68,6 +68,10 @@ public class CCEmbeddedBroker implements AutoCloseable {
     return _id;
   }
 
+  /**
+   * @param protocol Security protocol.
+   * @return Address containing host and port.
+   */
   public String addr(SecurityProtocol protocol) {
     if (!_hosts.containsKey(protocol)) {
       return null;

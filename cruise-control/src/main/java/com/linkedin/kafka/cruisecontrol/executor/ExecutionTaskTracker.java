@@ -239,6 +239,9 @@ public class ExecutionTaskTracker {
     return _remainingInterBrokerDataToMoveInMB;
   }
 
+  /**
+   * @return Number of finished inter broker partition movements, which is the sum of completed, dead, and aborted tasks.
+   */
   public int numFinishedInterBrokerPartitionMovements() {
     return _tasksByType.get(TaskType.INTER_BROKER_REPLICA_ACTION).get(State.COMPLETED).size() +
            _tasksByType.get(TaskType.INTER_BROKER_REPLICA_ACTION).get(State.DEAD).size() +
@@ -249,6 +252,12 @@ public class ExecutionTaskTracker {
     return _finishedInterBrokerDataMovementInMB;
   }
 
+  /**
+   * Get tasks in execution with the given task type.
+   *
+   * @param types Task type.
+   * @return Tasks that are in progress or aborting with the given task type.
+   */
   public Set<ExecutionTask> inExecutionTasks(Collection<TaskType> types) {
     Set<ExecutionTask> inExecutionTasks = new HashSet<>();
     for (TaskType type : types) {
@@ -266,6 +275,9 @@ public class ExecutionTaskTracker {
     return _tasksByType.get(TaskType.LEADER_ACTION).get(State.PENDING).size();
   }
 
+  /**
+   * @return Number of finished leadership movements, which is the sum of completed, dead, and aborted tasks.
+   */
   public int numFinishedLeadershipMovements() {
     return _tasksByType.get(TaskType.LEADER_ACTION).get(State.COMPLETED).size() +
            _tasksByType.get(TaskType.LEADER_ACTION).get(State.DEAD).size() +
@@ -280,6 +292,9 @@ public class ExecutionTaskTracker {
     return _remainingIntraBrokerDataToMoveInMB;
   }
 
+  /**
+   * @return Number of finished intra broker partition movements, which is the sum of completed, dead, and aborted tasks.
+   */
   public int numFinishedIntraBrokerPartitionMovements() {
     return  _tasksByType.get(TaskType.INTRA_BROKER_REPLICA_ACTION).get(State.COMPLETED).size() +
             _tasksByType.get(TaskType.INTRA_BROKER_REPLICA_ACTION).get(State.DEAD).size() +
@@ -294,6 +309,12 @@ public class ExecutionTaskTracker {
     return _inExecutionIntraBrokerDataMovementInMB;
   }
 
+  /**
+   * Get execution tasks summary.
+   *
+   * @param taskTypesToGetFullList Task types to return complete list of tasks.
+   * @return Execution tasks summary.
+   */
   public ExecutionTasksSummary getExecutionTasksSummary(Set<TaskType> taskTypesToGetFullList) {
     return new ExecutionTasksSummary(_finishedInterBrokerDataMovementInMB,
                                      _finishedIntraBrokerDataMovementInMB,

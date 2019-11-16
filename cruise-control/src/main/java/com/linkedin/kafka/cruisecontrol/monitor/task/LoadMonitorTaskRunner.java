@@ -183,7 +183,7 @@ public class LoadMonitorTaskRunner {
   }
 
   /**
-   * Get the bootstrap progress.
+   * @return The bootstrap progress.
    */
   public double bootStrapProgress() {
     return _bootstrapProgress;
@@ -225,7 +225,7 @@ public class LoadMonitorTaskRunner {
   }
 
   /**
-   * Get the state of the task runner.
+   * @return The state of the task runner.
    */
   public LoadMonitorTaskRunnerState state() {
     return _state.get();
@@ -319,7 +319,7 @@ public class LoadMonitorTaskRunner {
   }
 
   /**
-   * Get reason for pausing metric sampling.
+   * @return The reason for pausing metric sampling.
    */
   public String reasonOfLatestPauseOrResume() {
     return _reasonOfLatestPauseOrResume;
@@ -327,6 +327,7 @@ public class LoadMonitorTaskRunner {
 
   /**
    * Allow tasks to know if another thread, e.g. executor, is waiting on sampling to pause.
+   * @return True if another thread is waiting on sampling to pause, false otherwise.
    */
   public boolean awaitingPauseSampling() {
     return _awaitingPauseSampling;

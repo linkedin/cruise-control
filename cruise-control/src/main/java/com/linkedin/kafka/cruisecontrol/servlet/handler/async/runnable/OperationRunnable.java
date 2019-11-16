@@ -27,7 +27,7 @@ abstract class OperationRunnable implements Runnable {
   }
 
   /**
-   * @return the corresponding {@link OperationFuture} for the runnable.
+   * @return The corresponding {@link OperationFuture} for the runnable.
    */
   protected OperationFuture future() {
     return _future;

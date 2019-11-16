@@ -57,7 +57,7 @@ public class GoalViolations extends KafkaAnomaly implements CruiseControlConfigu
   }
 
   /**
-   * Get all the goal violations.
+   * @return All the goal violations.
    */
   public Map<Boolean, List<String>> violatedGoalsByFixability() {
     return _violatedGoalsByFixability;

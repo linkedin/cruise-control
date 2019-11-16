@@ -136,7 +136,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
    *
    * @param sample The metric sample to add.
    *
-   * @return true if the sample is accepted, false if the sample is ignored.
+   * @return True if the sample is accepted, false if the sample is ignored.
    */
   public boolean addSample(MetricSample<G, E> sample) {
     if (!sample.isValid(_metricDef)) {
@@ -269,7 +269,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
    * @param from starting time of the period to check.
    * @param to ending time of the period to check.
    * @param options the {@link AggregationOptions} to use for the completeness check.
-   * @return the {@link MetricSampleCompleteness} of the MetricSampleAggregator.
+   * @return The {@link MetricSampleCompleteness} of the MetricSampleAggregator.
    */
   public MetricSampleCompleteness<G, E> completeness(long from, long to, AggregationOptions<G, E> options) {
     _windowRollingLock.lock();
@@ -296,7 +296,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
    *
    * It should not be confused with valid windows.
    *
-   * @return a list of available windows in the MetricSampleAggregator.
+   * @return A list of available windows in the MetricSampleAggregator.
    */
   public List<Long> availableWindows() {
     return getWindowList(_oldestWindowIndex, _currentWindowIndex - 1);
@@ -309,7 +309,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
    *
    * It should not be confused with valid windows.
    *
-   * @return the number of available windows in the MetricSampleAggregator.
+   * @return The number of available windows in the MetricSampleAggregator.
    */
   public int numAvailableWindows() {
     return numAvailableWindows(-1, Long.MAX_VALUE);
@@ -325,7 +325,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
    *
    * @param from the starting time of the time range. (inclusive)
    * @param to the end time of the time range. (inclusive)
-   * @return the number of the windows in the given time range.
+   * @return The number of the windows in the given time range.
    */
   public int numAvailableWindows(long from, long to) {
     long fromWindowIndex = Math.max(windowIndex(from), _oldestWindowIndex);
@@ -334,14 +334,14 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
   }
 
   /**
-   * @return all the windows in the MetricSampleAggregator, including the current active window.
+   * @return All the windows in the MetricSampleAggregator, including the current active window.
    */
   public List<Long> allWindows() {
     return getWindowList(_oldestWindowIndex, _currentWindowIndex);
   }
 
   /**
-   * @return the earliest available window in the MetricSampleAggregator. Null is returned if there is
+   * @return The earliest available window in the MetricSampleAggregator. Null is returned if there is
    * no window available at all.
    */
   public Long earliestWindow() {
@@ -353,7 +353,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
    * only includes the windows that are still maintained by the MetricSampleAggregator. The evicted windows
    * are not included.
    *
-   * @return the number of samples aggregated by the MetricSampleAggregator.
+   * @return The number of samples aggregated by the MetricSampleAggregator.
    */
   public int numSamples() {
     return _rawMetrics.values().stream().mapToInt(RawMetricValues::numSamples).sum();
@@ -594,7 +594,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
   /**
    * Get the identity entity object.
    * @param entity the entity identity to look for.
-   * @return the object of the entity in the identity entity map.
+   * @return The object of the entity in the identity entity map.
    */
   private E identity(E entity) {
     return _identityEntityMap.computeIfAbsent(entity, e -> entity);

@@ -347,7 +347,7 @@ public class Executor {
   }
 
   /**
-   * Check whether the executor is executing a set of proposals.
+   * @return The current executor state.
    */
   public ExecutorState state() {
     return _executorState;
@@ -1254,7 +1254,7 @@ public class Executor {
      * @param cluster the kafka cluster
      * @param logdirInfoByTask  disk information for ongoing intra-broker replica movement tasks
      * @param task the task to check
-     * @return true if the task is marked as dead or aborting, false otherwise.
+     * @return True if the task is marked as dead or aborting, false otherwise.
      */
     private boolean maybeMarkTaskAsDeadOrAborting(Cluster cluster,
                                                   Map<ExecutionTask, ReplicaLogDirInfo> logdirInfoByTask,

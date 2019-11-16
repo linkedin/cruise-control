@@ -160,7 +160,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
    * @param clusterModel The state of the cluster.
    * @param partition The partition whose replica might be moved.
    * @param replicaPosition The position of the replica in the given partition.
-   * @return true if a move is applied, false otherwise.
+   * @return True if a move is applied, false otherwise.
    */
   private boolean maybeApplyMove(ClusterModel clusterModel, Partition partition, int replicaPosition) {
     // Racks with replica whose position is in [0, replicaPosition - 1] are ineligible for assignment.
@@ -231,7 +231,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
    *
    * @param partition The partition that the follower is a part of.
    * @param brokerId Id of the broker that the follower resides.
-   * @return the position of follower that is part of the given partition and reside in the broker with the given id.
+   * @return The position of follower that is part of the given partition and reside in the broker with the given id.
    */
   private int followerPosition(Partition partition, int brokerId) {
     int followerPos = 0;

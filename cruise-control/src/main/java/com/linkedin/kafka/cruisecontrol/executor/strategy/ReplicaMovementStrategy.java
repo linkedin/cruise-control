@@ -28,7 +28,7 @@ public interface ReplicaMovementStrategy {
    * of two strategies in determining the task execution order.
    *
    * @param strategy The other replica movement strategy.
-   * @return the composite replica movement strategy.
+   * @return The composite replica movement strategy.
    */
   ReplicaMovementStrategy chain(ReplicaMovementStrategy strategy);
 
@@ -42,7 +42,7 @@ public interface ReplicaMovementStrategy {
   Comparator<ExecutionTask> taskComparator(Cluster cluster);
 
   /**
-   * Get the name of this strategy. Name of a strategy provides an identification for the strategy in human readable format.
+   * @return The name of this strategy. Name of a strategy provides an identification for the strategy in human readable format.
    */
   String name();
 }

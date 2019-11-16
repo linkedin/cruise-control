@@ -160,6 +160,12 @@ public class KafkaCruiseControlServletUtils {
       "REMOTE_ADDR"
   };
 
+  /**
+   * Get the ip address of the client sending the request.
+   *
+   * @param request The http request.
+   * @return The ip address of the client sending the request.
+   */
   public static String getClientIpAddress(HttpServletRequest request) {
     for (String header : HEADERS_TO_TRY) {
       String ip = request.getHeader(header);

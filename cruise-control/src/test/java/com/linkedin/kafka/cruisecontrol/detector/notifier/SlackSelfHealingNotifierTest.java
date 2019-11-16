@@ -31,6 +31,9 @@ public class SlackSelfHealingNotifierTest {
     private static Time MOCK_TIME;
     private MockSlackSelfHealingNotifier _notifier;
 
+    /**
+     * Setup the test.
+     */
     @BeforeClass
     public static void setup() {
         final long startTime = 500L;

@@ -32,6 +32,11 @@ public class ModelParameters {
 
   }
 
+  /**
+   * Initialize the model parameters.
+   *
+   * @param config The configurations for Cruise Control.
+   */
   public static void init(KafkaCruiseControlConfig config) {
     CPU_WEIGHT_OF_LEADER_BYTES_IN_RATE =
         config.getDouble(KafkaCruiseControlConfig.LEADER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG);
@@ -56,7 +61,7 @@ public class ModelParameters {
 
   /**
    * Trigger the calculation of the model parameters.
-   * @return true if the parameters are generated, otherwise false;
+   * @return True if the parameters are generated, otherwise false;
    */
   public static boolean updateModelCoefficient() {
     return LINEAR_REGRESSION_PARAMETERS.updateModelCoefficient();

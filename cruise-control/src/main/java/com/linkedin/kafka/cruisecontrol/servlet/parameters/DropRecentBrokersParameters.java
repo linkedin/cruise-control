@@ -47,7 +47,7 @@ public class DropRecentBrokersParameters extends AbstractParameters {
    * Create a {@link DropRecentBrokersParameters} object from the request.
    *
    * @param configs Information collected from request and Cruise Control configs.
-   * @return a DropRecentBrokersParameters object; or null if any required parameter is not specified in the request.
+   * @return A DropRecentBrokersParameters object; or null if any required parameter is not specified in the request.
    */
   public static DropRecentBrokersParameters maybeBuildDropRecentBrokersParameters(Map<String, ?> configs)
       throws UnsupportedEncodingException {

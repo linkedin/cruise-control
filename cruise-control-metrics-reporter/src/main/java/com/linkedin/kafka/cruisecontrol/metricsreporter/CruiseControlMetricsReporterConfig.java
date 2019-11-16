@@ -108,6 +108,10 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
                 CRUISE_CONTROL_METRICS_REPORTER_BATCH_SIZE_DOC);
   }
 
+  /**
+   * @param baseConfigName Base config name.
+   * @return Cruise Control metrics reporter config name.
+   */
   public static String config(String baseConfigName) {
     String configName = PREFIX + baseConfigName;
     if (!CONFIGS.contains(configName)) {

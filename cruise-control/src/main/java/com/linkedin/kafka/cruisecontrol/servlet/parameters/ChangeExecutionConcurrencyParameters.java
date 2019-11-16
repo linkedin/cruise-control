@@ -54,7 +54,7 @@ public class ChangeExecutionConcurrencyParameters  extends AbstractParameters {
    * Create a {@link ChangeExecutionConcurrencyParameters} object from the request.
    *
    * @param configs Information collected from request and Cruise Control configs.
-   * @return a ChangeExecutionConcurrencyParameters object; or null if any required parameters is not specified in the request.
+   * @return A ChangeExecutionConcurrencyParameters object; or null if any required parameters is not specified in the request.
    */
   public static ChangeExecutionConcurrencyParameters maybeBuildChangeExecutionConcurrencyParameters(Map<String, ?> configs)
       throws UnsupportedEncodingException {

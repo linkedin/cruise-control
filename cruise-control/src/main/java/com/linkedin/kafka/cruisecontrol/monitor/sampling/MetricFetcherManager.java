@@ -139,7 +139,7 @@ public class MetricFetcherManager {
    * @param endMs the end time of the fetching period.
    * @param timeoutMs the timeout.
    * @param sampleStore the sample store to save the partition metric samples.
-   * @return true if there was no fetching error, false otherwise.
+   * @return True if there was no fetching error, false otherwise.
    */
   public boolean fetchPartitionMetricSamples(long startMs,
                                              long endMs,
@@ -170,7 +170,7 @@ public class MetricFetcherManager {
    * @param endMs the end time of the fetching period.
    * @param timeoutMs the timeout.
    * @param sampleStore the sample store to save the broker metric samples.
-   * @return true if there was no fetching error, false otherwise.
+   * @return True if there was no fetching error, false otherwise.
    */
   public boolean fetchBrokerMetricSamples(long startMs,
                                           long endMs,

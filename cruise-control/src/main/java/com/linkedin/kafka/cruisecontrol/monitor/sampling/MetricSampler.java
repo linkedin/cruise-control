@@ -50,7 +50,7 @@ public interface MetricSampler extends CruiseControlConfigurable, AutoCloseable 
    * @param mode The sampling mode.
    * @param metricDef the metric definitions.
    * @param timeout The sampling timeout to stop sampling even if there is more data to get.
-   * @return the PartitionMetricSample of the topic partition and replica id
+   * @return The PartitionMetricSample of the topic partition and replica id
    */
   Samples getSamples(Cluster cluster,
                      Set<TopicPartition> assignedPartitions,

@@ -37,6 +37,10 @@ public class PartitionMetric extends CruiseControlMetric {
     return _partition;
   }
 
+  /**
+   * @param headerPos Header position
+   * @return Byte buffer of the partition metric.
+   */
   public ByteBuffer toBuffer(int headerPos) {
     byte[] topic = topic().getBytes(StandardCharsets.UTF_8);
     ByteBuffer buffer = ByteBuffer.allocate(headerPos + 1 /* version */ + 1 /* metric type */ +

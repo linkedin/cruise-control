@@ -244,7 +244,7 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
    * threshold to avoid unnecessary rebalance.
    * @param clusterModel non-null
    * @param brokerId the brokerId
-   * @return a non-negative value
+   * @return A non-negative value
    */
   private double balanceThreshold(ClusterModel clusterModel, int brokerId) {
     initMeanLeaderBytesIn(clusterModel);

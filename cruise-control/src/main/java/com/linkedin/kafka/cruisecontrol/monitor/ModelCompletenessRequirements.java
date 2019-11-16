@@ -79,7 +79,7 @@ public class ModelCompletenessRequirements {
    * Combine the requirements of this ModelCompletenessRequirements and another one. The result should meet both requirements.
    *
    * @param other the other ModelCompletenessRequirements
-   * @return the combined stronger model completeness requirements.
+   * @return The combined stronger model completeness requirements.
    */
   public ModelCompletenessRequirements stronger(ModelCompletenessRequirements other) {
     if (other == null) {
@@ -95,7 +95,7 @@ public class ModelCompletenessRequirements {
    * The result will be the weaker one for each requirement in the two specifications.
    *
    * @param other the other ModelCompletenessRequirements
-   * @return the combined weaker model completeness requirements.
+   * @return The combined weaker model completeness requirements.
    */
   public ModelCompletenessRequirements weaker(ModelCompletenessRequirements other) {
     if (other == null) {
@@ -106,9 +106,9 @@ public class ModelCompletenessRequirements {
                                              _includeAllTopics && other.includeAllTopics());
   }
 
-  /*
-   * Return an object that can be further used
-   * to encode into JSON
+  /**
+   *
+   * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure() {
     Map<String, Object> requirements = new HashMap<>();

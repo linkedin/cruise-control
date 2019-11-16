@@ -66,6 +66,10 @@ public class ReplicationFactorChangeTest {
   @Rule
   public ExpectedException _expected = ExpectedException.none();
 
+  /**
+   * Populate parameters for the parametrized test.
+   * @return Populated parameters.
+   */
   @Parameterized.Parameters(name = "test-{0}-replica_factor={2}")
   public static Collection<Object[]> data() throws Exception {
     Collection<Object[]> p = new ArrayList<>();

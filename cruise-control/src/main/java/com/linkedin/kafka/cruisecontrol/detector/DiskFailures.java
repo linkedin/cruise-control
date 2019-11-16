@@ -41,7 +41,7 @@ public class DiskFailures extends KafkaAnomaly {
   }
 
   /**
-   * Get the failed disks and their failure time in millisecond grouped by broker.
+   * @return The failed disks and their failure time in millisecond grouped by broker.
    */
   public Map<Integer, Map<String, Long>> failedDisks() {
     return _failedDisksByBroker;

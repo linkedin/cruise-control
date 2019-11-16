@@ -37,7 +37,7 @@ public class BrokerFailures extends KafkaAnomaly implements CruiseControlConfigu
   }
 
   /**
-   * Get the failed broker list and their failure time in millisecond.
+   * @return The failed broker list and their failure time in millisecond.
    */
   public Map<Integer, Long> failedBrokers() {
     return _failedBrokers;

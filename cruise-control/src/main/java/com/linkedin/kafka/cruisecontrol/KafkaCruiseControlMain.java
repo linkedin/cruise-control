@@ -31,6 +31,10 @@ public class KafkaCruiseControlMain {
 
   }
 
+  /**
+   * The main function to run Cruise Control.
+   * @param args Arguments passed while starting Cruise Control.
+   */
   public static void main(String[] args) throws Exception {
     // Check the command line arguments.
     if (args.length == 0) {

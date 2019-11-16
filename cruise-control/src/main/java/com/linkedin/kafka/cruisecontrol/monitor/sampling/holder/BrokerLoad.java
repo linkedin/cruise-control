@@ -56,6 +56,11 @@ public class BrokerLoad {
   // Set to the latest possible deserialization version based on the sampled data.
   private byte _brokerSampleDeserializationVersion = -1;
 
+  /**
+   * Record the given Cruise Control metric.
+   *
+   * @param ccm Cruise Control metric.
+   */
   public void recordMetric(CruiseControlMetric ccm) {
     RawMetricType rawMetricType = ccm.rawMetricType();
     switch (rawMetricType.metricScope()) {
@@ -79,6 +84,12 @@ public class BrokerLoad {
     }
   }
 
+  /**
+   * Check whether all dot handled topic metrics are available for the given dot-handled topic name.
+   *
+   * @param dotHandledTopic Dot-handled topic name.
+   * @return True if all dot handled topic metrics are available for the given dot-handled topic name, false otherwise.
+   */
   public boolean allDotHandledTopicMetricsAvailable(String dotHandledTopic) {
     // We rely on the partition size metric to determine whether a topic metric is available or not.
     // The topic names in this set are dot handled -- i.e. dots (".") in topic name is replaced with underscores ("_").
@@ -94,6 +105,14 @@ public class BrokerLoad {
     return _brokerMetrics.metricValue(rawMetricType) != null;
   }
 
+  /**
+   * Check whether partition metrics are available for the given dot-handled partition name and raw metric type.
+   *
+   * @param tpWithDotHandled Topic partition with dot-handled topic name.
+   * @param rawMetricType Raw metric type.
+   * @return True if partition metrics are available for the given dot-handled partition name and raw metric type, false
+   * otherwise.
+   */
   public boolean partitionMetricAvailable(TopicPartition tpWithDotHandled, RawMetricType rawMetricType) {
     RawMetricsHolder rawMetricsHolder = _dotHandledPartitionMetrics.get(tpWithDotHandled);
     return rawMetricsHolder != null && rawMetricsHolder.metricValue(rawMetricType) != null;
@@ -103,6 +122,12 @@ public class BrokerLoad {
     return _missingBrokerMetricsInMinSupportedVersion;
   }
 
+  /**
+   * Get the broker metric for the given raw metric type.
+   *
+   * @param rawMetricType Raw metric type.
+   * @return The broker metric for the given raw metric type.
+   */
   public double brokerMetric(RawMetricType rawMetricType) {
     sanityCheckMetricScope(rawMetricType, BROKER);
     ValueHolder valueHolder = _brokerMetrics.metricValue(rawMetricType);
@@ -138,6 +163,7 @@ public class BrokerLoad {
    * @param dotHandledTopic Dot-handled topic name.
    * @param partition Partition number.
    * @param rawMetricType Raw metric type.
+   * @return Partition metric with the given name for the partition from given topic and partition number.
    */
   public Double partitionMetric(String dotHandledTopic, int partition, RawMetricType rawMetricType) {
     sanityCheckMetricScope(rawMetricType, PARTITION);
@@ -290,6 +316,9 @@ public class BrokerLoad {
     return result;
   }
 
+  /**
+   * @return Disk usage of the broker.
+   */
   public double diskUsage() {
     double result = 0.0;
     for (RawMetricsHolder rawMetricsHolder : _dotHandledPartitionMetrics.values()) {

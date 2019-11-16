@@ -59,6 +59,12 @@ public class CCKafkaTestUtils {
     //utility class
   }
 
+  /**
+   * Get a producer connected to the given broker.
+   *
+   * @param broker The broker to connect to.
+   * @return A producer connected to the given broker.
+   */
   public static KafkaProducer<String, String> producerFor(CCEmbeddedBroker broker) {
     String bootstrap = broker.plaintextAddr();
     if (bootstrap == null) {
@@ -78,6 +84,12 @@ public class CCKafkaTestUtils {
     return new KafkaProducer<>(props);
   }
 
+  /**
+   * Get a consumer connected to the given broker.
+   *
+   * @param broker The broker to connect to.
+   * @return A consumer connected to the given broker.
+   */
   public static KafkaConsumer<String, String> consumerFor(CCEmbeddedBroker broker) {
     String bootstrap = broker.plaintextAddr();
     if (bootstrap == null) {
@@ -95,6 +107,9 @@ public class CCKafkaTestUtils {
     return new KafkaConsumer<>(props);
   }
 
+  /**
+   * @return A new temp directory.
+   */
   public static File newTempDir() {
     try {
       return cleanup(Files.createTempDirectory(null).toFile());
@@ -103,6 +118,12 @@ public class CCKafkaTestUtils {
     }
   }
 
+  /**
+   * Cleanup the given file.
+   *
+   * @param toCleanUp File to cleanup.
+   * @return File to be cleaned up.
+   */
   public static File cleanup(File toCleanUp) {
     if (SHUTDOWN_HOOK_INSTALLED.compareAndSet(false, true)) {
       Runtime.getRuntime().addShutdownHook(SHUTDOWN_HOOK);
@@ -111,6 +132,11 @@ public class CCKafkaTestUtils {
     return toCleanUp;
   }
 
+  /**
+   * Run the given task and catch exception if the task throws one.
+   *
+   * @param task Task to run.
+   */
   public static void quietly(Task task) {
     try {
       task.run();
@@ -119,6 +145,12 @@ public class CCKafkaTestUtils {
     }
   }
 
+  /**
+   * Get a random string with the given length.
+   *
+   * @param length The length of the random String.
+   * @return Random String.
+   */
   public static String getRandomString(int length) {
     char[] chars = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
     Random random = new Random();

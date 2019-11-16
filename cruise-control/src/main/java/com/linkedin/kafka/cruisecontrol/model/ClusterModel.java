@@ -108,14 +108,14 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * get the metadata generation for this cluster model.
+   * @return The metadata generation for this cluster model.
    */
   public ModelGeneration generation() {
     return _generation;
   }
 
   /**
-   * Get the coverage of this cluster model. This shows how representative the cluster is.
+   * @return The coverage of this cluster model via monitored partitions ratio, showing how representative the cluster is.
    */
   public double monitoredPartitionsRatio() {
     return _monitoredPartitionsRatio;
@@ -165,7 +165,7 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Get leader broker ids for each partition.
+   * @return Leader broker ids for each partition.
    */
   public Map<TopicPartition, ReplicaPlacementInfo> getLeaderDistribution() {
     Map<TopicPartition, ReplicaPlacementInfo> leaders = new HashMap<>(_partitionsByTopicPartition.size());
@@ -181,14 +181,14 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Get replicas eligible for self-healing.
+   * @return Replicas eligible for self-healing.
    */
   public Set<Replica> selfHealingEligibleReplicas() {
     return _selfHealingEligibleReplicas;
   }
 
   /**
-   * Get the recent cluster load information.
+   * @return The recent cluster load information.
    */
   public Load load() {
     return _load;
@@ -207,13 +207,14 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Get the maximum replication factor of a replica that was added to the cluster before.
+   * @return The maximum replication factor of a replica that was added to the cluster before.
    */
   public int maxReplicationFactor() {
     return _maxReplicationFactor;
   }
+
   /**
-   * Get the replication factor that each topic in the cluster created with.
+   * @return The replication factor that each topic in the cluster created with.
    */
   public Map<String, Integer> replicationFactorByTopic() {
     return _replicationFactorByTopic;
@@ -230,7 +231,7 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Get a map of partitions by topic names.
+   * @return A map of partitions by topic names.
    */
   public SortedMap<String, List<Partition>> getPartitionsByTopic() {
     SortedMap<String, List<Partition>> partitionsByTopic = new TreeMap<>();
@@ -244,7 +245,7 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Get all the leader replicas in the cluster.
+   * @return All the leader replicas in the cluster.
    */
   public Set<Replica> leaderReplicas() {
     return _partitionsByTopicPartition.values().stream().map(Partition::leader).collect(Collectors.toSet());
@@ -405,21 +406,21 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Get alive brokers in the cluster.
+   * @return The alive brokers in the cluster.
    */
   public Set<Broker> aliveBrokers() {
     return _aliveBrokers;
   }
 
   /**
-   * Get the dead brokers in the cluster.
+   * @return The dead brokers in the cluster.
    */
   public SortedSet<Broker> deadBrokers() {
     return new TreeSet<>(_deadBrokers);
   }
 
   /**
-   * Get broken brokers brokers -- i.e. dead brokers and brokers with bad disk in the cluster.
+   * @return Broken brokers -- i.e. dead brokers and brokers with bad disk in the cluster.
    */
   public SortedSet<Broker> brokenBrokers() {
     SortedSet<Broker> brokenBrokers = new TreeSet<>(_deadBrokers);
@@ -435,7 +436,7 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Get the demoted brokers in the cluster.
+   * @return The demoted brokers in the cluster.
    */
   public SortedSet<Broker> demotedBrokers() {
     SortedSet<Broker> demotedBrokers = new TreeSet<>();
@@ -450,21 +451,21 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Get the set of new brokers.
+   * @return The set of new brokers.
    */
   public SortedSet<Broker> newBrokers() {
     return _newBrokers;
   }
 
   /**
-   * Get the set of brokers with bad disks -- i.e. for which the offline replicas are being fixed.
+   * @return The set of brokers with bad disks -- i.e. for which the offline replicas are being fixed.
    */
   public SortedSet<Broker> brokersWithBadDisks() {
     return Collections.unmodifiableSortedSet(_brokersWithBadDisks);
   }
 
   /**
-   * Get brokers containing offline replicas residing on bad disks in the current cluster model.
+   * @return Brokers containing offline replicas residing on bad disks in the current cluster model.
    */
   public Set<Broker> brokersHavingOfflineReplicasOnBadDisks() {
     Set<Broker> brokersWithOfflineReplicasOnBadDisks = new HashSet<>();
@@ -478,7 +479,7 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Checks if cluster has at least one alive rack. If none of the racks are alive, cluster is considered dead.
+   * @return True if at least one rack is alive in the cluster, false otherwise.
    */
   public boolean isClusterAlive() {
     for (Rack rack : _racksById.values()) {
@@ -523,7 +524,7 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Get the set of brokers in the cluster.
+   * @return The set of brokers in the cluster.
    */
   public SortedSet<Broker> brokers() {
     return new TreeSet<>(_brokers);
@@ -603,7 +604,7 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Get number of alive racks in the cluster.
+   * @return The number of alive racks in the cluster.
    */
   public int numAliveRacks() {
     int numAliveRacks = 0;
@@ -649,7 +650,7 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Get topics in the cluster.
+   * @return Topics in the cluster.
    */
   public Set<String> topics() {
     Set<String> topics = new HashSet<>();
@@ -900,7 +901,7 @@ public class ClusterModel implements Serializable {
    * @param topicsByReplicationFactor The topics to modify replication factor with target replication factor.
    * @param brokersByRack A map from rack to broker.
    * @param rackByBroker A map from broker to rack.
-   * @param cluster The metadata of the cluster.
+   * @param cluster Kafka cluster.
    */
   public void createOrDeleteReplicas(Map<Short, Set<String>> topicsByReplicationFactor,
                                      Map<String, List<Integer>> brokersByRack,
@@ -999,6 +1000,13 @@ public class ClusterModel implements Serializable {
     return sortedTargetBrokersUnderCapacityLimit;
   }
 
+  /**
+   * Get alive broker under threshold for the given resource type.
+   *
+   * @param resource The resource type.
+   * @param utilizationThreshold Utilization threshold for the given resource.
+   * @return Alive broker under threshold for the given resource type.
+   */
   public List<Broker> aliveBrokersUnderThreshold(Resource resource, double utilizationThreshold) {
     List<Broker> aliveBrokersUnderThreshold = new ArrayList<>();
 
@@ -1022,6 +1030,13 @@ public class ClusterModel implements Serializable {
     return aliveBrokersUnderThreshold;
   }
 
+  /**
+   * Get alive broker over threshold for the given resource type.
+   *
+   * @param resource The resource type.
+   * @param utilizationThreshold Utilization threshold for the given resource.
+   * @return Alive broker over threshold for the given resource type.
+   */
   public List<Broker> aliveBrokersOverThreshold(Resource resource, double utilizationThreshold) {
     List<Broker> aliveBrokersOverThreshold = new ArrayList<>();
 
@@ -1047,10 +1062,10 @@ public class ClusterModel implements Serializable {
 
   /**
    * Sort the partitions in the cluster by the utilization of the given resource.
-   * @param resource the resource type.
+   * @param resource The resource type.
    * @param wantMaxLoad True if the requested utilization represents the peak load, false otherwise.
    * @param wantAvgLoad True if the requested utilization represents the avg load, false otherwise.
-   * @return a list of partitions sorted by utilization of the given resource.
+   * @return A list of partitions sorted by utilization of the given resource.
    */
   public List<Partition> replicasSortedByUtilization(Resource resource, boolean wantMaxLoad, boolean wantAvgLoad) {
     List<Partition> partitionList = new ArrayList<>(_partitionsByTopicPartition.values());
@@ -1216,7 +1231,7 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Get broker return the broker stats.
+   * @return Broker level stats.
    */
   public BrokerStats brokerStats(KafkaCruiseControlConfig config) {
     BrokerStats brokerStats = new BrokerStats(config);
@@ -1243,7 +1258,7 @@ public class ClusterModel implements Serializable {
 
   /**
    * The variance of the derived resources.
-   * @return a non-null array where the ith index is the variance of RawAndDerivedResource.ordinal().
+   * @return A non-null array where the ith index is the variance of RawAndDerivedResource.ordinal().
    */
   public double[] variance() {
     RawAndDerivedResource[] resources = RawAndDerivedResource.values();
@@ -1260,7 +1275,7 @@ public class ClusterModel implements Serializable {
 
   /**
    *
-   * @return a RawAndDerivedResource x nBroker matrix of derived resource utilization.
+   * @return A RawAndDerivedResource x nBroker matrix of derived resource utilization.
    */
   public double[][] utilizationMatrix() {
     RawAndDerivedResource[] resources = RawAndDerivedResource.values();
@@ -1298,6 +1313,11 @@ public class ClusterModel implements Serializable {
     return utilization;
   }
 
+  /**
+   * Write to the given output stream.
+   *
+   * @param out Output stream.
+   */
   public void writeTo(OutputStream out) throws IOException {
     String cluster = String.format("<Cluster maxPartitionReplicationFactor=\"%d\">%n", _maxReplicationFactor);
     out.write(cluster.getBytes(StandardCharsets.UTF_8));

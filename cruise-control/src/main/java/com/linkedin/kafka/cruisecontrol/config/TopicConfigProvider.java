@@ -18,18 +18,19 @@ import org.apache.kafka.common.annotation.InterfaceStability;
 public interface TopicConfigProvider extends CruiseControlConfigurable, AutoCloseable {
 
   /**
-   * Get cluster-level configs that applies to a topic if no topic-level config exist for it.
+   * @return Cluster-level configs that applies to a topic if no topic-level config exist for it.
    */
   Properties clusterConfigs();
 
   /**
    * Get topic-level configs for the requested topic.
    * @param topic Topic for which the topic-level configs are requested.
+   * @return Topic-level configs for the requested topic.
    */
   Properties topicConfigs(String topic);
 
   /**
-   * Get topic-level configs for all topics.
+   * @return Topic-level configs for all topics.
    */
   Map<String, Properties> allTopicConfigs();
 }

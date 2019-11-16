@@ -64,6 +64,9 @@ public class OptimizationOptions {
          requestedDestinationBrokerIds, false);
   }
 
+  /**
+   * The optimization options intended to be used during optimization of goals.
+   */
   public OptimizationOptions(Set<String> excludedTopics,
                              Set<Integer> excludedBrokersForLeadership,
                              Set<Integer> excludedBrokersForReplicaMove,
@@ -78,26 +81,44 @@ public class OptimizationOptions {
     _onlyMoveImmigrantReplicas = onlyMoveImmigrantReplicas;
   }
 
+  /**
+   * @return Excluded topics.
+   */
   public Set<String> excludedTopics() {
     return Collections.unmodifiableSet(_excludedTopics);
   }
 
+  /**
+   * @return Excluded brokers for leadership transfer.
+   */
   public Set<Integer> excludedBrokersForLeadership() {
     return Collections.unmodifiableSet(_excludedBrokersForLeadership);
   }
 
+  /**
+   * @return Excluded brokers for replica moves.
+   */
   public Set<Integer> excludedBrokersForReplicaMove() {
     return Collections.unmodifiableSet(_excludedBrokersForReplicaMove);
   }
 
+  /**
+   * @return True if the optimization request was triggered by goal violation ,false otherwise.
+   */
   public boolean isTriggeredByGoalViolation() {
     return _isTriggeredByGoalViolation;
   }
 
+  /**
+   * @return Requested destination broker ids.
+   */
   public Set<Integer> requestedDestinationBrokerIds() {
     return Collections.unmodifiableSet(_requestedDestinationBrokerIds);
   }
 
+  /**
+   * @return True if the optimization will apply only to immigrant replicas, false otherwise.
+   */
   public boolean onlyMoveImmigrantReplicas() {
     return _onlyMoveImmigrantReplicas;
   }

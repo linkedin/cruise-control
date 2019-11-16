@@ -22,6 +22,9 @@ public enum Statistic {
     _stat = stat;
   }
 
+  /**
+   * @return The name of the statistic.
+   */
   public String stat() {
     return _stat;
   }

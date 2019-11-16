@@ -54,7 +54,7 @@ public class AggregatedMetricValues {
    * Get the {@link MetricValues} for the given metric id
    *
    * @param metricId the metric id to get metric values.
-   * @return the {@link MetricValues} for the given metric id.
+   * @return The {@link MetricValues} for the given metric id.
    */
   public MetricValues valuesFor(short metricId) {
     return _metricValues.get(metricId);
@@ -69,7 +69,7 @@ public class AggregatedMetricValues {
    * @param metricIds the interested metric ids.
    * @param shareValueArray whether the returned result should share the same value array with this class or not.
    *
-   * @return an AggregatedMetricValues containing the given metric ids if they exist.
+   * @return An AggregatedMetricValues containing the given metric ids if they exist.
    */
   public AggregatedMetricValues valuesFor(Collection<Short> metricIds, boolean shareValueArray) {
     AggregatedMetricValues values = new AggregatedMetricValues();
@@ -97,7 +97,7 @@ public class AggregatedMetricValues {
    * @param shareValueArray whether the returned result should share the same value array with this class or not when
    *                  possible.
    *
-   * @return the sum of the metric values of the given metric ids.
+   * @return The sum of the metric values of the given metric ids.
    */
   public MetricValues valuesForGroup(String group, MetricDef metricDef, boolean shareValueArray) {
     Collection<MetricInfo> metricInfos = metricDef.metricInfoForGroup(group);
@@ -117,7 +117,7 @@ public class AggregatedMetricValues {
   }
 
   /**
-   * @return the array length of the metric values.
+   * @return The array length of the metric values.
    */
   public int length() {
     return _metricValues.isEmpty() ? 0 : _metricValues.values().iterator().next().length();
@@ -127,7 +127,7 @@ public class AggregatedMetricValues {
    * Check if the AggregatedMetricValues contains value for any metrics. Note that this call does not verify
    * if the values array for a particular metric is empty or not.
    *
-   * @return true the aggregated metric values is empty, false otherwise.
+   * @return True the aggregated metric values is empty, false otherwise.
    */
   public boolean isEmpty() {
     return _metricValues.isEmpty();

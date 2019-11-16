@@ -71,6 +71,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
    * Add a sample to the metric aggregator. This method is thread safe.
    *
    * @param sample The metric sample to add.
+   * @return True if the sample is accepted, false if the sample is ignored.
    */
   public boolean addSample(PartitionMetricSample sample) {
     return addSample(sample, true);
@@ -82,7 +83,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
    * @param sample The metric sample to add.
    * @param leaderValidation whether perform the leader validation or not.
    *
-   * @return true if the sample is accepted, false if the sample is ignored.
+   * @return True if the sample is accepted, false if the sample is ignored.
    */
   public boolean addSample(PartitionMetricSample sample, boolean leaderValidation) {
     // Sanity check the sample
@@ -177,7 +178,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
    *
    * @param clusterAndGeneration The current cluster and generation.
    * @param minMonitoredPartitionsPercentage the minimum required monitored partitions percentage.
-   * @return a sorted set of valid windows in the aggregator.
+   * @return A sorted set of valid windows in the aggregator.
    */
   public SortedSet<Long> validWindows(MetadataClient.ClusterAndGeneration clusterAndGeneration,
                                       double minMonitoredPartitionsPercentage) {

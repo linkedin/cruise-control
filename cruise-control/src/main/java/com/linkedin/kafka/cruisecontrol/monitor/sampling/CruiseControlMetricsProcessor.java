@@ -97,7 +97,7 @@ public class CruiseControlMetricsProcessor {
    * @param partitionsDotNotHandled Partitions to construct samples for. The topic partition name may have dots.
    * @param samplingMode The sampling mode to indicate which type of samples are needed.
    *
-   * @return the constructed metric samples.
+   * @return The constructed metric samples.
    */
   MetricSampler.Samples process(Cluster cluster,
                                 Set<TopicPartition> partitionsDotNotHandled,

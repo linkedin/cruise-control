@@ -17,7 +17,7 @@ public interface Generationed<G> {
 
   /**
    * Get the current generation.
-   * @return the current generation.
+   * @return The current generation.
    */
   G generation();
 

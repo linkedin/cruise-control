@@ -94,7 +94,7 @@ public class MetricsUtils {
   }
 
   /**
-   * Convert a KafkaMetric to a CruiseControlMetric
+   * @return KafkaMetric converted as a CruiseControlMetric.
    */
   public static CruiseControlMetric toCruiseControlMetric(KafkaMetric kafkaMetric, long now, int brokerId) {
     org.apache.kafka.common.MetricName metricName = kafkaMetric.metricName();
@@ -113,7 +113,7 @@ public class MetricsUtils {
   }
 
   /**
-   * Convert a Yammer metric to a CruiseControlMetric
+   * @return A Yammer metric coverted as a CruiseControlMetric.
    */
   public static CruiseControlMetric toCruiseControlMetric(long now,
                                                           int brokerId,
@@ -125,7 +125,7 @@ public class MetricsUtils {
 
 
   /**
-   * Convert a Yammer metric to a CruiseControlMetric
+   * @return A Yammer metric converted as a CruiseControlMetric.
    */
   public static CruiseControlMetric toCruiseControlMetric(long now,
                                                           int brokerId,
@@ -142,7 +142,7 @@ public class MetricsUtils {
   }
 
   /**
-   * Returns the "recent CPU usage" for the JVM process as a double in [0.0,1.0].
+   * @return the "recent CPU usage" for the JVM process as a double in [0.0,1.0].
    */
   public static BrokerMetric getCpuMetric(long now, int brokerId) {
     double cpuUtil = ((com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean()).getProcessCpuLoad();
@@ -153,7 +153,7 @@ public class MetricsUtils {
   }
 
   /**
-   * Check if a kafkaMetric is an interested metric.
+   * @return True if a kafkaMetric is an interested metric, false otherwise.
    */
   public static boolean isInterested(org.apache.kafka.common.MetricName metricName) {
     String group = metricName.group();
@@ -163,7 +163,7 @@ public class MetricsUtils {
   }
 
   /**
-   * Check if a yammer metric name is an interested metric
+   * @return True if the yammer metric name is an interested metric, false otherwise.
    */
   public static boolean isInterested(com.yammer.metrics.core.MetricName metricName) {
     return isInterested(metricName.getGroup(), metricName.getName(), metricName.getType(),

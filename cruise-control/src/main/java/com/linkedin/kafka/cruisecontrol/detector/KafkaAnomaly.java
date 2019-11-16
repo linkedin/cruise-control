@@ -20,7 +20,7 @@ abstract class KafkaAnomaly implements Anomaly {
    * Get the optimization result of self healing process, or null if no optimization result is available.
    *
    * @param isJson True for JSON response, false otherwise.
-   * @return the optimization result of self healing process, or null if no optimization result is available.
+   * @return The optimization result of self healing process, or null if no optimization result is available.
    */
   String optimizationResult(boolean isJson) {
     if (_optimizationResult == null) {

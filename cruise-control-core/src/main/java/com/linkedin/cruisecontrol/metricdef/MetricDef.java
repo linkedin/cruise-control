@@ -49,7 +49,7 @@ public class MetricDef {
    * @param metricName the name of the metric
    * @param group the metric group this metric belongs to.
    * @param valueComputingStrategy the {@link AggregationFunction} for this metric.
-   * @return this MetricDef
+   * @return This MetricDef
    */
   public synchronized MetricDef define(String metricName, String group, String valueComputingStrategy) {
     return define(metricName, group, valueComputingStrategy, false);
@@ -62,7 +62,7 @@ public class MetricDef {
    * @param group the group the metric belongs to.
    * @param valueComputingStrategy the {@link AggregationFunction} for this metric.
    * @param toPredict whether the metric is a metric to be predicted.
-   * @return this MetricDef
+   * @return This MetricDef
    */
   public synchronized MetricDef define(String metricName,
                                        String group,
@@ -105,7 +105,7 @@ public class MetricDef {
    * Get all the metric info for the given group.
    * @param group the group to get the info.
    *
-   * @return all the metric information in the given group.
+   * @return All the metric information in the given group.
    */
   public List<MetricInfo> metricInfoForGroup(String group) {
     return _metricInfoByGroup.getOrDefault(group, Collections.emptyList());
@@ -121,7 +121,7 @@ public class MetricDef {
   /**
    * Get the metric id from the metric name.
    * @param name the metric name.
-   * @return the {@link MetricInfo} associated with the metric name.
+   * @return The {@link MetricInfo} associated with the metric name.
    */
   public MetricInfo metricInfo(String name) {
     MetricInfo info = _metricInfoByName.get(name);
@@ -133,7 +133,7 @@ public class MetricDef {
   }
 
   /**
-   * @return the {@link MetricInfo} by id;
+   * @return The {@link MetricInfo} by id;
    */
   public MetricInfo metricInfo(short id) {
     if (id >= _nextIndex.get()) {

@@ -70,7 +70,8 @@ public class Replica implements Serializable, Comparable<Replica> {
 
   /**
    * Get the original state of the replica before rebalance.
-   * True if the replica is offline in its original location (e.g. due to broken disk or broker), false otherwise.
+   *
+   * @return True if the replica is offline in its original location (e.g. due to broken disk or broker), false otherwise.
    */
   public boolean isOriginalOffline() {
     return _isOriginalOffline || !_originalBroker.isAlive();
@@ -78,7 +79,8 @@ public class Replica implements Serializable, Comparable<Replica> {
 
   /**
    * Check whether the replica is currently offline.
-   * True if the replica is currently offline (e.g. due to broken disk or broker), false otherwise.
+   *
+   * @return True if the replica is currently offline (e.g. due to broken disk or broker), false otherwise.
    */
   public boolean isCurrentOffline() {
     return (isOriginalOffline() && _broker.id() == _originalBroker.id()) || !_broker.isAlive();
@@ -97,42 +99,42 @@ public class Replica implements Serializable, Comparable<Replica> {
   }
 
   /**
-   * Get the topic partition.
+   * @return The topic partition.
    */
   public TopicPartition topicPartition() {
     return _tp;
   }
 
   /**
-   * Get the replica load for each resource. Replicas always have an associated load.
+   * @return The replica load for each resource. Replicas always have an associated load.
    */
   public Load load() {
     return _load;
   }
 
   /**
-   * Get the original broker of this replica before rebalance.
+   * @return The original broker of this replica before rebalance.
    */
   public Broker originalBroker() {
     return _originalBroker;
   }
 
   /**
-   * Get broker that the replica resides in.
+   * @return The broker that the replica resides in.
    */
   public Broker broker() {
     return _broker;
   }
 
   /**
-   * Check the leadership status of the broker.
+   * @return True if the replica is leader, false otherwise.
    */
   public boolean isLeader() {
     return _isLeader;
   }
 
   /**
-   * Check whether the replica is an immigrant replica of the broker.
+   * @return True if the replica is an immigrant replica of the broker, false otherwise.
    */
   public boolean isImmigrant() {
     return _originalBroker != _broker;
@@ -159,6 +161,7 @@ public class Replica implements Serializable, Comparable<Replica> {
   /**
    * Get disk that the replica originally resides in. If the replica-over-disk placement information is not populated in
    * {@link ClusterModel}, null will be returned.
+   * @return The original disk of the replica.
    */
   public Disk originalDisk() {
     return _originalDisk;
@@ -167,6 +170,7 @@ public class Replica implements Serializable, Comparable<Replica> {
   /**
    * Get disk that the replica resides in. If the replica-over-disk placement information is not populated in
    * {@link ClusterModel}, null will be returned.
+   * @return Disk that the replica resides in.
    */
   public Disk disk() {
     return _disk;
@@ -217,7 +221,7 @@ public class Replica implements Serializable, Comparable<Replica> {
    * the change is actually made to the replica. Otherwise, no change is made.
    *
    * @param updateLoad whether the change to the load should actually be made to the replica
-   * @return the change of the load when this replica becomes follower replica.
+   * @return The change of the load when this replica becomes follower replica.
    */
   private AggregatedMetricValues leaderLoadDelta(boolean updateLoad) {
     if (!_isLeader) {
@@ -266,7 +270,7 @@ public class Replica implements Serializable, Comparable<Replica> {
    *
    * @param leadershipNwOutLoad the leadership network outbound bytes rate.
    * @param updateLoad whether the change to the load should actually be made to the replica
-   * @return the cpu load change.
+   * @return The cpu load change.
    */
   private MetricValues computeCpuLoadAsFollower(AggregatedMetricValues leadershipNwOutLoad, boolean updateLoad) {
     // Just get the first metric id because CPU only has one metric id in the group. Eventually the per replica
@@ -307,11 +311,10 @@ public class Replica implements Serializable, Comparable<Replica> {
     _load.addLoad(leadershipLoadDelta);
   }
 
-  /*
-   * Return an object that can be further used
-   * to encode into JSON
+  /**
+   * @return An object that can be further used to encode into JSON.
    */
-  public Map<String, Object> getJsonStructureForLoad() {
+  public Map<String, Object> getJsonStructure() {
     Map<String, Object> replicaMap = new HashMap<>();
     replicaMap.put(ModelUtils.IS_LEADER, _isLeader);
     replicaMap.put(ModelUtils.BROKER_ID, _broker.id());

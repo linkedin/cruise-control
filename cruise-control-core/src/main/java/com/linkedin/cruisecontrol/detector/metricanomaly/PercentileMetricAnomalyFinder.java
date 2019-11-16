@@ -98,7 +98,7 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
    * @param currentMetricValue the current metric value.
    * @param upperThreshold the upper threshold of the normal metric value.
    * @param lowerThreshold the lower threshold of the normal metric value.
-   * @return a string that describes the metric anomaly.
+   * @return A string that describes the metric anomaly.
    */
   protected String description(E entity,
                                Short metricId,

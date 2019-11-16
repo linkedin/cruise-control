@@ -58,7 +58,12 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     return new Gson().toJson(jsonResponse);
   }
 
-  // Also used for testing
+  /**
+   * Prepare the result list as a list of user task info.
+   *
+   * @param parameters User task parameters.
+   * @return The result list as a list of user task info.
+   */
   public List<UserTaskManager.UserTaskInfo> prepareResultList(UserTasksParameters parameters) {
     int entries = parameters.entries();
     // If entries argument isn't given in request, we give MAX_VALUE to entries. Thus need to avoid instantiating

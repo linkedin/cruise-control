@@ -83,12 +83,18 @@ public class ConfigDef {
   /**
    * Returns unmodifiable set of properties names defined in this {@linkplain ConfigDef}
    *
-   * @return new unmodifiable {@link Set} instance containing the keys
+   * @return New unmodifiable {@link Set} instance containing the keys
    */
   public Set<String> names() {
     return Collections.unmodifiableSet(_configKeys.keySet());
   }
 
+  /**
+   * Define the given config key and return this config definition.
+   *
+   * @param key Config key
+   * @return This config definition.
+   */
   public ConfigDef define(ConfigKey key) {
     if (_configKeys.containsKey(key._name)) {
       throw new ConfigException("Configuration " + key._name + " is defined twice.");
@@ -401,7 +407,7 @@ public class ConfigDef {
 
   /**
    * Get the configuration keys
-   * @return a map containing all configuration keys
+   * @return A map containing all configuration keys
    */
   public Map<String, ConfigKey> configKeys() {
     return _configKeys;
@@ -409,7 +415,7 @@ public class ConfigDef {
 
   /**
    * Get the groups for the configuration
-   * @return a list of group names
+   * @return A list of group names
    */
   public List<String> groups() {
     return _groups;
@@ -467,6 +473,12 @@ public class ConfigDef {
     return new ArrayList<>(validateAll(props).values());
   }
 
+  /**
+   * Validate all configuration values.
+   *
+   * @param props The configuration values.
+   * @return A map of validated config values.
+   */
   public Map<String, ConfigValue> validateAll(Map<String, String> props) {
     Map<String, ConfigValue> configValues = new HashMap<>();
     for (String name : _configKeys.keySet()) {
@@ -710,6 +722,13 @@ public class ConfigDef {
     }
   }
 
+  /**
+   * Convert the parsed value with the given type to String.
+   *
+   * @param parsedValue Parsed value.
+   * @param type Type.
+   * @return The parsed value with the given type as String.
+   */
   public static String convertToString(Object parsedValue, Type type) {
     if (parsedValue == null) {
       return null;
@@ -815,18 +834,25 @@ public class ConfigDef {
      * A numeric range that checks only the lower bound
      *
      * @param min The minimum acceptable value
+     * @return A numeric range that checks only the lower bound.
      */
     public static Range atLeast(Number min) {
       return new Range(min, null);
     }
 
     /**
-     * A numeric range that checks both the upper and lower bound
+     * @return A numeric range that checks both the upper and lower bound
      */
     public static Range between(Number min, Number max) {
       return new Range(min, max);
     }
 
+    /**
+     * Object to ensure validity for the given config name.
+     *
+     * @param name The name of the configuration
+     * @param o Object to ensure validity.
+     */
     public void ensureValid(String name, Object o) {
       if (o == null) {
         throw new ConfigException(name, null, "Value must be non-null");
@@ -840,6 +866,9 @@ public class ConfigDef {
       }
     }
 
+    /**
+     * @return String representation of the numeric range.
+     */
     public String toString() {
       if (_min == null) {
         return "[...," + _max + "]";
@@ -992,6 +1021,9 @@ public class ConfigDef {
     }
   }
 
+  /**
+   * @return HTML table.
+   */
   public String toHtmlTable() {
     List<ConfigKey> configs = sortedConfigs();
     StringBuilder b = new StringBuilder();
@@ -1022,8 +1054,7 @@ public class ConfigDef {
   }
 
   /**
-   * Get the configs formatted with reStructuredText, suitable for embedding in Sphinx
-   * documentation.
+   * @return the configs formatted with reStructuredText, suitable for embedding in Sphinx documentation.
    */
   public String toRst() {
     StringBuilder b = new StringBuilder();
@@ -1040,6 +1071,7 @@ public class ConfigDef {
   /**
    * Configs with new metadata (group, orderInGroup, dependents) formatted with reStructuredText, suitable for embedding in Sphinx
    * documentation.
+   * @return Enriched reStructuredText.
    */
   public String toEnrichedRst() {
     StringBuilder b = new StringBuilder();
@@ -1143,6 +1175,9 @@ public class ConfigDef {
     return configs;
   }
 
+  /**
+   * For each {@link ConfigKey} in the given child, creates a {@link ConfigKey} and passes it to {@link #define(ConfigKey)}.
+   */
   public void embed(final String keyPrefix, final String groupPrefix, final int startingOrd, final ConfigDef child) {
     int orderInGroup = startingOrd;
     for (ConfigKey key : child.sortedConfigs()) {

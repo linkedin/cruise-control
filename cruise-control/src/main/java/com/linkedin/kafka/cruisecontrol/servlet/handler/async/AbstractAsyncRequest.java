@@ -40,7 +40,7 @@ public abstract class AbstractAsyncRequest extends AbstractRequest {
    * Handle the request with the given uuid and return the corresponding {@link OperationFuture}.
    *
    * @param uuid UUID string associated with the request.
-   * @return the corresponding {@link OperationFuture}.
+   * @return The corresponding {@link OperationFuture}.
    */
   protected abstract OperationFuture handle(String uuid);
 

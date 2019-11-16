@@ -66,7 +66,7 @@ public class LinearRegressionModelParameters {
 
   /**
    * Trigger the calculation of the model parameters.
-   * @return true if the parameters are generated, otherwise false;
+   * @return True if the parameters are generated, otherwise false;
    */
   public synchronized boolean updateModelCoefficient() {
     if (validBuckets().size() < MIN_CPU_UTIL_OBSERVATION_BUCKETS) {
@@ -99,6 +99,11 @@ public class LinearRegressionModelParameters {
     return false;
   }
 
+  /**
+   * Add metric observation with the given training data.
+   *
+   * @param trainingData Training data.
+   */
   public synchronized void addMetricObservation(Collection<BrokerMetricSample> trainingData) {
     if (trainingData != null) {
       for (BrokerMetricSample data : trainingData) {
@@ -136,6 +141,9 @@ public class LinearRegressionModelParameters {
     }
   }
 
+  /**
+   * @return Model coefficient training completeness.
+   */
   public double modelCoefficientTrainingCompleteness() {
     if (LOG.isDebugEnabled()) {
       LOG.debug("Linear regression model training data indices: {}", INDICES);
@@ -157,6 +165,9 @@ public class LinearRegressionModelParameters {
     return completeness;
   }
 
+  /**
+   * @return Linear regression model state.
+   */
   public synchronized LinearRegressionModelState modelState() {
     Map<Integer, Double> detailCompleteness = new HashMap<>();
     for (Map.Entry<Integer, AtomicInteger> entry : INDICES.entrySet()) {

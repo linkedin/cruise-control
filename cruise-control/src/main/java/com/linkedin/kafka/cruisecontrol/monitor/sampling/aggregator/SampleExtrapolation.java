@@ -27,7 +27,7 @@ public class SampleExtrapolation {
   }
 
   /**
-   * @return the detail {@link Extrapolation} of this flaw.
+   * @return The detail {@link Extrapolation} of this flaw.
    */
   public Extrapolation extrapolation() {
     return _extrapolation;

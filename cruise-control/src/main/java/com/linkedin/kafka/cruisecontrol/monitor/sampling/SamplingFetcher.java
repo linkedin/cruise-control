@@ -99,7 +99,7 @@ class SamplingFetcher extends MetricFetcher {
 
   /**
    * Fetch the partition and broker metric samples.
-   * @return the accepted partition and broker metric samples.
+   * @return The accepted partition and broker metric samples.
    * @throws MetricSamplingException
    */
   private MetricSampler.Samples fetchSamples() throws MetricSamplingException {

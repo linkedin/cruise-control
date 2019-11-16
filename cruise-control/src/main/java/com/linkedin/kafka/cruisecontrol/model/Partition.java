@@ -38,7 +38,7 @@ public class Partition implements Serializable {
   }
 
   /**
-   * @return the topic partition of this partition.
+   * @return The topic partition of this partition.
    */
   public TopicPartition topicPartition() {
     return _tp;
@@ -80,7 +80,7 @@ public class Partition implements Serializable {
   }
 
   /**
-   * Get follower replicas.
+   * @return All follower replicas.
    */
   public List<Replica> followers() {
     List<Replica> followers = new ArrayList<>();
@@ -93,7 +93,7 @@ public class Partition implements Serializable {
   }
 
   /**
-   * Get online follower replicas.
+   * @return Online follower replicas.
    */
   public List<Replica> onlineFollowers() {
     List<Replica> onlineFollowers = new ArrayList<>();
@@ -106,7 +106,7 @@ public class Partition implements Serializable {
   }
 
   /**
-   * Get the leader replica.
+   * @return The leader replica.
    */
   public Replica leader() {
     return _leader;
@@ -129,7 +129,7 @@ public class Partition implements Serializable {
   }
 
   /**
-   * Get the set of brokers that followers reside in.
+   * @return The set of brokers that followers reside in.
    */
   public List<Broker> followerBrokers() {
     List<Broker> followerBrokers = new ArrayList<>();
@@ -142,7 +142,7 @@ public class Partition implements Serializable {
   }
 
   /**
-   * Get the set of brokers that online followers reside in.
+   * @return The set of brokers that online followers reside in.
    */
   public List<Broker> onlineFollowerBrokers() {
     List<Broker> onlineFollowerBrokers = new ArrayList<>();
@@ -198,7 +198,7 @@ public class Partition implements Serializable {
   }
 
   /**
-   * Get the set of brokers that contain replicas of the partition.
+   * @return The set of brokers that contain replicas of the partition.
    */
   public Set<Broker> partitionBrokers() {
     Set<Broker> partitionBrokers = new HashSet<>();
@@ -207,7 +207,7 @@ public class Partition implements Serializable {
   }
 
   /**
-   * @return the set of racks that contains replicas of the partition.
+   * @return The set of racks that contains replicas of the partition.
    */
   public Set<Rack> partitionRacks() {
     Set<Rack> partitionRacks = new HashSet<>();
@@ -283,6 +283,7 @@ public class Partition implements Serializable {
    * Check if the broker is eligible to host the replica of the partition.
    *
    * @param candidateBroker The candidate broker.
+   * @return True if the broker is eligible to host the replica of the partition, false otherwise.
    */
   public boolean canAssignReplicaToBroker(Broker candidateBroker) {
     return !_ineligibleBrokers.contains(candidateBroker);

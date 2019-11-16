@@ -116,70 +116,70 @@ public class ExecutionProposal {
   }
 
   /**
-   * @return the topic for this proposal.
+   * @return The topic for this proposal.
    */
   public String topic() {
     return _tp.topic();
   }
 
   /**
-   * @return the partition id for this proposal.
+   * @return The partition id for this proposal.
    */
   public int partitionId() {
     return _tp.partition();
   }
 
   /**
-   * @return the TopicPartition of this proposal.
+   * @return The TopicPartition of this proposal.
    */
   public TopicPartition topicPartition() {
     return _tp;
   }
 
   /**
-   * @return the old leader of the partition before the executing the proposal.
+   * @return The old leader of the partition before the executing the proposal.
    */
   public ReplicaPlacementInfo oldLeader() {
     return _oldLeader;
   }
 
   /**
-   * @return the new leader of the partition after executing the proposal.
+   * @return The new leader of the partition after executing the proposal.
    */
   public ReplicaPlacementInfo newLeader() {
     return _newReplicas.get(0);
   }
 
   /**
-   * @return the replica list of the partition before executing the proposal.
+   * @return The replica list of the partition before executing the proposal.
    */
   public List<ReplicaPlacementInfo> oldReplicas() {
     return _oldReplicas;
   }
 
   /**
-   * @return the new replica list fo the partition after executing the proposal.
+   * @return The new replica list fo the partition after executing the proposal.
    */
   public List<ReplicaPlacementInfo> newReplicas() {
     return _newReplicas;
   }
 
   /**
-   * @return the replicas that exist in new replica list but not in old replica list.
+   * @return The replicas that exist in new replica list but not in old replica list.
    */
   public Set<ReplicaPlacementInfo> replicasToAdd() {
     return _replicasToAdd;
   }
 
   /**
-   * @return the replicas that exist in old replica list but not in the new replica list.
+   * @return The replicas that exist in old replica list but not in the new replica list.
    */
   public Set<ReplicaPlacementInfo> replicasToRemove() {
     return _replicasToRemove;
   }
 
   /**
-   * @return the replicas that exist in both old and new replica list but its hosted disk has changed,
+   * @return The replicas that exist in both old and new replica list but its hosted disk has changed,
    *         which means an intra-broker replica movement for is needed for these replicas.
    */
   public Map<Integer, ReplicaPlacementInfo> replicasToMoveBetweenDisksByBroker() {
@@ -201,14 +201,14 @@ public class ExecutionProposal {
   }
 
   /**
-   * @return the total number of bytes to move across brokers involved in this proposal.
+   * @return The total number of bytes to move across brokers involved in this proposal.
    */
   public long interBrokerDataToMoveInMB() {
     return _replicasToAdd.size() * _partitionSize;
   }
 
   /**
-   * @return the total number of bytes to move across disks within the broker involved in this proposal.
+   * @return The total number of bytes to move across disks within the broker involved in this proposal.
    *         Note for intra-broker replica movement on a broker, the amount of data to move across disk is
    *         always the size of the replica since one broker can only host one replica of the topic partition.
    */
@@ -217,7 +217,7 @@ public class ExecutionProposal {
   }
 
   /**
-   * @return the total number of bytes to move involved in this proposal.
+   * @return The total number of bytes to move involved in this proposal.
    */
   public long dataToMoveInMB() {
     return (_replicasToAdd.size() + _replicasToMoveBetweenDisksByBroker.size()) * _partitionSize;
@@ -241,8 +241,7 @@ public class ExecutionProposal {
   }
 
   /**
-   * Return an object that can be further used
-   * to encode into JSON
+   * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure() {
     Map<String, Object> proposalMap = new HashMap<>(4);

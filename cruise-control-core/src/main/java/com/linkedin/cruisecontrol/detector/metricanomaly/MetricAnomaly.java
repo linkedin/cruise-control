@@ -11,22 +11,22 @@ import java.util.List;
 
 public interface MetricAnomaly<E extends Entity> extends Anomaly {
   /**
-   * Get a list of windows for which a metric anomaly was observed.
+   * @return A list of windows for which a metric anomaly was observed.
    */
   List<Long> windows();
 
   /**
-   * Get the metric anomaly description.
+   * @return The metric anomaly description.
    */
   String description();
 
   /**
-   * Get the entity with metric anomaly.
+   * @return The entity with metric anomaly.
    */
   E entity();
 
   /**
-   * Get the metric Id caused the metric anomaly.
+   * @return The metric Id caused the metric anomaly.
    */
   Short metricId();
 }

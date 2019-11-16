@@ -46,7 +46,7 @@ public class ReplicaSortFunctionFactory {
   // Score functions
   /**
    * @param metricGroup the metric group to score
-   * @return a score function to score by the metric group value of the given metric group in positive way, i.e. the higher
+   * @return A score function to score by the metric group value of the given metric group in positive way, i.e. the higher
    *         the metric group value, the higher the score.
    */
   public static Function<Replica, Double> sortByMetricGroupValue(String metricGroup) {
@@ -60,7 +60,7 @@ public class ReplicaSortFunctionFactory {
 
   /**
    * @param metricGroup the metric group to score
-   * @return a score function to score by the metric group value of the given metric group in negative way, i.e. the higher
+   * @return A score function to score by the metric group value of the given metric group in negative way, i.e. the higher
    *         the metric group value, the lower the score.
    */
   public static Function<Replica, Double> reverseSortByMetricGroupValue(String metricGroup) {
@@ -74,21 +74,21 @@ public class ReplicaSortFunctionFactory {
 
   // Priority functions
   /**
-   * @return a priority function that prioritize the immigrants replicas.
+   * @return A priority function that prioritize the immigrants replicas.
    */
   public static Function<Replica, Integer> prioritizeImmigrants() {
     return PRIORITIZE_IMMIGRANTS;
   }
 
   /**
-   * @return a priority function that prioritize the offline replicas.
+   * @return A priority function that prioritize the offline replicas.
    */
   public static Function<Replica, Integer> prioritizeOfflineReplicas() {
     return PRIORITIZE_OFFLINE_REPLICAS;
   }
 
   /**
-   * @return a priority function that prioritize the immigrant replicas to the disk.
+   * @return A priority function that prioritize the immigrant replicas to the disk.
    */
   public static Function<Replica, Integer> prioritizeDiskImmigrants() {
     return PRIORITIZE_DISK_IMMIGRANTS;
@@ -96,42 +96,42 @@ public class ReplicaSortFunctionFactory {
 
   // Selection functions
   /**
-   * @return a selection function that only includes immigrant replicas.
+   * @return A selection function that only includes immigrant replicas.
    */
   public static Function<Replica, Boolean> selectImmigrants() {
     return SELECT_IMMIGRANTS;
   }
 
   /**
-   * @return a selection function that only includes immigrant replicas and offline replicas.
+   * @return A selection function that only includes immigrant replicas and offline replicas.
    */
   public static Function<Replica, Boolean> selectImmigrantOrOfflineReplicas() {
     return SELECT_IMMIGRANT_OR_OFFLINE_REPLICAS;
   }
 
   /**
-   * @return a selection function that only includes leaders.
+   * @return A selection function that only includes leaders.
    */
   public static Function<Replica, Boolean> selectLeaders() {
     return SELECT_LEADERS;
   }
 
   /**
-   * @return a selection function that only includes followers.
+   * @return A selection function that only includes followers.
    */
   public static Function<Replica, Boolean> selectFollowers() {
     return SELECT_FOLLOWERS;
   }
 
   /**
-   * @return a selection function that only includes offline replicas.
+   * @return A selection function that only includes offline replicas.
    */
   public static Function<Replica, Boolean> selectOfflineReplicas() {
     return SELECT_OFFLINE_REPLICAS;
   }
 
   /**
-   * @return a selection function that only includes online replicas.
+   * @return A selection function that only includes online replicas.
    */
   public static Function<Replica, Boolean> selectOnlineReplicas() {
     return SELECT_ONLINE_REPLICAS;
@@ -140,7 +140,7 @@ public class ReplicaSortFunctionFactory {
   /**
    * @param excludedTopics Topics excluded from partition movements.
    *
-   * @return a selection function that filters out replicas which are online and from topics which should be excluded.
+   * @return A selection function that filters out replicas which are online and from topics which should be excluded.
    */
   public static Function<Replica, Boolean> selectReplicasBasedOnExcludedTopics(Set<String> excludedTopics) {
     return r -> r.isOriginalOffline() || !excludedTopics.contains(r.topicPartition().topic());
@@ -150,7 +150,7 @@ public class ReplicaSortFunctionFactory {
    * @param resource The resource to check.
    * @param limit The resource limit used to filter replicas.
    *
-   * @return a selection function that only includes replicas whose metric value for certain resource is above limit.
+   * @return A selection function that only includes replicas whose metric value for certain resource is above limit.
    */
   public static Function<Replica, Boolean> selectReplicasAboveLimit(Resource resource, double limit) {
     return r -> r.load().expectedUtilizationFor(resource) > limit;
@@ -160,7 +160,7 @@ public class ReplicaSortFunctionFactory {
    * @param resource The resource to check.
    * @param limit The resource limit used to filter replicas.
    *
-   * @return a selection function that only includes replicas whose metric value for certain resource is below limit.
+   * @return A selection function that only includes replicas whose metric value for certain resource is below limit.
    */
   public static Function<Replica, Boolean> selectReplicasBelowLimit(Resource resource, double limit) {
     return r -> r.load().expectedUtilizationFor(resource) < limit;

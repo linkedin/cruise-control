@@ -101,7 +101,7 @@ public class SortedReplicas {
    *
    * @param clone whether return a clone of the replica set or the set itself. In general, the clone should be avoided
    *              whenever possible, it is only needed where the sorted replica will be updated in the middle of being iterated.
-   * @return the sorted replicas in the ascending order of their priority and score.
+   * @return The sorted replicas in the ascending order of their priority and score.
    */
   public SortedSet<Replica> sortedReplicas(boolean clone) {
     ensureInitialize();
@@ -114,21 +114,21 @@ public class SortedReplicas {
   }
 
   /**
-   * @return the selection functions of this {@link SortedReplicas}
+   * @return The selection functions of this {@link SortedReplicas}
    */
   public Set<Function<Replica, Boolean>> selectionFunctions() {
     return _selectionFuncs;
   }
 
   /**
-   * @return the priority functions of this {@link SortedReplicas}
+   * @return The priority functions of this {@link SortedReplicas}
    */
   public List<Function<Replica, Integer>> priorityFunctions() {
     return _priorityFuncs;
   }
 
   /**
-   * @return the score function of this {@link SortedReplicas}
+   * @return The score function of this {@link SortedReplicas}
    */
   public Function<Replica, Double> scoreFunction() {
     return _scoreFunc;

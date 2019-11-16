@@ -92,35 +92,35 @@ public class BalancingConstraint {
   }
 
   /**
-   * Get the balancing for different resources.
+   * @return The balancing for different resources.
    */
   public List<Resource> resources() {
     return _resources;
   }
 
   /**
-   * Get maximum number of replicas per broker.
+   * @return The maximum number of replicas per broker.
    */
   public Long maxReplicasPerBroker() {
     return _maxReplicasPerBroker;
   }
 
   /**
-   * Get replica balance percentage for {@link com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal}.
+   * @return The replica balance percentage for {@link com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal}.
    */
   public Double replicaBalancePercentage() {
     return _replicaBalancePercentage;
   }
 
   /**
-   * Get leader replica balance percentage for {@link com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderReplicaDistributionGoal}.
+   * @return The leader replica balance percentage for {@link com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderReplicaDistributionGoal}.
    */
   public Double leaderReplicaBalancePercentage() {
     return _leaderReplicaBalancePercentage;
   }
 
   /**
-   * Get topic replica balance percentage for
+   * @return Topic replica balance percentage for
    * {@link com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal}.
    */
   public Double topicReplicaBalancePercentage() {
@@ -128,7 +128,7 @@ public class BalancingConstraint {
   }
 
   /**
-   * Get goal violation distribution threshold multiplier to be used in detection and fixing goal violations.
+   * @return Goal violation distribution threshold multiplier to be used in detection and fixing goal violations.
    */
   public Double goalViolationDistributionThresholdMultiplier() {
     return _goalViolationDistributionThresholdMultiplier;
@@ -158,7 +158,7 @@ public class BalancingConstraint {
   /**
    * Get the low utilization threshold for a resource.
    * @param resource Resource for which the low utilization threshold will be provided.
-   * @return the low utilization threshold.
+   * @return The low utilization threshold.
    */
   public double lowUtilizationThreshold(Resource resource) {
     return _lowUtilizationThreshold.get(resource);
@@ -167,7 +167,7 @@ public class BalancingConstraint {
   /**
    * Set resource balance percentage for the given resource.
    *
-   * @param resource          Resource for which the balance percentage will be set.
+   * @param resource Resource for which the balance percentage will be set.
    * @param balancePercentage Balance percentage for the given resource.
    */
   private void setBalancePercentageFor(Resource resource, double balancePercentage) {
@@ -191,7 +191,7 @@ public class BalancingConstraint {
   /**
    * Set alive resource capacity threshold for the given resource.
    *
-   * @param resource          Resource for which the capacity threshold will be set.
+   * @param resource Resource for which the capacity threshold will be set.
    * @param capacityThreshold Capacity threshold for the given resource.
    */
   private void setCapacityThresholdFor(Resource resource, double capacityThreshold) {

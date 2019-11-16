@@ -151,35 +151,35 @@ public class MetricSampleCompleteness<G, E extends Entity<G>> extends LongGenera
   }
 
   /**
-   * @return the set of valid entities based on the specified granularity.
+   * @return The set of valid entities based on the specified granularity.
    */
   public Set<E> validEntities() {
     return _validEntities;
   }
 
   /**
-   * @return the set of valid entity groups.
+   * @return The set of valid entity groups.
    */
   public Set<G> validEntityGroups() {
     return _validEntityGroups;
   }
 
   /**
-   * @return the actual valid entity ratio after including all the {@link #validWindowIndices()}
+   * @return The actual valid entity ratio after including all the {@link #validWindowIndices()}
    */
   public float validEntityRatio() {
     return _validEntityRatio;
   }
 
   /**
-   * @return the actual valid entity group ratio after including all the {@link #validWindowIndices()}
+   * @return The actual valid entity group ratio after including all the {@link #validWindowIndices()}
    */
   public float validEntityGroupRatio() {
     return _validEntityGroupRatio;
   }
 
   /**
-   * @return the first window of this completeness info.
+   * @return The first window of this completeness info.
    */
   public long firstWindowIndex() {
     // The map is in the reverse order.
@@ -187,7 +187,7 @@ public class MetricSampleCompleteness<G, E extends Entity<G>> extends LongGenera
   }
 
   /**
-   * @return the last window of this completeness info.
+   * @return The last window of this completeness info.
    */
   public long lastWindowIndex() {
     // The map is in the reverse order.
@@ -195,7 +195,7 @@ public class MetricSampleCompleteness<G, E extends Entity<G>> extends LongGenera
   }
 
   /**
-   * @return the window size in milliseconds.
+   * @return The window size in milliseconds.
    */
   public long windowMs() {
     return _windowMs;

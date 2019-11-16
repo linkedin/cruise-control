@@ -87,7 +87,7 @@ public class TopicReplicationFactorChangeParameters extends GoalBasedOptimizatio
    * Create a {@link TopicReplicationFactorChangeParameters} object from the request.
    *
    * @param configs Information collected from request and Cruise Control configs.
-   * @return a TopicReplicationFactorChangeParameters object; or null if any required parameter is not specified in the request.
+   * @return A TopicReplicationFactorChangeParameters object; or null if any required parameter is not specified in the request.
    */
   static TopicReplicationFactorChangeParameters maybeBuildTopicReplicationFactorChangeParameters(Map<String, ?> configs)
       throws UnsupportedEncodingException {

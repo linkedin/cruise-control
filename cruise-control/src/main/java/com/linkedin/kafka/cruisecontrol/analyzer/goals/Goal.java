@@ -60,7 +60,7 @@ public interface Goal extends CruiseControlConfigurable {
    *                       optimization of the previously optimized goals.
    * @param optimizedGoals Goals that have already been optimized. These goals cannot be violated.
    * @param optimizationOptions Options to take into account during optimization -- e.g. excluded topics.
-   * @return true if the goal is met after the optimization, false otherwise. Note that for hard goals,
+   * @return True if the goal is met after the optimization, false otherwise. Note that for hard goals,
    * the implementation should just throw exceptions if the goal is not met.
    * @throws KafkaCruiseControlException
    */
@@ -75,7 +75,7 @@ public interface Goal extends CruiseControlConfigurable {
    *
    * @param action Action to be checked for acceptance.
    * @param clusterModel State of the cluster before application of the action.
-   * @return the action acceptance indicating whether an action is accepted, or why it is rejected.
+   * @return The action acceptance indicating whether an action is accepted, or why it is rejected.
    */
   ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel);
 
@@ -88,6 +88,7 @@ public interface Goal extends CruiseControlConfigurable {
    * Cruise Control will not reuse the returned instance.
    *
    * The returned value must not be null.
+   * @return An instance of {@link ClusterModelStatsComparator} for this goal.
    */
   ClusterModelStatsComparator clusterModelStatsComparator();
 
@@ -101,12 +102,12 @@ public interface Goal extends CruiseControlConfigurable {
    *
    * The returned value must not be null.
    *
-   * @return the load requirement for this goal.
+   * @return The load requirement for this goal.
    */
   ModelCompletenessRequirements clusterModelCompletenessRequirements();
 
   /**
-   * Get the name of this goal. Name of a goal provides an identification for the goal in human readable format.
+   * @return The name of this goal. Name of a goal provides an identification for the goal in human readable format.
    */
   String name();
 
@@ -117,7 +118,7 @@ public interface Goal extends CruiseControlConfigurable {
   void finish();
 
   /**
-   * True if this is a hard goal, false otherwise.
+   * @return True if this is a hard goal, false otherwise.
    */
   boolean isHardGoal();
 

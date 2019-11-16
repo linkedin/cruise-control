@@ -47,14 +47,32 @@ public class BrokerStats extends AbstractCruiseControlResponse {
     _isBrokerStatsEstimated = false;
   }
 
+  /**
+   * Add single broker stats.
+   *
+   * @param host Host name.
+   * @param id Broker id.
+   * @param state Broker state.
+   * @param diskUtil Disk utilization.
+   * @param cpuUtil CPU utilization.
+   * @param leaderBytesInRate Leader bytes in rate.
+   * @param followerBytesInRate Follower bytes in rate.
+   * @param bytesOutRate Bytes out rate.
+   * @param potentialBytesOutRate Potential bytes out rate.
+   * @param numReplicas Number of replicas.
+   * @param numLeaders Number of leaders.
+   * @param isEstimated True if the broker capacity is estimated, false otherwise.
+   * @param diskCapacity The disk capacity of broker.
+   * @param diskStatsByLogdir Disk stats by logdir.
+   */
   public void addSingleBrokerStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
                                    double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
-                                   int numReplicas, int numLeaders, boolean isEstimated, double capacity,
+                                   int numReplicas, int numLeaders, boolean isEstimated, double diskCapacity,
                                    Map<String, DiskStats> diskStatsByLogdir) {
 
     SingleBrokerStats singleBrokerStats =
         new SingleBrokerStats(host, id, state, diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
-                              potentialBytesOutRate, numReplicas, numLeaders, isEstimated, capacity, diskStatsByLogdir);
+                              potentialBytesOutRate, numReplicas, numLeaders, isEstimated, diskCapacity, diskStatsByLogdir);
     _brokerStats.add(singleBrokerStats);
     _hostFieldLength = Math.max(_hostFieldLength, host.length());
     // Calculate field length to print logdir name in plaintext response, a padding of 10 is added for this field.
@@ -79,7 +97,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
   }
 
   /**
-   * Return an object that can be further be used to encode into JSON
+   * @return An object that can be further be used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure() {
     List<Map<String, Object>> hostStats = new ArrayList<>(_hostStats.size());

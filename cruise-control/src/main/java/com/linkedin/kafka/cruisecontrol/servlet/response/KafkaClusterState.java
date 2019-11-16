@@ -246,6 +246,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
    *
    * @param verbose True if verbose, false otherwise.
    * @param topic Regex of topic to filter partition states by, is null if no filter is to be applied
+   * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure(boolean verbose, Pattern topic)
       throws ExecutionException, InterruptedException {

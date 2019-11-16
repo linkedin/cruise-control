@@ -210,8 +210,9 @@ public enum KafkaMetricDef {
   }
 
   /**
-   * The metric group of the Kafka metric def.
    * @see MetricDef
+   *
+   * @return The metric group of the Kafka metric def.
    */
   public String group() {
     return _group;
@@ -249,6 +250,12 @@ public enum KafkaMetricDef {
     return commonMetricDef().metricInfoForGroup(resource.name());
   }
 
+  /**
+   * Get a list of metric ids corresponding to the given resource.
+   *
+   * @param resource The resource type.
+   * @return A list of metric ids corresponding to the given resource.
+   */
   public static List<Short> resourceToMetricIds(Resource resource) {
     List<Short> metricIds = new ArrayList<>();
     resourceToMetricInfo(resource).forEach(info -> metricIds.add(info.id()));

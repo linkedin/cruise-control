@@ -516,7 +516,7 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
   }
 
   /**
-   * Get the name of this goal. Name of a goal provides an identification for the goal in human readable format.
+   * @return The name of this goal. Name of a goal provides an identification for the goal in human readable format.
    */
   public String name() {
     return this.getClass().getSimpleName();

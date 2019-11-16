@@ -25,6 +25,10 @@ public enum ActionAcceptance {
 
   private static final List<ActionAcceptance> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 
+  /**
+   * Use this instead of values() because values() creates a new array each time.
+   * @return enumerated values in the same order as values()
+   */
   public static List<ActionAcceptance> cachedValues() {
     return CACHED_VALUES;
   }

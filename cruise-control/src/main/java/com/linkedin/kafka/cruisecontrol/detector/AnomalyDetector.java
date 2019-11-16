@@ -135,6 +135,9 @@ public class AnomalyDetector {
     _anomalyDetectorState = new AnomalyDetectorState(new SystemTime(), new HashMap<>(AnomalyType.cachedValues().size()), 10, null);
   }
 
+  /**
+   * Start each anomaly detector.
+   */
   public void startDetection() {
     LOG.info("Starting anomaly detector.");
     _brokerFailureDetector.startDetection();
@@ -185,6 +188,9 @@ public class AnomalyDetector {
     LOG.info("Anomaly detector shutdown completed.");
   }
 
+  /**
+   * @return Anomaly detector state.
+   */
   public synchronized AnomalyDetectorState anomalyDetectorState() {
     _anomalyDetectorState.refreshMetrics(_anomalyNotifier.selfHealingEnabledRatio(), _goalViolationDetector.balancednessScore());
     return _anomalyDetectorState;
@@ -386,7 +392,7 @@ public class AnomalyDetector {
      * Check whether the anomaly in progress is ready for fix. An anomaly is ready if it (1) meets completeness
      * requirements and (2) load monitor is not in an unexpected state.
      *
-     * @return true if ready for a fix, false otherwise.
+     * @return True if ready for a fix, false otherwise.
      */
     private boolean isAnomalyInProgressReadyToFix(AnomalyType anomalyType) {
       LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _kafkaCruiseControl.getLoadMonitorTaskRunnerState();

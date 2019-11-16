@@ -14,16 +14,19 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class GeneratingClusterModel implements OperationStep {
   private final int _totalNumPartitions;
   private final AtomicInteger _populatedNumPartitions;
-  
+
   public GeneratingClusterModel(int totalNumPartitions) {
     _totalNumPartitions = totalNumPartitions;
     _populatedNumPartitions = new AtomicInteger(0);
   }
-  
+
+  /**
+   * Increment the counter for the number of partitions in the cluster for which the load information is populated.
+   */
   public void incrementPopulatedNumPartitions() {
     _populatedNumPartitions.incrementAndGet();
   }
-  
+
   @Override
   public String name() {
     return "GENERATING_CLUSTER_MODEL";

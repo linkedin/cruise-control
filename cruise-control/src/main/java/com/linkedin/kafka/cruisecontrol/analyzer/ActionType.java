@@ -34,6 +34,10 @@ public enum ActionType {
 
   private static final List<ActionType> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 
+  /**
+   * Use this instead of values() because values() creates a new array each time.
+   * @return enumerated values in the same order as values()
+   */
   public static List<ActionType> cachedValues() {
     return CACHED_VALUES;
   }
@@ -44,6 +48,9 @@ public enum ActionType {
     _balancingAction = balancingAction;
   }
 
+  /**
+   * @return Balancing action.
+   */
   public String balancingAction() {
     return _balancingAction;
   }

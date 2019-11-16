@@ -37,7 +37,7 @@ import static com.linkedin.kafka.cruisecontrol.common.Resource.DISK;
 
 
 /**
- * SOFT GOAL: Generate replica movement proposals to ensure that the number of replicas on each broker is
+ * Soft goal to generate replica movement proposals to ensure that the number of replicas on each broker is
  * <ul>
  * <li>Under: (the average number of replicas per broker) * (1 + replica count balance percentage)</li>
  * <li>Above: (the average number of replicas per broker) * Math.max(0, 1 - replica count balance percentage)</li>

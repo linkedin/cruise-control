@@ -922,7 +922,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    * @param clusterModel the cluster topology and load.
    * @param optimizationOptions Options to adjust balance upper limit in case goal optimization is triggered by goal
    * violation detector.
-   * @return the utilization upper threshold in percent for the {@link #resource()}
+   * @return The utilization upper threshold in percent for the {@link #resource()}
    */
   private double computeBalanceUpperThreshold(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
     return (clusterModel.load().expectedUtilizationFor(resource()) / clusterModel.capacityFor(resource()))
@@ -933,7 +933,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    * @param clusterModel the cluster topology and load.
    * @param optimizationOptions Options to adjust balance lower limit in case goal optimization is triggered by goal
    * violation detector.
-   * @return the utilization lower threshold in percent for the {@link #resource()}
+   * @return The utilization lower threshold in percent for the {@link #resource()}
    */
   private double computeBalanceLowerThreshold(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
     return (clusterModel.load().expectedUtilizationFor(resource()) / clusterModel.capacityFor(resource()))
@@ -946,7 +946,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    *
    * @param optimizationOptions Options to adjust balance percentage with margin in case goal optimization is triggered
    * by goal violation detector.
-   * @return the rebalance threshold with a margin.
+   * @return The rebalance threshold with a margin.
    */
   private double balancePercentageWithMargin(OptimizationOptions optimizationOptions) {
     double balancePercentage = optimizationOptions.isTriggeredByGoalViolation()

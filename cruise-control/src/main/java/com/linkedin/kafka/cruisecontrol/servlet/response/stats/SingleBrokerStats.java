@@ -23,12 +23,12 @@ public class SingleBrokerStats {
 
   SingleBrokerStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
                     double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate, int numReplicas,
-                    int numLeaders, boolean isEstimated, double capacity, Map<String, DiskStats> diskStatsByLogdir) {
+                    int numLeaders, boolean isEstimated, double diskCapacity, Map<String, DiskStats> diskStatsByLogdir) {
     _host = host;
     _id = id;
     _state = state;
     _basicStats = new BasicStats(diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
-                                 potentialBytesOutRate, numReplicas, numLeaders, capacity);
+                                 potentialBytesOutRate, numReplicas, numLeaders, diskCapacity);
     _isEstimated = isEstimated;
     _diskStatsByLogdir = diskStatsByLogdir;
   }
@@ -60,13 +60,15 @@ public class SingleBrokerStats {
     return _diskStatsByLogdir;
   }
 
+  /**
+   * @return True if the broker capacity has been estimated, false otherwise.
+   */
   public boolean isEstimated() {
     return _isEstimated;
   }
 
-  /*
-   * Return an object that can be further used
-   * to encode into JSON
+  /**
+   * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJSONStructure() {
     Map<String, Object> entry = _basicStats.getJSONStructure();

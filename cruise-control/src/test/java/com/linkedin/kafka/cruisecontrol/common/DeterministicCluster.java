@@ -36,8 +36,12 @@ public class DeterministicCluster {
 
   }
 
-  // Two brokers on two racks, each has two disks.
-  // One topic with eight partitions, each has one replica.
+  /**
+   * Two brokers on two racks, each has two disks.
+   * One topic with eight partitions, each has one replica.
+   *
+   * @return Cluster model for the tests.
+   */
   public static ClusterModel unbalanced4() {
     Map<Integer, Integer> rackByBrokerId = new HashMap<>(2);
     rackByBrokerId.put(0, 0);
@@ -64,7 +68,11 @@ public class DeterministicCluster {
     return cluster;
   }
 
-  // Two racks, three brokers, two partitions, two replicas, leaders are in index-1 (not in index-0).
+  /**
+   * Two racks, three brokers, two partitions, two replicas, leaders are in index-1 (not in index-0).
+   *
+   * @return Cluster model for the tests.
+   */
   public static ClusterModel unbalanced3() {
     ClusterModel cluster = getHomogeneousCluster(RACK_BY_BROKER, TestConstants.BROKER_CAPACITY, null);
 
@@ -93,7 +101,11 @@ public class DeterministicCluster {
     return cluster;
   }
 
-  // Two racks, three brokers, six partitions, one replica.
+  /**
+   * Two racks, three brokers, six partitions, one replica.
+   *
+   * @return Cluster model for the tests.
+   */
   public static ClusterModel unbalanced2() {
 
     ClusterModel cluster = unbalanced();
@@ -122,7 +134,11 @@ public class DeterministicCluster {
     return cluster;
   }
 
-  // Two racks, three brokers, two partitions, one replica.
+  /**
+   * Two racks, three brokers, two partitions, one replica.
+   *
+   * @return Cluster model for the tests.
+   */
   public static ClusterModel unbalanced() {
     ClusterModel cluster = getHomogeneousCluster(RACK_BY_BROKER, TestConstants.BROKER_CAPACITY, null);
 
@@ -147,7 +163,11 @@ public class DeterministicCluster {
     return cluster;
   }
 
-  // Two racks, three brokers, one partition, two replicas
+  /**
+   * Two racks, three brokers, one partition, two replicas
+   *
+   * @return Cluster model for the tests.
+   */
   public static ClusterModel rackAwareSatisfiable() {
     ClusterModel cluster = getHomogeneousCluster(RACK_BY_BROKER, TestConstants.BROKER_CAPACITY, null);
 
@@ -170,7 +190,11 @@ public class DeterministicCluster {
     return cluster;
   }
 
-  // two racks, three brokers, one partition, three replicas.
+  /**
+   * Two racks, three brokers, one partition, three replicas.
+   *
+   * @return Cluster model for the tests.
+   */
   public static ClusterModel rackAwareUnsatisfiable() {
     ClusterModel cluster = rackAwareSatisfiable();
     TopicPartition pInfoT10 = new TopicPartition(T1, 0);

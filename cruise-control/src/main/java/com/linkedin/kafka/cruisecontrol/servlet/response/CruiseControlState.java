@@ -79,9 +79,9 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
     return gson.toJson(jsonStructure);
   }
 
-  /*
-   * Return an object that can be further used
-   * to encode into JSON
+  /**
+   * @param verbose True if verbose, false otherwise.
+   * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure(boolean verbose) {
     Map<String, Object> cruiseControlState = new HashMap<>();
