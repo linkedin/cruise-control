@@ -18,11 +18,7 @@ import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.InetSocketAddress;
-import java.util.Properties;
 
 public class KafkaCruiseControlApp {
 
@@ -33,26 +29,8 @@ public class KafkaCruiseControlApp {
   private final AsyncKafkaCruiseControl _kafkaCruiseControl;
   private final JmxReporter _jmxReporter;
 
-  KafkaCruiseControlApp(String configPath, Integer port, String hostname) throws IOException {
-    this(readConfig(configPath), port, hostname);
-  }
-
   KafkaCruiseControlApp(KafkaCruiseControlConfig config, Integer port, String hostname) {
     this._config = config;
-
-    int actualPort;
-    if (port != null) {
-      actualPort = port;
-    } else {
-      actualPort = config.getInt(WebServerConfig.WEBSERVER_HTTP_PORT_CONFIG);
-    }
-
-    String actualHostname;
-    if (hostname != null) {
-      actualHostname = hostname;
-    } else {
-      actualHostname = config.getString(WebServerConfig.WEBSERVER_HTTP_ADDRESS_CONFIG);
-    }
 
     MetricRegistry metricRegistry = new MetricRegistry();
     _jmxReporter = JmxReporter.forRegistry(metricRegistry).inDomain(METRIC_DOMAIN).build();
@@ -60,7 +38,7 @@ public class KafkaCruiseControlApp {
 
     _kafkaCruiseControl = new AsyncKafkaCruiseControl(config, metricRegistry);
 
-    _server = new Server(new InetSocketAddress(actualHostname, actualPort));
+    _server = new Server(new InetSocketAddress(hostname, port));
     NCSARequestLog requestLog = createRequestLog();
     if (requestLog != null) {
       _server.setRequestLog(requestLog);
@@ -115,15 +93,6 @@ public class KafkaCruiseControlApp {
     System.out.println(">> Kafka Cruise Control started on  : " + serverUrl());
     System.out.println(">> CORS Enabled ?                   : " + corsEnabled);
     System.out.println(">> ********************************************* <<");
-  }
-
-  private static KafkaCruiseControlConfig readConfig(String propertiesFile) throws IOException {
-    Properties props = new Properties();
-    try (InputStream propStream = new FileInputStream(propertiesFile)) {
-      props.load(propStream);
-    }
-
-    return new KafkaCruiseControlConfig(props);
   }
 
   private void setupWebUi(ServletContextHandler contextHandler) {

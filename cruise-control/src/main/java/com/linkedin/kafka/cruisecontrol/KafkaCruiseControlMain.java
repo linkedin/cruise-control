@@ -4,7 +4,13 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
+
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
 
 /**
  * The main class to run Kafka Cruise Control.
@@ -22,9 +28,10 @@ public class KafkaCruiseControlMain {
       printErrorMessageAndDie();
     }
     try {
-      Integer port = parsePort(args);
-      String hostname = parseHostname(args);
-      KafkaCruiseControlApp app = new KafkaCruiseControlApp(args[0], port, hostname);
+      KafkaCruiseControlConfig config = readConfig(args[0]);
+      Integer port = parsePort(args, config);
+      String hostname = parseHostname(args, config);
+      KafkaCruiseControlApp app = new KafkaCruiseControlApp(config, port, hostname);
       app.registerShutdownHook();
       app.start();
     } catch (IOException | IllegalArgumentException e) {
@@ -32,26 +39,39 @@ public class KafkaCruiseControlMain {
     }
   }
 
-  private static Integer parsePort(String[] args) {
+  private static KafkaCruiseControlConfig readConfig(String propertiesFile) throws IOException {
+    Properties props = new Properties();
+    try (InputStream propStream = new FileInputStream(propertiesFile)) {
+      props.load(propStream);
+    }
+
+    return new KafkaCruiseControlConfig(props);
+  }
+
+  private static Integer parsePort(String[] args, KafkaCruiseControlConfig config) {
     try {
       if (args.length > 1) {
         return Integer.parseInt(args[1]);
+      } else {
+        return config.getInt(WebServerConfig.WEBSERVER_HTTP_PORT_CONFIG);
       }
     } catch (Exception e) {
       printErrorMessageAndDie();
+      throw e;
     }
-    return null;
   }
 
-  private static String parseHostname(String[] args) {
+  private static String parseHostname(String[] args, KafkaCruiseControlConfig config) {
     try {
       if (args.length > 2) {
         return args[2];
+      } else {
+        return config.getString(WebServerConfig.WEBSERVER_HTTP_ADDRESS_CONFIG);
       }
     } catch (Exception e) {
       printErrorMessageAndDie();
+      throw e;
     }
-    return null;
   }
 
   private static void printErrorMessageAndDie() {
