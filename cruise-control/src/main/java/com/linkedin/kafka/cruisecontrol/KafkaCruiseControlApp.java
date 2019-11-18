@@ -12,13 +12,14 @@ import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
 import com.linkedin.kafka.cruisecontrol.servlet.SecurityProvider;
 import org.eclipse.jetty.security.ConstraintSecurityHandler;
+import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.NCSARequestLog;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-
-import java.net.InetSocketAddress;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
 
 public class KafkaCruiseControlApp {
 
@@ -38,11 +39,12 @@ public class KafkaCruiseControlApp {
 
     _kafkaCruiseControl = new AsyncKafkaCruiseControl(config, metricRegistry);
 
-    _server = new Server(new InetSocketAddress(hostname, port));
+    _server = new Server();
     NCSARequestLog requestLog = createRequestLog();
     if (requestLog != null) {
       _server.setRequestLog(requestLog);
     }
+    _server.setConnectors(new Connector[]{ setupHttpConnector(hostname, port) });
 
     ServletContextHandler contextHandler = createContextHandler();
     ConstraintSecurityHandler securityHandler = createSecurityHandler();
@@ -93,6 +95,27 @@ public class KafkaCruiseControlApp {
     System.out.println(">> Kafka Cruise Control started on  : " + serverUrl());
     System.out.println(">> CORS Enabled ?                   : " + corsEnabled);
     System.out.println(">> ********************************************* <<");
+  }
+
+  private ServerConnector setupHttpConnector(String hostname, int port) {
+    String keyStoreLocation = _config.getString(WebServerConfig.WEBSERVER_SSL_KEYSTORE_LOCATION_CONFIG);
+    ServerConnector serverConnector;
+    if (keyStoreLocation != null) {
+      SslContextFactory sslServerContextFactory = new SslContextFactory.Server();
+      sslServerContextFactory.setKeyStorePath(keyStoreLocation);
+      sslServerContextFactory.setKeyStorePassword(_config.getString(WebServerConfig.WEBSERVER_SSL_KEYSTORE_PASSWORD_CONFIG));
+      sslServerContextFactory.setKeyManagerPassword(_config.getString(WebServerConfig.WEBSERVER_SSL_KEY_PASSWORD_CONFIG));
+      String keyStoreType = _config.getString(WebServerConfig.WEBSERVER_SSL_KEYSTORE_TYPE_CONFIG);
+      if (keyStoreType != null) {
+        sslServerContextFactory.setKeyStoreType(keyStoreType);
+      }
+      serverConnector = new ServerConnector(_server, sslServerContextFactory);
+    } else {
+      serverConnector = new ServerConnector(_server);
+    }
+    serverConnector.setHost(hostname);
+    serverConnector.setPort(port);
+    return serverConnector;
   }
 
   private void setupWebUi(ServletContextHandler contextHandler) {

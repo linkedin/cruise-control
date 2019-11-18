@@ -162,6 +162,31 @@ public class WebServerConfig {
   public static final String SECURITY_PROVIDER_CONFIG = "security.provider";
   private static final String SECURITY_PROVIDER_DOC = "SecurityProvider implementation for defining authentication " +
           "and authorization rules";
+
+  /**
+   * <code>webserver.ssl.keystore.location</code>
+   */
+  public static final String WEBSERVER_SSL_KEYSTORE_LOCATION_CONFIG = "webserver.ssl.keystore.location";
+  private static final String WEBSERVER_SSL_KEYSTORE_LOCATION_DOC = "The location of the SSL keystore file";
+
+  /**
+   * <code>ssl.keystore.password</code>
+   */
+  public static final String WEBSERVER_SSL_KEYSTORE_PASSWORD_CONFIG = "webserver.ssl.keystore.password";
+  private static final String WEBSERVER_SSL_KEYSTORE_PASSWORD_DOC = "The store password for the key store file.";
+
+  /**
+   * <code>ssl.keystore.type</code>
+   */
+  public static final String WEBSERVER_SSL_KEYSTORE_TYPE_CONFIG = "webserver.ssl.keystore.type";
+  private static final String WEBSERVER_SSL_KEYSTORE_TYPE_DOC = "The file format of the key store file. This is an optional config.";
+
+  /**
+   * <code>ssl.key.password</code>
+   */
+  public static final String WEBSERVER_SSL_KEY_PASSWORD_CONFIG = "webserver.ssl.key.password";
+  private static final String WEBSERVER_SSL_KEY_PASSWORD_DOC = "The password of the private key in the key store file.";
+
   /**
    * Define configs for Web Server.
    *
@@ -275,6 +300,26 @@ public class WebServerConfig {
                             ConfigDef.Type.CLASS,
                             null,
                             ConfigDef.Importance.MEDIUM,
-                            SECURITY_PROVIDER_DOC);
+                            SECURITY_PROVIDER_DOC)
+                    .define(WEBSERVER_SSL_KEYSTORE_LOCATION_CONFIG,
+                            ConfigDef.Type.STRING,
+                            null,
+                            ConfigDef.Importance.MEDIUM,
+                            WEBSERVER_SSL_KEYSTORE_LOCATION_DOC)
+                    .define(WEBSERVER_SSL_KEYSTORE_PASSWORD_CONFIG,
+                            ConfigDef.Type.STRING,
+                            null,
+                            ConfigDef.Importance.MEDIUM,
+                            WEBSERVER_SSL_KEYSTORE_PASSWORD_DOC)
+                    .define(WEBSERVER_SSL_KEYSTORE_TYPE_CONFIG,
+                            ConfigDef.Type.STRING,
+                            null,
+                            ConfigDef.Importance.MEDIUM,
+                            WEBSERVER_SSL_KEYSTORE_TYPE_DOC)
+                    .define(WEBSERVER_SSL_KEY_PASSWORD_CONFIG,
+                            ConfigDef.Type.STRING,
+                            null,
+                            ConfigDef.Importance.MEDIUM,
+                            WEBSERVER_SSL_KEY_PASSWORD_DOC);
   }
 }

@@ -18,10 +18,10 @@ import java.util.Properties;
 
 public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegrationTestHarness {
 
-  protected KafkaCruiseControlConfig _config;
+  private KafkaCruiseControlConfig _config;
   protected KafkaCruiseControlApp _app;
 
-  private static final String LOCALHOST = "localhost";
+  protected static final String LOCALHOST = "localhost";
   private static final int ANY_PORT = 0;
 
   protected abstract Map<String, Object> withConfigs();
