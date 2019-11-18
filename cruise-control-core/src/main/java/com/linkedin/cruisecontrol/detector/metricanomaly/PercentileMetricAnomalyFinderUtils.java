@@ -16,7 +16,9 @@ public class PercentileMetricAnomalyFinderUtils {
   }
 
   /**
-   * Check whether there are enough samples to calculate requested percentile.
+   * Check whether there are enough samples to calculate requested percentile accurately.
+   * If the percentile is larger than 50.0, check that there is at least {@code 100.0 / (100.0 - percentile)} samples;
+   * otherwise check there is at least {@code 100.0 / percentile} samples.
    *
    * @param sampleCount Number of samples.
    * @param upperPercentile The requested upper percentile.
@@ -35,7 +37,7 @@ public class PercentileMetricAnomalyFinderUtils {
                                                        lowerPercentile));
     }
 
-    if (lowerPercentile > lowerPercentile) {
+    if (lowerPercentile > upperPercentile) {
       throw new IllegalArgumentException(String.format("Provided lower percentile (%f) is larger than upper percentile (%f).",
                                                        lowerPercentile, upperPercentile));
     }
