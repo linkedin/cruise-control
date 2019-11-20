@@ -135,10 +135,10 @@ project(':cruise-control-core') {
   }
 
   dependencies {
-    compile "org.slf4j:slf4j-api:1.7.26"
+    compile "org.slf4j:slf4j-api:1.7.29"
     compile 'junit:junit:4.12'
     compile 'org.apache.commons:commons-math3:3.6.1'
-    compile 'org.eclipse.jetty:jetty-servlet:9.4.22.v20191022'
+    compile 'org.eclipse.jetty:jetty-servlet:9.4.23.v20191118'
 
     testOutput sourceSets.test.output
   }
@@ -209,7 +209,7 @@ project(':cruise-control') {
   dependencies {
     compile project(':cruise-control-metrics-reporter')
     compile project(':cruise-control-core')
-    compile "org.slf4j:slf4j-api:1.7.26" // TODO: Upgrade log4j to log4j2 to use async logger.
+    compile "org.slf4j:slf4j-api:1.7.29" // TODO: Upgrade log4j to log4j2 to use async logger.
     compile "org.apache.zookeeper:zookeeper:3.5.6"
     compile "org.apache.kafka:kafka_2.11:2.3.0"
     compile 'org.apache.kafka:kafka-clients:2.3.0'
@@ -218,13 +218,13 @@ project(':cruise-control') {
     compile 'org.apache.commons:commons-math3:3.6.1'
     compile 'org.apache.httpcomponents:httpclient:4.5.10'
     compile 'com.google.code.gson:gson:2.8.6'
-    compile 'org.eclipse.jetty:jetty-server:9.4.22.v20191022'
+    compile 'org.eclipse.jetty:jetty-server:9.4.23.v20191118'
     compile 'io.dropwizard.metrics:metrics-core:3.2.6'
 
     testCompile project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
     testCompile project(path: ':cruise-control-core', configuration: 'testOutput')
     testCompile "org.scala-lang:scala-library:2.11.11"
-    testCompile 'org.easymock:easymock:4.0.2'
+    testCompile 'org.easymock:easymock:4.1'
     testCompile 'org.apache.kafka:kafka_2.11:2.3.0:test'
     testCompile 'org.apache.kafka:kafka-clients:2.3.0:test'
     testCompile 'commons-io:commons-io:2.6'
@@ -321,7 +321,7 @@ project(':cruise-control-metrics-reporter') {
   }
 
   dependencies {
-    compile "org.slf4j:slf4j-api:1.7.26"
+    compile "org.slf4j:slf4j-api:1.7.29"
     compile "org.apache.kafka:kafka_2.11:2.3.0"
     compile 'org.apache.kafka:kafka-clients:2.3.0'
     compile 'junit:junit:4.12'
@@ -380,6 +380,6 @@ task distributeBuild(type: DistributeTask) {
 
 //wrapper generation task
 wrapper {
-  gradleVersion = '5.4.1'
+  gradleVersion = '5.6.4'
   distributionType = Wrapper.DistributionType.ALL
 }
