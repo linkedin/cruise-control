@@ -29,6 +29,9 @@ public class KafkaCruiseControlUnitTestUtils {
 
   }
 
+  /**
+   * @return Kafka Cruise Control properties.
+   */
   public static Properties getKafkaCruiseControlProperties() {
     Properties props = new Properties();
     String capacityConfigFile =
@@ -78,7 +81,7 @@ public class KafkaCruiseControlUnitTestUtils {
   }
 
   /**
-   * Get the aggregated metric values with the given resource usage.
+   * @return The aggregated metric values with the given resource usage.
    */
   public static AggregatedMetricValues getAggregatedMetricValues(double cpuUsage,
                                                                  double networkInBoundUsage,

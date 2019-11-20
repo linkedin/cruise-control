@@ -31,6 +31,10 @@ public class OfflineProposalGenerator {
 
   }
 
+  /**
+   * The main function to run offline proposal generator.
+   * @param argv Arguments passed while starting offline proposal generator.
+   */
   public static void main(String[] argv) throws Exception {
     //TODO: probably need to save this in the original model file
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();

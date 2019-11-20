@@ -85,7 +85,7 @@ public class BrokerMetricSampleTest {
   }
 
   @Test
-  public void patternTest() {
+  public void testPattern() {
     Pattern pattern = Pattern.compile("topic1|.*aaa.*");
     assertTrue(pattern.matcher("topic1").matches());
     assertTrue(pattern.matcher("bbaaask").matches());

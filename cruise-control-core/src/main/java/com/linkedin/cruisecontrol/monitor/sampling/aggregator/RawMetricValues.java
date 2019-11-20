@@ -161,7 +161,7 @@ public class RawMetricValues extends WindowIndexedArrays {
    * 2. The number of windows with extrapolation is less than the given maxAllowedWindowsWithExtrapolation.
    *
    * @param maxAllowedWindowsWithExtrapolation the maximum number of allowed windows with extrapolation.
-   * @return true if the raw metric value is valid, false otherwise.
+   * @return True if the raw metric value is valid, false otherwise.
    */
   public synchronized boolean isValid(int maxAllowedWindowsWithExtrapolation) {
     int currentArrayIndex = arrayIndex(currentWindowIndex());
@@ -173,7 +173,7 @@ public class RawMetricValues extends WindowIndexedArrays {
   }
 
   /**
-   * @return the number of stable windows with extrapolations.
+   * @return The number of stable windows with extrapolations.
    */
   public synchronized int numWindowsWithExtrapolation() {
     int currentArrayIndex = arrayIndex(currentWindowIndex());
@@ -186,7 +186,7 @@ public class RawMetricValues extends WindowIndexedArrays {
    * Assumes {@link #sanityCheckWindowIndex(long)} is called before this function.
    *
    * @param windowIndex the window index to check.
-   * @return true if the given window is valid, false otherwise.
+   * @return True if the given window is valid, false otherwise.
    */
   public synchronized boolean isValidAtWindowIndex(long windowIndex) {
     return _validity.get(arrayIndex(windowIndex));
@@ -197,7 +197,7 @@ public class RawMetricValues extends WindowIndexedArrays {
    * Assumes {@link #sanityCheckWindowIndex(long)} is called before this function.
    *
    * @param windowIndex the index of the window to check.
-   * @return true if the window is extrapolated, false otherwise.
+   * @return True if the window is extrapolated, false otherwise.
    */
   public synchronized boolean isExtrapolatedAtWindowIndex(long windowIndex) {
     return _extrapolations.get(arrayIndex(windowIndex));
@@ -205,6 +205,8 @@ public class RawMetricValues extends WindowIndexedArrays {
 
   /**
    * Assumes {@link #sanityCheckWindowIndex(long)} is called before this function.
+   *
+   * @return sample counts at window index.
    */
   public synchronized byte sampleCountsAtWindowIndex(long windowIndex) {
     return _counts[arrayIndex(windowIndex)];
@@ -234,7 +236,7 @@ public class RawMetricValues extends WindowIndexedArrays {
    *
    * @param startingWindowIndex the starting index of the windows to reset.
    * @param numWindowIndicesToReset the number of windows to reset.
-   * @return number of samples abandoned in window clearing process. The abandoned samples are samples in the windows which get reset.
+   * @return Number of samples abandoned in window clearing process. The abandoned samples are samples in the windows which get reset.
    */
   public synchronized int resetWindowIndices(long startingWindowIndex, int numWindowIndicesToReset) {
     // We are not resetting all the data here. The data will be interpreted to 0 if count is 0.
@@ -258,7 +260,7 @@ public class RawMetricValues extends WindowIndexedArrays {
    *
    * @param windowIndices the sorted set of windows to get values for.
    * @param metricDef the metric definitions.
-   * @return the aggregated values and extrapolations of the given sorted set of windows in that order.
+   * @return The aggregated values and extrapolations of the given sorted set of windows in that order.
    */
   public synchronized ValuesAndExtrapolations aggregate(SortedSet<Long> windowIndices, MetricDef metricDef) {
     return aggregate(windowIndices, metricDef, true);
@@ -268,7 +270,7 @@ public class RawMetricValues extends WindowIndexedArrays {
    * Peek the value for the current window.
    *
    * @param metricDef the metric definitions.
-   * @return the aggregated values and extrapolations of the given sorted set of windows in that order.
+   * @return The aggregated values and extrapolations of the given sorted set of windows in that order.
    */
   public synchronized ValuesAndExtrapolations peekCurrentWindow(long currentWindowIndex, MetricDef metricDef) {
     SortedSet<Long> window = new TreeSet<>();
@@ -344,7 +346,7 @@ public class RawMetricValues extends WindowIndexedArrays {
   }
 
   /**
-   * @return the total number of samples added to this RawMetricValues.
+   * @return The total number of samples added to this RawMetricValues.
    */
   public synchronized int numSamples() {
     int count = 0;

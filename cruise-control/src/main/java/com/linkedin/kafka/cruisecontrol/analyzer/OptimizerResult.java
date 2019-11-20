@@ -96,6 +96,9 @@ public class OptimizerResult {
     return onDemandBalancednessScore;
   }
 
+  /**
+   * @return Cluster model stats comparator by goal names.
+   */
   public Map<String, Goal.ClusterModelStatsComparator> clusterModelStatsComparatorByGoalName() {
     return _clusterModelStatsComparatorByGoalName;
   }
@@ -107,56 +110,92 @@ public class OptimizerResult {
     return _statsByGoalName;
   }
 
+  /**
+   * @return Goal proposals.
+   */
   public Set<ExecutionProposal> goalProposals() {
     return _proposals;
   }
 
+  /**
+   * @return Violated goals before optimization.
+   */
   public Set<String> violatedGoalsBeforeOptimization() {
     return _violatedGoalNamesBeforeOptimization;
   }
 
+  /**
+   * @return Violated goals after optimization.
+   */
   public Set<String> violatedGoalsAfterOptimization() {
     return _violatedGoalNamesAfterOptimization;
   }
 
+  /**
+   * @return The model generation.
+   */
   public ModelGeneration modelGeneration() {
     return _modelGeneration;
   }
 
+  /**
+   * @return The cluster model stats.
+   */
   public ClusterModelStats clusterModelStats() {
     return _clusterModelStats;
   }
 
+  /**
+   * @return The broker stats before optimization.
+   */
   public BrokerStats brokerStatsBeforeOptimization() {
     return _brokerStatsBeforeOptimization;
   }
 
+  /**
+   * @return The broker stats after optimization.
+   */
   public BrokerStats brokerStatsAfterOptimization() {
     return _brokerStatsAfterOptimization;
   }
 
+  /**
+   * @return True if the broker capacity is estimated in the underlying cluster model, false otherwise.
+   */
   public boolean isCapacityEstimated() {
     return !_capacityEstimationInfoByBrokerId.isEmpty();
   }
 
+  /**
+   * @return The capacity estimation info by broker id.
+   */
   public Map<Integer, String> capacityEstimationInfoByBrokerId() {
     return Collections.unmodifiableMap(_capacityEstimationInfoByBrokerId);
   }
 
+  /**
+   * @return The excluded topics in the optimization options.
+   */
   public Set<String> excludedTopics() {
     return _optimizationOptions.excludedTopics();
   }
 
+  /**
+   * @return The excluded brokers for leadership transfer in the optimization options.
+   */
   public Set<Integer> excludedBrokersForLeadership() {
     return _optimizationOptions.excludedBrokersForLeadership();
   }
 
+  /**
+   * @return The excluded brokers for replica moves in the optimization options.
+   */
   public Set<Integer> excludedBrokersForReplicaMove() {
     return _optimizationOptions.excludedBrokersForReplicaMove();
   }
 
   /**
-   * The topics of partitions which are going to be modified by proposals.
+   * @return The topics of partitions which are going to be modified by proposals.
    */
   public Set<String> topicsWithReplicationFactorChange() {
     Set<String> topics = new HashSet<>(_proposals.size());
@@ -186,6 +225,9 @@ public class OptimizerResult {
                          numLeadershipMovements);
   }
 
+  /**
+   * @return Proposal summary for the optimizer result in plaintext format.
+   */
   public String getProposalSummary() {
     List<Number> moveStats = getMovementStats();
     return String.format("%n%nOptimization has %d inter-broker replica(%d MB) moves, %d intra-broker replica(%d MB) moves"
@@ -193,12 +235,15 @@ public class OptimizerResult {
                          + " covered.%nExcluded Topics: %s.%nExcluded Brokers For Leadership: %s.%nExcluded Brokers For "
                          + "Replica Move: %s.%nCounts: %s%nOn-demand Balancedness Score Before (%.3f) After(%.3f).",
                          moveStats.get(0).intValue(), moveStats.get(1).longValue(), moveStats.get(2).intValue(),
-                         moveStats.get(3).longValue(), moveStats.get(4).intValue(), _clusterModelStats.numSnapshotWindows(),
+                         moveStats.get(3).longValue(), moveStats.get(4).intValue(), _clusterModelStats.numWindows(),
                          _clusterModelStats.monitoredPartitionsPercentage(), excludedTopics(),
                          excludedBrokersForLeadership(), excludedBrokersForReplicaMove(), _clusterModelStats.toStringCounts(),
                          _onDemandBalancednessScoreBefore, _onDemandBalancednessScoreAfter);
   }
 
+  /**
+   * @return Proposal summary for the optimizer result in JSON format.
+   */
   public Map<String, Object> getProposalSummaryForJson() {
     List<Number> moveStats = getMovementStats();
     Map<String, Object> ret = new HashMap<>(12);
@@ -207,7 +252,7 @@ public class OptimizerResult {
     ret.put(NUM_INTRA_BROKER_REPLICA_MOVEMENTS, moveStats.get(2).intValue());
     ret.put(INTRA_BROKER_DATA_TO_MOVE_MB, moveStats.get(3).longValue());
     ret.put(NUM_LEADER_MOVEMENTS, moveStats.get(4).intValue());
-    ret.put(RECENT_WINDOWS, _clusterModelStats.numSnapshotWindows());
+    ret.put(RECENT_WINDOWS, _clusterModelStats.numWindows());
     ret.put(MONITORED_PARTITIONS_PERCENTAGE, _clusterModelStats.monitoredPartitionsPercentage());
     ret.put(EXCLUDED_TOPICS, excludedTopics());
     ret.put(EXCLUDED_BROKERS_FOR_LEADERSHIP, excludedBrokersForLeadership());

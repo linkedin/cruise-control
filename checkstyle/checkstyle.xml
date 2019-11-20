@@ -110,6 +110,15 @@ LinkedIn Java style.
             <property name="checkFirstSentence" value="false"/>
         </module>
 
+        <module name="JavadocMethod">
+            <property name="scope" value="public"/>
+            <property name="allowMissingParamTags" value="true"/>
+            <property name="allowMissingThrowsTags" value="true"/>
+            <property name="allowMissingPropertyJavadoc" value="true"/>
+            <property name="minLineCount" value="1"/>
+            <property name="tokens" value="METHOD_DEF,ANNOTATION_FIELD_DEF"/>
+            <property name="ignoreMethodNamesRegex" value="^test.*$"/>
+        </module>
         <!-- NAMING CONVENTIONS -->
 
         <!-- Generic parameters for a class must be uppercase letters (e.g. <T>, <OLD>) -->

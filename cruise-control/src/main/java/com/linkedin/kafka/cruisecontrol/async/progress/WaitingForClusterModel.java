@@ -6,12 +6,15 @@ package com.linkedin.kafka.cruisecontrol.async.progress;
 
 public class WaitingForClusterModel implements OperationStep {
   private volatile boolean _done = false;
-  
+
   @Override
   public String name() {
     return "WAITING_FOR_CLUSTER_MODEL";
   }
-  
+
+  /**
+   * Mark the waiting for cluster model process as done.
+   */
   public void done() {
     _done = true;
   }

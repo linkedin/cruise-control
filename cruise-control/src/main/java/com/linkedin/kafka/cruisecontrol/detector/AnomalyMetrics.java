@@ -53,18 +53,30 @@ public class AnomalyMetrics {
     _ongoingAnomalyDurationMs = ongoingAnomalyDurationMs;
   }
 
+  /**
+   * @return Mean time to start a fix.
+   */
   public double meanTimeToStartFixMs() {
     return _meanTimeToStartFixMs;
   }
 
+  /**
+   * @return Mean time between anomalies.
+   */
   public Map<AnomalyType, Double> meanTimeBetweenAnomaliesMs() {
     return _meanTimeBetweenAnomaliesMs;
   }
 
+  /**
+   * @return Number of self healing operations started.
+   */
   public long numSelfHealingStarted() {
     return _numSelfHealingStarted;
   }
 
+  /**
+   * @return The duration of ongoing anomaly in milliseconds.
+   */
   public long ongoingAnomalyDurationMs() {
     return _ongoingAnomalyDurationMs;
   }

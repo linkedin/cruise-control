@@ -26,34 +26,34 @@ public abstract class CruiseControlMetric {
   }
 
   /**
-   * Get the metric class id for this metric. The metric class id will be stored in the serialized metrics
+   * @return the metric class id for this metric. The metric class id will be stored in the serialized metrics
    * so that the deserializer will know which class should be used to deserialize the data.
    */
   public abstract MetricClassId metricClassId();
 
   /**
-   * Get the {@link RawMetricType} of this metric.
+   * @return the {@link RawMetricType} of this metric.
    */
   public RawMetricType rawMetricType() {
     return _rawMetricType;
   }
 
   /**
-   * Get the timestamp for this metric.
+   * @return the timestamp for this metric.
    */
   public long time() {
     return _time;
   }
 
   /**
-   * Get the broker id who reported this metric.
+   * @return the broker id who reported this metric.
    */
   public int brokerId() {
     return _brokerId;
   }
 
   /**
-   * Get the metric value.
+   * @return the metric value.
    */
   public double value() {
     return _value;

@@ -67,10 +67,17 @@ public class KafkaCruiseControlUtils {
 
   }
 
+  /**
+   * @return The current UTC date.
+   */
   public static String currentUtcDate() {
     return utcDateFor(System.currentTimeMillis());
   }
 
+  /**
+   * @param timeMs Time in milliseconds.
+   * @return The date for the given time in {@link #TIME_ZONE}.
+   */
   public static String utcDateFor(long timeMs) {
     Date date = new Date(timeMs);
     DateFormat formatter = new SimpleDateFormat(DATE_FORMAT);
@@ -79,7 +86,7 @@ public class KafkaCruiseControlUtils {
   }
 
   /**
-   * Format the timestamp from long to a human readable string.
+   * @return Formatted timestamp from long to a human readable string.
    */
   public static String toDateString(long time) {
     return toDateString(time, DATE_FORMAT2, "");
@@ -90,7 +97,7 @@ public class KafkaCruiseControlUtils {
    * @param time time in milliseconds
    * @param dateFormat see formats above
    * @param timeZone will use default if timeZone is set to empty string
-   * @return string representation of date
+   * @return String representation of date
    */
   public static String toDateString(long time, String dateFormat, String timeZone) {
     if (time < 0) {
@@ -141,7 +148,7 @@ public class KafkaCruiseControlUtils {
    * Get a configuration and throw exception if the configuration was not provided.
    * @param configs the config map.
    * @param configName the config to get.
-   * @return the configuration string.
+   * @return The configuration string.
    */
   public static String getRequiredConfig(Map<String, ?> configs, String configName) {
     String value = (String) configs.get(configName);
@@ -255,12 +262,17 @@ public class KafkaCruiseControlUtils {
   /**
    * Close the given KafkaZkClient with the default timeout of {@link #KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS}.
    *
-   * @param kafkaZkClient KafkaZkClient to be closed
+   * @param kafkaZkClient KafkaZkClient to be closed.
    */
   public static void closeKafkaZkClientWithTimeout(KafkaZkClient kafkaZkClient) {
     closeKafkaZkClientWithTimeout(kafkaZkClient, KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS);
   }
 
+  /**
+   * Close the given KafkaZkClient with the given timeout.
+   * @param kafkaZkClient KafkaZkClient to be closed
+   * @param timeoutMs the timeout.
+   */
   public static void closeKafkaZkClientWithTimeout(KafkaZkClient kafkaZkClient, long timeoutMs) {
     closeClientWithTimeout(kafkaZkClient::close, timeoutMs);
   }
@@ -269,7 +281,7 @@ public class KafkaCruiseControlUtils {
    * Check if set a contains any element in set b.
    * @param a the first set.
    * @param b the second set.
-   * @return true if a contains at least one of the element in b. false otherwise;
+   * @return True if a contains at least one of the element in b. false otherwise;
    */
   public static boolean containsAny(Set<Integer> a, Set<Integer> b) {
     return b.stream().mapToInt(i -> i).anyMatch(a::contains);
@@ -321,12 +333,18 @@ public class KafkaCruiseControlUtils {
   /**
    * Close the given AdminClient with the default timeout of {@link #ADMIN_CLIENT_CLOSE_TIMEOUT_MS}.
    *
-   * @param adminClient AdminClient to be closed
+   * @param adminClient AdminClient to be closed.
    */
   public static void closeAdminClientWithTimeout(AdminClient adminClient) {
     closeAdminClientWithTimeout(adminClient, ADMIN_CLIENT_CLOSE_TIMEOUT_MS);
   }
 
+  /**
+   * Close the given AdminClient with the given timeout.
+   *
+   * @param adminClient AdminClient to be closed.
+   * @param timeoutMs the timeout.
+   */
   public static void closeAdminClientWithTimeout(AdminClient adminClient, long timeoutMs) {
     closeClientWithTimeout(adminClient::close, timeoutMs);
   }
@@ -488,7 +506,7 @@ public class KafkaCruiseControlUtils {
    * @param goals The goals to be used for balancing (sorted by priority).
    * @param priorityWeight The impact of having one level higher goal priority on the relative balancedness score.
    * @param strictnessWeight The impact of strictness on the relative balancedness score.
-   * @return the balancedness cost of violating goals by their name.
+   * @return The balancedness cost of violating goals by their name.
    */
   public static Map<String, Double> balancednessCostByGoal(List<Goal> goals, double priorityWeight, double strictnessWeight) {
     if (goals.isEmpty()) {

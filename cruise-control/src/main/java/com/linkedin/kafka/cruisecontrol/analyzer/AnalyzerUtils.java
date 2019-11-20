@@ -167,14 +167,14 @@ public class AnalyzerUtils {
   }
 
   /**
-   * Get the list of default goals sorted by highest to lowest default priority.
+   * @return The list of default goals sorted by highest to lowest default priority.
    */
   public static List<Goal> getGoalsByPriority(KafkaCruiseControlConfig config) {
     return config.getConfiguredInstances(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG, Goal.class);
   }
 
   /**
-   * Get a goal map with goal name as the keys.
+   * @return A goal map with goal name as the keys.
    */
   public static Map<String, Goal> getCaseInsensitiveGoalsByName(KafkaCruiseControlConfig config) {
     List<Goal> goals = config.getConfiguredInstances(KafkaCruiseControlConfig.GOALS_CONFIG, Goal.class);
@@ -217,17 +217,5 @@ public class AnalyzerUtils {
     }
 
     return pValues;
-  }
-
-  /*
-   * JSON does not support literal NaN value
-   * round it to zero when Java Math sees a NaN
-   */
-  public static double nanToZero(double v) {
-      if (Double.isNaN(v)) {
-          return 0.0;
-      } else {
-          return v;
-      }
   }
 }

@@ -47,7 +47,7 @@ public class Password {
     /**
      * Returns real password string
      *
-     * @return real password string
+     * @return Real password string
      */
     public String value() {
         return _value;

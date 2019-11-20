@@ -30,6 +30,10 @@ public class TopicMetric extends CruiseControlMetric {
     return _topic;
   }
 
+  /**
+   * @param headerPos Header position
+   * @return Byte buffer of topic metric.
+   */
   public ByteBuffer toBuffer(int headerPos) {
     byte[] topic = _topic.getBytes(StandardCharsets.UTF_8);
     ByteBuffer buffer = ByteBuffer.allocate(headerPos + 1 /* version */ + 1 /* raw metric type */ +

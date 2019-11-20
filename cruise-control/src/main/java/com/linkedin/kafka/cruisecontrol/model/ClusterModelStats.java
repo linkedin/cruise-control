@@ -89,77 +89,77 @@ public class ClusterModelStats {
   }
 
   /**
-   * Get resource utilization stats for the cluster instance that the object was populated with.
+   * @return The resource utilization stats for the cluster instance that the object was populated with.
    */
   public Map<Statistic, Map<Resource, Double>> resourceUtilizationStats() {
     return _resourceUtilizationStats;
   }
 
   /**
-   * Get outbound network utilization stats for the cluster instance that the object was populated with.
+   * @return The potential outbound network utilization stats for the cluster instance that the object was populated with.
    */
   public Map<Statistic, Double> potentialNwOutUtilizationStats() {
     return _potentialNwOutUtilizationStats;
   }
 
   /**
-   * Get replica stats for the cluster instance that the object was populated with.
+   * @return Replica stats for the cluster instance that the object was populated with.
    */
   public Map<Statistic, Number> replicaStats() {
     return _replicaStats;
   }
 
   /**
-   * Get leader replica stats for the cluster instance that the object was populated with.
+   * @return The leader replica stats for the cluster instance that the object was populated with.
    */
   public Map<Statistic, Number> leaderReplicaStats() {
     return _leaderReplicaStats;
   }
 
   /**
-   * Get topic replica stats for the cluster instance that the object was populated with.
+   * @return Topic replica stats for the cluster instance that the object was populated with.
    */
   public Map<Statistic, Number> topicReplicaStats() {
     return _topicReplicaStats;
   }
 
   /**
-   * Get number of brokers for the cluster instance that the object was populated with.
+   * @return The number of brokers for the cluster instance that the object was populated with.
    */
   public int numBrokers() {
     return _numBrokers;
   }
 
   /**
-   * Get number of replicas for the cluster instance that the object was populated with.
+   * @return The number of replicas for the cluster instance that the object was populated with.
    */
   public int numReplicasInCluster() {
     return _numReplicasInCluster;
   }
 
   /**
-   * Get number of number of partitions with offline replicas in the cluster.
+   * @return The number of number of partitions with offline replicas in the cluster.
    */
   public int numPartitionsWithOfflineReplicas() {
     return _numPartitionsWithOfflineReplicas;
   }
 
   /**
-   * Get number of topics for the cluster instance that the object was populated with.
+   * @return The number of topics for the cluster instance that the object was populated with.
    */
   public int numTopics() {
     return _numTopics;
   }
 
   /**
-   * Get number of balanced brokers by resource for the cluster instance that the object was populated with.
+   * @return The number of balanced brokers by resource for the cluster instance that the object was populated with.
    */
   public Map<Resource, Integer> numBalancedBrokersByResource() {
     return _numBalancedBrokersByResource;
   }
 
   /**
-   * Get number of brokers under potential nw out for the cluster instance that the object was populated with.
+   * @return The number of brokers under potential nw out for the cluster instance that the object was populated with.
    */
   public int numBrokersUnderPotentialNwOut() {
     return _numBrokersUnderPotentialNwOut;
@@ -167,23 +167,23 @@ public class ClusterModelStats {
 
   /**
    * This is the utilization matrix generated from {@link ClusterModel#utilizationMatrix()}.
-   * @return non-null if populate has been called else this may return null.
+   * @return Non-null if populate has been called else this may return null.
    */
   public double[][] utilizationMatrix() {
     return _utilizationMatrix;
   }
 
   /**
-   * Get the monitored partition percentage of this cluster model;
+   * @return The monitored partition percentage of this cluster model.
    */
   public double monitoredPartitionsPercentage() {
     return _monitoredPartitionsRatio * UNIT_INTERVAL_TO_PERCENTAGE;
   }
 
   /**
-   * Get the number of snapshot windows used by this cluster model;
+   * @return The number of windows used by this cluster model.
    */
-  public int numSnapshotWindows() {
+  public int numWindows() {
     return _numSnapshotWindows;
   }
 
@@ -192,29 +192,30 @@ public class ClusterModelStats {
    * A disk is taken as unbalanced if its utilization percentage is out of the range centered at its broker utilization
    * percentage with boundary determined by
    * {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#DISK_BALANCE_THRESHOLD_CONFIG}.
+   *
+   * @return The number of unbalanced disk in this cluster model.
    */
   public int numUnbalancedDisks() {
     return _numUnbalancedDisks;
   }
 
   /**
-   * Get the standard deviation of disk utilization of this cluster model;
+   * @return The standard deviation of disk utilization of this cluster model.
    */
   public double diskUtilizationStandardDeviation() {
     return _diskUtilizationStDev;
   }
 
-  /*
-   * Return a valid JSON encoded string
+  /**
+   * @return A valid JSON encoded string.
    */
   public String getJSONString() {
     Gson gson = new Gson();
     return gson.toJson(getJsonStructure());
   }
 
-  /*
-   * Return an object that can be further used
-   * to encode into JSON
+  /**
+   * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure() {
     Map<String, Object> statMap = new HashMap<>();

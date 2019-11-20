@@ -43,21 +43,21 @@ public class Load implements Serializable {
   }
 
   /**
-   * Get load by their window time.
+   * @return Aggregated metric values associated with the load.
    */
   public AggregatedMetricValues loadByWindows() {
     return _metricValues;
   }
 
   /**
-   * Get the number of windows in the load.
+   * @return The number of windows in the load.
    */
   public int numWindows() {
     return _metricValues.length();
   }
 
   /**
-   * Get the windows list for the load.
+   * @return The windows list for the load.
    */
   public List<Long> windows() {
     return _windows;
@@ -149,7 +149,7 @@ public class Load implements Serializable {
   }
 
   /**
-   * @return true if this load is empty, false otherwise.
+   * @return True if this load is empty, false otherwise.
    */
   boolean isEmpty() {
     return _metricValues.isEmpty();
@@ -292,8 +292,7 @@ public class Load implements Serializable {
   }
 
   /**
-   * Return an object that can be further used
-   * to encode into JSON
+   * @return An object that can be further used to encode into JSON
    */
   public Map<String, Object> getJsonStructure() {
     MetricDef metricDef = KafkaMetricDef.commonMetricDef();

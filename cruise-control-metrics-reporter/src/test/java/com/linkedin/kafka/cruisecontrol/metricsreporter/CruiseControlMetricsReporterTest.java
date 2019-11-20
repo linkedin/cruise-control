@@ -39,6 +39,10 @@ import static org.junit.Assert.assertEquals;
 
 public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationTestHarness {
   protected static final String TOPIC = "CruiseControlMetricsReporterTest";
+
+  /**
+   * Setup the unit test.
+   */
   @Before
   public void setUp() {
     super.setUp();

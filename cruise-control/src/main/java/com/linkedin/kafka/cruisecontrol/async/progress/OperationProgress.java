@@ -65,7 +65,7 @@ public class OperationProgress {
   }
 
   /**
-   * @return the list of operation steps in this operation progress.
+   * @return The list of operation steps in this operation progress.
    */
   public synchronized List<OperationStep> progress() {
     return Collections.unmodifiableList(_steps);
@@ -92,6 +92,9 @@ public class OperationProgress {
     return sb.toString();
   }
 
+  /**
+   * @return The array describing the progress of the operation.
+   */
   public synchronized Object[] getJsonArray() {
     Object[] progressArray = new Object[_steps.size()];
     for (int i = 0; i < _steps.size(); i++) {

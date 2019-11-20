@@ -63,6 +63,9 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
   // Using autoTick = 1
   private static final Time TIME = new MockTime(1L);
 
+  /**
+   * Setup the test.
+   */
   @Before
   public void setUp() {
     super.setUp();

@@ -29,6 +29,7 @@ public class LoadMonitorState {
   private static final String BOOTSTRAP_PROGRESS_PCT = "bootstrapProgressPct";
   private static final String LOADING_PROGRESS_PCT = "loadingProgressPct";
   private static final String ERROR = "error";
+  private static final double UNDEFINED_PROGRESS = -1.0;
   private final LoadMonitorTaskRunnerState _loadMonitorTaskRunnerState;
   private final int _numValidWindows;
   private final SortedMap<Long, Float> _monitoredWindows;
@@ -72,9 +73,13 @@ public class LoadMonitorState {
   }
 
   public static LoadMonitorState notStarted() {
-    return new LoadMonitorState(LoadMonitorTaskRunnerState.NOT_STARTED, 0, null, 0, -1, null, -1.0, -1.0);
+    return new LoadMonitorState(LoadMonitorTaskRunnerState.NOT_STARTED, 0, null, 0, -1, null, UNDEFINED_PROGRESS, UNDEFINED_PROGRESS);
   }
 
+  /**
+   * Default value for {@link #_bootstrapProgress} and {@link #_loadingProgress} are {@link #UNDEFINED_PROGRESS}.
+   * @return Running state for load monitor.
+   */
   public static LoadMonitorState running(int numValidSnapshotWindows,
                                          SortedMap<Long, Float> partitionCoverageByWindows,
                                          int numValidMonitoredTopics,
@@ -87,11 +92,15 @@ public class LoadMonitorState {
                                 numValidMonitoredTopics,
                                 totalNumPartitions,
                                 sampleExtrapolations,
-                                -1.0,
-                                -1.0,
+                                UNDEFINED_PROGRESS,
+                                UNDEFINED_PROGRESS,
                                 reasonOfLatestPauseOrResume);
   }
 
+  /**
+   * Default value for {@link #_bootstrapProgress} and {@link #_loadingProgress} are {@link #UNDEFINED_PROGRESS}.
+   * @return Paused state for load monitor.
+   */
   public static LoadMonitorState paused(int numValidSnapshotWindows,
                                         SortedMap<Long, Float> monitoredSnapshotWindows,
                                         int numValidMonitoredTopics,
@@ -104,11 +113,15 @@ public class LoadMonitorState {
                                 numValidMonitoredTopics,
                                 totalNumPartitions,
                                 sampleExtrapolations,
-                                -1.0,
-                                -1.0,
+                                UNDEFINED_PROGRESS,
+                                UNDEFINED_PROGRESS,
                                 reasonOfLatestPauseOrResume);
   }
 
+  /**
+   * Default value for {@link #_bootstrapProgress} and {@link #_loadingProgress} are {@link #UNDEFINED_PROGRESS}.
+   * @return Sampling state for load monitor.
+   */
   public static LoadMonitorState sampling(int numValidSnapshotWindows,
                                           SortedMap<Long, Float> monitoredSnapshotWindows,
                                           int numValidMonitoredTopics,
@@ -120,10 +133,14 @@ public class LoadMonitorState {
                                 numValidMonitoredTopics,
                                 totalNumPartitions,
                                 sampleExtrapolations,
-                                -1.0,
-                                -1.0);
+                                UNDEFINED_PROGRESS,
+                                UNDEFINED_PROGRESS);
   }
 
+  /**
+   * Default value for {@link #_bootstrapProgress} and {@link #_loadingProgress} are {@link #UNDEFINED_PROGRESS}.
+   * @return Bootstrapping state for load monitor.
+   */
   public static LoadMonitorState bootstrapping(int numValidSnapshotWindows,
                                                SortedMap<Long, Float> monitoredSnapshotWindows,
                                                int numValidMonitoredTopics,
@@ -137,9 +154,13 @@ public class LoadMonitorState {
                                 totalNumPartitions,
                                 sampleExtrapolations,
                                 bootstrapProgress,
-                                -1.0);
+                                UNDEFINED_PROGRESS);
   }
 
+  /**
+   * Default value for {@link #_bootstrapProgress} and {@link #_loadingProgress} are {@link #UNDEFINED_PROGRESS}.
+   * @return Training state for load monitor.
+   */
   public static LoadMonitorState training(int numValidSnapshotWindows,
                                           SortedMap<Long, Float> monitoredSnapshotWindows,
                                           int numValidMonitoredTopics,
@@ -151,10 +172,14 @@ public class LoadMonitorState {
                                 numValidMonitoredTopics,
                                 totalNumPartitions,
                                 sampleExtrapolations,
-                                -1.0,
-                                -1.0);
+                                UNDEFINED_PROGRESS,
+                                UNDEFINED_PROGRESS);
   }
 
+  /**
+   * Default value for {@link #_bootstrapProgress} and {@link #_loadingProgress} are {@link #UNDEFINED_PROGRESS}.
+   * @return Loading state for load monitor.
+   */
   public static LoadMonitorState loading(int numValidSnapshotWindows,
                                          SortedMap<Long, Float> monitoredSnapshotWindows,
                                          int numValidMonitoredTopics,
@@ -166,10 +191,16 @@ public class LoadMonitorState {
                                 numValidMonitoredTopics,
                                 totalNumPartitions,
                                 Collections.emptyMap(),
-                                -1.0,
+                                UNDEFINED_PROGRESS,
                                 loadingProgress);
   }
 
+  /**
+   * Set the common JSON generic attribute collection.
+   *
+   * @param verbose True if verbose, false otherwise.
+   * @param loadMonitorState Load monitor state.
+   */
   private void setCommonJsonGenericAttributeCollection(boolean verbose, Map<String, Object> loadMonitorState) {
     loadMonitorState.put(STATE, _loadMonitorTaskRunnerState);
     loadMonitorState.put(TRAINED, ModelParameters.trainingCompleted());
@@ -185,9 +216,9 @@ public class LoadMonitorState {
     loadMonitorState.put(NUM_FLAWED_PARTITIONS, _sampleExtrapolations.size());
   }
 
-  /*
-   * Return an object that can be further used
-   * to encode into JSON
+  /**
+   * @param verbose True if verbose, false otherwise.
+   * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure(boolean verbose) {
     Map<String, Object> loadMonitorState = new HashMap<>();

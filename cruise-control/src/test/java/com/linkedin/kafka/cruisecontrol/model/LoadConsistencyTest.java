@@ -29,6 +29,7 @@ import static org.junit.Assert.fail;
 public class LoadConsistencyTest {
   /**
    * Populate parameters for the parametrized test.
+   * @return Populated parameters.
    */
   @Parameterized.Parameters
   public static Collection<Object[]> data() {

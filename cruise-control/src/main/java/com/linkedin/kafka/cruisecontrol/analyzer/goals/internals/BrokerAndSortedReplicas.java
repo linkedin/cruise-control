@@ -28,10 +28,16 @@ public class BrokerAndSortedReplicas {
     _sortedReplicas.addAll(broker.replicas());
   }
 
+  /**
+   * @return Broker
+   */
   public Broker broker() {
     return _broker;
   }
 
+  /**
+   * @return Sorted replicas.
+   */
   public NavigableSet<Replica> sortedReplicas() {
     return _sortedReplicas;
   }

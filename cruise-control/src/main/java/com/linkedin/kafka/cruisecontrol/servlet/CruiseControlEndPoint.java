@@ -77,6 +77,9 @@ public enum CruiseControlEndPoint implements EndPoint {
     return POST_ENDPOINTS;
   }
 
+  /**
+   * @return Cached values of the enum.
+   */
   public static List<CruiseControlEndPoint> cachedValues() {
     return CACHED_VALUES;
   }

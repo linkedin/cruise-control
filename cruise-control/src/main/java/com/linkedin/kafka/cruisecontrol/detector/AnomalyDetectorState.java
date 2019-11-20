@@ -281,6 +281,12 @@ public class AnomalyDetectorState {
     }
   }
 
+  /**
+   * Set self healing for the given anomaly type.
+   *
+   * @param anomalyType Type of anomaly.
+   * @param isSelfHealingEnabled True if self healing is enabled, false otherwise.
+   */
   public synchronized void setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled) {
     _selfHealingEnabled.put(anomalyType, isSelfHealingEnabled);
   }
@@ -360,6 +366,9 @@ public class AnomalyDetectorState {
     return selfHealingByEnableStatus;
   }
 
+  /**
+   * @return An object that can be further used to encode into JSON.
+   */
   public synchronized Map<String, Object> getJsonStructure() {
     Map<String, Object> anomalyDetectorState = new HashMap<>(_recentAnomaliesByType.size() + (_ongoingSelfHealingAnomaly == null ? 5 : 6));
     Map<Boolean, Set<String>> selfHealingByEnableStatus = getSelfHealingByEnableStatus();

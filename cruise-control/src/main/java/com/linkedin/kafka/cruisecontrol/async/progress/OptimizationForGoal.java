@@ -15,6 +15,9 @@ public class OptimizationForGoal implements OperationStep {
     _goalName = goalName;
   }
 
+  /**
+   * Mark the optimization process as done.
+   */
   public void done() {
     _completed = true;
   }

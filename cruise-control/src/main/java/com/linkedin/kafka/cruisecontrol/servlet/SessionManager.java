@@ -104,7 +104,7 @@ public class SessionManager {
    * @param operation the async operation that returns an {@link OperationFuture}
    * @param step the index of the step whose future needs to be added or get.
    *
-   * @return the {@link OperationFuture} for the provided async operation.
+   * @return The {@link OperationFuture} for the provided async operation.
    */
   @SuppressWarnings("unchecked")
   synchronized OperationFuture getAndCreateSessionIfNotExist(HttpServletRequest request,
@@ -153,7 +153,7 @@ public class SessionManager {
    * Get the {@link OperationFuture} for the request.
    * @param request the request to get the operation future.
    * @param <T> the returned future type.
-   * @return the operation future for the request if it exists, otherwise <tt>null</tt> is returned.
+   * @return The operation future for the request if it exists, otherwise <tt>null</tt> is returned.
    */
   @SuppressWarnings("unchecked")
   synchronized <T> T getFuture(HttpServletRequest request) {

@@ -14,7 +14,7 @@ public abstract class Entity<G> {
 
   /**
    * Note that the group will be used as keys of maps. So it should implement equals() and hashCode() if necessary.
-   * @return the entity group of this entity
+   * @return The entity group of this entity
    */
   public abstract G group();
 

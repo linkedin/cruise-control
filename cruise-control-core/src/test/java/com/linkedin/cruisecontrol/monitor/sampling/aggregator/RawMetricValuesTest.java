@@ -31,6 +31,9 @@ public class RawMetricValuesTest {
   private static final int NUM_RAW_METRICS = 3;
   private MetricDef _metricDef;
 
+  /**
+   * Setup the unit test.
+   */
   @Before
   public void setup() {
     _metricDef = new MetricDef().define("metric1", null, AggregationFunction.AVG.name())

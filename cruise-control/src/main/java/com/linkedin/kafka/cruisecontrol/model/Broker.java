@@ -106,14 +106,14 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
-   * Get broker's rack.
+   * @return Rack of the broker.
    */
   public Rack rack() {
     return _host.rack();
   }
 
   /**
-   * Get broker Id.
+   * @return Broker Id.
    */
   public int id() {
     return _id;
@@ -130,28 +130,28 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
-   * Get replicas residing in the broker.
+   * @return Replicas residing in the broker.
    */
   public Set<Replica> replicas() {
     return Collections.unmodifiableSet(_replicas);
   }
 
   /**
-   * Get all the leader replicas.
+   * @return All the leader replicas.
    */
   public Set<Replica> leaderReplicas() {
     return Collections.unmodifiableSet(_leaderReplicas);
   }
 
   /**
-   * Get the immigrant replicas (The replicas that are moved here).
+   * @return The immigrant replicas (The replicas that have been moved here).
    */
   public Set<Replica> immigrantReplicas() {
     return Collections.unmodifiableSet(_immigrantReplicas);
   }
 
   /**
-   * Get current offline replicas -- i.e. replicas (1) whose current broker is this broker, and (2) are offline.
+   * @return Current offline replicas -- i.e. replicas (1) whose current broker is this broker, and (2) are offline.
    */
   public Set<Replica> currentOfflineReplicas() {
     return _currentOfflineReplicas;
@@ -196,43 +196,46 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
-   * Check broker liveness status.
+   * @return True if the broker is not dead, false otherwise.
    */
   public boolean isAlive() {
     return _state != State.DEAD;
   }
 
   /**
-   * Check if the broker is a new broker
+   * @return True if the broker is a new broker, false otherwise.
    */
   public boolean isNew() {
     return _state == State.NEW;
   }
 
   /**
-   * Check if the broker is demoted from being a partition leader.
+   * @return True if the broker has been demoted, false otherwise.
    */
   public boolean isDemoted() {
     return _state == State.DEMOTED;
   }
 
   /**
-   * Check if the broker has bad disks (i.e. is being fixed by removing offline replicas from it). Note that contrary to
-   * {@link State#DEAD}, a {@link State#BAD_DISKS} broker might receive replicas from other brokers during a rebalance.
+   * Check if the broker has bad disks (i.e. is being fixed by removing offline replicas from it).
+   * Note that contrary to {@link State#DEAD}, a {@link State#BAD_DISKS} broker might receive replicas from other
+   * brokers during a rebalance.
+   *
+   * @return True if the broker has bad disks, false otherwise.
    */
   public boolean hasBadDisks() {
     return _state == State.BAD_DISKS;
   }
 
   /**
-   * Get the broker load of the broker.
+   * @return The broker load of the broker.
    */
   public Load load() {
     return _load;
   }
 
   /**
-   * The load for the replicas for which this broker is a leader. This is meaningful for network bytes in, and
+   * @return The load for the replicas for which this broker is a leader. This is meaningful for network bytes in, and
    * network bytes out but not meaningful for the other resources.
    */
   public Load leadershipLoadForNwResources() {
@@ -240,7 +243,7 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
-   * Get the set of topics in the broker.
+   * @return The set of topics in the broker.
    */
   public Set<String> topics() {
     return _topicReplicas.keySet();
@@ -250,7 +253,7 @@ public class Broker implements Serializable, Comparable<Broker> {
    * Get the tracked sorted replicas using the given sort name.
    *
    * @param sortName the sort name.
-   * @return the {@link SortedReplicas} for the given sort name.
+   * @return The {@link SortedReplicas} for the given sort name.
    */
   public SortedReplicas trackedSortedReplicas(String sortName) {
     SortedReplicas sortedReplicas = _sortedReplicas.get(sortName);
@@ -267,7 +270,7 @@ public class Broker implements Serializable, Comparable<Broker> {
    * 2. immigrant replicas have higher priority compared to the native replicas.
    * 3. sort by partition id.
    *
-   * @return a Comparator to compare the replicas for the given topic.
+   * @return A Comparator to compare the replicas for the given topic.
    */
   public Comparator<Replica> replicaComparator() {
     return (r1, r2) -> {
@@ -594,14 +597,13 @@ public class Broker implements Serializable, Comparable<Broker> {
     return _diskByLogdir.values();
   }
 
-  /*
-   * Return an object that can be further used
-   * to encode into JSON
+  /**
+   * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure() {
     List<Map<String, Object>> replicaList = new ArrayList<>();
     for (Replica replica : _replicas) {
-      replicaList.add(replica.getJsonStructureForLoad());
+      replicaList.add(replica.getJsonStructure());
     }
     Map<String, Object> brokerMap = new HashMap<>(3);
     brokerMap.put(ModelUtils.BROKER_ID, _id);

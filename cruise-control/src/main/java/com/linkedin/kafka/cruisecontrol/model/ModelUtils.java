@@ -41,6 +41,14 @@ public class ModelUtils {
     _useLinearRegressionModel = config.getBoolean(KafkaCruiseControlConfig.USE_LINEAR_REGRESSION_MODEL_CONFIG);
   }
 
+  /**
+   * Get the CPU utilization of follower using the load of the leader replica.
+   *
+   * @param leaderBytesInRate Leader bytes in rate.
+   * @param leaderBytesOutRate Leader bytes out rate.
+   * @param leaderCpuUtil CPU utilization of the leader.
+   * @return The CPU utilization of follower using the load of the leader replica.
+   */
   public static double getFollowerCpuUtilFromLeaderLoad(double leaderBytesInRate,
                                                         double leaderBytesOutRate,
                                                         double leaderCpuUtil) {
@@ -106,13 +114,20 @@ public class ModelUtils {
     }
   }
 
-  public static double estimateLeaderCpuUtilUsingLinearRegressionModel(double leaderPartitionBytesInRate,
-                                                                       double leaderPartitionBytesOutRate) {
+  /**
+   * Estimate the leader CPU utilization using linear regression model.
+   *
+   * @param leaderBytesInRate Leader bytes in rate.
+   * @param leaderBytesOutRate Leader bytes out rate.
+   * @return Estimated leader CPU utilization.
+   */
+  public static double estimateLeaderCpuUtilUsingLinearRegressionModel(double leaderBytesInRate,
+                                                                       double leaderBytesOutRate) {
     double leaderBytesInCoefficient =
         ModelParameters.getCoefficient(LinearRegressionModelParameters.ModelCoefficient.LEADER_BYTES_IN);
     double leaderBytesOutCoefficient =
         ModelParameters.getCoefficient(LinearRegressionModelParameters.ModelCoefficient.LEADER_BYTES_OUT);
-    return leaderBytesInCoefficient * leaderPartitionBytesInRate
-        + leaderBytesOutCoefficient * leaderPartitionBytesOutRate;
+    return leaderBytesInCoefficient * leaderBytesInRate
+        + leaderBytesOutCoefficient * leaderBytesOutRate;
   }
 }

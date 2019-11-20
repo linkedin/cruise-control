@@ -36,7 +36,7 @@ public class ValuesAndExtrapolations {
    *   each metric values, use the array index to look up in the time window array returned by calling
    *   {@link #window(int)} with the index.
    * </p>
-   * @return the {@link AggregatedMetricValues} for all the included windows.
+   * @return The {@link AggregatedMetricValues} for all the included windows.
    */
   public AggregatedMetricValues metricValues() {
     return _metricValues;
@@ -46,7 +46,7 @@ public class ValuesAndExtrapolations {
    * Get the extrapolations for the values. The keys of the returned map are the indices of the {@link AggregatedMetricValues}
    * returned by {@link #metricValues()}.
    *
-   * @return the {@link Extrapolation}s for the values if exist.
+   * @return The {@link Extrapolation}s for the values if exist.
    */
   public Map<Integer, Extrapolation> extrapolations() {
     return _extrapolations;
@@ -56,7 +56,7 @@ public class ValuesAndExtrapolations {
    * Get the window list for the metric values. The time window of metric value at <tt>index</tt> is the time window
    * at the same index of the array returned by this this method.
    *
-   * @return the window time list associated with the metric values array in the {@link AggregatedMetricValues} returned
+   * @return The window time list associated with the metric values array in the {@link AggregatedMetricValues} returned
    * by {@link #metricValues()}
    */
   public List<Long> windows() {
@@ -67,7 +67,7 @@ public class ValuesAndExtrapolations {
    * Get the time window of a specific index.
    *
    * @param index the index to get time window.
-   * @return the time window of the given index.
+   * @return The time window of the given index.
    */
   public long window(int index) {
     return _windows.get(index);
@@ -85,7 +85,7 @@ public class ValuesAndExtrapolations {
    * Create an empty ValuesAndExtrapolations.
    * @param numWindows the number of windows.
    * @param metricDef the metric definition.
-   * @return an empty ValuesAndExtrapolations.
+   * @return An empty ValuesAndExtrapolations.
    */
   static ValuesAndExtrapolations empty(int numWindows, MetricDef metricDef) {
     Map<Short, MetricValues> values = new HashMap<>(metricDef.all().size());

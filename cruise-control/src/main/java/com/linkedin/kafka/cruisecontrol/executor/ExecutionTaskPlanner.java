@@ -263,21 +263,21 @@ public class ExecutionTaskPlanner {
   }
 
   /**
-   * Get the remaining inter-broker replica movement tasks.
+   * @return The remaining inter-broker replica movement tasks.
    */
   public Set<ExecutionTask> remainingInterBrokerReplicaMovements() {
     return _remainingInterBrokerReplicaMovements;
   }
 
   /**
-   * Get the remaining intra-broker replica movement tasks.
+   * @return The remaining intra-broker replica movement tasks.
    */
   public Set<ExecutionTask> remainingIntraBrokerReplicaMovements() {
     return _remainingIntraBrokerReplicaMovements;
   }
 
   /**
-   * Get the remaining leadership movements.
+   * @return The remaining leadership movements.
    */
   public Collection<ExecutionTask> remainingLeadershipMovements() {
     return _remainingLeadershipMovements.values();
@@ -288,6 +288,7 @@ public class ExecutionTaskPlanner {
    *
    * @param numTasks Number of tasks to remove from the _remainingLeadershipMovements. If _remainingLeadershipMovements
    *                 has less than numTasks, all tasks are removed.
+   * @return The leadership movement tasks.
    */
   public List<ExecutionTask> getLeadershipMovementTasks(int numTasks) {
     List<ExecutionTask> leadershipMovementsList = new ArrayList<>();

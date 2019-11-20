@@ -75,7 +75,7 @@ public class Host implements Serializable {
   }
 
   /**
-   * @return all the topics that have at least one partition on the host.
+   * @return All the topics that have at least one partition on the host.
    */
   public Set<String> topics() {
     Set<String> topics = new HashSet<>();
@@ -107,7 +107,7 @@ public class Host implements Serializable {
   }
 
   /**
-   * The load on the rack.
+   * @return The load on the rack.
    */
   public Load load() {
     return _load;
@@ -128,7 +128,7 @@ public class Host implements Serializable {
   }
 
   /**
-   * The name of the host
+   * @return The name of the host
    */
   public String name() {
     return _name;
@@ -227,9 +227,8 @@ public class Host implements Serializable {
     _load.clearLoad();
   }
 
-  /*
-   * Return an object that can be further used
-   * to encode into JSON
+  /**
+   * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure() {
     Map<String, Object> hostMap = new HashMap<>();
@@ -242,6 +241,11 @@ public class Host implements Serializable {
     return hostMap;
   }
 
+  /**
+   * Write to the given output stream.
+   *
+   * @param out Output stream.
+   */
   public void writeTo(OutputStream out) throws IOException {
     String host = String.format("<Host name=\"%s\">%n", _name);
     out.write(host.getBytes(StandardCharsets.UTF_8));

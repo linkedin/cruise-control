@@ -50,9 +50,8 @@ public class DiskStats {
     return  _utilization == null ? null : _utilization * 100.0 / _capacity;
   }
 
-  /*
-   * Return an object that can be further used
-   * to encode into JSON
+  /**
+   * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJSONStructure()   {
     Map<String, Object> entry = new HashMap<>(4);

@@ -29,6 +29,10 @@ public class CaseInsensitiveGoalConfigTest {
   @Rule
   public ExpectedException _expected = ExpectedException.none();
 
+  /**
+   * Populate parameters for the parametrized test.
+   * @return Populated parameters.
+   */
   @Parameterized.Parameters
   public static Collection<Object[]> data() {
     Collection<Object[]> params = new ArrayList<>();

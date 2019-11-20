@@ -49,7 +49,7 @@ public class UpdateSelfHealingParameters extends AbstractParameters {
    * Create a {@link UpdateSelfHealingParameters} object from the request.
    *
    * @param configs Information collected from request and Cruise Control configs.
-   * @return a UpdateSelfHealingParameters object; or null if any required parameter is not specified in the request.
+   * @return A UpdateSelfHealingParameters object; or null if any required parameter is not specified in the request.
    */
   public static UpdateSelfHealingParameters maybeBuildUpdateSelfHealingParameters(Map<String, ?> configs)
       throws UnsupportedEncodingException {

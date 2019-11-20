@@ -153,7 +153,7 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
    * @param fromWindowIndex the index of the starting window (inclusive)
    * @param toWindowIndex the index of the end window (inclusive)
    * @param options the {@link AggregationOptions}
-   * @return the {@link MetricSampleCompleteness} for the given parameters.
+   * @return The {@link MetricSampleCompleteness} for the given parameters.
    */
   synchronized MetricSampleCompleteness<G, E> completeness(long fromWindowIndex,
                                                            long toWindowIndex,
@@ -185,7 +185,7 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
   }
 
   /**
-   * @return the generation of all the windows.
+   * @return The generation of all the windows.
    */
   synchronized Map<Long, Long> windowGenerations() {
     Map<Long, Long> windowGenerations = new TreeMap<>(Comparator.reverseOrder());

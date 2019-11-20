@@ -56,7 +56,7 @@ public abstract class ReplicaDistributionAbstractGoal extends AbstractGoal {
    * @param optimizationOptions Options to adjust balance percentage with margin in case goal optimization is triggered
    *                            by goal violation detector.
    * @param balancePercentage The requested balance threshold.
-   * @return the adjusted rebalance threshold.
+   * @return The adjusted rebalance threshold.
    */
   private double adjustedBalancePercentage(OptimizationOptions optimizationOptions, double balancePercentage) {
     double adjustedBalancePercentage = optimizationOptions.isTriggeredByGoalViolation()

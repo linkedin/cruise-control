@@ -1815,6 +1815,9 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
         .withClientSaslSupport();
   }
 
+  /**
+   * @return Merged config values.
+   */
   public Map<String, Object> mergedConfigValues() {
     Map<String, Object> conf = originals();
 
@@ -1861,6 +1864,9 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     return objects;
   }
 
+  /**
+   * @return Configured instance.
+   */
   public <T> T getConfiguredInstance(String key, Class<T> t, Map<String, Object> configOverrides) {
     Class<?> c = getClass(key);
     Object instance;

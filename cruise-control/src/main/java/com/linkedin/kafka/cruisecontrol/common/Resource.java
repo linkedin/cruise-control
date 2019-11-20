@@ -49,22 +49,41 @@ public enum Resource {
     _epsilon = epsilon;
   }
 
+  /**
+   * @return The resource type.
+   */
   public String resource() {
     return _resource;
   }
 
+  /**
+   * @return The resource id.
+   */
   public int id() {
     return _id;
   }
 
+  /**
+   * @return True if host resource, false otherwise.
+   */
   public boolean isHostResource() {
     return _isHostResource;
   }
 
+  /**
+   * @return True if broker resource, false otherwise.
+   */
   public boolean isBrokerResource() {
     return _isBrokerResource;
   }
 
+  /**
+   * The epsilon value used in comparing the given values.
+   *
+   * @param value1 The first value used in comparison.
+   * @param value2 The second value used in comparison.
+   * @return The epsilon value used in comparing the given values.
+   */
   public double epsilon(double value1, double value2) {
     return Math.max(_epsilon, EPSILON_PERCENT * (value1 + value2));
   }

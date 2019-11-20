@@ -195,7 +195,7 @@ public class Disk implements Comparable<Disk> {
    * Get the tracked sorted replicas using the given sort name.
    *
    * @param sortName the sort name.
-   * @return the {@link SortedReplicas} for the given sort name.
+   * @return The {@link SortedReplicas} for the given sort name.
    */
   public SortedReplicas trackedSortedReplicas(String sortName) {
     SortedReplicas sortedReplicas = _sortedReplicas.get(sortName);
@@ -246,6 +246,9 @@ public class Disk implements Comparable<Disk> {
     return String.format("Disk[logdir=%s,state=%s,capacity=%f,replicaCount=%d]", _logDir, _state, _capacity, _replicas.size());
   }
 
+  /**
+   * @return Disk stats.
+   */
   public DiskStats diskStats() {
     return new DiskStats((int) _replicas.stream().filter(Replica::isLeader).count(),
                           _replicas.size(),

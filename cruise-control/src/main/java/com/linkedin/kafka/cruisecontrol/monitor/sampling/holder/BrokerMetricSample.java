@@ -119,7 +119,7 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
    * 8 bytes - broker follower fetch local time ms (999TH percentile)
    * 8 bytes - broker log flush time ms (50TH percentile)
    * 8 bytes - broker log flush time ms (999TH percentile)
-   * @return the serialized bytes.
+   * @return The serialized bytes.
    */
   public byte[] toBytes() {
     byte[] hostBytes = (entity().group() != null ? entity().group() : "UNKNOWN").getBytes(StandardCharsets.UTF_8);
@@ -191,7 +191,7 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
   /**
    * Deserialize the bytes to get a broker metric data.
    * @param bytes the bytes to deserialize.
-   * @return the deserialized broker metric sample.
+   * @return The deserialized broker metric sample.
    * @throws UnknownVersionException
    */
   public static BrokerMetricSample fromBytes(byte[] bytes) throws UnknownVersionException {
@@ -214,6 +214,12 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
     return KafkaMetricDef.brokerMetricDef();
   }
 
+  /**
+   * Get the metric for the given resource.
+   *
+   * @param resource The resource type.
+   * @return The metric for the given resource.
+   */
   public Double metricFor(Resource resource) {
     switch (resource) {
       case CPU:

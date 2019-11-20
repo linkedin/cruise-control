@@ -49,7 +49,7 @@ public class MetricValues {
    * We use double for calculation precision even if the stored value is float.
    *
    * @param index the index to get value from.
-   * @return the value at the given index.
+   * @return The value at the given index.
    */
   public double get(int index) {
     return _values[index];
@@ -66,7 +66,7 @@ public class MetricValues {
 
   /**
    * The length of the value array. i.e. the number of windows kept by this MetricValues.
-   * @return the length of the value array.
+   * @return The length of the value array.
    */
   public int length() {
     return _values.length;
@@ -153,14 +153,14 @@ public class MetricValues {
   }
 
   /**
-   * @return the average value of all the values in this MetricValues.
+   * @return The average value of all the values in this MetricValues.
    */
   public float avg() {
     return (float) (_sumForAvg / _values.length);
   }
 
   /**
-   * @return the max value of all the values in this MetricValues.
+   * @return The max value of all the values in this MetricValues.
    */
   public float max() {
     if (_max >= 0) {
@@ -171,14 +171,14 @@ public class MetricValues {
   }
 
   /**
-   * @return the last value of all the values in this MetricValues.
+   * @return The last value of all the values in this MetricValues.
    */
   public float latest() {
     return _values[0];
   }
 
   /**
-   * @return the value array in double precision.
+   * @return The value array in double precision.
    */
   public double[] doubleArray() {
     double[] result = new double[_values.length];

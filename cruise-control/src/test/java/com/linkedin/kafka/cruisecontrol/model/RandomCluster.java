@@ -85,14 +85,14 @@ public class RandomCluster {
    * Populate the given cluster with replicas having a certain load distribution using the given properties and
    * replica distribution. Balancing constraint sets the resources existing in the cluster at each broker.
    *
-   * @param cluster             The state of the cluster.
-   * @param properties          Representing the cluster properties as specified in {@link ClusterProperty}.
+   * @param clusterModel The state of the cluster.
+   * @param properties Representing the cluster properties as specified in {@link ClusterProperty}.
    * @param replicaDistribution The replica distribution showing the broker of each replica in the cluster.
    */
-  public static void populate(ClusterModel cluster,
+  public static void populate(ClusterModel clusterModel,
                               Map<ClusterProperty, Number> properties,
                               TestConstants.Distribution replicaDistribution) {
-    populate(cluster, properties, replicaDistribution, false, true, Collections.emptySet());
+    populate(clusterModel, properties, replicaDistribution, false, true, Collections.emptySet());
   }
 
   /**
@@ -483,6 +483,9 @@ public class RandomCluster {
     return totalTopicReplicas;
   }
 
+  /**
+   * @return Get a cluster model having a single broker with bad disk.
+   */
   public static ClusterModel singleBrokerWithBadDisk() {
     Map<ClusterProperty, Number> singleBrokerWithBadDisk = new HashMap<>();
     singleBrokerWithBadDisk.put(ClusterProperty.NUM_BROKERS, 3);

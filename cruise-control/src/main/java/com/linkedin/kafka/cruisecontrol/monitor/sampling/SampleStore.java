@@ -31,7 +31,7 @@ public interface SampleStore extends CruiseControlConfigurable {
   void loadSamples(SampleLoader sampleLoader);
 
   /**
-   * Get the sample loading progress. The return value should be between 0 and 1.
+   * @return The sample loading progress. The return value should be between 0 and 1.
    */
   double sampleLoadingProgress();
 

@@ -62,6 +62,10 @@ public class ExcludedBrokersForLeadershipTest {
   @Rule
   public ExpectedException _expected = ExpectedException.none();
 
+  /**
+   * Populate parameters for the parametrized test.
+   * @return Populated parameters.
+   */
   @Parameterized.Parameters(name = "{1}-{0}")
   public static Collection<Object[]> data() throws Exception {
     Collection<Object[]> p = new ArrayList<>();

@@ -43,7 +43,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaS
 
 
 /**
- * SOFT GOAL: Balance collocations of replicas of the same topic.
+ * Soft goal to balance collocations of replicas of the same topic.
  * <ul>
  * <li>Under: (the average number of topic replicas per broker) * (1 + topic replica count balance percentage)</li>
  * <li>Above: (the average number of topic replicas per broker) * Math.max(0, 1 - topic replica count balance percentage)</li>
@@ -68,7 +68,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
   private final Map<String, Integer> _balanceLowerLimitByTopic;
 
   /**
-   * Constructor for Replica Distribution Goal.
+   * A soft goal to balance collocations of replicas of the same topic.
    */
   public TopicReplicaDistributionGoal() {
     _brokerIdsAboveBalanceUpperLimitByTopic = new HashMap<>();
@@ -90,7 +90,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    *
    * @param optimizationOptions Options to adjust balance percentage with margin in case goal optimization is triggered
    * by goal violation detector.
-   * @return the rebalance threshold with a margin.
+   * @return The rebalance threshold with a margin.
    */
   private double balancePercentageWithMargin(OptimizationOptions optimizationOptions) {
     double balancePercentage = optimizationOptions.isTriggeredByGoalViolation()

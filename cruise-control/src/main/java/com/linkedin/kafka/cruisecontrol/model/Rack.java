@@ -51,28 +51,28 @@ public class Rack implements Serializable {
   }
 
   /**
-   * Get the rack load information.
+   * @return The rack load information.
    */
   public Load load() {
     return _load;
   }
 
   /**
-   * Get the rack Id.
+   * @return The rack Id.
    */
   public String id() {
     return _id;
   }
 
   /**
-   * Get the collection of brokers in the current rack.
+   * @return The collection of brokers in the current rack.
    */
   public Collection<Broker> brokers() {
     return _brokers.values();
   }
 
   /**
-   * Return the hosts in this rack.
+   * @return The hosts in this rack.
    */
   public Collection<Host> hosts() {
     return _hosts.values();
@@ -89,7 +89,7 @@ public class Rack implements Serializable {
   }
 
   /**
-   * Get the list of replicas in the rack.
+   * @return The list of replicas in the rack.
    */
   public List<Replica> replicas() {
     List<Replica> replicas = new ArrayList<>();
@@ -116,7 +116,7 @@ public class Rack implements Serializable {
   }
 
   /**
-   * Get a set of topic names in the cluster.
+   * @return A set of topic names in the cluster.
    */
   public Set<String> topics() {
     Set<String> topics = new HashSet<>();
@@ -297,9 +297,8 @@ public class Rack implements Serializable {
     _rackCapacity[DISK.id()] -= capacityLost;
   }
 
-  /*
-   * Return an object that can be further used
-   * to encode into JSON
+  /**
+   * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure() {
     List<Object> hostList = new ArrayList<>();

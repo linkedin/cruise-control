@@ -17,12 +17,23 @@ public class MetricSerde implements Serializer<CruiseControlMetric>, Deserialize
   private static final int METRIC_TYPE_OFFSET = 0;
   private static final int HEADER_LENGTH = 1;
 
+  /**
+   * Serialize the Cruise Control metric to a byte array.
+   *
+   * @param metric Metric to be serialized.
+   * @return Serialized Cruise Control metric as a byte array.
+   */
   public static byte[] toBytes(CruiseControlMetric metric) {
     ByteBuffer byteBuffer = metric.toBuffer(HEADER_LENGTH);
     byteBuffer.put(METRIC_TYPE_OFFSET, metric.metricClassId().id());
     return byteBuffer.array();
   }
 
+  /**
+   * Deserialize from byte array to Cruise Control metric
+   * @param bytes Bytes array corresponding to Cruise Control metric.
+   * @return Deserialized byte array as Cruise Control metric.
+   */
   public static CruiseControlMetric fromBytes(byte[] bytes) throws UnknownVersionException {
     ByteBuffer buffer = ByteBuffer.wrap(bytes);
     switch (CruiseControlMetric.MetricClassId.forId(buffer.get())) {

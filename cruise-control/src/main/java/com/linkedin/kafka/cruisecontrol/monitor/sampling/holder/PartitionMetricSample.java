@@ -41,7 +41,7 @@ public class PartitionMetricSample extends MetricSample<String, PartitionEntity>
   }
 
   /**
-   * The id of the broker from which the metrics are from.
+   * @return The id of the broker from which the metrics are from.
    */
   public int brokerId() {
     return _brokerId;
@@ -63,6 +63,7 @@ public class PartitionMetricSample extends MetricSample<String, PartitionEntity>
    * 8 bytes - Sample time
    * 4 bytes - partition id
    * N bytes - topic string bytes
+   * @return Serialized bytes.
    */
   public byte[] toBytes() {
     MetricDef metricDef = KafkaMetricDef.commonMetricDef();
@@ -86,6 +87,12 @@ public class PartitionMetricSample extends MetricSample<String, PartitionEntity>
     return buffer.array();
   }
 
+  /**
+   * Deserialize given byte array into a partition metric sample.
+   *
+   * @param bytes Byte array for a partition metric sample.
+   * @return Partition metric sample.
+   */
   public static PartitionMetricSample fromBytes(byte[] bytes) throws UnknownVersionException {
     ByteBuffer buffer = ByteBuffer.wrap(bytes);
     // Not used at this point.

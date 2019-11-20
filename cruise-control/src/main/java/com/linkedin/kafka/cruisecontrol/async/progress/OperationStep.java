@@ -5,15 +5,15 @@
 package com.linkedin.kafka.cruisecontrol.async.progress;
 
 /**
- * A single step of an operation. 
+ * A single step of an operation.
  */
 public interface OperationStep {
 
   /**
-   * @return the name of the step.
+   * @return The name of the step.
    */
   String name();
-  
+
   /**
    * @return The completion percentage of this step. The value should be between 0 and 1. Returning 1
    * means the step is completed.
@@ -21,7 +21,7 @@ public interface OperationStep {
   float completionPercentage();
 
   /**
-   * @return the description of this step.
+   * @return The description of this step.
    */
   String description();
 }

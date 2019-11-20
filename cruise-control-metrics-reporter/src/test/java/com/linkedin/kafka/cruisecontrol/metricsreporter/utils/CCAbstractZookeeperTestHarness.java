@@ -8,12 +8,18 @@ package com.linkedin.kafka.cruisecontrol.metricsreporter.utils;
 public abstract class CCAbstractZookeeperTestHarness {
   protected CCEmbeddedZookeeper _zookeeper = null;
 
+  /**
+   * Setup the unit test.
+   */
   public void setUp() {
     if (_zookeeper == null) {
       _zookeeper = new CCEmbeddedZookeeper();
     }
   }
 
+  /**
+   * Teardown the unit test.
+   */
   public void tearDown() {
     if (_zookeeper != null) {
       CCKafkaTestUtils.quietly(() -> _zookeeper.close());

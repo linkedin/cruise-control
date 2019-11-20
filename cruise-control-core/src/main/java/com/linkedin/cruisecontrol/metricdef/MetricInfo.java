@@ -28,21 +28,21 @@ public class MetricInfo {
   }
 
   /**
-   * @return the id of the metric.
+   * @return The id of the metric.
    */
   public short id() {
     return _id;
   }
 
   /**
-   * @return the {@link AggregationFunction} of the metric.
+   * @return The {@link AggregationFunction} of the metric.
    */
   public AggregationFunction aggregationFunction() {
     return _aggregationFunction;
   }
 
   /**
-   * @return the metric group of this metric. The metric group is used to aggregate the metrics of the same kind.
+   * @return The metric group of this metric. The metric group is used to aggregate the metrics of the same kind.
    * @see MetricDef
    */
   public String group() {

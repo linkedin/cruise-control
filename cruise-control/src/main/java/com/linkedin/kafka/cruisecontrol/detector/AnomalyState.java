@@ -26,26 +26,46 @@ public class AnomalyState {
     _status = Status.DETECTED;
   }
 
+  /**
+   * @return The status of the anomaly.
+   */
   public Status status() {
     return _status;
   }
 
+  /**
+   * @return The id of the anomaly.
+   */
   public String anomalyId() {
     return _anomaly.anomalyId();
   }
 
+  /**
+   * @return The anomaly.
+   */
   public Anomaly anomaly() {
     return _anomaly;
   }
 
+  /**
+   * @return The detection time of the anomaly in milliseconds.
+   */
   public long detectionMs() {
     return _detectionMs;
   }
 
+  /**
+   * @return The status update time of the anomaly in milliseconds.
+   */
   public long statusUpdateMs() {
     return _statusUpdateMs;
   }
 
+  /**
+   * Set the status of the anomaly.
+   *
+   * @param status The new status of the anomaly.
+   */
   public void setStatus(Status status) {
     _status = status;
     _statusUpdateMs = System.currentTimeMillis();

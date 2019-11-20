@@ -70,7 +70,7 @@ public class MetricSampleAggregationResult<G, E extends Entity<G>> extends LongG
    *   be included in the {@link MetricSampleCompleteness#validEntities()} either.
    * </p>
    *
-   * @return the invalid entity set for this aggregation.
+   * @return The invalid entity set for this aggregation.
    */
   public Set<E> invalidEntities() {
     return _invalidEntities;
@@ -81,7 +81,7 @@ public class MetricSampleAggregationResult<G, E extends Entity<G>> extends LongG
    *
    * @see MetricSampleCompleteness
    *
-   * @return the completeness summary of this aggregation result.
+   * @return The completeness summary of this aggregation result.
    */
   public MetricSampleCompleteness<G, E> completeness() {
     return _completeness;

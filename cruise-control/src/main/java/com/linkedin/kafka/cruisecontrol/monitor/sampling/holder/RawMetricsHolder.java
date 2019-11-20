@@ -49,7 +49,7 @@ class RawMetricsHolder {
   /**
    * Get the value for the given raw metric type.
    * @param rawMetricType the raw metric type to get value for.
-   * @return the value of the given raw metric type.
+   * @return The value of the given raw metric type.
    */
   ValueHolder metricValue(RawMetricType rawMetricType) {
     return _rawMetricsByType.get(rawMetricType);

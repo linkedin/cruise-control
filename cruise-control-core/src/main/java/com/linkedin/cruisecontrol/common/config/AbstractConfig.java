@@ -72,7 +72,7 @@ public class AbstractConfig {
    * This allows to change default values for "secondary defaults" if required.
    *
    * @param parsedValues unmodifiable map of current configuration
-   * @return a map of updates that should be applied to the configuration (will be validated to prevent bad updates)
+   * @return A map of updates that should be applied to the configuration (will be validated to prevent bad updates)
    */
   protected Map<String, Object> postProcessParsedConfig(Map<String, Object> parsedValues) {
     return Collections.emptyMap();
@@ -119,6 +119,12 @@ public class AbstractConfig {
     return (String) get(key);
   }
 
+  /**
+   * Get the type of the given key.
+   *
+   * @param key A config key to retrieve the type.
+   * @return The type of the given key.
+   */
   public ConfigDef.Type typeOf(String key) {
     ConfigDef.ConfigKey configKey = _definition.configKeys().get(key);
     if (configKey == null) {
@@ -135,12 +141,18 @@ public class AbstractConfig {
     return (Class<?>) get(key);
   }
 
+  /**
+   * @return Unused configs.
+   */
   public Set<String> unused() {
     Set<String> keys = new HashSet<>(_originals.keySet());
     keys.removeAll(_used);
     return keys;
   }
 
+  /**
+   * @return Original configs.
+   */
   public Map<String, Object> originals() {
     Map<String, Object> copy = new RecordingMap<>();
     copy.putAll(_originals);
@@ -149,7 +161,7 @@ public class AbstractConfig {
 
   /**
    * Get all the original settings, ensuring that all values are of type String.
-   * @return the original settings
+   * @return The original settings
    * @throws ClassCastException if any of the values are not strings
    */
   public Map<String, String> originalsStrings() {
@@ -169,7 +181,7 @@ public class AbstractConfig {
    * Gets all original settings with the given prefix, stripping the prefix before adding it to the output.
    *
    * @param prefix the prefix to use as a filter
-   * @return a Map containing the settings with the prefix
+   * @return A Map containing the settings with the prefix
    */
   public Map<String, Object> originalsWithPrefix(String prefix) {
     Map<String, Object> result = new RecordingMap<>(prefix, false);
@@ -186,6 +198,7 @@ public class AbstractConfig {
    * put all the remaining keys with the prefix stripped and their parsed values in the result map.
    *
    * This is useful if one wants to allow prefixed configs to override default ones.
+   * @return Values with prefix override.
    */
   public Map<String, Object> valuesWithPrefixOverride(String prefix) {
     Map<String, Object> result = new RecordingMap<>(values(), prefix, true);

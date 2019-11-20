@@ -48,28 +48,28 @@ public class MetricSample<G, E extends Entity<G>> {
   }
 
   /**
-   * Get the entity this metric sample is corresponding to.
+   * @return The entity this metric sample is corresponding to.
    */
   public E entity() {
     return _entity;
   }
 
   /**
-   * The time this sample was taken.
+   * @return The time this sample was taken.
    */
   public long sampleTime() {
     return _sampleTime;
   }
 
   /**
-   * The metric for the specified metric id.
+   * @return The metric for the specified metric id.
    */
   public Double metricValue(short metricId) {
     return _valuesByMetricId.getOrDefault(metricId, Double.NaN);
   }
 
   /**
-   * @return all the metrics.
+   * @return All the metrics.
    */
   public Map<Short, Double> allMetricValues() {
     return Collections.unmodifiableMap(_valuesByMetricId);
@@ -92,7 +92,7 @@ public class MetricSample<G, E extends Entity<G>> {
   /**
    * A method that can be overridden by subclasses to get prettier toString() format. If null is returned,
    * the toString() output will have the metricId instead of metric name, which is less readable.
-   * @return the {@link MetricDef} used for toString() method.
+   * @return The {@link MetricDef} used for toString() method.
    */
   protected MetricDef metricDefForToString() {
     return null;
@@ -100,6 +100,8 @@ public class MetricSample<G, E extends Entity<G>> {
 
   /**
    * Validate the metric sample.
+   *
+   * @return True if valid, false otherwise.
    */
   public boolean isValid(MetricDef metricDef) {
     return _valuesByMetricId.size() == metricDef.size();

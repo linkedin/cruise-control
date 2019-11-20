@@ -22,6 +22,9 @@ public class CruiseControlUnitTestUtils {
 
   }
 
+  /**
+   * Populate sample aggregator with the given parameters.
+   */
   public static <G, E extends Entity<G>> void populateSampleAggregator(int numWindows,
                                                                        int numSamplesPerWindow,
                                                                        MetricSampleAggregator<G, E> metricSampleAggregator,

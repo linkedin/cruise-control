@@ -16,7 +16,7 @@ public class Utils {
   }
 
   /**
-   * Instantiate the class
+   * @return Instantiated class.
    */
   public static <T> T newInstance(Class<T> c) throws CruiseControlException {
     if (c == null) {
@@ -36,7 +36,7 @@ public class Utils {
    * @param klass class name
    * @param base super class of the class to be instantiated
    * @param <T>
-   * @return the new instance
+   * @return The new instance
    */
   public static <T> T newInstance(String klass, Class<T> base) throws ClassNotFoundException, CruiseControlException {
     return Utils.newInstance(Class.forName(klass, true, Utils.getContextOrCruiseControlClassLoader()).asSubclass(base));
@@ -44,10 +44,10 @@ public class Utils {
 
 
   /**
-   * Get the Context ClassLoader on this thread or, if not present, the ClassLoader that
-   * loaded Kafka.
+   * Get the Context ClassLoader on this thread or, if not present, the ClassLoader that loaded Cruise Control.
    *
    * This should be used whenever passing a ClassLoader to Class.forName
+   * @return the Context ClassLoader on this thread or, if not present, the ClassLoader that loaded Cruise Control.
    */
   public static ClassLoader getContextOrCruiseControlClassLoader() {
     ClassLoader cl = Thread.currentThread().getContextClassLoader();
@@ -59,7 +59,7 @@ public class Utils {
   }
 
   /**
-   * Get the ClassLoader which loaded Kafka.
+   * @return the ClassLoader which loaded Kafka.
    */
   public static ClassLoader getCruiseControlClassLoader() {
     return Utils.class.getClassLoader();

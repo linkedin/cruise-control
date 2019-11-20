@@ -144,6 +144,10 @@ public enum RawMetricType {
     return PARTITION_METRIC_TYPES;
   }
 
+  /**
+   * @param id Cruise Control Metric type.
+   * @return Raw metric type.
+   */
   public static RawMetricType forId(byte id) {
     if (id < values().length) {
       return values()[id];

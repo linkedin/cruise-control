@@ -130,23 +130,32 @@ public class ExecutionTaskManager {
     _requestedLeadershipMovementConcurrency = requestedLeadershipMovementConcurrency;
   }
 
+  /**
+   * @return Allowed inter broker partition movement concurrency per broker.
+   */
   public synchronized int interBrokerPartitionMovementConcurrency() {
     return _requestedInterBrokerPartitionMovementConcurrency == null ? _defaultInterBrokerPartitionMovementConcurrency
                                                                      : _requestedInterBrokerPartitionMovementConcurrency;
   }
 
+  /**
+   * @return Allowed intra broker partition movement concurrency per broker.
+   */
   public synchronized int intraBrokerPartitionMovementConcurrency() {
     return _requestedIntraBrokerPartitionMovementConcurrency == null ? _defaultIntraBrokerPartitionMovementConcurrency
                                                                      : _requestedIntraBrokerPartitionMovementConcurrency;
   }
 
+  /**
+   * @return Leadership movement concurrency (global).
+   */
   public synchronized int leadershipMovementConcurrency() {
     return _requestedLeadershipMovementConcurrency == null ? _defaultLeadershipMovementConcurrency
                                                            : _requestedLeadershipMovementConcurrency;
   }
 
   /**
-   * Returns a list of execution tasks that move the replicas cross brokers.
+   * @return A list of execution tasks that move the replicas cross brokers.
    */
   public synchronized List<ExecutionTask> getInterBrokerReplicaMovementTasks() {
     Map<Integer, Integer> brokersReadyForReplicaMovement = brokersReadyForReplicaMovement(_inProgressInterBrokerReplicaMovementsByBrokerId,
@@ -155,7 +164,7 @@ public class ExecutionTaskManager {
   }
 
   /**
-   * Returns a list of execution tasks that move the replicas cross disks of the same broker.
+   * @return A list of execution tasks that move the replicas cross disks of the same broker.
    */
   public synchronized List<ExecutionTask> getIntraBrokerReplicaMovementTasks() {
     Map<Integer, Integer> brokersReadyForReplicaMovement = brokersReadyForReplicaMovement(_inProgressIntraBrokerReplicaMovementsByBrokerId,
@@ -195,7 +204,7 @@ public class ExecutionTaskManager {
   }
 
   /**
-   * Returns a list of execution tasks that move the leadership.
+   * @return A list of execution tasks that move the leadership.
    */
   public synchronized List<ExecutionTask> getLeadershipMovementTasks() {
     return _executionTaskPlanner.getLeadershipMovementTasks(leadershipMovementConcurrency());
@@ -333,62 +342,108 @@ public class ExecutionTaskManager {
     }
   }
 
+  /**
+   * @return Number of remaining inter broker partition movements.
+   */
   public synchronized int numRemainingInterBrokerPartitionMovements() {
     return _executionTaskTracker.numRemainingInterBrokerPartitionMovements();
   }
 
+  /**
+   * @return Remaining inter broker data to move in MB.
+   */
   public synchronized long remainingInterBrokerDataToMoveInMB() {
     return _executionTaskTracker.remainingInterBrokerDataToMoveInMB();
   }
 
+  /**
+   * @return Number of finished inter broker partition movements.
+   */
   public synchronized int numFinishedInterBrokerPartitionMovements() {
     return _executionTaskTracker.numFinishedInterBrokerPartitionMovements();
   }
 
+  /**
+   * @return Finished inter broker data movement in MB.
+   */
   public synchronized long finishedInterBrokerDataMovementInMB() {
     return _executionTaskTracker.finishedInterBrokerDataMovementInMB();
   }
 
+  /**
+   * @return The tasks that are {@link State#IN_PROGRESS} or {@link State#ABORTING} for all task types.
+   */
   public synchronized Set<ExecutionTask> inExecutionTasks() {
     return inExecutionTasks(TaskType.cachedValues());
   }
 
+  /**
+   * @param types Task type.
+   * @return The tasks that are {@link State#IN_PROGRESS} or {@link State#ABORTING} for the given task type.
+   */
   public synchronized Set<ExecutionTask> inExecutionTasks(Collection<TaskType> types) {
     return _executionTaskTracker.inExecutionTasks(types);
   }
 
+  /**
+   * @return In execution inter broker data to move in MB.
+   */
   public synchronized long inExecutionInterBrokerDataToMoveInMB() {
     return _executionTaskTracker.inExecutionInterBrokerDataMovementInMB();
   }
 
+  /**
+   * @return Number of remaining leadership movements.
+   */
   public synchronized int numRemainingLeadershipMovements() {
     return _executionTaskTracker.numRemainingLeadershipMovements();
   }
 
+  /**
+   * @return Number of finished leadership movements.
+   */
   public synchronized int numFinishedLeadershipMovements() {
     return _executionTaskTracker.numFinishedLeadershipMovements();
   }
 
+  /**
+   * @return Number of reamining intra broker partition movements.
+   */
   public synchronized int numRemainingIntraBrokerPartitionMovements() {
     return _executionTaskTracker.numRemainingIntraBrokerPartitionMovements();
   }
 
+  /**
+   * @return Remaining intra broker data movement in MB.
+   */
   public synchronized long remainingIntraBrokerDataToMoveInMB() {
     return _executionTaskTracker.remainingIntraBrokerDataToMoveInMB();
   }
 
+  /**
+   * @return Number of finished intra broker partition movements.
+   */
   public synchronized int numFinishedIntraBrokerPartitionMovements() {
     return _executionTaskTracker.numFinishedIntraBrokerPartitionMovements();
   }
 
+  /**
+   * @return Finished intra broker data to move in MB.
+   */
   public synchronized long finishedIntraBrokerDataToMoveInMB() {
     return _executionTaskTracker.finishedIntraBrokerDataToMoveInMB();
   }
 
+  /**
+   * @return In execution intra broker data movement in MB.
+   */
   public long inExecutionIntraBrokerDataMovementInMB() {
     return _executionTaskTracker.inExecutionIntraBrokerDataMovementInMB();
   }
 
+  /**
+   * Clear the cached task manager state.
+   */
   public synchronized void clear() {
     _brokersToSkipConcurrencyCheck.clear();
     _inProgressInterBrokerReplicaMovementsByBrokerId.clear();
@@ -398,10 +453,19 @@ public class ExecutionTaskManager {
     _executionTaskTracker.clear();
   }
 
+  /**
+   * Set task tracker state in case the ongoing execution is requested to be stopped.
+   */
   public synchronized void setStopRequested() {
     _executionTaskTracker.setStopRequested();
   }
 
+  /**
+   * Get the execution tasks summary.
+   *
+   * @param taskTypesToGetFullList Task types to get full list.
+   * @return The execution tasks summary.
+   */
   public synchronized ExecutionTasksSummary getExecutionTasksSummary(Set<TaskType> taskTypesToGetFullList) {
     return _executionTaskTracker.getExecutionTasksSummary(taskTypesToGetFullList);
   }

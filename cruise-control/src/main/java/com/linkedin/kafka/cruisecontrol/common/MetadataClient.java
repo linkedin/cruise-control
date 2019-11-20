@@ -77,6 +77,7 @@ public class MetadataClient {
 
   /**
    * Refresh the metadata. The method is synchronized because the network client is not thread safe.
+   * @return A new {@link ClusterAndGeneration} with latest cluster and generation.
    */
   public synchronized ClusterAndGeneration refreshMetadata() {
     return refreshMetadata(_refreshMetadataTimeout);
@@ -84,6 +85,7 @@ public class MetadataClient {
 
   /**
    * Refresh the metadata. The method is synchronized because the network client is not thread safe.
+   * @return A new {@link ClusterAndGeneration} with latest cluster and generation.
    */
   public synchronized ClusterAndGeneration refreshMetadata(long timeout) {
     // Do not update metadata if the metadata has just been refreshed.
@@ -122,21 +124,21 @@ public class MetadataClient {
   }
 
   /**
-   * Get the metadata maintained by this metadata client.
+   * @return The metadata maintained by this metadata client.
    */
   public Metadata metadata() {
     return _metadata;
   }
 
   /**
-   * Get the current cluster and generation
+   * @return The current cluster and generation.
    */
   public ClusterAndGeneration clusterAndGeneration() {
     return new ClusterAndGeneration(cluster(), _metadataGeneration.get());
   }
 
   /**
-   * Get the current cluster.
+   * @return The current cluster.
    */
   public Cluster cluster() {
     return _metadata.fetch();
@@ -151,10 +153,16 @@ public class MetadataClient {
       _generation = generation;
     }
 
+    /**
+     * @return Kafka cluster.
+     */
     public Cluster cluster() {
       return _cluster;
     }
 
+    /**
+     * @return Model generation of the cluster
+     */
     public int generation() {
       return _generation;
     }

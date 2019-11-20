@@ -37,6 +37,9 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
                                                                                         true, null));
   }
 
+  /**
+   * @return Session executor.
+   */
   public ExecutorService sessionExecutor() {
     return _sessionExecutor;
   }

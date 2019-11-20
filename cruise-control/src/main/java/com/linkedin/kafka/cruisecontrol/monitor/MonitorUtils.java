@@ -105,7 +105,7 @@ public class MonitorUtils {
   }
 
   /**
-   * Check whether the metadata has changed.
+   * @return True if the metadata has changed, false otherwise.
    */
   public static boolean metadataChanged(Cluster prev, Cluster curr) {
     // Broker has changed.
@@ -156,6 +156,12 @@ public class MonitorUtils {
     return false;
   }
 
+  /**
+   * Combine load requirement options.
+   *
+   * @param goals Goals for which the load requirement options will be combined.
+   * @return Combined load requirement options.
+   */
   public static ModelCompletenessRequirements combineLoadRequirementOptions(Collection<Goal> goals) {
     ModelCompletenessRequirements requirements = null;
     for (Goal goal : goals) {
@@ -164,6 +170,12 @@ public class MonitorUtils {
     return requirements;
   }
 
+  /**
+   * Get the total number of partitions in the cluster.
+   *
+   * @param cluster Kafka cluster.
+   * @return The total number of partitions in the cluster.
+   */
   public static int totalNumPartitions(Cluster cluster) {
     int totalNumPartitions = 0;
     for (String topic : cluster.topics()) {
@@ -236,7 +248,7 @@ public class MonitorUtils {
    * @param partitionInfo the partition info.
    * @param isLeader whether the value is created for leader replica or follower replica.
    * @param needToAdjustCpuUsage whether need to cast cpu usage metric for replica from absolute value to percentage.
-   * @return the {@link AggregatedMetricValues} to use for the given replica.
+   * @return The {@link AggregatedMetricValues} to use for the given replica.
    */
   private static AggregatedMetricValues getAggregatedMetricValues(ValuesAndExtrapolations valuesAndExtrapolations,
                                                                   PartitionInfo partitionInfo,
@@ -262,7 +274,7 @@ public class MonitorUtils {
    *
    * @param aggregatedMetricValues the {@link AggregatedMetricValues} for the leader replica.
    * @param info the partition info for the partition.
-   * @return the {@link AggregatedMetricValues} with the replication bytes out rate filled in.
+   * @return The {@link AggregatedMetricValues} with the replication bytes out rate filled in.
    */
   private static AggregatedMetricValues fillInReplicationBytesOut(AggregatedMetricValues aggregatedMetricValues,
                                                                   PartitionInfo info) {

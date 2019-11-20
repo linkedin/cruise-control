@@ -18,14 +18,23 @@ public class RequestParameterWrapper {
     _requestClass = requestClass;
   }
 
+  /**
+   * @return Parameter class name.
+   */
   public String parametersClass() {
     return _parametersClass;
   }
 
+  /**
+   * @return Parameter object name.
+   */
   public String parameterObject() {
     return _parametersObject;
   }
 
+  /**
+   * @return Request class name.
+   */
   public String requestClass() {
     return _requestClass;
   }

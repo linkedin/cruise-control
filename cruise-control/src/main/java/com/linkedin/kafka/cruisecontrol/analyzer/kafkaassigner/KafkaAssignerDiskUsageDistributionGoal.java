@@ -128,7 +128,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
    * @param upperThreshold the upper threshold of the disk usage.
    * @param lowerThreshold the lower threshold of the disk usage.
    *
-   * @return true if all the brokers are within thresholds, false otherwise.
+   * @return True if all the brokers are within thresholds, false otherwise.
    */
   private boolean isOptimized(ClusterModel clusterModel, double upperThreshold, double lowerThreshold) {
     // Check if any broker is out of the allowed usage range.
@@ -168,7 +168,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
    * @param upperThreshold the upper limit of the disk usage for a broker
    * @param excludedTopics the topics to exclude from movement.
    *
-   * @return true if an action has been taken to improve the disk usage of the broker, false when a broker cannot or
+   * @return True if an action has been taken to improve the disk usage of the broker, false when a broker cannot or
    * does not need to be improved further.
    */
   private boolean checkAndOptimize(SortedSet<BrokerAndSortedReplicas> allBrokers,
@@ -240,7 +240,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
    * @param meanDiskUsage the average usage of the cluster.
    * @param clusterModel the cluster model.
    * @param excludedTopics the topics to exclude from swapping.
-   * @return true if a swap has been done, false otherwise.
+   * @return True if a swap has been done, false otherwise.
    */
   boolean swapReplicas(BrokerAndSortedReplicas toSwap,
                        BrokerAndSortedReplicas toSwapWith,
@@ -370,7 +370,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
    * @param maxSize the max size for the eligible replica.
    * @param clusterModel the cluster model.
    *
-   * @return the replica that can be swapped with the given replica, null otherwise.
+   * @return The replica that can be swapped with the given replica, null otherwise.
    */
   Replica findReplicaToSwapWith(Replica replica,
                                 NavigableSet<ReplicaWrapper> sortedReplicasToSearch,
@@ -453,7 +453,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
    * @param destinationBroker the broker to move the replica to.
    * @param clusterModel the cluster model.
    *
-   * @return true if it is possible to move the replica to the broker, false otherwise.
+   * @return True if it is possible to move the replica to the broker, false otherwise.
    */
   private boolean possibleToMove(Replica replica, Broker destinationBroker, ClusterModel clusterModel) {
     TopicPartition tp = replica.topicPartition();
@@ -473,7 +473,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
    * @param r1 the first replica to swap
    * @param r2 the second replica to swap with the first replica
    * @param clusterModel the cluster model
-   * @return true if the two replicas can be swapped, false otherwise.
+   * @return True if the two replicas can be swapped, false otherwise.
    */
   boolean canSwap(Replica r1, Replica r2, ClusterModel clusterModel) {
     boolean inSameRack = r1.broker().rack() == r2.broker().rack() && r1.broker() != r2.broker();
@@ -546,7 +546,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
   /**
    * To avoid churns, we add a balance margin to the user specified rebalance threshold. e.g. when user sets the
    * threshold to be resourceBalancePercentage, we use (resourceBalancePercentage-1)*balanceMargin instead.
-   * @return the rebalance threshold with a margin.
+   * @return The rebalance threshold with a margin.
    */
   private double balancePercentageWithMargin() {
     return (_balancingConstraint.resourceBalancePercentage(DISK) - 1) * BALANCE_MARGIN;

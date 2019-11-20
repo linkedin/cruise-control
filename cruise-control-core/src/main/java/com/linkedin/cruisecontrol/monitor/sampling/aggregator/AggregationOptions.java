@@ -82,14 +82,14 @@ public class AggregationOptions<G, E extends Entity<G>> {
   }
 
   /**
-   * @return the minimum required number of valid windows required in the result.
+   * @return The minimum required number of valid windows required in the result.
    */
   public int minValidWindows() {
     return _minValidWindows;
   }
 
   /**
-   * @return the maximum allowed extrapolations per entity.
+   * @return The maximum allowed extrapolations per entity.
    */
   public int maxAllowedExtrapolationsPerEntity() {
     return _maxAllowedExtrapolationsPerEntity;

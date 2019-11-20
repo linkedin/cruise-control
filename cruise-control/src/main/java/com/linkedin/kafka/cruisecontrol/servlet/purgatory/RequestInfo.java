@@ -81,6 +81,9 @@ public class RequestInfo {
     return _parameterMap;
   }
 
+  /**
+   * @return A String that combines the endpoint with parameters.
+   */
   public String endpointWithParams() {
     StringBuilder sb = new StringBuilder(_endPoint.toString());
     String queryParamDelimiter = "?";

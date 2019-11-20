@@ -104,56 +104,56 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   /**
    * Check if the state transfer is possible.
    * @param targetState the state to transfer to.
-   * @return true if the transfer is valid, false otherwise.
+   * @return True if the transfer is valid, false otherwise.
    */
   public boolean canTransferToState(State targetState) {
     return VALID_TRANSFER.get(_state).contains(targetState);
   }
 
   /**
-   * @return the valid target state to transfer to.
+   * @return The valid target state to transfer to.
    */
   public Set<State> validTargetState() {
     return Collections.unmodifiableSet(VALID_TRANSFER.get(_state));
   }
 
   /**
-   * @return the execution id of this execution task.
+   * @return The execution id of this execution task.
    */
   public long executionId() {
     return _executionId;
   }
 
   /**
-   * @return the execution proposal of this execution task.
+   * @return The execution proposal of this execution task.
    */
   public ExecutionProposal proposal() {
     return _proposal;
   }
 
   /**
-   * @return the task type of this execution task.
+   * @return The task type of this execution task.
    */
   public TaskType type() {
     return _type;
   }
 
   /**
-   * @return the state of the task.
+   * @return The state of the task.
    */
   public State state() {
     return this._state;
   }
 
   /**
-   * @return the timestamp that the task started.
+   * @return The timestamp that the task started.
    */
   public long startTimeMs() {
     return _startTimeMs;
   }
 
   /**
-   * @return the timestamp that the task finishes.
+   * @return The timestamp that the task finishes.
    */
   public long endTimeMs() {
     return _endTimeMs;
@@ -249,8 +249,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   }
 
   /**
-   * Return an object that can be further used
-   * to encode into JSON
+   * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure() {
     Map<String, Object> executionStatsMap = new HashMap<>();
@@ -276,6 +275,10 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
 
     private static final List<TaskType> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 
+    /**
+     * Use this instead of values() because values() creates a new array each time.
+     * @return enumerated values in the same order as values()
+     */
     public static List<TaskType> cachedValues() {
       return CACHED_VALUES;
     }
@@ -286,6 +289,10 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
 
     private static final List<State> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 
+    /**
+     * Use this instead of values() because values() creates a new array each time.
+     * @return enumerated values in the same order as values()
+     */
     public static List<State> cachedValues() {
       return CACHED_VALUES;
     }

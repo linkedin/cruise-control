@@ -192,6 +192,9 @@ public class ExecutorState {
                              isTriggeredByUserRequest);
   }
 
+  /**
+   * @return The current state of the executor.
+   */
   public State state() {
     return _state;
   }
@@ -200,18 +203,28 @@ public class ExecutorState {
     return _executionTasksSummary.taskStat().get(type).values().stream().mapToInt(i -> i).sum();
   }
 
+  /**
+   * @param type The type of execution task.
+   * @return Number of finished movements, which is the sum of dead, completed, and aborted tasks.
+   */
   public int numFinishedMovements(ExecutionTask.TaskType type) {
     return _executionTasksSummary.taskStat().get(type).get(DEAD) +
            _executionTasksSummary.taskStat().get(type).get(COMPLETED) +
            _executionTasksSummary.taskStat().get(type).get(ABORTED);
   }
 
+  /**
+   * @return Number of MBs for inter broker data to move, which is the sum of in execution, finished, and remaining tasks.
+   */
   public long numTotalInterBrokerDataToMove() {
     return _executionTasksSummary.inExecutionInterBrokerDataMovementInMB() +
            _executionTasksSummary.finishedInterBrokerDataMovementInMB() +
            _executionTasksSummary.remainingInterBrokerDataToMoveInMB();
   }
 
+  /**
+   * @return Number of MBs for intra broker data to move, which is the sum of in execution, finished, and remaining tasks.
+   */
   public long numTotalIntraBrokerDataToMove() {
     return _executionTasksSummary.inExecutionIntraBrokerDataMovementInMB() +
            _executionTasksSummary.finishedIntraBrokerDataMovementInMB() +
@@ -253,7 +266,7 @@ public class ExecutorState {
   }
 
   /**
-   * Return an object that can be further used to encode into JSON
+   * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure(boolean verbose) {
     Map<String, Object> execState = new HashMap<>();
@@ -359,6 +372,9 @@ public class ExecutorState {
     return execState;
   }
 
+  /**
+   * @return Plaintext response for the executor state.
+   */
   public String getPlaintext() {
     String recentlyDemotedBrokers = (_recentlyDemotedBrokers != null && !_recentlyDemotedBrokers.isEmpty())
                                     ? String.format(", %s: %s", RECENTLY_DEMOTED_BROKERS, _recentlyDemotedBrokers) : "";
