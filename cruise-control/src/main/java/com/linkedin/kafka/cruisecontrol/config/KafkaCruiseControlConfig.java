@@ -639,6 +639,37 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "run to detect the anomalies.";
 
   /**
+   * <code>goal.violation.detection.interval.ms</code>
+   */
+  public static final String GOAL_VIOLATION_DETECTION_INTERVAL_MS_CONFIG = "goal.violation.detection.interval.ms";
+  private static final String GOAL_VIOLATION_DETECTION_INTERVAL_MS_DOC = "The interval in millisecond that goal violation "
+      + "detector will run to detect the goal violations. If this interval time is not specified, goal violation detector "
+      + "will be run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ".";
+
+  /**
+   * <code>metric.anomaly.detection.interval.ms</code>
+   */
+  public static final String METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG = "metric.anomaly.detection.interval.ms";
+  private static final String METRIC_ANOMALY_DETECTION_INTERVAL_MS_DOC = "The interval in millisecond that metric anomaly "
+      + "detector will run to detect the metric anomalies. If this interval time is not specified, metric anomaly detector "
+      + "will be run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ".";
+
+  /**
+   * <code>disk.failure.detection.interval.ms</code>
+   */
+  public static final String DISK_FAILURE_DETECTION_INTERVAL_MS_CONFIG = "disk.failure.detection.interval.ms";
+  private static final String DISK_FAILURE_DETECTION_INTERVAL_MS_DOC = "The interval in millisecond that disk failure "
+      + "detector will run to detect the disk failures. If this interval time is not specified, disk failure detector "
+      + "will be run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ".";
+
+  /**
+   * <code>broker.failure.detection.backoff.ms</code>
+   */
+  public static final String BROKER_FAILURE_DETECTION_BACKOFF_MS_CONFIG = "broker.failure.detection.backoff.ms";
+  private static final String BROKER_FAILURE_DETECTION_BACKOFF_MS_DOC = "The backoff time in millisecond before broker failure "
+      + "detector triggers another broker failure detection if currently detected broker failure is not ready to fix.";
+
+  /**
    * <code>anomaly.detection.allow.capacity.estimation</code>
    */
   public static final String ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG = "anomaly.detection.allow.capacity.estimation";
@@ -1744,11 +1775,28 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 300000L,
                 ConfigDef.Importance.LOW,
                 ANOMALY_DETECTION_INTERVAL_MS_DOC)
+        .define(GOAL_VIOLATION_DETECTION_INTERVAL_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                ConfigDef.Importance.LOW,
+                GOAL_VIOLATION_DETECTION_INTERVAL_MS_DOC)
+        .define(METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                ConfigDef.Importance.LOW,
+                METRIC_ANOMALY_DETECTION_INTERVAL_MS_DOC)
+        .define(DISK_FAILURE_DETECTION_INTERVAL_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                ConfigDef.Importance.LOW,
+                DISK_FAILURE_DETECTION_INTERVAL_MS_DOC)
         .define(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG,
                 ConfigDef.Type.BOOLEAN,
                 DEFAULT_ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG,
                 ConfigDef.Importance.LOW,
                 ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_DOC)
+        .define(BROKER_FAILURE_DETECTION_BACKOFF_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                300000L,
+                ConfigDef.Importance.LOW,
+                BROKER_FAILURE_DETECTION_BACKOFF_MS_DOC)
         .define(SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG,
                 ConfigDef.Type.BOOLEAN,
                 true,

@@ -28,20 +28,6 @@ public class PercentileMetricAnomalyFinderUtils {
   public static boolean isDataSufficient(int sampleCount,
                                          double upperPercentile,
                                          double lowerPercentile) {
-    if (upperPercentile >= 100.0 || upperPercentile <= 0.0) {
-      throw new IllegalArgumentException(String.format("Provided upper percentile (%f) is invalid, it should be within (0.0, 100.0).",
-                                                       upperPercentile));
-    }
-    if (lowerPercentile >= 100.0 || lowerPercentile <= 0.0) {
-      throw new IllegalArgumentException(String.format("Provided lower percentile (%f) is invalid, it should be within (0.0, 100.0).",
-                                                       lowerPercentile));
-    }
-
-    if (lowerPercentile > upperPercentile) {
-      throw new IllegalArgumentException(String.format("Provided lower percentile (%f) is larger than upper percentile (%f).",
-                                                       lowerPercentile, upperPercentile));
-    }
-
     int minNumValues = (int) Math.ceil(100 / (upperPercentile > 50.0 ? (100 - upperPercentile) : upperPercentile));
     minNumValues = Math.max(minNumValues, (int) Math.ceil(100 / (lowerPercentile > 50.0 ? (100 - lowerPercentile) : lowerPercentile)));
 

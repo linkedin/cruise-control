@@ -59,13 +59,16 @@ public class AnomalyDetector {
   private final MetricAnomalyDetector _metricAnomalyDetector;
   private final DiskFailureDetector _diskFailureDetector;
   private final ScheduledExecutorService _detectorScheduler;
-  private final long _anomalyDetectionIntervalMs;
+  private final long _goalViolationDetectionIntervalMs;
+  private final long _diskFailureDetectionIntervalMs;
+  private final long _metricAnomalyDetectionIntervalMs;
+  private final long _brokerFailureDetectionBackoffMs;
   private final PriorityBlockingQueue<Anomaly> _anomalies;
   private volatile boolean _shutdown;
   private final AnomalyDetectorState _anomalyDetectorState;
   private final List<String> _selfHealingGoals;
   private final ExecutorService _anomalyLoggerExecutor;
-  private volatile KafkaAnomaly _anomalyInProgress;
+  private volatile Anomaly _anomalyInProgress;
   private volatile long _numCheckedWithDelay;
   private final Object _shutdownLock;
 
@@ -79,7 +82,17 @@ public class AnomalyDetector {
                                                        .thenComparingLong(Anomaly::detectionTimeMs));
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
     _adminClient = KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
-    _anomalyDetectionIntervalMs = config.getLong(KafkaCruiseControlConfig.ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
+    long anomalyDetectionIntervalMs = config.getLong(KafkaCruiseControlConfig.ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
+    _goalViolationDetectionIntervalMs = config.getLong(KafkaCruiseControlConfig.GOAL_VIOLATION_DETECTION_INTERVAL_MS_CONFIG) != null ?
+                                        config.getLong(KafkaCruiseControlConfig.GOAL_VIOLATION_DETECTION_INTERVAL_MS_CONFIG) :
+                                        anomalyDetectionIntervalMs;
+    _metricAnomalyDetectionIntervalMs = config.getLong(KafkaCruiseControlConfig.METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG) != null ?
+                                        config.getLong(KafkaCruiseControlConfig.METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG) :
+                                        anomalyDetectionIntervalMs;
+    _diskFailureDetectionIntervalMs = config.getLong(KafkaCruiseControlConfig.DISK_FAILURE_DETECTION_INTERVAL_MS_CONFIG) != null ?
+                                      config.getLong(KafkaCruiseControlConfig.DISK_FAILURE_DETECTION_INTERVAL_MS_CONFIG) :
+                                      anomalyDetectionIntervalMs;
+    _brokerFailureDetectionBackoffMs = config.getLong(KafkaCruiseControlConfig.BROKER_FAILURE_DETECTION_BACKOFF_MS_CONFIG);
     _anomalyNotifier = config.getConfiguredInstance(KafkaCruiseControlConfig.ANOMALY_NOTIFIER_CLASS_CONFIG,
                                                     AnomalyNotifier.class);
     _kafkaCruiseControl = kafkaCruiseControl;
@@ -122,7 +135,10 @@ public class AnomalyDetector {
                   ScheduledExecutorService detectorScheduler) {
     _anomalies = anomalies;
     _adminClient = adminClient;
-    _anomalyDetectionIntervalMs = anomalyDetectionIntervalMs;
+    _goalViolationDetectionIntervalMs = anomalyDetectionIntervalMs;
+    _metricAnomalyDetectionIntervalMs = anomalyDetectionIntervalMs;
+    _diskFailureDetectionIntervalMs = anomalyDetectionIntervalMs;
+    _brokerFailureDetectionBackoffMs = anomalyDetectionIntervalMs;
     _anomalyNotifier = anomalyNotifier;
     _goalViolationDetector = goalViolationDetector;
     _brokerFailureDetector = brokerFailureDetector;
@@ -150,20 +166,20 @@ public class AnomalyDetector {
     int jitter = new Random().nextInt(INIT_JITTER_BOUND);
     LOG.debug("Starting goal violation detector with delay of {} ms", jitter);
     _detectorScheduler.scheduleAtFixedRate(_goalViolationDetector,
-                                           _anomalyDetectionIntervalMs / 2 + jitter,
-                                           _anomalyDetectionIntervalMs,
+                                           _goalViolationDetectionIntervalMs / 2 + jitter,
+                                           _goalViolationDetectionIntervalMs,
                                            TimeUnit.MILLISECONDS);
     jitter = new Random().nextInt(INIT_JITTER_BOUND);
     LOG.debug("Starting metric anomaly detector with delay of {} ms", jitter);
     _detectorScheduler.scheduleAtFixedRate(_metricAnomalyDetector,
-                                           _anomalyDetectionIntervalMs / 2 + jitter,
-                                           _anomalyDetectionIntervalMs,
+                                           _metricAnomalyDetectionIntervalMs / 2 + jitter,
+                                           _metricAnomalyDetectionIntervalMs,
                                            TimeUnit.MILLISECONDS);
     jitter = new Random().nextInt(INIT_JITTER_BOUND);
     LOG.debug("Starting disk failure detector with delay of {} ms", jitter);
     _detectorScheduler.scheduleAtFixedRate(_diskFailureDetector,
-                                           _anomalyDetectionIntervalMs / 2 + jitter,
-                                           _anomalyDetectionIntervalMs,
+                                           _diskFailureDetectionIntervalMs / 2 + jitter,
+                                           _diskFailureDetectionIntervalMs,
                                            TimeUnit.MILLISECONDS);
     _detectorScheduler.submit(new AnomalyHandlerTask());
   }
@@ -182,9 +198,9 @@ public class AnomalyDetector {
     KafkaCruiseControlUtils.closeAdminClientWithTimeout(_adminClient);
 
     try {
-      _detectorScheduler.awaitTermination(_anomalyDetectionIntervalMs, TimeUnit.MILLISECONDS);
+      _detectorScheduler.awaitTermination(_goalViolationDetectionIntervalMs, TimeUnit.MILLISECONDS);
       if (!_detectorScheduler.isTerminated()) {
-        LOG.warn("The sampling scheduler failed to shutdown in " + _anomalyDetectionIntervalMs + " ms.");
+        LOG.warn("The sampling scheduler failed to shutdown in " + _goalViolationDetectionIntervalMs + " ms.");
       }
     } catch (InterruptedException e) {
       LOG.warn("Interrupted while waiting for anomaly detector to shutdown.");
@@ -258,7 +274,7 @@ public class AnomalyDetector {
         boolean postProcessAnomalyInProgress = false;
         _anomalyInProgress = null;
         try {
-          _anomalyInProgress = (KafkaAnomaly) _anomalies.take();
+          _anomalyInProgress = _anomalies.take();
           LOG.trace("Processing anomaly {}.", _anomalyInProgress);
           if (_anomalyInProgress == SHUTDOWN_ANOMALY) {
             // Service has shutdown.
@@ -286,7 +302,7 @@ public class AnomalyDetector {
         }
         if (postProcessAnomalyInProgress) {
           LOG.info("Post processing anomaly {}.", _anomalyInProgress);
-          postProcessAnomalyInProgress(_anomalyDetectionIntervalMs);
+          postProcessAnomalyInProgress(_brokerFailureDetectionBackoffMs);
         }
       }
       LOG.info("Anomaly handler exited.");
@@ -301,7 +317,7 @@ public class AnomalyDetector {
       ExecutorState.State executionState = _kafkaCruiseControl.executionState();
       if (executionState != ExecutorState.State.NO_TASK_IN_PROGRESS) {
         LOG.info("Post processing anomaly {} because executor is in {} state.", _anomalyInProgress, executionState);
-        postProcessAnomalyInProgress(_anomalyDetectionIntervalMs);
+        postProcessAnomalyInProgress(_brokerFailureDetectionBackoffMs);
       } else {
         processAnomalyInProgress(anomalyType);
       }
@@ -441,7 +457,7 @@ public class AnomalyDetector {
             if (isReadyToFix) {
               LOG.info("Fixing anomaly {}", _anomalyInProgress);
               fixStarted = _anomalyInProgress.fix();
-              String optimizationResult = _anomalyInProgress.optimizationResult(false);
+              String optimizationResult = ((KafkaAnomaly)_anomalyInProgress).optimizationResult(false);
               _anomalyLoggerExecutor.submit(() -> logSelfHealingOperation(anomalyId, null, optimizationResult));
             }
           } catch (OptimizationFailureException ofe) {
@@ -468,7 +484,7 @@ public class AnomalyDetector {
       }
       if (LOG.isDebugEnabled()) {
         LOG.debug("Clearing {} anomalies and scheduling a broker failure detection in {}ms.", _anomalies.size(),
-                  isReadyToFix ? 0L : _anomalyDetectionIntervalMs);
+                  isReadyToFix ? 0L : _brokerFailureDetectionBackoffMs);
       }
       _anomalies.clear();
       // Explicitly detect broker failures after clearing the queue. This ensures that anomaly detector does not miss
@@ -478,7 +494,7 @@ public class AnomalyDetector {
       // the call will create a broker failure anomaly. Depending on the time of the first broker failure in that anomaly,
       // it will trigger either a delayed check or a fix.
       _detectorScheduler.schedule(() -> _brokerFailureDetector.detectBrokerFailures(skipReportingIfNotUpdated),
-                                  isReadyToFix ? 0L : _anomalyDetectionIntervalMs, TimeUnit.MILLISECONDS);
+                                  isReadyToFix ? 0L : _brokerFailureDetectionBackoffMs, TimeUnit.MILLISECONDS);
     }
   }
 }
