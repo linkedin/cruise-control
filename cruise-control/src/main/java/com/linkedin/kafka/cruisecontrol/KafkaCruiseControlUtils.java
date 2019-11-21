@@ -370,7 +370,7 @@ public class KafkaCruiseControlUtils {
       String securityProtocol = configs.getString(AdminClientConfig.SECURITY_PROTOCOL_CONFIG);
       adminClientConfigs.put(AdminClientConfig.SECURITY_PROTOCOL_CONFIG, securityProtocol);
       setStringConfigIfExists(configs, adminClientConfigs, SaslConfigs.SASL_MECHANISM);
-      setStringConfigIfExists(configs, adminClientConfigs, SaslConfigs.SASL_LOGIN_CALLBACK_HANDLER_CLASS);
+      setClassConfigIfExists(configs, adminClientConfigs, SaslConfigs.SASL_LOGIN_CALLBACK_HANDLER_CLASS);
       setPasswordConfigIfExists(configs, adminClientConfigs, SaslConfigs.SASL_JAAS_CONFIG);
 
       // Configure SSL configs (if security protocol is SSL or SASL_SSL)
@@ -456,6 +456,14 @@ public class KafkaCruiseControlUtils {
   private static void setStringConfigIfExists(KafkaCruiseControlConfig configs, Map<String, Object> props, String name) {
     try {
       props.put(name, configs.getString(name));
+    } catch (ConfigException ce) {
+      // let it go.
+    }
+  }
+
+  private static void setClassConfigIfExists(KafkaCruiseControlConfig configs, Map<String, Object> props, String name) {
+    try {
+      props.put(name, configs.getClass(name));
     } catch (ConfigException ce) {
       // let it go.
     }
