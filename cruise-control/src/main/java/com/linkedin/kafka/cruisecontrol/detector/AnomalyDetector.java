@@ -457,7 +457,7 @@ public class AnomalyDetector {
             if (isReadyToFix) {
               LOG.info("Fixing anomaly {}", _anomalyInProgress);
               fixStarted = _anomalyInProgress.fix();
-              String optimizationResult = ((KafkaAnomaly)_anomalyInProgress).optimizationResult(false);
+              String optimizationResult = ((KafkaAnomaly) _anomalyInProgress).optimizationResult(false);
               _anomalyLoggerExecutor.submit(() -> logSelfHealingOperation(anomalyId, null, optimizationResult));
             }
           } catch (OptimizationFailureException ofe) {

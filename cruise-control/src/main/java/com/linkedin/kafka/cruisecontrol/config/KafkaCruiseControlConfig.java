@@ -1777,14 +1777,17 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 ANOMALY_DETECTION_INTERVAL_MS_DOC)
         .define(GOAL_VIOLATION_DETECTION_INTERVAL_MS_CONFIG,
                 ConfigDef.Type.LONG,
+                null,
                 ConfigDef.Importance.LOW,
                 GOAL_VIOLATION_DETECTION_INTERVAL_MS_DOC)
         .define(METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG,
                 ConfigDef.Type.LONG,
+                null,
                 ConfigDef.Importance.LOW,
                 METRIC_ANOMALY_DETECTION_INTERVAL_MS_DOC)
         .define(DISK_FAILURE_DETECTION_INTERVAL_MS_CONFIG,
                 ConfigDef.Type.LONG,
+                null,
                 ConfigDef.Importance.LOW,
                 DISK_FAILURE_DETECTION_INTERVAL_MS_DOC)
         .define(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG,
