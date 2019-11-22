@@ -1,0 +1,108 @@
+TopicConfigurationEndpoint:
+  post:
+    summary: Change the configuration of a topic
+    parameters:
+      - name: dryrun
+        in: query
+        description: Whether dry-run the request or not	
+        schema: 
+          type: boolean
+          default: true
+      - name: topic
+        in: query
+        description: Regular expression to specify subject topics
+        schema: 
+          type: string # topics regex
+          default: null
+      - name: replication_factor
+        in: query
+        description: Target replication factor
+        schema: 
+          type: integer
+          format: int32
+          minimum: 1
+      - name: data_from
+        in: query
+        description: Whether to calculate proposal from available valid partitions or valid windows	
+        schema: 
+          type: string
+          default: VALID_WINDOWS	
+      - name: goals
+        in: query
+        description: list of goals used to generate proposal
+        schema: 
+          type: array
+          items:
+            type: string
+            # default is every goal
+      - name: allow_capacity_estimation
+        in: query
+        description: Whether to allow broker capacity to be estimated
+        schema: 
+          type: boolean
+          default: false
+      - name: concurrent_partition_movements_per_broker
+        in: query
+        description: The upper bound of ongoing replica movements going into/out of each broker	
+        schema: 
+          type: integer
+          format: int32
+          minimum: 1
+      - name: concurrent_leader_movements
+        in: query
+        description: The upper bound of ongoing leadership movements	
+        schema: 
+          type: integer
+          format: int32
+          minimum: 1
+      - name: skip_hard_goal_check
+        in: query
+        description: Whether to allow hard goal be skipped in proposal generation	
+        schema: 
+          type: boolean
+          default: false
+      - name: exclude_recently_demoted_brokers
+        in: query
+        description: Whether to allow leader replicas to be moved to recently demoted broker
+        schema: 
+          type: boolean
+          default: false
+      - name: replica_movement_strategies
+        in: query
+        description: Replica movement strategies to use		
+        schema:
+          type: array
+          items:
+            type: string
+      - name: replication_throttle
+        in: query
+        description: Upper bound on the bandwidth used to move replicas
+        schema: 
+          type: integer
+      - name: json
+        in: query
+        description: Whether to return in JSON format or not	
+        schema: 
+          type: boolean
+          default: false
+      - name: verbose
+        in: query
+        description: Return detailed state information
+        schema: 
+          type: boolean
+          default: false  
+    responses:
+      '200':
+        description: |-
+          Successful topic configuration response
+        content:
+          application/json:
+            schema:
+              $ref: '../responses/topicConfigurationResult.yaml#/TopicConfigurationResult'
+      '202':
+        description: |-
+          Partition load state fetch in progress
+        content:
+          application/json:
+            schema:
+              $ref: '../responses/progressResult.yaml#/ProgressResult'

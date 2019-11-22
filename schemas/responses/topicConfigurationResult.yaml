@@ -1,0 +1,13 @@
+TopicConfigurationResult:
+  type: object
+  properties:
+    topics:
+      type: array
+      items:
+        type: string
+    newReplicationFactor:
+      type: integer
+      format: int32
+    version:
+      type: integer
+      format: int32
