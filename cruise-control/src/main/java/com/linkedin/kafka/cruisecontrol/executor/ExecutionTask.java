@@ -12,9 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.DATE_FORMAT;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.TIME_ZONE;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.*;
 
 
@@ -76,7 +73,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
    * @param brokerId The broker to operate on if the task is of type {@link TaskType#INTRA_BROKER_REPLICA_ACTION}.
    * @param type The {@link TaskType} of this task.
    * @param executionAlertingThresholdMs The alerting threshold of task execution time. If the execution time exceeds this
-   *                                     threshold, {@link #maybeReportExecutionTooSlow(long, ExecutorNotifier)} will be called.
+   *                                     threshold, {@link #maybeReportExecutionTooSlow(long, List)} will be called.
    */
   public ExecutionTask(long executionId, ExecutionProposal proposal, Integer brokerId, TaskType type, long executionAlertingThresholdMs) {
     if (type != TaskType.INTRA_BROKER_REPLICA_ACTION && brokerId != null) {
@@ -220,19 +217,17 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   }
 
   /**
-   * Send out an alert if the task's execution time exceeds alerting threshold.
-   * Note the alert will be sent out only for the first time the slow execution is detected.
+   * If the task's execution time exceeds alerting threshold, add the task to the group of tasks for which an alert will
+   * be sent out.
+   * Note to avoid repetitive alerts for the same task, the task will be added to the group only for the first time the
+   * slow execution is detected.
    *
    * @param now Current system time.
-   * @param executorNotifier The notifier to send out alert.
+   * @param tasksToReport A list of tasks for which a slow execution alert will be sent out.
    */
-  public void maybeReportExecutionTooSlow(long now, ExecutorNotifier executorNotifier) {
-    if (_slowExecutionReported) {
-      return;
-    }
-    if ((_state == IN_PROGRESS || _state == ABORTING) && now > _alertTimeMs) {
-      executorNotifier.sendAlert(String.format("Task [%s] starts at %s and it takes too long to finish.%nTask detail: %s.",
-                                               _executionId, toDateString(_startTimeMs, DATE_FORMAT, TIME_ZONE), this));
+  public void maybeReportExecutionTooSlow(long now, List<ExecutionTask> tasksToReport) {
+    if (!_slowExecutionReported && (_state == IN_PROGRESS || _state == ABORTING) && now > _alertTimeMs) {
+      tasksToReport.add(this);
       // Mute the task to prevent sending the same alert repeatedly.
       _slowExecutionReported = true;
     }

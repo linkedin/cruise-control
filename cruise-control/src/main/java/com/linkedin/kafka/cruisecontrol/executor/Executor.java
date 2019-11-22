@@ -47,7 +47,10 @@ import java.util.Collection;
 import java.util.List;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.currentUtcDate;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION_LOGGER;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.TIME_ZONE;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.DATE_FORMAT;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*;
@@ -74,6 +77,8 @@ public class Executor {
   private static final long PERMANENT_TIMESTAMP = 0L;
   private static final String ZK_EXECUTOR_METRIC_GROUP = "CruiseControlExecutor";
   private static final String ZK_EXECUTOR_METRIC_TYPE = "Executor";
+  // TODO: Make this configurable.
+  public static final long SLOW_TASK_ALERTING_BACKOFF_TIME_MS = 60000L;
   // The execution progress is controlled by the ExecutionTaskManager.
   private final ExecutionTaskManager _executionTaskManager;
   private final MetadataClient _metadataClient;
@@ -674,6 +679,7 @@ public class Executor {
     private final Long _replicationThrottle;
     private Throwable _executionException;
     private boolean _isTriggeredByUserRequest;
+    private long _lastSlowTaskReportingTimeMs;
 
     ProposalExecutionRunnable(LoadMonitor loadMonitor,
                               Collection<Integer> demotedBrokers,
@@ -713,6 +719,7 @@ public class Executor {
       _recentlyRemovedBrokers = recentlyRemovedBrokers();
       _replicationThrottle = replicationThrottle;
       _isTriggeredByUserRequest = isTriggeredByUserRequest;
+      _lastSlowTaskReportingTimeMs = -1L;
     }
 
     public void run() {
@@ -1132,6 +1139,8 @@ public class Executor {
           LOG.debug("Tasks in execution: {}", _executionTaskManager.inExecutionTasks());
         }
         Set<ExecutionTask> deadOrAbortingNonLeadershipTasks = new HashSet<>();
+        List<ExecutionTask> slowTasksToReport = new ArrayList<>();
+        boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > SLOW_TASK_ALERTING_BACKOFF_TIME_MS;
         for (ExecutionTask task : _executionTaskManager.inExecutionTasks()) {
           TopicPartition tp = task.proposal().topicPartition();
           if (_stopSignal.get() == FORCE_STOP_EXECUTION) {
@@ -1151,7 +1160,9 @@ public class Executor {
             finishedTasks.add(task);
             _executionTaskManager.markTaskDone(task);
           } else {
-            task.maybeReportExecutionTooSlow(_time.milliseconds(), _executorNotifier);
+            if (shouldReportSlowTasks) {
+              task.maybeReportExecutionTooSlow(_time.milliseconds(), slowTasksToReport);
+            }
             if (maybeMarkTaskAsDeadOrAborting(cluster, logDirInfoByTask, task)) {
               deadOrAbortingTaskIds.add(task.executionId());
               // Only add the dead or aborted tasks to execute if it is not a leadership movement.
@@ -1165,7 +1176,7 @@ public class Executor {
             }
           }
         }
-        handleDeadOrAbortingTasks(deadOrAbortingNonLeadershipTasks);
+        handleDeadOrAbortingTasks(deadOrAbortingNonLeadershipTasks, slowTasksToReport);
         updateOngoingExecutionState();
       } while (!_executionTaskManager.inExecutionTasks().isEmpty() && finishedTasks.isEmpty());
 
@@ -1177,7 +1188,18 @@ public class Executor {
       return finishedTasks;
     }
 
-    private void handleDeadOrAbortingTasks(Set<ExecutionTask> deadOrAbortingNonLeadershipTasks) {
+    private void handleDeadOrAbortingTasks(Set<ExecutionTask> deadOrAbortingNonLeadershipTasks,
+                                           List<ExecutionTask> slowTasksToReport) {
+      if (!slowTasksToReport.isEmpty()) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Slow tasks are detected:\n");
+        for (ExecutionTask task: slowTasksToReport) {
+          sb.append(String.format("\tID: %s\tstart_time:%s\tdetail:%s%n", task.executionId(),
+                                  toDateString(task.startTimeMs(), DATE_FORMAT, TIME_ZONE), task));
+        }
+        _executorNotifier.sendAlert(sb.toString());
+      }
+
       if (!deadOrAbortingNonLeadershipTasks.isEmpty()) {
         // TODO: Rollback tasks when KIP-455 is available.
         // ExecutorAdminUtils.executeReplicaReassignmentTasks(_kafkaZkClient, deadOrAbortingTasks);
