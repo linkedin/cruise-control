@@ -83,15 +83,15 @@ public class AnomalyDetector {
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
     _adminClient = KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
     long anomalyDetectionIntervalMs = config.getLong(KafkaCruiseControlConfig.ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
-    _goalViolationDetectionIntervalMs = config.getLong(KafkaCruiseControlConfig.GOAL_VIOLATION_DETECTION_INTERVAL_MS_CONFIG) != null ?
-                                        config.getLong(KafkaCruiseControlConfig.GOAL_VIOLATION_DETECTION_INTERVAL_MS_CONFIG) :
-                                        anomalyDetectionIntervalMs;
-    _metricAnomalyDetectionIntervalMs = config.getLong(KafkaCruiseControlConfig.METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG) != null ?
-                                        config.getLong(KafkaCruiseControlConfig.METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG) :
-                                        anomalyDetectionIntervalMs;
-    _diskFailureDetectionIntervalMs = config.getLong(KafkaCruiseControlConfig.DISK_FAILURE_DETECTION_INTERVAL_MS_CONFIG) != null ?
-                                      config.getLong(KafkaCruiseControlConfig.DISK_FAILURE_DETECTION_INTERVAL_MS_CONFIG) :
-                                      anomalyDetectionIntervalMs;
+    Long goalViolationDetectionIntervalMs = config.getLong(KafkaCruiseControlConfig.GOAL_VIOLATION_DETECTION_INTERVAL_MS_CONFIG);
+    _goalViolationDetectionIntervalMs = goalViolationDetectionIntervalMs == null ? anomalyDetectionIntervalMs
+                                                                                 : goalViolationDetectionIntervalMs;
+    Long metricAnomalyDetectionIntervalMs = config.getLong(KafkaCruiseControlConfig.METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
+    _metricAnomalyDetectionIntervalMs = metricAnomalyDetectionIntervalMs == null ? anomalyDetectionIntervalMs
+                                                                                 : metricAnomalyDetectionIntervalMs;
+    Long diskFailureDetectionIntervalMs = config.getLong(KafkaCruiseControlConfig.DISK_FAILURE_DETECTION_INTERVAL_MS_CONFIG);
+    _diskFailureDetectionIntervalMs = diskFailureDetectionIntervalMs == null ? anomalyDetectionIntervalMs
+                                                                             : diskFailureDetectionIntervalMs;
     _brokerFailureDetectionBackoffMs = config.getLong(KafkaCruiseControlConfig.BROKER_FAILURE_DETECTION_BACKOFF_MS_CONFIG);
     _anomalyNotifier = config.getConfiguredInstance(KafkaCruiseControlConfig.ANOMALY_NOTIFIER_CLASS_CONFIG,
                                                     AnomalyNotifier.class);
@@ -196,11 +196,14 @@ public class AnomalyDetector {
     _anomalies.add(SHUTDOWN_ANOMALY);
     _detectorScheduler.shutdown();
     KafkaCruiseControlUtils.closeAdminClientWithTimeout(_adminClient);
-
+    long schedulerShutDownTimeoutMs = Math.max(_brokerFailureDetectionBackoffMs,
+                                      Math.max(_diskFailureDetectionIntervalMs,
+                                      Math.max(_goalViolationDetectionIntervalMs,
+                                               _metricAnomalyDetectionIntervalMs)));
     try {
-      _detectorScheduler.awaitTermination(_goalViolationDetectionIntervalMs, TimeUnit.MILLISECONDS);
+      _detectorScheduler.awaitTermination(schedulerShutDownTimeoutMs, TimeUnit.MILLISECONDS);
       if (!_detectorScheduler.isTerminated()) {
-        LOG.warn("The sampling scheduler failed to shutdown in " + _goalViolationDetectionIntervalMs + " ms.");
+        LOG.warn("The sampling scheduler failed to shutdown in " + schedulerShutDownTimeoutMs + " ms.");
       }
     } catch (InterruptedException e) {
       LOG.warn("Interrupted while waiting for anomaly detector to shutdown.");
@@ -457,7 +460,7 @@ public class AnomalyDetector {
             if (isReadyToFix) {
               LOG.info("Fixing anomaly {}", _anomalyInProgress);
               fixStarted = _anomalyInProgress.fix();
-              String optimizationResult = ((KafkaAnomaly) _anomalyInProgress).optimizationResult(false);
+              String optimizationResult = _anomalyInProgress.optimizationResult(false);
               _anomalyLoggerExecutor.submit(() -> logSelfHealingOperation(anomalyId, null, optimizationResult));
             }
           } catch (OptimizationFailureException ofe) {

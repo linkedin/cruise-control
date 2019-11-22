@@ -2066,7 +2066,9 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    *   <li>sampling frequency per broker window is within the limits -- i.e. ({@link #BROKER_METRICS_WINDOW_MS_CONFIG} /
    *   {@link #METRIC_SAMPLING_INTERVAL_MS_CONFIG}) <= {@link Byte#MAX_VALUE}, and</li>
    *   <li>{@link CruiseControlMetricsReporterConfig#CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG} is not longer than
-   *   {@link #METRIC_SAMPLING_INTERVAL_MS_CONFIG}</li>
+   *   {@link #METRIC_SAMPLING_INTERVAL_MS_CONFIG}, and</li>
+   *   <li>{@link #METRIC_SAMPLING_INTERVAL_MS_CONFIG} is not longer than {@link #METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG}
+   *   (or #ANOMALY_DETECTION_INTERVAL_MS_CONFIG if #METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG is not specified)</li>
    * </ul>
    *
    * Sampling process involves a potential metadata update if the current metadata is stale. The configuration
@@ -2116,6 +2118,20 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                                               reportingIntervalMs, samplingIntervalMs,
                                               CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG,
                                               METRIC_SAMPLING_INTERVAL_MS_CONFIG));
+    }
+
+    // Ensure sampling frequency is is higher than metric anomaly detection frequency.
+    Long metricAnomalyDetectionIntervalMs = getLong(METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
+    if (metricAnomalyDetectionIntervalMs == null) {
+      metricAnomalyDetectionIntervalMs = getLong(ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
+    }
+    if (samplingIntervalMs > metricAnomalyDetectionIntervalMs) {
+      throw new ConfigException(String.format("Configured metric sampling interval (%d) exceeds metric anomaly detection interval (%d). "
+                                              + "Decrease the value of %s or increase the value of %s (or %s if %s is not specified) to "
+                                              + "ensure that metrics anomaly detection does not run too frequently.",
+                                              samplingIntervalMs, metricAnomalyDetectionIntervalMs,
+                                              METRIC_SAMPLING_INTERVAL_MS_CONFIG, METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG,
+                                              ANOMALY_DETECTION_INTERVAL_MS_CONFIG, METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG));
     }
   }
 

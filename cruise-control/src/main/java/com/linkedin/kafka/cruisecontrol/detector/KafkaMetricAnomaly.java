@@ -80,7 +80,7 @@ public class KafkaMetricAnomaly extends KafkaAnomaly implements MetricAnomaly<Br
    * @param isJson True for JSON response, false otherwise.
    * @return The optimization result of self healing process, or null if no optimization result is available.
    */
-  String optimizationResult(boolean isJson) {
+  public String optimizationResult(boolean isJson) {
     if (_optimizationResult == null) {
       return null;
     }

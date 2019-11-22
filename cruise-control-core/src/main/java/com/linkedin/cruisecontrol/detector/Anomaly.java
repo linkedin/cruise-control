@@ -34,4 +34,12 @@ public interface Anomaly {
    * @return True if fix was started successfully, false otherwise.
    */
   boolean fix() throws Exception;
+
+  /**
+   * Get the optimization result of self healing process, or null if no optimization result is available.
+   *
+   * @param isJson True for JSON response, false otherwise.
+   * @return The optimization result of self healing process, or null if no optimization result is available.
+   */
+  String optimizationResult(boolean isJson);
 }
