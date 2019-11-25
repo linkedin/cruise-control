@@ -56,6 +56,7 @@ import scala.collection.JavaConverters;
 import scala.collection.Seq;
 
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.ensureTopicNotUnderPartitionReassignment;
+import static scala.Option.empty;
 
 /**
  * The sample store that implements the {@link SampleStore}. It stores the partition metric samples and broker metric
@@ -277,7 +278,7 @@ public class KafkaSampleStore implements SampleStore {
                      scala.collection.immutable.Set$.MODULE$.apply(
                      JavaConverters.asScalaBufferConverter(Collections.singletonList(topic)).asScala().toSeq())))
                      .forEach(e -> existingAssignment.put(e._1.partition(), e._2));
-      adminZkClient.addPartitions(topic, existingAssignment, adminZkClient.getBrokerMetadatas(RackAwareMode.Safe$.MODULE$, null),
+      adminZkClient.addPartitions(topic, existingAssignment, adminZkClient.getBrokerMetadatas(RackAwareMode.Safe$.MODULE$, empty()),
                                   partitionCount, null, false);
       LOG.info("Kafka topic " + topic + " now has " + partitionCount + " partitions.");
     }
