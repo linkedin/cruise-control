@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.executor;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import kafka.log.LogConfig;
 import kafka.server.ConfigType;
-import kafka.server.DynamicConfig;
 import kafka.zk.AdminZkClient;
 import kafka.zk.KafkaZkClient;
 import org.slf4j.Logger;
@@ -30,8 +29,8 @@ import java.util.stream.Stream;
 class ReplicationThrottleHelper {
   private static final Logger LOG = LoggerFactory.getLogger(ReplicationThrottleHelper.class);
 
-  static final String LEADER_THROTTLED_RATE = DynamicConfig.Broker$.MODULE$.LeaderReplicationThrottledRateProp();
-  static final String FOLLOWER_THROTTLED_RATE = DynamicConfig.Broker$.MODULE$.FollowerReplicationThrottledRateProp();
+  static final String LEADER_THROTTLED_RATE = "leader.replication.throttled.rate";
+  static final String FOLLOWER_THROTTLED_RATE = "follower.replication.throttled.rate";
   static final String LEADER_THROTTLED_REPLICAS = LogConfig.LeaderReplicationThrottledReplicasProp();
   static final String FOLLOWER_THROTTLED_REPLICAS = LogConfig.FollowerReplicationThrottledReplicasProp();
 
