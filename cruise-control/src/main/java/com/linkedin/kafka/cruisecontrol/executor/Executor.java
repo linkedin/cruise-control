@@ -1191,13 +1191,7 @@ public class Executor {
     private void handleDeadOrAbortingTasks(Set<ExecutionTask> deadOrAbortingNonLeadershipTasks,
                                            List<ExecutionTask> slowTasksToReport) {
       if (!slowTasksToReport.isEmpty()) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Slow tasks are detected:\n");
-        for (ExecutionTask task: slowTasksToReport) {
-          sb.append(String.format("\tID: %s\tstart_time:%s\tdetail:%s%n", task.executionId(),
-                                  toDateString(task.startTimeMs(), DATE_FORMAT, TIME_ZONE), task));
-        }
-        _executorNotifier.sendAlert(sb.toString());
+        sendSlowExecutionAlert(slowTasksToReport);
       }
 
       if (!deadOrAbortingNonLeadershipTasks.isEmpty()) {
@@ -1210,6 +1204,17 @@ public class Executor {
           stopExecution(false);
         }
       }
+    }
+
+    private void sendSlowExecutionAlert(List<ExecutionTask> slowTasksToReport) {
+      StringBuilder sb = new StringBuilder();
+      sb.append("Slow tasks are detected:\n");
+      for (ExecutionTask task: slowTasksToReport) {
+        sb.append(String.format("\tID: %s\tstart_time:%s\tdetail:%s%n", task.executionId(),
+                                toDateString(task.startTimeMs(), DATE_FORMAT, TIME_ZONE), task));
+      }
+      _executorNotifier.sendAlert(sb.toString());
+      _lastSlowTaskReportingTimeMs = _time.milliseconds();
     }
 
     /**
