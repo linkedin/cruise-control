@@ -279,7 +279,7 @@ public class KafkaSampleStore implements SampleStore {
                      JavaConverters.asScalaBufferConverter(Collections.singletonList(topic)).asScala().toSeq())))
                      .forEach(e -> existingAssignment.put(e._1.partition(), e._2));
       adminZkClient.addPartitions(topic, existingAssignment, adminZkClient.getBrokerMetadatas(RackAwareMode.Safe$.MODULE$, empty()),
-                                  partitionCount, null, false);
+                                  partitionCount, empty(), false);
       LOG.info("Kafka topic " + topic + " now has " + partitionCount + " partitions.");
     }
   }
