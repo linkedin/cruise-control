@@ -164,6 +164,20 @@ public class WebServerConfig {
           "and authorization rules";
 
   /**
+   * <code>basic.auth.enable</code>
+   */
+  public static final String BASIC_AUTH_ENABLE_CONFIG = "basic.auth.enable";
+  private static final String BASIC_AUTH_ENABLE_DOCS = "Enables basic authentication over HTTPS.";
+
+  /**
+   * <code>basic.auth.credentials.file</code>
+   */
+  public static final String BASIC_AUTH_CREDENTIALS_FILE_CONFIG = "basic.auth.credentials.file";
+  private static final String BASIC_AUTH_CREDENTIALS_FILE_DOCS = "A file that contains credentials for basic authentication." +
+      "The format of the file is the following: username: password [,rolename ...] which corresponds to Jetty's " +
+      "HashLoginService's credentials file format.";
+
+  /**
    * <code>webserver.ssl.keystore.location</code>
    */
   public static final String WEBSERVER_SSL_KEYSTORE_LOCATION_CONFIG = "webserver.ssl.keystore.location";
@@ -301,6 +315,16 @@ public class WebServerConfig {
                             null,
                             ConfigDef.Importance.MEDIUM,
                             SECURITY_PROVIDER_DOC)
+                    .define(BASIC_AUTH_ENABLE_CONFIG,
+                            ConfigDef.Type.BOOLEAN,
+                            false,
+                            ConfigDef.Importance.MEDIUM,
+                            BASIC_AUTH_ENABLE_DOCS)
+                    .define(BASIC_AUTH_CREDENTIALS_FILE_CONFIG,
+                            ConfigDef.Type.STRING,
+                            "/etc/cruisecontrol-basic-auth.credentials",
+                            ConfigDef.Importance.MEDIUM,
+                            BASIC_AUTH_CREDENTIALS_FILE_DOCS)
                     .define(WEBSERVER_SSL_KEYSTORE_LOCATION_CONFIG,
                             ConfigDef.Type.STRING,
                             null,

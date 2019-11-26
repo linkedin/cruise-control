@@ -36,6 +36,10 @@ public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegra
     _config = new KafkaCruiseControlConfig(properties);
   }
 
+  /**
+   * Starts up an embedded Cruise Control environment with Zookeeper, Kafka brokers and a Cruise Control instance.
+   * @throws Exception
+   */
   @Before
   public void start() throws Exception {
     super.setUp();
@@ -45,6 +49,10 @@ public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegra
     _app.start();
   }
 
+  /**
+   * Shuts down the CruiseControl instance, Kafka brokers and the Zookeeper instance.
+   * @throws Exception
+   */
   @After
   public void stop() {
     if (_app != null) {

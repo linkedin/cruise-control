@@ -2,7 +2,7 @@
  * Copyright 2019 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
-package com.linkedin.kafka.cruisecontrol.servlet;
+package com.linkedin.kafka.cruisecontrol.servlet.security;
 
 import com.linkedin.kafka.cruisecontrol.CruiseControlIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
@@ -47,7 +47,7 @@ public class AuthenticationIntegrationTest extends CruiseControlIntegrationTestH
 
   @Override
   protected Map<String, Object> withConfigs() {
-    return Collections.singletonMap(WebServerConfig.SECURITY_PROVIDER_CONFIG, BasicSecurityProvider.class.getName());
+    return Collections.singletonMap(WebServerConfig.SECURITY_PROVIDER_CONFIG, DummySecurityProvider.class.getName());
   }
 
   @Test
@@ -68,7 +68,7 @@ public class AuthenticationIntegrationTest extends CruiseControlIntegrationTestH
     assertEquals(HttpServletResponse.SC_UNAUTHORIZED, connection.getResponseCode());
   }
 
-  public static class BasicSecurityProvider implements SecurityProvider {
+  public static class DummySecurityProvider implements SecurityProvider {
 
     @Override
     public List<ConstraintMapping> constraintMappings() {

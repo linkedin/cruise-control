@@ -10,7 +10,9 @@ import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
-import com.linkedin.kafka.cruisecontrol.servlet.SecurityProvider;
+import com.linkedin.kafka.cruisecontrol.servlet.security.BasicSecurityProvider;
+import com.linkedin.kafka.cruisecontrol.servlet.security.CruiseControlSecurityHandler;
+import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityProvider;
 import org.eclipse.jetty.security.ConstraintSecurityHandler;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.NCSARequestLog;
@@ -155,8 +157,13 @@ public class KafkaCruiseControlApp {
   }
 
   private ConstraintSecurityHandler createSecurityHandler() {
-    ConstraintSecurityHandler securityHandler = new ConstraintSecurityHandler();
-    SecurityProvider securityProvider = _config.getConfiguredInstance(WebServerConfig.SECURITY_PROVIDER_CONFIG, SecurityProvider.class);
+    ConstraintSecurityHandler securityHandler = new CruiseControlSecurityHandler();
+    SecurityProvider securityProvider;
+    if (_config.getBoolean(WebServerConfig.BASIC_AUTH_ENABLE_CONFIG)) {
+      securityProvider = new BasicSecurityProvider(_config);
+    } else {
+      securityProvider = _config.getConfiguredInstance(WebServerConfig.SECURITY_PROVIDER_CONFIG, SecurityProvider.class);
+    }
     if (securityProvider != null) {
       securityHandler.setConstraintMappings(securityProvider.constraintMappings());
       securityHandler.setAuthenticator(securityProvider.authenticator());

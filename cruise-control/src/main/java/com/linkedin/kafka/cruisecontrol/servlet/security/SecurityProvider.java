@@ -2,7 +2,7 @@
  * Copyright 2019 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
-package com.linkedin.kafka.cruisecontrol.servlet;
+package com.linkedin.kafka.cruisecontrol.servlet.security;
 
 import org.eclipse.jetty.security.Authenticator;
 import org.eclipse.jetty.security.ConstraintMapping;
@@ -20,12 +20,16 @@ public interface SecurityProvider {
   /**
    * Creates or gets a list of constraints that are put on the API endpoints, for instance only
    * allow certain roles on certain endpoints.
+   *
+   * @return a list of created {@link ConstraintMapping}s that represent permissions.
    */
   List<ConstraintMapping> constraintMappings();
 
   /**
    * Associates a username, credentials and roles with a {@link org.eclipse.jetty.server.UserIdentity}
    * that will be used by Jetty to manage the authentication.
+   *
+   * @return a new {@link LoginService}.
    */
   LoginService loginService();
 
@@ -33,11 +37,15 @@ public interface SecurityProvider {
    * Defines the request authentication method which is responsible to send challenges
    * according to authentication method and decide if the user has valid credentials according
    * to the authentication method.
+   *
+   * @return the {@link Authenticator} that'll be used for checking the incoming requests.
    */
   Authenticator authenticator();
 
   /**
-   * A list of strings that define the possible roles in Cruise Control.
+   * The set of roles defined by this {@link SecurityProvider}.
+   *
+   * @return list of strings that define the possible roles in Cruise Control.
    */
   Set<String> roles();
 }
