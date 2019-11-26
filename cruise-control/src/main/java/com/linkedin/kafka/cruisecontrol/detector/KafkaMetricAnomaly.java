@@ -9,7 +9,6 @@ import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomaly;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import java.util.Map;
-import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +26,6 @@ public class KafkaMetricAnomaly extends KafkaAnomaly implements MetricAnomaly<Br
   private static final Logger LOG = LoggerFactory.getLogger(KafkaMetricAnomaly.class);
   protected String _description;
   protected Map<BrokerEntity, Long> _brokerEntitiesWithDetectionTimeMs;
-  protected String _anomalyId;
   protected Boolean _fixable;
 
   public KafkaMetricAnomaly() {
@@ -41,11 +39,6 @@ public class KafkaMetricAnomaly extends KafkaAnomaly implements MetricAnomaly<Br
   @Override
   public Map<BrokerEntity, Long> entities() {
     return _brokerEntitiesWithDetectionTimeMs;
-  }
-
-  @Override
-  public String anomalyId() {
-    return _anomalyId;
   }
 
   /**
@@ -96,7 +89,6 @@ public class KafkaMetricAnomaly extends KafkaAnomaly implements MetricAnomaly<Br
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    _anomalyId = UUID.randomUUID().toString();
     _description = (String) configs.get(METRIC_ANOMALY_DESCRIPTION_OBJECT_CONFIG);
     _fixable = (Boolean) configs.get(METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG);
     if (_fixable == null) {

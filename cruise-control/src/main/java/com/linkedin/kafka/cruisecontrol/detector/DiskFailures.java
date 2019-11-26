@@ -11,7 +11,6 @@ import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.FixOfflineReplicasRunnable;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Map;
-import java.util.UUID;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
 import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG;
@@ -27,7 +26,6 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyTyp
  */
 public class DiskFailures extends KafkaAnomaly {
   protected Map<Integer, Map<String, Long>> _failedDisksByBroker;
-  protected String _anomalyId;
   protected FixOfflineReplicasRunnable _fixOfflineReplicasRunnable;
 
   public DiskFailures() {
@@ -38,11 +36,6 @@ public class DiskFailures extends KafkaAnomaly {
    */
   public Map<Integer, Map<String, Long>> failedDisks() {
     return _failedDisksByBroker;
-  }
-
-  @Override
-  public String anomalyId() {
-    return _anomalyId;
   }
 
   @Override
@@ -80,7 +73,6 @@ public class DiskFailures extends KafkaAnomaly {
     if (_failedDisksByBroker == null || _failedDisksByBroker.isEmpty()) {
       throw new IllegalArgumentException("Unable to create disk failure anomaly with no failed disk specified.");
     }
-    _anomalyId = UUID.randomUUID().toString();
     _optimizationResult = null;
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
     boolean allowCapacityEstimation = config.getBoolean(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
@@ -91,7 +83,7 @@ public class DiskFailures extends KafkaAnomaly {
                                                                  allowCapacityEstimation,
                                                                  excludeRecentlyDemotedBrokers,
                                                                  excludeRecentlyRemovedBrokers,
-                                                                 _anomalyId,
+                                                                 _anomalyId.toString(),
                                                                  String.format("Self healing for %s: %s", DISK_FAILURE, this));
   }
 }

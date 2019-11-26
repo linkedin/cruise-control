@@ -79,7 +79,7 @@ public class SlowBrokers extends KafkaMetricAnomaly {
                                       allowCapacityEstimation,
                                       excludeRecentlyDemotedBrokers,
                                       excludeRecentlyRemovedBrokers,
-                                      _anomalyId,
+                                      _anomalyId.toString(),
                                       String.format("Self healing for slow brokers: %s", this));
       } else {
         _demoteBrokerRunnable =
@@ -88,7 +88,7 @@ public class SlowBrokers extends KafkaMetricAnomaly {
                                                                        .collect(Collectors.toSet()),
                                      allowCapacityEstimation,
                                      excludeRecentlyDemotedBrokers,
-                                     _anomalyId,
+                                     _anomalyId.toString(),
                                      String.format("Self healing for slow brokers: %s", this));
       }
     }

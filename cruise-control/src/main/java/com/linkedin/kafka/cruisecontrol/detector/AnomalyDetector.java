@@ -19,7 +19,6 @@ import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
@@ -36,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION_LOGGER;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckGoals;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.anomalyComparator;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getSelfHealingGoalNames;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.SHUTDOWN_ANOMALY;
 
@@ -46,6 +46,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.SHU
 public class AnomalyDetector {
   static final String METRIC_REGISTRY_NAME = "AnomalyDetector";
   private static final int INIT_JITTER_BOUND = 10000;
+  private static final long SCHEDULER_SHUTDOWN_TIMEOUT_MS = 5000L;
   private static final int NUM_ANOMALY_DETECTION_THREADS = 5;
   private static final int ANOMALY_QUEUE_INITIAL_CAPACITY = 10;
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetector.class);
@@ -77,9 +78,7 @@ public class AnomalyDetector {
                          MetricRegistry dropwizardMetricRegistry) {
     // For anomalies of different types, prioritize handling anomaly of higher priority;
     // otherwise, handle anomaly in order of detected time.
-    _anomalies = new PriorityBlockingQueue<>(ANOMALY_QUEUE_INITIAL_CAPACITY,
-                                             Comparator.comparing((Anomaly anomaly) -> anomaly.anomalyType().priority())
-                                                       .thenComparingLong(Anomaly::detectionTimeMs));
+    _anomalies = new PriorityBlockingQueue<>(ANOMALY_QUEUE_INITIAL_CAPACITY, anomalyComparator());
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
     _adminClient = KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
     long anomalyDetectionIntervalMs = config.getLong(KafkaCruiseControlConfig.ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
@@ -193,17 +192,15 @@ public class AnomalyDetector {
     synchronized (_shutdownLock) {
       _shutdown = true;
     }
+    // SHUTDOWN_ANOMALY is a broker failure with detection time set to 0ms. Here we expect it is added to the front of the
+    // priority queue and notify anomaly handler immediately.
     _anomalies.add(SHUTDOWN_ANOMALY);
     _detectorScheduler.shutdown();
     KafkaCruiseControlUtils.closeAdminClientWithTimeout(_adminClient);
-    long schedulerShutDownTimeoutMs = Math.max(_brokerFailureDetectionBackoffMs,
-                                      Math.max(_diskFailureDetectionIntervalMs,
-                                      Math.max(_goalViolationDetectionIntervalMs,
-                                               _metricAnomalyDetectionIntervalMs)));
     try {
-      _detectorScheduler.awaitTermination(schedulerShutDownTimeoutMs, TimeUnit.MILLISECONDS);
+      _detectorScheduler.awaitTermination(SCHEDULER_SHUTDOWN_TIMEOUT_MS, TimeUnit.MILLISECONDS);
       if (!_detectorScheduler.isTerminated()) {
-        LOG.warn("The sampling scheduler failed to shutdown in " + schedulerShutDownTimeoutMs + " ms.");
+        LOG.warn("The sampling scheduler failed to shutdown in " + SCHEDULER_SHUTDOWN_TIMEOUT_MS + " ms.");
       }
     } catch (InterruptedException e) {
       LOG.warn("Interrupted while waiting for anomaly detector to shutdown.");

@@ -61,7 +61,7 @@ public class KafkaMetricAnomalyFinderTest {
     assertTrue("There should be exactly a single metric anomaly", anomalies.size() == 1);
 
     MetricAnomaly<BrokerEntity> anomaly = anomalies.iterator().next();
-    assertTrue(anomaly.entities().keySet().contains(_brokerEntity));
+    assertTrue(anomaly.entities().containsKey(_brokerEntity));
     assertEquals(_anomalyDetectionTimeMs, (long) anomaly.entities().get(_brokerEntity));
   }
 

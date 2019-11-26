@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
-import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
@@ -13,7 +12,6 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.KafkaTopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
-import java.util.Comparator;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
@@ -109,15 +107,5 @@ public class KafkaCruiseControlUnitTestUtils {
       }
       aggregatedMetricValues.add(id, metricValues);
     }
-  }
-
-  /**
-   * Get a comparator of anomaly based on anomaly type and anomaly detection time.
-   *
-   * @return The anomaly comparator.
-   */
-  public static Comparator<Anomaly> anomalyComparator() {
-    return Comparator.comparing((Anomaly anomaly) -> anomaly.anomalyType().priority())
-                     .thenComparingLong(Anomaly::detectionTimeMs);
   }
 }

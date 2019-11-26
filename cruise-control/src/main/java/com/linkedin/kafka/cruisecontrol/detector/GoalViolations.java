@@ -16,7 +16,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
-import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +36,6 @@ public class GoalViolations extends KafkaAnomaly {
   protected Map<Boolean, List<String>> _violatedGoalsByFixability;
   protected boolean _excludeRecentlyDemotedBrokers;
   protected boolean _excludeRecentlyRemovedBrokers;
-  protected String _anomalyId;
   protected RebalanceRunnable _rebalanceRunnable;
 
   /**
@@ -61,11 +59,6 @@ public class GoalViolations extends KafkaAnomaly {
    */
   public Map<Boolean, List<String>> violatedGoalsByFixability() {
     return _violatedGoalsByFixability;
-  }
-
-  @Override
-  public String anomalyId() {
-    return _anomalyId;
   }
 
   @Override
@@ -117,13 +110,12 @@ public class GoalViolations extends KafkaAnomaly {
     boolean allowCapacityEstimation = config.getBoolean(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
     _excludeRecentlyDemotedBrokers = config.getBoolean(SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
     _excludeRecentlyRemovedBrokers = config.getBoolean(SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
-    _anomalyId = UUID.randomUUID().toString();
     _rebalanceRunnable = new RebalanceRunnable(kafkaCruiseControl,
                                                getSelfHealingGoalNames(config),
                                                allowCapacityEstimation,
                                                _excludeRecentlyDemotedBrokers,
                                                _excludeRecentlyRemovedBrokers,
-                                               _anomalyId,
+                                               _anomalyId.toString(),
                                                 String.format("Self healing for %s: %s", GOAL_VIOLATION, this));
   }
 }

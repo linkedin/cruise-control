@@ -23,7 +23,7 @@ public interface MetricAnomaly<E extends Entity> extends Anomaly {
   String description();
 
   /**
-   * Get the entities with metric anomaly.
+   * Get the entities with metric anomaly detected.
    *
    * @return  A map of entities with metric anomaly detected to detection time.
    */

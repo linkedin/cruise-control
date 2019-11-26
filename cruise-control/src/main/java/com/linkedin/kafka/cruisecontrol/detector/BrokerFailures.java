@@ -11,7 +11,6 @@ import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RemoveBrokersRunnable;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Map;
-import java.util.UUID;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
 import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG;
@@ -27,7 +26,6 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyTyp
  */
 public class BrokerFailures extends KafkaAnomaly {
   protected Map<Integer, Long> _failedBrokers;
-  protected String _anomalyId;
   protected RemoveBrokersRunnable _removeBrokersRunnable;
 
   /**
@@ -42,11 +40,6 @@ public class BrokerFailures extends KafkaAnomaly {
    */
   public Map<Integer, Long> failedBrokers() {
     return _failedBrokers;
-  }
-
-  @Override
-  public String anomalyId() {
-    return _anomalyId;
   }
 
   @Override
@@ -85,7 +78,6 @@ public class BrokerFailures extends KafkaAnomaly {
     if (_failedBrokers != null && _failedBrokers.isEmpty()) {
       throw new IllegalArgumentException("Missing broker ids for failed brokers anomaly.");
     }
-    _anomalyId = UUID.randomUUID().toString();
     _optimizationResult = null;
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
     boolean allowCapacityEstimation = config.getBoolean(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
@@ -97,7 +89,7 @@ public class BrokerFailures extends KafkaAnomaly {
                                                                                 allowCapacityEstimation,
                                                                                 excludeRecentlyDemotedBrokers,
                                                                                 excludeRecentlyRemovedBrokers,
-                                                                                _anomalyId,
+                                                                                _anomalyId.toString(),
                                                                                 String.format("Self healing for %s: %s", BROKER_FAILURE, this))
                                                     : null;
     }

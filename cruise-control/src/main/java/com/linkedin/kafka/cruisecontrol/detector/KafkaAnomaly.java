@@ -8,6 +8,7 @@ import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Map;
+import java.util.UUID;
 
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
 
@@ -18,6 +19,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANO
 public abstract class KafkaAnomaly implements Anomaly, CruiseControlConfigurable {
   protected OptimizationResult _optimizationResult;
   protected long _detectionTimeMs;
+  protected UUID _anomalyId;
 
   @Override
   public String optimizationResult(boolean isJson) {
@@ -38,7 +40,13 @@ public abstract class KafkaAnomaly implements Anomaly, CruiseControlConfigurable
   }
 
   @Override
+  public String anomalyId() {
+    return _anomalyId.toString();
+  }
+
+  @Override
   public void configure(Map<String, ?> configs) {
+    _anomalyId = UUID.randomUUID();
     Long detectionTimeMs = (Long) configs.get(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG);
     if (detectionTimeMs == null) {
       throw new IllegalArgumentException(String.format("Missing %s when creating anomaly of type %s.",

@@ -25,10 +25,10 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.anomalyComparator;
 import static org.easymock.EasyMock.anyLong;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.anomalyComparator;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE;
 
 
