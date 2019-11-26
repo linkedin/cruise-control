@@ -84,11 +84,11 @@ import static scala.Option.empty;
  */
 public class KafkaSampleStore implements SampleStore {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaSampleStore.class);
-  private static final String DEFAULT_CLEANUP_POLICY = "delete";
+  protected static final String DEFAULT_CLEANUP_POLICY = "delete";
   // Keep additional windows in case some of the windows do not have enough samples.
-  private static final int ADDITIONAL_WINDOW_TO_RETAIN_FACTOR = 2;
-  private static final ConsumerRecords<byte[], byte[]> SHUTDOWN_RECORDS = new ConsumerRecords<>(Collections.emptyMap());
-  private static final Duration SAMPLE_POLL_TIMEOUT = Duration.ofMillis(1000L);
+  protected static final int ADDITIONAL_WINDOW_TO_RETAIN_FACTOR = 2;
+  protected static final ConsumerRecords<byte[], byte[]> SHUTDOWN_RECORDS = new ConsumerRecords<>(Collections.emptyMap());
+  protected static final Duration SAMPLE_POLL_TIMEOUT = Duration.ofMillis(1000L);
 
   protected static final int DEFAULT_NUM_SAMPLE_LOADING_THREADS = 8;
   protected static final int DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR = 2;
@@ -213,7 +213,7 @@ public class KafkaSampleStore implements SampleStore {
   }
 
   @SuppressWarnings("unchecked")
-  private void ensureTopicsCreated(Map<String, ?> config) {
+  protected void ensureTopicsCreated(Map<String, ?> config) {
     String connectString = (String) config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
     boolean zkSecurityEnabled = (Boolean) config.get(KafkaCruiseControlConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(connectString,
@@ -263,7 +263,7 @@ public class KafkaSampleStore implements SampleStore {
    * @param partitionCount The target partition count of the topic.
    */
   @SuppressWarnings("unchecked")
-  private void maybeIncreaseTopicPartitionCount(KafkaZkClient kafkaZkClient,
+  protected void maybeIncreaseTopicPartitionCount(KafkaZkClient kafkaZkClient,
                                                 AdminZkClient adminZkClient,
                                                 String topic,
                                                 TopicDescription topicDescription,
@@ -284,7 +284,7 @@ public class KafkaSampleStore implements SampleStore {
     }
   }
 
-  private void ensureTopicCreated(KafkaZkClient kafkaZkClient,
+  protected void ensureTopicCreated(KafkaZkClient kafkaZkClient,
                                   AdminZkClient adminZkClient,
                                   AdminClient adminClient,
                                   Set<String> allTopics,
@@ -409,7 +409,7 @@ public class KafkaSampleStore implements SampleStore {
     _producer.close(300L, TimeUnit.SECONDS);
   }
 
-  private void prepareConsumers() {
+  protected void prepareConsumers() {
     int numConsumers = _consumers.size();
     List<List<TopicPartition>> assignments = new ArrayList<>();
     for (int i = 0; i < numConsumers; i++) {
@@ -426,13 +426,13 @@ public class KafkaSampleStore implements SampleStore {
     }
   }
 
-  private class MetricLoader implements Runnable {
-    private final SampleLoader _sampleLoader;
-    private final AtomicLong _numLoadedSamples;
-    private final AtomicLong _numPartitionMetricSamples;
-    private final AtomicLong _numBrokerMetricSamples;
-    private final AtomicLong _totalSamples;
-    private final KafkaConsumer<byte[], byte[]> _consumer;
+  protected class MetricLoader implements Runnable {
+    protected final SampleLoader _sampleLoader;
+    protected final AtomicLong _numLoadedSamples;
+    protected final AtomicLong _numPartitionMetricSamples;
+    protected final AtomicLong _numBrokerMetricSamples;
+    protected final AtomicLong _totalSamples;
+    protected final KafkaConsumer<byte[], byte[]> _consumer;
 
     MetricLoader(KafkaConsumer<byte[], byte[]> consumer,
                  SampleLoader sampleLoader,
@@ -517,7 +517,7 @@ public class KafkaSampleStore implements SampleStore {
       }
     }
 
-    private boolean sampleLoadingFinished(Map<TopicPartition, Long> endOffsets) {
+    protected boolean sampleLoadingFinished(Map<TopicPartition, Long> endOffsets) {
       for (Map.Entry<TopicPartition, Long> entry : endOffsets.entrySet()) {
         long position = _consumer.position(entry.getKey());
         if (position < entry.getValue()) {
@@ -534,7 +534,7 @@ public class KafkaSampleStore implements SampleStore {
      * which are too old for {@link com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator} to keep in memory,
      * to prevent loading these stale data, manually seek the consumers' staring offset to the offset at proper timestamp.
      */
-    private void prepareConsumerOffset() {
+    protected void prepareConsumerOffset() {
       Map<TopicPartition, Long> beginningTimestamp = new HashMap<>(_consumer.assignment().size());
       long currentTimeMs = System.currentTimeMillis();
       for (TopicPartition tp : _consumer.assignment()) {
