@@ -1,5 +1,8 @@
 BrokerStats:
   type: object
+  required:
+    - hosts
+    - brokers
   properties:
     version:
       type: integer
@@ -7,105 +10,143 @@ BrokerStats:
     hosts:
       type: array
       items:
-        type: object
-        properties:
-          host:
-            type: string
-          diskMB:
-            type: number
-            format: double
-          diskPct:
-            type: number
-            format: double
-          cpuPct:
-            type: number
-            format: double
-          leaderNwInRate:
-            type: number
-            format: double
-          followerNwInRate:
-            type: number
-            format: double
-          nwOutRate:
-            type: number
-            format: double
-          pnwOutRate:
-            type: number
-            format: double
-          replicas:
-            type: integer
-            format: int32
-          leaders:
-            type: integer
-            format: int32
+        $ref: '#/SingleHostStats'
     brokers:
       type: array
       items:
-        type: object
-        properties:
-          host:
-            type: string
-          broker:
-            type: integer
-            format: int32
-          brokerState:
-            type: string
-            enum:
-              - ALIVE
-              - DEAD
-              - NEW
-              - DEMOTED
-              - BAD_DISKS  
-          diskMB:
-            type: number
-            format: double
-          diskPct:
-            type: number
-            format: double
-          cpuPct:
-            type: number
-            format: double
-          leaderNwInRate:
-            type: number
-            format: double
-          followerNwInRate:
-            type: number
-            format: double
-          nwOutRate:
-            type: number
-            format: double
-          pnwOutRate:
-            type: number
-            format: double
-          replicas:
-            type: integer
-            format: int32
-          leaders:
-            type: integer
-            format: int32
-          diskState:
-            type: object
-            additionalProperties:
-              description: Based on _diskStatsByLogDir
-              type: object
-              properties:
-                diskMb:
-                  oneOf:
-                    - type: string
-                      enum:
-                        - "DEAD"
-                    - type: number
-                      format: double
-                diskPct:
-                  oneOf:
-                    - type: string
-                      enum:
-                        - "DEAD"
-                    - type: number
-                      format: double
-                numLeaderReplicas:
-                  type: integer
-                  format: int32
-                numReplicas:   
-                  type: integer
-                  format: int32
+        $ref: '#/SingleBrokerStats'
+
+SingleBrokerStats:
+  type: object
+  required:
+    - host
+    - broker
+    - brokerState
+    - diskMB
+    - diskPct
+    - cpuPct
+    - leaderNwInRate
+    - followerNwInRate
+    - nwOutRate
+    - pnwOutRate
+    - replicas
+    - leaders
+  properties:
+    host:
+      type: string
+    broker:
+      type: integer
+      format: int32
+    brokerState:
+      type: string
+      enum:
+        - ALIVE
+        - DEAD
+        - NEW
+        - DEMOTED
+        - BAD_DISKS
+    diskMB:
+      type: number
+      format: double
+    diskPct:
+      type: number
+      format: double
+    cpuPct:
+      type: number
+      format: double
+    leaderNwInRate:
+      type: number
+      format: double
+    followerNwInRate:
+      type: number
+      format: double
+    nwOutRate:
+      type: number
+      format: double
+    pnwOutRate:
+      type: number
+      format: double
+    replicas:
+      type: integer
+      format: int32
+    leaders:
+      type: integer
+      format: int32
+    diskState:
+      type: object
+      additionalProperties:
+        $ref: '#/DiskStats'
+
+DiskStats:
+  type: object
+  description: Based on _diskStatsByLogDir
+  required:
+    - diskMB
+    - diskPct
+    - numLeaderReplicas
+    - numReplicas
+  properties:
+    diskMB:
+      oneOf:
+        - type: string
+          enum:
+            - "DEAD"
+        - type: number
+          format: double
+    diskPct:
+      oneOf:
+        - type: string
+          enum:
+            - "DEAD"
+        - type: number
+          format: double
+    numLeaderReplicas:
+      type: integer
+      format: int32
+    numReplicas:
+      type: integer
+      format: int32
+
+SingleHostStats:
+  type: object
+  required:
+    - host
+    - diskMB
+    - diskPct
+    - cpuPct
+    - leaderNwInRate
+    - followerNwInRate
+    - nwOutRate
+    - pnwOutRate
+    - replicas
+    - leaders
+  properties:
+    host:
+      type: string
+    diskMB:
+      type: number
+      format: double
+    diskPct:
+      type: number
+      format: double
+    cpuPct:
+      type: number
+      format: double
+    leaderNwInRate:
+      type: number
+      format: double
+    followerNwInRate:
+      type: number
+      format: double
+    nwOutRate:
+      type: number
+      format: double
+    pnwOutRate:
+      type: number
+      format: double
+    replicas:
+      type: integer
+      format: int32
+    leaders:
+      type: integer
+      format: int32

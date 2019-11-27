@@ -1,0 +1,18 @@
+StepProgress:
+  type: object
+  required:
+    - step
+    - description
+    - timeInMs
+    - completionPercentage
+  properties:
+    step:
+      type: string
+    description:
+      type: string
+    timeInMs:
+      type: integer
+      format: int64
+    completionPercentage:
+      type: number
+      format: double
