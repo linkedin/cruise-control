@@ -1,106 +1,22 @@
 OptimizationResult:
   type: object
+  required:
+    - loadAfterOptimization
+    - summary
+    - goalSummary
   properties:
     proposals:
       type: array
       items:
-        type: object
-        properties:
-          topicPartition:
-            type: string
-          oldLeader:
-            type: integer
-            format: int32
-          oldReplicas:
-            type: array
-            items:
-              type: integer
-              format: int32
-          newReplicas:
-            type: array
-            items:
-              type: integer
-              format: int32
+        $ref: '../components/executionProposal.yaml#/ExecutionProposal'
     loadBeforeOptimization:
       $ref: '../components/brokerStats.yaml#/BrokerStats'
     summary:
-      type: object
-      properties:
-        numReplicaMovements:
-          type: integer
-          format: int32
-        dataMoveToMB:
-          type: integer
-          format: int64
-        numIntraBrokerReplicaMovements:
-          type: integer
-          format: int32
-        intraBrokerDataToMoveMB:
-          type: integer
-          format: int64
-        numLeaderMovements:
-          type: integer
-          format: int32
-        recentWindows:
-          type: integer
-          format: int32
-        monitoredPartitionsPercentage:
-          type: number
-          format: double
-        excludedTopics:
-          type: array
-          items:
-            type: string
-        excludedBrokersForLeadership:
-          type: array
-          items:
-            type: integer
-            format: int32
-        onDemandBalancednessScoreBefore:
-          type: number
-          format: double
-        onDemandBalancednessScoreAfter:
-          type: number
-          format: double
+      $ref: '../components/optimizerResult.yaml#/OptimizerResult'
     goalSummary:
       type: array
       items:
-        type: object
-        properties:
-          goal:
-            type: string
-          status:
-            type: string
-            enum:
-              - "VIOLATED"
-              - "FIXED"
-              - "NO-ACTION"
-          clusterModelStats:
-            type: object
-            properties:
-              metadata:
-                type: object
-                properties:
-                  brokers:
-                    type: integer
-                    format: int32
-                  replicas:
-                    type: integer
-                    format: int32
-                  topics:
-                    type: integer
-                    format: int32
-              statistics:
-                type: object
-                properties:
-                  avg:
-                    $ref: '../components/statistic.yaml#/Statistic'
-                  max:
-                    $ref: '../components/statistic.yaml#/Statistic'
-                  min:
-                    $ref: '../components/statistic.yaml#/Statistic'
-                  std:
-                    $ref: '../components/statistic.yaml#/Statistic'
+        $ref: '../components/goalStatus.yaml#/GoalStatus'
     loadAfterOptimization:
       $ref: '../components/brokerStats.yaml#/BrokerStats'
     version:

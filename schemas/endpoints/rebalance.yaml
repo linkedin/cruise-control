@@ -1,135 +1,136 @@
 RebalanceEndpoint:
   post:
+    operationId: rebalance
     summary: Rebalance a Kafka cluster based on goals
     parameters:
-      - name: dryrun
-        in: query
-        description: Whether dry-run the request or not	
-        schema: 
+      - in: query
+        name: dryrun
+        description: Whether dry-run the request or not
+        schema:
           type: boolean
           default: true
-      - name: goals
-        in: query
+      - in: query
+        name: goals
         description: list of goals used to generate proposal
-        schema: 
+        schema:
           type: array
           items:
             type: string
           # default is every goal
-      - name: allow_capacity_estimation
-        in: query
+      - in: query
+        name: allow_capacity_estimation
         description: Whether to allow broker capacity to be estimated
-        schema: 
+        schema:
           type: boolean
           default: false
-      - name: concurrent_partition_movements_per_broker
-        in: query
-        description: The upper bound of ongoing replica movements going into/out of each broker	
-        schema: 
+      - in: query
+        name: concurrent_partition_movements_per_broker
+        description: The upper bound of ongoing replica movements going into/out of each broker
+        schema:
           type: integer
           format: int32
           minimum: 1
-      - name: concurrent_intra_broker_partition_movements
-        in: query
-        description: The upper bound of ongoing replica movements between disks within each broker	
-        schema: 
+      - in: query
+        name: concurrent_intra_broker_partition_movements
+        description: The upper bound of ongoing replica movements between disks within each broker
+        schema:
           type: integer
           format: int32
           minimum: 1
-      - name: concurrent_leader_movements
-        in: query
-        description: The upper bound of ongoing leadership movements	
-        schema: 
+      - in: query
+        name: concurrent_leader_movements
+        description: The upper bound of ongoing leadership movements
+        schema:
           type: integer
           format: int32
           minimum: 1
-      - name: json
-        in: query
-        description: Whether to return in JSON format or not	
-        schema: 
+      - in: query
+        name: json
+        description: Whether to return in JSON format or not
+        schema:
           type: boolean
           default: false
-      - name: skip_hard_goal_check
-        in: query
-        description: Whether to allow hard goal be skipped in proposal generation	
-        schema: 
+      - in: query
+        name: skip_hard_goal_check
+        description: Whether to allow hard goal be skipped in proposal generation
+        schema:
           type: boolean
           default: false
-      - name: excluded_topics
-        in: query
-        description: Whether to allow hard goal be skipped in proposal generation	
-        schema: 
+      - in: query
+        name: excluded_topics
+        description: Whether to allow hard goal be skipped in proposal generation
+        schema:
           type: string # topics regex
           default: null
-      - name: use_ready_default_goals
-        in: query
-        description: Whether to only use ready goals to generate proposal	
-        schema: 
+      - in: query
+        name: use_ready_default_goals
+        description: Whether to only use ready goals to generate proposal
+        schema:
           type: boolean
           default: false
-      - name: data_from
-        in: query
-        description: Whether to calculate proposal from available valid partitions or valid windows	
-        schema: 
+      - in: query
+        name: data_from
+        description: Whether to calculate proposal from available valid partitions or valid windows
+        schema:
           type: string
-          default: VALID_WINDOWS	
-      - name: verbose
-        in: query
+          default: VALID_WINDOWS
+      - in: query
+        name: verbose
         description: Return detailed state information
-        schema: 
+        schema:
           type: boolean
           default: false
-      - name: exclude_recently_demoted_brokers
-        in: query
+      - in: query
+        name: exclude_recently_demoted_brokers
         description: Whether to allow leader replicas to be moved to recently demoted broker
-        schema: 
+        schema:
           type: boolean
           default: false
-      - name: replica_movement_strategies
-        in: query
-        description: Replica movement strategies to use		
+      - in: query
+        name: replica_movement_strategies
+        description: Replica movement strategies to use
         schema:
           type: array
           items:
             type: string
-      - name: ignore_proposal_cache
-        in: query
-        description: Whether to ignore the cached proposal or not			
-        schema: 
+      - in: query
+        name: ignore_proposal_cache
+        description: Whether to ignore the cached proposal or not
+        schema:
           type: boolean
           default: false
-      - name: destination_broker_ids
-        in: query
+      - in: query
+        name: destination_broker_ids
         description: Whether to allow leader replicas to be moved to recently demoted broker
-        schema: 
+        schema:
           type: array
           items:
             type: string
-      - name: kafka_assigner
-        in: query
+      - in: query
+        name: kafka_assigner
         description: Whether to use Kafka assigner mode to general proposal
-        schema: 
+        schema:
           type: boolean
           default: false
-      - name: rebalance_disk
-        in: query
-        description: Whether to balance load between brokers or between disks within broker	
-        schema: 
+      - in: query
+        name: rebalance_disk
+        description: Whether to balance load between brokers or between disks within broker
+        schema:
           type: boolean
           default: false
-      - name: review_id
-        in: query
+      - in: query
+        name: review_id
         description: Review id for 2FA
         schema:
           type: string
-      - name: replication_throttle
-        in: query
+      - in: query
+        name: replication_throttle
         description: Upper bound on the bandwidth used to move replicas
-        schema: 
+        schema:
           type: integer
           format: int32
-      - name: execution_progress_check_interval_ms
-        in: query
+      - in: query
+        name: execution_progress_check_interval_ms
         description: Execution progress check interval in milliseconds
         schema:
           type: integer
@@ -142,6 +143,9 @@ RebalanceEndpoint:
           application/json:
             schema:
               $ref: '../responses/optimzationResult.yaml#/OptimizationResult'
+          text/plain:
+            schema:
+              type: string
       '202':
         description: |-
           Rebalancing in progress
@@ -149,3 +153,6 @@ RebalanceEndpoint:
           application/json:
             schema:
               $ref: '../responses/progressResult.yaml#/ProgressResult'
+          text/plain:
+            schema:
+              type: string
