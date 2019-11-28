@@ -20,7 +20,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *
  * <ul>
  *   <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
- *   <li>Note that setting "force_stop" to true will make Cruise Control forcefully delete znode /admin/reassign_partitions,
+ *   <li>Note that setting "force_stop" to true will make Cruise Control forcefully delete zNode /admin/reassign_partitions,
  *   /admin/preferred_replica_election and /controller in order to cancel ongoing the replica/leader movements. It may result
  *   the subject topics having inconsistent replication factor across partitions. </li>
  * </ul>
