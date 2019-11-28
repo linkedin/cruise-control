@@ -78,12 +78,11 @@ public abstract class AbstractGoal implements Goal {
       initGoalState(clusterModel, optimizationOptions);
       SortedSet<Broker> brokenBrokers = clusterModel.brokenBrokers();
 
-      Set<String> excludedTopics = optimizationOptions.excludedTopics();
       while (!_finished) {
         for (Broker broker : brokersToBalance(clusterModel)) {
           rebalanceForBroker(broker, clusterModel, optimizedGoals, optimizationOptions);
         }
-        updateGoalState(clusterModel, excludedTopics);
+        updateGoalState(clusterModel, optimizationOptions);
       }
       ClusterModelStats statsAfterOptimization = clusterModel.getClusterStats(_balancingConstraint);
       LOG.trace("[POST - {}] {}", name(), statsAfterOptimization);
@@ -96,8 +95,10 @@ public abstract class AbstractGoal implements Goal {
         ClusterModelStatsComparator comparator = clusterModelStatsComparator();
         // Throw exception when the stats before optimization is preferred.
         if (comparator.compare(statsAfterOptimization, statsBeforeOptimization) < 0) {
-          throw new OptimizationFailureException("Optimization for Goal " + name() + " failed because the optimized "
-                                                 + "result is worse than before. Detail reason: " + comparator.explainLastComparison());
+          String mitigation = GoalUtils.mitigationForOptimizationFailures(optimizationOptions);
+          throw new OptimizationFailureException(String.format("Optimization for goal %s failed because the optimized "
+                                                               + "result is worse than before. Detailed reason: %s. %s",
+                                                               name(), comparator.explainLastComparison(), mitigation));
         }
       }
       return _succeeded;
@@ -134,7 +135,7 @@ public abstract class AbstractGoal implements Goal {
    * Initialize states that this goal requires -- e.g. run sanity checks regarding hard goals requirements.
    *
    * @param clusterModel The state of the cluster.
-   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded topics.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   protected abstract void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
       throws OptimizationFailureException;
@@ -143,9 +144,9 @@ public abstract class AbstractGoal implements Goal {
    * Update goal state after one round of self-healing / rebalance.
    *
    * @param clusterModel The state of the cluster.
-   * @param excludedTopics The topics that should be excluded from the optimization action.
+   * @param optimizationOptions Options to take into account during optimization.
    */
-  protected abstract void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
+  protected abstract void updateGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
       throws OptimizationFailureException;
 
   /**
@@ -154,7 +155,7 @@ public abstract class AbstractGoal implements Goal {
    * @param broker         Broker to be balanced.
    * @param clusterModel   The state of the cluster.
    * @param optimizedGoals Optimized goals.
-   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded topics.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   protected abstract void rebalanceForBroker(Broker broker,
                                              ClusterModel clusterModel,

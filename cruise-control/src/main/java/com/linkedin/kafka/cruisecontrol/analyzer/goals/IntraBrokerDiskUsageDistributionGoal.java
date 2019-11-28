@@ -79,7 +79,7 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
    * To avoid churns, we add a balance margin to the user specified rebalance threshold. e.g. when user sets the
    * threshold to be resourceBalancePercentage, we use (resourceBalancePercentage-1)*balanceMargin instead.
    * @param clusterModel The state of the cluster.
-   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded topics.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
   protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
@@ -110,10 +110,10 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
    * out of range, finish and mark optimization status accordingly.
    *
    * @param clusterModel The state of the cluster.
-   * @param excludedTopics The topics that should be excluded from the optimization action.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
-  protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics) {
+  protected void updateGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
     List<String> disksAboveBalanceUpperLimit = new ArrayList<>();
     List<String> disksBelowBalanceLowerLimit = new ArrayList<>();
     for (Broker broker : brokersToBalance(clusterModel)) {
@@ -251,7 +251,7 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
    * @param broker              Broker to be balanced.
    * @param clusterModel        The state of the cluster.
    * @param optimizedGoals      Optimized goals.
-   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded topics.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
   protected void rebalanceForBroker(Broker broker,

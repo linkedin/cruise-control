@@ -237,9 +237,10 @@ public class PotentialNwOutGoal extends AbstractGoal {
    * Update goal state after one round of self-healing / rebalance.
    *
    * @param clusterModel The state of the cluster.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
-  protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
+  protected void updateGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
       throws OptimizationFailureException {
     // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
     try {
@@ -268,7 +269,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
    * @param broker         Broker to be balanced.
    * @param clusterModel   The state of the cluster.
    * @param optimizedGoals Optimized goals.
-   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded topics.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
   protected void rebalanceForBroker(Broker broker,

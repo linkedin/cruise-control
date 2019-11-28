@@ -161,7 +161,7 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
     // Ensure there is no offline replica in the cluster.
     PartitionInfo partitionInfo = partitionWithOfflineReplicas(cluster);
     if (partitionInfo != null) {
-      throw new IllegalStateException(String.format("Topic partition %s-%d has offline replicas on brokers %s",
+      throw new IllegalStateException(String.format("Topic partition %s-%d has offline replicas on brokers %s.",
                                                     partitionInfo.topic(), partitionInfo.partition(),
                                                     Arrays.stream(partitionInfo.offlineReplicas()).mapToInt(Node::id)
                                                           .boxed().collect(Collectors.toSet())));

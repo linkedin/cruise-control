@@ -59,7 +59,7 @@ public interface Goal extends CruiseControlConfigurable {
    * @param clusterModel   The cluster model reflecting the current state of the cluster. It is a result of the
    *                       optimization of the previously optimized goals.
    * @param optimizedGoals Goals that have already been optimized. These goals cannot be violated.
-   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded topics.
+   * @param optimizationOptions Options to take into account during optimization.
    * @return True if the goal is met after the optimization, false otherwise. Note that for hard goals,
    * the implementation should just throw exceptions if the goal is not met.
    * @throws KafkaCruiseControlException

@@ -151,9 +151,10 @@ public class ReplicaCapacityGoal extends AbstractGoal {
       }
 
       if (excludedReplicasInBroker.size() > _balancingConstraint.maxReplicasPerBroker()) {
+        String mitigation = GoalUtils.mitigationForOptimizationFailures(optimizationOptions);
         throw new OptimizationFailureException(
             String.format("[%s] Replicas of excluded topics in broker: %d exceeds the maximum allowed number of replicas per "
-                              + "broker: %d.", name(), excludedReplicasInBroker.size(), _balancingConstraint.maxReplicasPerBroker()));
+                              + "broker: %d. %s", name(), excludedReplicasInBroker.size(), _balancingConstraint.maxReplicasPerBroker(), mitigation));
       }
     }
 
@@ -193,10 +194,11 @@ public class ReplicaCapacityGoal extends AbstractGoal {
    * Update goal state after one round of self-healing / rebalance.
    *
    *  @param clusterModel The state of the cluster.
-   * @param excludedTopics The topics that should be excluded from the optimization action.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
-  protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics) throws OptimizationFailureException {
+  protected void updateGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
+      throws OptimizationFailureException {
     // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
     GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
     // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
@@ -205,7 +207,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
     if (!_isSelfHealingMode) {
       // One pass in non-self-healing mode is sufficient to satisfy or alert impossibility of this goal.
       // Sanity check to confirm that the final distribution has less than the allowed number of replicas per broker.
-      ensureReplicaCapacitySatisfied(clusterModel);
+      ensureReplicaCapacitySatisfied(clusterModel, optimizationOptions);
       finish();
     } else {
       _isSelfHealingMode = false;
@@ -221,14 +223,17 @@ public class ReplicaCapacityGoal extends AbstractGoal {
    * Sanity check: Ensure that the replica capacity per broker is not exceeded.
    *
    * @param clusterModel The cluster model.
+   * @param optimizationOptions Options to take into account during optimization.
    */
-  private void ensureReplicaCapacitySatisfied(ClusterModel clusterModel) throws OptimizationFailureException {
+  private void ensureReplicaCapacitySatisfied(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
+      throws OptimizationFailureException {
     for (Broker broker : brokersToBalance(clusterModel)) {
       int numBrokerReplicas = broker.replicas().size();
       if (numBrokerReplicas > _balancingConstraint.maxReplicasPerBroker()) {
+        String mitigation = GoalUtils.mitigationForOptimizationFailures(optimizationOptions);
         throw new OptimizationFailureException(
-            String.format("[%s] Replicas in broker %d exceeds the maximum allowed number of replicas per broker: %d.",
-                          name(), numBrokerReplicas, _balancingConstraint.maxReplicasPerBroker()));
+            String.format("[%s] Replicas in broker %d exceeds the maximum allowed number of replicas per broker: %d. %s",
+                          name(), numBrokerReplicas, _balancingConstraint.maxReplicasPerBroker(), mitigation));
       }
     }
   }
@@ -238,7 +243,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
    * @param broker         Broker to be balanced.
    * @param clusterModel   The state of the cluster.
    * @param optimizedGoals Optimized goals.
-   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded topics.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
   protected void rebalanceForBroker(Broker broker,
