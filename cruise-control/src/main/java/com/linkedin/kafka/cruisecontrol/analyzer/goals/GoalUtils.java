@@ -26,6 +26,7 @@ import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.H
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.ADMIN;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.REBALANCE;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DESTINATION_BROKER_IDS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.EXCLUDED_TOPICS_PARAM;
 
 
 /**
@@ -398,7 +399,8 @@ public class GoalUtils {
     }
     if (!optimizationOptions.excludedTopics().isEmpty()) {
       sb.append(String.format("There are %d topics excluded from replica move. Potential mitigation: Remove selected "
-                              + "topics from exclusion.%n", optimizationOptions.excludedTopics().size()));
+                              + "topics from exclusion using %s parameter.%n", optimizationOptions.excludedTopics().size(),
+                              EXCLUDED_TOPICS_PARAM));
     }
 
     if (sb.length() > 0) {
