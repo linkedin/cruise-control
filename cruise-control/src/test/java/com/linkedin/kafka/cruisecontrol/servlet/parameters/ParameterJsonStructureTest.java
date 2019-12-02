@@ -16,20 +16,27 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.*;
+import java.util.List;
+import java.util.Set;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.TreeSet;
 
 public class ParameterJsonStructureTest {
   private Map<String, Class> _endpointToClass;
   OpenAPI _openAPI;
+  /**
+   * Specify endpoints to be tested
+   */
   @Before
   public void setupParameterClasses() {
     _endpointToClass = new HashMap<>();
-    _endpointToClass.put("/kafkacruisecontrol/partition_load", PartitionLoadParameters.class);
     _endpointToClass.put("/kafkacruisecontrol/rebalance", RebalanceParameters.class);
-    _endpointToClass.put("/kafkacruisecontrol/state", CruiseControlStateParameters.class);
-    _endpointToClass.put("/kafkacruisecontrol/topic_configuration", TopicConfigurationParameters.class);
   }
 
+  /**
+   * Load the OpenAPI files for endpoints and compares them against the source code
+   */
   @Test
   public void loadOpenApiSpec() throws Exception {
     OpenAPIV3Parser openApiParser = new OpenAPIV3Parser();
@@ -41,9 +48,12 @@ public class ParameterJsonStructureTest {
     SwaggerParseResult parseResult = openApiParser.readLocation(baseFileName, null, options);
     _openAPI = parseResult.getOpenAPI();
     Schema schema = parseSchema();
-    for (String endpoint: schema.getEndpoints()) {
-      Assert.assertTrue(_endpointToClass.containsKey(endpoint));
-      Assert.assertEquals(schema.getParameters(endpoint), ((CruiseControlParameters) (_endpointToClass.get(endpoint).newInstance())).caseInsensitiveParameterNames());
+    for (Map.Entry<String, Set<String>> endpoint: schema.getEndpointsAndParameters()) {
+      Assert.assertTrue(_endpointToClass.containsKey(endpoint.getKey()));
+      CruiseControlParameters endpointParams = (CruiseControlParameters) (_endpointToClass.get(endpoint.getKey()).newInstance());
+      Assert.assertEquals(
+        endpoint.getValue(),
+        endpointParams.caseInsensitiveParameterNames());
     }
   }
 
@@ -78,13 +88,13 @@ public class ParameterJsonStructureTest {
   public Schema parseSchema() {
     Schema parsedSchema = new Schema();
     Paths paths = _openAPI.getPaths();
-    for (String endpoint : paths.keySet()) {
-      parsedSchema.addEndpoint(endpoint, parseEndpoint(paths.get(endpoint)));
+    for (Map.Entry<String, PathItem> endpoint : paths.entrySet()) {
+      parsedSchema.addEndpoint(endpoint.getKey(), parseEndpoint(endpoint.getValue()));
     }
     return parsedSchema;
   }
 
-  private class Schema {
+  static class Schema {
     Map<String, Set<String>> _schema;
 
     /**
@@ -107,17 +117,8 @@ public class ParameterJsonStructureTest {
     /**
      * Get all the endpoints of the schema as a set of string
      */
-    public Set<String> getEndpoints() {
-      return _schema.keySet();
-    }
-
-    /**
-     * Get all the parameters of the given endpoint
-     *
-     * @param endpoint name of the endpoint
-     */
-    public Set<String> getParameters(String endpoint) {
-      return _schema.get(endpoint);
+    public Set<Map.Entry<String, Set<String>>> getEndpointsAndParameters() {
+      return _schema.entrySet();
     }
 
     /**
@@ -126,11 +127,11 @@ public class ParameterJsonStructureTest {
     @Override
     public String toString() {
       StringBuilder stringBuilder = new StringBuilder();
-      for (String endpoint : getEndpoints()) {
-        stringBuilder.append(String.format("\nEndpoint %s\n", endpoint));
+      for (Map.Entry<String, Set<String>> endpoint : getEndpointsAndParameters()) {
+        stringBuilder.append(String.format("%nEndpoint %s%n", endpoint.getKey()));
         int parameterIndex = 0;
-        for (String parameter : getParameters(endpoint)) {
-          stringBuilder.append(String.format("parameter #%d %s\n", ++parameterIndex, parameter));
+        for (String parameter : endpoint.getValue()) {
+          stringBuilder.append(String.format("parameter #%d %s%n", ++parameterIndex, parameter));
         }
       }
       return stringBuilder.toString();
