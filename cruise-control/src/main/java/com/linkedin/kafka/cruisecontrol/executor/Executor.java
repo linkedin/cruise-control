@@ -1072,9 +1072,6 @@ public class Executor {
       LOG.debug("Executing {} leadership movements in a batch.", numLeadershipToMove);
       // Execute the leadership movements.
       if (!leadershipMovementTasks.isEmpty() && _stopSignal.get() == NO_STOP_EXECUTION) {
-        // Mark leadership movements in progress.
-        _executionTaskManager.markTasksInProgress(leadershipMovementTasks);
-
         // Run preferred leader election unless there is already an ongoing leadership movement.
         while (hasOngoingLeaderElection()) {
           try {
@@ -1085,6 +1082,9 @@ public class Executor {
             LOG.warn("Interrupted while waiting for Kafka Controller to delete /admin/preferred_replica_election zNode.");
           }
         }
+        // Mark leadership movements in progress.
+        _executionTaskManager.markTasksInProgress(leadershipMovementTasks);
+
         ExecutorUtils.executePreferredLeaderElection(_kafkaZkClient, leadershipMovementTasks);
         LOG.trace("Waiting for leadership movement batch to finish.");
         while (!_executionTaskManager.inExecutionTasks().isEmpty() && _stopSignal.get() == NO_STOP_EXECUTION) {
@@ -1170,9 +1170,9 @@ public class Executor {
       } while (!_executionTaskManager.inExecutionTasks().isEmpty() && finishedTasks.isEmpty());
 
       LOG.info("Completed tasks: {}.{}{}{}", finishedTasks,
-               forceStoppedTaskIds.isEmpty() ? "" : String.format("[Force-stopped: %s]", forceStoppedTaskIds),
-               deletedTaskIds.isEmpty() ? "" : String.format("[Deleted: %s]", deletedTaskIds),
-               deadOrAbortingTaskIds.isEmpty() ? "" : String.format("[Dead/aborting: %s]", deadOrAbortingTaskIds));
+               forceStoppedTaskIds.isEmpty() ? "" : String.format("%n[Force-stopped: %s]", forceStoppedTaskIds),
+               deletedTaskIds.isEmpty() ? "" : String.format("%n[Deleted: %s]", deletedTaskIds),
+               deadOrAbortingTaskIds.isEmpty() ? "" : String.format("%n[Dead/aborting: %s]", deadOrAbortingTaskIds));
 
       return finishedTasks;
     }
