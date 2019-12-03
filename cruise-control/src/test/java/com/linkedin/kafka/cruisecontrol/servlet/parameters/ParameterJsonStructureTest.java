@@ -32,6 +32,7 @@ public class ParameterJsonStructureTest {
   public void setupParameterClasses() {
     _endpointToClass = new HashMap<>();
     _endpointToClass.put("/kafkacruisecontrol/rebalance", RebalanceParameters.class);
+    _endpointToClass.put("/kafkacruisecontrol/partition_load", PartitionLoadParameters.class);
   }
 
   /**
