@@ -194,9 +194,13 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Sanity check that if current request is not a dryrun, there is
-   * (1) no ongoing execution in current Cruise Control deployment.
-   * (2) no ongoing partition reassignment, which could be triggered by other admin tools or previous Cruise Control deployment.
+   * Sanity check that if current request is not a dryrun, there is no ongoing
+   * <ol>
+   *   <li>execution in current Cruise Control deployment.</li>
+   *   <li>partition reassignment triggered by other admin tools or previous Cruise Control deployment.</li>
+   *   <li>leadership reassignment triggered by other admin tools or previous Cruise Control deployment.</li>
+   * </ol>
+   *
    * This method helps to fail fast if a user attempts to start an execution during an ongoing admin operation.
    *
    * @param dryRun True if the request is just a dryrun, false if the intention is to start an execution.
@@ -207,9 +211,10 @@ public class KafkaCruiseControl {
     }
     if (_executor.hasOngoingExecution()) {
       throw new IllegalStateException("Cannot execute new proposals while there is an ongoing execution.");
-    }
-    if (_executor.hasOngoingPartitionReassignments()) {
+    } else if (_executor.hasOngoingPartitionReassignments()) {
       throw new IllegalStateException("Cannot execute new proposals while there are ongoing partition reassignments.");
+    } else if (_executor.hasOngoingLeaderElection()) {
+      throw new IllegalStateException("Cannot execute new proposals while there are ongoing leadership reassignments.");
     }
   }
 
