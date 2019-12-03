@@ -67,7 +67,7 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
    * determined by the total capacity of alive disks multiplied by the capacity threshold.
    *
    * @param clusterModel The state of the cluster.
-   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded topics.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
   protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
@@ -165,7 +165,7 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
    * @param broker         Broker to be balanced.
    * @param clusterModel   The state of the cluster.
    * @param optimizedGoals Optimized goals.
-   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded topics.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
   protected void rebalanceForBroker(Broker broker,
@@ -209,17 +209,19 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
    * Sanity check: After completion of balancing the resource, confirm that the utilization is under the capacity and finish.
    *
    * @param clusterModel The state of the cluster.
-   * @param excludedTopics The topics that should be excluded from the optimization action.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
-  protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics) throws OptimizationFailureException {
+  protected void updateGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
+      throws OptimizationFailureException {
     for (Broker broker : brokersToBalance(clusterModel)) {
       for (Disk disk : broker.disks()) {
         if (disk.isAlive() && isUtilizationOverLimit(disk)) {
           // The utilization of the host for the resource is over the capacity limit.
+          String mitigation = GoalUtils.mitigationForOptimizationFailures(optimizationOptions);
           throw new OptimizationFailureException(String.format(
-              "Optimization for goal %s failed because utilization for disk %s on broker %d is still above capacity limit.",
-              name(), disk, broker.id()));
+              "Optimization for goal %s failed because utilization for disk %s on broker %d is still above capacity limit. %s",
+              name(), disk, broker.id(), mitigation));
         }
       }
     }

@@ -179,10 +179,10 @@ public abstract class ReplicaDistributionAbstractGoal extends AbstractGoal {
   /**
    * Update goal state after one round of self-healing / rebalance.
    * @param clusterModel The state of the cluster.
-   * @param excludedTopics The topics that should be excluded from the optimization proposal.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
-  protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
+  protected void updateGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
       throws OptimizationFailureException {
     // Log broker Ids over balancing limit.
     // While proposals exclude the excludedTopics, the balance still considers utilization of the excludedTopic replicas.

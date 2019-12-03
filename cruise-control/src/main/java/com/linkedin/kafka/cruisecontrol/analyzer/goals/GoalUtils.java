@@ -22,6 +22,12 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.stream.Collectors;
 
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.HARD_GOALS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.ADMIN;
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.REBALANCE;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DESTINATION_BROKER_IDS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.EXCLUDED_TOPICS_PARAM;
+
 
 /**
  * A util class for goals.
@@ -359,5 +365,48 @@ public class GoalUtils {
    */
   static String replicaSortName(Goal goal, boolean reverse, boolean leaderOnly) {
     return String.format("%s%s%s", goal.name(), reverse ? "-REVERSE" : "", leaderOnly ? "-LEADER" : "");
+  }
+
+  /**
+   * Whenever appropriate, provide a message that is intended to help with the mitigation of of optimization failures
+   * with the given optimization options.
+   *
+   * @param optimizationOptions Options to take into account during optimization.
+   * @return A message that is intended to help with the mitigation of of optimization failures.
+   */
+  static String mitigationForOptimizationFailures(OptimizationOptions optimizationOptions) {
+    StringBuilder sb = new StringBuilder();
+
+    if (optimizationOptions.onlyMoveImmigrantReplicas()) {
+      sb.append(String.format("The optimization is limited to replicas to be added to/removed from brokers. Potential "
+                              + "mitigation: First, rebalance the cluster using %s endpoint with a a superset of "
+                              + "hard-goals defined via %s config.%n", REBALANCE, HARD_GOALS_CONFIG));
+    }
+    if (!optimizationOptions.requestedDestinationBrokerIds().isEmpty()) {
+      sb.append(String.format("The destination brokers are limited to %s. Potential mitigation: Relax the constraint "
+                              + "on destination brokers using %s parameter.%n",
+                              optimizationOptions.requestedDestinationBrokerIds(), DESTINATION_BROKER_IDS_PARAM));
+    }
+    if (!optimizationOptions.excludedBrokersForReplicaMove().isEmpty()) {
+      sb.append(String.format("The following brokers are excluded from replica moves %s. Potential mitigation:"
+                              + " Drop brokers from exclusion for replica move using %s endpoint.%n",
+                              optimizationOptions.excludedBrokersForReplicaMove(), ADMIN));
+    }
+    if (!optimizationOptions.excludedBrokersForLeadership().isEmpty()) {
+      sb.append(String.format("The following brokers are excluded from leadership moves %s. Potential mitigation:"
+                              + " Drop brokers from exclusion for leadership move using %s endpoint.%n",
+                              optimizationOptions.excludedBrokersForReplicaMove(), ADMIN));
+    }
+    if (!optimizationOptions.excludedTopics().isEmpty()) {
+      sb.append(String.format("There are %d topics excluded from replica move. Potential mitigation: Remove selected "
+                              + "topics from exclusion using %s parameter.%n", optimizationOptions.excludedTopics().size(),
+                              EXCLUDED_TOPICS_PARAM));
+    }
+
+    if (sb.length() > 0) {
+      sb.append(String.format("Then, re-run your original request.%n"));
+    }
+
+    return sb.toString();
   }
 }

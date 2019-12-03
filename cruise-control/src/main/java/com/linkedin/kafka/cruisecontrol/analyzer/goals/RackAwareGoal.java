@@ -210,14 +210,14 @@ public class RackAwareGoal extends AbstractGoal {
    * (2) Update the current resource that is being balanced if there are still resources to be balanced.
    *
    * @param clusterModel The state of the cluster.
-   * @param excludedTopics The topics that should be excluded from the optimization action.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
-  protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
+  protected void updateGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
       throws OptimizationFailureException {
     // One pass is sufficient to satisfy or alert impossibility of this goal.
     // Sanity check to confirm that the final distribution is rack aware.
-    ensureRackAware(clusterModel, excludedTopics);
+    ensureRackAware(clusterModel, optimizationOptions);
     // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
     GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
     // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
@@ -236,7 +236,7 @@ public class RackAwareGoal extends AbstractGoal {
    * @param broker         Broker to be balanced.
    * @param clusterModel   The state of the cluster.
    * @param optimizedGoals Optimized goals.
-   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded topics.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
   protected void rebalanceForBroker(Broker broker,
@@ -258,8 +258,10 @@ public class RackAwareGoal extends AbstractGoal {
     }
   }
 
-  private void ensureRackAware(ClusterModel clusterModel, Set<String> excludedTopics) throws OptimizationFailureException {
+  private void ensureRackAware(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
+      throws OptimizationFailureException {
     // Sanity check to confirm that the final distribution is rack aware.
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     for (Replica leader : clusterModel.leaderReplicas()) {
       if (excludedTopics.contains(leader.topicPartition().topic())) {
         continue;
@@ -275,8 +277,11 @@ public class RackAwareGoal extends AbstractGoal {
       }
       replicaBrokersRackIds.add(leader.broker().rack().id());
       if (replicaBrokersRackIds.size() != (followerBrokers.size() + 1)) {
-        throw new OptimizationFailureException("Optimization for goal " + name() + " failed for rack-awareness of "
-            + "partition " + leader.topicPartition());
+        String mitigation = GoalUtils.mitigationForOptimizationFailures(optimizationOptions);
+        throw new OptimizationFailureException(String.format("Optimization for goal %s failed for rack-awareness of "
+                                                             + "partition %s. Leader (%s) and follower brokers (%s). %s",
+                                                             name(), leader.topicPartition(), leader.broker(),
+                                                             followerBrokers, mitigation));
       }
     }
   }

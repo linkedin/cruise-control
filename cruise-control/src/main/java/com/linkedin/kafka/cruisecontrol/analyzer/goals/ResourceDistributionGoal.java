@@ -237,10 +237,10 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    * Update the current resource that is being balanced if there are still resources to be balanced, finish otherwise.
    *
    * @param clusterModel The state of the cluster.
-   * @param excludedTopics The topics that should be excluded from the optimization action.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
-  protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
+  protected void updateGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
       throws OptimizationFailureException {
     Set<Integer> brokerIdsAboveBalanceUpperLimit = new HashSet<>();
     Set<Integer> brokerIdsUnderBalanceLowerLimit = new HashSet<>();
@@ -302,7 +302,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    * @param broker         Broker to be balanced.
    * @param clusterModel   The state of the cluster.
    * @param optimizedGoals Optimized goals.
-   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded topics.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
   protected void rebalanceForBroker(Broker broker,

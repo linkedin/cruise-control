@@ -182,7 +182,7 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
   }
 
   @Override
-  protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics) {
+  protected void updateGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
     // While proposals exclude the excludedTopics, the leader bytes in still considers replicas of the excludedTopics.
     if (!_overLimitBrokerIds.isEmpty()) {
       LOG.warn("There were still {} brokers over the limit.", _overLimitBrokerIds.size());
