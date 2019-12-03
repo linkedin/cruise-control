@@ -3,134 +3,134 @@ RebalanceEndpoint:
     operationId: rebalance
     summary: Rebalance a Kafka cluster based on goals
     parameters:
-      - in: query
-        name: dryrun
+      - name: dryrun
+        in: query
         description: Whether dry-run the request or not
         schema:
           type: boolean
           default: true
-      - in: query
-        name: goals
+      - name: goals
+        in: query
         description: list of goals used to generate proposal
         schema:
           type: array
           items:
             type: string
           # default is every goal
-      - in: query
-        name: allow_capacity_estimation
+      - name: allow_capacity_estimation
+        in: query
         description: Whether to allow broker capacity to be estimated
         schema:
           type: boolean
           default: false
-      - in: query
-        name: concurrent_partition_movements_per_broker
+      - name: concurrent_partition_movements_per_broker
+        in: query
         description: The upper bound of ongoing replica movements going into/out of each broker
         schema:
           type: integer
           format: int32
           minimum: 1
-      - in: query
-        name: concurrent_intra_broker_partition_movements
+      - name: concurrent_intra_broker_partition_movements
+        in: query
         description: The upper bound of ongoing replica movements between disks within each broker
         schema:
           type: integer
           format: int32
           minimum: 1
-      - in: query
-        name: concurrent_leader_movements
+      - name: concurrent_leader_movements
+        in: query
         description: The upper bound of ongoing leadership movements
         schema:
           type: integer
           format: int32
           minimum: 1
-      - in: query
-        name: json
+      - name: json
+        in: query
         description: Whether to return in JSON format or not
         schema:
           type: boolean
           default: false
-      - in: query
-        name: skip_hard_goal_check
+      - name: skip_hard_goal_check
+        in: query
         description: Whether to allow hard goal be skipped in proposal generation
         schema:
           type: boolean
           default: false
-      - in: query
-        name: excluded_topics
+      - name: excluded_topics
+        in: query
         description: Whether to allow hard goal be skipped in proposal generation
         schema:
           type: string # topics regex
           default: null
-      - in: query
-        name: use_ready_default_goals
+      - name: use_ready_default_goals
+        in: query
         description: Whether to only use ready goals to generate proposal
         schema:
           type: boolean
           default: false
-      - in: query
-        name: data_from
+      - name: data_from
+        in: query
         description: Whether to calculate proposal from available valid partitions or valid windows
         schema:
           type: string
           default: VALID_WINDOWS
-      - in: query
-        name: verbose
+      - name: verbose
+        in: query
         description: Return detailed state information
         schema:
           type: boolean
           default: false
-      - in: query
-        name: exclude_recently_demoted_brokers
+      - name: exclude_recently_demoted_brokers
+        in: query
         description: Whether to allow leader replicas to be moved to recently demoted broker
         schema:
           type: boolean
           default: false
-      - in: query
-        name: replica_movement_strategies
+      - name: replica_movement_strategies
+        in: query
         description: Replica movement strategies to use
         schema:
           type: array
           items:
             type: string
-      - in: query
-        name: ignore_proposal_cache
+      - name: ignore_proposal_cache
+        in: query
         description: Whether to ignore the cached proposal or not
         schema:
           type: boolean
           default: false
-      - in: query
-        name: destination_broker_ids
+      - name: destination_broker_ids
+        in: query
         description: Whether to allow leader replicas to be moved to recently demoted broker
         schema:
           type: array
           items:
             type: string
-      - in: query
-        name: kafka_assigner
+      - name: kafka_assigner
+        in: query
         description: Whether to use Kafka assigner mode to general proposal
         schema:
           type: boolean
           default: false
-      - in: query
-        name: rebalance_disk
+      - name: rebalance_disk
+        in: query
         description: Whether to balance load between brokers or between disks within broker
         schema:
           type: boolean
           default: false
-      - in: query
-        name: review_id
+      - name: review_id
+        in: query
         description: Review id for 2FA
         schema:
           type: string
-      - in: query
-        name: replication_throttle
+      - name: replication_throttle
+        in: query
         description: Upper bound on the bandwidth used to move replicas
         schema:
           type: integer
           format: int32
-      - in: query
-        name: execution_progress_check_interval_ms
+      - name: execution_progress_check_interval_ms
+        in: query
         description: Execution progress check interval in milliseconds
         schema:
           type: integer
