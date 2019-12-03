@@ -38,7 +38,7 @@ class GetBrokerStatsRunnable extends OperationRunnable {
     _modelCompletenessRequirements = parameters.requirements();
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
     _config = config;
-    _isCapacityStats = parameters.capacity();
+    _isCapacityStats = parameters.capacityOnly();
   }
 
   @Override

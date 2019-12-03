@@ -16,7 +16,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.END_MS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.START_MS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.ALLOW_CAPACITY_ESTIMATION_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CAPACITY_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CAPACITY_ONLY_PARAM;
 
 /**
  * Parameters for {@link CruiseControlEndPoint#LOAD}
@@ -29,7 +29,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  * <pre>
  * Get the cluster load
  *    GET /kafkacruisecontrol/load?start=[START_TIMESTAMP]&amp;end=[END_TIMESTAMP]&amp;time=[END_TIMESTAMP]&amp;allow_capacity_estimation=[true/false]
- *    &amp;json=[true/false]&amp;get_response_schema=[true/false]&capacity=[true/false]
+ *    &amp;json=[true/false]&amp;get_response_schema=[true/false]&amp;capacity_only=[true/false]
  * </pre>
  */
 public class ClusterLoadParameters extends AbstractParameters {
@@ -39,7 +39,7 @@ public class ClusterLoadParameters extends AbstractParameters {
     validParameterNames.add(TIME_PARAM);
     validParameterNames.add(END_MS_PARAM);
     validParameterNames.add(START_MS_PARAM);
-    validParameterNames.add(CAPACITY_PARAM);
+    validParameterNames.add(CAPACITY_ONLY_PARAM);
     validParameterNames.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
     validParameterNames.addAll(AbstractParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
     CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
@@ -48,7 +48,7 @@ public class ClusterLoadParameters extends AbstractParameters {
   protected long _startMs;
   protected ModelCompletenessRequirements _requirements;
   protected boolean _allowCapacityEstimation;
-  protected boolean _capacity;
+  protected boolean _capacityOnly;
 
   public ClusterLoadParameters() {
     super();
@@ -62,7 +62,7 @@ public class ClusterLoadParameters extends AbstractParameters {
     _startMs = ParameterUtils.startMs(_request);
     _requirements = new ModelCompletenessRequirements(1, 0.0, true);
     _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_request);
-    _capacity = ParameterUtils.capacity(_request);
+    _capacityOnly = ParameterUtils.capacityOnly(_request);
   }
 
   public long startMs() {
@@ -81,8 +81,8 @@ public class ClusterLoadParameters extends AbstractParameters {
     return _allowCapacityEstimation;
   }
 
-  public boolean capacity() {
-    return _capacity;
+  public boolean capacityOnly() {
+    return _capacityOnly;
   }
 
   @Override

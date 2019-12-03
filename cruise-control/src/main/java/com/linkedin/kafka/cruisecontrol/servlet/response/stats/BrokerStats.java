@@ -47,7 +47,6 @@ public abstract class BrokerStats extends AbstractCruiseControlResponse {
    * Return an object that can be further be used to encode into JSON
    */
   public abstract Map<String, Object> getJsonStructure();
-  
   protected abstract void discardIrrelevantResponse();
 
   @Override
