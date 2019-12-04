@@ -33,6 +33,8 @@ public class ParameterJsonStructureTest {
     _endpointToClass = new HashMap<>();
     _endpointToClass.put("/kafkacruisecontrol/rebalance", RebalanceParameters.class);
     _endpointToClass.put("/kafkacruisecontrol/partition_load", PartitionLoadParameters.class);
+    _endpointToClass.put("/kafkacruisecontrol/topic_configuration", TopicConfigurationParameters.class);
+    _endpointToClass.put("/kafkacruisecontrol/state", CruiseControlStateParameters.class);
   }
 
   /**
@@ -53,8 +55,8 @@ public class ParameterJsonStructureTest {
       Assert.assertTrue(_endpointToClass.containsKey(endpoint.getKey()));
       CruiseControlParameters endpointParams = (CruiseControlParameters) (_endpointToClass.get(endpoint.getKey()).newInstance());
       Assert.assertEquals(
-        endpoint.getValue(),
-        endpointParams.caseInsensitiveParameterNames());
+        endpointParams.caseInsensitiveParameterNames(),
+        endpoint.getValue());
     }
   }
 
