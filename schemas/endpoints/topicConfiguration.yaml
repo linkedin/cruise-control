@@ -4,33 +4,33 @@ TopicConfigurationEndpoint:
     parameters:
       - name: dryrun
         in: query
-        description: Whether dry-run the request or not	
-        schema: 
+        description: Whether dry-run the request or not
+        schema:
           type: boolean
           default: true
       - name: topic
         in: query
         description: Regular expression to specify subject topics
-        schema: 
+        schema:
           type: string # topics regex
           default: null
       - name: replication_factor
         in: query
         description: Target replication factor
-        schema: 
+        schema:
           type: integer
           format: int32
           minimum: 1
       - name: data_from
         in: query
-        description: Whether to calculate proposal from available valid partitions or valid windows	
-        schema: 
+        description: Whether to calculate proposal from available valid partitions or valid windows
+        schema:
           type: string
-          default: VALID_WINDOWS	
+          default: VALID_WINDOWS
       - name: goals
         in: query
         description: list of goals used to generate proposal
-        schema: 
+        schema:
           type: array
           items:
             type: string
@@ -38,38 +38,62 @@ TopicConfigurationEndpoint:
       - name: allow_capacity_estimation
         in: query
         description: Whether to allow broker capacity to be estimated
-        schema: 
+        schema:
           type: boolean
           default: false
       - name: concurrent_partition_movements_per_broker
         in: query
-        description: The upper bound of ongoing replica movements going into/out of each broker	
-        schema: 
+        description: The upper bound of ongoing replica movements going into/out of each broker
+        schema:
           type: integer
           format: int32
           minimum: 1
       - name: concurrent_leader_movements
         in: query
-        description: The upper bound of ongoing leadership movements	
-        schema: 
+        description: The upper bound of ongoing leadership movements
+        schema:
           type: integer
           format: int32
           minimum: 1
       - name: skip_hard_goal_check
         in: query
-        description: Whether to allow hard goal be skipped in proposal generation	
-        schema: 
+        description: Whether to allow hard goal be skipped in proposal generation
+        schema:
           type: boolean
           default: false
       - name: exclude_recently_demoted_brokers
         in: query
         description: Whether to allow leader replicas to be moved to recently demoted broker
-        schema: 
+        schema:
           type: boolean
           default: false
+      - name: exclude_recently_removed_brokers
+        in: query
+        description: Whether allow replicas to be moved to recently removed broke
+        schema:
+          type: boolean
+          default: false
+      - name: excluded_topics
+        in: query
+        description: Regular expression to specify topic not to be considered for replica movement
+        schema:
+          type: string # topics regex
+          default: null
+      - name: execution_progress_check_interval_ms
+        in: query
+        description: The execution progress check interval in milliseconds.
+        schema:
+          type: integer
+          format: int64
+          minimum: 5000
+      - name: reason
+        in: query
+        description: The reason to perform topic configuration
+        schema:
+          type: string
       - name: replica_movement_strategies
         in: query
-        description: Replica movement strategies to use		
+        description: Replica movement strategies to use
         schema:
           type: array
           items:
@@ -77,20 +101,37 @@ TopicConfigurationEndpoint:
       - name: replication_throttle
         in: query
         description: Upper bound on the bandwidth used to move replicas
-        schema: 
+        schema:
           type: integer
       - name: json
         in: query
-        description: Whether to return in JSON format or not	
-        schema: 
+        description: Whether to return in JSON format or not
+        schema:
+          type: boolean
+          default: false
+      - name: review_id
+        in: query
+        description: Review id for 2FA
+        schema:
+          type: string
+      - name: skip_rack_awareness_check
+        in: query
+        description: Whether to allow rack awareness check to be skipped
+        schema:
+          type: boolean
+          default: false
+      - name: use_ready_default_goals
+        in: query
+        description: Whether to only use ready goals to generate proposal
+        schema:
           type: boolean
           default: false
       - name: verbose
         in: query
         description: Return detailed state information
-        schema: 
+        schema:
           type: boolean
-          default: false  
+          default: false
     responses:
       '200':
         description: |-
