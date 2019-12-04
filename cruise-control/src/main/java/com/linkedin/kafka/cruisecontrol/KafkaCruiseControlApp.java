@@ -23,6 +23,8 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 
+import javax.servlet.ServletException;
+
 public class KafkaCruiseControlApp {
 
   private static final String METRIC_DOMAIN = "kafka.cruisecontrol";
@@ -32,7 +34,7 @@ public class KafkaCruiseControlApp {
   private final AsyncKafkaCruiseControl _kafkaCruiseControl;
   private final JmxReporter _jmxReporter;
 
-  KafkaCruiseControlApp(KafkaCruiseControlConfig config, Integer port, String hostname) {
+  KafkaCruiseControlApp(KafkaCruiseControlConfig config, Integer port, String hostname) throws ServletException {
     this._config = config;
 
     MetricRegistry metricRegistry = new MetricRegistry();
@@ -156,15 +158,16 @@ public class KafkaCruiseControlApp {
     return context;
   }
 
-  private ConstraintSecurityHandler createSecurityHandler() {
+  private ConstraintSecurityHandler createSecurityHandler() throws ServletException {
     ConstraintSecurityHandler securityHandler = new CruiseControlSecurityHandler();
     SecurityProvider securityProvider;
     if (_config.getBoolean(WebServerConfig.BASIC_AUTH_ENABLE_CONFIG)) {
-      securityProvider = new BasicSecurityProvider(_config);
+      securityProvider = new BasicSecurityProvider();
     } else {
       securityProvider = _config.getConfiguredInstance(WebServerConfig.SECURITY_PROVIDER_CONFIG, SecurityProvider.class);
     }
     if (securityProvider != null) {
+      securityProvider.init(_config);
       securityHandler.setConstraintMappings(securityProvider.constraintMappings());
       securityHandler.setAuthenticator(securityProvider.authenticator());
       securityHandler.setLoginService(securityProvider.loginService());

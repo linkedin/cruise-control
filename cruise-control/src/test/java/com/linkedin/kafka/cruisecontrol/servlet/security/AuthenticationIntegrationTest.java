@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet.security;
 
 import com.linkedin.kafka.cruisecontrol.CruiseControlIntegrationTestHarness;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import org.apache.http.auth.BasicUserPrincipal;
 import org.eclipse.jetty.http.HttpHeader;
@@ -69,6 +70,9 @@ public class AuthenticationIntegrationTest extends CruiseControlIntegrationTestH
   }
 
   public static class DummySecurityProvider implements SecurityProvider {
+
+    @Override
+    public void init(KafkaCruiseControlConfig config) { }
 
     @Override
     public List<ConstraintMapping> constraintMappings() {

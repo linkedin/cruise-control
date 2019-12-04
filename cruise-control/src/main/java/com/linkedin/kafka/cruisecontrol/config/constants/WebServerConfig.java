@@ -184,19 +184,19 @@ public class WebServerConfig {
   private static final String WEBSERVER_SSL_KEYSTORE_LOCATION_DOC = "The location of the SSL keystore file";
 
   /**
-   * <code>ssl.keystore.password</code>
+   * <code>webserver.ssl.keystore.password</code>
    */
   public static final String WEBSERVER_SSL_KEYSTORE_PASSWORD_CONFIG = "webserver.ssl.keystore.password";
   private static final String WEBSERVER_SSL_KEYSTORE_PASSWORD_DOC = "The store password for the key store file.";
 
   /**
-   * <code>ssl.keystore.type</code>
+   * <code>webserver.ssl.keystore.type</code>
    */
   public static final String WEBSERVER_SSL_KEYSTORE_TYPE_CONFIG = "webserver.ssl.keystore.type";
   private static final String WEBSERVER_SSL_KEYSTORE_TYPE_DOC = "The file format of the key store file. This is an optional config.";
 
   /**
-   * <code>ssl.key.password</code>
+   * <code>webserver.ssl.key.password</code>
    */
   public static final String WEBSERVER_SSL_KEY_PASSWORD_CONFIG = "webserver.ssl.key.password";
   private static final String WEBSERVER_SSL_KEY_PASSWORD_DOC = "The password of the private key in the key store file.";

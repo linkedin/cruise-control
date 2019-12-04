@@ -4,10 +4,16 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.security;
 
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import org.eclipse.jetty.security.Authenticator;
 import org.eclipse.jetty.security.ConstraintMapping;
 import org.eclipse.jetty.security.LoginService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.servlet.ServletException;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -16,6 +22,19 @@ import java.util.Set;
  * up Cruise Control security to provide authentication and authorization rules over the WEB API.
  */
 public interface SecurityProvider {
+
+  String ADMIN = "ADMIN";
+  String USER = "USER";
+
+  Logger SECURITY_LOGGER = LoggerFactory.getLogger("securityLogger");
+
+  /**
+   * Sets the configuration to allow the initialization of the provider with custom configurable values.
+   *
+   * @param config is the global {@link KafkaCruiseControlConfig} object.
+   * @throws ServletException if any problem occured during the initialization.
+   */
+  void init(KafkaCruiseControlConfig config) throws ServletException;
 
   /**
    * Creates or gets a list of constraints that are put on the API endpoints, for instance only
@@ -29,23 +48,27 @@ public interface SecurityProvider {
    * Associates a username, credentials and roles with a {@link org.eclipse.jetty.server.UserIdentity}
    * that will be used by Jetty to manage the authentication.
    *
+   * @throws ServletException if any problem occured during the initialization of the LoginService.
    * @return a new {@link LoginService}.
    */
-  LoginService loginService();
+  LoginService loginService() throws ServletException;
 
   /**
    * Defines the request authentication method which is responsible to send challenges
    * according to authentication method and decide if the user has valid credentials according
    * to the authentication method.
    *
+   * @throws ServletException if any problem occured during the initialization of the Authenticator.
    * @return the {@link Authenticator} that'll be used for checking the incoming requests.
    */
-  Authenticator authenticator();
+  Authenticator authenticator() throws ServletException;
 
   /**
    * The set of roles defined by this {@link SecurityProvider}.
    *
    * @return list of strings that define the possible roles in Cruise Control.
    */
-  Set<String> roles();
+  default Set<String> roles() {
+    return new HashSet<>(Arrays.asList(USER, ADMIN));
+  }
 }

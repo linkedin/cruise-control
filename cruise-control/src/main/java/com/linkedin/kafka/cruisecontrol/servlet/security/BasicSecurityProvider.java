@@ -15,20 +15,15 @@ import org.eclipse.jetty.security.authentication.BasicAuthenticator;
 import org.eclipse.jetty.util.security.Constraint;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class BasicSecurityProvider implements SecurityProvider {
 
-  public static final String ADMIN = "ADMIN";
-  public static final String USER = "USER";
-  public static final String VIEWER = "VIEWER";
+  private String _userCredentialsFile;
+  private String _webServerApiUrlPrefix;
 
-  private final String _userCredentialsFile;
-  private final String _webServerApiUrlPrefix;
-
-  public BasicSecurityProvider(KafkaCruiseControlConfig config) {
+  @Override
+  public void init(KafkaCruiseControlConfig config) {
     this._webServerApiUrlPrefix = config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG);
     this._userCredentialsFile = config.getString(WebServerConfig.BASIC_AUTH_CREDENTIALS_FILE_CONFIG);
   }
@@ -36,7 +31,13 @@ public class BasicSecurityProvider implements SecurityProvider {
   @Override
   public List<ConstraintMapping> constraintMappings() {
     List<ConstraintMapping> constraintMappings = new ArrayList<>();
-    CruiseControlEndPoint.getEndpoints().forEach(ep -> constraintMappings.add(mapping(ep, USER, ADMIN)));
+    CruiseControlEndPoint.getEndpoints().forEach(ep -> {
+      if (ep == CruiseControlEndPoint.BOOTSTRAP || ep == CruiseControlEndPoint.TRAIN) {
+        constraintMappings.add(mapping(ep, ADMIN));
+      } else {
+        constraintMappings.add(mapping(ep, USER, ADMIN));
+      }
+    });
     CruiseControlEndPoint.postEndpoints().forEach(ep -> constraintMappings.add(mapping(ep, ADMIN)));
     return constraintMappings;
   }
@@ -49,15 +50,6 @@ public class BasicSecurityProvider implements SecurityProvider {
   @Override
   public Authenticator authenticator() {
     return new BasicAuthenticator();
-  }
-
-  @Override
-  public Set<String> roles() {
-    Set<String> roles = new HashSet<>();
-    roles.add(ADMIN);
-    roles.add(USER);
-    roles.add(VIEWER);
-    return roles;
   }
 
   private ConstraintMapping mapping(CruiseControlEndPoint endpoint, String... roles) {
