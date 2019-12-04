@@ -16,8 +16,10 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import javax.servlet.http.HttpServletResponse;
 
 
@@ -129,8 +131,7 @@ public class ResponseUtils {
     return convertNodeToStringSchemaNode(response, null);
   }
 
-  private static String convertNodeToStringSchemaNode(
-          JsonElement node, String key) {
+  private static String convertNodeToStringSchemaNode(JsonElement node, String key) {
     StringBuilder result = new StringBuilder();
 
     if (key != null) {
@@ -139,16 +140,17 @@ public class ResponseUtils {
       result.append("{ \"type\": \"");
     }
     if (node.isJsonArray()) {
-      result.append("array\", \"items\": [");
+      result.append("array\"");
       JsonArray arr = node.getAsJsonArray();
+      Set<String> arrayItems = new HashSet<>();
       for (int i = 0; i < arr.size(); i++) {
         node = arr.get(i);
-        result.append(convertNodeToStringSchemaNode(node, null));
-        if (i != arr.size() - 1) {
-          result.append(",");
-        }
+        arrayItems.add(convertNodeToStringSchemaNode(node, null));
       }
-      result.append("]}");
+      if (arrayItems.size() > 0) {
+        result.append(", \"items\": [" + String.join(",", arrayItems) + "]");
+      }
+      result.append("}");
     } else if (node.isJsonPrimitive()) {
       if (node.getAsJsonPrimitive().isBoolean()) {
         result.append("boolean\" }");
@@ -160,7 +162,9 @@ public class ResponseUtils {
     } else if (node.isJsonObject()) {
       result.append("object\", \"properties\": ");
       result.append("{");
-      for (Iterator<Map.Entry<String, JsonElement>> iterator = node.getAsJsonObject().entrySet().iterator(); iterator.hasNext(); ) {
+      for (Iterator<Map.Entry<String, JsonElement>> iterator =
+           node.getAsJsonObject().entrySet().stream().sorted(Map.Entry.comparingByKey()).iterator();
+           iterator.hasNext(); ) {
         Map.Entry<String, JsonElement> entry = iterator.next();
         key = entry.getKey();
         JsonElement child = entry.getValue();
