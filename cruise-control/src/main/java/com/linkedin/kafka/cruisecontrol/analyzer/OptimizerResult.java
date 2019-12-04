@@ -8,6 +8,8 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 import java.util.Arrays;
 import java.util.Collections;
@@ -25,19 +27,35 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.MAX_BALAN
  * A class for representing the results of goal optimizer. The results include stats by goal priority and
  * optimization proposals.
  */
+@JsonResponseClass
 public class OptimizerResult {
+  @JsonResponseField
   private static final String NUM_INTER_BROKER_REPLICA_MOVEMENTS = "numReplicaMovements";
+  @JsonResponseField
   private static final String INTER_BROKER_DATA_TO_MOVE_MB = "dataToMoveMB";
+  @JsonResponseField
   private static final String NUM_INTRA_BROKER_REPLICA_MOVEMENTS = "numIntraBrokerReplicaMovements";
+  @JsonResponseField
   private static final String INTRA_BROKER_DATA_TO_MOVE_MB = "intraBrokerDataToMoveMB";
+  @JsonResponseField
   private static final String NUM_LEADER_MOVEMENTS = "numLeaderMovements";
+  @JsonResponseField
   private static final String RECENT_WINDOWS = "recentWindows";
+  @JsonResponseField
   private static final String MONITORED_PARTITIONS_PERCENTAGE = "monitoredPartitionsPercentage";
+  @JsonResponseField
   private static final String EXCLUDED_TOPICS = "excludedTopics";
+  @JsonResponseField
   private static final String EXCLUDED_BROKERS_FOR_LEADERSHIP = "excludedBrokersForLeadership";
+  @JsonResponseField
   private static final String EXCLUDED_BROKERS_FOR_REPLICA_MOVE = "excludedBrokersForReplicaMove";
+  @JsonResponseField
   private static final String ON_DEMAND_BALANCEDNESS_SCORE_AFTER = "onDemandBalancednessScoreAfter";
+  @JsonResponseField
   private static final String ON_DEMAND_BALANCEDNESS_SCORE_BEFORE = "onDemandBalancednessScoreBefore";
+  private static final String VIOLATED = "VIOLATED";
+  private static final String FIXED = "FIXED";
+  private static final String NO_ACTION = "NO-ACTION";
   private final Map<String, Goal.ClusterModelStatsComparator> _clusterModelStatsComparatorByGoalName;
   private final LinkedHashMap<String, ClusterModelStats> _statsByGoalName;
   private final Set<ExecutionProposal> _proposals;
@@ -192,6 +210,14 @@ public class OptimizerResult {
    */
   public Set<Integer> excludedBrokersForReplicaMove() {
     return _optimizationOptions.excludedBrokersForReplicaMove();
+  }
+
+  /**
+   * @return The string describing goal result.
+   */
+  public String goalResultDescription(String goalName) {
+    return _violatedGoalNamesBeforeOptimization.contains(goalName) ?
+           _violatedGoalNamesAfterOptimization.contains(goalName) ? VIOLATED : FIXED : NO_ACTION;
   }
 
   /**

@@ -9,7 +9,8 @@ import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.getBaseJSONString;
 
-
+@JsonResponseClass
+@JsonResponseExternalFields(ResponseUtils.class)
 public class StopProposalResult extends AbstractCruiseControlResponse {
 
   public StopProposalResult(KafkaCruiseControlConfig config) {

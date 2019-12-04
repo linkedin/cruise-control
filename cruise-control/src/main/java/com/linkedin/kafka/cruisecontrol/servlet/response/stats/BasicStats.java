@@ -4,20 +4,31 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.response.stats;
 
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import java.util.HashMap;
 import java.util.Map;
 
-
-class BasicStats {
-  protected static final String DISK_MB = "DiskMB";
-  protected static final String DISK_PCT = "DiskPct";
-  protected static final String CPU_PCT = "CpuPct";
-  protected static final String LEADER_NW_IN_RATE = "LeaderNwInRate";
-  protected static final String FOLLOWER_NW_IN_RATE = "FollowerNwInRate";
-  protected static final String NW_OUT_RATE = "NwOutRate";
-  protected static final String PNW_OUT_RATE = "PnwOutRate";
-  protected static final String REPLICAS = "Replicas";
-  protected static final String LEADERS = "Leaders";
+@JsonResponseClass
+public class BasicStats {
+  @JsonResponseField
+  protected static final String DISK_MB = "diskMB";
+  @JsonResponseField
+  protected static final String DISK_PCT = "diskPct";
+  @JsonResponseField
+  protected static final String CPU_PCT = "cpuPct";
+  @JsonResponseField
+  protected static final String LEADER_NW_IN_RATE = "leaderNwInRate";
+  @JsonResponseField
+  protected static final String FOLLOWER_NW_IN_RATE = "followerNwInRate";
+  @JsonResponseField
+  protected static final String NW_OUT_RATE = "nwOutRate";
+  @JsonResponseField
+  protected static final String PNW_OUT_RATE = "pnwOutRate";
+  @JsonResponseField
+  protected static final String REPLICAS = "replicas";
+  @JsonResponseField
+  protected static final String LEADERS = "leaders";
   protected double _diskUtil;
   protected double _cpuUtil;
   protected double _leaderBytesInRate;
@@ -96,9 +107,10 @@ class BasicStats {
     _diskCapacity += basicStats.diskCapacity();
   }
 
-  /*
-   * Return an object that can be further used
-   * to encode into JSON
+  /**
+   * Return an object that can be further used to encode into JSON.
+   *
+   * @return The map describing basic statistics.
    */
   public Map<String, Object> getJSONStructure() {
     Map<String, Object> entry = new HashMap<>(9);

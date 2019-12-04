@@ -7,6 +7,8 @@ package com.linkedin.kafka.cruisecontrol.servlet.purgatory;
 import com.linkedin.cruisecontrol.servlet.EndPoint;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -26,7 +28,20 @@ import static com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus.*;
  *   <li>{@link ReviewStatus#APPROVED} -&gt; {@link ReviewStatus#DISCARDED}, {@link ReviewStatus#SUBMITTED}</li>
  * </ul>
  */
+@JsonResponseClass
 public class RequestInfo {
+  @JsonResponseField
+  public static final String ID = "Id";
+  @JsonResponseField
+  public static final String SUBMITTER_ADDRESS = "SubmitterAddress";
+  @JsonResponseField
+  public static final String SUBMISSION_TIME_MS = "SubmissionTimeMs";
+  @JsonResponseField
+  public static final String STATUS = "Status";
+  @JsonResponseField
+  public static final String ENDPOINT_WITH_PARAMS = "EndpointWithParams";
+  @JsonResponseField
+  public static final String REASON = "Reason";
   private static final String INIT_REASON = "Awaiting review.";
   private static final String FINAL_REASON = "Submitted approved request.";
   private static final Map<ReviewStatus, Set<ReviewStatus>> VALID_TRANSFER = new HashMap<>();
@@ -154,5 +169,20 @@ public class RequestInfo {
    */
   private Set<ReviewStatus> validTargetStatus() {
     return Collections.unmodifiableSet(VALID_TRANSFER.get(_status));
+  }
+
+  /**
+   * @param reviewId The associate review id with the request.
+   * @return An object that can be further used to encode into JSON.
+   */
+  public Map<String, Object> getJsonStructure(Integer reviewId) {
+    Map<String, Object> jsonMap = new HashMap<>(6);
+    jsonMap.put(ID, reviewId);
+    jsonMap.put(SUBMITTER_ADDRESS, _submitterAddress);
+    jsonMap.put(SUBMISSION_TIME_MS, _submissionTimeMs);
+    jsonMap.put(STATUS, _status.toString());
+    jsonMap.put(ENDPOINT_WITH_PARAMS, endpointWithParams());
+    jsonMap.put(REASON, _reason);
+    return jsonMap;
   }
 }

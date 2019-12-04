@@ -4,6 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.model;
 
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -11,16 +13,21 @@ import java.util.Map;
 /**
  * A helper class to store statistics about the {@link Disk}.
  */
+@JsonResponseClass
 public class DiskStats {
   private final int _numLeaderReplicas;
   private final int _numReplicas;
   // For dead disk, its utilization will be null.
   private final Double _utilization;
   private final double _capacity;
-  private static final String DISK_MB = "DiskMB";
-  private static final String DISK_PCT = "DiskPct";
-  private static final String NUM_LEADER_REPLICAS = "NumLeaderReplicas";
-  private static final String NUM_REPLICAS = "NumReplicas";
+  @JsonResponseField
+  private static final String DISK_MB = "diskMB";
+  @JsonResponseField
+  private static final String DISK_PCT = "diskPct";
+  @JsonResponseField
+  private static final String NUM_LEADER_REPLICAS = "numLeaderReplicas";
+  @JsonResponseField
+  private static final String NUM_REPLICAS = "numReplicas";
   private static final String DEAD_STATE = "DEAD";
 
   DiskStats(int numLeaderReplicas, int numReplicas, double utilization, double capacity) {

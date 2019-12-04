@@ -23,8 +23,11 @@ import javax.servlet.http.HttpServletResponse;
 public class ResponseUtils {
   public static final int JSON_VERSION = 1;
   public static final String VERSION = "version";
+  @JsonResponseField
   public static final String MESSAGE = "message";
+  @JsonResponseField(responseStatus = HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
   private static final String STACK_TRACE = "stackTrace";
+  @JsonResponseField(responseStatus = HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
   private static final String ERROR_MESSAGE = "errorMessage";
 
   private ResponseUtils() {

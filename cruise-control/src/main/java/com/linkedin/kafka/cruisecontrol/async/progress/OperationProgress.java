@@ -4,6 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.async.progress;
 
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -12,6 +14,7 @@ import java.util.Map;
 import javax.servlet.http.HttpSession;
 
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVAL_TO_PERCENTAGE;
+import static javax.servlet.http.HttpServletResponse.*;
 
 
 /**
@@ -20,14 +23,24 @@ import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVA
  * Cruise Control will use {@link HttpSession} to keep track the progress of such requests and
  * report the progress to the users.
  */
+@JsonResponseClass
 public class OperationProgress {
-  private static final String STEP = "step";
-  private static final String DESCRIPTION = "description";
-  private static final String TIME_IN_MS = "time-in-ms";
-  private static final String COMPLETION_PERCENTAGE = "completionPercentage";
+  @JsonResponseField(responseStatus = SC_ACCEPTED)
+  protected static final String OPERATION = "operation";
+  @JsonResponseField(responseStatus = SC_ACCEPTED)
+  protected static final String OPERATION_PROGRESS = "operationProgress";
   private boolean _mutable = true;
   private List<OperationStep> _steps = new ArrayList<>();
   private List<Long> _startTimes = new ArrayList<>();
+  private String _operation;
+
+  public  OperationProgress() {
+    this("");
+  }
+
+  public OperationProgress(String operation) {
+    _operation = operation;
+  }
 
   /**
    * Add a {@link OperationStep} to the progress.
@@ -86,26 +99,27 @@ public class OperationProgress {
     for (int i = 0; i < _steps.size(); i++) {
       OperationStep step = _steps.get(i);
       long time = (i == _steps.size() - 1 ? System.currentTimeMillis() : _startTimes.get(i + 1)) - _startTimes.get(i);
-      sb.append(String.format("(%6d ms) - (%3.1f%%) %s: %s%n",
-                              time,  step.completionPercentage() * UNIT_INTERVAL_TO_PERCENTAGE, step.name(), step.description()));
+      sb.append(new StepProgress(step, time).toString());
     }
     return sb.toString();
   }
 
   /**
-   * @return The array describing the progress of the operation.
+   * @return The map describing the progress of the operation.
    */
-  public synchronized Object[] getJsonArray() {
+  public Map<String, Object> getJsonStructure() {
+    Map<String, Object> operationProgress = new HashMap<>(2);
+    operationProgress.put(OPERATION, _operation);
+    operationProgress.put(OPERATION_PROGRESS, getProgress());
+    return operationProgress;
+  }
+
+  private synchronized Object[] getProgress() {
     Object[] progressArray = new Object[_steps.size()];
     for (int i = 0; i < _steps.size(); i++) {
       OperationStep step = _steps.get(i);
       long time = (i == _steps.size() - 1 ? System.currentTimeMillis() : _startTimes.get(i + 1)) - _startTimes.get(i);
-      Map<String, Object> stepProgressMap = new HashMap<>();
-      stepProgressMap.put(STEP, step.name());
-      stepProgressMap.put(DESCRIPTION, step.description());
-      stepProgressMap.put(TIME_IN_MS, time);
-      stepProgressMap.put(COMPLETION_PERCENTAGE, step.completionPercentage() * UNIT_INTERVAL_TO_PERCENTAGE);
-      progressArray[i] = stepProgressMap;
+      progressArray[i] = new StepProgress(step, time).getJsonStructure();
     }
     return progressArray;
   }
@@ -113,6 +127,40 @@ public class OperationProgress {
   private void ensureMutable() {
     if (!_mutable) {
       throw new IllegalStateException("Cannot change this operation progress because it is immutable.");
+    }
+  }
+
+  @JsonResponseClass
+  private static class StepProgress {
+    @JsonResponseField(responseStatus = SC_ACCEPTED)
+    static final String STEP = "step";
+    @JsonResponseField(responseStatus = SC_ACCEPTED)
+    static final String DESCRIPTION = "description";
+    @JsonResponseField(responseStatus = SC_ACCEPTED)
+    static final String TIME_IN_MS = "timeInMs";
+    @JsonResponseField(responseStatus = SC_ACCEPTED)
+    static final String COMPLETION_PERCENTAGE = "completionPercentage";
+    private OperationStep _step;
+    private long _duration;
+
+    StepProgress(OperationStep step, long duration) {
+      _step = step;
+      _duration = duration;
+    }
+
+    Map<String, Object> getJsonStructure() {
+      Map<String, Object> stepProgressMap = new HashMap<>(4);
+      stepProgressMap.put(STEP, _step.name());
+      stepProgressMap.put(DESCRIPTION, _step.description());
+      stepProgressMap.put(TIME_IN_MS, _duration);
+      stepProgressMap.put(COMPLETION_PERCENTAGE, _step.completionPercentage() * UNIT_INTERVAL_TO_PERCENTAGE);
+      return stepProgressMap;
+    }
+
+    @Override
+    public String toString() {
+      return String.format("(%6d ms) - (%3.1f%%) %s: %s%n", _duration,
+                           _step.completionPercentage() * UNIT_INTERVAL_TO_PERCENTAGE, _step.name(), _step.description());
     }
   }
 }
