@@ -142,13 +142,16 @@ public class ResponseUtils {
     if (node.isJsonArray()) {
       result.append("array\"");
       JsonArray arr = node.getAsJsonArray();
-      Set<String> arrayItems = new HashSet<>();
-      for (int i = 0; i < arr.size(); i++) {
-        node = arr.get(i);
-        arrayItems.add(convertNodeToStringSchemaNode(node, null));
-      }
-      if (arrayItems.size() > 0) {
-        result.append(", \"items\": [" + String.join(",", arrayItems) + "]");
+      if (arr.size() > 0) {
+        result.append(", \"items\": [");
+        for (int i = 0; i < arr.size(); i++) {
+          node = arr.get(i);
+          result.append(convertNodeToStringSchemaNode(node, null));
+          if (i != arr.size() - 1) {
+            result.append(",");
+          }
+        }
+        result.append("]");
       }
       result.append("}");
     } else if (node.isJsonPrimitive()) {
@@ -162,9 +165,7 @@ public class ResponseUtils {
     } else if (node.isJsonObject()) {
       result.append("object\", \"properties\": ");
       result.append("{");
-      for (Iterator<Map.Entry<String, JsonElement>> iterator =
-           node.getAsJsonObject().entrySet().stream().sorted(Map.Entry.comparingByKey()).iterator();
-           iterator.hasNext(); ) {
+      for (Iterator<Map.Entry<String, JsonElement>> iterator = node.getAsJsonObject().entrySet().iterator(); iterator.hasNext(); ) {
         Map.Entry<String, JsonElement> entry = iterator.next();
         key = entry.getKey();
         JsonElement child = entry.getValue();
