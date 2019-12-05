@@ -142,7 +142,7 @@ public class KafkaCruiseControlServletUtils {
 
   }
 
-  static RequestParameterWrapper requestParameterFor(EndPoint endpoint) {
+  public static RequestParameterWrapper requestParameterFor(EndPoint endpoint) {
     return REQUEST_PARAMETER_CONFIGS.get(endpoint);
   }
 
