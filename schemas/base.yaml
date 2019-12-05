@@ -12,3 +12,5 @@ paths:
     $ref: 'endpoints/state.yaml#/StateEndpoint'
   /kafkacruisecontrol/topic_configuration:
     $ref: 'endpoints/topicConfiguration.yaml#/TopicConfigurationEndpoint'
+  /kafkacruisecontrol/user_tasks:
+    $ref: 'endpoints/userTasks.yaml#/UserTasksEndpoint'

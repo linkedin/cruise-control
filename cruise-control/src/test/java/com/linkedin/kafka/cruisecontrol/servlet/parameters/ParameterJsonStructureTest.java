@@ -35,6 +35,7 @@ public class ParameterJsonStructureTest {
     _endpointToClass.put("/kafkacruisecontrol/partition_load", PartitionLoadParameters.class);
     _endpointToClass.put("/kafkacruisecontrol/topic_configuration", TopicConfigurationParameters.class);
     _endpointToClass.put("/kafkacruisecontrol/state", CruiseControlStateParameters.class);
+    _endpointToClass.put("/kafkacruisecontrol/user_tasks", UserTasksParameters.class);
   }
 
   /**

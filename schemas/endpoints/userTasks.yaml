@@ -1,0 +1,51 @@
+UserTasksEndpoint:
+  get:
+    summary: Get the recent user tasks from cruise control
+    parameters:
+      - name: client_ids
+        in: query
+        description: Comma separated IP addresses to filter the task results Cruise Control report
+        schema:
+          type: string
+      - name: endpoints
+        in: query
+        description: Comma separated endpoints to filter the task results Cruise Control report
+        schema:
+          type: string
+      - name: entries
+        in: query
+        description: The number of entries to show in the response
+        schema:
+          type: number
+          format: int64
+          default: MAX_INT
+      - name: types
+        in: query
+        description: Comma separated HTTP request types to filter the task results Cruise Control report
+        schema:
+          type: string
+      - name: user_task_ids
+        in: query
+        description: Comma separated UUIDs to filter the task results Cruise Control report
+        schema:
+          type: string
+      - name: json
+        in: query
+        description: If true, cruise-control's response is in JSON format
+        schema:
+          type: boolean
+          default: false
+      - name: fetch_completed_task
+        in: query
+        description: Whether return the original request's final response
+        schema:
+          type: boolean
+          default: false
+    responses:
+      '200':
+        description: |-
+          User tasks state response
+        content:
+          application/json:
+            schema:
+              $ref: '../responses/userTasksState.yaml#/UserTasksState'
