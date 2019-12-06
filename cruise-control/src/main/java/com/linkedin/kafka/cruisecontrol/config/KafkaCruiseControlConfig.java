@@ -643,24 +643,24 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    */
   public static final String GOAL_VIOLATION_DETECTION_INTERVAL_MS_CONFIG = "goal.violation.detection.interval.ms";
   private static final String GOAL_VIOLATION_DETECTION_INTERVAL_MS_DOC = "The interval in millisecond that goal violation "
-      + "detector will run to detect the goal violations. If this interval time is not specified, goal violation detector "
-      + "will be run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ".";
+      + "detector will run to detect goal violations. If this interval time is not specified, goal violation detector "
+      + "will run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ".";
 
   /**
    * <code>metric.anomaly.detection.interval.ms</code>
    */
   public static final String METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG = "metric.anomaly.detection.interval.ms";
   private static final String METRIC_ANOMALY_DETECTION_INTERVAL_MS_DOC = "The interval in millisecond that metric anomaly "
-      + "detector will run to detect the metric anomalies. If this interval time is not specified, metric anomaly detector "
-      + "will be run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ".";
+      + "detector will run to detect metric anomalies. If this interval time is not specified, metric anomaly detector "
+      + "will run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ".";
 
   /**
    * <code>disk.failure.detection.interval.ms</code>
    */
   public static final String DISK_FAILURE_DETECTION_INTERVAL_MS_CONFIG = "disk.failure.detection.interval.ms";
   private static final String DISK_FAILURE_DETECTION_INTERVAL_MS_DOC = "The interval in millisecond that disk failure "
-      + "detector will run to detect the disk failures. If this interval time is not specified, disk failure detector "
-      + "will be run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ".";
+      + "detector will run to detect disk failures. If this interval time is not specified, disk failure detector "
+      + "will run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ".";
 
   /**
    * <code>broker.failure.detection.backoff.ms</code>

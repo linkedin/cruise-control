@@ -11,6 +11,7 @@ public interface AnomalyType {
 
   /**
    * Get the priority of the anomaly type.
+   * The smaller the value is, the higher priority the anomaly has.
    *
    * @return The priority value.
    */

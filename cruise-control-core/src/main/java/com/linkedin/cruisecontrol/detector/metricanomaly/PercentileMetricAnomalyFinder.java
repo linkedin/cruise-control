@@ -36,7 +36,6 @@ import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetric
  */
 public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements MetricAnomalyFinder<E> {
   private static final Logger LOG = LoggerFactory.getLogger(PercentileMetricAnomalyFinder.class);
-  // Ensure that no metric anomaly is generated unless the upper percentile metric value is a significant metric value.
   private final Percentile _percentile;
   protected double _anomalyUpperMargin;
   protected double _anomalyLowerMargin;

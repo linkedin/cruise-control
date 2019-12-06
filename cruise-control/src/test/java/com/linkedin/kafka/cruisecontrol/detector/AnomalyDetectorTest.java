@@ -66,6 +66,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.A
  */
 public class AnomalyDetectorTest {
   static private final long MOCK_ANOMALY_DETECTION_INTERVAL_MS = 3000L;
+  static private final long MOCK_ANOMALY_DETECTER_SHUTDOWN_MS = 5000L;
   static private final long MOCK_DELAY_CHECK_MS = 1000L;
   static private final Map<AnomalyType, Float> MOCK_SELF_HEALING_ENABLED_RATIO = new HashMap<>(KafkaAnomalyType.cachedValues().size());
   static {
@@ -109,7 +110,7 @@ public class AnomalyDetectorTest {
                                        ScheduledExecutorService executorService) throws InterruptedException {
     mockDetectorScheduler.shutdown();
     EasyMock.expectLastCall().andDelegateTo(executorService);
-    EasyMock.expect(mockDetectorScheduler.awaitTermination(5000, TimeUnit.MILLISECONDS)).andDelegateTo(executorService);
+    EasyMock.expect(mockDetectorScheduler.awaitTermination(MOCK_ANOMALY_DETECTER_SHUTDOWN_MS, TimeUnit.MILLISECONDS)).andDelegateTo(executorService);
     EasyMock.expect(mockDetectorScheduler.isTerminated()).andDelegateTo(executorService);
   }
 
@@ -191,7 +192,7 @@ public class AnomalyDetectorTest {
       anomalyDetector.shutdown();
       assertEquals(0, anomalyDetector.numSelfHealingStarted());
       assertEquals(1, anomalyDetector.numCheckedWithDelay());
-      assertTrue(executorService.awaitTermination(5000, TimeUnit.MILLISECONDS));
+      assertTrue(executorService.awaitTermination(MOCK_ANOMALY_DETECTER_SHUTDOWN_MS, TimeUnit.MILLISECONDS));
       AnomalyDetectorState anomalyDetectorState = anomalyDetector.anomalyDetectorState();
       assertEquals((long) anomalyDetectorState.metrics().get(NUM_SELF_HEALING_STARTED), 0L);
       assertEquals(anomalyDetectorState.recentAnomaliesByType().get(KafkaAnomalyType.BROKER_FAILURE).size(), 1);
@@ -402,7 +403,7 @@ public class AnomalyDetectorTest {
       anomalyDetector.shutdown();
       assertEquals(1, anomalyDetector.numSelfHealingStarted());
       assertEquals(0, anomalyDetector.numCheckedWithDelay());
-      assertTrue(executorService.awaitTermination(5000, TimeUnit.MILLISECONDS));
+      assertTrue(executorService.awaitTermination(MOCK_ANOMALY_DETECTER_SHUTDOWN_MS, TimeUnit.MILLISECONDS));
       AnomalyDetectorState anomalyDetectorState = anomalyDetector.anomalyDetectorState();
       assertEquals((long) anomalyDetectorState.metrics().get(NUM_SELF_HEALING_STARTED), 1L);
       assertEquals(anomalyDetectorState.recentAnomaliesByType().get(KafkaAnomalyType.BROKER_FAILURE).size(), 0);
@@ -465,7 +466,7 @@ public class AnomalyDetectorTest {
       anomalyDetector.shutdown();
       assertEquals(0, anomalyDetector.numSelfHealingStarted());
       assertEquals(0, anomalyDetector.numCheckedWithDelay());
-      assertTrue(executorService.awaitTermination(5000, TimeUnit.MILLISECONDS));
+      assertTrue(executorService.awaitTermination(MOCK_ANOMALY_DETECTER_SHUTDOWN_MS, TimeUnit.MILLISECONDS));
       AnomalyDetectorState anomalyDetectorState = anomalyDetector.anomalyDetectorState();
       assertEquals((long) anomalyDetectorState.metrics().get(NUM_SELF_HEALING_STARTED), 0L);
       assertEquals(anomalyDetectorState.recentAnomaliesByType().get(KafkaAnomalyType.BROKER_FAILURE).size(), 0);

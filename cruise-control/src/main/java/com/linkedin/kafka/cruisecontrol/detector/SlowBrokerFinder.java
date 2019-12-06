@@ -42,11 +42,11 @@ import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricT
  * checking in two ways.
  * <ul>
  *   <li>Comparing the latest metric value against broker's own history. If the latest value is larger than
- *       {@link #HISTORY_METRIC_MARGIN} * {@link #HISTORY_METRIC_PERCENTILE_THRESHOLD} of historical values, it is
+ *       {@link #HISTORY_METRIC_MARGIN} * ({@link #HISTORY_METRIC_PERCENTILE_THRESHOLD} of historical values), it is
  *       considered to be abnormally high.</li>
  *   <li>Comparing the latest metric value against the latest metric value of all active brokers in cluster (i.e. brokers
- *       which serve non-zero traffic). If the value is larger than {@link #PEER_METRIC_MARGIN} * {@link #PEER_METRIC_PERCENTILE_THRESHOLD}
- *       of all metric values, it is considered to be abnormally high.</li>
+ *       which serve non-zero traffic). If the value is larger than {@link #PEER_METRIC_MARGIN} * ({@link #PEER_METRIC_PERCENTILE_THRESHOLD}
+ *       of all metric values), it is considered to be abnormally high.</li>
  * </ul>
  *
  * If certain broker's metric value is abnormally high, the broker is marked as a slow broker suspect by the finder.
@@ -62,7 +62,7 @@ import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricT
  *   <li> For any broker not in the scoring system, once there is metric anomaly detected on it, the broker is added to the system
  *        with the initial "slowness score" of one. </li>
  *   <li> For any broker in the scoring system, if there is metric anomaly detected on it, its "slowness score" increases
- *        by 1. Once the score exceeds {@link #SLOW_BROKER_DEMOTION_SCORE}, finder begin to report the broker as slow broker
+ *        by 1. Once the score exceeds {@link #SLOW_BROKER_DEMOTION_SCORE}, finder begins to report the broker as slow broker
  *        with broker demotion as self-healing proposal; once the score reaches {@link #SLOW_BROKER_DECOMMISSION_SCORE},
  *        finder begin to report the broker as slow broker with broker removal as self-healing proposal (if
  *        {@link #SELF_HEALING_SLOW_BROKERS_REMOVAL_ENABLED_CONFIG is configed to be true}).</li>
