@@ -112,7 +112,12 @@ public class PreferredLeaderElectionGoal implements Goal {
         if (hasBrokerOrDiskToBeDemoted && !partitionsToMove.contains(p.topicPartition())) {
           continue;
         }
-        for (Replica r : p.replicas()) {
+        for (int i = 0; i < p.replicas().size(); i++) {
+          // If there is no broker or disk to be demoted, only try to transfer the leadership to the first replica of the partition.
+          if (!hasBrokerOrDiskToBeDemoted && i > 0) {
+            break;
+          }
+          Replica r = p.replicas().get(i);
           // Iterate over the replicas and ensure that (1) the leader is set to the first alive replica, and (2) the
           // leadership is not transferred to a broker excluded for leadership transfer.
           Broker leaderCandidate = r.broker();
