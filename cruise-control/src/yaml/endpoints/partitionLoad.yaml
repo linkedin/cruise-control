@@ -8,6 +8,7 @@ PartitionLoadEndpoint:
         description: The host and broker-level resource by which to sort the cruise-control response
         schema:
           type: string
+          default: "disk"
           enum:
             - cpu
             - networkInbound
@@ -18,10 +19,11 @@ PartitionLoadEndpoint:
         description: The timestamp in milliseconds of the earliest metric sample use to generate load
         schema:
           type: integer
+          default: -1
           format: int64
       - name: end
         in: query
-        description: The timestamp in milliseconds of the latest metric sample use to generate load
+        description: The timestamp in milliseconds of the latest metric sample use to generate load (defaults to current timestamp)
         schema:
           type: integer
           format: int64
@@ -30,12 +32,14 @@ PartitionLoadEndpoint:
         description: The number of entries to show in the response
         schema:
           type: integer
+          default: 2147483647
           format: int32
       - name: topic
         in: query
         description: A regular expression used to filter the partition load returned based on topic
         schema:
           type: string
+          default: null
       - name: partition
         in: query
         description: The partition or partition range to filter partition load returned
@@ -56,6 +60,7 @@ PartitionLoadEndpoint:
         description: The minimum required ratio of partition load data completeness
         schema:
           type: number
+          default: null
           format: double
           minimum: 0.0
           maximum: 1.0
@@ -64,21 +69,25 @@ PartitionLoadEndpoint:
         description: Whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information
         schema:
           type: boolean
+          default: true
       - name: max_load
         in: query
         description: If true, the maximum load is returned
         schema:
           type: boolean
+          default: false
       - name: avg_load
         in: query
         description: If true, the average load is returned
         schema:
           type: boolean
+          default: false
       - name: brokerid
         in: query
         description: Set of broker ids used to filter partition load returned
         schema:
           type: array
+          default: []
           items:
             type: integer
             format: int32
@@ -87,6 +96,7 @@ PartitionLoadEndpoint:
         description: Whether to return in JSON format or not
         schema:
           type: boolean
+          default: false
     responses:
       '200':
         description: |-
