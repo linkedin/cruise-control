@@ -154,7 +154,7 @@ RebalanceEndpoint:
         content:
           application/json:
             schema:
-              $ref: '../responses/optimzationResult.yaml#/OptimizationResult'
+              $ref: '../responses/optimizationResult.yaml#/OptimizationResult'
           text/plain:
             schema:
               type: string
@@ -165,6 +165,36 @@ RebalanceEndpoint:
           application/json:
             schema:
               $ref: '../responses/progressResult.yaml#/ProgressResult'
+          text/plain:
+            schema:
+              type: string
+      '400':
+        description: |-
+          Bad request
+        content:
+          application/json:
+            schema:
+              $ref: '../responses/errorResponse.yaml#/ErrorResponse'
+          text/plain:
+            schema:
+              type: string
+      '403':
+        description: |-
+          Cannot process request
+        content:
+          application/json:
+            schema:
+              $ref: '../responses/errorResponse.yaml#/ErrorResponse'
+          text/plain:
+            schema:
+              type: string
+      '500':
+        description: |-
+          Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: '../responses/errorResponse.yaml#/ErrorResponse'
           text/plain:
             schema:
               type: string
