@@ -75,7 +75,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     populateSampleAggregator(NUM_WINDOWS + 1, MIN_SAMPLES_PER_WINDOW, metricSampleAggregator);
 
     MetricSampleAggregationResult<String, PartitionEntity> result =
-        metricSampleAggregator.aggregate(clusterAndGeneration(metadata.fetch()), Long.MAX_VALUE, new OperationProgress());
+        metricSampleAggregator.aggregate(metadata.fetch(), Long.MAX_VALUE, new OperationProgress());
     Map<PartitionEntity, ValuesAndExtrapolations> valuesAndExtrapolations = result.valuesAndExtrapolations();
 
     assertEquals("The windows should only have one partition", 1, valuesAndExtrapolations.size());
@@ -100,8 +100,8 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     // Verify the metric completeness checker state
     MetadataClient.ClusterAndGeneration clusterAndGeneration =
         new MetadataClient.ClusterAndGeneration(metadata.fetch(), 1);
-    assertEquals(NUM_WINDOWS, metricSampleAggregator.validWindows(clusterAndGeneration, 1.0).size());
-    Map<Long, Float> monitoredPercentages = metricSampleAggregator.validPartitionRatioByWindows(clusterAndGeneration);
+    assertEquals(NUM_WINDOWS, metricSampleAggregator.validWindows(clusterAndGeneration.cluster(), 1.0).size());
+    Map<Long, Float> monitoredPercentages = metricSampleAggregator.validPartitionRatioByWindows(clusterAndGeneration.cluster());
     for (double percentage : monitoredPercentages.values()) {
       assertEquals(1.0, percentage, 0.0);
     }
@@ -146,8 +146,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
 
 
     Map<PartitionEntity, ValuesAndExtrapolations> aggregateResult =
-        metricSampleAggregator.aggregate(clusterAndGeneration(cluster), Long.MAX_VALUE, new OperationProgress())
-                              .valuesAndExtrapolations();
+        metricSampleAggregator.aggregate(cluster, Long.MAX_VALUE, new OperationProgress()).valuesAndExtrapolations();
     // Partition "topic-0" should be valid in all NUM_WINDOW windows and Partition "topic1-0" should not since
     // there is no sample for it.
     assertEquals(1, aggregateResult.size());
@@ -156,8 +155,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     ModelCompletenessRequirements requirements =
         new ModelCompletenessRequirements(1, 0.0, true);
     MetricSampleAggregationResult<String, PartitionEntity> result =
-        metricSampleAggregator.aggregate(clusterAndGeneration(cluster), -1, Long.MAX_VALUE, requirements,
-                                         new OperationProgress());
+        metricSampleAggregator.aggregate(cluster, -1, Long.MAX_VALUE, requirements, new OperationProgress());
     aggregateResult = result.valuesAndExtrapolations();
     assertNotNull("tp1 should be included because includeAllTopics is set to true",
                   aggregateResult.get(new PartitionEntity(tp1)));
@@ -206,7 +204,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
                                                         NUM_WINDOWS - 1, WINDOW_MS,
                                                         KafkaMetricDef.commonMetricDef());
     MetricSampleAggregationResult<String, PartitionEntity> result =
-        metricSampleAggregator.aggregate(clusterAndGeneration(cluster), Long.MAX_VALUE, new OperationProgress());
+        metricSampleAggregator.aggregate(cluster, Long.MAX_VALUE, new OperationProgress());
     assertEquals(2, result.valuesAndExtrapolations().size());
     assertTrue(result.valuesAndExtrapolations().get(PE).extrapolations().isEmpty());
     assertEquals(1, result.valuesAndExtrapolations().get(pe1).extrapolations().size());
@@ -226,17 +224,13 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(NUM_WINDOWS - 1, MIN_SAMPLES_PER_WINDOW,
                                                         metricSampleAggregator, PE, 2, WINDOW_MS, KafkaMetricDef.commonMetricDef());
     MetricSampleAggregationResult<String, PartitionEntity> result =
-        metricSampleAggregator.aggregate(clusterAndGeneration(metadata.fetch()),
-                                         NUM_WINDOWS * WINDOW_MS,
-                                         new OperationProgress());
+        metricSampleAggregator.aggregate(metadata.fetch(), NUM_WINDOWS * WINDOW_MS, new OperationProgress());
     // Partition "topic-0" is expected to be a valid partition in result with valid sample values for window [3, NUM_WINDOWS].
     assertEquals(NUM_WINDOWS - 2, result.valuesAndExtrapolations().get(PE).windows().size());
 
     populateSampleAggregator(2, MIN_SAMPLES_PER_WINDOW - 2, metricSampleAggregator);
 
-    result = metricSampleAggregator.aggregate(clusterAndGeneration(metadata.fetch()),
-                                              NUM_WINDOWS * WINDOW_MS,
-                                              new OperationProgress());
+    result = metricSampleAggregator.aggregate(metadata.fetch(), NUM_WINDOWS * WINDOW_MS, new OperationProgress());
     int numWindows = result.valuesAndExtrapolations().get(PE).metricValues().length();
     assertEquals(NUM_WINDOWS, numWindows);
     int numExtrapolationss = 0;
@@ -273,9 +267,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
                                                         KafkaMetricDef.commonMetricDef());
 
       MetricSampleAggregationResult<String, PartitionEntity> result =
-          metricSampleAggregator.aggregate(clusterAndGeneration(metadata.fetch()),
-                                           NUM_WINDOWS * WINDOW_MS * 2,
-                                           new OperationProgress());
+          metricSampleAggregator.aggregate(metadata.fetch(), NUM_WINDOWS * WINDOW_MS * 2, new OperationProgress());
       int numWindows = result.valuesAndExtrapolations().get(PE).metricValues().length();
       assertEquals(NUM_WINDOWS, numWindows);
       int numExtrapolations = 0;
@@ -302,9 +294,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
 
 
       MetricSampleAggregationResult<String, PartitionEntity> result =
-          metricSampleAggregator.aggregate(clusterAndGeneration(metadata.fetch()),
-                                           NUM_WINDOWS * WINDOW_MS,
-                                           new OperationProgress());
+          metricSampleAggregator.aggregate(metadata.fetch(), NUM_WINDOWS * WINDOW_MS, new OperationProgress());
       // Partition "topic-0" is expected to be a valid partition in result, with valid sample values collected for window [1, NUM_WINDOW - 3].
       assertEquals(NUM_WINDOWS - 3, result.valuesAndExtrapolations().get(PE).windows().size());
   }
@@ -321,7 +311,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     try {
       // Only 4 windows have smaller timestamp than the timestamp we passed in.
       ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(NUM_WINDOWS, 0.0, false);
-      metricSampleAggregator.aggregate(clusterAndGeneration(metadata.fetch()),
+      metricSampleAggregator.aggregate(metadata.fetch(),
                                        -1L,
                                        (NUM_WINDOWS - 1) * WINDOW_MS - 1,
                                        requirements,
@@ -359,9 +349,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
 
     // Check the window value and make sure the metric samples above are excluded.
     Map<PartitionEntity, ValuesAndExtrapolations> valuesAndExtrapolations =
-        metricSampleAggregator.aggregate(clusterAndGeneration(metadata.fetch()),
-                                         NUM_WINDOWS * WINDOW_MS,
-                                         new OperationProgress())
+        metricSampleAggregator.aggregate(metadata.fetch(), NUM_WINDOWS * WINDOW_MS, new OperationProgress())
                               .valuesAndExtrapolations();
     ValuesAndExtrapolations partitionValuesAndExtrapolations = valuesAndExtrapolations.get(PE);
     for (Resource resource : Resource.cachedValues()) {
@@ -380,7 +368,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     TestContext ctx = setupScenario1();
     KafkaPartitionMetricSampleAggregator aggregator = ctx.aggregator();
     MetadataClient.ClusterAndGeneration clusterAndGeneration = ctx.clusterAndGeneration(0);
-    SortedSet<Long> validWindows = aggregator.validWindows(clusterAndGeneration, 1.0);
+    SortedSet<Long> validWindows = aggregator.validWindows(clusterAndGeneration.cluster(), 1.0);
     assertEquals(NUM_WINDOWS, validWindows.size());
     assertValidWindows(validWindows, NUM_WINDOWS, Collections.emptySet());
   }
@@ -391,11 +379,11 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     KafkaPartitionMetricSampleAggregator aggregator = ctx.aggregator();
     MetadataClient.ClusterAndGeneration clusterAndGeneration = ctx.clusterAndGeneration(0);
 
-    SortedSet<Long> validWindows = aggregator.validWindows(clusterAndGeneration, 1.0);
+    SortedSet<Long> validWindows = aggregator.validWindows(clusterAndGeneration.cluster(), 1.0);
     assertEquals("Should have three invalid windows.", NUM_WINDOWS - 3, validWindows.size());
     assertValidWindows(validWindows, NUM_WINDOWS - 1, Arrays.asList(6, 7));
     // reduced monitored percentage should include every window.
-    assertEquals(NUM_WINDOWS, aggregator.validWindows(clusterAndGeneration, 0.5).size());
+    assertEquals(NUM_WINDOWS, aggregator.validWindows(clusterAndGeneration.cluster(), 0.5).size());
   }
 
   @Test
@@ -403,7 +391,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     TestContext ctx = setupScenario3();
     KafkaPartitionMetricSampleAggregator aggregator = ctx.aggregator();
     MetadataClient.ClusterAndGeneration clusterAndGeneration = ctx.clusterAndGeneration(0);
-    SortedSet<Long> validWindows = aggregator.validWindows(clusterAndGeneration, 0.75);
+    SortedSet<Long> validWindows = aggregator.validWindows(clusterAndGeneration.cluster(), 0.75);
     assertEquals("Should have two invalid windows.", NUM_WINDOWS - 2, validWindows.size());
     assertValidWindows(validWindows, NUM_WINDOWS, Arrays.asList(6, 7));
   }
@@ -414,7 +402,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     KafkaPartitionMetricSampleAggregator aggregator = ctx.aggregator();
     MetadataClient.ClusterAndGeneration clusterAndGeneration = ctx.clusterAndGeneration(0);
 
-    SortedSet<Long> validWindows = aggregator.validWindows(clusterAndGeneration, 0.75);
+    SortedSet<Long> validWindows = aggregator.validWindows(clusterAndGeneration.cluster(), 0.75);
     assertEquals("Should have two invalid windows.", NUM_WINDOWS - 2, validWindows.size());
     assertValidWindows(validWindows, NUM_WINDOWS, Arrays.asList(6, 7));
   }
@@ -424,22 +412,22 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     TestContext ctx = setupScenario1();
     KafkaPartitionMetricSampleAggregator aggregator = ctx.aggregator();
     MetadataClient.ClusterAndGeneration clusterAndGeneration = ctx.clusterAndGeneration(0);
-    assertEquals(1.0, aggregator.monitoredPercentage(clusterAndGeneration), 0.01);
+    assertEquals(1.0, aggregator.monitoredPercentage(clusterAndGeneration.cluster()), 0.01);
 
     ctx = setupScenario2();
     aggregator = ctx.aggregator();
     clusterAndGeneration = ctx.clusterAndGeneration(0);
-    assertEquals(0.75, aggregator.monitoredPercentage(clusterAndGeneration), 0.01);
+    assertEquals(0.75, aggregator.monitoredPercentage(clusterAndGeneration.cluster()), 0.01);
 
     ctx = setupScenario3();
     aggregator = ctx.aggregator();
     clusterAndGeneration = ctx.clusterAndGeneration(0);
-    assertEquals((double) 4 / 6, aggregator.monitoredPercentage(clusterAndGeneration), 0.01);
+    assertEquals((double) 4 / 6, aggregator.monitoredPercentage(clusterAndGeneration.cluster()), 0.01);
 
     ctx = setupScenario4();
     aggregator = ctx.aggregator();
     clusterAndGeneration = ctx.clusterAndGeneration(0);
-    assertEquals((double) 4 / 6, aggregator.monitoredPercentage(clusterAndGeneration), 0.01);
+    assertEquals((double) 4 / 6, aggregator.monitoredPercentage(clusterAndGeneration.cluster()), 0.01);
   }
 
   @Test
@@ -448,7 +436,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     KafkaPartitionMetricSampleAggregator aggregator = ctx.aggregator();
     MetadataClient.ClusterAndGeneration clusterAndGeneration = ctx.clusterAndGeneration(0);
 
-    Map<Long, Float> percentages = aggregator.validPartitionRatioByWindows(clusterAndGeneration);
+    Map<Long, Float> percentages = aggregator.validPartitionRatioByWindows(clusterAndGeneration.cluster());
     assertEquals(NUM_WINDOWS, percentages.size());
     for (Map.Entry<Long, Float> entry : percentages.entrySet()) {
       assertEquals(1.0, entry.getValue(), 0.01);
@@ -457,7 +445,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     ctx = setupScenario2();
     aggregator = ctx.aggregator();
     clusterAndGeneration = ctx.clusterAndGeneration(0);
-    percentages = aggregator.validPartitionRatioByWindows(clusterAndGeneration);
+    percentages = aggregator.validPartitionRatioByWindows(clusterAndGeneration.cluster());
     assertEquals(NUM_WINDOWS, percentages.size());
     for (Map.Entry<Long, Float> entry : percentages.entrySet()) {
       long window = entry.getKey();
@@ -471,7 +459,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     ctx = setupScenario3();
     aggregator = ctx.aggregator();
     clusterAndGeneration = ctx.clusterAndGeneration(0);
-    percentages = aggregator.validPartitionRatioByWindows(clusterAndGeneration);
+    percentages = aggregator.validPartitionRatioByWindows(clusterAndGeneration.cluster());
     assertEquals(NUM_WINDOWS, percentages.size());
     for (Map.Entry<Long, Float> entry : percentages.entrySet()) {
       long window = entry.getKey();
@@ -485,7 +473,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     ctx = setupScenario4();
     aggregator = ctx.aggregator();
     clusterAndGeneration = ctx.clusterAndGeneration(0);
-    percentages = aggregator.validPartitionRatioByWindows(clusterAndGeneration);
+    percentages = aggregator.validPartitionRatioByWindows(clusterAndGeneration.cluster());
     assertEquals(NUM_WINDOWS, percentages.size());
     for (Map.Entry<Long, Float> entry : percentages.entrySet()) {
       long window = entry.getKey();

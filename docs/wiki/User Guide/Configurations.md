@@ -183,8 +183,7 @@ We are still trying to improve cruise control. And following are some configurat
 | Name                                      | Type   | Required? | Default Value                                              | Description                                                                                                                              |
 |-------------------------------------------|--------|-----------|------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
 | metric.reporter.sampler.bootstrap.servers | String | N         | The same as `bootstrap.servers` config from Cruise Control | The Kafka cluster to consume the interested metrics collected by CruiseControlMetricsReporter.                                           |
-| metric.reporter.topic             | String | N         | "__CruiseControlMetrics"                                   | The exact topic name from which the sampler should be consuming the interested metrics from. This config overrides what metric.reporter.topic.pattern specifies.  |
-| metric.reporter.topic.pattern             | String | N         | "__CruiseControlMetrics"                                   | The regex which allows users to specify multiple matching topics from which the sampler should be consuming the interested metrics from. |
+| metric.reporter.topic             | String | N         | "__CruiseControlMetrics"                                   | The exact topic name from which the sampler should be consuming the interested metrics from.  |
 | metric.reporter.sampler.group.id          | String | N         | 60,000                                                     | The consumer group id to use for the consumers to consume from the Kafka cluster.                                                        |
 
 

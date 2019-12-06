@@ -641,22 +641,21 @@ public class KafkaCruiseControl {
    * Get the state of the load monitor.
    *
    * @param operationProgress The progress for the job.
-   * @param clusterAndGeneration The current cluster and generation.
+   * @param cluster Kafka cluster.
    * @return The state of the load monitor.
    */
-  public LoadMonitorState monitorState(OperationProgress operationProgress,
-                                       MetadataClient.ClusterAndGeneration clusterAndGeneration) {
-    return _loadMonitor.state(operationProgress, clusterAndGeneration);
+  public LoadMonitorState monitorState(OperationProgress operationProgress, Cluster cluster) {
+    return _loadMonitor.state(operationProgress, cluster);
   }
 
   /**
    * Get the analyzer state from the goal optimizer.
    *
-   * @param clusterAndGeneration The current cluster and generation.
+   * @param cluster Kafka cluster.
    * @return The analyzer state.
    */
-  public AnalyzerState analyzerState(MetadataClient.ClusterAndGeneration clusterAndGeneration) {
-    return _goalOptimizer.state(clusterAndGeneration);
+  public AnalyzerState analyzerState(Cluster cluster) {
+    return _goalOptimizer.state(cluster);
   }
 
   /**
@@ -715,7 +714,7 @@ public class KafkaCruiseControl {
   public boolean meetCompletenessRequirements(List<String> goals) {
     MetadataClient.ClusterAndGeneration clusterAndGeneration = _loadMonitor.refreshClusterAndGeneration();
     return goalsByPriority(goals, _config).stream().allMatch(g -> _loadMonitor.meetCompletenessRequirements(
-        clusterAndGeneration, g.clusterModelCompletenessRequirements()));
+        clusterAndGeneration.cluster(), g.clusterModelCompletenessRequirements()));
   }
 
   /**

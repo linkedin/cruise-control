@@ -219,18 +219,16 @@ public class LoadMonitor {
   /**
    * @return The state of the load monitor.
    */
-  public LoadMonitorState state(OperationProgress operationProgress, MetadataClient.ClusterAndGeneration clusterAndGeneration) {
+  public LoadMonitorState state(OperationProgress operationProgress, Cluster kafkaCluster) {
     LoadMonitorTaskRunner.LoadMonitorTaskRunnerState state = _loadMonitorTaskRunner.state();
-    Cluster kafkaCluster = clusterAndGeneration.cluster();
     int totalNumPartitions = MonitorUtils.totalNumPartitions(kafkaCluster);
     double minMonitoredPartitionsPercentage = _defaultModelCompletenessRequirements.minMonitoredPartitionsPercentage();
 
     // Get the window to monitored partitions percentage mapping.
-    SortedMap<Long, Float> validPartitionRatio =
-        _partitionMetricSampleAggregator.validPartitionRatioByWindows(clusterAndGeneration);
+    SortedMap<Long, Float> validPartitionRatio = _partitionMetricSampleAggregator.validPartitionRatioByWindows(kafkaCluster);
 
     // Get valid snapshot window number and populate the monitored partition map.
-    SortedSet<Long> validWindows = _partitionMetricSampleAggregator.validWindows(clusterAndGeneration,
+    SortedSet<Long> validWindows = _partitionMetricSampleAggregator.validWindows(kafkaCluster,
                                                                                  minMonitoredPartitionsPercentage);
     int numValidSnapshotWindows = validWindows.size();
 
@@ -240,7 +238,7 @@ public class LoadMonitor {
     if (_partitionMetricSampleAggregator.numAvailableWindows() >= _numPartitionMetricSampleWindows) {
       try {
         MetricSampleAggregationResult<String, PartitionEntity> metricSampleAggregationResult =
-            _partitionMetricSampleAggregator.aggregate(clusterAndGeneration, Long.MAX_VALUE, operationProgress);
+            _partitionMetricSampleAggregator.aggregate(kafkaCluster, Long.MAX_VALUE, operationProgress);
         Map<PartitionEntity, ValuesAndExtrapolations> loads = metricSampleAggregationResult.valuesAndExtrapolations();
         extrapolations = partitionSampleExtrapolations(metricSampleAggregationResult.valuesAndExtrapolations());
         numValidPartitions = loads.size();
@@ -480,7 +478,7 @@ public class LoadMonitor {
 
     // Get the metric aggregation result.
     MetricSampleAggregationResult<String, PartitionEntity> partitionMetricSampleAggregationResult =
-        _partitionMetricSampleAggregator.aggregate(clusterAndGeneration, from, to, requirements, operationProgress);
+        _partitionMetricSampleAggregator.aggregate(cluster, from, to, requirements, operationProgress);
     Map<PartitionEntity, ValuesAndExtrapolations> partitionValuesAndExtrapolations = partitionMetricSampleAggregationResult.valuesAndExtrapolations();
     GeneratingClusterModel step = new GeneratingClusterModel(partitionValuesAndExtrapolations.size());
     operationProgress.addStep(step);
@@ -586,11 +584,9 @@ public class LoadMonitor {
   /**
    * @return True if the monitored load meets the given completeness requirements, false otherwise.
    */
-  public boolean meetCompletenessRequirements(MetadataClient.ClusterAndGeneration clusterAndGeneration,
-                                              ModelCompletenessRequirements requirements) {
+  public boolean meetCompletenessRequirements(Cluster cluster, ModelCompletenessRequirements requirements) {
     int numValidWindows =
-        _partitionMetricSampleAggregator.validWindows(clusterAndGeneration,
-                                                      requirements.minMonitoredPartitionsPercentage()).size();
+        _partitionMetricSampleAggregator.validWindows(cluster, requirements.minMonitoredPartitionsPercentage()).size();
     int requiredNumValidWindows = requirements.minRequiredNumWindows();
     return numValidWindows >= requiredNumValidWindows;
   }
@@ -600,7 +596,7 @@ public class LoadMonitor {
    */
   public boolean meetCompletenessRequirements(ModelCompletenessRequirements requirements) {
     MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
-    return meetCompletenessRequirements(clusterAndGeneration, requirements);
+    return meetCompletenessRequirements(clusterAndGeneration.cluster(), requirements);
   }
 
   /**
@@ -666,7 +662,7 @@ public class LoadMonitor {
     Cluster kafkaCluster = clusterAndGeneration.cluster();
     MetricSampleAggregationResult<String, PartitionEntity> metricSampleAggregationResult;
     try {
-      metricSampleAggregationResult = _partitionMetricSampleAggregator.aggregate(clusterAndGeneration,
+      metricSampleAggregationResult = _partitionMetricSampleAggregator.aggregate(kafkaCluster,
                                                                                  System.currentTimeMillis(),
                                                                                  new OperationProgress());
     } catch (NotEnoughValidWindowsException e) {
@@ -699,7 +695,7 @@ public class LoadMonitor {
       try {
         MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.clusterAndGeneration();
         double minMonitoredPartitionsPercentage = _defaultModelCompletenessRequirements.minMonitoredPartitionsPercentage();
-        _numValidSnapshotWindows = _partitionMetricSampleAggregator.validWindows(clusterAndGeneration,
+        _numValidSnapshotWindows = _partitionMetricSampleAggregator.validWindows(clusterAndGeneration.cluster(),
                                                                                  minMonitoredPartitionsPercentage)
                                                                    .size();
         _monitoredPartitionsPercentage = getMonitoredPartitionsPercentage();

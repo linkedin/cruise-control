@@ -43,8 +43,6 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
   // Configurations
   public static final String METRIC_REPORTER_SAMPLER_BOOTSTRAP_SERVERS = "metric.reporter.sampler.bootstrap.servers";
   public static final String METRIC_REPORTER_TOPIC = "metric.reporter.topic";
-  // TODO: Remove the deprecated config.
-  public static final String METRIC_REPORTER_TOPIC_PATTERN = "metric.reporter.topic.pattern";
   public static final String METRIC_REPORTER_SAMPLER_GROUP_ID = "metric.reporter.sampler.group.id";
   private static final Duration METRIC_REPORTER_CONSUMER_POLL_TIMEOUT = Duration.ofMillis(5000L);
   // Default configs
@@ -215,10 +213,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     }
     _metricReporterTopic = (String) configs.get(METRIC_REPORTER_TOPIC);
     if (_metricReporterTopic == null) {
-      _metricReporterTopic = (String) configs.get(METRIC_REPORTER_TOPIC_PATTERN);
-      if (_metricReporterTopic == null) {
-        _metricReporterTopic = CruiseControlMetricsReporterConfig.DEFAULT_CRUISE_CONTROL_METRICS_TOPIC;
-      }
+      _metricReporterTopic = CruiseControlMetricsReporterConfig.DEFAULT_CRUISE_CONTROL_METRICS_TOPIC;
     }
     String groupId = (String) configs.get(METRIC_REPORTER_SAMPLER_GROUP_ID);
     if (groupId == null) {

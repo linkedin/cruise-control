@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
-import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
@@ -40,6 +39,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
@@ -246,13 +246,13 @@ public class GoalOptimizer implements Runnable {
   }
 
   /**
+   * @param cluster Kafka cluster.
    * @return The analyzer state from the goal optimizer.
    */
-  public AnalyzerState state(MetadataClient.ClusterAndGeneration clusterAndGeneration) {
+  public AnalyzerState state(Cluster cluster) {
     Map<Goal, Boolean> goalReadiness = new LinkedHashMap<>(_goalsByPriority.size());
     for (Goal goal : _goalsByPriority) {
-      goalReadiness.put(goal, _loadMonitor.meetCompletenessRequirements(clusterAndGeneration,
-                                                                        goal.clusterModelCompletenessRequirements()));
+      goalReadiness.put(goal, _loadMonitor.meetCompletenessRequirements(cluster, goal.clusterModelCompletenessRequirements()));
     }
     return new AnalyzerState(_cachedProposals != null, goalReadiness);
   }
