@@ -1,3 +1,15 @@
+ProgressResult:
+  type: object
+  required:
+    - version
+    - progress
+  properties:
+    version:
+      type: integer
+      format: int32
+    progress:
+      $ref: '#/StepProgress'
+
 StepProgress:
   type: object
   required:

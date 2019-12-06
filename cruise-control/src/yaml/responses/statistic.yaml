@@ -5,8 +5,11 @@ Statistic:
       type: number
       format: double
     replicas:
-      type: number
+      type: integer
+      format: int32
     leaderReplicas:
-      type: number
+      type: integer
+      format: int32
     topicReplicas:
-      type: number
+      type: integer
+      format: int32
