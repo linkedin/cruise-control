@@ -39,7 +39,7 @@ public class RequestParameterTest {
   public void setupParameterClasses() throws Exception {
     _endpointToClass = new HashMap<>();
     KafkaCruiseControlConfig defaultConfig = new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties());
-    for(CruiseControlEndPoint endpoint : CruiseControlEndPoint.cachedValues()) {
+    for (CruiseControlEndPoint endpoint : CruiseControlEndPoint.cachedValues()) {
       _endpointToClass.put((REQUEST_URI + endpoint.toString()).toLowerCase(),
                            ((CruiseControlParameters) (defaultConfig.getClass(requestParameterFor(endpoint).parametersClass()).newInstance())));
 }
