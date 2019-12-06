@@ -29,22 +29,20 @@ import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.requestParameterFor;
 
 public class RequestParameterTest {
-  static final String SCHEMA_FILE_PATH = System.getProperty("user.dir") + "/../schemas/base.yaml";
+  static final String SCHEMA_FILE_PATH = System.getProperty("user.dir") + "/src/yaml/base.yaml";
   private Map<String, CruiseControlParameters> _endpointToClass;
   OpenAPI _openAPI;
   /**
    * Specify endpoints to be tested
    */
   @Before
-  public void setupParameterClasses() {
+  public void setupParameterClasses() throws Exception {
     _endpointToClass = new HashMap<>();
-    _endpointToClass.put("/kafkacruisecontrol/rebalance", new RebalanceParameters());
-    _endpointToClass.put("/kafkacruisecontrol/partition_load", new PartitionLoadParameters());
-//    KafkaCruiseControlConfig defaultConfig = new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties());
-//    for(CruiseControlEndPoint endpoint : CruiseControlEndPoint.cachedValues()) {
-//      _endpointToClass.put((REQUEST_URI + endpoint.toString()).toLowerCase(),
-//                           defaultConfig.getConfiguredInstance(requestParameterFor(endpoint).parametersClass(), CruiseControlParameters.class));
-//}
+    KafkaCruiseControlConfig defaultConfig = new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties());
+    for(CruiseControlEndPoint endpoint : CruiseControlEndPoint.cachedValues()) {
+      _endpointToClass.put((REQUEST_URI + endpoint.toString()).toLowerCase(),
+                           ((CruiseControlParameters) (defaultConfig.getClass(requestParameterFor(endpoint).parametersClass()).newInstance())));
+}
   }
 
   /**
@@ -64,9 +62,7 @@ public class RequestParameterTest {
     for (Map.Entry<String, Set<String>> endpoint: schema.entrySet()) {
       Assert.assertTrue(_endpointToClass.containsKey(endpoint.getKey()));
       CruiseControlParameters endpointParams = _endpointToClass.get(endpoint.getKey());
-      Assert.assertEquals(
-        endpoint.getValue(),
-        endpointParams.caseInsensitiveParameterNames());
+      Assert.assertEquals(endpoint.getValue(), endpointParams.caseInsensitiveParameterNames());
     }
   }
 
