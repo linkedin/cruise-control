@@ -95,6 +95,9 @@ PartitionLoadEndpoint:
           application/json:
             schema:
               $ref: '../responses/partitionLoadState.yaml#/PartitionLoadState'
+          text/plain:
+            schema:
+              type: string
       '202':
         description: |-
           Partition load state fetch in progress
@@ -102,3 +105,6 @@ PartitionLoadEndpoint:
           application/json:
             schema:
               $ref: '../responses/progressResult.yaml#/ProgressResult'
+          text/plain:
+            schema:
+              type: string
