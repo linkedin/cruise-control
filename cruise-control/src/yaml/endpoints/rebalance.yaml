@@ -58,7 +58,7 @@ RebalanceEndpoint:
           default: false
       - name: excluded_topics
         in: query
-        description: Whether to allow hard goal be skipped in proposal generation
+        description: Specify topic whose partition is excluded from replica movement
         schema:
           type: string # topics regex
           default: null
@@ -82,13 +82,13 @@ RebalanceEndpoint:
           default: false
       - name: exclude_recently_demoted_brokers
         in: query
-        description: Whether to allow leader replicas to be moved to recently demoted broker
+        description: Whether to allow replicas to be moved to recently demoted broker
         schema:
           type: boolean
           default: false
       - name: exclude_recently_removed_brokers
         in: query
-        description: Whether to allow leader replicas to be moved to recently removed broker
+        description: Whether to allow replicas to be moved to recently removed broker
         schema:
           type: boolean
           default: false
@@ -107,7 +107,7 @@ RebalanceEndpoint:
           default: false
       - name: destination_broker_ids
         in: query
-        description: Whether to allow leader replicas to be moved to recently demoted broker
+        description: Specify the destination brokers for partitions to move replicas to
         schema:
           type: array
           items:
@@ -128,7 +128,8 @@ RebalanceEndpoint:
         in: query
         description: Review id for 2FA
         schema:
-          type: string
+          type: integer
+          format: int32
       - name: replication_throttle
         in: query
         description: Upper bound on the bandwidth used to move replicas
@@ -140,7 +141,7 @@ RebalanceEndpoint:
         description: Execution progress check interval in milliseconds
         schema:
           type: integer
-          format: int32
+          format: int64
       - name: reason
         in: query
         description: Reason for request

@@ -1,8 +1,0 @@
-ProgressResult:
-  type: object
-  properties:
-    version:
-      type: integer
-      format: int32
-    progress:
-      $ref: '../components/stepProgress.yaml#/StepProgress'

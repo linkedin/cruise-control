@@ -1,5 +1,6 @@
 PartitionLoadEndpoint:
   get:
+    operationId: partitionload
     summary: Get the resource load for each partition
     parameters:
       - name: resource
@@ -14,13 +15,13 @@ PartitionLoadEndpoint:
             - disk
       - name: start
         in: query
-        description: The timestamp in milliseconds since the Epoch to use as the start
+        description: The timestamp in milliseconds of the earliest metric sample use to generate load
         schema:
           type: integer
           format: int64
       - name: end
         in: query
-        description: The timestamp in milliseconds since the Epoch to use as the end
+        description: The timestamp in milliseconds of the latest metric sample use to generate load
         schema:
           type: integer
           format: int64
@@ -32,12 +33,12 @@ PartitionLoadEndpoint:
           format: int32
       - name: topic
         in: query
-        description: A regular expression used to match the desired topics
+        description: A regular expression used to filter the partition load returned based on topic
         schema:
           type: string
       - name: partition
         in: query
-        description: The partition or [start]-[end] partitions to return
+        description: The partition or partition range to filter partition load returned
         schema:
           oneOf:
             - type: integer
@@ -52,7 +53,7 @@ PartitionLoadEndpoint:
               - summary: 0 is the start index and 9 is the end index of the partition boundaries
       - name: min_valid_partition_ratio
         in: query
-        description: The minimum required ratio of monitored topics, in range [0.0, 1.0]
+        description: The minimum required ratio of partition load data completeness
         schema:
           type: number
           format: double
@@ -75,7 +76,7 @@ PartitionLoadEndpoint:
           type: boolean
       - name: brokerid
         in: query
-        description: Set of broker ids used to filter partition load for the report
+        description: Set of broker ids used to filter partition load returned
         schema:
           type: array
           items:
@@ -83,7 +84,7 @@ PartitionLoadEndpoint:
             format: int32
       - name: json
         in: query
-        description: If true, cruise-control's response is in JSON format
+        description: Whether to return in JSON format or not
         schema:
           type: boolean
     responses:

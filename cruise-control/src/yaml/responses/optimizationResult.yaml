@@ -8,17 +8,17 @@ OptimizationResult:
     proposals:
       type: array
       items:
-        $ref: '../components/executionProposal.yaml#/ExecutionProposal'
+        $ref: './executionProposal.yaml#/ExecutionProposal'
     loadBeforeOptimization:
-      $ref: '../components/brokerStats.yaml#/BrokerStats'
+      $ref: './brokerStats.yaml#/BrokerStats'
     summary:
-      $ref: '../components/optimizerResult.yaml#/OptimizerResult'
+      $ref: './optimizerResult.yaml#/OptimizerResult'
     goalSummary:
       type: array
       items:
-        $ref: '../components/goalStatus.yaml#/GoalStatus'
+        $ref: './goalStatus.yaml#/GoalStatus'
     loadAfterOptimization:
-      $ref: '../components/brokerStats.yaml#/BrokerStats'
+      $ref: './brokerStats.yaml#/BrokerStats'
     version:
       type: integer
       format: int32
