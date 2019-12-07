@@ -194,19 +194,22 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Sanity check that if current request is not a dryrun, there is no ongoing
+   * Sanity check that if current request (1) is not a dryrun or (2) does not require stopping an ongoing execution,
+   * then there is no ongoing
    * <ol>
    *   <li>execution in current Cruise Control deployment.</li>
    *   <li>partition reassignment triggered by other admin tools or previous Cruise Control deployment.</li>
    *   <li>leadership reassignment triggered by other admin tools or previous Cruise Control deployment.</li>
    * </ol>
    *
-   * This method helps to fail fast if a user attempts to start an execution during an ongoing admin operation.
+   * This method helps to fail fast if a user attempts to start an execution during an ongoing execution.
    *
    * @param dryRun True if the request is just a dryrun, false if the intention is to start an execution.
+   * @param stopOngoingExecution True to stop the ongoing execution (if any) and start executing the given proposals,
+   *                             false otherwise.
    */
-  public void sanityCheckDryRun(boolean dryRun) {
-    if (dryRun) {
+  public void sanityCheckDryRun(boolean dryRun, boolean stopOngoingExecution) {
+    if (dryRun || stopOngoingExecution) {
       return;
     }
     if (_executor.hasOngoingExecution()) {
@@ -216,6 +219,29 @@ public class KafkaCruiseControl {
     } else if (_executor.hasOngoingLeaderElection()) {
       throw new IllegalStateException("Cannot execute new proposals while there are ongoing leadership reassignments.");
     }
+  }
+
+  /**
+   * @return True if there is an ongoing
+   * <ol>
+   *   <li>execution in current Cruise Control deployment,</li>
+   *   <li>partition reassignment triggered by other admin tools or previous Cruise Control deployment, or</li>
+   *   <li>leadership reassignment triggered by other admin tools or previous Cruise Control deployment.</li>
+   * </ol>
+   */
+  public boolean hasOngoingExecution() {
+    return _executor.hasOngoingExecution() || _executor.hasOngoingPartitionReassignments() || _executor.hasOngoingLeaderElection();
+  }
+
+  /**
+   * Let executor know the intention regarding modifying the ongoing execution. Only one request at a given time is
+   * allowed to modify the ongoing execution.
+   *
+   * @param modify True to indicate, false to cancel the intention to modify
+   * @return True if the intention changes the state known by executor, false otherwise.
+   */
+  public boolean modifyOngoingExecution(boolean modify) {
+    return _executor.modifyOngoingExecution(modify);
   }
 
   /**
@@ -519,7 +545,7 @@ public class KafkaCruiseControl {
                                String uuid,
                                String reason) {
     if (hasProposalsToExecute(proposals, uuid)) {
-      // Set the execution mode, add execution proposals, and start execution.
+      // Set the execution mode and start execution.
       _executor.setExecutionMode(isKafkaAssignerMode);
       _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor,
                                  concurrentInterBrokerPartitionMovements, concurrentIntraBrokerPartitionMovements,
@@ -561,7 +587,7 @@ public class KafkaCruiseControl {
                              String uuid,
                              String reason) {
     if (hasProposalsToExecute(proposals, uuid)) {
-      // Set the execution mode, add execution proposals, and start execution.
+      // Set the execution mode and start execution.
       _executor.setExecutionMode(isKafkaAssignerMode);
       _executor.executeProposals(proposals, throttleDecommissionedBroker ? Collections.emptySet() : removedBrokers,
                                  removedBrokers, _loadMonitor, concurrentInterBrokerPartitionMovements, 0,
@@ -606,7 +632,7 @@ public class KafkaCruiseControl {
                             : _config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
       concurrentSwaps = Math.min(_config.getInt(KafkaCruiseControlConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG) / brokerCount, concurrentSwaps);
 
-      // Set the execution mode, add execution proposals, and start execution.
+      // Set the execution mode and start execution.
       _executor.setExecutionMode(false);
       _executor.executeDemoteProposals(proposals, demotedBrokers, _loadMonitor, concurrentSwaps, concurrentLeaderMovements,
                                        executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle,
@@ -621,6 +647,13 @@ public class KafkaCruiseControl {
    */
   public void userTriggeredStopExecution(boolean forceExecutionStop) {
     _executor.userTriggeredStopExecution(forceExecutionStop);
+  }
+
+  /**
+   * @return The interval between checking and updating (if needed) the progress of an initiated execution.
+   */
+  public long executionProgressCheckIntervalMs() {
+    return _executor.executionProgressCheckIntervalMs();
   }
 
   /**

@@ -242,7 +242,7 @@ public class AnomalyDetectorTest {
     props.setProperty(KafkaCruiseControlConfig.METRIC_ANOMALY_CLASS_CONFIG, SlowBrokers.class.getName());
     KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
     EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).times(1, 10);
-    mockKafkaCruiseControl.sanityCheckDryRun(EasyMock.eq(SELF_HEALING_DRYRUN));
+    mockKafkaCruiseControl.sanityCheckDryRun(EasyMock.eq(SELF_HEALING_DRYRUN), EasyMock.eq(false));
     EasyMock.expect(mockKafkaCruiseControl.modelCompletenessRequirements(EasyMock.anyObject()))
             .andReturn(mockModelCompletenessRequirements).times(0, 2);
     EasyMock.expect(mockKafkaCruiseControl.getLoadMonitorTaskRunnerState())

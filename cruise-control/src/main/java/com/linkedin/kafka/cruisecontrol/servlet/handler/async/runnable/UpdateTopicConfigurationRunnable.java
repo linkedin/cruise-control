@@ -37,6 +37,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPr
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckGoals;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckLoadMonitorReadiness;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.maybeStopOngoingExecutionToModifyAndWait;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.populateRackInfoForReplicationFactorChange;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.partitionWithOfflineReplicas;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.topicsForReplicationFactorChange;
@@ -77,7 +78,8 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
                                        _topicReplicationFactorChangeParameters.excludeRecentlyDemotedBrokers(),
                                        _topicReplicationFactorChangeParameters.excludeRecentlyRemovedBrokers(),
                                        _topicReplicationFactorChangeParameters.dryRun(),
-                                       _topicReplicationFactorChangeParameters.reason()),
+                                       _topicReplicationFactorChangeParameters.reason(),
+                                       _topicReplicationFactorChangeParameters.stopOngoingExecution()),
           _kafkaCruiseControl.config());
     }
     // Never reaches here.
@@ -148,13 +150,16 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
                                                       boolean excludeRecentlyDemotedBrokers,
                                                       boolean excludeRecentlyRemovedBrokers,
                                                       boolean dryRun,
-                                                      String reason)
+                                                      String reason,
+                                                      boolean stopOngoingExecution)
       throws KafkaCruiseControlException {
-    _kafkaCruiseControl.sanityCheckDryRun(dryRun);
+    _kafkaCruiseControl.sanityCheckDryRun(dryRun, stopOngoingExecution);
     sanityCheckGoals(goals, skipHardGoalCheck, _kafkaCruiseControl.config());
     List<Goal> goalsByPriority = goalsByPriority(goals, _kafkaCruiseControl.config());
     if (goalsByPriority.isEmpty()) {
       throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");
+    } else if (stopOngoingExecution) {
+      maybeStopOngoingExecutionToModifyAndWait(_kafkaCruiseControl);
     }
 
     Cluster cluster = _kafkaCruiseControl.kafkaCluster();
