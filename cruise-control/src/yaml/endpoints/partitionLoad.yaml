@@ -118,29 +118,10 @@ PartitionLoadEndpoint:
           text/plain:
             schema:
               type: string
-      '400':
+      # Response for all errors
+      default:
         description: |-
-          Bad request
-        content:
-          application/json:
-            schema:
-              $ref: '../responses/errorResponse.yaml#/ErrorResponse'
-          text/plain:
-            schema:
-              type: string
-      '403':
-        description: |-
-          Cannot process request
-        content:
-          application/json:
-            schema:
-              $ref: '../responses/errorResponse.yaml#/ErrorResponse'
-          text/plain:
-            schema:
-              type: string
-      '500':
-        description: |-
-          Internal server error
+          Unexpected error
         content:
           application/json:
             schema:
