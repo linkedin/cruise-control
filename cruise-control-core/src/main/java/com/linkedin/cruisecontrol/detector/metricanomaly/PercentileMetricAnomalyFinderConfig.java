@@ -69,7 +69,34 @@ public class PercentileMetricAnomalyFinderConfig extends AbstractConfig {
                              between(0.0, 1.00), ConfigDef.Importance.MEDIUM,
                              METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_DOC);
 
+  /**
+   * Sanity check to ensure that
+   * <ul>
+   *   <li>{@link #METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG} is within (0.0, 100.0)}</li>
+   *   <li>{@link #METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG} is within (0.0, 100.0)}</li>
+   *   <li>{@link #METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG} >= {@link #METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG}</li>
+   * </ul>
+   */
+  private void sanityCheckPercentile() {
+    double upperPercentile = getDouble(METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG);
+    double lowerPercentile = getDouble(METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG);
+    if (upperPercentile >= 100.0 || upperPercentile <= 0.0) {
+      throw new IllegalArgumentException(String.format("Upper percentile (%f) is invalid, it should be within (0.0, 100.0).",
+                                                       upperPercentile));
+    }
+    if (lowerPercentile >= 100.0 || lowerPercentile <= 0.0) {
+      throw new IllegalArgumentException(String.format("Lower percentile (%f) is invalid, it should be within (0.0, 100.0).",
+                                                       lowerPercentile));
+    }
+
+    if (lowerPercentile > upperPercentile) {
+      throw new IllegalArgumentException(String.format("Lower percentile (%f) is larger than upper percentile (%f).",
+                                                       lowerPercentile, upperPercentile));
+    }
+  }
+
   PercentileMetricAnomalyFinderConfig(Map<?, ?> originals) {
     super(CONFIG, originals);
+    sanityCheckPercentile();
   }
 }

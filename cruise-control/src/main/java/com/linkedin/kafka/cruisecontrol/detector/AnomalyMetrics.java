@@ -4,13 +4,15 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
-import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
+import com.linkedin.cruisecontrol.detector.AnomalyType;
+import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
 import java.util.Map;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toPrettyDuration;
-import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.GOAL_VIOLATION;
-import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.METRIC_ANOMALY;
-import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.BROKER_FAILURE;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.GOAL_VIOLATION;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.METRIC_ANOMALY;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.BROKER_FAILURE;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.DISK_FAILURE;
 
 
 public class AnomalyMetrics {
@@ -42,7 +44,7 @@ public class AnomalyMetrics {
     if (meanTimeBetweenAnomaliesMs == null) {
       throw new IllegalArgumentException("Attempt to set meanTimeBetweenAnomaliesMs with null.");
     }
-    for (AnomalyType anomalyType : AnomalyType.cachedValues()) {
+    for (AnomalyType anomalyType : KafkaAnomalyType.cachedValues()) {
       if (!meanTimeBetweenAnomaliesMs.containsKey(anomalyType)) {
         throw new IllegalArgumentException(anomalyType + " is missing in meanTimeBetweenAnomaliesMs metric.");
       }
@@ -83,11 +85,12 @@ public class AnomalyMetrics {
 
   @Override
   public String toString() {
-    return String.format("{meanTimeBetweenAnomalies:{%s:%s, %s:%s, %s:%s}, "
+    return String.format("{meanTimeBetweenAnomalies:{%s:%s, %s:%s, %s:%s, %s:%s}, "
                          + "meanTimeToStartFix:%s, numSelfHealingStarted:%d, ongoingAnomalyDuration=%s}",
                          GOAL_VIOLATION, toPrettyDuration(_meanTimeBetweenAnomaliesMs.get(GOAL_VIOLATION)),
                          BROKER_FAILURE, toPrettyDuration(_meanTimeBetweenAnomaliesMs.get(BROKER_FAILURE)),
                          METRIC_ANOMALY, toPrettyDuration(_meanTimeBetweenAnomaliesMs.get(METRIC_ANOMALY)),
+                         DISK_FAILURE, toPrettyDuration(_meanTimeBetweenAnomaliesMs.get(DISK_FAILURE)),
                          toPrettyDuration(_meanTimeToStartFixMs), _numSelfHealingStarted,
                          toPrettyDuration(_ongoingAnomalyDurationMs));
   }

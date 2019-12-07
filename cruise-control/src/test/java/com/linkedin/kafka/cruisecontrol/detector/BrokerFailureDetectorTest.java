@@ -16,7 +16,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
@@ -25,9 +25,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.anomalyComparator;
 import static org.easymock.EasyMock.anyLong;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE;
 
 
 /**
@@ -53,7 +55,7 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
   @Test
   public void testFailureDetection() throws Exception {
     Time mockTime = getMockTime();
-    Queue<Anomaly> anomalies = new ConcurrentLinkedQueue<>();
+    Queue<Anomaly> anomalies = new PriorityBlockingQueue<>(ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE, anomalyComparator());
     BrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime);
     try {
       // Start detection.
@@ -87,7 +89,7 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
   @Test
   public void testDetectorStartWithFailedBrokers() throws Exception {
     Time mockTime = getMockTime();
-    Queue<Anomaly> anomalies = new ConcurrentLinkedQueue<>();
+    Queue<Anomaly> anomalies = new PriorityBlockingQueue<>(ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE, anomalyComparator());
     BrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime);
 
     try {
@@ -103,7 +105,7 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
   @Test
   public void testLoadFailedBrokersFromZK() throws Exception {
     Time mockTime = getMockTime();
-    Queue<Anomaly> anomalies = new ConcurrentLinkedQueue<>();
+    Queue<Anomaly> anomalies = new PriorityBlockingQueue<>(ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE, anomalyComparator());
     BrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime);
 
     try {

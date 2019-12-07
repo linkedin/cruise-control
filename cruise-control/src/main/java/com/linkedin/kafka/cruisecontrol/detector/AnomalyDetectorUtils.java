@@ -6,12 +6,12 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,24 +23,11 @@ import org.slf4j.LoggerFactory;
 public class AnomalyDetectorUtils {
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetectorUtils.class);
   public static final String KAFKA_CRUISE_CONTROL_OBJECT_CONFIG = "kafka.cruise.control.object";
+  public static final String ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG = "anomaly.detection.time.ms.object";
   public static final long MAX_METADATA_WAIT_MS = 60000L;
   public static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures();
 
   private AnomalyDetectorUtils() {
-  }
-
-  static AnomalyType getAnomalyType(Anomaly anomaly) {
-    if (anomaly instanceof GoalViolations) {
-      return AnomalyType.GOAL_VIOLATION;
-    } else if (anomaly instanceof BrokerFailures) {
-      return AnomalyType.BROKER_FAILURE;
-    } else if (anomaly instanceof KafkaMetricAnomaly) {
-      return AnomalyType.METRIC_ANOMALY;
-    } else if (anomaly instanceof DiskFailures) {
-      return AnomalyType.DISK_FAILURE;
-    } else {
-      throw new IllegalStateException("Unrecognized type for anomaly " + anomaly);
-    }
   }
 
   /**
@@ -66,7 +53,7 @@ public class AnomalyDetectorUtils {
    */
   static boolean shouldSkipAnomalyDetection(KafkaCruiseControl kafkaCruiseControl) {
     LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = kafkaCruiseControl.getLoadMonitorTaskRunnerState();
-    if (!ViolationUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
+    if (!AnomalyUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
       LOG.info("Skipping anomaly detection because load monitor is in {} state.", loadMonitorTaskRunnerState);
       return true;
     }
@@ -78,5 +65,15 @@ public class AnomalyDetectorUtils {
     }
 
     return false;
+  }
+
+  /**
+   * Get a comparator of anomaly based on anomaly type and anomaly detection time.
+   *
+   * @return The anomaly comparator.
+   */
+  public static Comparator<Anomaly> anomalyComparator() {
+    return Comparator.comparing((Anomaly anomaly) -> anomaly.anomalyType().priority())
+                     .thenComparingLong(Anomaly::detectionTimeMs);
   }
 }

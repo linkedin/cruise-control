@@ -7,13 +7,20 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.linkedin.cruisecontrol.config.CruiseControlConfig;
 import com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_DESCRIPTION_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MAX;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MEAN;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MAX;
@@ -62,7 +69,14 @@ public class KafkaMetricAnomalyFinder extends PercentileMetricAnomalyFinder<Brok
 
   @Override
   public KafkaMetricAnomaly createMetricAnomaly(String description, BrokerEntity entity, Short metricId, List<Long> windows) {
-    return new KafkaMetricAnomaly(_kafkaCruiseControl, description, entity, metricId, windows);
+    Map<String, Object> parameterConfigOverrides = new HashMap<>(4);
+    parameterConfigOverrides.put(METRIC_ANOMALY_DESCRIPTION_OBJECT_CONFIG, description);
+    parameterConfigOverrides.put(METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG, Collections.singletonMap(entity, _kafkaCruiseControl.timeMs()));
+    parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
+    parameterConfigOverrides.put(METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG, false);
+    return _kafkaCruiseControl.config().getConfiguredInstance(KafkaCruiseControlConfig.METRIC_ANOMALY_CLASS_CONFIG,
+                                                              KafkaMetricAnomaly.class,
+                                                              parameterConfigOverrides);
   }
 
   @Override
@@ -75,7 +89,7 @@ public class KafkaMetricAnomalyFinder extends PercentileMetricAnomalyFinder<Brok
     super.configure(configs);
     _kafkaCruiseControl = (KafkaCruiseControl) configs.get(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG);
     if (_kafkaCruiseControl == null) {
-      throw new IllegalArgumentException("Kafka metric anomaly analyzer configuration is missing Cruise Control object.");
+      throw new IllegalArgumentException("Kafka metric anomaly finder is missing " + KAFKA_CRUISE_CONTROL_OBJECT_CONFIG);
     }
   }
 }

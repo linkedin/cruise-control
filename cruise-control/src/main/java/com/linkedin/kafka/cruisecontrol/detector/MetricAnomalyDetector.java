@@ -10,16 +10,17 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapola
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
-import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
-
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.shouldSkipAnomalyDetection;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
 
 /**
  * This class will be scheduled to periodically check if {@link KafkaMetricAnomalyFinder} identifies a metric anomaly.
@@ -27,6 +28,9 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAF
  */
 public class MetricAnomalyDetector implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(MetricAnomalyDetector.class);
+  public static final String METRIC_ANOMALY_DESCRIPTION_OBJECT_CONFIG = "metric.anomaly.description.object";
+  public static final String METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG = "metric.anomaly.broker.entities.object";
+  public static final String METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG = "metric.anomaly.fixable.object";
   private final Queue<Anomaly> _anomalies;
   private final List<MetricAnomalyFinder> _kafkaMetricAnomalyFinders;
   private final KafkaCruiseControl _kafkaCruiseControl;
@@ -43,14 +47,31 @@ public class MetricAnomalyDetector implements Runnable {
         configWithCruiseControlObject);
   }
 
+  /**
+   * Skip metric anomaly detection if any of the following is true:
+   * <ul>
+   *  <li>There is offline replicas in the cluster, which means there is dead brokers/disks. In this case
+   * {@link BrokerFailureDetector} or {@link DiskFailureDetector} should take care of the anomaly.</li>
+   *  <li>{@link AnomalyDetectorUtils#shouldSkipAnomalyDetection(KafkaCruiseControl)} returns true.
+   * </ul>
+   *
+   * @return True to skip metrics anomaly detection based on the current state, false otherwise.
+   */
+  private boolean shouldSkipMetricAnomalyDetection() {
+    Set<Integer> brokersWithOfflineReplicas = _kafkaCruiseControl.loadMonitor().brokersWithOfflineReplicas(MAX_METADATA_WAIT_MS);
+    if (!brokersWithOfflineReplicas.isEmpty()) {
+      LOG.info("Skipping metric anomaly detection because there are dead brokers/disks in the cluster, flawed brokers: {}",
+               brokersWithOfflineReplicas);
+      return true;
+    }
+    return shouldSkipAnomalyDetection(_kafkaCruiseControl);
+  }
+
   @Override
   @SuppressWarnings("unchecked")
   public void run() {
     try {
-      // Check if the load monitor is ready.
-      LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _kafkaCruiseControl.getLoadMonitorTaskRunnerState();
-      if (!ViolationUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
-        LOG.info("Skipping metric anomaly detection because load monitor is in {} state.", loadMonitorTaskRunnerState);
+      if (shouldSkipMetricAnomalyDetection()) {
         return;
       }
 

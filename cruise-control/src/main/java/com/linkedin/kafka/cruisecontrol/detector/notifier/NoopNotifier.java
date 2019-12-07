@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector.notifier;
 
+import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import com.linkedin.kafka.cruisecontrol.detector.DiskFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
@@ -19,12 +20,12 @@ public class NoopNotifier implements AnomalyNotifier {
   private final Map<AnomalyType, Boolean> _selfHealingEnabled;
 
   public NoopNotifier() {
-    _selfHealingEnabled = new HashMap<>(AnomalyType.cachedValues().size());
+    _selfHealingEnabled = new HashMap<>(KafkaAnomalyType.cachedValues().size());
   }
 
   @Override
   public void configure(Map<String, ?> configs) {
-    AnomalyType.cachedValues().forEach(anomalyType -> _selfHealingEnabled.put(anomalyType, false));
+    KafkaAnomalyType.cachedValues().forEach(anomalyType -> _selfHealingEnabled.put(anomalyType, false));
   }
 
   @Override
@@ -59,8 +60,8 @@ public class NoopNotifier implements AnomalyNotifier {
 
   @Override
   public Map<AnomalyType, Float> selfHealingEnabledRatio() {
-    Map<AnomalyType, Float> selfHealingEnabledRatio = new HashMap<>(AnomalyType.cachedValues().size());
-    for (AnomalyType anomalyType : AnomalyType.cachedValues()) {
+    Map<AnomalyType, Float> selfHealingEnabledRatio = new HashMap<>(KafkaAnomalyType.cachedValues().size());
+    for (AnomalyType anomalyType : KafkaAnomalyType.cachedValues()) {
       selfHealingEnabledRatio.put(anomalyType, 0.0f);
     }
 

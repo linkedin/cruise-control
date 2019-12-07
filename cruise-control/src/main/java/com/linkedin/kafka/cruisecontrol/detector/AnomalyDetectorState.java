@@ -8,7 +8,8 @@ import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.cruisecontrol.detector.Anomaly;
-import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
+import com.linkedin.cruisecontrol.detector.AnomalyType;
+import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,10 +25,11 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.utcDateFor;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.SEC_TO_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector.METRIC_REGISTRY_NAME;
-import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getAnomalyType;
-import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.GOAL_VIOLATION;
-import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.METRIC_ANOMALY;
-import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.BROKER_FAILURE;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.GOAL_VIOLATION;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.METRIC_ANOMALY;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.BROKER_FAILURE;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.DISK_FAILURE;
+
 
 public class AnomalyDetectorState {
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetectorState.class);
@@ -84,8 +86,8 @@ public class AnomalyDetectorState {
                               MetricRegistry dropwizardMetricRegistry) {
     _time = time;
     _numCachedRecentAnomalyStates = numCachedRecentAnomalyStates;
-    _recentAnomaliesByType = new HashMap<>(AnomalyType.cachedValues().size());
-    for (AnomalyType anomalyType : AnomalyType.cachedValues()) {
+    _recentAnomaliesByType = new HashMap<>(KafkaAnomalyType.cachedValues().size());
+    for (AnomalyType anomalyType : KafkaAnomalyType.cachedValues()) {
       _recentAnomaliesByType.put(anomalyType, new LinkedHashMap<String, AnomalyState>() {
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, AnomalyState> eldest) {
@@ -101,8 +103,8 @@ public class AnomalyDetectorState {
     _ongoingAnomalyDurationSumForAverageMs = 0;
     _numSelfHealingStarted = new AtomicLong(0L);
 
-    Map<AnomalyType, Double> meanTimeBetweenAnomaliesMs = new HashMap<>(AnomalyType.cachedValues().size());
-    for (AnomalyType anomalyType : AnomalyType.cachedValues()) {
+    Map<AnomalyType, Double> meanTimeBetweenAnomaliesMs = new HashMap<>(KafkaAnomalyType.cachedValues().size());
+    for (AnomalyType anomalyType : KafkaAnomalyType.cachedValues()) {
       meanTimeBetweenAnomaliesMs.put(anomalyType, 0.0);
     }
     _metrics = new AnomalyMetrics(meanTimeBetweenAnomaliesMs, 0.0, 0L, 0L);
@@ -115,18 +117,18 @@ public class AnomalyDetectorState {
       dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "ongoing-anomaly-duration-ms"),
                                         (Gauge<Long>) this::ongoingAnomalyDurationMs);
 
-      _anomalyRateByType = new HashMap<>(AnomalyType.cachedValues().size());
-      _anomalyRateByType.put(AnomalyType.BROKER_FAILURE,
+      _anomalyRateByType = new HashMap<>(KafkaAnomalyType.cachedValues().size());
+      _anomalyRateByType.put(BROKER_FAILURE,
                              dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "broker-failure-rate")));
-      _anomalyRateByType.put(AnomalyType.GOAL_VIOLATION,
+      _anomalyRateByType.put(GOAL_VIOLATION,
                              dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "goal-violation-rate")));
-      _anomalyRateByType.put(AnomalyType.METRIC_ANOMALY,
+      _anomalyRateByType.put(METRIC_ANOMALY,
                              dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "metric-anomaly-rate")));
-      _anomalyRateByType.put(AnomalyType.DISK_FAILURE,
-          dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "disk-failure-rate")));
+      _anomalyRateByType.put(DISK_FAILURE,
+                             dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "disk-failure-rate")));
     } else {
-      _anomalyRateByType = new HashMap<>(AnomalyType.cachedValues().size());
-      AnomalyType.cachedValues().forEach(anomalyType -> _anomalyRateByType.put(anomalyType, new Meter()));
+      _anomalyRateByType = new HashMap<>(KafkaAnomalyType.cachedValues().size());
+      KafkaAnomalyType.cachedValues().forEach(anomalyType -> _anomalyRateByType.put(anomalyType, new Meter()));
     }
   }
 
@@ -152,14 +154,14 @@ public class AnomalyDetectorState {
     }
 
     // Retrieve mean time between anomalies, record the time in ms.
-    Map<AnomalyType, Double> meanTimeBetweenAnomaliesMs = new HashMap<>(AnomalyType.cachedValues().size());
-    for (AnomalyType anomalyType : AnomalyType.cachedValues()) {
+    Map<AnomalyType, Double> meanTimeBetweenAnomaliesMs = new HashMap<>(KafkaAnomalyType.cachedValues().size());
+    for (AnomalyType anomalyType : KafkaAnomalyType.cachedValues()) {
       meanTimeBetweenAnomaliesMs.put(anomalyType, _anomalyRateByType.get(anomalyType).getMeanRate() * SEC_TO_MS);
     }
 
     _metrics = new AnomalyMetrics(meanTimeBetweenAnomaliesMs, meanTimeToStartFixMs(), _numSelfHealingStarted.get(), ongoingAnomalyDurationMs());
     _selfHealingEnabledRatio = new HashMap<>(selfHealingEnabledRatio.size());
-    selfHealingEnabledRatio.forEach((key, value) -> _selfHealingEnabledRatio.put(key.name(), value));
+    selfHealingEnabledRatio.forEach((key, value) -> _selfHealingEnabledRatio.put(key.toString(), value));
     _balancednessScore = balancednessScore;
   }
 
@@ -266,7 +268,7 @@ public class AnomalyDetectorState {
    * @param status A status information regarding how the anomaly was handled.
    */
   synchronized void onAnomalyHandle(Anomaly anomaly, AnomalyState.Status status) {
-    AnomalyType anomalyType = getAnomalyType(anomaly);
+    AnomalyType anomalyType = anomaly.anomalyType();
     String anomalyId = anomaly.anomalyId();
 
     if (status == AnomalyState.Status.FIX_STARTED) {
@@ -303,7 +305,7 @@ public class AnomalyDetectorState {
     anomalyDetails.put(ANOMALY_ID, anomalyState.anomalyId());
     anomalyDetails.put(isJson ? STATUS_UPDATE_MS : STATUS_UPDATE_DATE,
                        isJson ? anomalyState.statusUpdateMs() : utcDateFor(anomalyState.statusUpdateMs()));
-    switch (anomalyType) {
+    switch ((KafkaAnomalyType) anomalyType) {
       case GOAL_VIOLATION:
         GoalViolations goalViolations = (GoalViolations) anomalyState.anomaly();
         Map<Boolean, List<String>> violatedGoalsByFixability = goalViolations.violatedGoalsByFixability();
@@ -358,10 +360,10 @@ public class AnomalyDetectorState {
 
   private Map<Boolean, Set<String>> getSelfHealingByEnableStatus() {
     Map<Boolean, Set<String>> selfHealingByEnableStatus = new HashMap<>(2);
-    selfHealingByEnableStatus.put(true, new HashSet<>(AnomalyType.cachedValues().size()));
-    selfHealingByEnableStatus.put(false, new HashSet<>(AnomalyType.cachedValues().size()));
+    selfHealingByEnableStatus.put(true, new HashSet<>(KafkaAnomalyType.cachedValues().size()));
+    selfHealingByEnableStatus.put(false, new HashSet<>(KafkaAnomalyType.cachedValues().size()));
     _selfHealingEnabled.forEach((key, value) -> {
-      selfHealingByEnableStatus.get(value).add(key.name());
+      selfHealingByEnableStatus.get(value).add(key.toString());
     });
     return selfHealingByEnableStatus;
   }
@@ -378,7 +380,7 @@ public class AnomalyDetectorState {
     anomalyDetectorState.put(RECENT_GOAL_VIOLATIONS, recentAnomalies(GOAL_VIOLATION, true));
     anomalyDetectorState.put(RECENT_BROKER_FAILURES, recentAnomalies(BROKER_FAILURE, true));
     anomalyDetectorState.put(RECENT_METRIC_ANOMALIES, recentAnomalies(METRIC_ANOMALY, true));
-    anomalyDetectorState.put(RECENT_DISK_FAILURES, recentAnomalies(AnomalyType.DISK_FAILURE, true));
+    anomalyDetectorState.put(RECENT_DISK_FAILURES, recentAnomalies(DISK_FAILURE, true));
     anomalyDetectorState.put(METRICS, metrics());
     if (_ongoingSelfHealingAnomaly != null) {
       anomalyDetectorState.put(ONGOING_SELF_HEALING_ANOMALY, _ongoingSelfHealingAnomaly.anomalyId());
@@ -397,7 +399,7 @@ public class AnomalyDetectorState {
                          RECENT_GOAL_VIOLATIONS, recentAnomalies(GOAL_VIOLATION, false),
                          RECENT_BROKER_FAILURES, recentAnomalies(BROKER_FAILURE, false),
                          RECENT_METRIC_ANOMALIES, recentAnomalies(METRIC_ANOMALY, false),
-                         RECENT_DISK_FAILURES, recentAnomalies(AnomalyType.DISK_FAILURE, false),
+                         RECENT_DISK_FAILURES, recentAnomalies(DISK_FAILURE, false),
                          METRICS, _metrics,
                          ONGOING_SELF_HEALING_ANOMALY, _ongoingSelfHealingAnomaly == null
                                                        ? "None" : _ongoingSelfHealingAnomaly.anomalyId(),

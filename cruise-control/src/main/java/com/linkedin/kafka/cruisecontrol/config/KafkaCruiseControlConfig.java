@@ -18,13 +18,18 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistri
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.common.KafkaNetworkClientProvider;
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
+import com.linkedin.kafka.cruisecontrol.detector.DiskFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
+import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorNoopNotifier;
 import com.linkedin.kafka.cruisecontrol.detector.NoopMetricAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.NoopNotifier;
@@ -66,11 +71,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final String DEFAULT_NETWORK_CLIENT_PROVIDER_CLASS = KafkaNetworkClientProvider.class.getName();
   private static final String DEFAULT_EXECUTOR_NOTIFIER_CLASS = ExecutorNoopNotifier.class.getName();
   private static final String DEFAULT_METRIC_ANOMALY_FINDER_CLASS = NoopMetricAnomalyFinder.class.getName();
-  public static final boolean DEFAULT_GOAL_VIOLATION_EXCLUDE_RECENT_BROKERS_CONFIG = true;
-  public static final boolean DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG = true;
+  public static final boolean DEFAULT_SELF_HEALING_EXCLUDE_RECENT_BROKERS_CONFIG = true;
   public static final boolean DEFAULT_ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG = true;
   public static final String DEFAULT_BROKER_FAILURES_CLASS = BrokerFailures.class.getName();
   public static final String DEFAULT_GOAL_VIOLATIONS_CLASS = GoalViolations.class.getName();
+  public static final String DEFAULT_METRIC_ANOMALY_CLASS = KafkaMetricAnomaly.class.getName();
+  public static final String DEFAULT_DISK_FAILURES_CLASS = DiskFailures.class.getName();
   // Assumption: Each replica move request has a size smaller than 1MB / 1250 = 800 bytes. (1MB = default zNode size limit)
   public static final int DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG = 1250;
 
@@ -253,6 +259,21 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   public static final String GOAL_VIOLATIONS_CLASS_CONFIG = "goal.violations.class";
   private static final String GOAL_VIOLATIONS_CLASS_DOC = String.format("The %s class that extends goal violations.",
                                                                         DEFAULT_GOAL_VIOLATIONS_CLASS);
+
+  /**
+   * <code>disk.failures.class</code>
+   */
+  public static final String DISK_FAILURES_CLASS_CONFIG = "disk.failures.class";
+  private static final String DISK_FAILURES_CLASS_DOC = String.format("The %s class that extends disk failures.",
+                                                                      DEFAULT_DISK_FAILURES_CLASS);
+
+  /**
+   * <code>metric.anomaly.class</code>
+   */
+  public static final String METRIC_ANOMALY_CLASS_CONFIG = "metric.anomaly.class";
+  private static final String METRIC_ANOMALY_CLASS_DOC = String.format("The %s class that extends metric anomaly.",
+                                                                       DEFAULT_METRIC_ANOMALY_CLASS);
+
   /**
    * <code>min.valid.partition.ratio</code>
    */
@@ -618,6 +639,37 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "run to detect the anomalies.";
 
   /**
+   * <code>goal.violation.detection.interval.ms</code>
+   */
+  public static final String GOAL_VIOLATION_DETECTION_INTERVAL_MS_CONFIG = "goal.violation.detection.interval.ms";
+  private static final String GOAL_VIOLATION_DETECTION_INTERVAL_MS_DOC = "The interval in millisecond that goal violation "
+      + "detector will run to detect goal violations. If this interval time is not specified, goal violation detector "
+      + "will run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ".";
+
+  /**
+   * <code>metric.anomaly.detection.interval.ms</code>
+   */
+  public static final String METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG = "metric.anomaly.detection.interval.ms";
+  private static final String METRIC_ANOMALY_DETECTION_INTERVAL_MS_DOC = "The interval in millisecond that metric anomaly "
+      + "detector will run to detect metric anomalies. If this interval time is not specified, metric anomaly detector "
+      + "will run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ".";
+
+  /**
+   * <code>disk.failure.detection.interval.ms</code>
+   */
+  public static final String DISK_FAILURE_DETECTION_INTERVAL_MS_CONFIG = "disk.failure.detection.interval.ms";
+  private static final String DISK_FAILURE_DETECTION_INTERVAL_MS_DOC = "The interval in millisecond that disk failure "
+      + "detector will run to detect disk failures. If this interval time is not specified, disk failure detector "
+      + "will run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ".";
+
+  /**
+   * <code>broker.failure.detection.backoff.ms</code>
+   */
+  public static final String BROKER_FAILURE_DETECTION_BACKOFF_MS_CONFIG = "broker.failure.detection.backoff.ms";
+  private static final String BROKER_FAILURE_DETECTION_BACKOFF_MS_DOC = "The backoff time in millisecond before broker failure "
+      + "detector triggers another broker failure detection if currently detected broker failure is not ready to fix.";
+
+  /**
    * <code>anomaly.detection.allow.capacity.estimation</code>
    */
   public static final String ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG = "anomaly.detection.allow.capacity.estimation";
@@ -639,32 +691,18 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "violated.";
 
   /**
-   * <code>broker.failure.exclude.recently.demoted.brokers</code>
+   * <code>self.healing.exclude.recently.demoted.brokers</code>
    */
-  public static final String BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG = "broker.failure.exclude.recently.demoted.brokers";
-  private static final String BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_DOC = "True if recently demoted brokers "
-      + "are excluded from optimizations during broker failure self healing, false otherwise.";
+  public static final String SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG = "self.healing.exclude.recently.demoted.brokers";
+  private static final String SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_DOC = "True if recently demoted brokers "
+      + "are excluded from optimizations during self healing, false otherwise.";
 
   /**
-   * <code>broker.failure.exclude.recently.removed.brokers</code>
+   * <code>self.healing.exclude.recently.removed.brokers</code>
    */
-  public static final String BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG = "broker.failure.exclude.recently.removed.brokers";
-  private static final String BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_DOC = "True if recently removed brokers "
-      + "are excluded from optimizations during broker failure self healing, false otherwise.";
-
-  /**
-   * <code>goal.violation.exclude.recently.demoted.brokers</code>
-   */
-  public static final String GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG = "goal.violation.exclude.recently.demoted.brokers";
-  private static final String GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_DOC = "True if recently demoted brokers "
-      + "are excluded from optimizations during goal violation self healing, false otherwise.";
-
-  /**
-   * <code>goal.violation.exclude.recently.removed.brokers</code>
-   */
-  public static final String GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG = "goal.violation.exclude.recently.removed.brokers";
-  private static final String GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_DOC = "True if recently removed brokers "
-      + "are excluded from optimizations during goal violation self healing, false otherwise.";
+  public static final String SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG = "self.healing.exclude.recently.removed.brokers";
+  private static final String SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_DOC = "True if recently removed brokers "
+      + "are excluded from optimizations during self healing, false otherwise.";
 
   /**
    * <code>failed.brokers.zk.path</code>
@@ -1235,6 +1273,16 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 DEFAULT_GOAL_VIOLATIONS_CLASS,
                 ConfigDef.Importance.MEDIUM,
                 GOAL_VIOLATIONS_CLASS_DOC)
+        .define(DISK_FAILURES_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_DISK_FAILURES_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                DISK_FAILURES_CLASS_DOC)
+        .define(METRIC_ANOMALY_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_METRIC_ANOMALY_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                METRIC_ANOMALY_CLASS_DOC)
         .define(GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG,
                 ConfigDef.Type.DOUBLE,
                 1.1,
@@ -1476,7 +1524,10 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                     .add(CpuUsageDistributionGoal.class.getName())
                     .add(LeaderReplicaDistributionGoal.class.getName())
                     .add(LeaderBytesInDistributionGoal.class.getName())
-                    .add(TopicReplicaDistributionGoal.class.getName()).toString(),
+                    .add(TopicReplicaDistributionGoal.class.getName())
+                    .add(KafkaAssignerDiskUsageDistributionGoal.class.getName())
+                    .add(KafkaAssignerEvenRackAwareGoal.class.getName())
+                    .add(PreferredLeaderElectionGoal.class.getName()).toString(),
                 ConfigDef.Importance.HIGH,
                 GOALS_DOC)
         .define(INTRA_BROKER_GOALS_CONFIG,
@@ -1724,11 +1775,31 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 300000L,
                 ConfigDef.Importance.LOW,
                 ANOMALY_DETECTION_INTERVAL_MS_DOC)
+        .define(GOAL_VIOLATION_DETECTION_INTERVAL_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                null,
+                ConfigDef.Importance.LOW,
+                GOAL_VIOLATION_DETECTION_INTERVAL_MS_DOC)
+        .define(METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                null,
+                ConfigDef.Importance.LOW,
+                METRIC_ANOMALY_DETECTION_INTERVAL_MS_DOC)
+        .define(DISK_FAILURE_DETECTION_INTERVAL_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                null,
+                ConfigDef.Importance.LOW,
+                DISK_FAILURE_DETECTION_INTERVAL_MS_DOC)
         .define(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG,
                 ConfigDef.Type.BOOLEAN,
                 DEFAULT_ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG,
                 ConfigDef.Importance.LOW,
                 ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_DOC)
+        .define(BROKER_FAILURE_DETECTION_BACKOFF_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                300000L,
+                ConfigDef.Importance.LOW,
+                BROKER_FAILURE_DETECTION_BACKOFF_MS_DOC)
         .define(SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG,
                 ConfigDef.Type.BOOLEAN,
                 true,
@@ -1742,26 +1813,16 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                     .add(DiskCapacityGoal.class.getName()).toString(),
                 ConfigDef.Importance.MEDIUM,
                 ANOMALY_DETECTION_GOALS_DOC)
-        .define(BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG,
+        .define(SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG,
                 ConfigDef.Type.BOOLEAN,
-                DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG,
+                DEFAULT_SELF_HEALING_EXCLUDE_RECENT_BROKERS_CONFIG,
                 ConfigDef.Importance.MEDIUM,
-                BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_DOC)
-        .define(BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG,
+                SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_DOC)
+        .define(SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG,
                 ConfigDef.Type.BOOLEAN,
-                DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG,
+                DEFAULT_SELF_HEALING_EXCLUDE_RECENT_BROKERS_CONFIG,
                 ConfigDef.Importance.MEDIUM,
-                BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_DOC)
-        .define(GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG,
-                ConfigDef.Type.BOOLEAN,
-                DEFAULT_GOAL_VIOLATION_EXCLUDE_RECENT_BROKERS_CONFIG,
-                ConfigDef.Importance.MEDIUM,
-                GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_DOC)
-        .define(GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG,
-                ConfigDef.Type.BOOLEAN,
-                DEFAULT_GOAL_VIOLATION_EXCLUDE_RECENT_BROKERS_CONFIG,
-                ConfigDef.Importance.MEDIUM,
-                GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_DOC)
+                SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_DOC)
         .define(FAILED_BROKERS_ZK_PATH_CONFIG,
                 ConfigDef.Type.STRING,
                 DEFAULT_FAILED_BROKERS_ZK_PATH,
@@ -2005,7 +2066,9 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    *   <li>sampling frequency per broker window is within the limits -- i.e. ({@link #BROKER_METRICS_WINDOW_MS_CONFIG} /
    *   {@link #METRIC_SAMPLING_INTERVAL_MS_CONFIG}) <= {@link Byte#MAX_VALUE}, and</li>
    *   <li>{@link CruiseControlMetricsReporterConfig#CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG} is not longer than
-   *   {@link #METRIC_SAMPLING_INTERVAL_MS_CONFIG}</li>
+   *   {@link #METRIC_SAMPLING_INTERVAL_MS_CONFIG}, and</li>
+   *   <li>{@link #METRIC_SAMPLING_INTERVAL_MS_CONFIG} is not longer than {@link #METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG}
+   *   (or #ANOMALY_DETECTION_INTERVAL_MS_CONFIG if #METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG is not specified)</li>
    * </ul>
    *
    * Sampling process involves a potential metadata update if the current metadata is stale. The configuration
@@ -2055,6 +2118,20 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                                               reportingIntervalMs, samplingIntervalMs,
                                               CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG,
                                               METRIC_SAMPLING_INTERVAL_MS_CONFIG));
+    }
+
+    // Ensure sampling frequency is is higher than metric anomaly detection frequency.
+    Long metricAnomalyDetectionIntervalMs = getLong(METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
+    if (metricAnomalyDetectionIntervalMs == null) {
+      metricAnomalyDetectionIntervalMs = getLong(ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
+    }
+    if (samplingIntervalMs > metricAnomalyDetectionIntervalMs) {
+      throw new ConfigException(String.format("Configured metric sampling interval (%d) exceeds metric anomaly detection interval (%d). "
+                                              + "Decrease the value of %s or increase the value of %s (or %s if %s is not specified) to "
+                                              + "ensure that metrics anomaly detection does not run too frequently.",
+                                              samplingIntervalMs, metricAnomalyDetectionIntervalMs,
+                                              METRIC_SAMPLING_INTERVAL_MS_CONFIG, METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG,
+                                              ANOMALY_DETECTION_INTERVAL_MS_CONFIG, METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG));
     }
   }
 

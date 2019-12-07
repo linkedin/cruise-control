@@ -6,27 +6,26 @@ package com.linkedin.cruisecontrol.detector.metricanomaly;
 
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.model.Entity;
-import java.util.List;
+import java.util.Map;
 
 
+/**
+ * The interface for a metric anomaly.
+ *
+ * @param <E> The type of entity with metric anomaly.
+ */
 public interface MetricAnomaly<E extends Entity> extends Anomaly {
   /**
-   * @return A list of windows for which a metric anomaly was observed.
-   */
-  List<Long> windows();
-
-  /**
-   * @return The metric anomaly description.
+   * Get the metric anomaly description.
+   *
+   * @return  The description string.
    */
   String description();
 
   /**
-   * @return The entity with metric anomaly.
+   * Get the entities with metric anomaly detected.
+   *
+   * @return  A map of entities with metric anomaly detected to detection time.
    */
-  E entity();
-
-  /**
-   * @return The metric Id caused the metric anomaly.
-   */
-  Short metricId();
+  Map<E, Long> entities();
 }
