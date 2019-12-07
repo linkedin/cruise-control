@@ -1,0 +1,30 @@
+ProgressResult:
+  type: object
+  required:
+    - version
+    - progress
+  properties:
+    version:
+      type: integer
+      format: int32
+    progress:
+      $ref: '#/StepProgress'
+
+StepProgress:
+  type: object
+  required:
+    - step
+    - description
+    - timeInMs
+    - completionPercentage
+  properties:
+    step:
+      type: string
+    description:
+      type: string
+    timeInMs:
+      type: integer
+      format: int64
+    completionPercentage:
+      type: number
+      format: double
