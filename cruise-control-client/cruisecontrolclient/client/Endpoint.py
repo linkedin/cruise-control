@@ -171,6 +171,7 @@ class AddBrokerEndpoint(AbstractEndpoint):
         CCParameter.ExcludedTopicsParameter,
         CCParameter.GoalsParameter,
         CCParameter.JSONParameter,
+        CCParameter.ReasonParameter,
         CCParameter.ReviewIDParameter,
         CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.SkipHardGoalCheckParameter,
@@ -240,6 +241,7 @@ class DemoteBrokerEndpoint(AbstractEndpoint):
         CCParameter.ExcludeRecentlyDemotedBrokersParameter,
         CCParameter.JSONParameter,
         CCParameter.ReplicaMovementStrategiesParameter,
+        CCParameter.ReasonParameter,
         CCParameter.ReviewIDParameter,
         CCParameter.SkipURPDemotionParameter,
         CCParameter.VerboseParameter
@@ -261,7 +263,21 @@ class FixOfflineReplicasEndpoint(AbstractEndpoint):
     http_method = "POST"
     can_execute_proposal = True
     available_Parameters = (
+        CCParameter.AllowCapacityEstimationParameter,
+        CCParameter.ConcurrentLeaderMovementsParameter,
+        CCParameter.ConcurrentPartitionMovementsPerBrokerParameter,
+        CCParameter.DryRunParameter,
+        CCParameter.ExcludeRecentlyDemotedBrokersParameter,
+        CCParameter.ExcludeRecentlyRemovedBrokersParameter,
+        CCParameter.ExcludedTopicsParameter,
+        CCParameter.GoalsParameter,
+        CCParameter.JSONParameter,
+        CCParameter.ReasonParameter,
+        CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.ReviewIDParameter,
+        CCParameter.SkipHardGoalCheckParameter,
+        CCParameter.UseReadyDefaultGoalsParameter,
+        CCParameter.VerboseParameter
     )
     argparse_properties = {
         'args': (name,),
@@ -382,6 +398,7 @@ class RebalanceEndpoint(AbstractEndpoint):
         CCParameter.GoalsParameter,
         CCParameter.IgnoreProposalCacheParameter,
         CCParameter.JSONParameter,
+        CCParameter.ReasonParameter,
         CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.ReviewIDParameter,
         CCParameter.SkipHardGoalCheckParameter,
@@ -414,12 +431,13 @@ class RemoveBrokerEndpoint(AbstractEndpoint):
         CCParameter.ExcludedTopicsParameter,
         CCParameter.GoalsParameter,
         CCParameter.JSONParameter,
+        CCParameter.ReasonParameter,
         CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.ReviewIDParameter,
         CCParameter.SkipHardGoalCheckParameter,
         CCParameter.ThrottleRemovedBrokerParameter,
         CCParameter.UseReadyDefaultGoalsParameter,
-        CCParameter.VerboseParameter
+        CCParameter.VerboseParameter,
     )
     argparse_properties = {
         'args': (name,),
@@ -531,11 +549,12 @@ class TopicConfigurationEndpoint(AbstractEndpoint):
         CCParameter.ExcludeRecentlyRemovedBrokersParameter,
         CCParameter.GoalsParameter,
         CCParameter.JSONParameter,
-        CCParameter.SkipHardGoalCheckParameter,
-        CCParameter.SkipRackAwarenessCheckParameter,
+        CCParameter.ReasonParameter,
         CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.ReplicationFactorParameter,
         CCParameter.ReviewIDParameter,
+        CCParameter.SkipHardGoalCheckParameter,
+        CCParameter.SkipRackAwarenessCheckParameter,
         CCParameter.TopicParameter,
         CCParameter.VerboseParameter
     )

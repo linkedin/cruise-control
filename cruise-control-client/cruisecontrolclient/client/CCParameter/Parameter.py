@@ -98,7 +98,7 @@ class PartitionParameter(AbstractParameter):
 class ReasonParameter(AbstractParameter):
     """reason=[reason-for-pause]"""
     name = 'reason'
-    description = 'The reason for pausing or resuming the sampling'
+    description = 'The reason for the request'
     argparse_properties = {
         'args': ('--reason',),
         'kwargs': dict(help=description, metavar='REASON', type=str)
