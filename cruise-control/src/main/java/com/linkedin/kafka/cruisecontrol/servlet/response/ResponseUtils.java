@@ -25,10 +25,6 @@ public class ResponseUtils {
   public static final String VERSION = "version";
   @JsonResponseField
   public static final String MESSAGE = "message";
-  @JsonResponseField(responseStatus = HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-  private static final String STACK_TRACE = "stackTrace";
-  @JsonResponseField(responseStatus = HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-  private static final String ERROR_MESSAGE = "errorMessage";
 
   private ResponseUtils() {
   }
@@ -104,17 +100,45 @@ public class ResponseUtils {
                                         KafkaCruiseControlConfig config)
       throws IOException {
     String responseMessage;
+    ErrorResponse errorResponse = new ErrorResponse(e, errorMessage);
     if (json) {
-      Map<String, Object> exceptionMap = new HashMap<>();
-      exceptionMap.put(VERSION, JSON_VERSION);
-      exceptionMap.put(STACK_TRACE, stackTrace(e));
-      exceptionMap.put(ERROR_MESSAGE, errorMessage);
       Gson gson = new Gson();
-      responseMessage = gson.toJson(exceptionMap);
+      responseMessage = gson.toJson(errorResponse.getJsonStructure());
     } else {
-      responseMessage = errorMessage == null ? "" : errorMessage;
+      responseMessage = errorResponse.toString();
     }
     // Send the CORS Task ID header as part of this error response if 2-step verification is enabled.
     writeResponseToOutputStream(response, responseCode, json, responseMessage, config);
+  }
+
+  @JsonResponseClass
+  public static class ErrorResponse {
+    @JsonResponseField
+    private static final String STACK_TRACE = "stackTrace";
+    @JsonResponseField
+    private static final String ERROR_MESSAGE = "errorMessage";
+    private Exception _exception;
+    private String _errorMessage;
+
+    ErrorResponse(Exception exception, String errorMessage) {
+      _errorMessage = errorMessage;
+      _exception = exception;
+    }
+
+    @Override
+    public String toString() {
+      return _errorMessage == null ? "" : _errorMessage;
+    }
+
+    /**
+     * @return The map describing the error.
+     */
+    public Map<String, Object> getJsonStructure() {
+      Map<String, Object> exceptionMap = new HashMap<>();
+      exceptionMap.put(VERSION, JSON_VERSION);
+      exceptionMap.put(STACK_TRACE, stackTrace(_exception));
+      exceptionMap.put(ERROR_MESSAGE, _errorMessage);
+      return exceptionMap;
+    }
   }
 }

@@ -25,11 +25,11 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.TreeSet;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.OPENAPI_SPEC_PATH;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.REQUEST_URI;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.requestParameterFor;
 
 public class RequestParameterTest {
-  static final String SCHEMA_FILE_PATH = System.getProperty("user.dir") + "/src/yaml/base.yaml";
   private Map<String, CruiseControlParameters> _endpointToClass;
   OpenAPI _openAPI;
   /**
@@ -55,7 +55,7 @@ public class RequestParameterTest {
     options.setResolveFully(true);
     options.setFlatten(true);
 
-    SwaggerParseResult parseResult = openApiParser.readLocation(SCHEMA_FILE_PATH, null, options);
+    SwaggerParseResult parseResult = openApiParser.readLocation(OPENAPI_SPEC_PATH, null, options);
     _openAPI = parseResult.getOpenAPI();
     Map<String, Set<String>> schema = parseSchema();
     // TODO: Check the number of entries in parsed schema is the same as _endpointsToClass

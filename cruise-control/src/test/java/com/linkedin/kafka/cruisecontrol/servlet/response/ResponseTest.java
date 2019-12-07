@@ -18,6 +18,7 @@ import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.parser.OpenAPIV3Parser;
+import io.swagger.v3.parser.core.models.ParseOptions;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -27,6 +28,7 @@ import java.util.Queue;
 import org.junit.Before;
 import org.junit.Test;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.OPENAPI_SPEC_PATH;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -35,14 +37,12 @@ import static org.junit.Assert.fail;
 
 
 /**
- * Test to check the openAPI spec is consistent with JSON layout defined in Java response classes.
+ * Test to check the openAPI spec is consistent with layout defined in Java response classes.
  */
-public class JsonResponseTest {
+public class ResponseTest {
 
   private Map<String, Class> _schemaToClass;
   private OpenAPI _openAPI;
-  // location of OpenApi's yaml file.
-  private static String YAML_FILE = System.getProperty("user.dir") + "/src/yaml/endpoint.yaml";
 
   /**
    * Scan all the classes in package {@link com.linkedin.kafka.cruisecontrol} for classes which could be used
@@ -79,7 +79,10 @@ public class JsonResponseTest {
    */
   @Test
   public void checkOpenAPISpec() {
-    _openAPI = new OpenAPIV3Parser().read(YAML_FILE);
+    ParseOptions options = new ParseOptions();
+    options.setResolve(true);
+    options.setFlatten(true);
+    _openAPI = new OpenAPIV3Parser().read(OPENAPI_SPEC_PATH, null, options);
     for (PathItem path : _openAPI.getPaths().values()) {
       if (path.getGet() != null) {
         checkOperation(path.getGet());
@@ -101,8 +104,7 @@ public class JsonResponseTest {
         switch (header) {
           case "application/json" : String refName = type.getSchema().get$ref();
                                     String className = refName.substring(refName.lastIndexOf('/') + 1);
-                                    checkSchema(_openAPI.getComponents().getSchemas().get(className), className,
-                                                Integer.valueOf(responseStatus), true);
+                                    checkSchema(_openAPI.getComponents().getSchemas().get(className), className, true);
                                     break;
           case "text/plain" : assertTrue(type.getSchema() instanceof StringSchema);
                               break;
@@ -124,12 +126,11 @@ public class JsonResponseTest {
    *
    * @param schema The OpenApi schema
    * @param className The name of corresponding Java response class.
-   * @param responseStatus The status of response associated with schema.
    * @param isOutermost Whether the schema is the outermost layer of the response.
    */
-  private void checkSchema(Schema schema, String className, int responseStatus, boolean isOutermost) {
+  private void checkSchema(Schema schema, String className, boolean isOutermost) {
     // Get the complete field key set from Java class.
-    Map<String, Boolean> fields = extractFieldKeys(_schemaToClass.get(className), responseStatus);
+    Map<String, Boolean> fields = extractFieldKeys(_schemaToClass.get(className));
 
     Map<String, Schema> properties = schema.getProperties();
 
@@ -168,7 +169,7 @@ public class JsonResponseTest {
         assertNotEquals(schemaToCheck.get$ref(), null);
         String refName = schemaToCheck.get$ref();
         String schemaName = refName.substring(refName.lastIndexOf('/') + 1);
-        checkSchema(_openAPI.getComponents().getSchemas().get(schemaName), schemaName, responseStatus, false);
+        checkSchema(_openAPI.getComponents().getSchemas().get(schemaName), schemaName, false);
       }
     });
   }
@@ -182,10 +183,9 @@ public class JsonResponseTest {
    * </ul>
    *
    * @param responseClass The Java response class.
-   * @param responseStatus The response status used to filter fields.
    * @return A map of field key to its necessity (i.e. whether it is a required field in JSON response).
    */
-  private Map<String, Boolean> extractFieldKeys(Class responseClass, int responseStatus) {
+  private Map<String, Boolean> extractFieldKeys(Class responseClass) {
     Map<String, Boolean> fields = new HashMap<>();
     Queue<Class> classToScan = new LinkedList<>();
     classToScan.add(responseClass);
@@ -196,9 +196,7 @@ public class JsonResponseTest {
             .forEach(f -> {
               f.setAccessible(true);
               try {
-                if (f.getAnnotation(JsonResponseField.class).responseStatus() == responseStatus) {
-                  fields.put(f.get(null).toString(), f.getAnnotation(JsonResponseField.class).required());
-                }
+                fields.put(f.get(null).toString(), f.getAnnotation(JsonResponseField.class).required());
               } catch (IllegalAccessException e) {
               // Not reach here.
               }

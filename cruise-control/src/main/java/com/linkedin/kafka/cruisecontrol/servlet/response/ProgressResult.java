@@ -24,7 +24,7 @@ import static javax.servlet.http.HttpServletResponse.SC_ACCEPTED;
 
 @JsonResponseClass
 public class ProgressResult extends AbstractCruiseControlResponse {
-  @JsonResponseField(responseStatus = SC_ACCEPTED)
+  @JsonResponseField
   protected static final String PROGRESS = "progress";
   protected List<OperationFuture> _futures;
 

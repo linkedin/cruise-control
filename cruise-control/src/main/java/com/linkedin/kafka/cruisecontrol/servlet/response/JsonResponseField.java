@@ -9,7 +9,6 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import javax.servlet.http.HttpServletResponse;
 
 
 /**
@@ -24,12 +23,5 @@ public @interface JsonResponseField {
    * @return True if it is a required field; otherwise it is an optional field.
    */
   boolean required() default true;
-
-  /**
-   * The response status of response which should contain the field.
-   * @return The associated response status.
-   */
-  int responseStatus() default HttpServletResponse.SC_OK;
-
 }
 

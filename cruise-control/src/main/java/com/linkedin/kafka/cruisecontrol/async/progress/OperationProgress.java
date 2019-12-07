@@ -25,9 +25,9 @@ import static javax.servlet.http.HttpServletResponse.*;
  */
 @JsonResponseClass
 public class OperationProgress {
-  @JsonResponseField(responseStatus = SC_ACCEPTED)
+  @JsonResponseField
   protected static final String OPERATION = "operation";
-  @JsonResponseField(responseStatus = SC_ACCEPTED)
+  @JsonResponseField
   protected static final String OPERATION_PROGRESS = "operationProgress";
   private boolean _mutable = true;
   private List<OperationStep> _steps = new ArrayList<>();
@@ -132,13 +132,13 @@ public class OperationProgress {
 
   @JsonResponseClass
   private static class StepProgress {
-    @JsonResponseField(responseStatus = SC_ACCEPTED)
+    @JsonResponseField
     static final String STEP = "step";
-    @JsonResponseField(responseStatus = SC_ACCEPTED)
+    @JsonResponseField
     static final String DESCRIPTION = "description";
-    @JsonResponseField(responseStatus = SC_ACCEPTED)
+    @JsonResponseField
     static final String TIME_IN_MS = "timeInMs";
-    @JsonResponseField(responseStatus = SC_ACCEPTED)
+    @JsonResponseField
     static final String COMPLETION_PERCENTAGE = "completionPercentage";
     private OperationStep _step;
     private long _duration;

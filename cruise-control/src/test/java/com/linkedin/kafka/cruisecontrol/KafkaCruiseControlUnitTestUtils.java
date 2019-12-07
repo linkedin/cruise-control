@@ -24,6 +24,7 @@ import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.D
  */
 public class KafkaCruiseControlUnitTestUtils {
   public static final int ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE = 10;
+  public static final String OPENAPI_SPEC_PATH = System.getProperty("user.dir") + "/src/yaml/base.yaml";
 
   private KafkaCruiseControlUnitTestUtils() {
 
