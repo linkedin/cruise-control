@@ -437,7 +437,7 @@ class RemoveBrokerEndpoint(AbstractEndpoint):
         CCParameter.SkipHardGoalCheckParameter,
         CCParameter.ThrottleRemovedBrokerParameter,
         CCParameter.UseReadyDefaultGoalsParameter,
-        CCParameter.VerboseParameter,
+        CCParameter.VerboseParameter
     )
     argparse_properties = {
         'args': (name,),
