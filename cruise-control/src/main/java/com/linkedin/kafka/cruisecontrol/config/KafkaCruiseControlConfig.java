@@ -140,6 +140,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "metric samples";
 
   /**
+   * <code>skip.loading.samples</code>
+   */
+  public static final String SKIP_SAMPLE_LOADING_CONFIG = "skip.loading.samples";
+  private static final String SKIP_SAMPLE_LOADING_DOC = "Specify if sample loading will be skipped upon startup.";
+
+  /**
    * <code>min.samples.per.partition.metrics.window</code>
    */
   public static final String MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG = "min.samples.per.partition.metrics.window";
@@ -1458,6 +1464,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 false,
                 ConfigDef.Importance.HIGH,
                 ZOOKEEPER_SECURITY_ENABLED_DOC)
+        .define(SKIP_SAMPLE_LOADING_CONFIG,
+                ConfigDef.Type.BOOLEAN,
+                false,
+                ConfigDef.Importance.MEDIUM,
+                SKIP_SAMPLE_LOADING_DOC)
         .define(NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG,
                 ConfigDef.Type.INT,
                 5,

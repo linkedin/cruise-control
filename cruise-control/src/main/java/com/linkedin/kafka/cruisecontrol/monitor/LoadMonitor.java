@@ -60,6 +60,7 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.SKIP_SAMPLE_LOADING_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.getRackHandleNull;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.getReplicaPlacementInfo;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.partitionSampleExtrapolations;
@@ -195,7 +196,7 @@ public class LoadMonitor {
    * Start the load monitor.
    */
   public void startUp() {
-    _loadMonitorTaskRunner.start();
+    _loadMonitorTaskRunner.start(_config.getBoolean(SKIP_SAMPLE_LOADING_CONFIG));
   }
 
   /**
