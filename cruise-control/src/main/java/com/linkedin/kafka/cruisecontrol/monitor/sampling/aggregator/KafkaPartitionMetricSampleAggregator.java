@@ -11,7 +11,6 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleComple
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.async.progress.RetrievingMetrics;
-import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
@@ -53,8 +52,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
    * @param config   The load monitor configurations.
    * @param metadata The metadata of the cluster.
    */
-  public KafkaPartitionMetricSampleAggregator(KafkaCruiseControlConfig config,
-                                              Metadata metadata) {
+  public KafkaPartitionMetricSampleAggregator(KafkaCruiseControlConfig config, Metadata metadata) {
     super(config.getInt(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG),
           config.getLong(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG),
           config.getInt(KafkaCruiseControlConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG).byteValue(),
@@ -105,17 +103,17 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
    *   </li>
    * </ol>
    *
-   * @param clusterAndGeneration The current cluster information.
+   * @param cluster Kafka cluster.
    * @param now the current time.
    * @param operationProgress to report the async operation progress.
    * @return The {@link MetricSampleAggregationResult} for all the partitions.
    */
-  public MetricSampleAggregationResult<String, PartitionEntity> aggregate(MetadataClient.ClusterAndGeneration clusterAndGeneration,
+  public MetricSampleAggregationResult<String, PartitionEntity> aggregate(Cluster cluster,
                                                                           long now,
                                                                           OperationProgress operationProgress)
       throws NotEnoughValidWindowsException {
     ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(1, 0.0, false);
-    return aggregate(clusterAndGeneration, -1L, now, requirements, operationProgress);
+    return aggregate(cluster, -1L, now, requirements, operationProgress);
   }
 
   /**
@@ -133,14 +131,14 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
    *   </li>
    * </ol>
    *
-   * @param clusterAndGeneration The current cluster information.
+   * @param cluster Kafka cluster.
    * @param from the start of the time window
    * @param to the end of the time window
    * @param requirements the {@link ModelCompletenessRequirements} for the aggregation result.
    * @param operationProgress to report the operation progress.
    * @return The {@link MetricSampleAggregationResult} for all the partitions.
    */
-  public MetricSampleAggregationResult<String, PartitionEntity> aggregate(MetadataClient.ClusterAndGeneration clusterAndGeneration,
+  public MetricSampleAggregationResult<String, PartitionEntity> aggregate(Cluster cluster,
                                                                           long from,
                                                                           long to,
                                                                           ModelCompletenessRequirements requirements,
@@ -149,7 +147,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
     RetrievingMetrics step = new RetrievingMetrics();
     try {
       operationProgress.addStep(step);
-      return aggregate(from, to, toAggregationOptions(clusterAndGeneration.cluster(), requirements));
+      return aggregate(from, to, toAggregationOptions(cluster, requirements));
     } finally {
       step.done();
     }
@@ -176,20 +174,18 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
    * {@link KafkaCruiseControlConfig#MIN_VALID_PARTITION_RATIO_CONFIG enough valid partitions}
    * being monitored. A valid partition must be valid in all the windows in the returned set.
    *
-   * @param clusterAndGeneration The current cluster and generation.
+   * @param cluster Kafka cluster.
    * @param minMonitoredPartitionsPercentage the minimum required monitored partitions percentage.
    * @return A sorted set of valid windows in the aggregator.
    */
-  public SortedSet<Long> validWindows(MetadataClient.ClusterAndGeneration clusterAndGeneration,
-                                      double minMonitoredPartitionsPercentage) {
-    AggregationOptions<String, PartitionEntity> options =
-        new AggregationOptions<>(minMonitoredPartitionsPercentage,
-                                 0.0,
-                                 1,
-                                 _maxAllowedExtrapolationsPerPartition,
-                                 allPartitions(clusterAndGeneration.cluster()),
-                                 AggregationOptions.Granularity.ENTITY,
-                                 true);
+  public SortedSet<Long> validWindows(Cluster cluster, double minMonitoredPartitionsPercentage) {
+    AggregationOptions<String, PartitionEntity> options = new AggregationOptions<>(minMonitoredPartitionsPercentage,
+                                                                                   0.0,
+                                                                                   1,
+                                                                                   _maxAllowedExtrapolationsPerPartition,
+                                                                                   allPartitions(cluster),
+                                                                                   AggregationOptions.Granularity.ENTITY,
+                                                                                   true);
     MetricSampleCompleteness<String, PartitionEntity> completeness = completeness(-1, Long.MAX_VALUE, options);
     return windowIndicesToWindows(completeness.validWindowIndices(), _windowMs);
   }
@@ -197,36 +193,34 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
   /**
    * Get the valid partitions percentage across all the windows.
    *
-   * @param clusterAndGeneration the current cluster and generation.
+   * @param cluster Kafka cluster.
    * @return The percentage of valid partitions across all the windows.
    */
-  public double monitoredPercentage(MetadataClient.ClusterAndGeneration clusterAndGeneration) {
-    AggregationOptions<String, PartitionEntity> options =
-        new AggregationOptions<>(0.0,
-                                 0.0,
-                                 1,
-                                 _maxAllowedExtrapolationsPerPartition,
-                                 allPartitions(clusterAndGeneration.cluster()),
-                                 AggregationOptions.Granularity.ENTITY,
-                                 true);
+  public double monitoredPercentage(Cluster cluster) {
+    AggregationOptions<String, PartitionEntity> options = new AggregationOptions<>(0.0,
+                                                                                   0.0,
+                                                                                   1,
+                                                                                   _maxAllowedExtrapolationsPerPartition,
+                                                                                   allPartitions(cluster),
+                                                                                   AggregationOptions.Granularity.ENTITY,
+                                                                                   true);
     MetricSampleCompleteness<String, PartitionEntity> completeness = completeness(-1, Long.MAX_VALUE, options);
     return completeness.validEntityRatio();
   }
 
   /**
    * Get the monitored partition percentage in each window.
-   * @param clusterAndGeneration the current cluster and generation.
+   * @param cluster Kafka cluster.
    * @return A mapping from window to the monitored partitions percentage.
    */
-  public SortedMap<Long, Float> validPartitionRatioByWindows(MetadataClient.ClusterAndGeneration clusterAndGeneration) {
-    AggregationOptions<String, PartitionEntity> options =
-        new AggregationOptions<>(0.0,
-                                 0.0,
-                                 1,
-                                 _maxAllowedExtrapolationsPerPartition,
-                                 allPartitions(clusterAndGeneration.cluster()),
-                                 AggregationOptions.Granularity.ENTITY,
-                                 true);
+  public SortedMap<Long, Float> validPartitionRatioByWindows(Cluster cluster) {
+    AggregationOptions<String, PartitionEntity> options = new AggregationOptions<>(0.0,
+                                                                                   0.0,
+                                                                                   1,
+                                                                                   _maxAllowedExtrapolationsPerPartition,
+                                                                                   allPartitions(cluster),
+                                                                                   AggregationOptions.Granularity.ENTITY,
+                                                                                   true);
     MetricSampleCompleteness<String, PartitionEntity> completeness = completeness(-1, Long.MAX_VALUE, options);
     return windowIndicesToWindows(completeness.validEntityRatioWithGroupGranularityByWindowIndex(), _windowMs);
   }
@@ -237,7 +231,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
       for (PartitionInfo partitionInfo : cluster.partitionsForTopic(topic)) {
         TopicPartition tp = new TopicPartition(partitionInfo.topic(), partitionInfo.partition());
         PartitionEntity partitionEntity = new PartitionEntity(tp);
-        allPartitions.add(_identityEntityMap.computeIfAbsent(partitionEntity, k -> partitionEntity));
+        allPartitions.add(identity(partitionEntity));
       }
     }
     return allPartitions;
@@ -279,9 +273,10 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
     }
 
     // TODO: We do not have the replication bytes rate at this point. Use the default validation after they are available.
-    boolean completeMetrics = sample.isValid(_metricDef) || (sample.allMetricValues().size() == _metricDef.size() - 2
-        && sample.allMetricValues().containsKey(_metricDef.metricInfo(KafkaMetricDef.REPLICATION_BYTES_IN_RATE.name()).id())
-        && sample.allMetricValues().containsKey(_metricDef.metricInfo(KafkaMetricDef.REPLICATION_BYTES_OUT_RATE.name()).id()));
+    boolean completeMetrics = sample.isValid(_metricDef)
+                              || (sample.allMetricValues().size() == _metricDef.size() - 2
+                                  && sample.allMetricValues().containsKey(_metricDef.metricInfo(KafkaMetricDef.REPLICATION_BYTES_IN_RATE.name()).id())
+                                  && sample.allMetricValues().containsKey(_metricDef.metricInfo(KafkaMetricDef.REPLICATION_BYTES_OUT_RATE.name()).id()));
 
     if (!completeMetrics) {
       LOG.warn("The metric sample is discarded due to missing metrics. Sample: {}", sample);

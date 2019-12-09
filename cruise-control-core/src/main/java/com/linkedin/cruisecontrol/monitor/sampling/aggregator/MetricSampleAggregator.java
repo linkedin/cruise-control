@@ -87,8 +87,8 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
   private final ConcurrentMap<E, RawMetricValues> _rawMetrics;
   private final MetricSampleAggregatorState<G, E> _aggregatorState;
   private final ReentrantLock _windowRollingLock;
+  private final ConcurrentMap<E, E> _identityEntityMap;
 
-  protected final ConcurrentMap<E, E> _identityEntityMap;
   protected final int _numWindows;
   protected final byte _minSamplesPerWindow;
   protected final int _numWindowsToKeep;
@@ -596,7 +596,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
    * @param entity the entity identity to look for.
    * @return The object of the entity in the identity entity map.
    */
-  private E identity(E entity) {
+  protected E identity(E entity) {
     return _identityEntityMap.computeIfAbsent(entity, e -> entity);
   }
 
