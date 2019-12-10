@@ -1,0 +1,20 @@
+AdminResult:
+  type: object
+  required:
+    - version
+  properties:
+    selfHealingEnabledBefore:
+      type: object
+      additionalProperties:
+        type: boolean
+    selfHealingEnabledAfter:
+      type: object
+      additionalProperties:
+        type: boolean
+    ongoingConcurrencyChangeRequest:
+      type: string
+    dropRecentBrokersRequest:
+      type: string
+    version:
+      type: integer
+      format: int32

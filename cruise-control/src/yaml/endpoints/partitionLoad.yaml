@@ -40,6 +40,7 @@ PartitionLoadEndpoint:
         schema:
           type: string
           default: null
+          example: "myTopic.*"
       - name: partition
         in: query
         description: The partition or partition range to filter partition load returned
@@ -60,7 +61,7 @@ PartitionLoadEndpoint:
         description: The minimum required ratio of partition load data completeness
         schema:
           type: number
-          default: null
+          default: 0.98
           format: double
           minimum: 0.0
           maximum: 1.0
@@ -69,7 +70,7 @@ PartitionLoadEndpoint:
         description: Whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information
         schema:
           type: boolean
-          default: true
+          default: false
       - name: max_load
         in: query
         description: If true, the maximum load is returned
@@ -87,10 +88,10 @@ PartitionLoadEndpoint:
         description: Set of broker ids used to filter partition load returned
         schema:
           type: array
-          default: []
           items:
             type: integer
             format: int32
+          exmaple: [1,2,3]
       - name: json
         in: query
         description: Whether to return in JSON format or not
@@ -99,8 +100,7 @@ PartitionLoadEndpoint:
           default: false
     responses:
       '200':
-        description: |-
-          Successful partition load state response
+        description: Successful partition load state response
         content:
           application/json:
             schema:
@@ -109,8 +109,7 @@ PartitionLoadEndpoint:
             schema:
               type: string
       '202':
-        description: |-
-          Partition load state fetch in progress
+        description: Partition load state fetch in progress
         content:
           application/json:
             schema:
@@ -120,8 +119,7 @@ PartitionLoadEndpoint:
               type: string
       # Response for all errors
       default:
-        description: |-
-          Unexpected error
+        description: Unexpected error
         content:
           application/json:
             schema:
