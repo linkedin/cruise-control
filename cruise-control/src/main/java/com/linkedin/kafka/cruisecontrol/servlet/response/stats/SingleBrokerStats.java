@@ -14,13 +14,13 @@ import java.util.Map;
 @JsonResponseClass
 public class SingleBrokerStats extends BasicStats {
   @JsonResponseField
-  protected static final String HOST = "host";
+  protected static final String HOST = "Host";
   @JsonResponseField
-  protected static final String BROKER = "broker";
+  protected static final String BROKER = "Broker";
   @JsonResponseField
-  protected static final String BROKER_STATE = "brokerState";
+  protected static final String BROKER_STATE = "BrokerState";
   @JsonResponseField(required = false)
-  protected static final String DISK_STATE = "diskState";
+  protected static final String DISK_STATE = "DiskState";
   protected final String _host;
   protected final int _id;
   protected final Broker.State _state;

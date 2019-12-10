@@ -18,7 +18,7 @@ public enum Statistic {
   @JsonResponseField
   MIN("MIN"),
   @JsonResponseField
-  ST_DEV("ST_DEV");
+  ST_DEV("STD");
 
   private final String _stat;
   private static final List<Statistic> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));

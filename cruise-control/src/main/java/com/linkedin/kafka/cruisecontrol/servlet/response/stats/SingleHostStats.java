@@ -11,7 +11,7 @@ import java.util.Map;
 @JsonResponseClass
 public class SingleHostStats extends BasicStats {
   @JsonResponseField
-  protected static final String HOST = "host";
+  protected static final String HOST = "Host";
   private String _host;
 
   SingleHostStats(String host, double diskUtil, double cpuUtil, double leaderBytesInRate,

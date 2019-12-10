@@ -137,7 +137,7 @@ public class OperationProgress {
     @JsonResponseField
     static final String DESCRIPTION = "description";
     @JsonResponseField
-    static final String TIME_IN_MS = "timeInMs";
+    static final String TIME_IN_MS = "time-in-ms";
     @JsonResponseField
     static final String COMPLETION_PERCENTAGE = "completionPercentage";
     private OperationStep _step;

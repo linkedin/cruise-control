@@ -32,7 +32,7 @@ ClusterModelStatsValue:
     - AVG
     - MAX
     - MIN
-    - ST_DEV
+    - STD
   properties:
     AVG:
       $ref: '#/ClusterModelStatsValueHolder'
@@ -40,7 +40,7 @@ ClusterModelStatsValue:
       $ref: '#/ClusterModelStatsValueHolder'
     MIN:
       $ref: '#/ClusterModelStatsValueHolder'
-    ST_DEV:
+    STD:
       $ref: '#/ClusterModelStatsValueHolder'
 
 ClusterModelStatsValueHolder:

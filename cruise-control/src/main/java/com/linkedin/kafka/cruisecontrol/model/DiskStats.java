@@ -21,13 +21,13 @@ public class DiskStats {
   private final Double _utilization;
   private final double _capacity;
   @JsonResponseField
-  private static final String DISK_MB = "diskMB";
+  private static final String DISK_MB = "DiskMB";
   @JsonResponseField
-  private static final String DISK_PCT = "diskPct";
+  private static final String DISK_PCT = "DiskPct";
   @JsonResponseField
-  private static final String NUM_LEADER_REPLICAS = "numLeaderReplicas";
+  private static final String NUM_LEADER_REPLICAS = "NumLeaderReplicas";
   @JsonResponseField
-  private static final String NUM_REPLICAS = "numReplicas";
+  private static final String NUM_REPLICAS = "NumReplicas";
   private static final String DEAD_STATE = "DEAD";
 
   DiskStats(int numLeaderReplicas, int numReplicas, double utilization, double capacity) {

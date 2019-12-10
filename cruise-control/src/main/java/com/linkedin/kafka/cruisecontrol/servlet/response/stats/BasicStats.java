@@ -12,23 +12,23 @@ import java.util.Map;
 @JsonResponseClass
 public class BasicStats {
   @JsonResponseField
-  protected static final String DISK_MB = "diskMB";
+  protected static final String DISK_MB = "DiskMB";
   @JsonResponseField
-  protected static final String DISK_PCT = "diskPct";
+  protected static final String DISK_PCT = "DiskPct";
   @JsonResponseField
-  protected static final String CPU_PCT = "cpuPct";
+  protected static final String CPU_PCT = "CpuPct";
   @JsonResponseField
-  protected static final String LEADER_NW_IN_RATE = "leaderNwInRate";
+  protected static final String LEADER_NW_IN_RATE = "LeaderNwInRate";
   @JsonResponseField
-  protected static final String FOLLOWER_NW_IN_RATE = "followerNwInRate";
+  protected static final String FOLLOWER_NW_IN_RATE = "FollowerNwInRate";
   @JsonResponseField
-  protected static final String NW_OUT_RATE = "nwOutRate";
+  protected static final String NW_OUT_RATE = "NwOutRate";
   @JsonResponseField
-  protected static final String PNW_OUT_RATE = "pnwOutRate";
+  protected static final String PNW_OUT_RATE = "PnwOutRate";
   @JsonResponseField
-  protected static final String REPLICAS = "replicas";
+  protected static final String REPLICAS = "Replicas";
   @JsonResponseField
-  protected static final String LEADERS = "leaders";
+  protected static final String LEADERS = "Leaders";
   protected double _diskUtil;
   protected double _cpuUtil;
   protected double _leaderBytesInRate;
