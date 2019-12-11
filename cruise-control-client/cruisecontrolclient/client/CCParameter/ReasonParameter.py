@@ -9,6 +9,7 @@ class AbstractReasonParameter(AbstractParameter):
         RFC-3986 "reserved" characters.
 
         See https://tools.ietf.org/html/rfc3986#section-2.2
+        See also https://xkcd.com/327/
         :return:
         """
         gen_delims = set(":/?#[]@")
