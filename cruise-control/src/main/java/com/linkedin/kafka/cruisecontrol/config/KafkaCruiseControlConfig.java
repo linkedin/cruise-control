@@ -320,7 +320,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
         throw new ConfigException(String.format("If webserver security is enabled, a valid security provider must be set " +
             "that is an implementation of %s.", SecurityProvider.class.getName()));
       }
-      String basicAuthCredentialsFile = getString(WebServerConfig.BASIC_AUTH_CREDENTIALS_FILE_CONFIG);
+      String basicAuthCredentialsFile = getString(WebServerConfig.WEBSERVER_AUTH_CREDENTIALS_FILE_CONFIG);
       if (BasicSecurityProvider.class.isAssignableFrom(securityProvider) && (basicAuthCredentialsFile == null
           || !Files.exists(Paths.get(basicAuthCredentialsFile)))) {
         throw new ConfigException(String.format("If %s is used, an existing credentials file must be set.",

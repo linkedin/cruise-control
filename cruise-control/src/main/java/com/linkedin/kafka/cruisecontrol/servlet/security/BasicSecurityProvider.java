@@ -11,6 +11,8 @@ import org.eclipse.jetty.security.HashLoginService;
 import org.eclipse.jetty.security.LoginService;
 import org.eclipse.jetty.security.authentication.BasicAuthenticator;
 
+import javax.servlet.ServletException;
+
 /**
  * This class defines a HTTP Basic authenticator with a file based {@link HashLoginService} and uses the default
  * Cruise Control role structure.
@@ -20,9 +22,9 @@ public class BasicSecurityProvider extends DefaultRoleSecurityProvider {
   private String _userCredentialsFile;
 
   @Override
-  public void init(KafkaCruiseControlConfig config) {
+  public void init(KafkaCruiseControlConfig config) throws ServletException {
     super.init(config);
-    this._userCredentialsFile = config.getString(WebServerConfig.BASIC_AUTH_CREDENTIALS_FILE_CONFIG);
+    this._userCredentialsFile = config.getString(WebServerConfig.WEBSERVER_AUTH_CREDENTIALS_FILE_CONFIG);
   }
 
   @Override
