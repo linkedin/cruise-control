@@ -215,6 +215,13 @@ public class Executor {
   }
 
   /**
+   * @return The tasks that are {@link ExecutionTask.State#IN_PROGRESS} or {@link ExecutionTask.State#ABORTING} for all task types.
+   */
+  public Set<ExecutionTask> inExecutionTasks() {
+    return _executionTaskManager.inExecutionTasks();
+  }
+
+  /**
    * Dynamically set the interval between checking and updating (if needed) the progress of an initiated execution.
    * To prevent setting this value to a very small value by mistake, ensure that the requested interval is greater than
    * the {@link #MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS}.
@@ -965,7 +972,7 @@ public class Executor {
 
       int partitionsToMove = numTotalPartitionMovements;
       // Exhaust all the pending partition movements.
-      while ((partitionsToMove > 0 || !_executionTaskManager.inExecutionTasks().isEmpty()) && _stopSignal.get() == NO_STOP_EXECUTION) {
+      while ((partitionsToMove > 0 || !inExecutionTasks().isEmpty()) && _stopSignal.get() == NO_STOP_EXECUTION) {
         // Get tasks to execute.
         List<ExecutionTask> tasksToExecute = _executionTaskManager.getInterBrokerReplicaMovementTasks();
         LOG.info("Executor will execute {} task(s)", tasksToExecute.size());
@@ -992,15 +999,15 @@ public class Executor {
       }
       // After the partition movement finishes, wait for the controller to clean the reassignment zkPath. This also
       // ensures a clean stop when the execution is stopped in the middle.
-      Set<ExecutionTask> inExecutionTasks = _executionTaskManager.inExecutionTasks();
+      Set<ExecutionTask> inExecutionTasks = inExecutionTasks();
       while (!inExecutionTasks.isEmpty()) {
         LOG.info("Waiting for {} tasks moving {} MB to finish.", inExecutionTasks.size(),
                  _executionTaskManager.inExecutionInterBrokerDataToMoveInMB());
         List<ExecutionTask> completedRemainingTasks = waitForExecutionTaskToFinish();
-        inExecutionTasks = _executionTaskManager.inExecutionTasks();
+        inExecutionTasks = inExecutionTasks();
         throttleHelper.clearThrottles(completedRemainingTasks, new ArrayList<>(inExecutionTasks));
       }
-      if (_executionTaskManager.inExecutionTasks().isEmpty()) {
+      if (inExecutionTasks().isEmpty()) {
         LOG.info("Inter-broker partition movements finished.");
       } else if (_stopSignal.get() != NO_STOP_EXECUTION) {
         ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary(Collections.emptySet());
@@ -1027,7 +1034,7 @@ public class Executor {
 
       int partitionsToMove = numTotalPartitionMovements;
       // Exhaust all the pending partition movements.
-      while ((partitionsToMove > 0 || !_executionTaskManager.inExecutionTasks().isEmpty()) && _stopSignal.get() == NO_STOP_EXECUTION) {
+      while ((partitionsToMove > 0 || !inExecutionTasks().isEmpty()) && _stopSignal.get() == NO_STOP_EXECUTION) {
         // Get tasks to execute.
         List<ExecutionTask> tasksToExecute = _executionTaskManager.getIntraBrokerReplicaMovementTasks();
         LOG.info("Executor will execute {} task(s)", tasksToExecute.size());
@@ -1049,14 +1056,14 @@ public class Executor {
             totalDataToMoveInMB == 0 ? 100 : String.format("%.2f", finishedDataToMoveInMB * UNIT_INTERVAL_TO_PERCENTAGE
                                                                    / totalDataToMoveInMB));
       }
-      Set<ExecutionTask> inExecutionTasks = _executionTaskManager.inExecutionTasks();
+      Set<ExecutionTask> inExecutionTasks = inExecutionTasks();
       while (!inExecutionTasks.isEmpty()) {
         LOG.info("Waiting for {} tasks moving {} MB to finish", inExecutionTasks.size(),
                  _executionTaskManager.inExecutionIntraBrokerDataMovementInMB());
         waitForExecutionTaskToFinish();
-        inExecutionTasks = _executionTaskManager.inExecutionTasks();
+        inExecutionTasks = inExecutionTasks();
       }
-      if (_executionTaskManager.inExecutionTasks().isEmpty()) {
+      if (inExecutionTasks().isEmpty()) {
         LOG.info("Intra-broker partition movements finished.");
       } else if (_stopSignal.get() != NO_STOP_EXECUTION) {
         ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary(Collections.emptySet());
@@ -1085,7 +1092,7 @@ public class Executor {
         LOG.info("{}/{} ({}%) leadership movements completed.", numFinishedLeadershipMovements,
                  numTotalLeadershipMovements, numFinishedLeadershipMovements * 100 / numTotalLeadershipMovements);
       }
-      if (_executionTaskManager.inExecutionTasks().isEmpty()) {
+      if (inExecutionTasks().isEmpty()) {
         LOG.info("Leadership movements finished.");
       } else if (_stopSignal.get() != NO_STOP_EXECUTION) {
         Map<ExecutionTask.State, Integer> leadershipMovementTasksByState =
@@ -1122,7 +1129,7 @@ public class Executor {
 
         ExecutorUtils.executePreferredLeaderElection(_kafkaZkClient, leadershipMovementTasks);
         LOG.trace("Waiting for leadership movement batch to finish.");
-        while (!_executionTaskManager.inExecutionTasks().isEmpty() && _stopSignal.get() == NO_STOP_EXECUTION) {
+        while (!inExecutionTasks().isEmpty() && _stopSignal.get() == NO_STOP_EXECUTION) {
           waitForExecutionTaskToFinish();
         }
       }
@@ -1164,12 +1171,12 @@ public class Executor {
             _adminClient, _config);
 
         if (LOG.isDebugEnabled()) {
-          LOG.debug("Tasks in execution: {}", _executionTaskManager.inExecutionTasks());
+          LOG.debug("Tasks in execution: {}", inExecutionTasks());
         }
         Set<ExecutionTask> deadOrAbortingNonLeadershipTasks = new HashSet<>();
         List<ExecutionTask> slowTasksToReport = new ArrayList<>();
         boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > SLOW_TASK_ALERTING_BACKOFF_TIME_MS;
-        for (ExecutionTask task : _executionTaskManager.inExecutionTasks()) {
+        for (ExecutionTask task : inExecutionTasks()) {
           TopicPartition tp = task.proposal().topicPartition();
           if (_stopSignal.get() == FORCE_STOP_EXECUTION) {
             LOG.debug("Task {} is marked as dead to force execution to stop.", task);
@@ -1206,7 +1213,7 @@ public class Executor {
         }
         handleDeadOrAbortingTasks(deadOrAbortingNonLeadershipTasks, slowTasksToReport);
         updateOngoingExecutionState();
-      } while (!_executionTaskManager.inExecutionTasks().isEmpty() && finishedTasks.isEmpty());
+      } while (!inExecutionTasks().isEmpty() && finishedTasks.isEmpty());
 
       LOG.info("Completed tasks: {}.{}{}{}", finishedTasks,
                forceStoppedTaskIds.isEmpty() ? "" : String.format("%n[Force-stopped: %s]", forceStoppedTaskIds),

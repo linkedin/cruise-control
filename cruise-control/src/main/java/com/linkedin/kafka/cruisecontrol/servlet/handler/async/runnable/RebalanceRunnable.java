@@ -135,7 +135,7 @@ public class RebalanceRunnable extends OperationRunnable {
   public OptimizerResult rebalance() throws KafkaCruiseControlException {
     _kafkaCruiseControl.sanityCheckDryRun(_dryRun, _stopOngoingExecution);
     if (_stopOngoingExecution) {
-      maybeStopOngoingExecutionToModifyAndWait(_kafkaCruiseControl);
+      maybeStopOngoingExecutionToModifyAndWait(_kafkaCruiseControl, _future.operationProgress());
     }
     ProposalsRunnable proposalsRunnable = new ProposalsRunnable(_kafkaCruiseControl, _future, _goals, _modelCompletenessRequirements,
                                                                  _allowCapacityEstimation, _excludedTopics, _excludeRecentlyDemotedBrokers,

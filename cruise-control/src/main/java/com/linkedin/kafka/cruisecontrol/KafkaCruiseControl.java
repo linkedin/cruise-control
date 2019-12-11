@@ -56,6 +56,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPriority;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.partitionWithOfflineReplicas;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.STOP_ONGOING_EXECUTION_PARAM;
 
 
 /**
@@ -194,10 +195,9 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Sanity check that if current request (1) is not a dryrun or (2) does not require stopping an ongoing execution,
-   * then there is no ongoing
+   * Sanity check that if current request is not a dryrun, then there is no ongoing
    * <ol>
-   *   <li>execution in current Cruise Control deployment.</li>
+   *   <li>execution in current Cruise Control deployment and user does not require stopping the ongoing execution,</li>
    *   <li>partition reassignment triggered by other admin tools or previous Cruise Control deployment.</li>
    *   <li>leadership reassignment triggered by other admin tools or previous Cruise Control deployment.</li>
    * </ol>
@@ -209,11 +209,13 @@ public class KafkaCruiseControl {
    *                             false otherwise.
    */
   public void sanityCheckDryRun(boolean dryRun, boolean stopOngoingExecution) {
-    if (dryRun || stopOngoingExecution) {
+    if (dryRun) {
       return;
     }
-    if (_executor.hasOngoingExecution()) {
-      throw new IllegalStateException("Cannot execute new proposals while there is an ongoing execution.");
+    if (_executor.hasOngoingExecution() && !stopOngoingExecution) {
+      throw new IllegalStateException(String.format("Cannot start a new execution while there is an ongoing execution. "
+                                                    + "Please use %s=true to stop ongoing execution and start a new one.",
+                                                    STOP_ONGOING_EXECUTION_PARAM));
     } else if (_executor.hasOngoingPartitionReassignments()) {
       throw new IllegalStateException("Cannot execute new proposals while there are ongoing partition reassignments.");
     } else if (_executor.hasOngoingLeaderElection()) {
@@ -222,15 +224,10 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * @return True if there is an ongoing
-   * <ol>
-   *   <li>execution in current Cruise Control deployment,</li>
-   *   <li>partition reassignment triggered by other admin tools or previous Cruise Control deployment, or</li>
-   *   <li>leadership reassignment triggered by other admin tools or previous Cruise Control deployment.</li>
-   * </ol>
+   * @return True if there is an ongoing execution started by Cruise Control.
    */
   public boolean hasOngoingExecution() {
-    return _executor.hasOngoingExecution() || _executor.hasOngoingPartitionReassignments() || _executor.hasOngoingLeaderElection();
+    return _executor.hasOngoingExecution();
   }
 
   /**
@@ -668,6 +665,13 @@ public class KafkaCruiseControl {
    */
   public ExecutorState executorState() {
     return _executor.state();
+  }
+
+  /**
+   * @return The number of tasks that are in progress or being aborted.
+   */
+  public int numInExecutionTasks() {
+    return _executor.inExecutionTasks().size();
   }
 
   /**

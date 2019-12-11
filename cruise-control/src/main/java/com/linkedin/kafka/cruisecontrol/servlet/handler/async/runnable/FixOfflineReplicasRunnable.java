@@ -133,15 +133,15 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
     _kafkaCruiseControl.sanityCheckDryRun(_dryRun, _stopOngoingExecution);
     sanityCheckGoals(_goals, _skipHardGoalCheck, _kafkaCruiseControl.config());
     List<Goal> goalsByPriority = goalsByPriority(_goals, _kafkaCruiseControl.config());
+    OperationProgress operationProgress = _future.operationProgress();
     if (goalsByPriority.isEmpty()) {
       throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");
     } else if (_stopOngoingExecution) {
-      maybeStopOngoingExecutionToModifyAndWait(_kafkaCruiseControl);
+      maybeStopOngoingExecutionToModifyAndWait(_kafkaCruiseControl, operationProgress);
     }
     ModelCompletenessRequirements modelCompletenessRequirements =
         _kafkaCruiseControl.modelCompletenessRequirements(goalsByPriority).weaker(_modelCompletenessRequirements);
     sanityCheckLoadMonitorReadiness(modelCompletenessRequirements, _kafkaCruiseControl.getLoadMonitorTaskRunnerState());
-    OperationProgress operationProgress = _future.operationProgress();
     try (AutoCloseable ignored = _kafkaCruiseControl.acquireForModelGeneration(operationProgress)) {
       ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(modelCompletenessRequirements, operationProgress);
       // Ensure that the generated cluster model contains offline replicas.

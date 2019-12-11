@@ -46,7 +46,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *    &amp;rebalance_disk=[true/false]&amp;review_id=[id]
  *    &amp;replication_throttle=[bytes_per_second]&amp;reason=[reason-for-request]
  *    &amp;execution_progress_check_interval_ms=[interval_in_ms]
- *    &amp;stop_ongoing_execution=[true/false]
+ *    &amp;stop_ongoing_execution=[true/false]&amp;stop_ongoing_execution
  * </pre>
  */
 public class RebalanceParameters extends ProposalsParameters {

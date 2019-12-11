@@ -139,7 +139,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
                                                                        _skipUrpDemotion ? _kafkaCruiseControl.kafkaCluster() : null);
     OperationProgress operationProgress = _future.operationProgress();
     if (_stopOngoingExecution) {
-      maybeStopOngoingExecutionToModifyAndWait(_kafkaCruiseControl);
+      maybeStopOngoingExecutionToModifyAndWait(_kafkaCruiseControl, operationProgress);
     }
     try (AutoCloseable ignored = _kafkaCruiseControl.acquireForModelGeneration(operationProgress)) {
       ensureDisjoint(_brokerIds, _brokerIdAndLogdirs.keySet(),

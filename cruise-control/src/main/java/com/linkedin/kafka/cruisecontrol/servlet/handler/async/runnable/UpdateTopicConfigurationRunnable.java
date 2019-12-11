@@ -132,6 +132,8 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
    * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
    * @param dryRun Whether it is a dry run or not.
    * @param reason Reason of execution.
+   * @param stopOngoingExecution True to stop the ongoing execution (if any) and start executing the given proposals,
+   *                             false otherwise.
    *
    * @return The optimization result.
    * @throws KafkaCruiseControlException When any exception occurred during the topic configuration updating.
@@ -156,10 +158,11 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
     _kafkaCruiseControl.sanityCheckDryRun(dryRun, stopOngoingExecution);
     sanityCheckGoals(goals, skipHardGoalCheck, _kafkaCruiseControl.config());
     List<Goal> goalsByPriority = goalsByPriority(goals, _kafkaCruiseControl.config());
+    OperationProgress operationProgress = _future.operationProgress();
     if (goalsByPriority.isEmpty()) {
       throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");
     } else if (stopOngoingExecution) {
-      maybeStopOngoingExecutionToModifyAndWait(_kafkaCruiseControl);
+      maybeStopOngoingExecutionToModifyAndWait(_kafkaCruiseControl, operationProgress);
     }
 
     Cluster cluster = _kafkaCruiseControl.kafkaCluster();
@@ -179,7 +182,6 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
     Map<Integer, String> rackByBroker = new HashMap<>();
     ModelCompletenessRequirements completenessRequirements = _kafkaCruiseControl.modelCompletenessRequirements(goalsByPriority).weaker(requirements);
     sanityCheckLoadMonitorReadiness(completenessRequirements, _kafkaCruiseControl.getLoadMonitorTaskRunnerState());
-    OperationProgress operationProgress = _future.operationProgress();
     try (AutoCloseable ignored = _kafkaCruiseControl.acquireForModelGeneration(operationProgress)) {
       ExecutorState executorState = _kafkaCruiseControl.executorState();
       Set<Integer> excludedBrokersForLeadership = excludeRecentlyDemotedBrokers ? executorState.recentlyDemotedBrokers()
