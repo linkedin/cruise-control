@@ -233,16 +233,10 @@ public class LoadMonitorTaskRunner {
 
   /**
    * Start the metric fetchers and sampling scheduler thread.
-   */
-  public void start() {
-    start(false);
-  }
-
-  /**
-   * Start the metric fetchers and sampling scheduler thread. Package private for testing.
+   *
    * @param skipLoadingSamples whether skip the sampling loading task or not.
    */
-  void start(boolean skipLoadingSamples) {
+  public void start(boolean skipLoadingSamples) {
     if (!_state.compareAndSet(NOT_STARTED, RUNNING)) {
       throw new IllegalStateException("Cannot start the task runner because the load monitor is in "
                                           + _state.get() + " state.");
