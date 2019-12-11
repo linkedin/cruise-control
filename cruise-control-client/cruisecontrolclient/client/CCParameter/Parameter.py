@@ -95,3 +95,34 @@ class PartitionParameter(AbstractParameter):
             raise ValueError(f"{self.value} must either be a string, an integer, or a Collection of two integers")
 
 
+class ReasonParameter(AbstractParameter):
+    """
+    reason=[reason-for-pause]
+    reason=[reason-for-request]
+    reason=[reason-for-review]
+    """
+    name = 'reason'
+    description = 'The human-readable reason for this action'
+    argparse_properties = {
+        'args': ('--reason',),
+        'kwargs': dict(help=description, metavar='REASON', type=str)
+    }
+
+    def validate_value(self):
+        """
+        The validation strategy here is to avoid a Bobby Tables situation
+        by ensuring that the provided reason does not contain any
+        RFC-3986 "reserved" characters.
+
+        See https://tools.ietf.org/html/rfc3986#section-2.2
+        See also https://xkcd.com/327/
+        :return:
+        """
+        gen_delims = set(":/?#[]@")
+        sub_delims = set("!$&'()*+,;=")
+        reserved_html_characters = gen_delims | sub_delims
+        for character in self.value:
+            if character in reserved_html_characters:
+                raise ValueError(f"\"{character}\" is a reserved HTML character"
+                                 " and cannot be transmitted correctly to cruise-control"
+                                 " as part of the reason= parameter")

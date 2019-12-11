@@ -171,7 +171,7 @@ class AddBrokerEndpoint(AbstractEndpoint):
         CCParameter.ExcludedTopicsParameter,
         CCParameter.GoalsParameter,
         CCParameter.JSONParameter,
-        CCParameter.ReasonForRequestParameter,
+        CCParameter.ReasonParameter,
         CCParameter.ReviewIDParameter,
         CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.SkipHardGoalCheckParameter,
@@ -240,7 +240,7 @@ class DemoteBrokerEndpoint(AbstractEndpoint):
         CCParameter.ExcludeFollowerDemotionParameter,
         CCParameter.ExcludeRecentlyDemotedBrokersParameter,
         CCParameter.JSONParameter,
-        CCParameter.ReasonForRequestParameter,
+        CCParameter.ReasonParameter,
         CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.ReviewIDParameter,
         CCParameter.SkipURPDemotionParameter,
@@ -263,7 +263,7 @@ class FixOfflineReplicasEndpoint(AbstractEndpoint):
     http_method = "POST"
     can_execute_proposal = True
     available_Parameters = (
-        CCParameter.ReasonForRequestParameter,
+        CCParameter.ReasonParameter,
         CCParameter.ReviewIDParameter,
     )
     argparse_properties = {
@@ -336,7 +336,7 @@ class PauseSamplingEndpoint(AbstractEndpoint):
     can_execute_proposal = False
     available_Parameters = (
         CCParameter.JSONParameter,
-        CCParameter.ReasonForPauseParameter,
+        CCParameter.ReasonParameter,
         CCParameter.ReviewIDParameter,
     )
     argparse_properties = {
@@ -385,7 +385,7 @@ class RebalanceEndpoint(AbstractEndpoint):
         CCParameter.GoalsParameter,
         CCParameter.IgnoreProposalCacheParameter,
         CCParameter.JSONParameter,
-        CCParameter.ReasonForRequestParameter,
+        CCParameter.ReasonParameter,
         CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.ReviewIDParameter,
         CCParameter.SkipHardGoalCheckParameter,
@@ -418,7 +418,7 @@ class RemoveBrokerEndpoint(AbstractEndpoint):
         CCParameter.ExcludedTopicsParameter,
         CCParameter.GoalsParameter,
         CCParameter.JSONParameter,
-        CCParameter.ReasonForRequestParameter,
+        CCParameter.ReasonParameter,
         CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.ReviewIDParameter,
         CCParameter.SkipHardGoalCheckParameter,
@@ -443,7 +443,7 @@ class ResumeSamplingEndpoint(AbstractEndpoint):
     can_execute_proposal = False
     available_Parameters = {
         CCParameter.JSONParameter,
-        CCParameter.ReasonForPauseParameter,
+        CCParameter.ReasonParameter,
         CCParameter.ReviewIDParameter,
     }
     argparse_properties = {
@@ -461,7 +461,7 @@ class ReviewEndpoint(AbstractEndpoint):
         CCParameter.ApproveParameter,
         CCParameter.DiscardParameter,
         CCParameter.JSONParameter,
-        CCParameter.ReasonForReviewParameter
+        CCParameter.ReasonParameter
     )
     argparse_properties = {
         'args': (name,),
@@ -538,7 +538,7 @@ class TopicConfigurationEndpoint(AbstractEndpoint):
         CCParameter.JSONParameter,
         CCParameter.SkipHardGoalCheckParameter,
         CCParameter.SkipRackAwarenessCheckParameter,
-        CCParameter.ReasonForRequestParameter,
+        CCParameter.ReasonParameter,
         CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.ReplicationFactorParameter,
         CCParameter.ReviewIDParameter,

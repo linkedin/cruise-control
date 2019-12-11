@@ -5,7 +5,6 @@ from cruisecontrolclient.client.CCParameter.CommaSeparatedParameter import *  # 
 from cruisecontrolclient.client.CCParameter.NonNegativeIntegerParameter import *  # noqa
 from cruisecontrolclient.client.CCParameter.Parameter import *  # noqa
 from cruisecontrolclient.client.CCParameter.PositiveIntegerParameter import *  # noqa
-from cruisecontrolclient.client.CCParameter.ReasonParameter import *  # noqa
 from cruisecontrolclient.client.CCParameter.RegularExpressionParameter import *  # noqa
 from cruisecontrolclient.client.CCParameter.SetOfChoicesParameter import *  # noqa
 from cruisecontrolclient.client.CCParameter.TimeStampParameter import *  # noqa
