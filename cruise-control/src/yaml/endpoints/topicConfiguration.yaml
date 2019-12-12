@@ -140,6 +140,9 @@ TopicConfigurationEndpoint:
           application/json:
             schema:
               $ref: '../responses/topicConfigurationResult.yaml#/TopicConfigurationResult'
+          text/plain:
+            schema:
+              type: string
       '202':
         description: |-
           Partition load state fetch in progress
@@ -147,3 +150,17 @@ TopicConfigurationEndpoint:
           application/json:
             schema:
               $ref: '../responses/progressResult.yaml#/ProgressResult'
+          text/plain:
+            schema:
+              type: string
+      # Response for all errors
+      default:
+        description: |-
+          Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: '../responses/errorResponse.yaml#/ErrorResponse'
+          text/plain:
+            schema:
+              type: string

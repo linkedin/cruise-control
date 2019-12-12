@@ -28,3 +28,9 @@ paths:
     $ref: 'endpoints/admin.yaml#/AdminEndpoint'
   /kafkacruisecontrol/review:
     $ref: 'endpoints/review.yaml#/ReviewEndpoint'
+  /kafkacruisecontrol/state:
+    $ref: 'endpoints/state.yaml#/StateEndpoint'
+  /kafkacruisecontrol/topic_configuration:
+    $ref: 'endpoints/topicConfiguration.yaml#/TopicConfigurationEndpoint'
+  /kafkacruisecontrol/user_tasks:
+    $ref: 'endpoints/userTasks.yaml#/UserTasksEndpoint'

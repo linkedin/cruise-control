@@ -49,3 +49,17 @@ UserTasksEndpoint:
           application/json:
             schema:
               $ref: '../responses/userTasksState.yaml#/UserTasksState'
+          text/plain:
+            schema:
+              type: string
+      # Response for all errors
+      default:
+        description: |-
+          Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: '../responses/errorResponse.yaml#/ErrorResponse'
+          text/plain:
+            schema:
+              type: string

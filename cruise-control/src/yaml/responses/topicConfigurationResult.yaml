@@ -1,5 +1,9 @@
 TopicConfigurationResult:
   type: object
+  required:
+    - topics
+    - newReplicationFactor
+    - version
   properties:
     topics:
       type: array
