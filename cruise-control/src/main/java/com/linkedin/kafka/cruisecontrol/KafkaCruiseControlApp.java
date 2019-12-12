@@ -109,6 +109,7 @@ public class KafkaCruiseControlApp {
       sslServerContextFactory.setKeyStorePath(keyStoreLocation);
       sslServerContextFactory.setKeyStorePassword(_config.getString(WebServerConfig.WEBSERVER_SSL_KEYSTORE_PASSWORD_CONFIG));
       sslServerContextFactory.setKeyManagerPassword(_config.getString(WebServerConfig.WEBSERVER_SSL_KEY_PASSWORD_CONFIG));
+      sslServerContextFactory.setProtocol(_config.getString(WebServerConfig.WEBSERVER_SSL_PROTOCOL_CONFIG));
       String keyStoreType = _config.getString(WebServerConfig.WEBSERVER_SSL_KEYSTORE_TYPE_CONFIG);
       if (keyStoreType != null) {
         sslServerContextFactory.setKeyStoreType(keyStoreType);
@@ -153,7 +154,8 @@ public class KafkaCruiseControlApp {
   private ServletContextHandler createContextHandler() {
     // Define context for servlet
     String sessionPath = _config.getString(WebServerConfig.WEBSERVER_SESSION_PATH_CONFIG);
-    ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS | ServletContextHandler.SECURITY);
+
+    ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
     context.setContextPath(sessionPath);
     return context;
   }
@@ -161,10 +163,10 @@ public class KafkaCruiseControlApp {
   private ConstraintSecurityHandler createSecurityHandler() throws ServletException {
     ConstraintSecurityHandler securityHandler = new CruiseControlSecurityHandler();
     SecurityProvider securityProvider;
-    if (_config.getBoolean(WebServerConfig.BASIC_AUTH_ENABLE_CONFIG)) {
+    if (_config.getBoolean(WebServerConfig.WEBSERVER_SECURITY_ENABLE_CONFIG)) {
       securityProvider = new BasicSecurityProvider();
     } else {
-      securityProvider = _config.getConfiguredInstance(WebServerConfig.SECURITY_PROVIDER_CONFIG, SecurityProvider.class);
+      securityProvider = _config.getConfiguredInstance(WebServerConfig.WEBSERVER_SECURITY_PROVIDER_CONFIG, SecurityProvider.class);
     }
     if (securityProvider != null) {
       securityProvider.init(_config);

@@ -48,7 +48,7 @@ public class AuthenticationIntegrationTest extends CruiseControlIntegrationTestH
 
   @Override
   protected Map<String, Object> withConfigs() {
-    return Collections.singletonMap(WebServerConfig.SECURITY_PROVIDER_CONFIG, DummySecurityProvider.class.getName());
+    return Collections.singletonMap(WebServerConfig.WEBSERVER_SECURITY_PROVIDER_CONFIG, DummySecurityProvider.class.getName());
   }
 
   @Test

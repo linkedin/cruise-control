@@ -5,6 +5,8 @@
 package com.linkedin.kafka.cruisecontrol.config.constants;
 
 import java.util.concurrent.TimeUnit;
+
+import com.linkedin.kafka.cruisecontrol.servlet.security.BasicSecurityProvider;
 import org.apache.kafka.common.config.ConfigDef;
 
 import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
@@ -15,6 +17,9 @@ import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
  * DO NOT CHANGE EXISTING CONFIG NAMES AS CHANGES WOULD BREAK USER CODE.
  */
 public class WebServerConfig {
+
+  private static final String DEFAULT_WEBSERVER_SECURITY_PROVIDER = BasicSecurityProvider.class.getName();
+
   private WebServerConfig() {
 
   }
@@ -157,17 +162,17 @@ public class WebServerConfig {
       + "async endpoints across all users.";
 
   /**
-   * <code>security.provider</code>
+   * <code>webserver.security.provider</code>
    */
-  public static final String SECURITY_PROVIDER_CONFIG = "security.provider";
-  private static final String SECURITY_PROVIDER_DOC = "SecurityProvider implementation for defining authentication " +
-          "and authorization rules";
+  public static final String WEBSERVER_SECURITY_PROVIDER_CONFIG = "webserver.security.provider";
+  private static final String WEBSERVER_SECURITY_PROVIDER_DOC = "SecurityProvider implementation for defining authentication " +
+      "and authorization rules for accessing the web API.";
 
   /**
-   * <code>basic.auth.enable</code>
+   * <code>webserver.security.enable</code>
    */
-  public static final String BASIC_AUTH_ENABLE_CONFIG = "basic.auth.enable";
-  private static final String BASIC_AUTH_ENABLE_DOCS = "Enables basic authentication over HTTPS.";
+  public static final String WEBSERVER_SECURITY_ENABLE_CONFIG = "webserver.security.enable";
+  private static final String WEBSERVER_SECURITY_ENABLE_DOCS = "Enables the use of authentication and authorization features.";
 
   /**
    * <code>basic.auth.credentials.file</code>
@@ -200,6 +205,12 @@ public class WebServerConfig {
    */
   public static final String WEBSERVER_SSL_KEY_PASSWORD_CONFIG = "webserver.ssl.key.password";
   private static final String WEBSERVER_SSL_KEY_PASSWORD_DOC = "The password of the private key in the key store file.";
+
+  /**
+   * <code>webserver.ssl.protocol</code>
+   */
+  public static final String WEBSERVER_SSL_PROTOCOL_CONFIG = "webserver.ssl.protocol";
+  private static final String WEBSERVER_SSL_PROTOCOL_DOC = "Sets the SSL protocol to use. By default it's TLS.";
 
   /**
    * Define configs for Web Server.
@@ -310,16 +321,16 @@ public class WebServerConfig {
                             atLeast(1),
                             ConfigDef.Importance.HIGH,
                             MAX_ACTIVE_USER_TASKS_DOC)
-                    .define(SECURITY_PROVIDER_CONFIG,
-                            ConfigDef.Type.CLASS,
-                            null,
-                            ConfigDef.Importance.MEDIUM,
-                            SECURITY_PROVIDER_DOC)
-                    .define(BASIC_AUTH_ENABLE_CONFIG,
+                    .define(WEBSERVER_SECURITY_ENABLE_CONFIG,
                             ConfigDef.Type.BOOLEAN,
                             false,
                             ConfigDef.Importance.MEDIUM,
-                            BASIC_AUTH_ENABLE_DOCS)
+                            WEBSERVER_SECURITY_ENABLE_DOCS)
+                    .define(WEBSERVER_SECURITY_PROVIDER_CONFIG,
+                            ConfigDef.Type.CLASS,
+                            DEFAULT_WEBSERVER_SECURITY_PROVIDER,
+                            ConfigDef.Importance.MEDIUM,
+                            WEBSERVER_SECURITY_PROVIDER_DOC)
                     .define(BASIC_AUTH_CREDENTIALS_FILE_CONFIG,
                             ConfigDef.Type.STRING,
                             "/etc/cruisecontrol-basic-auth.credentials",
@@ -344,6 +355,11 @@ public class WebServerConfig {
                             ConfigDef.Type.STRING,
                             null,
                             ConfigDef.Importance.MEDIUM,
-                            WEBSERVER_SSL_KEY_PASSWORD_DOC);
+                            WEBSERVER_SSL_KEY_PASSWORD_DOC)
+                    .define(WEBSERVER_SSL_PROTOCOL_CONFIG,
+                            ConfigDef.Type.STRING,
+                            "TLS",
+                            ConfigDef.Importance.MEDIUM,
+                            WEBSERVER_SSL_PROTOCOL_DOC);
   }
 }

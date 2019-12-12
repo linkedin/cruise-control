@@ -30,7 +30,7 @@ public class BasicAuthenticationIntegrationTest extends CruiseControlIntegration
   @Override
   protected Map<String, Object> withConfigs() {
     Map<String, Object> configs = new HashMap<>();
-    configs.put(WebServerConfig.BASIC_AUTH_ENABLE_CONFIG, true);
+    configs.put(WebServerConfig.WEBSERVER_SECURITY_ENABLE_CONFIG, true);
     configs.put(WebServerConfig.BASIC_AUTH_CREDENTIALS_FILE_CONFIG,
         Objects.requireNonNull(this.getClass().getClassLoader().getResource("basic-auth.credentials")).toString());
     return configs;

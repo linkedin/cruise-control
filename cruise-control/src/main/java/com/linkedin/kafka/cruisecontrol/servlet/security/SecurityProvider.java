@@ -8,12 +8,8 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import org.eclipse.jetty.security.Authenticator;
 import org.eclipse.jetty.security.ConstraintMapping;
 import org.eclipse.jetty.security.LoginService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.servlet.ServletException;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -22,11 +18,6 @@ import java.util.Set;
  * up Cruise Control security to provide authentication and authorization rules over the WEB API.
  */
 public interface SecurityProvider {
-
-  String ADMIN = "ADMIN";
-  String USER = "USER";
-
-  Logger SECURITY_LOGGER = LoggerFactory.getLogger("securityLogger");
 
   /**
    * Sets the configuration to allow the initialization of the provider with custom configurable values.
@@ -68,7 +59,5 @@ public interface SecurityProvider {
    *
    * @return list of strings that define the possible roles in Cruise Control.
    */
-  default Set<String> roles() {
-    return new HashSet<>(Arrays.asList(USER, ADMIN));
-  }
+  Set<String> roles();
 }
