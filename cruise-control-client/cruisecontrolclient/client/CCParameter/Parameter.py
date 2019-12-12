@@ -96,9 +96,13 @@ class PartitionParameter(AbstractParameter):
 
 
 class ReasonParameter(AbstractParameter):
-    """reason=[reason-for-pause]"""
+    """
+    reason=[reason-for-pause]
+    reason=[reason-for-request]
+    reason=[reason-for-review]
+    """
     name = 'reason'
-    description = 'The reason for pausing or resuming the sampling'
+    description = 'The human-readable reason for this action'
     argparse_properties = {
         'args': ('--reason',),
         'kwargs': dict(help=description, metavar='REASON', type=str)
@@ -111,6 +115,7 @@ class ReasonParameter(AbstractParameter):
         RFC-3986 "reserved" characters.
 
         See https://tools.ietf.org/html/rfc3986#section-2.2
+        See also https://xkcd.com/327/
         :return:
         """
         gen_delims = set(":/?#[]@")

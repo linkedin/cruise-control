@@ -171,6 +171,7 @@ class AddBrokerEndpoint(AbstractEndpoint):
         CCParameter.ExcludedTopicsParameter,
         CCParameter.GoalsParameter,
         CCParameter.JSONParameter,
+        CCParameter.ReasonParameter,
         CCParameter.ReviewIDParameter,
         CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.SkipHardGoalCheckParameter,
@@ -239,6 +240,7 @@ class DemoteBrokerEndpoint(AbstractEndpoint):
         CCParameter.ExcludeFollowerDemotionParameter,
         CCParameter.ExcludeRecentlyDemotedBrokersParameter,
         CCParameter.JSONParameter,
+        CCParameter.ReasonParameter,
         CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.ReviewIDParameter,
         CCParameter.SkipURPDemotionParameter,
@@ -261,6 +263,7 @@ class FixOfflineReplicasEndpoint(AbstractEndpoint):
     http_method = "POST"
     can_execute_proposal = True
     available_Parameters = (
+        CCParameter.ReasonParameter,
         CCParameter.ReviewIDParameter,
     )
     argparse_properties = {
@@ -382,6 +385,7 @@ class RebalanceEndpoint(AbstractEndpoint):
         CCParameter.GoalsParameter,
         CCParameter.IgnoreProposalCacheParameter,
         CCParameter.JSONParameter,
+        CCParameter.ReasonParameter,
         CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.ReviewIDParameter,
         CCParameter.SkipHardGoalCheckParameter,
@@ -414,6 +418,7 @@ class RemoveBrokerEndpoint(AbstractEndpoint):
         CCParameter.ExcludedTopicsParameter,
         CCParameter.GoalsParameter,
         CCParameter.JSONParameter,
+        CCParameter.ReasonParameter,
         CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.ReviewIDParameter,
         CCParameter.SkipHardGoalCheckParameter,
@@ -533,6 +538,7 @@ class TopicConfigurationEndpoint(AbstractEndpoint):
         CCParameter.JSONParameter,
         CCParameter.SkipHardGoalCheckParameter,
         CCParameter.SkipRackAwarenessCheckParameter,
+        CCParameter.ReasonParameter,
         CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.ReplicationFactorParameter,
         CCParameter.ReviewIDParameter,
