@@ -263,8 +263,21 @@ class FixOfflineReplicasEndpoint(AbstractEndpoint):
     http_method = "POST"
     can_execute_proposal = True
     available_Parameters = (
+        CCParameter.AllowCapacityEstimationParameter,
+        CCParameter.ConcurrentLeaderMovementsParameter,
+        CCParameter.ConcurrentPartitionMovementsPerBrokerParameter,
+        CCParameter.DryRunParameter,
+        CCParameter.ExcludeRecentlyDemotedBrokersParameter,
+        CCParameter.ExcludeRecentlyRemovedBrokersParameter,
+        CCParameter.ExcludedTopicsParameter,
+        CCParameter.GoalsParameter,
+        CCParameter.JSONParameter,
         CCParameter.ReasonParameter,
+        CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.ReviewIDParameter,
+        CCParameter.SkipHardGoalCheckParameter,
+        CCParameter.UseReadyDefaultGoalsParameter,
+        CCParameter.VerboseParameter
     )
     argparse_properties = {
         'args': (name,),
@@ -536,12 +549,12 @@ class TopicConfigurationEndpoint(AbstractEndpoint):
         CCParameter.ExcludeRecentlyRemovedBrokersParameter,
         CCParameter.GoalsParameter,
         CCParameter.JSONParameter,
-        CCParameter.SkipHardGoalCheckParameter,
-        CCParameter.SkipRackAwarenessCheckParameter,
         CCParameter.ReasonParameter,
         CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.ReplicationFactorParameter,
         CCParameter.ReviewIDParameter,
+        CCParameter.SkipHardGoalCheckParameter,
+        CCParameter.SkipRackAwarenessCheckParameter,
         CCParameter.TopicParameter,
         CCParameter.VerboseParameter
     )
