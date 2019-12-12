@@ -31,10 +31,12 @@ import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.STATE;
 import static org.junit.Assert.assertEquals;
 
 public class AuthenticationIntegrationTest extends CruiseControlIntegrationTestHarness {
@@ -43,12 +45,15 @@ public class AuthenticationIntegrationTest extends CruiseControlIntegrationTestH
   private static final String TEST_PASSWORD = "12345";
   private static final String TEST_BAD_PASSWORD = "bad_password";
   private static final String ADMIN_ROLE = "admin";
-  private static final String CRUISE_CONTROL_STATE_ENDPOINT = "kafkacruisecontrol/state";
+  private static final String CRUISE_CONTROL_STATE_ENDPOINT = "kafkacruisecontrol/" + STATE;
   private static final String ANY_PATH = "/*";
 
   @Override
   protected Map<String, Object> withConfigs() {
-    return Collections.singletonMap(WebServerConfig.WEBSERVER_SECURITY_PROVIDER_CONFIG, DummySecurityProvider.class.getName());
+    Map<String, Object> configs = new HashMap<>();
+    configs.put(WebServerConfig.WEBSERVER_SECURITY_ENABLE_CONFIG, true);
+    configs.put(WebServerConfig.WEBSERVER_SECURITY_PROVIDER_CONFIG, DummySecurityProvider.class.getName());
+    return configs;
   }
 
   @Test

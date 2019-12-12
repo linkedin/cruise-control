@@ -20,12 +20,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.STATE;
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.STOP_PROPOSAL_EXECUTION;
 import static org.junit.Assert.assertEquals;
 
 public class BasicAuthenticationIntegrationTest extends CruiseControlIntegrationTestHarness {
 
-  private static final String CRUISE_CONTROL_STATE_ENDPOINT = "kafkacruisecontrol/state";
-  private static final String CRUISE_CONTROL_PAUSE_SAMPLING_ENDPOINT = "kafkacruisecontrol/pause_sampling";
+  private static final String CRUISE_CONTROL_STATE_ENDPOINT = "kafkacruisecontrol/" + STATE.name();
+  private static final String CRUISE_CONTROL_PAUSE_SAMPLING_ENDPOINT = "kafkacruisecontrol/" + STOP_PROPOSAL_EXECUTION.name();
 
   @Override
   protected Map<String, Object> withConfigs() {

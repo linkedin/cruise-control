@@ -10,7 +10,6 @@ import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
-import com.linkedin.kafka.cruisecontrol.servlet.security.BasicSecurityProvider;
 import com.linkedin.kafka.cruisecontrol.servlet.security.CruiseControlSecurityHandler;
 import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityProvider;
 import org.eclipse.jetty.security.ConstraintSecurityHandler;
@@ -162,10 +161,8 @@ public class KafkaCruiseControlApp {
 
   private ConstraintSecurityHandler createSecurityHandler() throws ServletException {
     ConstraintSecurityHandler securityHandler = new CruiseControlSecurityHandler();
-    SecurityProvider securityProvider;
+    SecurityProvider securityProvider = null;
     if (_config.getBoolean(WebServerConfig.WEBSERVER_SECURITY_ENABLE_CONFIG)) {
-      securityProvider = new BasicSecurityProvider();
-    } else {
       securityProvider = _config.getConfiguredInstance(WebServerConfig.WEBSERVER_SECURITY_PROVIDER_CONFIG, SecurityProvider.class);
     }
     if (securityProvider != null) {
