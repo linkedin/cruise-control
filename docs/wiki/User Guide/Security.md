@@ -4,12 +4,12 @@ Cruise Control supports a pluggable authentication methods via extending the
 `com.linkedin.kafka.cruisecontrol.servlet.security.SecurityProvider` interface. The implementation should be configured
 with the `security.provider` configuration. By default this is set to the
 `com.linkedin.kafka.cruisecontrol.servlet.security.BasicSecurityProvider` class which provides a HTTP Basic
-authentication. The configured authentication then can be enabled with the `enable.http.security=true` config in the
-properties file.
+authentication. The configured authentication then can be enabled with the `webserver.security.enable=true` config in
+the properties file.
 
 ### HTTP Basic
 
-By configuring Cruise Control with the `BasicAuthenticationProvider`, the user will gain a simple HTTP Basic
+By configuring Cruise Control with the `BasicSecurityProvider`, the user will gain a simple HTTP Basic
 authentication where the users' credentials are stored in a file given by the `basic.auth.credentials.file` config.
 This file is assumed to be stored in a safe, protected location and only accessible by Cruise Control. The format of the
 file follows Jetty's `HashLoginService`'s file format:
