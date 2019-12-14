@@ -1,11 +1,11 @@
 PartitionLoadEndpoint:
   get:
     operationId: partitionload
-    summary: Get the resource load for each partition
+    summary: Get the resource load for each partition.
     parameters:
       - name: resource
         in: query
-        description: The host and broker-level resource by which to sort the cruise-control response
+        description: The host and broker-level resource by which to sort the cruise-control response.
         schema:
           type: string
           default: "disk"
@@ -16,34 +16,35 @@ PartitionLoadEndpoint:
             - disk
       - name: start
         in: query
-        description: The timestamp in milliseconds of the earliest metric sample use to generate load
+        description: The timestamp in millisecond of the earliest metric sample use to generate load.
         schema:
           type: integer
           default: -1
           format: int64
       - name: end
         in: query
-        description: The timestamp in milliseconds of the latest metric sample use to generate load (defaults to current timestamp)
+        description: The timestamp in millisecond of the latest metric sample use to generate load, current time will be used
+                     if this parameter is not specified.
         schema:
           type: integer
           format: int64
       - name: entries
         in: query
-        description: The number of entries to show in the response
+        description: The number of entries to show in the response.
         schema:
           type: integer
           default: 2147483647
           format: int32
       - name: topic
         in: query
-        description: A regular expression used to filter the partition load returned based on topic
+        description: A regular expression used to filter the partition load returned based on topic.
         schema:
           type: string
           default: null
           example: "myTopic.*"
       - name: partition
         in: query
-        description: The partition or partition range to filter partition load returned
+        description: The partition or partition range to filter partition load returned.
         schema:
           oneOf:
             - type: integer
@@ -55,10 +56,10 @@ PartitionLoadEndpoint:
               pattern: '^[0-9]+-[0-9]+$'
               example:
               - value: '0-9'
-              - summary: 0 is the start index and 9 is the end index of the partition boundaries
+              - summary: 0 is the start index and 9 is the end index of the partition boundaries.
       - name: min_valid_partition_ratio
         in: query
-        description: The minimum required ratio of partition load data completeness
+        description: The minimum required ratio of partition load data completeness.
         schema:
           type: number
           default: 0.98
@@ -67,40 +68,40 @@ PartitionLoadEndpoint:
           maximum: 1.0
       - name: allow_capacity_estimation
         in: query
-        description: Whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information
+        description: Whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information.
         schema:
           type: boolean
           default: false
       - name: max_load
         in: query
-        description: If true, the maximum load is returned
+        description: If true, the maximum load is returned.
         schema:
           type: boolean
           default: false
       - name: avg_load
         in: query
-        description: If true, the average load is returned
+        description: If true, the average load is returned.
         schema:
           type: boolean
           default: false
       - name: brokerid
         in: query
-        description: Set of broker ids used to filter partition load returned
+        description: Set of broker ids used to filter partition load returned.
         schema:
           type: array
           items:
             type: integer
             format: int32
-          exmaple: [1,2,3]
+          exmaple: [1, 2, 3]
       - name: json
         in: query
-        description: Whether to return in JSON format or not
+        description: Whether to return in JSON format or not.
         schema:
           type: boolean
           default: false
     responses:
       '200':
-        description: Successful partition load state response
+        description: Successful partition load state response.
         content:
           application/json:
             schema:
@@ -109,7 +110,7 @@ PartitionLoadEndpoint:
             schema:
               type: string
       '202':
-        description: Partition load state fetch in progress
+        description: Partition load state fetch in progress.
         content:
           application/json:
             schema:
@@ -119,7 +120,7 @@ PartitionLoadEndpoint:
               type: string
       # Response for all errors
       default:
-        description: Unexpected error
+        description: Error response.
         content:
           application/json:
             schema:

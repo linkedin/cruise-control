@@ -52,7 +52,7 @@ public class RequestParameterTest {
   public void checkOpenApiSpec() {
     OpenAPIV3Parser openApiParser = new OpenAPIV3Parser();
     ParseOptions options = new ParseOptions();
-    options.setResolve(true);
+    options.setResolveFully(true);
     options.setFlatten(true);
 
     SwaggerParseResult parseResult = openApiParser.readLocation(SCHEMA_FILE_PATH, null, options);

@@ -251,7 +251,7 @@ Supported parameters are:
 | concurrent_partition_movements_per_broker     | integer    | upper bound of ongoing replica movements going into/out of each broker     | null      |   yes |
 | concurrent_intra_partition_movements     | integer    | upper bound of ongoing replica movements between disks within each broker     | null      |   yes |
 | concurrent_leader_movements     | integer    | upper bound of ongoing leadership movements     | null      |   yes |
-| skip_hard_goal_check     | boolean    | Whether allow hard goal be skipped in proposal generation     | false      |   yes |
+| skip_hard_goal_check     | boolean    | Whether allow hard goals be skipped in proposal generation     | false      |   yes |
 | excluded_topics     | regex    |  regular expression to specify topic not to be considered for replica movement   | null|   yes |
 | use_ready_default_goals     | boolean    |  whether only use ready goals to generate proposal   | false|   yes |
 | exclude_recently_demoted_brokers     | boolean    | whether allow leader replicas to be moved to recently demoted broker    | false|   yes |
@@ -291,7 +291,7 @@ Supported parameters are:
 | allow_capacity_estimation     | boolean    | whether allow broker capacity to be estimated from other broker in the cluster    | true      |   yes |
 | concurrent_partition_movements_per_broker     | integer    | upper bound of ongoing replica movements going into/out of each broker     | null      |   yes |
 | concurrent_leader_movements     | integer    | upper bound of ongoing leadership movements     | null      |   yes |
-| skip_hard_goal_check     | boolean    | whether allow hard goal be skipped in proposal generation     | false      |   yes |
+| skip_hard_goal_check     | boolean    | whether allow hard goals be skipped in proposal generation     | false      |   yes |
 | excluded_topics     | regex    |  regular expression to specify topic not to be considered for replica movement   | null|   yes |
 | use_ready_default_goals     | boolean    |  whether only use ready goals to generate proposal   | false|   yes |
 | exclude_recently_demoted_brokers     | boolean    | whether allow leader replicas to be moved to recently demoted broker    | false|   yes |
@@ -325,7 +325,7 @@ Supported parameters are:
 | allow_capacity_estimation     | boolean    | whether allow broker capacity to be estimated from other brokers in the cluster    | true      |   yes |
 | concurrent_partition_movements_per_broker     | integer    | upper bound of ongoing replica movements going into/out of each broker     | null      |   yes |
 | concurrent_leader_movements     | integer    | upper bound of ongoing leadership movements     | null      |   yes |
-| skip_hard_goal_check     | boolean    | whether allow hard goal be skipped in proposal generation     | false      |   yes |
+| skip_hard_goal_check     | boolean    | whether allow hard goals be skipped in proposal generation     | false      |   yes |
 | excluded_topics     | regex    |  regular expression to specify topic not to be considered for replica movement   | null|   yes |
 | use_ready_default_goals     | boolean    |  whether only use ready goals to generate proposal   | false|   yes |
 | exclude_recently_demoted_brokers     | boolean    | whether allow leader replicas to be moved to recently demoted broker    | false|   yes |
@@ -361,7 +361,7 @@ Supported parameters are:
 | allow_capacity_estimation     | boolean    | whether allow broker capacity to be estimated     | true      |   yes |
 | concurrent_partition_movements_per_broker     | integer    | upper bound of ongoing replica movements going into/out of each broker     | null      |   yes |
 | concurrent_leader_movements     | integer    | upper bound of ongoing leadership movements     | null      |   yes |
-| skip_hard_goal_check     | boolean    | Whether allow hard goal be skipped in proposal generation     | false      |   yes |
+| skip_hard_goal_check     | boolean    | Whether allow hard goals be skipped in proposal generation     | false      |   yes |
 | excluded_topics     | regex    |  regular expression to specify topic not to be considered for replica movement   | null|   yes |
 | use_ready_default_goals     | boolean    |  whether only use ready goals to generate proposal   | false|   yes |
 | exclude_recently_demoted_brokers     | boolean    | whether allow leader replicas to be moved to recently demoted broker    | false|   yes |
@@ -468,7 +468,7 @@ Supported parameters are:
 | allow_capacity_estimation     | boolean    | whether allow broker capacity to be estimated     | true      |   yes |
 | concurrent_partition_movements_per_broker     | integer    | upper bound of ongoing replica movements going into/out of each broker     | null      |   yes |
 | concurrent_leader_movements     | integer    | upper bound of ongoing leadership movements     | null      |   yes |
-| skip_hard_goal_check     | boolean    | Whether allow hard goal be skipped in proposal generation     | false      |   yes |
+| skip_hard_goal_check     | boolean    | Whether allow hard goals be skipped in proposal generation     | false      |   yes |
 | exclude_recently_demoted_brokers     | Boolean    | Whether allow leader replicas to be moved to recently demoted broker    | false|   yes |
 | exclude_recently_removed_brokers     | Boolean    | Whether allow replicas to be moved to recently removed broker  | false|   yes |
 | replica_movement_strategies     | string    |  [replica movement strategy](https://github.com/linkedin/cruise-control/wiki/Pluggable-Components#replica-movement-strategy) to use   | null|   yes | 

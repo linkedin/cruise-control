@@ -1,26 +1,26 @@
 ReviewBoardEndpoint:
   get:
     operationId: reviewBoard
-    summary: Check review status of Cruise Control requests
+    summary: Check review status of Cruise Control requests.
     parameters:
       - name: review_ids
         in: query
-        description: Ids for selected request to check
+        description: Ids for selected request to check.
         schema:
           type: array
           items:
             type: integer
             format: int32
-          example: [1,2,3]
+          example: [1, 2, 3]
       - name: json
         in: query
-        description: Whether to return in JSON format or not
+        description: Whether to return in JSON format or not.
         schema:
           type: boolean
           default: false
     responses:
       '200':
-        description: Successful review response
+        description: Successful review response.
         content:
           application/json:
             schema:
@@ -30,7 +30,7 @@ ReviewBoardEndpoint:
               type: string
         # Response for all errors
         default:
-          description: Unexpected error
+          description: Error response.
           content:
             application/json:
               schema:

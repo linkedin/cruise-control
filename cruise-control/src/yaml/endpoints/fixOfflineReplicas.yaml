@@ -1,115 +1,114 @@
 FixOfflineReplicasEndpoint:
   post:
     operationId: fixOfflineReplicas
-    summary: Fix offline replicas by moving currenlty offline replicas to healthy brokers
+    summary: Fix offline replicas by moving currently offline replicas to healthy brokers.
     parameters:
       - name: dryrun
         in: query
-        description: Whether dry-run the request or not
+        description: Whether dry-run the request or not.
         schema:
           type: boolean
           default: true
       - name: goals
         in: query
-        description: list of goals used to generate proposal
+        description: List of goals used to generate proposal, the default goals will be used if this parameter is not specified.
         schema:
           type: array
           items:
             type: string
-          example: ["RackAwareGoal","ReplicaCapacityGoal","ReplicaDistributionGoal"]
-          # default is every goal
+          example: ["RackAwareGoal", "ReplicaCapacityGoal", "ReplicaDistributionGoal"]
       - name: allow_capacity_estimation
         in: query
-        description: Whether to allow broker capacity to be estimated
+        description: Whether to allow broker capacity to be estimated.
         schema:
           type: boolean
           default: false
       - name: concurrent_partition_movements_per_broker
         in: query
-        description: The upper bound of ongoing replica movements going into/out of each broker
+        description: The upper bound of ongoing replica movements going into/out of each broker.
         schema:
           type: integer
           format: int32
           minimum: 1
       - name: concurrent_leader_movements
         in: query
-        description: The upper bound of ongoing leadership movements
+        description: The upper bound of ongoing leadership movements.
         schema:
           type: integer
           format: int32
           minimum: 1
       - name: json
         in: query
-        description: Whether to return in JSON format or not
+        description: Whether to return in JSON format or not.
         schema:
           type: boolean
           default: false
       - name: skip_hard_goal_check
         in: query
-        description: Whether to allow hard goal be skipped in proposal generation
+        description: Whether to allow hard goals be skipped in proposal generation.
         schema:
           type: boolean
           default: false
       - name: excluded_topics
         in: query
-        description: Whether to allow hard goal be skipped in proposal generation
+        description: Specify topic whose partition is excluded from replica movement.
         schema:
           type: string # topics regex
           default: null
-        exmaple: "__CruiseControl.*"
+        exmaple: "__CruiseControl.%2A"
       - name: use_ready_default_goals
         in: query
-        description: Whether to only use ready goals to generate proposal
+        description: Whether to only use ready goals to generate proposal.
         schema:
           type: boolean
           default: false
       - name: data_from
         in: query
-        description: Whether to calculate proposal from available valid partitions or valid windows
+        description: Whether to calculate proposal from available valid partitions or valid windows.
         schema:
           type: string
           default: VALID_WINDOWS
       - name: verbose
         in: query
-        description: Return detailed state information
+        description: Return detailed state information.
         schema:
           type: boolean
           default: false
       - name: exclude_recently_demoted_brokers
         in: query
-        description: Whether to allow leader replicas to be moved to recently demoted broker
+        description: Whether to allow leader replicas to be moved to recently demoted broker.
         schema:
           type: boolean
           default: false
       - name: exclude_recently_removed_brokers
         in: query
-        description: Whether to allow leader replicas to be moved to recently removed broker
+        description: Whether to allow leader replicas to be moved to recently removed broker.
         schema:
           type: boolean
           default: true
       - name: replica_movement_strategies
         in: query
-        description: Replica movement strategies to use
+        description: Replica movement strategies to use.
         schema:
           type: array
           items:
             type: string
-        example: ["PrioritizeLargeReplicaMovementStrategy","PostponeUrpReplicaMovementStrategy"]
+        example: ["PrioritizeLargeReplicaMovementStrategy", "PostponeUrpReplicaMovementStrategy"]
       - name: review_id
         in: query
         description: Review id for 2FA
         schema:
           type: integer
-          foramt: int32
+          format: int32
       - name: replication_throttle
         in: query
-        description: Upper bound on the bandwidth used to move replicas
+        description: Upper bound on the bandwidth in bytes per second used to move replicas.
         schema:
           type: integer
           format: int64
       - name: execution_progress_check_interval_ms
         in: query
-        description: Execution progress check interval in milliseconds
+        description: Execution progress check interval in milliseconds.
         schema:
           type: integer
           format: int64
@@ -118,10 +117,10 @@ FixOfflineReplicasEndpoint:
         description: Reason for request
         schema:
           type: string
-        example: "move offline replicas off broken brokers"
+        example: "Move offline replicas away from broken brokers."
     responses:
       '200':
-        description: Successful rebalance response
+        description: Successful rebalance response.
         content:
           application/json:
             schema:
@@ -130,7 +129,7 @@ FixOfflineReplicasEndpoint:
             schema:
               type: string
       '202':
-        description: Fix in progress
+        description: Fix in progress.
         content:
           application/json:
             schema:
@@ -140,7 +139,7 @@ FixOfflineReplicasEndpoint:
               type: string
       # Response for all errors
       default:
-        description: Unexpected error
+        description: Error response.
         content:
           application/json:
             schema:
