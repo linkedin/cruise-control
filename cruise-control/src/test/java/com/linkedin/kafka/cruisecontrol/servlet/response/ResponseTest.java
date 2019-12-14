@@ -29,6 +29,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.OPENAPI_SPEC_PATH;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.CRUISE_CONTROL_PACKAGE;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.JSON_CONTENT_TYPE;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.PLAIN_TEXT_CONTENT_TYPE;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -55,7 +58,7 @@ public class ResponseTest {
     _schemaToClass = new HashMap<>();
     ScanResult scanResult = new ClassGraph().ignoreClassVisibility()
                                             .enableAnnotationInfo()
-                                            .whitelistPackages("com.linkedin.kafka.cruisecontrol")
+                                            .whitelistPackages(CRUISE_CONTROL_PACKAGE)
                                             .scan();
     for (ClassInfo classInfo : scanResult.getClassesWithAnnotation(JsonResponseClass.class.getName())) {
       String className = classInfo.getName();
@@ -102,12 +105,12 @@ public class ResponseTest {
     operation.getResponses().forEach((responseStatus, apiResponse) -> {
       apiResponse.getContent().forEach((header, type) -> {
         switch (header) {
-          case "application/json" : String refName = type.getSchema().get$ref();
-                                    String className = refName.substring(refName.lastIndexOf('/') + 1);
-                                    checkSchema(_openAPI.getComponents().getSchemas().get(className), className, true);
-                                    break;
-          case "text/plain" : assertTrue(type.getSchema() instanceof StringSchema);
-                              break;
+          case JSON_CONTENT_TYPE : String refName = type.getSchema().get$ref();
+                                   String className = refName.substring(refName.lastIndexOf('/') + 1);
+                                   checkSchema(_openAPI.getComponents().getSchemas().get(className), className, true);
+                                   break;
+          case PLAIN_TEXT_CONTENT_TYPE : assertTrue(type.getSchema() instanceof StringSchema);
+                                         break;
           default: fail("Unknown content type " + header);
                    break;
         }

@@ -7,13 +7,10 @@ package com.linkedin.kafka.cruisecontrol.model;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
-
-import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseExternalFields;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import com.google.gson.Gson;
 import java.util.Set;
@@ -226,8 +223,12 @@ public class ClusterModelStats {
    */
   public Map<String, Object> getJsonStructure() {
     Map<String, Object> statMap = new HashMap<>(2);
-    statMap.put(METADATA, new ClusterModelStatsMetaData().getJsonStructure());
-    statMap.put(STATISTICS, new ClusterModelStatsValue().getJsonStructure());
+    statMap.put(METADATA, new ClusterModelStatsMetaData(numBrokers(), numReplicasInCluster(), numTopics()).getJsonStructure());
+    statMap.put(STATISTICS, new ClusterModelStatsValue(_resourceUtilizationStats,
+                                                       _potentialNwOutUtilizationStats,
+                                                       _replicaStats,
+                                                       _leaderReplicaStats,
+                                                       _topicReplicaStats).getJsonStructure());
     return statMap;
   }
 
@@ -240,7 +241,11 @@ public class ClusterModelStats {
 
   @Override
   public String toString() {
-    return new ClusterModelStatsValue().toString();
+    return new ClusterModelStatsValue(_resourceUtilizationStats,
+                                      _potentialNwOutUtilizationStats,
+                                      _replicaStats,
+                                      _leaderReplicaStats,
+                                      _topicReplicaStats).toString();
   }
 
   /**
@@ -457,91 +462,6 @@ public class ClusterModelStats {
     }
     if (numAliveDisks > 0) {
       _diskUtilizationStDev = Math.sqrt(totalDiskUtilizationVariance / numAliveDisks);
-    }
-  }
-
-  @JsonResponseClass
-  private class ClusterModelStatsMetaData {
-    @JsonResponseField
-    static final String BROKERS = "brokers";
-    @JsonResponseField
-    static final String REPLICAS = "replicas";
-    @JsonResponseField
-    static final String TOPICS = "topics";
-
-    Map<String, Integer> getJsonStructure() {
-      Map<String, Integer> basicMap = new HashMap<>(3);
-      basicMap.put(BROKERS, numBrokers());
-      basicMap.put(REPLICAS, numReplicasInCluster());
-      basicMap.put(TOPICS, numTopics());
-      return basicMap;
-    }
-  }
-
-  @JsonResponseClass
-  @JsonResponseExternalFields(Statistic.class)
-  private class ClusterModelStatsValue {
-    Map<String, Object> getJsonStructure() {
-      List<Statistic> cachedStatistic = Statistic.cachedValues();
-      // List of all statistics AVG, MAX, MIN, STD
-      Map<String, Object> allStatMap = new HashMap<>(cachedStatistic.size());
-      for (Statistic stat : cachedStatistic) {
-        allStatMap.put(stat.stat(), new ClusterModelStatsValueHolder(stat).getJsonStructure());
-      }
-      return allStatMap;
-    }
-
-    @Override
-    public String toString() {
-      StringBuilder sb = new StringBuilder();
-      for (Statistic stat : Statistic.cachedValues()) {
-        sb.append(String.format("%s:{", stat));
-        for (Resource resource : Resource.cachedValues()) {
-          sb.append(String.format("%s:%12.3f ", resource, resourceUtilizationStats().get(stat).get(resource)));
-        }
-        sb.append(new ClusterModelStatsValueHolder(stat).toString());
-      }
-      return sb.substring(0, sb.length() - 2);
-    }
-  }
-
-  @JsonResponseClass
-  @JsonResponseExternalFields(Resource.class)
-  private class ClusterModelStatsValueHolder {
-    @JsonResponseField
-    static final String POTENTIAL_NW_OUT = "potentialNwOut";
-    @JsonResponseField
-    static final String LEADER_REPLICAS = "leaderReplicas";
-    @JsonResponseField
-    static final String TOPIC_REPLICAS = "topicReplicas";
-    @JsonResponseField
-    static final String REPLICAS = "replicas";
-    private Statistic _stat;
-
-    ClusterModelStatsValueHolder(Statistic stat) {
-      _stat = stat;
-    }
-
-    Map<String, Object> getJsonStructure() {
-      List<Resource> cachedResources = Resource.cachedValues();
-      Map<String, Object> resourceMap = new HashMap<>(cachedResources.size() + 4);
-      for (Resource resource : cachedResources) {
-        resourceMap.put(resource.resource(), resourceUtilizationStats().get(_stat).get(resource));
-      }
-      resourceMap.put(POTENTIAL_NW_OUT, potentialNwOutUtilizationStats().get(_stat));
-      resourceMap.put(REPLICAS, replicaStats().get(_stat));
-      resourceMap.put(LEADER_REPLICAS, leaderReplicaStats().get(_stat));
-      resourceMap.put(TOPIC_REPLICAS, topicReplicaStats().get(_stat));
-      return resourceMap;
-    }
-
-    @Override
-    public String toString() {
-      return String.format("%s:%12.3f %s:%s %s:%s %s:%s}%n",
-                           POTENTIAL_NW_OUT, potentialNwOutUtilizationStats().get(_stat),
-                           REPLICAS, replicaStats().get(_stat),
-                           LEADER_REPLICAS, leaderReplicaStats().get(_stat),
-                           TOPIC_REPLICAS, topicReplicaStats().get(_stat));
     }
   }
 }

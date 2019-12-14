@@ -19,7 +19,7 @@ import java.lang.annotation.Target;
 public @interface JsonResponseField {
 
   /**
-   * Whether the field is required in JSON response or not.
+   * Whether the field is a required field in response or not.
    * @return True if it is a required field; otherwise it is an optional field.
    */
   boolean required() default true;

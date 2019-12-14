@@ -13,9 +13,6 @@ import java.util.List;
 import java.util.Map;
 import javax.servlet.http.HttpSession;
 
-import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVAL_TO_PERCENTAGE;
-import static javax.servlet.http.HttpServletResponse.*;
-
 
 /**
  * A class to track the progress of a task. This class is used to allow different users to trigger
@@ -32,7 +29,7 @@ public class OperationProgress {
   private boolean _mutable = true;
   private List<OperationStep> _steps = new ArrayList<>();
   private List<Long> _startTimes = new ArrayList<>();
-  private String _operation;
+  private final String _operation;
 
   public  OperationProgress() {
     this("");
@@ -127,40 +124,6 @@ public class OperationProgress {
   private void ensureMutable() {
     if (!_mutable) {
       throw new IllegalStateException("Cannot change this operation progress because it is immutable.");
-    }
-  }
-
-  @JsonResponseClass
-  private static class StepProgress {
-    @JsonResponseField
-    static final String STEP = "step";
-    @JsonResponseField
-    static final String DESCRIPTION = "description";
-    @JsonResponseField
-    static final String TIME_IN_MS = "time-in-ms";
-    @JsonResponseField
-    static final String COMPLETION_PERCENTAGE = "completionPercentage";
-    private OperationStep _step;
-    private long _duration;
-
-    StepProgress(OperationStep step, long duration) {
-      _step = step;
-      _duration = duration;
-    }
-
-    Map<String, Object> getJsonStructure() {
-      Map<String, Object> stepProgressMap = new HashMap<>(4);
-      stepProgressMap.put(STEP, _step.name());
-      stepProgressMap.put(DESCRIPTION, _step.description());
-      stepProgressMap.put(TIME_IN_MS, _duration);
-      stepProgressMap.put(COMPLETION_PERCENTAGE, _step.completionPercentage() * UNIT_INTERVAL_TO_PERCENTAGE);
-      return stepProgressMap;
-    }
-
-    @Override
-    public String toString() {
-      return String.format("(%6d ms) - (%3.1f%%) %s: %s%n", _duration,
-                           _step.completionPercentage() * UNIT_INTERVAL_TO_PERCENTAGE, _step.name(), _step.description());
     }
   }
 }
