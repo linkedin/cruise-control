@@ -24,6 +24,8 @@ import com.linkedin.kafka.cruisecontrol.async.progress.GeneratingClusterModel;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.async.progress.WaitingForClusterModel;
 import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
@@ -60,7 +62,7 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.SKIP_SAMPLE_LOADING_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.SKIP_LOADING_SAMPLES_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.getRackHandleNull;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.getReplicaPlacementInfo;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.partitionSampleExtrapolations;
@@ -123,7 +125,7 @@ public class LoadMonitor {
     this(config,
          new MetadataClient(config,
                             new Metadata(METADATA_REFRESH_BACKOFF,
-                                         config.getLong(KafkaCruiseControlConfig.METADATA_MAX_AGE_CONFIG),
+                                         config.getLong(MonitorConfig.METADATA_MAX_AGE_CONFIG),
                                          new LogContext(),
                                          new ClusterResourceListeners()),
                             METADATA_TTL,
@@ -151,11 +153,11 @@ public class LoadMonitor {
 
     _adminClient = adminClient;
 
-    _brokerCapacityConfigResolver = config.getConfiguredInstance(KafkaCruiseControlConfig.BROKER_CAPACITY_CONFIG_RESOLVER_CLASS_CONFIG,
+    _brokerCapacityConfigResolver = config.getConfiguredInstance(MonitorConfig.BROKER_CAPACITY_CONFIG_RESOLVER_CLASS_CONFIG,
                                                                  BrokerCapacityConfigResolver.class);
-    _topicConfigProvider = config.getConfiguredInstance(KafkaCruiseControlConfig.TOPIC_CONFIG_PROVIDER_CLASS_CONFIG,
+    _topicConfigProvider = config.getConfiguredInstance(MonitorConfig.TOPIC_CONFIG_PROVIDER_CLASS_CONFIG,
                                                                  TopicConfigProvider.class);
-    _numPartitionMetricSampleWindows = config.getInt(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG);
+    _numPartitionMetricSampleWindows = config.getInt(MonitorConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG);
 
     _partitionMetricSampleAggregator = new KafkaPartitionMetricSampleAggregator(config, metadataClient.metadata());
 
@@ -165,7 +167,7 @@ public class LoadMonitor {
 
     // We use the number of proposal precomputing threads config to ensure there is enough concurrency if users
     // wants that.
-    int numPrecomputingThread = config.getInt(KafkaCruiseControlConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG);
+    int numPrecomputingThread = config.getInt(AnalyzerConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG);
     _clusterModelSemaphore = new Semaphore(Math.max(1, numPrecomputingThread), true);
 
     _defaultModelCompletenessRequirements =
@@ -196,7 +198,7 @@ public class LoadMonitor {
    * Start the load monitor.
    */
   public void startUp() {
-    _loadMonitorTaskRunner.start(_config.getBoolean(SKIP_SAMPLE_LOADING_CONFIG));
+    _loadMonitorTaskRunner.start(_config.getBoolean(SKIP_LOADING_SAMPLES_CONFIG));
   }
 
   /**

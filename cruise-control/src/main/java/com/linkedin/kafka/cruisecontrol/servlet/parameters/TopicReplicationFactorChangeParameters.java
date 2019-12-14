@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
@@ -82,7 +82,7 @@ public class TopicReplicationFactorChangeParameters extends GoalBasedOptimizatio
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
     _replicationThrottle = ParameterUtils.replicationThrottle(_request, _config);
-    boolean requestReasonRequired = _config.getBoolean(KafkaCruiseControlConfig.REQUEST_REASON_REQUIRED_CONFIG);
+    boolean requestReasonRequired = _config.getBoolean(ExecutorConfig.REQUEST_REASON_REQUIRED_CONFIG);
     _reason = ParameterUtils.reason(_request, requestReasonRequired && !_dryRun);
     _stopOngoingExecution = ParameterUtils.stopOngoingExecution(_request);
     if (_stopOngoingExecution && _dryRun) {

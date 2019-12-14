@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
 import java.util.Collections;
@@ -51,7 +51,7 @@ public class PauseResumeParameters extends AbstractParameters {
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
     _reason = ParameterUtils.reason(_request, false);
-    boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
+    boolean twoStepVerificationEnabled = _config.getBoolean(WebServerConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
   }
 

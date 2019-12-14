@@ -9,6 +9,7 @@ import com.codahale.metrics.Timer;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.async.progress.OptimizationForGoal;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
@@ -71,8 +72,7 @@ public class GoalOptimizer implements Runnable {
   private volatile OptimizerResult _cachedProposals;
   private volatile boolean _shutdown = false;
   private Thread _proposalPrecomputingSchedulerThread;
-  // TODO: Make allowing/disallowing capacity estimation during proposal precomputation configurable.
-  private final boolean _allowCapacityEstimationDuringProposalPrecomputing;
+  private final boolean _allowCapacityEstimationOnProposalPrecompute;
   private final Timer _proposalComputationTimer;
   private final ModelCompletenessRequirements _defaultModelCompletenessRequirements;
   private final ModelCompletenessRequirements _requirementsWithAvailableValidWindows;
@@ -98,11 +98,11 @@ public class GoalOptimizer implements Runnable {
         1,
         _defaultModelCompletenessRequirements.minMonitoredPartitionsPercentage(),
         _defaultModelCompletenessRequirements.includeAllTopics());
-    _numPrecomputingThreads = config.getInt(KafkaCruiseControlConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG);
+    _numPrecomputingThreads = config.getInt(AnalyzerConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG);
     LOG.info("Goals by priority for precomputing: {}", _goalsByPriority);
     _balancingConstraint = new BalancingConstraint(config);
-    _defaultExcludedTopics = Pattern.compile(config.getString(KafkaCruiseControlConfig.TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG));
-    _proposalExpirationMs = config.getLong(KafkaCruiseControlConfig.PROPOSAL_EXPIRATION_MS_CONFIG);
+    _defaultExcludedTopics = Pattern.compile(config.getString(AnalyzerConfig.TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG));
+    _proposalExpirationMs = config.getLong(AnalyzerConfig.PROPOSAL_EXPIRATION_MS_CONFIG);
     _proposalPrecomputingExecutor =
         Executors.newScheduledThreadPool(numProposalComputingThreads(),
                                          new KafkaCruiseControlThreadFactory("ProposalPrecomputingExecutor", false, LOG));
@@ -117,9 +117,9 @@ public class GoalOptimizer implements Runnable {
     _proposalComputationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("GoalOptimizer", "proposal-computation-timer"));
     _executor = executor;
     _hasOngoingExplicitPrecomputation = false;
-    _priorityWeight = config.getDouble(KafkaCruiseControlConfig.GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG);
-    _strictnessWeight = config.getDouble(KafkaCruiseControlConfig.GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_CONFIG);
-    _allowCapacityEstimationDuringProposalPrecomputing = true;
+    _priorityWeight = config.getDouble(AnalyzerConfig.GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG);
+    _strictnessWeight = config.getDouble(AnalyzerConfig.GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_CONFIG);
+    _allowCapacityEstimationOnProposalPrecompute = config.getBoolean(AnalyzerConfig.ALLOW_CAPACITY_ESTIMATION_ON_PROPOSAL_PRECOMPUTE_CONFIG);
   }
 
   @Override
@@ -152,7 +152,7 @@ public class GoalOptimizer implements Runnable {
 
             long start = System.nanoTime();
             // Proposal precomputation runs with the default topics to exclude, and allows capacity estimation.
-            computeCachedProposal(_allowCapacityEstimationDuringProposalPrecomputing);
+            computeCachedProposal(_allowCapacityEstimationOnProposalPrecompute);
             _proposalComputationTimer.update(System.nanoTime() - start, TimeUnit.NANOSECONDS);
           } else {
             LOG.debug("Skipping proposal precomputing because the cached proposal result is still valid. "
@@ -295,7 +295,7 @@ public class GoalOptimizer implements Runnable {
         while (!validCachedProposal()) {
           try {
             operationProgress.clear();
-            if (_numPrecomputingThreads > 0 && (allowCapacityEstimation || !_allowCapacityEstimationDuringProposalPrecomputing)) {
+            if (_numPrecomputingThreads > 0 && (allowCapacityEstimation || !_allowCapacityEstimationOnProposalPrecompute)) {
               // Wake up the proposal precomputing scheduler and wait for the cache update.
               _proposalPrecomputingSchedulerThread.interrupt();
             } else if (!_hasOngoingExplicitPrecomputation) {

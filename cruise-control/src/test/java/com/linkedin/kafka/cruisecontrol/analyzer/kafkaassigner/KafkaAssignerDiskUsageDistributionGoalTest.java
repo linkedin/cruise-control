@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.internals.BrokerAndSorted
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
@@ -81,8 +82,8 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
   @Test
   public void testFindReplicaToSwapWith() {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(10L));
-    props.setProperty(KafkaCruiseControlConfig.DISK_BALANCE_THRESHOLD_CONFIG, "1.05");
+    props.setProperty(AnalyzerConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(10L));
+    props.setProperty(AnalyzerConfig.DISK_BALANCE_THRESHOLD_CONFIG, "1.05");
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     KafkaAssignerDiskUsageDistributionGoal goal = new KafkaAssignerDiskUsageDistributionGoal(balancingConstraint);
     ClusterModel clusterModel = createClusterModel();
@@ -122,8 +123,8 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
   @Test
   public void testSwapReplicas() {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(10L));
-    props.setProperty(KafkaCruiseControlConfig.DISK_BALANCE_THRESHOLD_CONFIG, "1.05");
+    props.setProperty(AnalyzerConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(10L));
+    props.setProperty(AnalyzerConfig.DISK_BALANCE_THRESHOLD_CONFIG, "1.05");
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     KafkaAssignerDiskUsageDistributionGoal goal = new KafkaAssignerDiskUsageDistributionGoal(balancingConstraint);
     ClusterModel clusterModel = createClusterModel();

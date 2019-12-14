@@ -10,7 +10,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
@@ -80,7 +80,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
     _skipUrpDemotion = SELF_HEALING_SKIP_URP_DEMOTION;
     _excludeFollowerDemotion = SELF_HEALING_EXCLUDE_FOLLOWER_DEMOTION;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
-    _replicationThrottle = kafkaCruiseControl.config().getLong(KafkaCruiseControlConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
+    _replicationThrottle = kafkaCruiseControl.config().getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
     _uuid = anomalyId;
     _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
     _brokerIdAndLogdirs = Collections.emptyMap();

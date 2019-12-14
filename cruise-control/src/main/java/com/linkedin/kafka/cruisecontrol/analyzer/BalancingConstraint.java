@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-
+import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -43,50 +43,50 @@ public class BalancingConstraint {
     _lowUtilizationThreshold = new HashMap<>(_resources.size());
 
     // Set default values for balance percentages.
-    _resourceBalancePercentage.put(Resource.DISK, config.getDouble(KafkaCruiseControlConfig.DISK_BALANCE_THRESHOLD_CONFIG));
-    _resourceBalancePercentage.put(Resource.CPU, config.getDouble(KafkaCruiseControlConfig.CPU_BALANCE_THRESHOLD_CONFIG));
-    _resourceBalancePercentage.put(Resource.NW_IN, config.getDouble(KafkaCruiseControlConfig.NETWORK_INBOUND_BALANCE_THRESHOLD_CONFIG));
-    _resourceBalancePercentage.put(Resource.NW_OUT, config.getDouble(KafkaCruiseControlConfig.NETWORK_OUTBOUND_BALANCE_THRESHOLD_CONFIG));
+    _resourceBalancePercentage.put(Resource.DISK, config.getDouble(AnalyzerConfig.DISK_BALANCE_THRESHOLD_CONFIG));
+    _resourceBalancePercentage.put(Resource.CPU, config.getDouble(AnalyzerConfig.CPU_BALANCE_THRESHOLD_CONFIG));
+    _resourceBalancePercentage.put(Resource.NW_IN, config.getDouble(AnalyzerConfig.NETWORK_INBOUND_BALANCE_THRESHOLD_CONFIG));
+    _resourceBalancePercentage.put(Resource.NW_OUT, config.getDouble(AnalyzerConfig.NETWORK_OUTBOUND_BALANCE_THRESHOLD_CONFIG));
     // Set default values for alive resource capacity threshold.
-    _capacityThreshold.put(Resource.DISK, config.getDouble(KafkaCruiseControlConfig.DISK_CAPACITY_THRESHOLD_CONFIG));
-    _capacityThreshold.put(Resource.CPU, config.getDouble(KafkaCruiseControlConfig.CPU_CAPACITY_THRESHOLD_CONFIG));
-    _capacityThreshold.put(Resource.NW_IN, config.getDouble(KafkaCruiseControlConfig.NETWORK_INBOUND_CAPACITY_THRESHOLD_CONFIG));
-    _capacityThreshold.put(Resource.NW_OUT, config.getDouble(KafkaCruiseControlConfig.NETWORK_OUTBOUND_CAPACITY_THRESHOLD_CONFIG));
+    _capacityThreshold.put(Resource.DISK, config.getDouble(AnalyzerConfig.DISK_CAPACITY_THRESHOLD_CONFIG));
+    _capacityThreshold.put(Resource.CPU, config.getDouble(AnalyzerConfig.CPU_CAPACITY_THRESHOLD_CONFIG));
+    _capacityThreshold.put(Resource.NW_IN, config.getDouble(AnalyzerConfig.NETWORK_INBOUND_CAPACITY_THRESHOLD_CONFIG));
+    _capacityThreshold.put(Resource.NW_OUT, config.getDouble(AnalyzerConfig.NETWORK_OUTBOUND_CAPACITY_THRESHOLD_CONFIG));
     // Set low utilization threshold
-    _lowUtilizationThreshold.put(Resource.DISK, config.getDouble(KafkaCruiseControlConfig.DISK_LOW_UTILIZATION_THRESHOLD_CONFIG));
-    _lowUtilizationThreshold.put(Resource.CPU, config.getDouble(KafkaCruiseControlConfig.CPU_LOW_UTILIZATION_THRESHOLD_CONFIG));
-    _lowUtilizationThreshold.put(Resource.NW_IN, config.getDouble(KafkaCruiseControlConfig.NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG));
-    _lowUtilizationThreshold.put(Resource.NW_OUT, config.getDouble(KafkaCruiseControlConfig.NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG));
+    _lowUtilizationThreshold.put(Resource.DISK, config.getDouble(AnalyzerConfig.DISK_LOW_UTILIZATION_THRESHOLD_CONFIG));
+    _lowUtilizationThreshold.put(Resource.CPU, config.getDouble(AnalyzerConfig.CPU_LOW_UTILIZATION_THRESHOLD_CONFIG));
+    _lowUtilizationThreshold.put(Resource.NW_IN, config.getDouble(AnalyzerConfig.NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG));
+    _lowUtilizationThreshold.put(Resource.NW_OUT, config.getDouble(AnalyzerConfig.NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG));
     // Set default value for the maximum number of replicas per broker.
-    _maxReplicasPerBroker = config.getLong(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG);
+    _maxReplicasPerBroker = config.getLong(AnalyzerConfig.MAX_REPLICAS_PER_BROKER_CONFIG);
     // Set default value for the balance percentage of (1) replica, (2) leader replica and (3) topic replica distribution.
-    _replicaBalancePercentage = config.getDouble(KafkaCruiseControlConfig.REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG);
-    _leaderReplicaBalancePercentage = config.getDouble(KafkaCruiseControlConfig.LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG);
-    _topicReplicaBalancePercentage = config.getDouble(KafkaCruiseControlConfig.TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG);
-    _goalViolationDistributionThresholdMultiplier = config.getDouble(KafkaCruiseControlConfig.GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG);
+    _replicaBalancePercentage = config.getDouble(AnalyzerConfig.REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG);
+    _leaderReplicaBalancePercentage = config.getDouble(AnalyzerConfig.LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG);
+    _topicReplicaBalancePercentage = config.getDouble(AnalyzerConfig.TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG);
+    _goalViolationDistributionThresholdMultiplier = config.getDouble(AnalyzerConfig.GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG);
   }
 
   Properties setProps(Properties props) {
-    props.put(KafkaCruiseControlConfig.DISK_BALANCE_THRESHOLD_CONFIG, _resourceBalancePercentage.get(Resource.DISK).toString());
-    props.put(KafkaCruiseControlConfig.CPU_BALANCE_THRESHOLD_CONFIG, _resourceBalancePercentage.get(Resource.CPU).toString());
-    props.put(KafkaCruiseControlConfig.NETWORK_INBOUND_BALANCE_THRESHOLD_CONFIG, _resourceBalancePercentage.get(Resource.NW_IN).toString());
-    props.put(KafkaCruiseControlConfig.NETWORK_OUTBOUND_BALANCE_THRESHOLD_CONFIG, _resourceBalancePercentage.get(Resource.NW_OUT).toString());
+    props.put(AnalyzerConfig.DISK_BALANCE_THRESHOLD_CONFIG, _resourceBalancePercentage.get(Resource.DISK).toString());
+    props.put(AnalyzerConfig.CPU_BALANCE_THRESHOLD_CONFIG, _resourceBalancePercentage.get(Resource.CPU).toString());
+    props.put(AnalyzerConfig.NETWORK_INBOUND_BALANCE_THRESHOLD_CONFIG, _resourceBalancePercentage.get(Resource.NW_IN).toString());
+    props.put(AnalyzerConfig.NETWORK_OUTBOUND_BALANCE_THRESHOLD_CONFIG, _resourceBalancePercentage.get(Resource.NW_OUT).toString());
 
-    props.put(KafkaCruiseControlConfig.DISK_CAPACITY_THRESHOLD_CONFIG, _capacityThreshold.get(Resource.DISK).toString());
-    props.put(KafkaCruiseControlConfig.CPU_CAPACITY_THRESHOLD_CONFIG, _capacityThreshold.get(Resource.CPU).toString());
-    props.put(KafkaCruiseControlConfig.NETWORK_INBOUND_CAPACITY_THRESHOLD_CONFIG, _capacityThreshold.get(Resource.NW_IN).toString());
-    props.put(KafkaCruiseControlConfig.NETWORK_OUTBOUND_CAPACITY_THRESHOLD_CONFIG, _capacityThreshold.get(Resource.NW_OUT).toString());
+    props.put(AnalyzerConfig.DISK_CAPACITY_THRESHOLD_CONFIG, _capacityThreshold.get(Resource.DISK).toString());
+    props.put(AnalyzerConfig.CPU_CAPACITY_THRESHOLD_CONFIG, _capacityThreshold.get(Resource.CPU).toString());
+    props.put(AnalyzerConfig.NETWORK_INBOUND_CAPACITY_THRESHOLD_CONFIG, _capacityThreshold.get(Resource.NW_IN).toString());
+    props.put(AnalyzerConfig.NETWORK_OUTBOUND_CAPACITY_THRESHOLD_CONFIG, _capacityThreshold.get(Resource.NW_OUT).toString());
 
-    props.put(KafkaCruiseControlConfig.DISK_LOW_UTILIZATION_THRESHOLD_CONFIG, _lowUtilizationThreshold.get(Resource.DISK).toString());
-    props.put(KafkaCruiseControlConfig.CPU_LOW_UTILIZATION_THRESHOLD_CONFIG, _lowUtilizationThreshold.get(Resource.CPU).toString());
-    props.put(KafkaCruiseControlConfig.NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG, _lowUtilizationThreshold.get(Resource.NW_IN).toString());
-    props.put(KafkaCruiseControlConfig.NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG, _lowUtilizationThreshold.get(Resource.NW_OUT).toString());
+    props.put(AnalyzerConfig.DISK_LOW_UTILIZATION_THRESHOLD_CONFIG, _lowUtilizationThreshold.get(Resource.DISK).toString());
+    props.put(AnalyzerConfig.CPU_LOW_UTILIZATION_THRESHOLD_CONFIG, _lowUtilizationThreshold.get(Resource.CPU).toString());
+    props.put(AnalyzerConfig.NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG, _lowUtilizationThreshold.get(Resource.NW_IN).toString());
+    props.put(AnalyzerConfig.NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG, _lowUtilizationThreshold.get(Resource.NW_OUT).toString());
 
-    props.put(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, _maxReplicasPerBroker.toString());
-    props.put(KafkaCruiseControlConfig.REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG, _replicaBalancePercentage.toString());
-    props.put(KafkaCruiseControlConfig.LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG, _leaderReplicaBalancePercentage.toString());
-    props.put(KafkaCruiseControlConfig.TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG, _topicReplicaBalancePercentage.toString());
-    props.put(KafkaCruiseControlConfig.GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG,
+    props.put(AnalyzerConfig.MAX_REPLICAS_PER_BROKER_CONFIG, _maxReplicasPerBroker.toString());
+    props.put(AnalyzerConfig.REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG, _replicaBalancePercentage.toString());
+    props.put(AnalyzerConfig.LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG, _leaderReplicaBalancePercentage.toString());
+    props.put(AnalyzerConfig.TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG, _topicReplicaBalancePercentage.toString());
+    props.put(AnalyzerConfig.GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG,
               _goalViolationDistributionThresholdMultiplier.toString());
     return props;
   }

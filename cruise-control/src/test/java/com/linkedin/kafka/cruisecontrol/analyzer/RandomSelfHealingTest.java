@@ -23,6 +23,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDisk
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.ClusterProperty;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.model.RandomCluster;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -81,7 +82,7 @@ public class RandomSelfHealingTest {
                                                     KafkaAssignerDiskUsageDistributionGoal.class.getName());
 
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(2000L));
+    props.setProperty(AnalyzerConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(2000L));
     BalancingConstraint constraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     constraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     constraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
@@ -109,7 +110,7 @@ public class RandomSelfHealingTest {
     p.add(params(testId++, singleDeadBroker, testGoal, constraint, Collections.singleton("T0"), kafkaAssignerVerifications, true));
     p.add(params(testId++, singleDeadBroker, testGoal, constraint, Collections.singleton("T0"), kafkaAssignerVerifications, false));
 
-    props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(5100L));
+    props.setProperty(AnalyzerConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(5100L));
     constraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     constraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     constraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);

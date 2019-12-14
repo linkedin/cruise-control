@@ -14,6 +14,8 @@ import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
@@ -518,13 +520,13 @@ public class LoadMonitorTest {
 
     // Create load monitor.
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    props.put(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG, Integer.toString(numWindowToPreserve));
-    props.put(KafkaCruiseControlConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG,
+    props.put(MonitorConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG, Integer.toString(numWindowToPreserve));
+    props.put(MonitorConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG,
               Integer.toString(MIN_SAMPLES_PER_WINDOW));
-    props.put(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG, Long.toString(WINDOW_MS));
+    props.put(MonitorConfig.PARTITION_METRICS_WINDOW_MS_CONFIG, Long.toString(WINDOW_MS));
     props.put(CleanupPolicyProp(), DEFAULT_CLEANUP_POLICY);
-    props.put(KafkaCruiseControlConfig.SAMPLE_STORE_CLASS_CONFIG, NoopSampleStore.class.getName());
-    props.put(KafkaCruiseControlConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG, "false");
+    props.put(MonitorConfig.SAMPLE_STORE_CLASS_CONFIG, NoopSampleStore.class.getName());
+    props.put(ExecutorConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG, "false");
     if (isClusterJBOD) {
       String capacityConfigFileJBOD =
           KafkaCruiseControlUnitTestUtils.class.getClassLoader().getResource("testCapacityConfigJBOD.json").getFile();

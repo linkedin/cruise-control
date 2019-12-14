@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.purgatory;
 
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
@@ -37,7 +38,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  * A Class to keep POST requests that are awaiting review if two-step verification is enabled.
  *
  * The Purgatory is thread-safe, and is relevant only when
- * {@link KafkaCruiseControlConfig#TWO_STEP_VERIFICATION_ENABLED_CONFIG} is enabled.
+ * {@link WebServerConfig#TWO_STEP_VERIFICATION_ENABLED_CONFIG} is enabled.
  */
 public class Purgatory implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(Purgatory.class);
@@ -53,8 +54,8 @@ public class Purgatory implements Closeable {
   public Purgatory(KafkaCruiseControlConfig config) {
     _requestId = 0;
     _config = config;
-    _purgatoryRetentionTimeMs = config.getLong(KafkaCruiseControlConfig.TWO_STEP_PURGATORY_RETENTION_TIME_MS_CONFIG);
-    int purgatoryMaxCachedRequests = config.getInt(KafkaCruiseControlConfig.TWO_STEP_PURGATORY_MAX_REQUESTS_CONFIG);
+    _purgatoryRetentionTimeMs = config.getLong(WebServerConfig.TWO_STEP_PURGATORY_RETENTION_TIME_MS_CONFIG);
+    int purgatoryMaxCachedRequests = config.getInt(WebServerConfig.TWO_STEP_PURGATORY_MAX_REQUESTS_CONFIG);
 
     _requestInfoById = new LinkedHashMap<Integer, RequestInfo>() {
       @Override

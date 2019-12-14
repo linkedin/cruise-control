@@ -22,7 +22,7 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.stream.Collectors;
 
-import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.HARD_GOALS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig.HARD_GOALS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.ADMIN;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.REBALANCE;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DESTINATION_BROKER_IDS_PARAM;

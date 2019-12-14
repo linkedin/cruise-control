@@ -4,6 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.config;
 
+import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Properties;
@@ -39,13 +42,13 @@ public class CaseInsensitiveGoalConfigTest {
 
 
     Properties sharedProps = new Properties();
-    sharedProps.setProperty(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG, "localhost:2121");
-    sharedProps.setProperty(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG, "aaa");
+    sharedProps.setProperty(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, "localhost:2121");
+    sharedProps.setProperty(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, "aaa");
 
     // Test: With case insensitive goal names (No exception)
     Properties caseInsensitiveGoalProps = new Properties();
     caseInsensitiveGoalProps.putAll(sharedProps);
-    caseInsensitiveGoalProps.setProperty(KafkaCruiseControlConfig.GOALS_CONFIG,
+    caseInsensitiveGoalProps.setProperty(AnalyzerConfig.GOALS_CONFIG,
         "com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal,"
             + "com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal,"
             + "com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal,"
@@ -61,7 +64,7 @@ public class CaseInsensitiveGoalConfigTest {
             + "com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal,"
             + "com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal");
     caseInsensitiveGoalProps.setProperty(
-        KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG,
+        AnalyzerConfig.DEFAULT_GOALS_CONFIG,
         "com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal,"
         + "com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal,"
         + "com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal,"
@@ -83,7 +86,7 @@ public class CaseInsensitiveGoalConfigTest {
     // Test: With duplicate goal names under different packages (Exception)
     Properties duplicateGoalProps = new Properties();
     duplicateGoalProps.putAll(sharedProps);
-    duplicateGoalProps.setProperty(KafkaCruiseControlConfig.GOALS_CONFIG,
+    duplicateGoalProps.setProperty(AnalyzerConfig.GOALS_CONFIG,
         "com.linkedin.package1.RackAwareGoal,com.linkedin.package2.RackAwareGoal");
 
     Object[] withDuplicateGoalParams = {duplicateGoalProps, ConfigException.class};
@@ -92,7 +95,7 @@ public class CaseInsensitiveGoalConfigTest {
     // Test: With case sensitive goal names (Exception)
     Properties caseSensitiveGoalProps = new Properties();
     caseSensitiveGoalProps.putAll(sharedProps);
-    caseSensitiveGoalProps.setProperty(KafkaCruiseControlConfig.GOALS_CONFIG,
+    caseSensitiveGoalProps.setProperty(AnalyzerConfig.GOALS_CONFIG,
         "com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal,com.linkedin.kafka.cruisecontrol.analyzer.goals.RaCkAwArEgOaL");
 
     Object[] withCaseSensitiveGoalParams = {caseSensitiveGoalProps, ConfigException.class};

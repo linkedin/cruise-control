@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 
@@ -162,15 +163,15 @@ public class AnalyzerUtils {
    * @return The list of default goals sorted by highest to lowest default priority.
    */
   public static List<Goal> getGoalsByPriority(KafkaCruiseControlConfig config) {
-    return config.getConfiguredInstances(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG, Goal.class);
+    return config.getConfiguredInstances(AnalyzerConfig.DEFAULT_GOALS_CONFIG, Goal.class);
   }
 
   /**
    * @return A goal map with goal name as the keys.
    */
   public static Map<String, Goal> getCaseInsensitiveGoalsByName(KafkaCruiseControlConfig config) {
-    List<Goal> goals = config.getConfiguredInstances(KafkaCruiseControlConfig.GOALS_CONFIG, Goal.class);
-    goals.addAll(config.getConfiguredInstances(KafkaCruiseControlConfig.INTRA_BROKER_GOALS_CONFIG, Goal.class));
+    List<Goal> goals = config.getConfiguredInstances(AnalyzerConfig.GOALS_CONFIG, Goal.class);
+    goals.addAll(config.getConfiguredInstances(AnalyzerConfig.INTRA_BROKER_GOALS_CONFIG, Goal.class));
     Map<String, Goal> caseInsensitiveGoalsByName = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     for (Goal goal: goals) {
       caseInsensitiveGoalsByName.put(goal.name(), goal);

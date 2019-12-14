@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import java.util.Collection;
 import java.util.HashMap;
@@ -68,10 +69,10 @@ public class ExecutionTaskManager {
     _inProgressPartitionsForInterBrokerMovement = new HashSet<>();
     _executionTaskTracker = new ExecutionTaskTracker(dropwizardMetricRegistry, time);
     _executionTaskPlanner = new ExecutionTaskPlanner(adminClient, config);
-    _defaultInterBrokerPartitionMovementConcurrency = config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG);
-    _defaultIntraBrokerPartitionMovementConcurrency = config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG);
-    _defaultLeadershipMovementConcurrency = config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
-    _maxNumClusterMovementConcurrency = config.getInt(KafkaCruiseControlConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
+    _defaultInterBrokerPartitionMovementConcurrency = config.getInt(ExecutorConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG);
+    _defaultIntraBrokerPartitionMovementConcurrency = config.getInt(ExecutorConfig.NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG);
+    _defaultLeadershipMovementConcurrency = config.getInt(ExecutorConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
+    _maxNumClusterMovementConcurrency = config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
     _brokersToSkipConcurrencyCheck = new HashSet<>();
     _isKafkaAssignerMode = false;
     _requestedInterBrokerPartitionMovementConcurrency = null;

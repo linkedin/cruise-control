@@ -13,6 +13,7 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapola
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -146,7 +147,7 @@ public class KafkaMetricAnomalyFinderTest {
   @SuppressWarnings("unchecked")
   private MetricAnomalyFinder<BrokerEntity> createKafkaMetricAnomalyFinder() {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    props.setProperty(KafkaCruiseControlConfig.METRIC_ANOMALY_FINDER_CLASSES_CONFIG, KafkaMetricAnomalyFinder.class.getName());
+    props.setProperty(AnomalyDetectorConfig.METRIC_ANOMALY_FINDER_CLASSES_CONFIG, KafkaMetricAnomalyFinder.class.getName());
     props.setProperty(METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG, "95.0");
     props.setProperty(METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG, "5.0");
     props.setProperty(METRIC_ANOMALY_UPPER_MARGIN_CONFIG, "0.5");
@@ -166,7 +167,7 @@ public class KafkaMetricAnomalyFinderTest {
     originalConfigs.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
 
     List<MetricAnomalyFinder> kafkaMetricAnomalyFinders = config.getConfiguredInstances(
-        KafkaCruiseControlConfig.METRIC_ANOMALY_FINDER_CLASSES_CONFIG,
+        AnomalyDetectorConfig.METRIC_ANOMALY_FINDER_CLASSES_CONFIG,
         MetricAnomalyFinder.class,
         originalConfigs);
     return kafkaMetricAnomalyFinders.get(0);

@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.common;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import java.net.InetSocketAddress;
 import java.util.Collections;
@@ -41,10 +42,10 @@ public class MetadataClient {
                         Time time) {
     _metadataGeneration = new AtomicInteger(0);
     _metadata = metadata;
-    _refreshMetadataTimeout = config.getLong(KafkaCruiseControlConfig.METADATA_MAX_AGE_CONFIG);
+    _refreshMetadataTimeout = config.getLong(MonitorConfig.METADATA_MAX_AGE_CONFIG);
     _time = time;
     List<InetSocketAddress> addresses =
-        ClientUtils.parseAndValidateAddresses(config.getList(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG),
+        ClientUtils.parseAndValidateAddresses(config.getList(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG),
                                               ClientDnsLookup.DEFAULT);
     Cluster bootstrapCluster = Cluster.bootstrap(addresses);
     MetadataResponse metadataResponse = KafkaCruiseControlUtils.prepareMetadataResponse(bootstrapCluster.nodes(),
@@ -54,22 +55,22 @@ public class MetadataClient {
 
     _metadata.update(KafkaCruiseControlUtils.REQUEST_VERSION_UPDATE, metadataResponse, time.milliseconds());
     ChannelBuilder channelBuilder = ClientUtils.createChannelBuilder(config, time);
-    NetworkClientProvider provider = config.getConfiguredInstance(KafkaCruiseControlConfig.NETWORK_CLIENT_PROVIDER_CLASS_CONFIG,
+    NetworkClientProvider provider = config.getConfiguredInstance(MonitorConfig.NETWORK_CLIENT_PROVIDER_CLASS_CONFIG,
                                                                   NetworkClientProvider.class);
 
-    _networkClient = provider.createNetworkClient(config.getLong(KafkaCruiseControlConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG),
+    _networkClient = provider.createNetworkClient(config.getLong(MonitorConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG),
                                                   new Metrics(),
                                                   time,
                                                   "load-monitor",
                                                   channelBuilder,
                                                   _metadata,
-                                                  config.getString(KafkaCruiseControlConfig.CLIENT_ID_CONFIG),
+                                                  config.getString(MonitorConfig.CLIENT_ID_CONFIG),
                                                   DEFAULT_MAX_IN_FLIGHT_REQUEST,
-                                                  config.getLong(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG),
-                                                  config.getLong(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG),
-                                                  config.getInt(KafkaCruiseControlConfig.SEND_BUFFER_CONFIG),
-                                                  config.getInt(KafkaCruiseControlConfig.RECEIVE_BUFFER_CONFIG),
-                                                  config.getInt(KafkaCruiseControlConfig.REQUEST_TIMEOUT_MS_CONFIG),
+                                                  config.getLong(MonitorConfig.RECONNECT_BACKOFF_MS_CONFIG),
+                                                  config.getLong(MonitorConfig.RECONNECT_BACKOFF_MS_CONFIG),
+                                                  config.getInt(MonitorConfig.SEND_BUFFER_CONFIG),
+                                                  config.getInt(MonitorConfig.RECEIVE_BUFFER_CONFIG),
+                                                  config.getInt(MonitorConfig.REQUEST_TIMEOUT_MS_CONFIG),
                                                   true,
                                                   new ApiVersions());
     _metadataTTL = metadataTTL;

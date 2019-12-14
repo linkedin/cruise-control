@@ -8,6 +8,7 @@ import com.codahale.metrics.JmxReporter;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -50,7 +51,7 @@ public class KafkaCruiseControlMain {
     // Get the configuration for Cruise Control
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(props);
 
-    int port = config.getInt(KafkaCruiseControlConfig.WEBSERVER_HTTP_PORT_CONFIG);
+    int port = config.getInt(WebServerConfig.WEBSERVER_HTTP_PORT_CONFIG);
     if (args.length > 1) {
       try {
         port = Integer.parseInt(args[1]);
@@ -63,7 +64,7 @@ public class KafkaCruiseControlMain {
 
     // For security reasons listen on the loopback address by default
     // Give preference to cmd-line bind address
-    String hostname = config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_ADDRESS_CONFIG);
+    String hostname = config.getString(WebServerConfig.WEBSERVER_HTTP_ADDRESS_CONFIG);
     if (args.length > 2) {
       hostname = args[2];
     }
@@ -79,10 +80,10 @@ public class KafkaCruiseControlMain {
     Server server = new Server(new InetSocketAddress(hostname, port));
 
     // Setup Built-in Logger
-    boolean accessLogEnabled = config.getBoolean(KafkaCruiseControlConfig.WEBSERVER_ACCESSLOG_ENABLED);
+    boolean accessLogEnabled = config.getBoolean(WebServerConfig.WEBSERVER_ACCESSLOG_ENABLED_CONFIG);
     if (accessLogEnabled) {
-      String accessLogPath = config.getString(KafkaCruiseControlConfig.WEBSERVER_ACCESSLOG_PATH);
-      int accessLogRetention = config.getInt(KafkaCruiseControlConfig.WEBSERVER_ACCESSLOG_RETENTION_DAYS);
+      String accessLogPath = config.getString(WebServerConfig.WEBSERVER_ACCESSLOG_PATH_CONFIG);
+      int accessLogRetention = config.getInt(WebServerConfig.WEBSERVER_ACCESSLOG_RETENTION_DAYS_CONFIG);
       NCSARequestLog requestLog = new NCSARequestLog(accessLogPath);
       requestLog.setRetainDays(accessLogRetention);
       requestLog.setLogLatency(true);
@@ -93,14 +94,14 @@ public class KafkaCruiseControlMain {
     }
 
     // Define context for servlet
-    String sessionPath = config.getString(KafkaCruiseControlConfig.WEBSERVER_SESSION_PATH);
+    String sessionPath = config.getString(WebServerConfig.WEBSERVER_SESSION_PATH_CONFIG);
     ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
     context.setContextPath(sessionPath);
     server.setHandler(context);
 
     // Placeholder for any static content
-    String webuiDir = config.getString(KafkaCruiseControlConfig.WEBSERVER_UI_DISKPATH);
-    String webuiPathPrefix = config.getString(KafkaCruiseControlConfig.WEBSERVER_UI_URLPREFIX);
+    String webuiDir = config.getString(WebServerConfig.WEBSERVER_UI_DISKPATH_CONFIG);
+    String webuiPathPrefix = config.getString(WebServerConfig.WEBSERVER_UI_URLPREFIX_CONFIG);
     DefaultServlet defaultServlet = new DefaultServlet();
     ServletHolder holderWebapp = new ServletHolder("default", defaultServlet);
     // holderWebapp.setInitParameter("org.eclipse.jetty.servlet.Default.dirAllowed", "false");
@@ -108,7 +109,7 @@ public class KafkaCruiseControlMain {
     context.addServlet(holderWebapp, webuiPathPrefix);
 
     // Kafka Cruise Control servlet data
-    String apiUrlPrefix = config.getString(KafkaCruiseControlConfig.WEBSERVER_API_URLPREFIX);
+    String apiUrlPrefix = config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG);
     KafkaCruiseControlServlet kafkaCruiseControlServlet = new KafkaCruiseControlServlet(kafkaCruiseControl,
                                                                                         dropwizardMetricsRegistry);
     ServletHolder servletHolder = new ServletHolder(kafkaCruiseControlServlet);
@@ -123,7 +124,7 @@ public class KafkaCruiseControlMain {
     });
     kafkaCruiseControl.startUp();
     server.start();
-    boolean corsEnabled = config.getBoolean(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ENABLED_CONFIG);
+    boolean corsEnabled = config.getBoolean(WebServerConfig.WEBSERVER_HTTP_CORS_ENABLED_CONFIG);
     System.out.println(">> ********************************************* <<");
     System.out.println(">> Application directory            : " + System.getProperty("user.dir"));
     System.out.println(">> REST API available on            : " + apiUrlPrefix);

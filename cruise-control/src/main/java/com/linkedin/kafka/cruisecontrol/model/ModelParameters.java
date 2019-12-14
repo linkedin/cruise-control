@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerMetricSample;
 import java.util.Collection;
 import org.apache.kafka.common.record.CompressionType;
@@ -39,11 +40,11 @@ public class ModelParameters {
    */
   public static void init(KafkaCruiseControlConfig config) {
     CPU_WEIGHT_OF_LEADER_BYTES_IN_RATE =
-        config.getDouble(KafkaCruiseControlConfig.LEADER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG);
+        config.getDouble(MonitorConfig.LEADER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG);
     CPU_WEIGHT_OF_LEADER_BYTES_OUT_RATE =
-        config.getDouble(KafkaCruiseControlConfig.LEADER_NETWORK_OUTBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG);
+        config.getDouble(MonitorConfig.LEADER_NETWORK_OUTBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG);
     CPU_WEIGHT_OF_FOLLOWER_BYTES_IN_RATE =
-        config.getDouble(KafkaCruiseControlConfig.FOLLOWER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG);
+        config.getDouble(MonitorConfig.FOLLOWER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG);
     LINEAR_REGRESSION_PARAMETERS.init(config);
   }
 

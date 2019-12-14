@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
+import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaBrokerMetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 import java.util.Collections;
@@ -81,7 +82,7 @@ public class MetricFetcherManager {
    * @param time        The time object.
    * @param dropwizardMetricRegistry The Metric Registry object.
    * @param brokerCapacityConfigResolver The resolver for retrieving broker capacities.
-   * @param sampler Metric fetcher or {@code null} to create one using {@link KafkaCruiseControlConfig#METRIC_SAMPLER_CLASS_CONFIG}.
+   * @param sampler Metric fetcher or {@code null} to create one using {@link MonitorConfig#METRIC_SAMPLER_CLASS_CONFIG}.
    */
   public MetricFetcherManager(KafkaCruiseControlConfig config,
                               KafkaPartitionMetricSampleAggregator partitionMetricSampleAggregator,
@@ -99,10 +100,10 @@ public class MetricFetcherManager {
     _metricDef = metricDef;
     _samplingExecutor = Executors.newFixedThreadPool(SUPPORTED_NUM_METRIC_FETCHER,
                                                      new KafkaCruiseControlThreadFactory("MetricFetcher", true, LOG));
-    _partitionAssignor = config.getConfiguredInstance(KafkaCruiseControlConfig.METRIC_SAMPLER_PARTITION_ASSIGNOR_CLASS_CONFIG,
+    _partitionAssignor = config.getConfiguredInstance(MonitorConfig.METRIC_SAMPLER_PARTITION_ASSIGNOR_CLASS_CONFIG,
                                                       MetricSamplerPartitionAssignor.class);
     _partitionAssignor.configure(config.mergedConfigValues());
-    _useLinearRegressionModel = config.getBoolean(KafkaCruiseControlConfig.USE_LINEAR_REGRESSION_MODEL_CONFIG);
+    _useLinearRegressionModel = config.getBoolean(MonitorConfig.USE_LINEAR_REGRESSION_MODEL_CONFIG);
     _samplingFetcherTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("MetricFetcherManager",
                                                                                 "partition-samples-fetcher-timer"));
     _samplingFetcherFailureRate = dropwizardMetricRegistry.meter(MetricRegistry.name("MetricFetcherManager",
@@ -113,7 +114,7 @@ public class MetricFetcherManager {
                                                                                              "training-samples-fetcher-failure-rate"));
 
     _metricSampler = sampler == null
-                     ? config.getConfiguredInstance(KafkaCruiseControlConfig.METRIC_SAMPLER_CLASS_CONFIG, MetricSampler.class,
+                     ? config.getConfiguredInstance(MonitorConfig.METRIC_SAMPLER_CLASS_CONFIG, MetricSampler.class,
                                                     Collections.singletonMap(BROKER_CAPACITY_CONFIG_RESOLVER_OBJECT_CONFIG,
                                                                              brokerCapacityConfigResolver))
                      : sampler;

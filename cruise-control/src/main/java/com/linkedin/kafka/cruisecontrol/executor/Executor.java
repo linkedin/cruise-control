@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
@@ -161,7 +162,7 @@ public class Executor {
            ExecutorNotifier executorNotifier,
            UserTaskManager userTaskManager,
            AnomalyDetector anomalyDetector) {
-      String zkUrl = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
+      String zkUrl = config.getString(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG);
     _numExecutionStopped = new AtomicInteger(0);
     _numExecutionStoppedByUser = new AtomicInteger(0);
     _executionStoppedByUser = new AtomicBoolean(false);
@@ -174,7 +175,7 @@ public class Executor {
     registerGaugeSensors(dropwizardMetricRegistry);
 
     _time = time;
-    boolean zkSecurityEnabled = config.getBoolean(KafkaCruiseControlConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
+    boolean zkSecurityEnabled = config.getBoolean(ExecutorConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
     _kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zkUrl, ZK_EXECUTOR_METRIC_GROUP, ZK_EXECUTOR_METRIC_TYPE,
         zkSecurityEnabled);
     _adminClient = KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
@@ -187,8 +188,8 @@ public class Executor {
                                                                                new ClusterResourceListeners()),
                                                                   -1L,
                                                                   time);
-    _defaultExecutionProgressCheckIntervalMs = config.getLong(KafkaCruiseControlConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
-    _leaderMovementTimeoutMs = config.getLong(KafkaCruiseControlConfig.LEADER_MOVEMENT_TIMEOUT_MS_CONFIG);
+    _defaultExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
+    _leaderMovementTimeoutMs = config.getLong(ExecutorConfig.LEADER_MOVEMENT_TIMEOUT_MS_CONFIG);
     _requestedExecutionProgressCheckIntervalMs = null;
     _proposalExecutor =
         Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("ProposalExecutor", false, LOG));
@@ -200,7 +201,7 @@ public class Executor {
     _uuid = null;
     _reason = null;
     _executorNotifier = executorNotifier != null ? executorNotifier
-                                                 : config.getConfiguredInstance(KafkaCruiseControlConfig.EXECUTOR_NOTIFIER_CLASS_CONFIG,
+                                                 : config.getConfiguredInstance(ExecutorConfig.EXECUTOR_NOTIFIER_CLASS_CONFIG,
                                                                                 ExecutorNotifier.class);
     _userTaskManager = userTaskManager;
     _anomalyDetector = anomalyDetector;

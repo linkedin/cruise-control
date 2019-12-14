@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotificationResult;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotifier;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
@@ -81,18 +82,18 @@ public class AnomalyDetector {
     _anomalies = new PriorityBlockingQueue<>(ANOMALY_QUEUE_INITIAL_CAPACITY, anomalyComparator());
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
     _adminClient = KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
-    long anomalyDetectionIntervalMs = config.getLong(KafkaCruiseControlConfig.ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
-    Long goalViolationDetectionIntervalMs = config.getLong(KafkaCruiseControlConfig.GOAL_VIOLATION_DETECTION_INTERVAL_MS_CONFIG);
+    long anomalyDetectionIntervalMs = config.getLong(AnomalyDetectorConfig.ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
+    Long goalViolationDetectionIntervalMs = config.getLong(AnomalyDetectorConfig.GOAL_VIOLATION_DETECTION_INTERVAL_MS_CONFIG);
     _goalViolationDetectionIntervalMs = goalViolationDetectionIntervalMs == null ? anomalyDetectionIntervalMs
                                                                                  : goalViolationDetectionIntervalMs;
-    Long metricAnomalyDetectionIntervalMs = config.getLong(KafkaCruiseControlConfig.METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
+    Long metricAnomalyDetectionIntervalMs = config.getLong(AnomalyDetectorConfig.METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
     _metricAnomalyDetectionIntervalMs = metricAnomalyDetectionIntervalMs == null ? anomalyDetectionIntervalMs
                                                                                  : metricAnomalyDetectionIntervalMs;
-    Long diskFailureDetectionIntervalMs = config.getLong(KafkaCruiseControlConfig.DISK_FAILURE_DETECTION_INTERVAL_MS_CONFIG);
+    Long diskFailureDetectionIntervalMs = config.getLong(AnomalyDetectorConfig.DISK_FAILURE_DETECTION_INTERVAL_MS_CONFIG);
     _diskFailureDetectionIntervalMs = diskFailureDetectionIntervalMs == null ? anomalyDetectionIntervalMs
                                                                              : diskFailureDetectionIntervalMs;
-    _brokerFailureDetectionBackoffMs = config.getLong(KafkaCruiseControlConfig.BROKER_FAILURE_DETECTION_BACKOFF_MS_CONFIG);
-    _anomalyNotifier = config.getConfiguredInstance(KafkaCruiseControlConfig.ANOMALY_NOTIFIER_CLASS_CONFIG,
+    _brokerFailureDetectionBackoffMs = config.getLong(AnomalyDetectorConfig.BROKER_FAILURE_DETECTION_BACKOFF_MS_CONFIG);
+    _anomalyNotifier = config.getConfiguredInstance(AnomalyDetectorConfig.ANOMALY_NOTIFIER_CLASS_CONFIG,
                                                     AnomalyNotifier.class);
     _kafkaCruiseControl = kafkaCruiseControl;
     _selfHealingGoals = getSelfHealingGoalNames(config);
@@ -105,7 +106,7 @@ public class AnomalyDetector {
                                                           new KafkaCruiseControlThreadFactory(METRIC_REGISTRY_NAME, false, LOG));
     _shutdown = false;
     // Add anomaly detector state
-    int numCachedRecentAnomalyStates = config.getInt(KafkaCruiseControlConfig.NUM_CACHED_RECENT_ANOMALY_STATES_CONFIG);
+    int numCachedRecentAnomalyStates = config.getInt(AnomalyDetectorConfig.NUM_CACHED_RECENT_ANOMALY_STATES_CONFIG);
     _anomalyLoggerExecutor =
         Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("AnomalyLogger", true, null));
     _anomalyInProgress = null;

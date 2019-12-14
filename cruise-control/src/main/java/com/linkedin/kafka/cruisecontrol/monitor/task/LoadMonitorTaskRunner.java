@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
+import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.SampleStore;
@@ -112,14 +113,14 @@ public class LoadMonitorTaskRunner {
     _partitionMetricSampleAggregator = partitionMetricSampleAggregator;
     _brokerMetricSampleAggregator = brokerMetricSampleAggregator;
     _metadataClient = metadataClient;
-    _sampleStore = config.getConfiguredInstance(KafkaCruiseControlConfig.SAMPLE_STORE_CLASS_CONFIG, SampleStore.class);
-    long samplingIntervalMs = config.getLong(KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG);
+    _sampleStore = config.getConfiguredInstance(MonitorConfig.SAMPLE_STORE_CLASS_CONFIG, SampleStore.class);
+    long samplingIntervalMs = config.getLong(MonitorConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG);
 
     _samplingScheduler =
         Executors.newScheduledThreadPool(2, new KafkaCruiseControlThreadFactory("SamplingScheduler", true, LOG));
     _samplingIntervalMs = samplingIntervalMs;
-    _configuredNumWindows = config.getInt(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG);
-    _configuredWindowMs = config.getLong(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG);
+    _configuredNumWindows = config.getInt(MonitorConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG);
+    _configuredWindowMs = config.getLong(MonitorConfig.PARTITION_METRICS_WINDOW_MS_CONFIG);
 
     _state = new AtomicReference<>(NOT_STARTED);
     _bootstrapProgress = -1.0;

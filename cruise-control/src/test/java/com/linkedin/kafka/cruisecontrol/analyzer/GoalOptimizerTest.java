@@ -6,6 +6,9 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.util.Properties;
@@ -19,11 +22,11 @@ public class GoalOptimizerTest {
   @Test
   public void testNoPreComputingThread() {
     Properties props = new Properties();
-    props.setProperty(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG, "bootstrap.servers");
-    props.setProperty(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG, "connect:1234");
-    props.setProperty(KafkaCruiseControlConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG, "0");
+    props.setProperty(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, "bootstrap.servers");
+    props.setProperty(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, "connect:1234");
+    props.setProperty(AnalyzerConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG, "0");
     props.setProperty(
-        KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG,
+        AnalyzerConfig.DEFAULT_GOALS_CONFIG,
         "com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal,"
         + "com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal,"
         + "com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal,"

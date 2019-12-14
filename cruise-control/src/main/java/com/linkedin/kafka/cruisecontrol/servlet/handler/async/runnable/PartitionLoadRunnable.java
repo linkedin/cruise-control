@@ -12,7 +12,7 @@ import com.linkedin.kafka.cruisecontrol.model.Partition;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.MIN_VALID_PARTITION_RATIO_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.MIN_VALID_PARTITION_RATIO_CONFIG;
 
 
 /**

@@ -14,6 +14,7 @@ import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.RequestParameterWrapper;
+import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.Purgatory;
 import java.io.IOException;
 import java.util.HashMap;
@@ -49,7 +50,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   public KafkaCruiseControlServlet(AsyncKafkaCruiseControl asynckafkaCruiseControl, MetricRegistry dropwizardMetricRegistry) {
     _config = asynckafkaCruiseControl.config();
     _asyncKafkaCruiseControl = asynckafkaCruiseControl;
-    _twoStepVerification = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
+    _twoStepVerification = _config.getBoolean(WebServerConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _purgatory = _twoStepVerification ? new Purgatory(_config) : null;
     _userTaskManager = new UserTaskManager(_config, dropwizardMetricRegistry, _successfulRequestExecutionTimer, _purgatory);
     _asyncKafkaCruiseControl.setUserTaskManagerInExecutor(_userTaskManager);
@@ -155,7 +156,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     // Sanity check: if the request is for REVIEW_BOARD, two step verification must be enabled.
     if (endPoint == REVIEW_BOARD && !_twoStepVerification) {
       throw new ConfigException(String.format("Attempt to access %s endpoint without enabling '%s' config.",
-                                              endPoint, KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG));
+                                              endPoint, WebServerConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG));
     }
 
     RequestParameterWrapper requestParameter = requestParameterFor(endPoint);
@@ -185,7 +186,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       // Sanity check: if the request is for REVIEW, two step verification must be enabled.
       if (!_twoStepVerification) {
         throw new ConfigException(String.format("Attempt to access %s endpoint without enabling '%s' config.",
-                                                endPoint, KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG));
+                                                endPoint, WebServerConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG));
       }
 
       parameters = _config.getConfiguredInstance(requestParameter.parametersClass(), CruiseControlParameters.class, parameterConfigOverrides);
