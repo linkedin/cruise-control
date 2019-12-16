@@ -10,6 +10,7 @@ import io.github.classgraph.ScanResult;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.media.ArraySchema;
+import io.swagger.v3.oas.models.media.BooleanSchema;
 import io.swagger.v3.oas.models.media.ComposedSchema;
 import io.swagger.v3.oas.models.media.IntegerSchema;
 import io.swagger.v3.oas.models.media.MapSchema;
@@ -160,13 +161,20 @@ public class ResponseTest {
         // Check key's necessity.
         assertEquals(className + ":" + k, fields.get(k), schema.getRequired() != null && schema.getRequired().contains(k));
         // Check value
-        Schema schemaToCheck = v instanceof ArraySchema ? ((ArraySchema) v).getItems() :
-                               v instanceof MapSchema   ? (Schema) v.getAdditionalProperties()
-                                                        : v;
+        Schema schemaToCheck = v;
+        while (schemaToCheck instanceof ArraySchema || schemaToCheck instanceof MapSchema) {
+          if (schemaToCheck instanceof ArraySchema) {
+            schemaToCheck = ((ArraySchema) schemaToCheck).getItems();
+          } else {
+            schemaToCheck = (Schema) schemaToCheck.getAdditionalProperties();
+          }
+        }
+
         if (schemaToCheck instanceof StringSchema ||
             schemaToCheck instanceof IntegerSchema ||
             schemaToCheck instanceof NumberSchema ||
-            schemaToCheck instanceof ComposedSchema) {
+            schemaToCheck instanceof ComposedSchema ||
+            schemaToCheck instanceof BooleanSchema) {
           return;
         }
         assertNotEquals(schemaToCheck.get$ref(), null);
