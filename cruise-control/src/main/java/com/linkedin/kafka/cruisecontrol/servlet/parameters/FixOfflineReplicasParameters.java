@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
+import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
 import java.util.Collections;
 import java.util.Map;
@@ -22,6 +23,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICATION_THROTTLE_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REVIEW_ID_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.STOP_ONGOING_EXECUTION_PARAM;
 
 
 /**
@@ -39,7 +41,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *    &amp;replica_movement_strategies=[strategy1,strategy2...]
  *    &amp;replication_throttle=[bytes_per_second]
  *    &amp;review_id=[id]&amp;reason=[reason-for-request]
- *    &amp;execution_progress_check_interval_ms=[interval_in_ms]
+ *    &amp;execution_progress_check_interval_ms=[interval_in_ms]&amp;stop_ongoing_execution=[true/false]
  * </pre>
  */
 public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameters {
@@ -55,6 +57,7 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
     validParameterNames.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
     validParameterNames.add(REPLICATION_THROTTLE_PARAM);
     validParameterNames.add(REVIEW_ID_PARAM);
+    validParameterNames.add(STOP_ONGOING_EXECUTION_PARAM);
     validParameterNames.addAll(GoalBasedOptimizationParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
     CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
   }
@@ -67,6 +70,7 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
   protected Long _replicationThrottle;
   protected Integer _reviewId;
   protected String _reason;
+  protected boolean _stopOngoingExecution;
 
   public FixOfflineReplicasParameters() {
     super();
@@ -86,6 +90,10 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
     boolean requestReasonRequired = _config.getBoolean(KafkaCruiseControlConfig.REQUEST_REASON_REQUIRED_CONFIG);
     _reason = ParameterUtils.reason(_request, requestReasonRequired && !_dryRun);
+    _stopOngoingExecution = ParameterUtils.stopOngoingExecution(_request);
+    if (_stopOngoingExecution && _dryRun) {
+      throw new UserRequestException(String.format("%s and %s cannot both be set to true.", STOP_ONGOING_EXECUTION_PARAM, DRY_RUN_PARAM));
+    }
   }
 
   @Override
@@ -127,6 +135,10 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
 
   public String reason() {
     return _reason;
+  }
+
+  public boolean stopOngoingExecution() {
+    return _stopOngoingExecution;
   }
 
   @Override

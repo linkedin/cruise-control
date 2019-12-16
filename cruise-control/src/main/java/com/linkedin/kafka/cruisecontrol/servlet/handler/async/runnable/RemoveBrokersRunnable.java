@@ -37,7 +37,9 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_SKIP_HARD_GOAL_CHECK;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_MODEL_COMPLETENESS_REQUIREMENTS;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_STOP_ONGOING_EXECUTION;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.isKafkaAssignerMode;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.maybeStopOngoingExecutionToModifyAndWait;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.sanityCheckBrokersHavingOfflineReplicasOnBadDisks;
 
 
@@ -64,6 +66,7 @@ public class RemoveBrokersRunnable extends OperationRunnable {
   protected final boolean _excludeRecentlyRemovedBrokers;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Long _replicationThrottle;
+  protected final boolean _stopOngoingExecution;
   protected final boolean _isTriggeredByUserRequest;
 
   /**
@@ -96,6 +99,7 @@ public class RemoveBrokersRunnable extends OperationRunnable {
     _reason = reason;
     _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
     _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
+    _stopOngoingExecution = SELF_HEALING_STOP_ONGOING_EXECUTION;
     _isTriggeredByUserRequest = false;
   }
 
@@ -122,6 +126,7 @@ public class RemoveBrokersRunnable extends OperationRunnable {
     _reason = parameters.reason();
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
+    _stopOngoingExecution = parameters.stopOngoingExecution();
     _isTriggeredByUserRequest = true;
   }
 
@@ -138,16 +143,18 @@ public class RemoveBrokersRunnable extends OperationRunnable {
    * @throws KafkaCruiseControlException When any exception occurred during the removal process.
    */
   public OptimizerResult removeBrokers() throws KafkaCruiseControlException {
-    _kafkaCruiseControl.sanityCheckDryRun(_dryRun);
+    _kafkaCruiseControl.sanityCheckDryRun(_dryRun, _stopOngoingExecution);
     sanityCheckGoals(_goals, _skipHardGoalCheck, _kafkaCruiseControl.config());
     List<Goal> goalsByPriority = goalsByPriority(_goals, _kafkaCruiseControl.config());
+    OperationProgress operationProgress = _future.operationProgress();
     if (goalsByPriority.isEmpty()) {
       throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");
+    } else if (_stopOngoingExecution) {
+      maybeStopOngoingExecutionToModifyAndWait(_kafkaCruiseControl, operationProgress);
     }
     ModelCompletenessRequirements modelCompletenessRequirements =
         _kafkaCruiseControl.modelCompletenessRequirements(goalsByPriority).weaker(_modelCompletenessRequirements);
     sanityCheckLoadMonitorReadiness(modelCompletenessRequirements, _kafkaCruiseControl.getLoadMonitorTaskRunnerState());
-    OperationProgress operationProgress = _future.operationProgress();
     try (AutoCloseable ignored = _kafkaCruiseControl.acquireForModelGeneration(operationProgress)) {
       ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(modelCompletenessRequirements, operationProgress);
       sanityCheckBrokersHavingOfflineReplicasOnBadDisks(_goals, clusterModel);

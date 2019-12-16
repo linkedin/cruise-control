@@ -29,6 +29,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityChe
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckGoals;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckLoadMonitorReadiness;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.isKafkaAssignerMode;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.maybeStopOngoingExecutionToModifyAndWait;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.sanityCheckBrokersHavingOfflineReplicasOnBadDisks;
 
 
@@ -54,6 +55,7 @@ public class AddBrokersRunnable extends OperationRunnable {
   protected final boolean _excludeRecentlyRemovedBrokers;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Long _replicationThrottle;
+  protected final boolean _stopOngoingExecution;
 
   public AddBrokersRunnable(KafkaCruiseControl kafkaCruiseControl,
                             OperationFuture future,
@@ -77,6 +79,7 @@ public class AddBrokersRunnable extends OperationRunnable {
     _reason = parameters.reason();
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
+    _stopOngoingExecution = parameters.stopOngoingExecution();
   }
 
   @Override
@@ -92,16 +95,18 @@ public class AddBrokersRunnable extends OperationRunnable {
    * @throws KafkaCruiseControlException When any exception occurred during the broker addition.
    */
   public OptimizerResult addBrokers() throws KafkaCruiseControlException {
-    _kafkaCruiseControl.sanityCheckDryRun(_dryRun);
+    _kafkaCruiseControl.sanityCheckDryRun(_dryRun, _stopOngoingExecution);
     sanityCheckGoals(_goals, _skipHardGoalCheck, _kafkaCruiseControl.config());
     List<Goal> goalsByPriority = goalsByPriority(_goals, _kafkaCruiseControl.config());
+    OperationProgress operationProgress = _future.operationProgress();
     if (goalsByPriority.isEmpty()) {
       throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");
+    } else if (_stopOngoingExecution) {
+      maybeStopOngoingExecutionToModifyAndWait(_kafkaCruiseControl, operationProgress);
     }
     ModelCompletenessRequirements modelCompletenessRequirements =
         _kafkaCruiseControl.modelCompletenessRequirements(goalsByPriority).weaker(_modelCompletenessRequirements);
     sanityCheckLoadMonitorReadiness(modelCompletenessRequirements, _kafkaCruiseControl.getLoadMonitorTaskRunnerState());
-    OperationProgress operationProgress = _future.operationProgress();
     try (AutoCloseable ignored = _kafkaCruiseControl.acquireForModelGeneration(operationProgress)) {
       _kafkaCruiseControl.sanityCheckBrokerPresence(_brokerIds);
       ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(modelCompletenessRequirements, operationProgress);

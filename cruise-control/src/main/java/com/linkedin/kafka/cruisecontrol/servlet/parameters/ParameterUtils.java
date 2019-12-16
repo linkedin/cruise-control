@@ -65,6 +65,7 @@ public class ParameterUtils {
   public static final String END_MS_PARAM = "end";
   public static final String ENTRIES_PARAM = "entries";
   public static final String ALLOW_CAPACITY_ESTIMATION_PARAM = "allow_capacity_estimation";
+  public static final String STOP_ONGOING_EXECUTION_PARAM = "stop_ongoing_execution";
   public static final String CLEAR_METRICS_PARAM = "clearmetrics";
   public static final String TIME_PARAM = "time";
   public static final String VERBOSE_PARAM = "verbose";
@@ -259,6 +260,10 @@ public class ParameterUtils {
 
   static boolean skipRackAwarenessCheck(HttpServletRequest request) {
     return getBooleanParam(request, SKIP_RACK_AWARENESS_CHECK_PARAM, false);
+  }
+
+  static boolean stopOngoingExecution(HttpServletRequest request) {
+    return getBooleanParam(request, STOP_ONGOING_EXECUTION_PARAM, false);
   }
 
   private static boolean excludeBrokers(HttpServletRequest request, String parameter, boolean defaultIfMissing) {

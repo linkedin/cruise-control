@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
+import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
 import java.util.Collections;
 import java.util.Map;
@@ -25,6 +26,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REVIEW_ID_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.BROKER_ID_AND_LOGDIRS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.STOP_ONGOING_EXECUTION_PARAM;
 
 
 /**
@@ -44,7 +46,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *    &amp;exclude_recently_demoted_brokers=[true/false]&amp;replica_movement_strategies=[strategy1,strategy2...]
  *    &amp;brokerid_and_logdirs=[broker_id1-logdir1,broker_id2-logdir2]&amp;review_id=[id]
  *    &amp;replication_throttle=[bytes_per_second]&amp;reason=[reason-for-request]
- *    &amp;execution_progress_check_interval_ms=[interval_in_ms]
+ *    &amp;execution_progress_check_interval_ms=[interval_in_ms]&amp;stop_ongoing_execution=[true/false]
  * </pre>
  */
 public class DemoteBrokerParameters extends KafkaOptimizationParameters {
@@ -62,6 +64,7 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
     validParameterNames.add(REPLICATION_THROTTLE_PARAM);
     validParameterNames.add(REVIEW_ID_PARAM);
     validParameterNames.add(BROKER_ID_AND_LOGDIRS_PARAM);
+    validParameterNames.add(STOP_ONGOING_EXECUTION_PARAM);
     validParameterNames.addAll(KafkaOptimizationParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
     CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
   }
@@ -76,6 +79,7 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
   protected Integer _reviewId;
   protected Map<Integer, Set<String>> _logdirByBrokerId;
   protected String _reason;
+  protected boolean _stopOngoingExecution;
 
   public DemoteBrokerParameters() {
     super();
@@ -98,6 +102,10 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
     _logdirByBrokerId = ParameterUtils.brokerIdAndLogdirs(_request);
     boolean requestReasonRequired = _config.getBoolean(KafkaCruiseControlConfig.REQUEST_REASON_REQUIRED_CONFIG);
     _reason = ParameterUtils.reason(_request, requestReasonRequired && !_dryRun);
+    _stopOngoingExecution = ParameterUtils.stopOngoingExecution(_request);
+    if (_stopOngoingExecution && _dryRun) {
+      throw new UserRequestException(String.format("%s and %s cannot both be set to true.", STOP_ONGOING_EXECUTION_PARAM, DRY_RUN_PARAM));
+    }
   }
 
   @Override
@@ -147,6 +155,10 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
 
   public String reason() {
     return _reason;
+  }
+
+  public boolean stopOngoingExecution() {
+    return _stopOngoingExecution;
   }
 
   @Override

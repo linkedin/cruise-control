@@ -4,9 +4,12 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable;
 
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
+import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
+import com.linkedin.kafka.cruisecontrol.async.progress.WaitingForOngoingExecutionToStop;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -30,6 +33,10 @@ import org.apache.kafka.common.PartitionInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.NO_TASK_IN_PROGRESS;
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.STOP_PROPOSAL_EXECUTION;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.FORCE_STOP_PARAM;
+
 
 public class RunnableUtils {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlUtils.class);
@@ -41,6 +48,7 @@ public class RunnableUtils {
   public static final Integer SELF_HEALING_CONCURRENT_MOVEMENTS = null;
   public static final Long SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS = null;
   public static final boolean SELF_HEALING_SKIP_HARD_GOAL_CHECK = false;
+  public static final boolean SELF_HEALING_STOP_ONGOING_EXECUTION = false;
   public static final ModelCompletenessRequirements SELF_HEALING_MODEL_COMPLETENESS_REQUIREMENTS = null;
   public static final boolean SELF_HEALING_SKIP_URP_DEMOTION = true;
   public static final boolean SELF_HEALING_EXCLUDE_FOLLOWER_DEMOTION = true;
@@ -201,6 +209,53 @@ public class RunnableUtils {
       throw new IllegalStateException("Kafka Assigner mode is not supported when there are offline replicas on bad disks."
                                       + " Please run fix_offline_replicas before using Kafka Assigner mode.");
     }
+  }
+
+  /**
+   * Gracefully stop the ongoing execution (if any) and wait until the execution stops. Exceptional cases:
+   * <ul>
+   *   <li>If there is no ongoing Cruise Control execution, this call is a noop.</li>
+   *   <li>If another request has asked for modifying the ongoing execution, then throw an exception.</li>
+   * </ul>
+   *
+   * The caller of this method should be aware that the following scenario is possible and acceptable:
+   * <ol>
+   *   <li>A user request calls this function to stop the ongoing execution.</li>
+   *   <li>This function stops the ongoing execution -- i.e. the execution state now is
+   *   {@link com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State#NO_TASK_IN_PROGRESS}.</li>
+   *   <li>Before the caller of this function would start a new execution, another user request (or self-healing)
+   *   can start a new execution.</li>
+   * </ol>
+   *
+   * @param kafkaCruiseControl The Kafka Cruise Control instance.
+   * @param operationProgress The progress for the job.
+   */
+  public static void maybeStopOngoingExecutionToModifyAndWait(KafkaCruiseControl kafkaCruiseControl,
+                                                              OperationProgress operationProgress) {
+    if (!kafkaCruiseControl.hasOngoingExecution()) {
+      LOG.info("There is already no ongoing Cruise Control execution. Skip stopping execution.");
+      return;
+    } else if (!kafkaCruiseControl.modifyOngoingExecution(true)) {
+      throw new IllegalStateException("Another request has asked for modifying the ongoing execution.");
+    }
+
+    LOG.info("Gracefully stopping the ongoing execution... Use {} endpoint with {}=true to force-stop it now.",
+             STOP_PROPOSAL_EXECUTION, FORCE_STOP_PARAM);
+
+    WaitingForOngoingExecutionToStop step = new WaitingForOngoingExecutionToStop();
+    operationProgress.addStep(step);
+
+    while (kafkaCruiseControl.executionState() != NO_TASK_IN_PROGRESS) {
+      // Stop ongoing execution, and wait for the execution to stop.
+      try {
+        kafkaCruiseControl.userTriggeredStopExecution(false);
+        Thread.sleep(kafkaCruiseControl.executionProgressCheckIntervalMs());
+      } catch (InterruptedException e) {
+        kafkaCruiseControl.modifyOngoingExecution(false);
+        throw new IllegalStateException("Interrupted while waiting for gracefully stopping the ongoing execution.");
+      }
+    }
+    step.done();
   }
 
   /**

@@ -35,6 +35,8 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_SKIP_HARD_GOAL_CHECK;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_MODEL_COMPLETENESS_REQUIREMENTS;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_STOP_ONGOING_EXECUTION;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.maybeStopOngoingExecutionToModifyAndWait;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.sanityCheckOfflineReplicaPresence;
 
 
@@ -58,6 +60,7 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
   protected final boolean _excludeRecentlyRemovedBrokers;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Long _replicationThrottle;
+  protected final boolean _stopOngoingExecution;
   protected final boolean _isTriggeredByUserRequest;
 
   /**
@@ -86,6 +89,7 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
     _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
     _replicationThrottle = kafkaCruiseControl.config().getLong(DEFAULT_REPLICATION_THROTTLE_CONFIG);
+    _stopOngoingExecution = SELF_HEALING_STOP_ONGOING_EXECUTION;
     _isTriggeredByUserRequest = false;
   }
 
@@ -109,6 +113,7 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
     _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
     _replicationThrottle = parameters.replicationThrottle();
+    _stopOngoingExecution = parameters.stopOngoingExecution();
     _isTriggeredByUserRequest = true;
   }
 
@@ -125,16 +130,18 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
    * @throws KafkaCruiseControlException When any exception occurred during the process of fixing offline replicas.
    */
   public OptimizerResult fixOfflineReplicas() throws KafkaCruiseControlException {
-    _kafkaCruiseControl.sanityCheckDryRun(_dryRun);
+    _kafkaCruiseControl.sanityCheckDryRun(_dryRun, _stopOngoingExecution);
     sanityCheckGoals(_goals, _skipHardGoalCheck, _kafkaCruiseControl.config());
     List<Goal> goalsByPriority = goalsByPriority(_goals, _kafkaCruiseControl.config());
+    OperationProgress operationProgress = _future.operationProgress();
     if (goalsByPriority.isEmpty()) {
       throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");
+    } else if (_stopOngoingExecution) {
+      maybeStopOngoingExecutionToModifyAndWait(_kafkaCruiseControl, operationProgress);
     }
     ModelCompletenessRequirements modelCompletenessRequirements =
         _kafkaCruiseControl.modelCompletenessRequirements(goalsByPriority).weaker(_modelCompletenessRequirements);
     sanityCheckLoadMonitorReadiness(modelCompletenessRequirements, _kafkaCruiseControl.getLoadMonitorTaskRunnerState());
-    OperationProgress operationProgress = _future.operationProgress();
     try (AutoCloseable ignored = _kafkaCruiseControl.acquireForModelGeneration(operationProgress)) {
       ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(modelCompletenessRequirements, operationProgress);
       // Ensure that the generated cluster model contains offline replicas.

@@ -25,6 +25,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICA_MOVEMENT_STRATEGIES_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICATION_THROTTLE_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.STOP_ONGOING_EXECUTION_PARAM;
 
 
 /**
@@ -46,6 +47,7 @@ public class TopicReplicationFactorChangeParameters extends GoalBasedOptimizatio
     validParameterNames.add(SKIP_HARD_GOAL_CHECK_PARAM);
     validParameterNames.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
     validParameterNames.add(REPLICATION_THROTTLE_PARAM);
+    validParameterNames.add(STOP_ONGOING_EXECUTION_PARAM);
     validParameterNames.addAll(GoalBasedOptimizationParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
     CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
   }
@@ -59,6 +61,7 @@ public class TopicReplicationFactorChangeParameters extends GoalBasedOptimizatio
   protected ReplicaMovementStrategy _replicaMovementStrategy;
   protected Long _replicationThrottle;
   protected String _reason;
+  protected boolean _stopOngoingExecution;
 
   protected TopicReplicationFactorChangeParameters() {
     super();
@@ -81,6 +84,10 @@ public class TopicReplicationFactorChangeParameters extends GoalBasedOptimizatio
     _replicationThrottle = ParameterUtils.replicationThrottle(_request, _config);
     boolean requestReasonRequired = _config.getBoolean(KafkaCruiseControlConfig.REQUEST_REASON_REQUIRED_CONFIG);
     _reason = ParameterUtils.reason(_request, requestReasonRequired && !_dryRun);
+    _stopOngoingExecution = ParameterUtils.stopOngoingExecution(_request);
+    if (_stopOngoingExecution && _dryRun) {
+      throw new UserRequestException(String.format("%s and %s cannot both be set to true.", STOP_ONGOING_EXECUTION_PARAM, DRY_RUN_PARAM));
+    }
   }
 
   /**
@@ -140,6 +147,10 @@ public class TopicReplicationFactorChangeParameters extends GoalBasedOptimizatio
 
   public String reason() {
     return _reason;
+  }
+
+  public boolean stopOngoingExecution() {
+    return _stopOngoingExecution;
   }
 
   @Override

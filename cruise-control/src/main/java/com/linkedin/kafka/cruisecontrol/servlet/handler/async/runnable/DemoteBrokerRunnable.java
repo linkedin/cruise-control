@@ -36,6 +36,8 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_SKIP_URP_DEMOTION;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXCLUDE_FOLLOWER_DEMOTION;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_STOP_ONGOING_EXECUTION;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.maybeStopOngoingExecutionToModifyAndWait;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL;
 
 
@@ -58,6 +60,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Map<Integer, Set<String>> _brokerIdAndLogdirs;
   protected final boolean _isTriggeredByUserRequest;
+  protected final boolean _stopOngoingExecution;
 
   /**
    * Constructor to be used for creating a runnable for self-healing.
@@ -83,6 +86,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
     _brokerIdAndLogdirs = Collections.emptyMap();
     _reason = reason;
     _isTriggeredByUserRequest = false;
+    _stopOngoingExecution = SELF_HEALING_STOP_ONGOING_EXECUTION;
   }
 
   public DemoteBrokerRunnable(KafkaCruiseControl kafkaCruiseControl,
@@ -104,6 +108,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _brokerIdAndLogdirs = parameters.brokerIdAndLogdirs();
     _isTriggeredByUserRequest = true;
+    _stopOngoingExecution = parameters.stopOngoingExecution();
   }
 
   @Override
@@ -128,11 +133,14 @@ public class DemoteBrokerRunnable extends OperationRunnable {
    * @throws KafkaCruiseControlException When any exception occurred during the broker demotion.
    */
   public OptimizerResult demoteBrokers() throws KafkaCruiseControlException {
-    _kafkaCruiseControl.sanityCheckDryRun(_dryRun);
+    _kafkaCruiseControl.sanityCheckDryRun(_dryRun, _stopOngoingExecution);
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(_skipUrpDemotion,
                                                                        _excludeFollowerDemotion,
                                                                        _skipUrpDemotion ? _kafkaCruiseControl.kafkaCluster() : null);
     OperationProgress operationProgress = _future.operationProgress();
+    if (_stopOngoingExecution) {
+      maybeStopOngoingExecutionToModifyAndWait(_kafkaCruiseControl, operationProgress);
+    }
     try (AutoCloseable ignored = _kafkaCruiseControl.acquireForModelGeneration(operationProgress)) {
       ensureDisjoint(_brokerIds, _brokerIdAndLogdirs.keySet(),
                      "Attempt to demote the broker and its disk in the same request is not allowed.");

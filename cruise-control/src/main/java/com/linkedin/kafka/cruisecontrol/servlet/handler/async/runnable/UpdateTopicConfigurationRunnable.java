@@ -37,6 +37,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPr
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckGoals;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckLoadMonitorReadiness;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.maybeStopOngoingExecutionToModifyAndWait;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.populateRackInfoForReplicationFactorChange;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.partitionWithOfflineReplicas;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.topicsForReplicationFactorChange;
@@ -77,7 +78,8 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
                                        _topicReplicationFactorChangeParameters.excludeRecentlyDemotedBrokers(),
                                        _topicReplicationFactorChangeParameters.excludeRecentlyRemovedBrokers(),
                                        _topicReplicationFactorChangeParameters.dryRun(),
-                                       _topicReplicationFactorChangeParameters.reason()),
+                                       _topicReplicationFactorChangeParameters.reason(),
+                                       _topicReplicationFactorChangeParameters.stopOngoingExecution()),
           _kafkaCruiseControl.config());
     }
     // Never reaches here.
@@ -130,6 +132,8 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
    * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
    * @param dryRun Whether it is a dry run or not.
    * @param reason Reason of execution.
+   * @param stopOngoingExecution True to stop the ongoing execution (if any) and start executing the given proposals,
+   *                             false otherwise.
    *
    * @return The optimization result.
    * @throws KafkaCruiseControlException When any exception occurred during the topic configuration updating.
@@ -148,13 +152,17 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
                                                       boolean excludeRecentlyDemotedBrokers,
                                                       boolean excludeRecentlyRemovedBrokers,
                                                       boolean dryRun,
-                                                      String reason)
+                                                      String reason,
+                                                      boolean stopOngoingExecution)
       throws KafkaCruiseControlException {
-    _kafkaCruiseControl.sanityCheckDryRun(dryRun);
+    _kafkaCruiseControl.sanityCheckDryRun(dryRun, stopOngoingExecution);
     sanityCheckGoals(goals, skipHardGoalCheck, _kafkaCruiseControl.config());
     List<Goal> goalsByPriority = goalsByPriority(goals, _kafkaCruiseControl.config());
+    OperationProgress operationProgress = _future.operationProgress();
     if (goalsByPriority.isEmpty()) {
       throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");
+    } else if (stopOngoingExecution) {
+      maybeStopOngoingExecutionToModifyAndWait(_kafkaCruiseControl, operationProgress);
     }
 
     Cluster cluster = _kafkaCruiseControl.kafkaCluster();
@@ -174,7 +182,6 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
     Map<Integer, String> rackByBroker = new HashMap<>();
     ModelCompletenessRequirements completenessRequirements = _kafkaCruiseControl.modelCompletenessRequirements(goalsByPriority).weaker(requirements);
     sanityCheckLoadMonitorReadiness(completenessRequirements, _kafkaCruiseControl.getLoadMonitorTaskRunnerState());
-    OperationProgress operationProgress = _future.operationProgress();
     try (AutoCloseable ignored = _kafkaCruiseControl.acquireForModelGeneration(operationProgress)) {
       ExecutorState executorState = _kafkaCruiseControl.executorState();
       Set<Integer> excludedBrokersForLeadership = excludeRecentlyDemotedBrokers ? executorState.recentlyDemotedBrokers()

@@ -23,6 +23,12 @@ RebalanceEndpoint:
         schema:
           type: boolean
           default: false
+      - name: stop_ongoing_execution
+        in: query
+        description: Whether to stop the ongoing execution (if any) and start executing the given request
+        schema:
+          type: boolean
+          default: false
       - name: concurrent_partition_movements_per_broker
         in: query
         description: The upper bound of ongoing replica movements going into/out of each broker

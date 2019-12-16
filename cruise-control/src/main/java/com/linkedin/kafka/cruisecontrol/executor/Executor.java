@@ -104,11 +104,12 @@ public class Executor {
   private volatile String _reason;
   private final ExecutorNotifier _executorNotifier;
 
-  private AtomicInteger _numExecutionStopped;
-  private AtomicInteger _numExecutionStoppedByUser;
-  private AtomicBoolean _executionStoppedByUser;
-  private AtomicInteger _numExecutionStartedInKafkaAssignerMode;
-  private AtomicInteger _numExecutionStartedInNonKafkaAssignerMode;
+  private final AtomicInteger _numExecutionStopped;
+  private final AtomicInteger _numExecutionStoppedByUser;
+  private final AtomicBoolean _executionStoppedByUser;
+  private final AtomicBoolean _ongoingExecutionIsBeingModified;
+  private final AtomicInteger _numExecutionStartedInKafkaAssignerMode;
+  private final AtomicInteger _numExecutionStartedInNonKafkaAssignerMode;
   private volatile boolean _isKafkaAssignerMode;
 
   private static final String EXECUTION_STARTED = "execution-started";
@@ -164,6 +165,7 @@ public class Executor {
     _numExecutionStopped = new AtomicInteger(0);
     _numExecutionStoppedByUser = new AtomicInteger(0);
     _executionStoppedByUser = new AtomicBoolean(false);
+    _ongoingExecutionIsBeingModified = new AtomicBoolean(false);
     _numExecutionStartedInKafkaAssignerMode = new AtomicInteger(0);
     _numExecutionStartedInNonKafkaAssignerMode = new AtomicInteger(0);
     _isKafkaAssignerMode = false;
@@ -210,6 +212,13 @@ public class Executor {
                                                          EXECUTION_HISTORY_SCANNER_INITIAL_DELAY_SECONDS,
                                                          EXECUTION_HISTORY_SCANNER_PERIOD_SECONDS,
                                                          TimeUnit.SECONDS);
+  }
+
+  /**
+   * @return The tasks that are {@link ExecutionTask.State#IN_PROGRESS} or {@link ExecutionTask.State#ABORTING} for all task types.
+   */
+  public Set<ExecutionTask> inExecutionTasks() {
+    return _executionTaskManager.inExecutionTasks();
   }
 
   /**
@@ -634,6 +643,17 @@ public class Executor {
   }
 
   /**
+   * Let executor know the intention regarding modifying the ongoing execution. Only one request at a given time is
+   * allowed to modify the ongoing execution.
+   *
+   * @param modify True to indicate, false to cancel the intention to modify
+   * @return True if the intention changes the state known by executor, false otherwise.
+   */
+  public boolean modifyOngoingExecution(boolean modify) {
+    return _ongoingExecutionIsBeingModified.compareAndSet(!modify, modify);
+  }
+
+  /**
    * Whether there is an ongoing operation triggered by current Cruise Control deployment.
    *
    * @return True if there is an ongoing execution.
@@ -724,14 +744,12 @@ public class Executor {
 
     public void run() {
       LOG.info("Starting executing balancing proposals.");
-      execute();
+      UserTaskManager.UserTaskInfo userTaskInfo = initExecution();
+      execute(userTaskInfo);
       LOG.info("Execution finished.");
     }
 
-    /**
-     * Start the actual execution of the proposals in order: First move replicas, then transfer leadership.
-     */
-    private void execute() {
+    private UserTaskManager.UserTaskInfo initExecution() {
       UserTaskManager.UserTaskInfo userTaskInfo = null;
       // If the task is triggered from a user request, mark the task to be in-execution state in user task manager and
       // retrieve the associated user task information.
@@ -741,6 +759,22 @@ public class Executor {
       _state = STARTING_EXECUTION;
       _executorState = ExecutorState.executionStarted(_uuid, _reason, _recentlyDemotedBrokers, _recentlyRemovedBrokers, _isTriggeredByUserRequest);
       OPERATION_LOG.info("Task [{}] execution starts. The reason of execution is {}.", _uuid, _reason);
+      _ongoingExecutionIsBeingModified.set(false);
+
+      return userTaskInfo;
+    }
+
+    /**
+     * Start the actual execution of the proposals in order:
+     * <ol>
+     *   <li>Inter-broker move replicas.</li>
+     *   <li>Intra-broker move replicas.</li>
+     *   <li>Transfer leadership.</li>
+     * </ol>
+     *
+     * @param userTaskInfo The task information if the task is triggered from a user request, {@code null} otherwise.
+     */
+    private void execute(UserTaskManager.UserTaskInfo userTaskInfo) {
       try {
         // Pause the metric sampling to avoid the loss of accuracy during execution.
         while (true) {
@@ -818,31 +852,32 @@ public class Executor {
         LOG.error("Executor got exception during execution", t);
         _executionException = t;
       } finally {
-        // If the finished task was triggered by a user request, update task status in user task manager; if task is triggered
-        // by an anomaly self-healing, update the task status in anomaly detector.
-        if (userTaskInfo != null) {
-          _userTaskManager.markTaskExecutionFinished(_uuid, _executorState.state() == STOPPING_EXECUTION || _executionException != null);
-        } else {
-          _anomalyDetector.markSelfHealingFinished(_uuid);
-        }
-
-        if (_executorState.state() == STOPPING_EXECUTION) {
-          notifyExecutionFinished(String.format("Task [%s] execution for %s is stopped by %s.", _uuid,
-                                                userTaskInfo != null ? ("user request " + userTaskInfo.requestUrl()) : "self-healing",
-                                                _executionStoppedByUser.get() ? "user" : "Cruise Control"),
-                                  true);
-        } else if (_executionException != null) {
-          notifyExecutionFinished(String.format("Task [%s] execution for %s is interrupted with exception %s.", _uuid,
-                                                userTaskInfo != null ? ("user request " + userTaskInfo.requestUrl()) : "self-healing",
-                                                _executionException.getMessage()),
-                                  true);
-        } else {
-          notifyExecutionFinished(String.format("Task [%s] execution for %s finished.", _uuid,
-                                                userTaskInfo != null ? ("user request " + userTaskInfo.requestUrl()) : "self-healing"),
-                                  false);
-        }
+        notifyFinishedTask(userTaskInfo);
         // Clear completed execution.
         clearCompletedExecution();
+      }
+    }
+
+    private void notifyFinishedTask(UserTaskManager.UserTaskInfo userTaskInfo) {
+      // If the finished task was triggered by a user request, update task status in user task manager; if task is triggered
+      // by an anomaly self-healing, update the task status in anomaly detector.
+      if (userTaskInfo != null) {
+        _userTaskManager.markTaskExecutionFinished(_uuid, _executorState.state() == STOPPING_EXECUTION || _executionException != null);
+      } else {
+        _anomalyDetector.markSelfHealingFinished(_uuid);
+      }
+
+      String prefix = String.format("Task [%s] %s execution is ", _uuid,
+                                    userTaskInfo != null ? ("user" + userTaskInfo.requestUrl()) : "self-healing");
+
+      if (_executorState.state() == STOPPING_EXECUTION) {
+        notifyExecutionFinished(String.format("%sstopped by %s.", prefix, _executionStoppedByUser.get() ? "user" : "Cruise Control"),
+                                true);
+      } else if (_executionException != null) {
+        notifyExecutionFinished(String.format("%sinterrupted with exception %s.", prefix, _executionException.getMessage()),
+                                true);
+      } else {
+        notifyExecutionFinished(String.format("%sfinished.", prefix), false);
       }
     }
 
@@ -937,7 +972,7 @@ public class Executor {
 
       int partitionsToMove = numTotalPartitionMovements;
       // Exhaust all the pending partition movements.
-      while ((partitionsToMove > 0 || !_executionTaskManager.inExecutionTasks().isEmpty()) && _stopSignal.get() == NO_STOP_EXECUTION) {
+      while ((partitionsToMove > 0 || !inExecutionTasks().isEmpty()) && _stopSignal.get() == NO_STOP_EXECUTION) {
         // Get tasks to execute.
         List<ExecutionTask> tasksToExecute = _executionTaskManager.getInterBrokerReplicaMovementTasks();
         LOG.info("Executor will execute {} task(s)", tasksToExecute.size());
@@ -964,15 +999,15 @@ public class Executor {
       }
       // After the partition movement finishes, wait for the controller to clean the reassignment zkPath. This also
       // ensures a clean stop when the execution is stopped in the middle.
-      Set<ExecutionTask> inExecutionTasks = _executionTaskManager.inExecutionTasks();
+      Set<ExecutionTask> inExecutionTasks = inExecutionTasks();
       while (!inExecutionTasks.isEmpty()) {
         LOG.info("Waiting for {} tasks moving {} MB to finish.", inExecutionTasks.size(),
                  _executionTaskManager.inExecutionInterBrokerDataToMoveInMB());
         List<ExecutionTask> completedRemainingTasks = waitForExecutionTaskToFinish();
-        inExecutionTasks = _executionTaskManager.inExecutionTasks();
+        inExecutionTasks = inExecutionTasks();
         throttleHelper.clearThrottles(completedRemainingTasks, new ArrayList<>(inExecutionTasks));
       }
-      if (_executionTaskManager.inExecutionTasks().isEmpty()) {
+      if (inExecutionTasks().isEmpty()) {
         LOG.info("Inter-broker partition movements finished.");
       } else if (_stopSignal.get() != NO_STOP_EXECUTION) {
         ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary(Collections.emptySet());
@@ -999,7 +1034,7 @@ public class Executor {
 
       int partitionsToMove = numTotalPartitionMovements;
       // Exhaust all the pending partition movements.
-      while ((partitionsToMove > 0 || !_executionTaskManager.inExecutionTasks().isEmpty()) && _stopSignal.get() == NO_STOP_EXECUTION) {
+      while ((partitionsToMove > 0 || !inExecutionTasks().isEmpty()) && _stopSignal.get() == NO_STOP_EXECUTION) {
         // Get tasks to execute.
         List<ExecutionTask> tasksToExecute = _executionTaskManager.getIntraBrokerReplicaMovementTasks();
         LOG.info("Executor will execute {} task(s)", tasksToExecute.size());
@@ -1021,14 +1056,14 @@ public class Executor {
             totalDataToMoveInMB == 0 ? 100 : String.format("%.2f", finishedDataToMoveInMB * UNIT_INTERVAL_TO_PERCENTAGE
                                                                    / totalDataToMoveInMB));
       }
-      Set<ExecutionTask> inExecutionTasks = _executionTaskManager.inExecutionTasks();
+      Set<ExecutionTask> inExecutionTasks = inExecutionTasks();
       while (!inExecutionTasks.isEmpty()) {
         LOG.info("Waiting for {} tasks moving {} MB to finish", inExecutionTasks.size(),
                  _executionTaskManager.inExecutionIntraBrokerDataMovementInMB());
         waitForExecutionTaskToFinish();
-        inExecutionTasks = _executionTaskManager.inExecutionTasks();
+        inExecutionTasks = inExecutionTasks();
       }
-      if (_executionTaskManager.inExecutionTasks().isEmpty()) {
+      if (inExecutionTasks().isEmpty()) {
         LOG.info("Intra-broker partition movements finished.");
       } else if (_stopSignal.get() != NO_STOP_EXECUTION) {
         ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary(Collections.emptySet());
@@ -1057,7 +1092,7 @@ public class Executor {
         LOG.info("{}/{} ({}%) leadership movements completed.", numFinishedLeadershipMovements,
                  numTotalLeadershipMovements, numFinishedLeadershipMovements * 100 / numTotalLeadershipMovements);
       }
-      if (_executionTaskManager.inExecutionTasks().isEmpty()) {
+      if (inExecutionTasks().isEmpty()) {
         LOG.info("Leadership movements finished.");
       } else if (_stopSignal.get() != NO_STOP_EXECUTION) {
         Map<ExecutionTask.State, Integer> leadershipMovementTasksByState =
@@ -1094,7 +1129,7 @@ public class Executor {
 
         ExecutorUtils.executePreferredLeaderElection(_kafkaZkClient, leadershipMovementTasks);
         LOG.trace("Waiting for leadership movement batch to finish.");
-        while (!_executionTaskManager.inExecutionTasks().isEmpty() && _stopSignal.get() == NO_STOP_EXECUTION) {
+        while (!inExecutionTasks().isEmpty() && _stopSignal.get() == NO_STOP_EXECUTION) {
           waitForExecutionTaskToFinish();
         }
       }
@@ -1136,12 +1171,12 @@ public class Executor {
             _adminClient, _config);
 
         if (LOG.isDebugEnabled()) {
-          LOG.debug("Tasks in execution: {}", _executionTaskManager.inExecutionTasks());
+          LOG.debug("Tasks in execution: {}", inExecutionTasks());
         }
         Set<ExecutionTask> deadOrAbortingNonLeadershipTasks = new HashSet<>();
         List<ExecutionTask> slowTasksToReport = new ArrayList<>();
         boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > SLOW_TASK_ALERTING_BACKOFF_TIME_MS;
-        for (ExecutionTask task : _executionTaskManager.inExecutionTasks()) {
+        for (ExecutionTask task : inExecutionTasks()) {
           TopicPartition tp = task.proposal().topicPartition();
           if (_stopSignal.get() == FORCE_STOP_EXECUTION) {
             LOG.debug("Task {} is marked as dead to force execution to stop.", task);
@@ -1178,7 +1213,7 @@ public class Executor {
         }
         handleDeadOrAbortingTasks(deadOrAbortingNonLeadershipTasks, slowTasksToReport);
         updateOngoingExecutionState();
-      } while (!_executionTaskManager.inExecutionTasks().isEmpty() && finishedTasks.isEmpty());
+      } while (!inExecutionTasks().isEmpty() && finishedTasks.isEmpty());
 
       LOG.info("Completed tasks: {}.{}{}{}", finishedTasks,
                forceStoppedTaskIds.isEmpty() ? "" : String.format("%n[Force-stopped: %s]", forceStoppedTaskIds),

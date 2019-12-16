@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
+import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
 import java.util.Collections;
 import java.util.Map;
@@ -24,6 +25,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICA_MOVEMENT_STRATEGIES_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REVIEW_ID_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.STOP_ONGOING_EXECUTION_PARAM;
 
 public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizationParameters {
   protected static final SortedSet<String> CASE_INSENSITIVE_PARAMETER_NAMES;
@@ -40,6 +42,7 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
     validParameterNames.add(SKIP_HARD_GOAL_CHECK_PARAM);
     validParameterNames.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
     validParameterNames.add(REVIEW_ID_PARAM);
+    validParameterNames.add(STOP_ONGOING_EXECUTION_PARAM);
     validParameterNames.addAll(GoalBasedOptimizationParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
     CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
   }
@@ -53,6 +56,7 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
   protected ReplicaMovementStrategy _replicaMovementStrategy;
   protected Integer _reviewId;
   protected String _reason;
+  protected boolean _stopOngoingExecution;
 
   public AddedOrRemovedBrokerParameters() {
     super();
@@ -73,6 +77,10 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
     boolean requestReasonRequired = _config.getBoolean(KafkaCruiseControlConfig.REQUEST_REASON_REQUIRED_CONFIG);
     _reason = ParameterUtils.reason(_request, requestReasonRequired && !_dryRun);
+    _stopOngoingExecution = ParameterUtils.stopOngoingExecution(_request);
+    if (_stopOngoingExecution && _dryRun) {
+      throw new UserRequestException(String.format("%s and %s cannot both be set to true.", STOP_ONGOING_EXECUTION_PARAM, DRY_RUN_PARAM));
+    }
   }
 
   @Override
@@ -118,6 +126,10 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
 
   public String reason() {
     return _reason;
+  }
+
+  public boolean stopOngoingExecution() {
+    return _stopOngoingExecution;
   }
 
   @Override

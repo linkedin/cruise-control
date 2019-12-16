@@ -25,7 +25,9 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_SKIP_HARD_GOAL_CHECK;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_MODEL_COMPLETENESS_REQUIREMENTS;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_STOP_ONGOING_EXECUTION;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.isKafkaAssignerMode;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.maybeStopOngoingExecutionToModifyAndWait;
 
 
 /**
@@ -53,6 +55,7 @@ public class RebalanceRunnable extends OperationRunnable {
   protected final boolean _ignoreProposalCache;
   protected final Set<Integer> _destinationBrokerIds;
   protected final boolean _isRebalanceDiskMode;
+  protected final boolean _stopOngoingExecution;
   protected final boolean _isTriggeredByGoalViolation;
 
   /**
@@ -85,6 +88,7 @@ public class RebalanceRunnable extends OperationRunnable {
     _ignoreProposalCache = SELF_HEALING_IGNORE_PROPOSAL_CACHE;
     _destinationBrokerIds = SELF_HEALING_DESTINATION_BROKER_IDS;
     _isRebalanceDiskMode = SELF_HEALING_IS_REBALANCE_DISK_MODE;
+    _stopOngoingExecution = SELF_HEALING_STOP_ONGOING_EXECUTION;
     _isTriggeredByGoalViolation = true;
   }
 
@@ -112,6 +116,7 @@ public class RebalanceRunnable extends OperationRunnable {
     _ignoreProposalCache = parameters.ignoreProposalCache();
     _destinationBrokerIds = parameters.destinationBrokerIds();
     _isRebalanceDiskMode =  parameters.isRebalanceDiskMode();
+    _stopOngoingExecution = parameters.stopOngoingExecution();
     _isTriggeredByGoalViolation = false;
   }
 
@@ -128,7 +133,10 @@ public class RebalanceRunnable extends OperationRunnable {
    * @throws KafkaCruiseControlException When any exception occurred during the rebalance process.
    */
   public OptimizerResult rebalance() throws KafkaCruiseControlException {
-    _kafkaCruiseControl.sanityCheckDryRun(_dryRun);
+    _kafkaCruiseControl.sanityCheckDryRun(_dryRun, _stopOngoingExecution);
+    if (_stopOngoingExecution) {
+      maybeStopOngoingExecutionToModifyAndWait(_kafkaCruiseControl, _future.operationProgress());
+    }
     ProposalsRunnable proposalsRunnable = new ProposalsRunnable(_kafkaCruiseControl, _future, _goals, _modelCompletenessRequirements,
                                                                  _allowCapacityEstimation, _excludedTopics, _excludeRecentlyDemotedBrokers,
                                                                  _excludeRecentlyRemovedBrokers, _ignoreProposalCache, _destinationBrokerIds,
