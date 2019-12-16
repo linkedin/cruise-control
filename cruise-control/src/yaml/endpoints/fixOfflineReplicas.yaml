@@ -1,7 +1,7 @@
-RebalanceEndpoint:
+FixOfflineReplicasEndpoint:
   post:
-    operationId: rebalance
-    summary: Rebalance a Kafka cluster based on goals.
+    operationId: fixOfflineReplicas
+    summary: Fix offline replicas by moving currently offline replicas to healthy brokers.
     parameters:
       - name: dryrun
         in: query
@@ -23,22 +23,9 @@ RebalanceEndpoint:
         schema:
           type: boolean
           default: false
-      - name: stop_ongoing_execution
-        in: query
-        description: Whether to stop the ongoing execution (if any) and start executing the given request
-        schema:
-          type: boolean
-          default: false
       - name: concurrent_partition_movements_per_broker
         in: query
         description: The upper bound of ongoing replica movements going into/out of each broker.
-        schema:
-          type: integer
-          format: int32
-          minimum: 1
-      - name: concurrent_intra_broker_partition_movements
-        in: query
-        description: The upper bound of ongoing replica movements between disks within each broker.
         schema:
           type: integer
           format: int32
@@ -95,7 +82,7 @@ RebalanceEndpoint:
           default: false
       - name: exclude_recently_removed_brokers
         in: query
-        description: Whether to allow replicas to be moved to recently removed broker.
+        description: Whether to allow leader replicas to be moved to recently removed broker.
         schema:
           type: boolean
           default: true
@@ -106,33 +93,7 @@ RebalanceEndpoint:
           type: array
           items:
             type: string
-          example: ["PrioritizeLargeReplicaMovementStrategy", "PostponeUrpReplicaMovementStrategy"]
-      - name: ignore_proposal_cache
-        in: query
-        description: Whether to ignore the cached proposal or not.
-        schema:
-          type: boolean
-          default: false
-      - name: destination_broker_ids
-        in: query
-        description: Specify the destination brokers for partitions to move replicas to.
-        schema:
-          type: array
-          items:
-            type: string
-          exmaples: [1,2,3]
-      - name: kafka_assigner
-        in: query
-        description: Whether to use Kafka assigner mode to general proposal.
-        schema:
-          type: boolean
-          default: false
-      - name: rebalance_disk
-        in: query
-        description: Whether to balance load between brokers or between disks within broker.
-        schema:
-          type: boolean
-          default: false
+        example: ["PrioritizeLargeReplicaMovementStrategy", "PostponeUrpReplicaMovementStrategy"]
       - name: review_id
         in: query
         description: Review id for 2FA
@@ -156,10 +117,16 @@ RebalanceEndpoint:
           minimum: 5000
       - name: reason
         in: query
-        description: Reason for request.
+        description: Reason for request
         schema:
           type: string
-        example: "Balance disk utilization across all brokers in the cluster."
+        example: "Move offline replicas away from broken brokers."
+      - name: stop_ongoing_execution
+        in: query
+        description: Whether to stop the ongoing execution (if any) and start executing the given request
+        schema:
+          type: boolean
+          default: false
     responses:
       '200':
         description: Successful rebalance response.
@@ -171,7 +138,7 @@ RebalanceEndpoint:
             schema:
               type: string
       '202':
-        description: Rebalancing in progress.
+        description: Fix in progress.
         content:
           application/json:
             schema:
