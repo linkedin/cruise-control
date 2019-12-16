@@ -10,6 +10,8 @@ import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.DiskStats;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.AbstractCruiseControlResponse;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -24,12 +26,14 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VE
 /**
  * Get broker level stats in human readable format.
  */
+@JsonResponseClass
 public class BrokerStats extends AbstractCruiseControlResponse {
-  protected static final String HOST = "Host";
+  @JsonResponseField
   protected static final String HOSTS = "hosts";
+  @JsonResponseField
   protected static final String BROKERS = "brokers";
   protected final List<SingleBrokerStats> _brokerStats;
-  protected final SortedMap<String, BasicStats> _hostStats;
+  protected final SortedMap<String, SingleHostStats> _hostStats;
   protected int _hostFieldLength;
   protected int _logdirFieldLength;
   protected String _cachedPlainTextResponse;
@@ -79,9 +83,9 @@ public class BrokerStats extends AbstractCruiseControlResponse {
     // If there is no logdir information, this field will be of length of 1.
     _logdirFieldLength = Math.max(_logdirFieldLength,
                                   diskStatsByLogdir.keySet().stream().mapToInt(String::length).max().orElse(-10) + 10);
-    _hostStats.computeIfAbsent(host, h -> new BasicStats(0.0, 0.0, 0.0, 0.0,
-                                                         0.0, 0.0, 0, 0, 0.0))
-              .addBasicStats(singleBrokerStats.basicStats());
+    _hostStats.computeIfAbsent(host, h -> new SingleHostStats(host, 0.0, 0.0, 0.0, 0.0,
+                                                              0.0, 0.0, 0, 0, 0.0))
+              .addBasicStats(singleBrokerStats);
     _isBrokerStatsEstimated = _isBrokerStatsEstimated || isEstimated;
   }
 
@@ -103,10 +107,8 @@ public class BrokerStats extends AbstractCruiseControlResponse {
     List<Map<String, Object>> hostStats = new ArrayList<>(_hostStats.size());
 
     // host level statistics
-    for (Map.Entry<String, BasicStats> entry : _hostStats.entrySet()) {
-      Map<String, Object> hostEntry = entry.getValue().getJSONStructure();
-      hostEntry.put(HOST, entry.getKey());
-      hostStats.add(hostEntry);
+    for (Map.Entry<String, SingleHostStats> entry : _hostStats.entrySet()) {
+      hostStats.add(entry.getValue().getJSONStructure());
     }
 
     // broker level statistics
@@ -159,15 +161,15 @@ public class BrokerStats extends AbstractCruiseControlResponse {
                               stats.host(),
                               stats.id(),
                               "",
-                              stats.basicStats().diskUtil(),
-                              stats.basicStats().diskUtilPct(),
-                              stats.basicStats().cpuUtil(),
-                              stats.basicStats().leaderBytesInRate(),
-                              stats.basicStats().followerBytesInRate(),
-                              stats.basicStats().bytesOutRate(),
-                              stats.basicStats().potentialBytesOutRate(),
-                              stats.basicStats().numLeaders(),
-                              stats.basicStats().numReplicas()));
+                              stats.diskUtil(),
+                              stats.diskUtilPct(),
+                              stats.cpuUtil(),
+                              stats.leaderBytesInRate(),
+                              stats.followerBytesInRate(),
+                              stats.bytesOutRate(),
+                              stats.potentialBytesOutRate(),
+                              stats.numLeaders(),
+                              stats.numReplicas()));
       // If disk information is populated, put disk stats.
       if (hasDiskInfo) {
         Map<String, DiskStats> capacityByDisk = stats.diskStatsByLogdir();

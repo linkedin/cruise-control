@@ -10,9 +10,9 @@ PartitionLoadState:
     records:
       type: array
       items:
-        type: '#/PartitionRecords'
+        $ref: '#/PartitionLoadRecord'
 
-PartitionRecords:
+PartitionLoadRecord:
   type: object
   required:
     - topic

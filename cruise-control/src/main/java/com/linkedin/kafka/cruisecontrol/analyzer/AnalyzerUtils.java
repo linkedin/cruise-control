@@ -31,14 +31,6 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
  * A util class for Analyzer.
  */
 public class AnalyzerUtils {
-  public static final String BROKERS = "brokers";
-  public static final String REPLICAS = "replicas";
-  public static final String TOPICS = "topics";
-  public static final String METADATA = "metadata";
-  public static final String POTENTIAL_NW_OUT = "potentialNwOut";
-  public static final String LEADER_REPLICAS = "leaderReplicas";
-  public static final String TOPIC_REPLICAS = "topicReplicas";
-  public static final String STATISTICS = "statistics";
   public final static double EPSILON = 1E-5;
 
   private AnalyzerUtils() {

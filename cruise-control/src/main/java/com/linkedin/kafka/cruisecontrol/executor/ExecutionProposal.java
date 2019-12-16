@@ -4,6 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -19,10 +21,15 @@ import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 /**
  * The execution proposal corresponding to a particular partition.
  */
+@JsonResponseClass
 public class ExecutionProposal {
+  @JsonResponseField
   private static final String TOPIC_PARTITION = "topicPartition";
+  @JsonResponseField
   private static final String OLD_LEADER = "oldLeader";
+  @JsonResponseField
   private static final String OLD_REPLICAS = "oldReplicas";
+  @JsonResponseField
   private static final String NEW_REPLICAS = "newReplicas";
 
   private final TopicPartition _tp;

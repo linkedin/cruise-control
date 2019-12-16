@@ -22,10 +22,10 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JS
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 import static javax.servlet.http.HttpServletResponse.SC_ACCEPTED;
 
+@JsonResponseClass
 public class ProgressResult extends AbstractCruiseControlResponse {
+  @JsonResponseField
   protected static final String PROGRESS = "progress";
-  protected static final String OPERATION = "operation";
-  protected static final String OPERATION_PROGRESS = "operationProgress";
   protected List<OperationFuture> _futures;
 
   public ProgressResult(List<OperationFuture> futures, KafkaCruiseControlConfig config) {
@@ -38,10 +38,7 @@ public class ProgressResult extends AbstractCruiseControlResponse {
     jsonResponse.put(VERSION, JSON_VERSION);
     List<Object> progress = new ArrayList<>(_futures.size());
     for (OperationFuture future: _futures) {
-      Map<String, Object> operationProgress = new HashMap<>(2);
-      operationProgress.put(OPERATION, future.operation());
-      operationProgress.put(OPERATION_PROGRESS, future.getJsonArray());
-      progress.add(operationProgress);
+      progress.add(future.getJsonStructure());
     }
     jsonResponse.put(PROGRESS, progress);
     Gson gson = new GsonBuilder().serializeNulls().serializeSpecialFloatingPointValues().create();

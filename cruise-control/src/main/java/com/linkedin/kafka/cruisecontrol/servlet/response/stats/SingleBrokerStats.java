@@ -6,29 +6,35 @@ package com.linkedin.kafka.cruisecontrol.servlet.response.stats;
 
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.DiskStats;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import java.util.HashMap;
 import java.util.Map;
 
-public class SingleBrokerStats {
+@JsonResponseClass
+public class SingleBrokerStats extends BasicStats {
+  @JsonResponseField
   protected static final String HOST = "Host";
+  @JsonResponseField
   protected static final String BROKER = "Broker";
+  @JsonResponseField
   protected static final String BROKER_STATE = "BrokerState";
+  @JsonResponseField(required = false)
   protected static final String DISK_STATE = "DiskState";
   protected final String _host;
   protected final int _id;
   protected final Broker.State _state;
-  protected final BasicStats _basicStats;
   protected final boolean _isEstimated;
   protected final Map<String, DiskStats> _diskStatsByLogdir;
 
   SingleBrokerStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
                     double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate, int numReplicas,
                     int numLeaders, boolean isEstimated, double diskCapacity, Map<String, DiskStats> diskStatsByLogdir) {
+    super(diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
+          potentialBytesOutRate, numReplicas, numLeaders, diskCapacity);
     _host = host;
     _id = id;
     _state = state;
-    _basicStats = new BasicStats(diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
-                                 potentialBytesOutRate, numReplicas, numLeaders, diskCapacity);
     _isEstimated = isEstimated;
     _diskStatsByLogdir = diskStatsByLogdir;
   }
@@ -43,10 +49,6 @@ public class SingleBrokerStats {
 
   public int id() {
     return _id;
-  }
-
-  BasicStats basicStats() {
-    return _basicStats;
   }
 
   /**
@@ -71,7 +73,7 @@ public class SingleBrokerStats {
    * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJSONStructure() {
-    Map<String, Object> entry = _basicStats.getJSONStructure();
+    Map<String, Object> entry = super.getJSONStructure();
     entry.put(HOST, _host);
     entry.put(BROKER, _id);
     entry.put(BROKER_STATE, _state);

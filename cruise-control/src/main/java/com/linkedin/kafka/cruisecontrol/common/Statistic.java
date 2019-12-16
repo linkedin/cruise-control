@@ -4,15 +4,20 @@
 
 package com.linkedin.kafka.cruisecontrol.common;
 
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 
 public enum Statistic {
+  @JsonResponseField
   AVG("AVG"),
+  @JsonResponseField
   MAX("MAX"),
+  @JsonResponseField
   MIN("MIN"),
+  @JsonResponseField
   ST_DEV("STD");
 
   private final String _stat;

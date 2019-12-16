@@ -4,14 +4,13 @@
 
 package com.linkedin.kafka.cruisecontrol.model;
 
-import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
-
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import com.google.gson.Gson;
 import java.util.Set;
@@ -23,7 +22,12 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.diskUtil
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVAL_TO_PERCENTAGE;
 
 
+@JsonResponseClass
 public class ClusterModelStats {
+  @JsonResponseField
+  private static final String METADATA = "metadata";
+  @JsonResponseField
+  private static final String STATISTICS = "statistics";
   private final Map<Statistic, Map<Resource, Double>> _resourceUtilizationStats;
   private final Map<Statistic, Double> _potentialNwOutUtilizationStats;
   private final Map<Statistic, Number> _replicaStats;
@@ -218,28 +222,13 @@ public class ClusterModelStats {
    * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure() {
-    Map<String, Object> statMap = new HashMap<>();
-    Map<String, Integer> basicMap = new HashMap<>();
-    basicMap.put(AnalyzerUtils.BROKERS, numBrokers());
-    basicMap.put(AnalyzerUtils.REPLICAS, numReplicasInCluster());
-    basicMap.put(AnalyzerUtils.TOPICS, numTopics());
-    List<Statistic> cachedStatistic = Statistic.cachedValues();
-    // List of all statistics AVG, MAX, MIN, STD
-    Map<String, Object> allStatMap = new HashMap<>(cachedStatistic.size());
-    for (Statistic stat : cachedStatistic) {
-      List<Resource> cachedResources = Resource.cachedValues();
-      Map<String, Object> resourceMap = new HashMap<>(cachedResources.size() + 3);
-      for (Resource resource : cachedResources) {
-        resourceMap.put(resource.resource(), resourceUtilizationStats().get(stat).get(resource));
-      }
-      resourceMap.put(AnalyzerUtils.POTENTIAL_NW_OUT, potentialNwOutUtilizationStats().get(stat));
-      resourceMap.put(AnalyzerUtils.REPLICAS, replicaStats().get(stat));
-      resourceMap.put(AnalyzerUtils.LEADER_REPLICAS, leaderReplicaStats().get(stat));
-      resourceMap.put(AnalyzerUtils.TOPIC_REPLICAS, topicReplicaStats().get(stat));
-      allStatMap.put(stat.stat(), resourceMap);
-    }
-    statMap.put(AnalyzerUtils.METADATA, basicMap);
-    statMap.put(AnalyzerUtils.STATISTICS, allStatMap);
+    Map<String, Object> statMap = new HashMap<>(2);
+    statMap.put(METADATA, new ClusterModelStatsMetaData(numBrokers(), numReplicasInCluster(), numTopics()).getJsonStructure());
+    statMap.put(STATISTICS, new ClusterModelStatsValue(_resourceUtilizationStats,
+                                                       _potentialNwOutUtilizationStats,
+                                                       _replicaStats,
+                                                       _leaderReplicaStats,
+                                                       _topicReplicaStats).getJsonStructure());
     return statMap;
   }
 
@@ -252,19 +241,11 @@ public class ClusterModelStats {
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder();
-    for (Statistic stat : Statistic.cachedValues()) {
-      sb.append(String.format("%s:{", stat));
-      for (Resource resource : Resource.cachedValues()) {
-        sb.append(String.format("%s:%12.3f ", resource, resourceUtilizationStats().get(stat).get(resource)));
-      }
-      sb.append(String.format("%s:%12.3f %s:%s %s:%s %s:%s}%n",
-                              AnalyzerUtils.POTENTIAL_NW_OUT, potentialNwOutUtilizationStats().get(stat),
-                              AnalyzerUtils.REPLICAS, replicaStats().get(stat),
-                              AnalyzerUtils.LEADER_REPLICAS, leaderReplicaStats().get(stat),
-                              AnalyzerUtils.TOPIC_REPLICAS, topicReplicaStats().get(stat)));
-    }
-    return sb.substring(0, sb.length() - 2);
+    return new ClusterModelStatsValue(_resourceUtilizationStats,
+                                      _potentialNwOutUtilizationStats,
+                                      _replicaStats,
+                                      _leaderReplicaStats,
+                                      _topicReplicaStats).toString();
   }
 
   /**

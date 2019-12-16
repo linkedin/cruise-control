@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.common;
 
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -15,9 +16,13 @@ import java.util.List;
  * DISK: a broker-level resource.
  */
 public enum Resource {
+  @JsonResponseField
   CPU("cpu", 0, true, true, 0.001),
+  @JsonResponseField
   NW_IN("networkInbound", 1, true, false, 10),
+  @JsonResponseField
   NW_OUT("networkOutbound", 2, true, false, 10),
+  @JsonResponseField
   DISK("disk", 3, false, true, 100);
 
   // EPSILON_PERCENT defines the acceptable nuance when comparing the utilization of the resource.

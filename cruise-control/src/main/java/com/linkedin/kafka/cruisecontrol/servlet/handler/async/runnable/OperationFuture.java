@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable;
 import com.linkedin.cruisecontrol.servlet.response.CruiseControlResponse;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import java.lang.reflect.Field;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -23,7 +24,7 @@ public class OperationFuture extends CompletableFuture<CruiseControlResponse> {
 
   public OperationFuture(String operation) {
     _operation = operation;
-    _operationProgress = new OperationProgress();
+    _operationProgress = new OperationProgress(operation);
     _finishTimeNs = -1;
   }
 
@@ -91,10 +92,10 @@ public class OperationFuture extends CompletableFuture<CruiseControlResponse> {
   }
 
   /**
-   * @return The array describing the progress of the operation.
+   * @return The map describing the progress of the operation.
    */
-  public Object[] getJsonArray() {
-    return _operationProgress.getJsonArray();
+  public Map<String, Object> getJsonStructure() {
+    return _operationProgress.getJsonStructure();
   }
 
   /**

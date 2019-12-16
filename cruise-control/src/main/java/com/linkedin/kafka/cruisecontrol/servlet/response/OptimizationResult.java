@@ -27,20 +27,19 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
-
+@JsonResponseClass
 public class OptimizationResult extends AbstractCruiseControlResponse {
   private static final Logger LOG = LoggerFactory.getLogger(OptimizationResult.class);
+  @JsonResponseField
   protected static final String SUMMARY = "summary";
+  @JsonResponseField(required = false)
   protected static final String PROPOSALS = "proposals";
-  protected static final String GOAL = "goal";
+  @JsonResponseField
   protected static final String GOAL_SUMMARY = "goalSummary";
-  protected static final String STATUS = "status";
-  protected static final String CLUSTER_MODEL_STATS = "clusterModelStats";
+  @JsonResponseField
   protected static final String LOAD_AFTER_OPTIMIZATION = "loadAfterOptimization";
+  @JsonResponseField(required = false)
   protected static final String LOAD_BEFORE_OPTIMIZATION = "loadBeforeOptimization";
-  protected static final String VIOLATED = "VIOLATED";
-  protected static final String FIXED = "FIXED";
-  protected static final String NO_ACTION = "NO-ACTION";
   protected OptimizerResult _optimizerResult;
   protected String _cachedJSONResponse;
   protected String _cachedPlaintextResponse;
@@ -149,13 +148,8 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
 
     optimizationResult.put(SUMMARY, _optimizerResult.getProposalSummaryForJson());
     List<Map<String, Object>> goalSummary = new ArrayList<>();
-    for (Map.Entry<String, ClusterModelStats> entry : _optimizerResult.statsByGoalName().entrySet()) {
-      String goalName = entry.getKey();
-      Map<String, Object> goalMap = new HashMap<>();
-      goalMap.put(GOAL, goalName);
-      goalMap.put(STATUS, goalResultDescription(goalName));
-      goalMap.put(CLUSTER_MODEL_STATS, entry.getValue().getJsonStructure());
-      goalSummary.add(goalMap);
+    for (String goalName : _optimizerResult.statsByGoalName().keySet()) {
+      goalSummary.add(new GoalStatus(goalName).getJsonStructure());
     }
     optimizationResult.put(GOAL_SUMMARY, goalSummary);
     optimizationResult.put(LOAD_AFTER_OPTIMIZATION, _optimizerResult.brokerStatsAfterOptimization().getJsonStructure());
@@ -169,13 +163,31 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
     sb.append(_optimizerResult.getProposalSummary());
     for (Map.Entry<String, ClusterModelStats> entry : _optimizerResult.statsByGoalName().entrySet()) {
       String goalName = entry.getKey();
-      sb.append(String.format("%n%nStats for %s(%s):%n", goalName, goalResultDescription(goalName)));
+      sb.append(String.format("%n%nStats for %s(%s):%n", goalName, _optimizerResult.goalResultDescription(goalName)));
       sb.append(entry.getValue().toString());
     }
   }
 
-  protected String goalResultDescription(String goalName) {
-    return _optimizerResult.violatedGoalsBeforeOptimization().contains(goalName) ?
-           _optimizerResult.violatedGoalsAfterOptimization().contains(goalName) ? VIOLATED : FIXED : NO_ACTION;
+  @JsonResponseClass
+  protected class GoalStatus {
+    @JsonResponseField
+    protected static final String GOAL = "goal";
+    @JsonResponseField
+    protected static final String STATUS = "status";
+    @JsonResponseField
+    protected static final String CLUSTER_MODEL_STATS = "clusterModelStats";
+    protected String _goalName;
+
+    GoalStatus(String goalName) {
+      _goalName = goalName;
+    }
+
+    protected Map<String, Object> getJsonStructure() {
+      Map<String, Object> goalMap = new HashMap<>(3);
+      goalMap.put(GOAL, _goalName);
+      goalMap.put(STATUS, _optimizerResult.goalResultDescription(_goalName));
+      goalMap.put(CLUSTER_MODEL_STATS, _optimizerResult.statsByGoalName().get(_goalName).getJsonStructure());
+      return goalMap;
+    }
   }
 }

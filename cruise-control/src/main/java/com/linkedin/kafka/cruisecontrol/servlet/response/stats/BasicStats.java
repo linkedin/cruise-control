@@ -4,19 +4,30 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.response.stats;
 
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import java.util.HashMap;
 import java.util.Map;
 
-
-class BasicStats {
+@JsonResponseClass
+public class BasicStats {
+  @JsonResponseField
   protected static final String DISK_MB = "DiskMB";
+  @JsonResponseField
   protected static final String DISK_PCT = "DiskPct";
+  @JsonResponseField
   protected static final String CPU_PCT = "CpuPct";
+  @JsonResponseField
   protected static final String LEADER_NW_IN_RATE = "LeaderNwInRate";
+  @JsonResponseField
   protected static final String FOLLOWER_NW_IN_RATE = "FollowerNwInRate";
+  @JsonResponseField
   protected static final String NW_OUT_RATE = "NwOutRate";
+  @JsonResponseField
   protected static final String PNW_OUT_RATE = "PnwOutRate";
+  @JsonResponseField
   protected static final String REPLICAS = "Replicas";
+  @JsonResponseField
   protected static final String LEADERS = "Leaders";
   protected double _diskUtil;
   protected double _cpuUtil;
@@ -96,9 +107,10 @@ class BasicStats {
     _diskCapacity += basicStats.diskCapacity();
   }
 
-  /*
-   * Return an object that can be further used
-   * to encode into JSON
+  /**
+   * Return an object that can be further used to encode into JSON.
+   *
+   * @return The map describing basic statistics.
    */
   public Map<String, Object> getJSONStructure() {
     Map<String, Object> entry = new HashMap<>(9);

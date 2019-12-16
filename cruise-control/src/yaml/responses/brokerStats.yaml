@@ -19,25 +19,25 @@ BrokerStats:
 SingleBrokerStats:
   type: object
   required:
-    - host
-    - broker
-    - brokerState
-    - diskMB
-    - diskPct
-    - cpuPct
-    - leaderNwInRate
-    - followerNwInRate
-    - nwOutRate
-    - pnwOutRate
-    - replicas
-    - leaders
+    - Host
+    - Broker
+    - BrokerState
+    - DiskMB
+    - DiskPct
+    - CpuPct
+    - LeaderNwInRate
+    - FollowerNwInRate
+    - NwOutRate
+    - PnwOutRate
+    - Replicas
+    - Leaders
   properties:
-    host:
+    Host:
       type: string
-    broker:
+    Broker:
       type: integer
       format: int32
-    brokerState:
+    BrokerState:
       type: string
       enum:
         - ALIVE
@@ -45,34 +45,34 @@ SingleBrokerStats:
         - NEW
         - DEMOTED
         - BAD_DISKS
-    diskMB:
+    DiskMB:
       type: number
       format: double
-    diskPct:
+    DiskPct:
       type: number
       format: double
-    cpuPct:
+    CpuPct:
       type: number
       format: double
-    leaderNwInRate:
+    LeaderNwInRate:
       type: number
       format: double
-    followerNwInRate:
+    FollowerNwInRate:
       type: number
       format: double
-    nwOutRate:
+    NwOutRate:
       type: number
       format: double
-    pnwOutRate:
+    PnwOutRate:
       type: number
       format: double
-    replicas:
+    Replicas:
       type: integer
       format: int32
-    leaders:
+    Leaders:
       type: integer
       format: int32
-    diskState:
+    DiskState:
       type: object
       additionalProperties:
         $ref: '#/DiskStats'
@@ -81,72 +81,72 @@ DiskStats:
   type: object
   description: Based on _diskStatsByLogDir
   required:
-    - diskMB
-    - diskPct
-    - numLeaderReplicas
-    - numReplicas
+    - DiskMB
+    - DiskPct
+    - NumLeaderReplicas
+    - NumReplicas
   properties:
-    diskMB:
+    DiskMB:
       oneOf:
         - type: string
           enum:
             - "DEAD"
         - type: number
           format: double
-    diskPct:
+    DiskPct:
       oneOf:
         - type: string
           enum:
             - "DEAD"
         - type: number
           format: double
-    numLeaderReplicas:
+    NumLeaderReplicas:
       type: integer
       format: int32
-    numReplicas:
+    NumReplicas:
       type: integer
       format: int32
 
 SingleHostStats:
   type: object
   required:
-    - host
-    - diskMB
-    - diskPct
-    - cpuPct
-    - leaderNwInRate
-    - followerNwInRate
-    - nwOutRate
-    - pnwOutRate
-    - replicas
-    - leaders
+    - Host
+    - DiskMB
+    - DiskPct
+    - CpuPct
+    - LeaderNwInRate
+    - FollowerNwInRate
+    - NwOutRate
+    - PnwOutRate
+    - Replicas
+    - Leaders
   properties:
-    host:
+    Host:
       type: string
-    diskMB:
+    DiskMB:
       type: number
       format: double
-    diskPct:
+    DiskPct:
       type: number
       format: double
-    cpuPct:
+    CpuPct:
       type: number
       format: double
-    leaderNwInRate:
+    LeaderNwInRate:
       type: number
       format: double
-    followerNwInRate:
+    FollowerNwInRate:
       type: number
       format: double
-    nwOutRate:
+    NwOutRate:
       type: number
       format: double
-    pnwOutRate:
+    PnwOutRate:
       type: number
       format: double
-    replicas:
+    Replicas:
       type: integer
       format: int32
-    leaders:
+    Leaders:
       type: integer
       format: int32

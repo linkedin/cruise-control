@@ -15,14 +15,14 @@ StepProgress:
   required:
     - step
     - description
-    - timeInMs
+    - time-in-ms
     - completionPercentage
   properties:
     step:
       type: string
     description:
       type: string
-    timeInMs:
+    time-in-ms:
       type: integer
       format: int64
     completionPercentage:

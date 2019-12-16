@@ -11,6 +11,8 @@ import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.getBaseJSONString;
 
 
+@JsonResponseClass
+@JsonResponseExternalFields(ResponseUtils.class)
 public class BootstrapResult extends AbstractCruiseControlResponse {
 
   public BootstrapResult(KafkaCruiseControlConfig config) {
