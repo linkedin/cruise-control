@@ -668,13 +668,6 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * @return The number of tasks that are in progress or being aborted.
-   */
-  public int numInExecutionTasks() {
-    return _executor.inExecutionTasks().size();
-  }
-
-  /**
    * Get the state of the load monitor.
    *
    * @param operationProgress The progress for the job.
