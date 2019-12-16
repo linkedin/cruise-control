@@ -16,6 +16,7 @@ StopProposalExecutionEndpoint:
         schema:
           type: integer
           format: int32
+          minimum: 0
       - name: json
         in: query
         description: Whether to return in JSON format or not.

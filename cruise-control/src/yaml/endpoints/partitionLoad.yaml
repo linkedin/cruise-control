@@ -21,6 +21,7 @@ PartitionLoadEndpoint:
           type: integer
           default: -1
           format: int64
+          minimum: -1
       - name: end
         in: query
         description: The timestamp in millisecond of the latest metric sample use to generate load, current time will be used
@@ -28,6 +29,7 @@ PartitionLoadEndpoint:
         schema:
           type: integer
           format: int64
+          minimum: 0
       - name: entries
         in: query
         description: The number of entries to show in the response.
@@ -35,6 +37,7 @@ PartitionLoadEndpoint:
           type: integer
           default: 2147483647
           format: int32
+          minimum: 1
       - name: topic
         in: query
         description: A regular expression used to filter the partition load returned based on topic.

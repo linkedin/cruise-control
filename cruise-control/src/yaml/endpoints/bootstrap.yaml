@@ -10,6 +10,7 @@ BootstrapEndpoint:
           type: integer
           format: int64
           default: -1
+          minimum: -1
       - name: end
         in: query
         description: Timestamp in millisecond of latest metrics sample to load during bootstrap, current time will be used
@@ -17,6 +18,7 @@ BootstrapEndpoint:
         schema:
           type: integer
           format: int64
+          minimum: 0
       - name: clearmetrics
         in: query
         description: Whethere clear the collected metrics sample during bootstrap.

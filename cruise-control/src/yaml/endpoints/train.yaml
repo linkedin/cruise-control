@@ -10,6 +10,7 @@ TrainEndpoint:
           type: integer
           format: int64
           default: -1
+          minimum: -1
       - name: end
         in: query
         description: Timestamp in millisecond of latest metrics sample used to train Cruise Control, current time will be used
@@ -17,6 +18,7 @@ TrainEndpoint:
         schema:
           type: integer
           format: int64
+          minimum: 0
       - name: json
         in: query
         description: Whether to return in JSON format or not.

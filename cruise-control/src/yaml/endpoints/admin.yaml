@@ -61,7 +61,7 @@ AdminEndpoint:
           example: [1,2,3]
       - name: drop_recently_demoted_brokers
         in: query
-        description: Drop broker ids from recently demote broker list so that Cruise Control can move leader replicas or
+        description: Drop broker ids from recently demoted broker list so that Cruise Control can move leader replicas or
                      to transfer replica leadership to these brokers.
         schema:
           type: array
@@ -75,12 +75,14 @@ AdminEndpoint:
         schema:
           type: integer
           format: int64
+          minimum: 5000
       - name: review_id
         in: query
         description: Review id for 2FA
         schema:
           type: integer
           format: int32
+          minimum: 0
       - name: json
         in: query
         description: Whether to return in JSON format or not.

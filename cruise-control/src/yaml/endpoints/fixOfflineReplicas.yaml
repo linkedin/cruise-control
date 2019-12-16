@@ -100,24 +100,33 @@ FixOfflineReplicasEndpoint:
         schema:
           type: integer
           format: int32
+          minimum: 0
       - name: replication_throttle
         in: query
         description: Upper bound on the bandwidth in bytes per second used to move replicas.
         schema:
           type: integer
           format: int64
+          minimum: 1
       - name: execution_progress_check_interval_ms
         in: query
         description: Execution progress check interval in milliseconds.
         schema:
           type: integer
           format: int64
+          minimum: 5000
       - name: reason
         in: query
         description: Reason for request
         schema:
           type: string
         example: "Move offline replicas away from broken brokers."
+      - name: stop_ongoing_execution
+        in: query
+        description: Whether to stop the ongoing execution (if any) and start executing the given request
+        schema:
+          type: boolean
+          default: false
     responses:
       '200':
         description: Successful rebalance response.
