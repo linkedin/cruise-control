@@ -34,3 +34,5 @@ paths:
     $ref: 'endpoints/topicConfiguration.yaml#/TopicConfigurationEndpoint'
   /kafkacruisecontrol/user_tasks:
     $ref: 'endpoints/userTasks.yaml#/UserTasksEndpoint'
+  /kafkacruisecontrol/add_broker:
+    $ref: 'endpoints/addBroker.yaml#/AddBrokerEndpoint'
