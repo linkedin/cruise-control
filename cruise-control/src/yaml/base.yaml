@@ -36,3 +36,5 @@ paths:
     $ref: 'endpoints/userTasks.yaml#/UserTasksEndpoint'
   /kafkacruisecontrol/add_broker:
     $ref: 'endpoints/addBroker.yaml#/AddBrokerEndpoint'
+  /kafkacruisecontrol/remove_broker:
+    $ref: 'endpoints/removeBroker.yaml#/RemoveBrokerEndpoint'
