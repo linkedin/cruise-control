@@ -1,4 +1,4 @@
-UserTask:
+UserTaskInfo:
   type: object
   required:
     - UserTaskId
@@ -25,7 +25,7 @@ UserTask:
     originalResponse:
       type: string
 
-UserTasksState:
+UserTaskState:
   type: object
   required:
     - userTasks
@@ -34,7 +34,7 @@ UserTasksState:
     userTasks:
       type: array
       items:
-        $ref: '#/UserTask'
+        $ref: '#/UserTaskInfo'
     version:
       type: integer
       format: int32

@@ -48,7 +48,7 @@ UserTasksEndpoint:
         content:
           application/json:
             schema:
-              $ref: '../responses/userTasksState.yaml#/UserTasksState'
+              $ref: '../responses/userTaskState.yaml#/UserTaskState'
           text/plain:
             schema:
               type: string

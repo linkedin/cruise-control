@@ -39,6 +39,11 @@ import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseExternalFields;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
+import com.linkedin.kafka.cruisecontrol.servlet.response.UserTaskState;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -610,7 +615,21 @@ public class UserTaskManager implements Closeable {
   /**
    * A class to encapsulate UserTask.
    */
+  @JsonResponseClass
   public static class UserTaskInfo {
+    @JsonResponseField
+    protected static final String USER_TASK_ID = "UserTaskId";
+    @JsonResponseField
+    protected static final String REQUEST_URL = "RequestURL";
+    @JsonResponseField
+    protected static final String CLIENT_ID = "ClientIdentity";
+    @JsonResponseField
+    protected static final String START_MS = "StartMs";
+    @JsonResponseField
+    protected static final String STATUS = "Status";
+    @JsonResponseField(required = false)
+    protected static final String ORIGINAL_RESPONSE = "originalResponse";
+
     private final List<OperationFuture> _futures;
     private final String _requestUrl;
     private final String _clientIdentity;
@@ -729,6 +748,25 @@ public class UserTaskManager implements Closeable {
       } catch (InterruptedException | ExecutionException e) {
         OPERATION_LOG.info("Task [{}] calculation fails, exception:\n{}", _userTaskId, e);
       }
+    }
+
+    public Map<String, Object> getJsonStructure(boolean fetchCompletedTask) {
+      Map<String, Object> jsonObjectMap = new HashMap<>(fetchCompletedTask ? 6 : 5);
+      String status = _state.toString();
+      jsonObjectMap.put(USER_TASK_ID, _userTaskId.toString());
+      jsonObjectMap.put(REQUEST_URL, requestWithParams());
+      jsonObjectMap.put(CLIENT_ID, _clientIdentity);
+      jsonObjectMap.put(START_MS, Long.toString(_startMs));
+      jsonObjectMap.put(STATUS, status);
+      // Populate original response of completed task if requested so.
+      if (fetchCompletedTask) {
+        try {
+          jsonObjectMap.put(ORIGINAL_RESPONSE, lastFuture().get().cachedResponse());
+        } catch (InterruptedException | ExecutionException e) {
+          throw new IllegalStateException("Error happened in fetching response for task " + _userTaskId.toString(), e);
+        }
+      }
+      return jsonObjectMap;
     }
   }
 

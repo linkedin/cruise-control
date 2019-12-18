@@ -30,14 +30,10 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VE
 import static java.lang.Math.max;
 
 
+@JsonResponseClass
 public class UserTaskState extends AbstractCruiseControlResponse {
-  protected static final String USER_TASK_ID = "UserTaskId";
-  protected static final String REQUEST_URL = "RequestURL";
-  protected static final String CLIENT_ID = "ClientIdentity";
-  protected static final String START_MS = "StartMs";
-  protected static final String STATUS = "Status";
+  @JsonResponseField
   protected static final String USER_TASKS = "userTasks";
-  protected static final String ORIGINAL_RESPONSE = "originalResponse";
   protected final List<UserTaskManager.UserTaskInfo> _userTasks;
 
   public UserTaskState(List<UserTaskManager.UserTaskInfo> userTasks, KafkaCruiseControlConfig config) {
@@ -48,9 +44,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
   protected String getJSONString(UserTasksParameters parameters) {
     List<Map<String, Object>> jsonUserTaskList = new ArrayList<>();
     for (UserTaskManager.UserTaskInfo taskInfo : prepareResultList(parameters)) {
-      addJSONTask(jsonUserTaskList,
-                  taskInfo,
-                  parameters.fetchCompletedTask() && (taskInfo.state() != UserTaskManager.TaskState.ACTIVE));
+      jsonUserTaskList.add(taskInfo.getJsonStructure(parameters.fetchCompletedTask() && (taskInfo.state() != UserTaskManager.TaskState.ACTIVE)));
     }
     Map<String, Object> jsonResponse = new HashMap<>();
     jsonResponse.put(USER_TASKS, jsonUserTaskList);
@@ -72,23 +66,6 @@ public class UserTaskState extends AbstractCruiseControlResponse {
 
     populateFilteredTasks(resultList, _userTasks, parameters, entries);
     return resultList.subList(0, Math.min(entries, resultList.size()));
-  }
-
-  protected void addJSONTask(List<Map<String, Object>> jsonUserTaskList,
-                           UserTaskManager.UserTaskInfo userTaskInfo,
-                           boolean fetchCompletedTask) {
-    Map<String, Object> jsonObjectMap = new HashMap<>(fetchCompletedTask ? 6 : 5);
-    String status = userTaskInfo.state().toString();
-    jsonObjectMap.put(USER_TASK_ID, userTaskInfo.userTaskId().toString());
-    jsonObjectMap.put(REQUEST_URL, userTaskInfo.requestWithParams());
-    jsonObjectMap.put(CLIENT_ID, userTaskInfo.clientIdentity());
-    jsonObjectMap.put(START_MS, Long.toString(userTaskInfo.startMs()));
-    jsonObjectMap.put(STATUS, status);
-    // Populate original response of completed task if requested so.
-    if (fetchCompletedTask) {
-      jsonObjectMap.put(ORIGINAL_RESPONSE, completedTaskResponse(userTaskInfo));
-    }
-    jsonUserTaskList.add(jsonObjectMap);
   }
 
   protected static <T> Predicate<UserTaskManager.UserTaskInfo> checkInputFilter(Set<T> set) {
