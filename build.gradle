@@ -380,6 +380,11 @@ task distributeBuild(type: DistributeTask) {
   dependsOn ':artifactoryPublish', ':cruise-control:artifactoryPublish', ':cruise-control-core:artifactoryPublish', ':cruise-control-metrics-reporter:artifactoryPublish'
 }
 
+task buildApiWiki(type: Exec) {
+  workingDir '.'
+  commandLine './build_api_wiki.sh'
+}
+
 //wrapper generation task
 wrapper {
   gradleVersion = '5.6.4'
