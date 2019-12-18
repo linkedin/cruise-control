@@ -139,7 +139,7 @@ TopicConfigurationEndpoint:
         content:
           application/json:
             schema:
-              $ref: '../responses/topicConfigurationResult.yaml#/TopicConfigurationResult'
+              $ref: '../responses/optimizationResult.yaml#/OptimizationResult'
           text/plain:
             schema:
               type: string
