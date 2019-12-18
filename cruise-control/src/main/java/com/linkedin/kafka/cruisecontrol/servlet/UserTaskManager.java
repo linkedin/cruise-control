@@ -41,9 +41,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
-import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseExternalFields;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
-import com.linkedin.kafka.cruisecontrol.servlet.response.UserTaskState;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -750,6 +748,9 @@ public class UserTaskManager implements Closeable {
       }
     }
 
+    /**
+     * @return An object that can be further used to encode into JSON.
+     */
     public Map<String, Object> getJsonStructure(boolean fetchCompletedTask) {
       Map<String, Object> jsonObjectMap = new HashMap<>(fetchCompletedTask ? 6 : 5);
       String status = _state.toString();
