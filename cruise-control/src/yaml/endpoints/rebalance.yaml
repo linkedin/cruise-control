@@ -25,7 +25,7 @@ RebalanceEndpoint:
           default: false
       - name: stop_ongoing_execution
         in: query
-        description: Whether to stop the ongoing execution (if any) and start executing the given request
+        description: Whether to stop the ongoing execution (if any) and start executing the given request.
         schema:
           type: boolean
           default: false
@@ -68,7 +68,7 @@ RebalanceEndpoint:
         schema:
           type: string # topics regex
           default: null
-        exmaple: "__CruiseControl.%2A"
+          example: "__CruiseControl.%2A"
       - name: use_ready_default_goals
         in: query
         description: Whether to only use ready goals to generate proposal.
@@ -135,7 +135,7 @@ RebalanceEndpoint:
           default: false
       - name: review_id
         in: query
-        description: Review id for 2FA
+        description: Review id for 2FA.
         schema:
           type: integer
           format: int32

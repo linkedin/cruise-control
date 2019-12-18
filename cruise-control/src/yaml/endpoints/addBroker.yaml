@@ -11,7 +11,7 @@ AddBrokerEndpoint:
           items:
             type: integer
           # default is a null set if no values are provided
-      - name: dryRun
+      - name: dryrun
         in: query
         description: Whether to dry-run the request or not	
         schema: 
@@ -31,15 +31,16 @@ AddBrokerEndpoint:
           default: true
       - name: goals
         in: query
-        description: list of goals used to generate proposal
+        description: List of goals used to generate proposal, the default goals will be used if this parameter is not specified.
         schema: 
           type: array
           items:
             type: string
             # default is every goal
+          example: ["RackAwareGoal", "ReplicaCapacityGoal", "ReplicaDistributionGoal"]
       - name: concurrent_partition_movements_per_broker
         in: query
-        description: The maximum number of partitions the executor will move to or out of a broker at the same time
+        description: The upper bound of ongoing replica movements going into/out of each broker.
         schema:
           type: integer
           default: 5
@@ -47,7 +48,7 @@ AddBrokerEndpoint:
           minimum: 1
       - name: concurrent_leader_movements
         in: query
-        description: The maximum number of leader movements the executor will take as one batch
+        description: The upper bound of ongoing leadership movements.
         schema:
           type: integer
           default: 1000
@@ -55,84 +56,100 @@ AddBrokerEndpoint:
           minimum: 1
       - name: json
         in: query
-        description: Whether to return in JSON format or not
+        description: Whether to return in JSON format or not.
         schema:
           type: boolean
           default: false
       - name: skip_hard_goal_check
         in: query
-        description: Whether to allow hard goal be skipped in proposal generation
+        description: Whether to allow hard goals be skipped in proposal generation.
         schema:
           type: boolean
           default: false
       - name: excluded_topics
         in: query
-        description: Whether to allow hard goal be skipped in proposal generation, a pattern regex
+        description: Specify topic whose partition is excluded from replica movement.
         schema:
           type: string
           default: null
+          example: "__CruiseControl.%2A"
       - name: kafka_assigner
         in: query
-        description: Whether to use Kafka assigner mode to general proposal
+        description: Whether to use Kafka assigner mode to general proposal.
         schema:
           type: boolean
           default: false
       - name: use_ready_default_goals
         in: query
-        description: Whether to only use ready goals to generate proposal
+        description: Whether to only use ready goals to generate proposal.
         schema:
           type: boolean
           default: false
       - name: verbose
         in: query
-        description: Return detailed state information
+        description: Return detailed state information.
         schema:
           type: boolean
           default: false
       - name: exclude_recently_demoted_brokers
         in: query
-        description: Whether to allow leader replicas to be moved to recently demoted broker
+        description: Whether to allow leader replicas to be moved to recently demoted broker.
         schema:
           type: boolean
           default: false
       - name: exclude_recently_removed_brokers
         in: query
-        description:  Whether to allow leader replicas to be moved to recently demoted broker
+        description: Whether to allow replicas to be moved to recently removed broker.
         schema:
           type: boolean
           default: false
       - name: replica_movement_strategies
         in: query
-        description: Replica movement strategies to use
+        description: Replica movement strategies to use.
         schema:
           type: array
           items:
             type: string
           default: null
+          example: ["PrioritizeLargeReplicaMovementStrategy", "PostponeUrpReplicaMovementStrategy"]
       - name: execution_progress_check_interval_ms
         in: query
-        description: Execution progress check interval in milliseconds
+        description: Execution progress check interval in milliseconds.
         schema:
-          type: long
+          type: integer
           format: int64
           minimum: 5000
       - name: stop_ongoing_execution
         in: query
-        description: Whether to stop the ongoing execution (if any) and start executing the given request
+        description: Whether to stop the ongoing execution (if any) and start executing the given request.
         schema:
           type: boolean
           default: false
       - name: reason
         in: query
-        description: Reason for request
+        description: Reason for request.
         schema:
           type: string
       - name: review_id
         in: query
-        description: Used when two step verification is enabled, mutually exclusive with all other parameters
+        description: Review id for 2FA.
         schema:
           type: integer
-        # is required if two step verification is enabled so no default value
+          format: int32
+          minimum: 0
+      - name: data_from
+        in: query
+        description: Whether to calculate proposal from available valid partitions or valid windows.
+        schema:
+          type: string
+          default: VALID_WINDOWS
+      - name: replication_throttle
+        in: query
+        description: Upper bound on the bandwidth in bytes per second used to move replicas.
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
     responses:
       '200':
         description: |-

@@ -19,7 +19,7 @@ DemoteBrokerEndpoint:
           default: true
       - name: concurrent_leader_movements
         in: query
-        description: The maximum number of leader movements the executor will take as one batch
+        description: The upper bound of ongoing leadership movements.
         schema:
           type: int32
           default: 1000
@@ -32,7 +32,7 @@ DemoteBrokerEndpoint:
           default: true
       - name: json
         in: query
-        description: Whether to return in JSON format or not
+        description: Whether to return in JSON format or not.
         schema:
           type: boolean
           default: false
@@ -50,24 +50,25 @@ DemoteBrokerEndpoint:
           default: true
       - name: verbose
         in: query
-        description: Return detailed state information
+        description: Return detailed state information.
         schema:
           type: boolean
           default: false
       - name: exclude_recently_demoted_brokers
         in: query
-        description: Whether to allow leader replicas to be moved to recently demoted broker
+        description: Whether to allow leader replicas to be moved to recently demoted broker.
         schema:
           type: boolean
           default: false
       - name: replica_movement_strategies
         in: query
-        description: Replica movement strategies to use
+        description: Replica movement strategies to use.
         schema:
           type: array
           items:
             type: string
           default: null
+          example: ["PrioritizeLargeReplicaMovementStrategy", "PostponeUrpReplicaMovementStrategy"]
       - name: brokerid_and_logdirs
         in: query
         description: List of broker id and logdir pair to be demoted in the cluster
@@ -82,33 +83,36 @@ DemoteBrokerEndpoint:
         # default is an empty map
       - name: replication_throttle
         in: query
-        description: Upper bound on the bandwidth used to move replicas
+        description: Upper bound on the bandwidth in bytes per second used to move replicas.
         schema:
           type: integer
-          format: int32
+          format: int64
+          minimum: 1
       - name: reason
         in: query
-        description: Reason for request
+        description: Reason for request.
         schema:
           type: string
       - name: execution_progress_check_interval_ms
         in: query
-        description: Execution progress check interval in milliseconds
+        description: Execution progress check interval in milliseconds.
         schema:
-          type: int64
+          type: integer
+          format: int64
           minimum: 5000
       - name: stop_ongoing_execution
         in: query
-        description: Whether to stop the ongoing execution (if any) and start executing the given request
+        description: Whether to stop the ongoing execution (if any) and start executing the given request.
         schema:
           type: boolean
           default: false
       - name: review_id
         in: query
-        description: Used when two step verification is enabled, mutually exclusive with all other parameters
+        description: Review id for 2FA.
         schema:
           type: integer
-          # No default value, has to exist
+          format: int32
+          minimum: 0
     responses:
       '200':
         description: |-

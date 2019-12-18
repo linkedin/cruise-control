@@ -93,7 +93,7 @@ FixOfflineReplicasEndpoint:
           type: array
           items:
             type: string
-        example: ["PrioritizeLargeReplicaMovementStrategy", "PostponeUrpReplicaMovementStrategy"]
+          example: ["PrioritizeLargeReplicaMovementStrategy", "PostponeUrpReplicaMovementStrategy"]
       - name: review_id
         in: query
         description: Review id for 2FA
@@ -117,13 +117,13 @@ FixOfflineReplicasEndpoint:
           minimum: 5000
       - name: reason
         in: query
-        description: Reason for request
+        description: Reason for request.
         schema:
           type: string
         example: "Move offline replicas away from broken brokers."
       - name: stop_ongoing_execution
         in: query
-        description: Whether to stop the ongoing execution (if any) and start executing the given request
+        description: Whether to stop the ongoing execution (if any) and start executing the given request.
         schema:
           type: boolean
           default: false
