@@ -1,0 +1,143 @@
+DemoteBrokerEndpoint:
+  post:
+    operationId: demoteBroker
+    summary: Demote specified brokers.
+    parameters:
+      - name: brokerid
+        in: query
+        description: List of target broker ids
+        schema:
+          type: set
+          items:
+            type: int32
+            # default is a null set if no values are provided
+      - name: dryrun
+        in: query
+        description: Whether to dry-run the request or not	
+        schema: 
+          type: boolean
+          default: true
+      - name: concurrent_leader_movements
+        in: query
+        description: The maximum number of leader movements the executor will take as one batch
+        schema:
+          type: int32
+          default: 1000
+          minimum: 1
+      - name: allow_capacity_estimation
+        in: query
+        description: Whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information
+        schema:
+          type: boolean
+          default: true
+      - name: json
+        in: query
+        description: Whether to return in JSON format or not
+        schema:
+          type: boolean
+          default: false
+      - name: skip_urp_demotion
+        in: query
+        description: Whether to operate on partitions which are currently under-replicated
+        schema:
+          type: boolean
+          default: false
+      - name: exclude_follower_demotion
+        in: query
+        description: Whether to operate on partitions which only have follower replicas on the specified broker(s)
+        schma:
+          type: boolean
+          default: true
+      - name: verbose
+        in: query
+        description: Return detailed state information
+        schema:
+          type: boolean
+          default: false
+      - name: exclude_recently_demoted_brokers
+        in: query
+        description: Whether to allow leader replicas to be moved to recently demoted broker
+        schema:
+          type: boolean
+          default: false
+      - name: replica_movement_strategies
+        in: query
+        description: Replica movement strategies to use
+        schema:
+          type: array
+          items:
+            type: string
+          default: null
+      - name: brokerid_and_logdirs
+        in: query
+        description: List of broker id and logdir pair to be demoted in the cluster
+        schema:
+          type: map
+          key:
+            type: int32
+          items:
+            type: set
+            items:
+              type: string
+        # default is an empty map
+      - name: replication_throttle
+        in: query
+        description: Upper bound on the bandwidth used to move replicas
+        schema:
+          type: integer
+          format: int32
+      - name: reason
+        in: query
+        description: Reason for request
+        schema:
+          type: string
+      - name: execution_progress_check_interval_ms
+        in: query
+        description: Execution progress check interval in milliseconds
+        schema:
+          type: int64
+          minimum: 5000
+      - name: stop_ongoing_execution
+        in: query
+        description: Whether to stop the ongoing execution (if any) and start executing the given request
+        schema:
+          type: boolean
+          default: false
+      - name: review_id
+        in: query
+        description: Used when two step verification is enabled, mutually exclusive with all other parameters
+        schema:
+          type: integer
+          # No default value, has to exist
+    responses:
+      '200':
+        description: |-
+          Successful add brokers response
+        content:
+          application/json:
+            schema:
+              $ref: '../responses/optimizationResult.yaml#/OptimizationResult'
+          text/plain:
+             schema:
+               type: string
+      '202':
+        description: |-
+          Add brokers in progress
+        content:
+          application/json:
+            schema:
+              $ref: '../responses/progressResult.yaml#/ProgressResult'
+          text/plain:
+             schema:
+               type: string
+      # Response for all errors
+      default:
+        description: |-
+          Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: '../responses/errorResponse.yaml#/ErrorResponse'
+          text/plain:
+            schema:
+              type: string
