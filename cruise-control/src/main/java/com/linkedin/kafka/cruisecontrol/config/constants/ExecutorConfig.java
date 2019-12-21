@@ -87,10 +87,10 @@ public class ExecutorConfig {
    */
   public static final String REPLICA_MOVEMENT_STRATEGIES_CONFIG = "replica.movement.strategies";
   public static final String DEFAULT_REPLICA_MOVEMENT_STRATEGIES = new StringJoiner(",")
-      .add(PostponeUrpReplicaMovementStrategy .class.getName())
-      .add(PrioritizeLargeReplicaMovementStrategy .class.getName())
-      .add(PrioritizeSmallReplicaMovementStrategy .class.getName())
-      .add(BaseReplicaMovementStrategy .class.getName()).toString();
+      .add(PostponeUrpReplicaMovementStrategy.class.getName())
+      .add(PrioritizeLargeReplicaMovementStrategy.class.getName())
+      .add(PrioritizeSmallReplicaMovementStrategy.class.getName())
+      .add(BaseReplicaMovementStrategy.class.getName()).toString();
   public static final String REPLICA_MOVEMENT_STRATEGIES_DOC = "A list of supported strategies used to determine execution"
       + " order for generated partition movement tasks.";
 
@@ -169,88 +169,20 @@ public class ExecutorConfig {
   public static final String LOGDIR_RESPONSE_TIMEOUT_MS_DOC = "Timeout in ms for broker logdir to respond";
 
   /**
-   * <code>max.cached.completed.kafka.monitor.user.tasks</code>
+   * <code>demotion.history.retention.time.ms</code>
    */
-  public static final String MAX_CACHED_COMPLETED_KAFKA_MONITOR_USER_TASKS_CONFIG = "max.cached.completed.kafka.monitor.user.tasks";
-  public static final String MAX_CACHED_COMPLETED_KAFKA_MONITOR_USER_TASKS_DOC = "The maximum number of completed kafka monitoring "
-      + "user tasks for which the response and access details will be cached. If this config is missing, the value set in config "
-      + "max.cached.completed.user.tasks will be used.";
+  public static final String DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG = "demotion.history.retention.time.ms";
+  public static final long DEFAULT_DEMOTION_HISTORY_RETENTION_TIME_MS = TimeUnit.HOURS.toMillis(336);
+  public static final String DEMOTION_HISTORY_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds to retain the"
+      + " demotion history of brokers.";
 
   /**
-   * <code>max.cached.completed.cruise.control.monitor.user.tasks</code>
+   * <code>removal.history.retention.time.ms</code>
    */
-  public static final String MAX_CACHED_COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASKS_CONFIG =
-      "max.cached.completed.cruise.control.monitor.user.tasks";
-  public static final String MAX_CACHED_COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASKS_DOC = "The maximum number of completed "
-      + "Cruise Control monitoring user tasks for which the response and access details will be cached. If this config is "
-      + "missing, the value set in config max.cached.completed.user.tasks will be used.";
-
-  /**
-   * <code>max.cached.completed.kafka.admin.user.tasks</code>
-   */
-  public static final String MAX_CACHED_COMPLETED_KAFKA_ADMIN_USER_TASKS_CONFIG = "max.cached.completed.kafka.admin.user.tasks";
-  public static final String MAX_CACHED_COMPLETED_KAFKA_ADMIN_USER_TASKS_DOC = "The maximum number of completed kafka administration "
-      + "user tasks for which the response and access details will be cached. If this config is missing, the value set in config "
-      + "max.cached.completed.user.tasks will be used.";
-
-  /**
-   * <code>max.cached.completed.cruise.control.admin.user.tasks</code>
-   */
-  public static final String MAX_CACHED_COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASKS_CONFIG =
-      "max.cached.completed.cruise.control.admin.user.tasks";
-  public static final String MAX_CACHED_COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASKS_DOC = "The maximum number of completed "
-             + "cruise control administration user tasks for which the response and access details will be cached. If this config is "
-             + "missing, the value set in config max.cached.completed.user.tasks will be used.";
-
-  /**
-   * <code>max.cached.completed.user.tasks</code>
-   */
-  public static final String MAX_CACHED_COMPLETED_USER_TASKS_CONFIG = "max.cached.completed.user.tasks";
-  public static final String MAX_CACHED_COMPLETED_USER_TASKS_DOC = "The fallback maximum number of completed user tasks of"
-      + "certain type for which the response and access details will be cached. This config will be used if more specific "
-      + "config for certain user task type is not set (e.g. MAX_CACHED_COMPLETED_KAFKA_MONITOR_USER_TASKS_CONFIG).";
-
-  public static final String COMPLETED_KAFKA_MONITOR_USER_TASK_RETENTION_TIME_MS_CONFIG =
-      "completed.kafka.monitor.user.task.retention.time.ms";
-  public static final String COMPLETED_KAFKA_MONITOR_USER_TASK_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds "
-      + "to store the response and access details of a completed kafka monitoring user task. If this config is missing, "
-      + "the value set in config completed.user.task.retention.time.ms will be used.";
-
-  /**
-   * <code>completed.cruise.control.monitor.user.task.retention.time.ms</code>
-   */
-  public static final String COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASK_RETENTION_TIME_MS_CONFIG =
-      "completed.cruise.control.monitor.user.task.retention.time.ms";
-  public static final String COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASK_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds "
-      + "to store the response and access details of a completed cruise control monitoring user task. If this config is missing, "
-      + "the value set in config completed.user.task.retention.time.ms will be used.";
-
-  /**
-   * <code>completed.kafka.admin.user.task.retention.time.ms</code>
-   */
-  public static final String COMPLETED_KAFKA_ADMIN_USER_TASK_RETENTION_TIME_MS_CONFIG =
-      "completed.kafka.admin.user.task.retention.time.ms";
-  public static final String COMPLETED_KAFKA_ADMIN_USER_TASK_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds "
-      + "to store the response and access details of a completed kafka administration user task. If this config is missing, "
-      + "the value set in config completed.user.task.retention.time.ms will be used.";
-
-  /**
-   * <code>completed.cruise.control.admin.user.task.retention.time.ms</code>
-   */
-  public static final String COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASK_RETENTION_TIME_MS_CONFIG =
-      "completed.cruise.control.admin.user.task.retention.time.ms";
-  public static final String COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASK_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds "
-      + "to store the response and access details of a completed cruise control administration user task. If this config is "
-      + "missing, the value set in config completed.user.task.retention.time.ms will be used.";
-
-  /**
-   * <code>completed.user.task.retention.time.ms</code>
-   */
-  public static final String COMPLETED_USER_TASK_RETENTION_TIME_MS_CONFIG = "completed.user.task.retention.time.ms";
-  public static final long DEFAULT_COMPLETED_USER_TASK_RETENTION_TIME_MS = TimeUnit.HOURS.toMillis(24);
-  public static final String COMPLETED_USER_TASK_RETENTION_TIME_MS_DOC = "The fallback maximum time in milliseconds to store "
-      + "the response and access details of a completed user task if more specific config for certain user task type is not set"
-      + " (e.g. COMPLETED_KAFKA_MONITOR_USER_TASK_RETENTION_TIME_MS_CONFIG).";
+  public static final String REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG = "removal.history.retention.time.ms";
+  public static final long DEFAULT_REMOVAL_HISTORY_RETENTION_TIME_MS = TimeUnit.HOURS.toMillis(336);
+  public static final String REMOVAL_HISTORY_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds to retain the"
+      + " removal history of brokers.";
 
   /**
    * Define configs for Executor.
@@ -348,57 +280,17 @@ public class ExecutorConfig {
                             10000L,
                             ConfigDef.Importance.LOW,
                             LOGDIR_RESPONSE_TIMEOUT_MS_DOC)
-                    .define(MAX_CACHED_COMPLETED_KAFKA_MONITOR_USER_TASKS_CONFIG,
-                            ConfigDef.Type.INT,
-                            null,
-                            ConfigDef.Importance.MEDIUM,
-                            MAX_CACHED_COMPLETED_KAFKA_MONITOR_USER_TASKS_DOC)
-                    .define(MAX_CACHED_COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASKS_CONFIG,
-                            ConfigDef.Type.INT,
-                            null,
-                            ConfigDef.Importance.MEDIUM,
-                            MAX_CACHED_COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASKS_DOC)
-                    .define(MAX_CACHED_COMPLETED_KAFKA_ADMIN_USER_TASKS_CONFIG,
-                            ConfigDef.Type.INT,
-                            null,
-                            ConfigDef.Importance.MEDIUM,
-                            MAX_CACHED_COMPLETED_KAFKA_ADMIN_USER_TASKS_DOC)
-                    .define(MAX_CACHED_COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASKS_CONFIG,
-                            ConfigDef.Type.INT,
-                            null,
-                            ConfigDef.Importance.MEDIUM,
-                            MAX_CACHED_COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASKS_DOC)
-                    .define(MAX_CACHED_COMPLETED_USER_TASKS_CONFIG,
-                            ConfigDef.Type.INT,
-                            25,
+                    .define(DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG,
+                            ConfigDef.Type.LONG,
+                            DEFAULT_DEMOTION_HISTORY_RETENTION_TIME_MS,
                             atLeast(0),
                             ConfigDef.Importance.MEDIUM,
-                            MAX_CACHED_COMPLETED_USER_TASKS_DOC)
-                    .define(COMPLETED_KAFKA_MONITOR_USER_TASK_RETENTION_TIME_MS_CONFIG,
+                            DEMOTION_HISTORY_RETENTION_TIME_MS_DOC)
+                    .define(REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG,
                             ConfigDef.Type.LONG,
-                            null,
-                            ConfigDef.Importance.MEDIUM,
-                            COMPLETED_KAFKA_MONITOR_USER_TASK_RETENTION_TIME_MS_DOC)
-                    .define(COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASK_RETENTION_TIME_MS_CONFIG,
-                            ConfigDef.Type.LONG,
-                            null,
-                            ConfigDef.Importance.MEDIUM,
-                            COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASK_RETENTION_TIME_MS_DOC)
-                    .define(COMPLETED_KAFKA_ADMIN_USER_TASK_RETENTION_TIME_MS_CONFIG,
-                            ConfigDef.Type.LONG,
-                            null,
-                            ConfigDef.Importance.MEDIUM,
-                            COMPLETED_KAFKA_ADMIN_USER_TASK_RETENTION_TIME_MS_DOC)
-                    .define(COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASK_RETENTION_TIME_MS_CONFIG,
-                            ConfigDef.Type.LONG,
-                            null,
-                            ConfigDef.Importance.MEDIUM,
-                            COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASK_RETENTION_TIME_MS_DOC)
-                    .define(COMPLETED_USER_TASK_RETENTION_TIME_MS_CONFIG,
-                            ConfigDef.Type.LONG,
-                            DEFAULT_COMPLETED_USER_TASK_RETENTION_TIME_MS,
+                            DEFAULT_REMOVAL_HISTORY_RETENTION_TIME_MS,
                             atLeast(0),
                             ConfigDef.Importance.MEDIUM,
-                            COMPLETED_USER_TASK_RETENTION_TIME_MS_DOC);
+                            REMOVAL_HISTORY_RETENTION_TIME_MS_DOC);
   }
 }

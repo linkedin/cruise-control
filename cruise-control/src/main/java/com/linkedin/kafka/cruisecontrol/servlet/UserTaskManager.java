@@ -9,7 +9,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.linkedin.cruisecontrol.servlet.EndPoint;
 import com.linkedin.cruisecontrol.servlet.EndpointType;
-import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.UserTaskManagerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
@@ -154,35 +154,35 @@ public class UserTaskManager implements Closeable {
   }
 
   private void initCompletedUserTaskRetentionPolicy(KafkaCruiseControlConfig config, List<CruiseControlEndpointType> endpointTypes) {
-    Integer defaultMaxCachedCompletedUserTasks = config.getInt(ExecutorConfig.MAX_CACHED_COMPLETED_USER_TASKS_CONFIG);
-    Long defaultCompletedUserTaskRetentionTimeMs = config.getLong(ExecutorConfig.COMPLETED_USER_TASK_RETENTION_TIME_MS_CONFIG);
+    Integer defaultMaxCachedCompletedUserTasks = config.getInt(UserTaskManagerConfig.MAX_CACHED_COMPLETED_USER_TASKS_CONFIG);
+    Long defaultCompletedUserTaskRetentionTimeMs = config.getLong(UserTaskManagerConfig.COMPLETED_USER_TASK_RETENTION_TIME_MS_CONFIG);
     for (CruiseControlEndpointType endpointType : endpointTypes) {
       Integer maxCachedCompletedUserTasks;
       Long completedUserTaskRetentionTimeMs;
       switch (endpointType) {
         case CRUISE_CONTROL_ADMIN:
           maxCachedCompletedUserTasks =
-              config.getInt(ExecutorConfig.MAX_CACHED_COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASKS_CONFIG);
+              config.getInt(UserTaskManagerConfig.MAX_CACHED_COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASKS_CONFIG);
           completedUserTaskRetentionTimeMs =
-              config.getLong(ExecutorConfig.COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASK_RETENTION_TIME_MS_CONFIG);
+              config.getLong(UserTaskManagerConfig.COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASK_RETENTION_TIME_MS_CONFIG);
           break;
         case KAFKA_ADMIN:
           maxCachedCompletedUserTasks =
-              config.getInt(ExecutorConfig.MAX_CACHED_COMPLETED_KAFKA_ADMIN_USER_TASKS_CONFIG);
+              config.getInt(UserTaskManagerConfig.MAX_CACHED_COMPLETED_KAFKA_ADMIN_USER_TASKS_CONFIG);
           completedUserTaskRetentionTimeMs =
-              config.getLong(ExecutorConfig.COMPLETED_KAFKA_ADMIN_USER_TASK_RETENTION_TIME_MS_CONFIG);
+              config.getLong(UserTaskManagerConfig.COMPLETED_KAFKA_ADMIN_USER_TASK_RETENTION_TIME_MS_CONFIG);
           break;
         case CRUISE_CONTROL_MONITOR:
           maxCachedCompletedUserTasks =
-              config.getInt(ExecutorConfig.MAX_CACHED_COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASKS_CONFIG);
+              config.getInt(UserTaskManagerConfig.MAX_CACHED_COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASKS_CONFIG);
           completedUserTaskRetentionTimeMs =
-              config.getLong(ExecutorConfig.COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASK_RETENTION_TIME_MS_CONFIG);
+              config.getLong(UserTaskManagerConfig.COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASK_RETENTION_TIME_MS_CONFIG);
           break;
         case KAFKA_MONITOR:
           maxCachedCompletedUserTasks =
-              config.getInt(ExecutorConfig.MAX_CACHED_COMPLETED_KAFKA_MONITOR_USER_TASKS_CONFIG);
+              config.getInt(UserTaskManagerConfig.MAX_CACHED_COMPLETED_KAFKA_MONITOR_USER_TASKS_CONFIG);
           completedUserTaskRetentionTimeMs =
-              config.getLong(ExecutorConfig.COMPLETED_KAFKA_MONITOR_USER_TASK_RETENTION_TIME_MS_CONFIG);
+              config.getLong(UserTaskManagerConfig.COMPLETED_KAFKA_MONITOR_USER_TASK_RETENTION_TIME_MS_CONFIG);
           break;
         default:
           throw new IllegalStateException("Unknown endpoint type " + endpointType);

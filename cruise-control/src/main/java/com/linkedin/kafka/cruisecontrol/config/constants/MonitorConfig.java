@@ -186,7 +186,7 @@ public class MonitorConfig {
    * <code>metric.sampler.class</code>
    */
   public static final String METRIC_SAMPLER_CLASS_CONFIG = "metric.sampler.class";
-  public static final String DEFAULT_METRIC_SAMPLER_CLASS = CruiseControlMetricsReporterSampler .class.getName();
+  public static final String DEFAULT_METRIC_SAMPLER_CLASS = CruiseControlMetricsReporterSampler.class.getName();
   public static final String METRIC_SAMPLER_CLASS_DOC = "The class name of the metric sampler";
 
   /**
@@ -279,7 +279,7 @@ public class MonitorConfig {
    * <code>sample.store.class</code>
    */
   public static final String SAMPLE_STORE_CLASS_CONFIG = "sample.store.class";
-  public static final String DEFAULT_SAMPLE_STORE_CLASS = KafkaSampleStore .class.getName();
+  public static final String DEFAULT_SAMPLE_STORE_CLASS = KafkaSampleStore.class.getName();
   public static final String SAMPLE_STORE_CLASS_DOC = "The sample store class name. User may configure a sample store "
       + "that persist the metric samples that have already been aggregated into Kafka Cruise Control. Later on the "
       + "persisted samples can be reloaded from the sample store to Kafka Cruise Control.";

@@ -25,7 +25,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionG
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import java.util.StringJoiner;
-import java.util.concurrent.TimeUnit;
 import org.apache.kafka.common.config.ConfigDef;
 
 import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
@@ -191,24 +190,24 @@ public class AnalyzerConfig {
    * <code>goals</code>
    */
   public static final String GOALS_CONFIG = "goals";
-  public static final String DEFAULT_GOALS = new StringJoiner(",").add(RackAwareGoal .class.getName())
-                                                                  .add(ReplicaCapacityGoal .class.getName())
-                                                                  .add(DiskCapacityGoal .class.getName())
-                                                                  .add(NetworkInboundCapacityGoal .class.getName())
-                                                                  .add(NetworkOutboundCapacityGoal .class.getName())
-                                                                  .add(CpuCapacityGoal .class.getName())
-                                                                  .add(ReplicaDistributionGoal .class.getName())
-                                                                  .add(PotentialNwOutGoal .class.getName())
-                                                                  .add(DiskUsageDistributionGoal .class.getName())
-                                                                  .add(NetworkInboundUsageDistributionGoal .class.getName())
-                                                                  .add(NetworkOutboundUsageDistributionGoal .class.getName())
-                                                                  .add(CpuUsageDistributionGoal .class.getName())
-                                                                  .add(LeaderReplicaDistributionGoal .class.getName())
-                                                                  .add(LeaderBytesInDistributionGoal .class.getName())
-                                                                  .add(TopicReplicaDistributionGoal .class.getName())
-                                                                  .add(KafkaAssignerDiskUsageDistributionGoal .class.getName())
-                                                                  .add(KafkaAssignerEvenRackAwareGoal .class.getName())
-                                                                  .add(PreferredLeaderElectionGoal .class.getName()).toString();
+  public static final String DEFAULT_GOALS = new StringJoiner(",").add(RackAwareGoal.class.getName())
+                                                                  .add(ReplicaCapacityGoal.class.getName())
+                                                                  .add(DiskCapacityGoal.class.getName())
+                                                                  .add(NetworkInboundCapacityGoal.class.getName())
+                                                                  .add(NetworkOutboundCapacityGoal.class.getName())
+                                                                  .add(CpuCapacityGoal.class.getName())
+                                                                  .add(ReplicaDistributionGoal.class.getName())
+                                                                  .add(PotentialNwOutGoal.class.getName())
+                                                                  .add(DiskUsageDistributionGoal.class.getName())
+                                                                  .add(NetworkInboundUsageDistributionGoal.class.getName())
+                                                                  .add(NetworkOutboundUsageDistributionGoal.class.getName())
+                                                                  .add(CpuUsageDistributionGoal.class.getName())
+                                                                  .add(LeaderReplicaDistributionGoal.class.getName())
+                                                                  .add(LeaderBytesInDistributionGoal.class.getName())
+                                                                  .add(TopicReplicaDistributionGoal.class.getName())
+                                                                  .add(KafkaAssignerDiskUsageDistributionGoal.class.getName())
+                                                                  .add(KafkaAssignerEvenRackAwareGoal.class.getName())
+                                                                  .add(PreferredLeaderElectionGoal.class.getName()).toString();
   public static final String GOALS_DOC = "A list of case insensitive goals in the order of priority. The high "
       + "priority goals will be executed first.";
 
@@ -239,9 +238,23 @@ public class AnalyzerConfig {
    * <code>default.goals</code>
    */
   public static final String DEFAULT_GOALS_CONFIG = "default.goals";
+  public static final String DEFAULT_DEFAULT_GOALS = new StringJoiner(",").add(RackAwareGoal.class.getName())
+                                                                          .add(ReplicaCapacityGoal.class.getName())
+                                                                          .add(DiskCapacityGoal.class.getName())
+                                                                          .add(NetworkInboundCapacityGoal.class.getName())
+                                                                          .add(NetworkOutboundCapacityGoal.class.getName())
+                                                                          .add(CpuCapacityGoal.class.getName())
+                                                                          .add(ReplicaDistributionGoal.class.getName())
+                                                                          .add(PotentialNwOutGoal.class.getName())
+                                                                          .add(DiskUsageDistributionGoal.class.getName())
+                                                                          .add(NetworkInboundUsageDistributionGoal.class.getName())
+                                                                          .add(NetworkOutboundUsageDistributionGoal.class.getName())
+                                                                          .add(CpuUsageDistributionGoal.class.getName())
+                                                                          .add(TopicReplicaDistributionGoal.class.getName())
+                                                                          .add(LeaderReplicaDistributionGoal.class.getName())
+                                                                          .add(LeaderBytesInDistributionGoal.class.getName()).toString();
   public static final String DEFAULT_GOALS_DOC = "The list of goals that will be used by default if no goal list "
-      + "is provided. This list of goal will also be used for proposal pre-computation. If default.goals is not "
-      + "specified, it will be default to goals config.";
+      + "is provided. This list of goal will also be used for proposal pre-computation";
 
   /**
    * <code>goal.balancedness.priority.weight</code>
@@ -266,22 +279,6 @@ public class AnalyzerConfig {
   public static final String ALLOW_CAPACITY_ESTIMATION_ON_PROPOSAL_PRECOMPUTE_CONFIG = "allow.capacity.estimation.on.proposal.precompute";
   public static final String ALLOW_CAPACITY_ESTIMATION_ON_PROPOSAL_PRECOMPUTE_DOC = "The flag to indicate whether to "
       + "allow capacity estimation on proposal precomputation.";
-
-  /**
-   * <code>demotion.history.retention.time.ms</code>
-   */
-  public static final String DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG = "demotion.history.retention.time.ms";
-  public static final long DEFAULT_DEMOTION_HISTORY_RETENTION_TIME_MS = TimeUnit.HOURS.toMillis(336);
-  public static final String DEMOTION_HISTORY_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds to retain the"
-      + " demotion history of brokers.";
-
-  /**
-   * <code>removal.history.retention.time.ms</code>
-   */
-  public static final String REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG = "removal.history.retention.time.ms";
-  public static final long DEFAULT_REMOVAL_HISTORY_RETENTION_TIME_MS = TimeUnit.HOURS.toMillis(336);
-  public static final String REMOVAL_HISTORY_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds to retain the"
-      + " removal history of brokers.";
 
   /**
    * <code>topics.excluded.from.partition.movement</code>
@@ -431,6 +428,7 @@ public class AnalyzerConfig {
                             HARD_GOALS_DOC)
                     .define(DEFAULT_GOALS_CONFIG,
                             ConfigDef.Type.LIST,
+                            DEFAULT_DEFAULT_GOALS,
                             ConfigDef.Importance.HIGH,
                             DEFAULT_GOALS_DOC)
                     .define(GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG,
@@ -450,18 +448,6 @@ public class AnalyzerConfig {
                             true,
                             ConfigDef.Importance.LOW,
                             ALLOW_CAPACITY_ESTIMATION_ON_PROPOSAL_PRECOMPUTE_DOC)
-                    .define(DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG,
-                            ConfigDef.Type.LONG,
-                            DEFAULT_DEMOTION_HISTORY_RETENTION_TIME_MS,
-                            atLeast(0),
-                            ConfigDef.Importance.MEDIUM,
-                            DEMOTION_HISTORY_RETENTION_TIME_MS_DOC)
-                    .define(REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG,
-                            ConfigDef.Type.LONG,
-                            DEFAULT_REMOVAL_HISTORY_RETENTION_TIME_MS,
-                            atLeast(0),
-                            ConfigDef.Importance.MEDIUM,
-                            REMOVAL_HISTORY_RETENTION_TIME_MS_DOC)
                     .define(TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG,
                             ConfigDef.Type.STRING,
                             "",
