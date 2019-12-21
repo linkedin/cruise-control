@@ -1,0 +1,33 @@
+OperationProgress:
+  type: object
+  required:
+    - operation
+    - operationProgress
+  properties:
+    operation:
+      type: string
+      enum:
+        - "Get customized proposals"
+    operationProgress:
+      type: array
+      items:
+        $ref: '#/StepProgress'
+
+StepProgress:
+  type: object
+  required:
+    - step
+    - description
+    - time-in-ms
+    - completionPercentage
+  properties:
+    step:
+      type: string
+    description:
+      type: string
+    time-in-ms:
+      type: number
+      format: int64
+    completionPercentage:
+      type: number
+      format: double
