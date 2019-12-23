@@ -7,7 +7,7 @@ package com.linkedin.kafka.cruisecontrol.config.constants;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.common.config.ConfigDef;
 
-import static org.apache.kafka.common.config.ConfigDef.Range.*;
+import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
 
 
 /**
