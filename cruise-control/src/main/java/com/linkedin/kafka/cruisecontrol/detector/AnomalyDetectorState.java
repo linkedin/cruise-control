@@ -369,6 +369,8 @@ public class AnomalyDetectorState {
   @JsonResponseClass
   protected static class AnomalyDetails {
     @JsonResponseField(required = false)
+    private static final String STATUS_UPDATE_MS = "statusUpdateMs";
+    @JsonResponseField(required = false)
     private static final String STATUS_UPDATE_DATE = "statusUpdateDate";
     @JsonResponseField(required = false)
     private static final String DETECTION_MS = "detectionMs";
@@ -378,8 +380,6 @@ public class AnomalyDetectorState {
     private static final String STATUS = "status";
     @JsonResponseField
     private static final String ANOMALY_ID = "anomalyId";
-    @JsonResponseField(required = false)
-    private static final String STATUS_UPDATE_MS = "statusUpdateMs";
     @JsonResponseField(required = false)
     private static final String FIXABLE_VIOLATED_GOALS = "fixableViolatedGoals";
     @JsonResponseField(required = false)

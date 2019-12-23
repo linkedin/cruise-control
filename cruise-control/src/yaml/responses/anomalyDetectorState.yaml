@@ -50,10 +50,15 @@ AnomalyDetails:
     - status
     - anomalyId
   properties:
+    statusUpdateMs:
+      type: integer
+      format: int64
+    statusUpdateDate:
+      type: string
     detectionMs:
       type: integer
       format: int64
-    detectedDate:
+    detectionDate:
       type: string
     status:
       type: string
@@ -66,11 +71,6 @@ AnomalyDetails:
         - LOAD_MONITOR_NOT_READY
         - COMPLETENESS_NOT_READY
     anomalyId:
-      type: string
-    statusUpdateMs:
-      type: integer
-      foramt: int64
-    statusUpdateDate:
       type: string
     fixableViolatedGoals:
       type: array
