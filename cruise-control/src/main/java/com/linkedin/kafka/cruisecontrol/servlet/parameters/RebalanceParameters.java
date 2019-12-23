@@ -4,7 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
@@ -94,11 +95,11 @@ public class RebalanceParameters extends ProposalsParameters {
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
     _ignoreProposalCache = ParameterUtils.ignoreProposalCache(_request);
     _destinationBrokerIds = ParameterUtils.destinationBrokerIds(_request);
-    boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
+    boolean twoStepVerificationEnabled = _config.getBoolean(WebServerConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _replicationThrottle = ParameterUtils.replicationThrottle(_request, _config);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
     _isRebalanceDiskMode =  ParameterUtils.isRebalanceDiskMode(_request);
-    boolean requestReasonRequired = _config.getBoolean(KafkaCruiseControlConfig.REQUEST_REASON_REQUIRED_CONFIG);
+    boolean requestReasonRequired = _config.getBoolean(ExecutorConfig.REQUEST_REASON_REQUIRED_CONFIG);
     _reason = ParameterUtils.reason(_request, requestReasonRequired && !_dryRun);
     _stopOngoingExecution = ParameterUtils.stopOngoingExecution(_request);
     if (_stopOngoingExecution && _dryRun) {

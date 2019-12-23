@@ -9,7 +9,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
@@ -94,7 +94,7 @@ public class RemoveBrokersRunnable extends OperationRunnable {
     _skipHardGoalCheck = SELF_HEALING_SKIP_HARD_GOAL_CHECK;
     _excludedTopics = SELF_HEALING_EXCLUDED_TOPICS;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
-    _replicationThrottle = kafkaCruiseControl.config().getLong(KafkaCruiseControlConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
+    _replicationThrottle = kafkaCruiseControl.config().getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
     _uuid = anomalyId;
     _reason = reason;
     _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;

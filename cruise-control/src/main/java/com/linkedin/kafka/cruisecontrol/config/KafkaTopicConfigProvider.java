@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.config;
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -87,8 +88,8 @@ public class KafkaTopicConfigProvider implements TopicConfigProvider {
 
   @Override
   public void configure(Map<String, ?> configs) {
-    _connectString = (String) configs.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
-    _zkSecurityEnabled = (Boolean) configs.get(KafkaCruiseControlConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
+    _connectString = (String) configs.get(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG);
+    _zkSecurityEnabled = (Boolean) configs.get(ExecutorConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
     String configFile = KafkaCruiseControlUtils.getRequiredConfig(configs, CLUSTER_CONFIGS_FILE);
     try {
       loadClusterConfigs(configFile);

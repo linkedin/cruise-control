@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.IntraBrokerDiskCapacityGo
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.IntraBrokerDiskUsageDistributionGoal;
 import com.linkedin.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
@@ -356,7 +357,7 @@ public class ParameterUtils {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), REPLICATION_THROTTLE_PARAM);
     Long value;
     if (parameterString == null) {
-      value = config.getLong(KafkaCruiseControlConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
+      value = config.getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
     } else {
       value = Long.parseLong(request.getParameter(parameterString));
     }
@@ -616,7 +617,7 @@ public class ParameterUtils {
       return null;
     }
 
-    List<ReplicaMovementStrategy> supportedStrategies = config.getConfiguredInstances(KafkaCruiseControlConfig.REPLICA_MOVEMENT_STRATEGIES_CONFIG,
+    List<ReplicaMovementStrategy> supportedStrategies = config.getConfiguredInstances(ExecutorConfig.REPLICA_MOVEMENT_STRATEGIES_CONFIG,
                                                                                       ReplicaMovementStrategy.class);
     Map<String, ReplicaMovementStrategy> supportedStrategiesByName = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     for (ReplicaMovementStrategy strategy : supportedStrategies) {

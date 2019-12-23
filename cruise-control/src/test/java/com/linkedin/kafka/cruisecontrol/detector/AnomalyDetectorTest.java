@@ -13,6 +13,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotificationResult;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotifier;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
@@ -183,7 +184,7 @@ public class AnomalyDetectorTest {
       parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
       parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, Collections.singletonMap(0, 100L));
       parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 100L);
-      anomalies.add(kafkaCruiseControlConfig.getConfiguredInstance(KafkaCruiseControlConfig.BROKER_FAILURES_CLASS_CONFIG,
+      anomalies.add(kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
                                                                    BrokerFailures.class,
                                                                    parameterConfigOverrides));
       while (anomalyDetector.numCheckedWithDelay() < 1) {
@@ -239,7 +240,7 @@ public class AnomalyDetectorTest {
     OptimizerResult mockOptimizerResult = EasyMock.mock(OptimizerResult.class);
     BrokerStats mockBrokerStats = EasyMock.mock(BrokerStats.class);
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    props.setProperty(KafkaCruiseControlConfig.METRIC_ANOMALY_CLASS_CONFIG, SlowBrokers.class.getName());
+    props.setProperty(AnomalyDetectorConfig.METRIC_ANOMALY_CLASS_CONFIG, SlowBrokers.class.getName());
     KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
     EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).times(1, 10);
     mockKafkaCruiseControl.sanityCheckDryRun(EasyMock.eq(SELF_HEALING_DRYRUN), EasyMock.eq(false));
@@ -260,14 +261,14 @@ public class AnomalyDetectorTest {
                           .ignoreProposalCache(EasyMock.anyObject(),
                                                EasyMock.anyObject(),
                                                EasyMock.eq(SELF_HEALING_EXCLUDED_TOPICS),
-                                               EasyMock.eq(KafkaCruiseControlConfig.DEFAULT_SELF_HEALING_EXCLUDE_RECENT_BROKERS_CONFIG),
+                                               EasyMock.eq(AnomalyDetectorConfig.DEFAULT_SELF_HEALING_EXCLUDE_RECENT_BROKERS_CONFIG),
                                                EasyMock.eq(SELF_HEALING_IGNORE_PROPOSAL_CACHE),
                                                EasyMock.eq(true),
                                                EasyMock.eq(SELF_HEALING_DESTINATION_BROKER_IDS),
                                                EasyMock.eq(SELF_HEALING_IS_REBALANCE_DISK_MODE))).andReturn(false);
 
       EasyMock.expect(mockKafkaCruiseControl.getProposals(EasyMock.anyObject(),
-                                                          EasyMock.eq(KafkaCruiseControlConfig.DEFAULT_ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG)))
+                                                          EasyMock.eq(AnomalyDetectorConfig.DEFAULT_ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG)))
               .andReturn(mockOptimizerResult);
 
       mockKafkaCruiseControl.executeProposals(EasyMock.anyObject(),
@@ -365,7 +366,7 @@ public class AnomalyDetectorTest {
         Map<String, Object> parameterConfigOverrides = new HashMap<>(2);
         parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
         parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 100L);
-        GoalViolations violations = kafkaCruiseControlConfig.getConfiguredInstance(KafkaCruiseControlConfig.GOAL_VIOLATIONS_CLASS_CONFIG,
+        GoalViolations violations = kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.GOAL_VIOLATIONS_CLASS_CONFIG,
                                                                                    GoalViolations.class,
                                                                                    parameterConfigOverrides);
         violations.addViolation("RackAwareGoal", true);
@@ -380,7 +381,7 @@ public class AnomalyDetectorTest {
         parameterConfigOverrides.put(REMOVE_SLOW_BROKERS_CONFIG, false);
         parameterConfigOverrides.put(METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG, true);
         parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 100L);
-        SlowBrokers slowBrokers = kafkaCruiseControlConfig.getConfiguredInstance(KafkaCruiseControlConfig.METRIC_ANOMALY_CLASS_CONFIG,
+        SlowBrokers slowBrokers = kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.METRIC_ANOMALY_CLASS_CONFIG,
                                                                                  SlowBrokers.class,
                                                                                  parameterConfigOverrides);
         anomalies.add(slowBrokers);
@@ -391,7 +392,7 @@ public class AnomalyDetectorTest {
         parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
         parameterConfigOverrides.put(FAILED_DISKS_OBJECT_CONFIG, failedDisksByBroker);
         parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 100L);
-        DiskFailures diskFailures = kafkaCruiseControlConfig.getConfiguredInstance(KafkaCruiseControlConfig.DISK_FAILURES_CLASS_CONFIG,
+        DiskFailures diskFailures = kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.DISK_FAILURES_CLASS_CONFIG,
                                                                                    DiskFailures.class,
                                                                                    parameterConfigOverrides);
         anomalies.add(diskFailures);
@@ -457,7 +458,7 @@ public class AnomalyDetectorTest {
       Map<String, Object> parameterConfigOverrides = new HashMap<>(2);
       parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
       parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 100L);
-      anomalies.add(kafkaCruiseControlConfig.getConfiguredInstance(KafkaCruiseControlConfig.GOAL_VIOLATIONS_CLASS_CONFIG,
+      anomalies.add(kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.GOAL_VIOLATIONS_CLASS_CONFIG,
                                                                    GoalViolations.class,
                                                                    parameterConfigOverrides));
       while (!anomalies.isEmpty()) {

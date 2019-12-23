@@ -48,8 +48,8 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaS
  * <li>Under: (the average number of topic replicas per broker) * (1 + topic replica count balance percentage)</li>
  * <li>Above: (the average number of topic replicas per broker) * Math.max(0, 1 - topic replica count balance percentage)</li>
  * </ul>
- * Also see: {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG},
- * {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG},
+ * Also see: {@link com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig#TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG},
+ * {@link com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig#GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG},
  * and {@link #balancePercentageWithMargin(OptimizationOptions)}.
  */
 public class TopicReplicaDistributionGoal extends AbstractGoal {

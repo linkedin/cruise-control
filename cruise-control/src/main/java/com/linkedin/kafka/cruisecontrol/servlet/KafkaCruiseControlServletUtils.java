@@ -8,6 +8,7 @@ import com.linkedin.cruisecontrol.common.config.ConfigException;
 import com.linkedin.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.RequestParameterWrapper;
+import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -18,8 +19,8 @@ import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import static com.linkedin.kafka.cruisecontrol.config.CruiseControlParametersConfig.*;
-import static com.linkedin.kafka.cruisecontrol.config.CruiseControlRequestConfigs.*;
+import static com.linkedin.kafka.cruisecontrol.config.constants.CruiseControlParametersConfig.*;
+import static com.linkedin.kafka.cruisecontrol.config.constants.CruiseControlRequestConfig.*;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.*;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.*;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.writeErrorResponse;
@@ -256,11 +257,11 @@ public class KafkaCruiseControlServletUtils {
    */
   static void handleOptions(HttpServletResponse response, KafkaCruiseControlConfig config) {
     response.setStatus(SC_OK);
-    if (config.getBoolean(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ENABLED_CONFIG)) {
-      response.setHeader(ACCESS_CONTROL_ALLOW_ORIGIN, config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ORIGIN_CONFIG));
+    if (config.getBoolean(WebServerConfig.WEBSERVER_HTTP_CORS_ENABLED_CONFIG)) {
+      response.setHeader(ACCESS_CONTROL_ALLOW_ORIGIN, config.getString(WebServerConfig.WEBSERVER_HTTP_CORS_ORIGIN_CONFIG));
       // This is required only as part of pre-flight response
-      response.setHeader(ACCESS_CONTROL_ALLOW_METHODS, config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ALLOWMETHODS_CONFIG));
-      response.setHeader(ACCESS_CONTROL_ALLOW_HEADERS, config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_EXPOSEHEADERS_CONFIG));
+      response.setHeader(ACCESS_CONTROL_ALLOW_METHODS, config.getString(WebServerConfig.WEBSERVER_HTTP_CORS_ALLOWMETHODS_CONFIG));
+      response.setHeader(ACCESS_CONTROL_ALLOW_HEADERS, config.getString(WebServerConfig.WEBSERVER_HTTP_CORS_EXPOSEHEADERS_CONFIG));
       response.setHeader(ACCESS_CONTROL_ALLOW_CREDENTIALS, "true");
       response.setHeader(ACCESS_CONTROL_MAX_AGE, ACCESS_CONTROL_MAX_AGE_IN_SEC);
     }

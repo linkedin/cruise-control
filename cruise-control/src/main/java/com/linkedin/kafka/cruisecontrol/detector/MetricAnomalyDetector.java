@@ -8,7 +8,7 @@ import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyFinder;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import java.util.Collections;
 import java.util.List;
@@ -42,7 +42,7 @@ public class MetricAnomalyDetector implements Runnable {
     Map<String, Object> configWithCruiseControlObject = Collections.singletonMap(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG,
                                                                                  kafkaCruiseControl);
     _kafkaMetricAnomalyFinders = kafkaCruiseControl.config().getConfiguredInstances(
-        KafkaCruiseControlConfig.METRIC_ANOMALY_FINDER_CLASSES_CONFIG,
+        AnomalyDetectorConfig.METRIC_ANOMALY_FINDER_CLASSES_CONFIG,
         MetricAnomalyFinder.class,
         configWithCruiseControlObject);
   }

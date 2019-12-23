@@ -7,7 +7,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.linkedin.cruisecontrol.config.CruiseControlConfig;
 import com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import java.util.Collections;
@@ -74,7 +74,7 @@ public class KafkaMetricAnomalyFinder extends PercentileMetricAnomalyFinder<Brok
     parameterConfigOverrides.put(METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG, Collections.singletonMap(entity, _kafkaCruiseControl.timeMs()));
     parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
     parameterConfigOverrides.put(METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG, false);
-    return _kafkaCruiseControl.config().getConfiguredInstance(KafkaCruiseControlConfig.METRIC_ANOMALY_CLASS_CONFIG,
+    return _kafkaCruiseControl.config().getConfiguredInstance(AnomalyDetectorConfig.METRIC_ANOMALY_CLASS_CONFIG,
                                                               KafkaMetricAnomaly.class,
                                                               parameterConfigOverrides);
   }

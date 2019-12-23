@@ -9,6 +9,7 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregationOptions
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregationResult;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import java.util.Set;
@@ -35,13 +36,13 @@ public class KafkaBrokerMetricSampleAggregator extends MetricSampleAggregator<St
    * @param config The load monitor configurations.
    */
   public KafkaBrokerMetricSampleAggregator(KafkaCruiseControlConfig config) {
-    super(config.getInt(KafkaCruiseControlConfig.NUM_BROKER_METRICS_WINDOWS_CONFIG),
-          config.getLong(KafkaCruiseControlConfig.BROKER_METRICS_WINDOW_MS_CONFIG),
-          config.getInt(KafkaCruiseControlConfig.MIN_SAMPLES_PER_BROKER_METRICS_WINDOW_CONFIG).byteValue(),
-          config.getInt(KafkaCruiseControlConfig.BROKER_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG),
+    super(config.getInt(MonitorConfig.NUM_BROKER_METRICS_WINDOWS_CONFIG),
+          config.getLong(MonitorConfig.BROKER_METRICS_WINDOW_MS_CONFIG),
+          config.getInt(MonitorConfig.MIN_SAMPLES_PER_BROKER_METRICS_WINDOW_CONFIG).byteValue(),
+          config.getInt(MonitorConfig.BROKER_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG),
           KafkaMetricDef.brokerMetricDef());
     _maxAllowedExtrapoloationsPerBroker =
-        config.getInt(KafkaCruiseControlConfig.MAX_ALLOWED_EXTRAPOLATIONS_PER_BROKER_CONFIG);
+        config.getInt(MonitorConfig.MAX_ALLOWED_EXTRAPOLATIONS_PER_BROKER_CONFIG);
     _sampleType = SampleType.BROKER;
   }
 

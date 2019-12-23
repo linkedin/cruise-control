@@ -195,7 +195,7 @@ public class ClusterModelStats {
    * Get the number of unbalanced disk in this cluster model;
    * A disk is taken as unbalanced if its utilization percentage is out of the range centered at its broker utilization
    * percentage with boundary determined by
-   * {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#DISK_BALANCE_THRESHOLD_CONFIG}.
+   * {@link com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig#DISK_BALANCE_THRESHOLD_CONFIG}.
    *
    * @return The number of unbalanced disk in this cluster model.
    */
@@ -434,7 +434,7 @@ public class ClusterModelStats {
    * Generate statistics for disks in the given cluster.
    * For each alive disk on disk broker in the cluster, check whether its utilization percentage is within the range centered
    * at its broker utilization percentage with boundary determined by
-   * {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#DISK_BALANCE_THRESHOLD_CONFIG}.
+   * {@link com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig#DISK_BALANCE_THRESHOLD_CONFIG}.
    * If the disk utilization percentage is out of the boundary, the disk is counted as unbalanced.
    * Also sum up the variance of utilization for each alive disk and get an aggregated standard deviation.
    *

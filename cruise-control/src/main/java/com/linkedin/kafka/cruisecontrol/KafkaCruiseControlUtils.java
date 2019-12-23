@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.text.DateFormat;
@@ -196,7 +197,7 @@ public class KafkaCruiseControlUtils {
    * @return The set of configured hard goals.
    */
   public static Set<String> hardGoals(KafkaCruiseControlConfig config) {
-    return config.getList(KafkaCruiseControlConfig.HARD_GOALS_CONFIG).stream()
+    return config.getList(AnalyzerConfig.HARD_GOALS_CONFIG).stream()
                  .map(goalName -> goalName.substring(goalName.lastIndexOf(".") + 1)).collect(Collectors.toSet());
   }
 

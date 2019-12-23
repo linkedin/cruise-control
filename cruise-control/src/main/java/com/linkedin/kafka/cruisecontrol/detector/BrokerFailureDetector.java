@@ -8,6 +8,8 @@ import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -54,15 +56,15 @@ public class BrokerFailureDetector {
   public BrokerFailureDetector(Queue<Anomaly> anomalies,
                                KafkaCruiseControl kafkaCruiseControl) {
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
-    String zkUrl = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
-    boolean zkSecurityEnabled = config.getBoolean(KafkaCruiseControlConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
+    String zkUrl = config.getString(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG);
+    boolean zkSecurityEnabled = config.getBoolean(ExecutorConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
     ZkConnection zkConnection = new ZkConnection(zkUrl, ZK_SESSION_TIMEOUT);
     _zkClient = new ZkClient(zkConnection, ZK_CONNECTION_TIMEOUT, new ZkStringSerializer());
     // Do not support secure ZK at this point.
     _kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zkUrl, ZK_BROKER_FAILURE_METRIC_GROUP, ZK_BROKER_FAILURE_METRIC_TYPE,
                                                                  zkSecurityEnabled);
     _failedBrokers = new HashMap<>();
-    _failedBrokersZkPath = config.getString(KafkaCruiseControlConfig.FAILED_BROKERS_ZK_PATH_CONFIG);
+    _failedBrokersZkPath = config.getString(AnomalyDetectorConfig.FAILED_BROKERS_ZK_PATH_CONFIG);
     _anomalies = anomalies;
     _kafkaCruiseControl = kafkaCruiseControl;
   }
@@ -182,7 +184,7 @@ public class BrokerFailureDetector {
       parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, failedBrokers());
       parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
 
-      BrokerFailures brokerFailures = _kafkaCruiseControl.config().getConfiguredInstance(KafkaCruiseControlConfig.BROKER_FAILURES_CLASS_CONFIG,
+      BrokerFailures brokerFailures = _kafkaCruiseControl.config().getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
                                                                                          BrokerFailures.class,
                                                                                          parameterConfigOverrides);
       _anomalies.add(brokerFailures);

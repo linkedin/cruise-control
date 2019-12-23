@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver;
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
@@ -190,22 +190,22 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
 
   @Override
   public void configure(Map<String, ?> configs) {
-    int numSamplers = (Integer) configs.get(KafkaCruiseControlConfig.NUM_METRIC_FETCHERS_CONFIG);
+    int numSamplers = (Integer) configs.get(MonitorConfig.NUM_METRIC_FETCHERS_CONFIG);
     if (numSamplers != 1) {
       throw new ConfigException("CruiseControlMetricsReporterSampler is not thread safe. Please change " +
-                                    KafkaCruiseControlConfig.NUM_METRIC_FETCHERS_CONFIG + " to 1");
+                                MonitorConfig.NUM_METRIC_FETCHERS_CONFIG + " to 1");
     }
 
     BrokerCapacityConfigResolver capacityResolver = (BrokerCapacityConfigResolver) configs.get(BROKER_CAPACITY_CONFIG_RESOLVER_OBJECT_CONFIG);
     if (capacityResolver == null) {
       throw new IllegalArgumentException("Metrics reporter sampler configuration is missing broker capacity config resolver object.");
     }
-    boolean allowCpuCapacityEstimation = (Boolean) configs.get(KafkaCruiseControlConfig.SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG);
+    boolean allowCpuCapacityEstimation = (Boolean) configs.get(MonitorConfig.SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG);
     _metricsProcessor = new CruiseControlMetricsProcessor(capacityResolver, allowCpuCapacityEstimation);
 
     String bootstrapServers = (String) configs.get(METRIC_REPORTER_SAMPLER_BOOTSTRAP_SERVERS);
     if (bootstrapServers == null) {
-      bootstrapServers = configs.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG).toString();
+      bootstrapServers = configs.get(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG).toString();
       // Trim the brackets in List's String representation.
       if (bootstrapServers.length() > 2) {
         bootstrapServers = bootstrapServers.substring(1, bootstrapServers.length() - 1);
@@ -219,7 +219,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     if (groupId == null) {
       groupId = DEFAULT_METRIC_REPORTER_SAMPLER_GROUP_ID + "-" + RANDOM.nextLong();
     }
-    String reconnectBackoffMs = configs.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG).toString();
+    String reconnectBackoffMs = configs.get(MonitorConfig.RECONNECT_BACKOFF_MS_CONFIG).toString();
 
     CruiseControlMetricsReporterConfig reporterConfig = new CruiseControlMetricsReporterConfig(configs, false);
     _acceptableMetricRecordProduceDelayMs = ACCEPTABLE_NETWORK_DELAY_MS +

@@ -4,8 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionMetricSample;
@@ -170,7 +171,7 @@ public class KafkaSampleStore implements SampleStore {
   protected KafkaProducer<byte[], byte[]> createProducer(Map<String, ?> config) {
     Properties producerProps = new Properties();
     producerProps.putAll(config);
-    String bootstrapServers = config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG).toString();
+    String bootstrapServers = config.get(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG).toString();
     // Trim the brackets in List's String representation.
     if (bootstrapServers.length() > 2) {
       bootstrapServers = bootstrapServers.substring(1, bootstrapServers.length() - 1);
@@ -186,7 +187,7 @@ public class KafkaSampleStore implements SampleStore {
     producerProps.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
     producerProps.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
     producerProps.setProperty(ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG,
-                              config.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG).toString());
+                              config.get(MonitorConfig.RECONNECT_BACKOFF_MS_CONFIG).toString());
     return new KafkaProducer<>(producerProps);
   }
 
@@ -194,7 +195,7 @@ public class KafkaSampleStore implements SampleStore {
     Properties consumerProps = new Properties();
     consumerProps.putAll(config);
     long randomToken = RANDOM.nextLong();
-    String bootstrapServers = config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG).toString();
+    String bootstrapServers = config.get(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG).toString();
     // Trim the brackets in List's String representation.
     if (bootstrapServers.length() > 2) {
       bootstrapServers = bootstrapServers.substring(1, bootstrapServers.length() - 1);
@@ -208,14 +209,14 @@ public class KafkaSampleStore implements SampleStore {
     consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
     consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
     consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG,
-                                             config.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG).toString());
+                                             config.get(MonitorConfig.RECONNECT_BACKOFF_MS_CONFIG).toString());
     return new KafkaConsumer<>(consumerProps);
   }
 
   @SuppressWarnings("unchecked")
   protected void ensureTopicsCreated(Map<String, ?> config) {
-    String connectString = (String) config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
-    boolean zkSecurityEnabled = (Boolean) config.get(KafkaCruiseControlConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
+    String connectString = (String) config.get(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG);
+    boolean zkSecurityEnabled = (Boolean) config.get(ExecutorConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(connectString,
                                                                               "KafkaSampleStore",
                                                                               "EnsureTopicCreated",
@@ -224,14 +225,14 @@ public class KafkaSampleStore implements SampleStore {
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient((Map<String, Object>) config);
     try {
       Map<String, List<PartitionInfo>> topics = _consumers.get(0).listTopics();
-      long partitionSampleWindowMs = (Long) config.get(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG);
-      long brokerSampleWindowMs = (Long) config.get(KafkaCruiseControlConfig.BROKER_METRICS_WINDOW_MS_CONFIG);
+      long partitionSampleWindowMs = (Long) config.get(MonitorConfig.PARTITION_METRICS_WINDOW_MS_CONFIG);
+      long brokerSampleWindowMs = (Long) config.get(MonitorConfig.BROKER_METRICS_WINDOW_MS_CONFIG);
 
-      int numPartitionSampleWindows = (Integer) config.get(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG);
+      int numPartitionSampleWindows = (Integer) config.get(MonitorConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG);
       long partitionSampleRetentionMs = (numPartitionSampleWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * partitionSampleWindowMs;
       partitionSampleRetentionMs = Math.max(_minPartitionSampleStoreTopicRetentionTimeMs, partitionSampleRetentionMs);
 
-      int numBrokerSampleWindows = (Integer) config.get(KafkaCruiseControlConfig.NUM_BROKER_METRICS_WINDOWS_CONFIG);
+      int numBrokerSampleWindows = (Integer) config.get(MonitorConfig.NUM_BROKER_METRICS_WINDOWS_CONFIG);
       long brokerSampleRetentionMs = (numBrokerSampleWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * brokerSampleWindowMs;
       brokerSampleRetentionMs = Math.max(_minBrokerSampleStoreTopicRetentionTimeMs, brokerSampleRetentionMs);
 

@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.response;
 import com.google.gson.Gson;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -33,13 +34,13 @@ public class ResponseUtils {
     response.setStatus(code);
     response.setContentType(json ? "application/json" : "text/plain");
     response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-    boolean corsEnabled = config == null ? false : config.getBoolean(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ENABLED_CONFIG);
+    boolean corsEnabled = config == null ? false : config.getBoolean(WebServerConfig.WEBSERVER_HTTP_CORS_ENABLED_CONFIG);
     if (corsEnabled) {
       // These headers are exposed to the browser
       response.setHeader("Access-Control-Allow-Origin",
-                         config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ORIGIN_CONFIG));
+                         config.getString(WebServerConfig.WEBSERVER_HTTP_CORS_ORIGIN_CONFIG));
       response.setHeader("Access-Control-Expose-Headers",
-                         config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_EXPOSEHEADERS_CONFIG));
+                         config.getString(WebServerConfig.WEBSERVER_HTTP_CORS_EXPOSEHEADERS_CONFIG));
       response.setHeader("Access-Control-Allow-Credentials", "true");
     }
   }

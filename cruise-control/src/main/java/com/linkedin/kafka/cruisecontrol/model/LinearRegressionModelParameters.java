@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerMetricSample;
 import java.util.Collection;
 import java.util.HashMap;
@@ -41,17 +42,17 @@ public class LinearRegressionModelParameters {
 
   static void init(KafkaCruiseControlConfig config) {
     MIN_CPU_UTIL_OBSERVATION_BUCKETS =
-        config.getInt(KafkaCruiseControlConfig.LINEAR_REGRESSION_MODEL_MIN_NUM_CPU_UTIL_BUCKETS_CONFIG);
+        config.getInt(MonitorConfig.LINEAR_REGRESSION_MODEL_MIN_NUM_CPU_UTIL_BUCKETS_CONFIG);
     CPU_UTIL_BUCKET_SIZE =
-        config.getInt(KafkaCruiseControlConfig.LINEAR_REGRESSION_MODEL_CPU_UTIL_BUCKET_SIZE_CONFIG);
+        config.getInt(MonitorConfig.LINEAR_REGRESSION_MODEL_CPU_UTIL_BUCKET_SIZE_CONFIG);
     NUM_OBSERVATIONS_PER_UTIL_BUCKET =
-        config.getInt(KafkaCruiseControlConfig.LINEAR_REGRESSION_MODEL_REQUIRED_SAMPLES_PER_CPU_UTIL_BUCKET_CONFIG);
+        config.getInt(MonitorConfig.LINEAR_REGRESSION_MODEL_REQUIRED_SAMPLES_PER_CPU_UTIL_BUCKET_CONFIG);
     int numBuckets = 99 / CPU_UTIL_BUCKET_SIZE + 1;
     if (MIN_CPU_UTIL_OBSERVATION_BUCKETS > (numBuckets)) {
       throw new IllegalArgumentException("There are only " + numBuckets + " CPU utilization buckets with "
-          + CPU_UTIL_BUCKET_SIZE + "%% bucket size. But "
-          + KafkaCruiseControlConfig.LINEAR_REGRESSION_MODEL_MIN_NUM_CPU_UTIL_BUCKETS_CONFIG + " is "
-          + MIN_CPU_UTIL_OBSERVATION_BUCKETS
+                                         + CPU_UTIL_BUCKET_SIZE + "%% bucket size. But "
+                                         + MonitorConfig.LINEAR_REGRESSION_MODEL_MIN_NUM_CPU_UTIL_BUCKETS_CONFIG + " is "
+                                         + MIN_CPU_UTIL_OBSERVATION_BUCKETS
       );
     }
   }

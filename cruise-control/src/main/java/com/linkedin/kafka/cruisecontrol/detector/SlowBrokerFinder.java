@@ -8,7 +8,7 @@ import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomaly;
 import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyFinder;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -184,7 +184,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     parameterConfigOverrides.put(REMOVE_SLOW_BROKERS_CONFIG, removeSlowBroker);
     parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
     parameterConfigOverrides.put(METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG, fixable);
-    return _kafkaCruiseControl.config().getConfiguredInstance(KafkaCruiseControlConfig.METRIC_ANOMALY_CLASS_CONFIG,
+    return _kafkaCruiseControl.config().getConfiguredInstance(AnomalyDetectorConfig.METRIC_ANOMALY_CLASS_CONFIG,
                                                               SlowBrokers.class,
                                                               parameterConfigOverrides);
   }

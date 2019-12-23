@@ -16,6 +16,7 @@ import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorState;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
@@ -101,8 +102,8 @@ public class KafkaCruiseControl {
 
     // Instantiate the components.
     _anomalyDetector = new AnomalyDetector(this, _time, dropwizardMetricRegistry);
-    long demotionHistoryRetentionTimeMs = config.getLong(KafkaCruiseControlConfig.DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG);
-    long removalHistoryRetentionTimeMs = config.getLong(KafkaCruiseControlConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG);
+    long demotionHistoryRetentionTimeMs = config.getLong(ExecutorConfig.DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG);
+    long removalHistoryRetentionTimeMs = config.getLong(ExecutorConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG);
     _executor = new Executor(config, _time, dropwizardMetricRegistry, demotionHistoryRetentionTimeMs,
                              removalHistoryRetentionTimeMs, _anomalyDetector);
     _loadMonitor = new LoadMonitor(config, _time, _executor, dropwizardMetricRegistry, KafkaMetricDef.commonMetricDef());
@@ -626,8 +627,8 @@ public class KafkaCruiseControl {
       //     are throttled by concurrentLeaderMovements and config max.num.cluster.movements.
       int concurrentSwaps = concurrentLeaderMovements != null
                             ? concurrentLeaderMovements
-                            : _config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
-      concurrentSwaps = Math.min(_config.getInt(KafkaCruiseControlConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG) / brokerCount, concurrentSwaps);
+                            : _config.getInt(ExecutorConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG);
+      concurrentSwaps = Math.min(_config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG) / brokerCount, concurrentSwaps);
 
       // Set the execution mode and start execution.
       _executor.setExecutionMode(false);

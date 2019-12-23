@@ -33,10 +33,11 @@ import org.apache.kafka.common.TopicPartitionReplica;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*;
 import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.ReplicaLogDirInfo;
 
@@ -91,7 +92,7 @@ public class ExecutionTaskPlanner {
     _interBrokerReplicaMovementRateAlertingThreshold = config.getDouble(INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG);
     _intraBrokerReplicaMovementRateAlertingThreshold = config.getDouble(INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG);
     _adminClient = adminClient;
-    List<String> defaultReplicaMovementStrategies = config.getList(KafkaCruiseControlConfig.DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG);
+    List<String> defaultReplicaMovementStrategies = config.getList(DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG);
     if (defaultReplicaMovementStrategies == null || defaultReplicaMovementStrategies.isEmpty()) {
       _defaultReplicaMovementTaskStrategy = new BaseReplicaMovementStrategy();
     } else {

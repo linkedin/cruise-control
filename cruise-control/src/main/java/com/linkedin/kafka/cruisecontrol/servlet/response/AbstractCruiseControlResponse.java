@@ -9,7 +9,6 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import java.io.IOException;
 import javax.servlet.http.HttpServletResponse;
-
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.writeResponseToOutputStream;
 import static javax.servlet.http.HttpServletResponse.SC_OK;
 

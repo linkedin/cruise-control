@@ -39,6 +39,10 @@ import java.util.Map;
 import java.util.Properties;
 
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
+import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.MAX_ALLOWED_EXTRAPOLATIONS_PER_PARTITION_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.PARTITION_METRICS_WINDOW_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.model.LinearRegressionModelParameters.ModelCoefficient.LEADER_BYTES_OUT;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.getCluster;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.getMetadata;
@@ -579,7 +583,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     TopicPartition t2p1 = new TopicPartition("TOPIC2", 1);
     List<TopicPartition> allPartitions = Arrays.asList(TP, t0p1, t1p0, t1p1, t2p0, t2p1);
     Properties props = getLoadMonitorProperties();
-    props.setProperty(KafkaCruiseControlConfig.MAX_ALLOWED_EXTRAPOLATIONS_PER_PARTITION_CONFIG, "0");
+    props.setProperty(MAX_ALLOWED_EXTRAPOLATIONS_PER_PARTITION_CONFIG, "0");
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(props);
     Metadata metadata = getMetadata(allPartitions);
     KafkaPartitionMetricSampleAggregator aggregator = new KafkaPartitionMetricSampleAggregator(config, metadata);
@@ -629,9 +633,9 @@ public class KafkaPartitionMetricSampleAggregatorTest {
 
   private Properties getLoadMonitorProperties() {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    props.setProperty(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG, Long.toString(WINDOW_MS));
-    props.setProperty(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG, Integer.toString(NUM_WINDOWS));
-    props.setProperty(KafkaCruiseControlConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG,
+    props.setProperty(PARTITION_METRICS_WINDOW_MS_CONFIG, Long.toString(WINDOW_MS));
+    props.setProperty(NUM_PARTITION_METRICS_WINDOWS_CONFIG, Integer.toString(NUM_WINDOWS));
+    props.setProperty(MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG,
                       Integer.toString(MIN_SAMPLES_PER_WINDOW));
     return props;
   }

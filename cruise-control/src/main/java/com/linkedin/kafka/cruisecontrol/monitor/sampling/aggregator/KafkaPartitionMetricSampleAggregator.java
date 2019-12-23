@@ -12,6 +12,7 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggreg
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.async.progress.RetrievingMetrics;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionEntity;
@@ -53,14 +54,14 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
    * @param metadata The metadata of the cluster.
    */
   public KafkaPartitionMetricSampleAggregator(KafkaCruiseControlConfig config, Metadata metadata) {
-    super(config.getInt(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG),
-          config.getLong(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG),
-          config.getInt(KafkaCruiseControlConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG).byteValue(),
-          config.getInt(KafkaCruiseControlConfig.PARTITION_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG),
+    super(config.getInt(MonitorConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG),
+          config.getLong(MonitorConfig.PARTITION_METRICS_WINDOW_MS_CONFIG),
+          config.getInt(MonitorConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG).byteValue(),
+          config.getInt(MonitorConfig.PARTITION_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG),
           KafkaMetricDef.commonMetricDef());
     _metadata = metadata;
     _maxAllowedExtrapolationsPerPartition =
-        config.getInt(KafkaCruiseControlConfig.MAX_ALLOWED_EXTRAPOLATIONS_PER_PARTITION_CONFIG);
+        config.getInt(MonitorConfig.MAX_ALLOWED_EXTRAPOLATIONS_PER_PARTITION_CONFIG);
     _sampleType = SampleType.PARTITION;
 
   }
@@ -171,7 +172,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
 
   /**
    * Get a sorted set of valid windows in the aggregator. A valid window is a window with
-   * {@link KafkaCruiseControlConfig#MIN_VALID_PARTITION_RATIO_CONFIG enough valid partitions}
+   * {@link MonitorConfig#MIN_VALID_PARTITION_RATIO_CONFIG enough valid partitions}
    * being monitored. A valid partition must be valid in all the windows in the returned set.
    *
    * @param cluster Kafka cluster.
