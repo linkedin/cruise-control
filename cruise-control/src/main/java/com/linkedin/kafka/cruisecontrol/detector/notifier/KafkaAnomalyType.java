@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.detector.notifier;
 
 import com.linkedin.cruisecontrol.detector.AnomalyType;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -24,9 +25,13 @@ import java.util.List;
  * </ul>
  */
 public enum KafkaAnomalyType implements AnomalyType {
+  @JsonResponseField
   BROKER_FAILURE(0),
+  @JsonResponseField
   DISK_FAILURE(1),
+  @JsonResponseField
   METRIC_ANOMALY(2),
+  @JsonResponseField
   GOAL_VIOLATION(3);
 
   private final int _priority;

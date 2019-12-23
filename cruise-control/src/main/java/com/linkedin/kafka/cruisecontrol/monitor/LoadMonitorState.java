@@ -8,6 +8,8 @@ import com.linkedin.kafka.cruisecontrol.model.LinearRegressionModelParameters;
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrapolation;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner.LoadMonitorTaskRunnerState;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -15,20 +17,36 @@ import java.util.SortedMap;
 import org.apache.kafka.common.TopicPartition;
 import java.util.HashMap;
 
+
+@JsonResponseClass
 public class LoadMonitorState {
+  @JsonResponseField
   private static final String STATE = "state";
+  @JsonResponseField(required = false)
   private static final String REASON_OF_LATEST_PAUSE_OR_RESUME = "reasonOfLatestPauseOrResume";
+  @JsonResponseField
   private static final String TRAINED = "trained";
+  @JsonResponseField
   private static final String TRAINING_PCT = "trainingPct";
+  @JsonResponseField
   private static final String NUM_MONITORED_WINDOWS = "numMonitoredWindows";
+  @JsonResponseField(required = false)
   private static final String MONITORED_WINDOWS = "monitoredWindows";
+  @JsonResponseField
   private static final String NUM_VALID_PARTITIONS = "numValidPartitions";
+  @JsonResponseField
   private static final String NUM_TOTAL_PARTITIONS = "numTotalPartitions";
+  @JsonResponseField
   private static final String MONITORING_COVERAGE_PCT = "monitoringCoveragePct";
+  @JsonResponseField
   private static final String NUM_FLAWED_PARTITIONS = "numFlawedPartitions";
+  @JsonResponseField(required = false)
   private static final String BOOTSTRAP_PROGRESS_PCT = "bootstrapProgressPct";
+  @JsonResponseField(required = false)
   private static final String LOADING_PROGRESS_PCT = "loadingProgressPct";
+  @JsonResponseField(required = false)
   private static final String ERROR = "error";
+
   private static final double UNDEFINED_PROGRESS = -1.0;
   private final LoadMonitorTaskRunnerState _loadMonitorTaskRunnerState;
   private final int _numValidWindows;

@@ -7,16 +7,29 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
 import java.util.Map;
+import java.util.HashMap;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toPrettyDuration;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.GOAL_VIOLATION;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.METRIC_ANOMALY;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.BROKER_FAILURE;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.DISK_FAILURE;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseExternalFields;
 
-
+@JsonResponseClass
 public class AnomalyMetrics {
-  private final Map<AnomalyType, Double> _meanTimeBetweenAnomaliesMs;
+  @JsonResponseField
+  private static final String MEAN_TIME_BETWEEN_ANOMALIES_MS = "meanTimeBetweenAnomaliesMs";
+  @JsonResponseField
+  private static final String MEAN_TIME_TO_START_FIX_MS = "meanTimeToStartFixMs";
+  @JsonResponseField
+  private static final String ONGOING_ANOMALY_DURATION_MS = "ongoingAnomalyDurationMs";
+  @JsonResponseField
+  private static final String NUM_SELF_HEALING_STARTED = "numSelfHealingStarted";
+
+  private final MeanTimeBetweenAnomaliesMs _meanTimeBetweenAnomaliesMs;
   private final double _meanTimeToStartFixMs;
   private final long _numSelfHealingStarted;
   private final long _ongoingAnomalyDurationMs;
@@ -49,7 +62,7 @@ public class AnomalyMetrics {
         throw new IllegalArgumentException(anomalyType + " is missing in meanTimeBetweenAnomaliesMs metric.");
       }
     }
-    _meanTimeBetweenAnomaliesMs = meanTimeBetweenAnomaliesMs;
+    _meanTimeBetweenAnomaliesMs = new MeanTimeBetweenAnomaliesMs(meanTimeBetweenAnomaliesMs);
     _meanTimeToStartFixMs = meanTimeToStartFixMs;
     _numSelfHealingStarted = numSelfHealingStarted;
     _ongoingAnomalyDurationMs = ongoingAnomalyDurationMs;
@@ -65,7 +78,7 @@ public class AnomalyMetrics {
   /**
    * @return Mean time between anomalies.
    */
-  public Map<AnomalyType, Double> meanTimeBetweenAnomaliesMs() {
+  public MeanTimeBetweenAnomaliesMs meanTimeBetweenAnomaliesMs() {
     return _meanTimeBetweenAnomaliesMs;
   }
 
@@ -83,15 +96,41 @@ public class AnomalyMetrics {
     return _ongoingAnomalyDurationMs;
   }
 
+  /**
+   * @return An object that can be further used to encode into JSON.
+   */
+  public Map<String, Object> getJsonStructure() {
+    Map<String, Object> metrics = new HashMap<>(4);
+    metrics.put(MEAN_TIME_BETWEEN_ANOMALIES_MS, meanTimeBetweenAnomaliesMs().getMap());
+    metrics.put(MEAN_TIME_TO_START_FIX_MS, meanTimeToStartFixMs());
+    metrics.put(NUM_SELF_HEALING_STARTED, numSelfHealingStarted());
+    metrics.put(ONGOING_ANOMALY_DURATION_MS, ongoingAnomalyDurationMs());
+    return metrics;
+  }
+
   @Override
   public String toString() {
     return String.format("{meanTimeBetweenAnomalies:{%s:%s, %s:%s, %s:%s, %s:%s}, "
                          + "meanTimeToStartFix:%s, numSelfHealingStarted:%d, ongoingAnomalyDuration=%s}",
-                         GOAL_VIOLATION, toPrettyDuration(_meanTimeBetweenAnomaliesMs.get(GOAL_VIOLATION)),
-                         BROKER_FAILURE, toPrettyDuration(_meanTimeBetweenAnomaliesMs.get(BROKER_FAILURE)),
-                         METRIC_ANOMALY, toPrettyDuration(_meanTimeBetweenAnomaliesMs.get(METRIC_ANOMALY)),
-                         DISK_FAILURE, toPrettyDuration(_meanTimeBetweenAnomaliesMs.get(DISK_FAILURE)),
+                         GOAL_VIOLATION, toPrettyDuration(_meanTimeBetweenAnomaliesMs.getMap().get(GOAL_VIOLATION)),
+                         BROKER_FAILURE, toPrettyDuration(_meanTimeBetweenAnomaliesMs.getMap().get(BROKER_FAILURE)),
+                         METRIC_ANOMALY, toPrettyDuration(_meanTimeBetweenAnomaliesMs.getMap().get(METRIC_ANOMALY)),
+                         DISK_FAILURE, toPrettyDuration(_meanTimeBetweenAnomaliesMs.getMap().get(DISK_FAILURE)),
                          toPrettyDuration(_meanTimeToStartFixMs), _numSelfHealingStarted,
                          toPrettyDuration(_ongoingAnomalyDurationMs));
+  }
+
+  @JsonResponseClass
+  @JsonResponseExternalFields(KafkaAnomalyType.class)
+  protected static class MeanTimeBetweenAnomaliesMs {
+    protected Map<AnomalyType, Double> _meanTimeBetweenAnomaliesMs;
+    
+    MeanTimeBetweenAnomaliesMs(Map<AnomalyType, Double> meanTimes) {
+      _meanTimeBetweenAnomaliesMs = meanTimes;
+    }
+
+    protected Map<AnomalyType, Double> getMap() {
+      return _meanTimeBetweenAnomaliesMs;
+    }
   }
 }

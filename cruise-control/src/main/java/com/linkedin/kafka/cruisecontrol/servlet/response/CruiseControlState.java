@@ -31,13 +31,18 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.NO_TASK_IN_PROGRESS;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.STARTING_EXECUTION;
 
+@JsonResponseClass
 public class CruiseControlState extends AbstractCruiseControlResponse {
   protected static final String INTER_BROKER_PARTITION_MOVEMENTS = "inter-broker partition movements";
   protected static final String INTRA_BROKER_PARTITION_MOVEMENTS = "intra-broker partition movements";
   protected static final String LEADERSHIP_MOVEMENTS = "leadership movements";
+  @JsonResponseField(required = false)
   protected static final String MONITOR_STATE = "MonitorState";
+  @JsonResponseField(required = false)
   protected static final String EXECUTOR_STATE = "ExecutorState";
+  @JsonResponseField(required = false)
   protected static final String ANALYZER_STATE = "AnalyzerState";
+  @JsonResponseField(required = false)
   protected static final String ANOMALY_DETECTOR_STATE = "AnomalyDetectorState";
   protected ExecutorState _executorState;
   protected LoadMonitorState _monitorState;

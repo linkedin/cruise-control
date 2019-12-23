@@ -6,6 +6,8 @@
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -17,15 +19,17 @@ import java.util.HashMap;
 /**
  * The state for the analyzer.
  */
+@JsonResponseClass
 public class AnalyzerState {
+  @JsonResponseField
   private static final String IS_PROPOSAL_READY = "isProposalReady";
+  @JsonResponseField
   private static final String READY_GOALS = "readyGoals";
-  private static final String STATUS = "status";
+  @JsonResponseField(required = false)
+  private static final String GOAL_READINESS = "goalReadiness";
   private static final String READY = "ready";
   private static final String NOT_READY = "notReady";
-  private static final String NAME = "name";
-  private static final String MODEL_COMPLETE_REQUIREMENT = "modelCompleteRequirement";
-  private static final String GOAL_READINESS = "goalReadiness";
+
   private final boolean _isProposalReady;
   private final Map<Goal, Boolean> _readyGoals;
 
@@ -70,10 +74,8 @@ public class AnalyzerState {
       List<Object> goalReadinessList = new ArrayList<>(_readyGoals.size());
       for (Map.Entry<Goal, Boolean> entry : _readyGoals.entrySet()) {
         Goal goal = entry.getKey();
-        Map<String, Object> goalReadinessRecord = new HashMap<>(3);
-        goalReadinessRecord.put(NAME, goal.getClass().getSimpleName());
-        goalReadinessRecord.put(MODEL_COMPLETE_REQUIREMENT, goal.clusterModelCompletenessRequirements().getJsonStructure());
-        goalReadinessRecord.put(STATUS, entry.getValue() ? READY : NOT_READY);
+        String goalReadyStatus = entry.getValue() ? READY : NOT_READY;
+        GoalReadinessRecord goalReadinessRecord = new GoalReadinessRecord(goal, goalReadyStatus);
         goalReadinessList.add(goalReadinessRecord);
       }
       analyzerState.put(GOAL_READINESS, goalReadinessList);
@@ -90,5 +92,31 @@ public class AnalyzerState {
       }
     }
     return String.format("{%s: %s, %s: %s}", IS_PROPOSAL_READY, _isProposalReady, READY_GOALS, readyGoalNames);
+  }
+
+  @JsonResponseClass
+  protected static class GoalReadinessRecord {
+    @JsonResponseField
+    private static final String NAME = "name";
+    @JsonResponseField
+    private static final String MODEL_COMPLETE_REQUIREMENT = "modelCompleteRequirement";
+    @JsonResponseField
+    private static final String STATUS = "status";
+
+    private Goal _goal;
+    private String _status;
+
+    GoalReadinessRecord(Goal goal, String goalReadyStatus) {
+      _goal = goal;
+      _status = goalReadyStatus;
+    }
+
+    protected Map<String, Object> getJsonStructure() {
+        Map<String, Object> goalReadinessRecord = new HashMap<>(3);
+        goalReadinessRecord.put(NAME, _goal.getClass().getSimpleName());
+        goalReadinessRecord.put(MODEL_COMPLETE_REQUIREMENT, _goal.clusterModelCompletenessRequirements().getJsonStructure());
+        goalReadinessRecord.put(STATUS, _status);
+        return goalReadinessRecord;
+    }
   }
 }
