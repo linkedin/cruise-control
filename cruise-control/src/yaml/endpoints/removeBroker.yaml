@@ -5,21 +5,21 @@ RemoveBrokerEndpoint:
     parameters:
       - name: brokerid
         in: query
-        description: List of target broker ids
+        description: List of target broker ids.
         schema:
           type: set
           items:
             type: integer
-          # default is a null set if no values are provided
+        required: true
       - name: dryrun
         in: query
-        description: Whether to dry-run the request or not	
+        description: Whether to dry-run the request or not.
         schema: 
           type: boolean
           default: true
       - name: throttle_removed_broker
         in: query
-        description: Whether to throttle the added broker
+        description: Whether to throttle the added broker.
         schema: 
           type: boolean
           default: true
@@ -34,7 +34,7 @@ RemoveBrokerEndpoint:
           example: ["RackAwareGoal", "ReplicaCapacityGoal", "ReplicaDistributionGoal"]
       - name: allow_capacity_estimation
         in: query
-        description: Whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information
+        description: Whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information.
         schema:
           type: boolean
           default: true
@@ -114,7 +114,7 @@ RemoveBrokerEndpoint:
           example: ["PrioritizeLargeReplicaMovementStrategy", "PostponeUrpReplicaMovementStrategy"]
       - name: destination_broker_ids
         in: query
-        description: Comma-separated and/or space-separated list of broker IDs
+        description: Comma-separated and/or space-separated list of broker IDs.
         schema:
           type: set
           items:
@@ -130,7 +130,7 @@ RemoveBrokerEndpoint:
           minimum: 5000
       - name: stop_ongoing_execution
         in: query
-        description: Whether to stop the ongoing execution (if any) and start executing the given request
+        description: Whether to stop the ongoing execution (if any) and start executing the given request.
         schema:
           type: boolean
           default: false
@@ -161,8 +161,7 @@ RemoveBrokerEndpoint:
           minimum: 1
     responses:
       '200':
-        description: |-
-          Successful add brokers response
+        description: Successful add brokers response.
         content:
           application/json:
             schema:
@@ -171,8 +170,7 @@ RemoveBrokerEndpoint:
              schema:
                type: string
       '202':
-        description: |-
-          Add brokers in progress
+        description: Add brokers in progress.
         content:
           application/json:
             schema:
@@ -182,8 +180,7 @@ RemoveBrokerEndpoint:
                type: string
       # Response for all errors
       default:
-        description: |-
-          Unexpected error
+        description: Error response.
         content:
           application/json:
             schema:

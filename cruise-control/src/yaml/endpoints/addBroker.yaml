@@ -1,31 +1,31 @@
 AddBrokerEndpoint:
   post:
     operationId: addBroker
-    summary: Move partitions to the specified brokers, according to the specified goals
+    summary: Move partitions to the specified brokers, according to the specified goals.
     parameters:
       - name: brokerid
         in: query
-        description: List of target broker ids
+        description: List of target broker ids,
         schema:
-          type: set
+          type: array
           items:
             type: integer
-          # default is a null set if no values are provided
+        required: true
       - name: dryrun
         in: query
-        description: Whether to dry-run the request or not	
+        description: Whether to dry-run the request or not.	
         schema: 
           type: boolean
           default: true
       - name: throttle_added_broker
         in: query
-        description: Whether to throttle the added broker
+        description: Whether to throttle the added broker.
         schema: 
           type: boolean
           default: true
       - name: allow_capacity_estimation
         in: query
-        description: Whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information
+        description: Whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information.
         schema:
           type: boolean
           default: true
@@ -152,8 +152,7 @@ AddBrokerEndpoint:
           minimum: 1
     responses:
       '200':
-        description: |-
-          Successful add brokers response
+        description: Successful add brokers response.
         content:
           application/json:
             schema:
@@ -162,8 +161,7 @@ AddBrokerEndpoint:
              schema:
                type: string
       '202':
-        description: |-
-          Add brokers in progress
+        description: Add brokers in progress.
         content:
           application/json:
             schema:
@@ -173,8 +171,7 @@ AddBrokerEndpoint:
                type: string
       # Response for all errors
       default:
-        description: |-
-          Unexpected error
+        description: Error response.
         content:
           application/json:
             schema:

@@ -39,7 +39,6 @@ import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
 import org.apache.kafka.common.utils.Time;

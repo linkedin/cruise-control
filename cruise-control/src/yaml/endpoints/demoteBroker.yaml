@@ -5,15 +5,15 @@ DemoteBrokerEndpoint:
     parameters:
       - name: brokerid
         in: query
-        description: List of target broker ids
+        description: List of target broker ids.
         schema:
           type: set
           items:
             type: int32
-            # default is a null set if no values are provided
+        required: true
       - name: dryrun
         in: query
-        description: Whether to dry-run the request or not	
+        description: Whether to dry-run the request or not.	
         schema: 
           type: boolean
           default: true
@@ -26,7 +26,7 @@ DemoteBrokerEndpoint:
           minimum: 1
       - name: allow_capacity_estimation
         in: query
-        description: Whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information
+        description: Whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information.
         schema:
           type: boolean
           default: true
@@ -38,13 +38,13 @@ DemoteBrokerEndpoint:
           default: false
       - name: skip_urp_demotion
         in: query
-        description: Whether to operate on partitions which are currently under-replicated
+        description: Whether to operate on partitions which are currently under-replicated.
         schema:
           type: boolean
           default: false
       - name: exclude_follower_demotion
         in: query
-        description: Whether to operate on partitions which only have follower replicas on the specified broker(s)
+        description: Whether to operate on partitions which only have follower replicas on the specified broker(s).
         schma:
           type: boolean
           default: true
@@ -71,7 +71,7 @@ DemoteBrokerEndpoint:
           example: ["PrioritizeLargeReplicaMovementStrategy", "PostponeUrpReplicaMovementStrategy"]
       - name: brokerid_and_logdirs
         in: query
-        description: List of broker id and logdir pair to be demoted in the cluster
+        description: List of broker id and logdir pair to be demoted in the cluster.
         schema:
           type: map
           key:
@@ -115,8 +115,7 @@ DemoteBrokerEndpoint:
           minimum: 0
     responses:
       '200':
-        description: |-
-          Successful add brokers response
+        description: Successful demote brokers response.
         content:
           application/json:
             schema:
@@ -125,8 +124,7 @@ DemoteBrokerEndpoint:
              schema:
                type: string
       '202':
-        description: |-
-          Add brokers in progress
+        description: Demote brokers in progress.
         content:
           application/json:
             schema:
@@ -136,8 +134,7 @@ DemoteBrokerEndpoint:
                type: string
       # Response for all errors
       default:
-        description: |-
-          Unexpected error
+        description: Error response.
         content:
           application/json:
             schema:

@@ -4,26 +4,27 @@ TopicConfigurationEndpoint:
     parameters:
       - name: dryrun
         in: query
-        description: Whether dry-run the request or not
+        description: Whether to dry-run the request or not.
         schema:
           type: boolean
           default: true
       - name: topic
         in: query
-        description: Regular expression to specify subject topics
+        description: Regular expression to specify subject topics.
         schema:
           type: string # topics regex
           default: null
+          example: topic_[0-9].*
       - name: replication_factor
         in: query
-        description: Target replication factor
+        description: Target replication factor.
         schema:
           type: integer
           format: int32
           minimum: 1
       - name: data_from
         in: query
-        description: Whether to calculate proposal from available valid partitions or valid windows
+        description: Whether to calculate proposal from available valid partitions or valid windows.
         schema:
           type: string
           default: VALID_WINDOWS
@@ -38,7 +39,7 @@ TopicConfigurationEndpoint:
           example: ["RackAwareGoal", "ReplicaCapacityGoal", "ReplicaDistributionGoal"]
       - name: allow_capacity_estimation
         in: query
-        description: Whether to allow broker capacity to be estimated
+        description: Whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information.
         schema:
           type: boolean
           default: false
@@ -64,7 +65,7 @@ TopicConfigurationEndpoint:
           default: false
       - name: exclude_recently_demoted_brokers
         in: query
-        description: Whether to allow leader replicas to be moved to recently demoted broker
+        description: Whether to allow leader replicas to be moved to recently demoted broker.
         schema:
           type: boolean
           default: false
@@ -116,12 +117,12 @@ TopicConfigurationEndpoint:
           default: false
       - name: review_id
         in: query
-        description: Review id for 2FA
+        description: Review id for 2FA.
         schema:
           type: string
       - name: skip_rack_awareness_check
         in: query
-        description: Whether to allow rack awareness check to be skipped
+        description: Whether to allow rack awareness check to be skipped.
         schema:
           type: boolean
           default: false
@@ -145,8 +146,7 @@ TopicConfigurationEndpoint:
           default: false
     responses:
       '200':
-        description: |-
-          Successful topic configuration response
+        description: Successful topic configuration response.
         content:
           application/json:
             schema:
@@ -155,8 +155,7 @@ TopicConfigurationEndpoint:
             schema:
               type: string
       '202':
-        description: |-
-          Partition load state fetch in progress
+        description: Topic configuration in progress.
         content:
           application/json:
             schema:
@@ -166,8 +165,7 @@ TopicConfigurationEndpoint:
               type: string
       # Response for all errors
       default:
-        description: |-
-          Unexpected error
+        description: Error response.
         content:
           application/json:
             schema:

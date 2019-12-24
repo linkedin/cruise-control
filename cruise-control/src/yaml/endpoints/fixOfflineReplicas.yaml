@@ -19,7 +19,7 @@ FixOfflineReplicasEndpoint:
           example: ["RackAwareGoal", "ReplicaCapacityGoal", "ReplicaDistributionGoal"]
       - name: allow_capacity_estimation
         in: query
-        description: Whether to allow broker capacity to be estimated.
+        description: Whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information.
         schema:
           type: boolean
           default: false
