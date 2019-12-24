@@ -27,7 +27,7 @@ UserTasksEndpoint:
         description: Comma separated HTTP request types to filter the task results Cruise Control report.
         schema:
           type: string
-          example: ["COMPLETED, "ACTIVE"]
+          example: ["COMPLETED","ACTIVE"]
       - name: user_task_ids
         in: query
         description: Comma separated UUIDs to filter the task results Cruise Control report.
