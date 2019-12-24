@@ -15,23 +15,4 @@ OperationProgress:
     operationProgress:
       type: array
       items:
-        $ref: '#/StepProgress'
-
-StepProgress:
-  type: object
-  required:
-    - step
-    - description
-    - time-in-ms
-    - completionPercentage
-  properties:
-    step:
-      type: string
-    description:
-      type: string
-    time-in-ms:
-      type: number
-      format: int64
-    completionPercentage:
-      type: number
-      format: double
+        $ref: '../responses/stepProgress.yaml#/StepProgress'

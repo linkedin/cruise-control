@@ -13,6 +13,9 @@ import java.util.List;
 import java.util.Map;
 import javax.servlet.http.HttpSession;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
+
 
 /**
  * A class to track the progress of a task. This class is used to allow different users to trigger
@@ -105,7 +108,8 @@ public class OperationProgress {
    * @return The map describing the progress of the operation.
    */
   public Map<String, Object> getJsonStructure() {
-    Map<String, Object> operationProgress = new HashMap<>(2);
+    Map<String, Object> operationProgress = new HashMap<>(3);
+    operationProgress.put(VERSION, JSON_VERSION);
     operationProgress.put(OPERATION, _operation);
     operationProgress.put(OPERATION_PROGRESS, getProgress());
     return operationProgress;

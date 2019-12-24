@@ -18,6 +18,7 @@ ProposalsEndpoint:
             type: integer
             format: int32
           default: null
+          exmaple: [1,2,3]
       - name: ignore_proposal_cache
         in: query
         description: Whether ignore the cached proposal or not.
@@ -47,10 +48,11 @@ ProposalsEndpoint:
           default: false
       - name: excluded_topics
         in: query
-        description: Whether only using ready goals to generate proposal.
+        description: Specify topic whose partition is excluded from replica movement.
         schema:
-          type: boolean
-          default: false
+          type: string # topics regex
+          default: null
+        exmaple: "__CruiseControl.%2A"
       - name: exclude_recently_removed_brokers
         in: query
         description: Whether allow replicas to be moved to recently removed broker.
