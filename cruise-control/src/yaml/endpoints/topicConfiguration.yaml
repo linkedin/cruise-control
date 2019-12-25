@@ -14,7 +14,7 @@ TopicConfigurationEndpoint:
         schema:
           type: string # topics regex
           default: null
-          example: topic_[0-9].*
+          example: topic_%5B0-9%5D.%2A
       - name: replication_factor
         in: query
         description: Target replication factor.

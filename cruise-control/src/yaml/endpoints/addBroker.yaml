@@ -5,7 +5,7 @@ AddBrokerEndpoint:
     parameters:
       - name: brokerid
         in: query
-        description: List of target broker ids,
+        description: List of target broker ids.
         schema:
           type: array
           items:
