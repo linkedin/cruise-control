@@ -29,7 +29,6 @@ public class AnalyzerState {
   private static final String GOAL_READINESS = "goalReadiness";
   private static final String READY = "ready";
   private static final String NOT_READY = "notReady";
-
   private final boolean _isProposalReady;
   private final Map<Goal, Boolean> _readyGoals;
 
@@ -92,31 +91,5 @@ public class AnalyzerState {
       }
     }
     return String.format("{%s: %s, %s: %s}", IS_PROPOSAL_READY, _isProposalReady, READY_GOALS, readyGoalNames);
-  }
-
-  @JsonResponseClass
-  protected static class GoalReadinessRecord {
-    @JsonResponseField
-    private static final String NAME = "name";
-    @JsonResponseField
-    private static final String MODEL_COMPLETE_REQUIREMENT = "modelCompleteRequirement";
-    @JsonResponseField
-    private static final String STATUS = "status";
-
-    private Goal _goal;
-    private String _status;
-
-    GoalReadinessRecord(Goal goal, String goalReadyStatus) {
-      _goal = goal;
-      _status = goalReadyStatus;
-    }
-
-    protected Map<String, Object> getJsonStructure() {
-        Map<String, Object> goalReadinessRecord = new HashMap<>(3);
-        goalReadinessRecord.put(NAME, _goal.getClass().getSimpleName());
-        goalReadinessRecord.put(MODEL_COMPLETE_REQUIREMENT, _goal.clusterModelCompletenessRequirements().getJsonStructure());
-        goalReadinessRecord.put(STATUS, _status);
-        return goalReadinessRecord;
-    }
   }
 }

@@ -9,6 +9,7 @@ AnomalyDetectorState:
     - recentDiskFailures
     - metrics
     - balancednessScore
+    - selfHealingEnabledRatio
   properties:
     selfHealingEnabled:
       type: array
@@ -49,6 +50,8 @@ AnomalyDetails:
   required:
     - status
     - anomalyId
+    - statusUpdateMs
+    - detectionMs
   properties:
     statusUpdateMs:
       type: integer

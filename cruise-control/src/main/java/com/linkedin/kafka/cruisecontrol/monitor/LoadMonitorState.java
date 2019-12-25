@@ -46,7 +46,6 @@ public class LoadMonitorState {
   private static final String LOADING_PROGRESS_PCT = "loadingProgressPct";
   @JsonResponseField(required = false)
   private static final String ERROR = "error";
-
   private static final double UNDEFINED_PROGRESS = -1.0;
   private final LoadMonitorTaskRunnerState _loadMonitorTaskRunnerState;
   private final int _numValidWindows;

@@ -1,6 +1,6 @@
 StateEndpoint:
   get:
-    summary: Get the state of cruise control
+    summary: Get the state of cruise control.
     parameters:
       - name: substates
         in: query

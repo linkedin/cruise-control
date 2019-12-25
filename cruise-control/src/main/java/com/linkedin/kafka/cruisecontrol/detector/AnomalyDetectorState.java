@@ -10,11 +10,11 @@ import com.codahale.metrics.MetricRegistry;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
-import java.util.Collections;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
@@ -22,16 +22,12 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.utcDateFor;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.SEC_TO_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector.METRIC_REGISTRY_NAME;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.GOAL_VIOLATION;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.METRIC_ANOMALY;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.BROKER_FAILURE;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.DISK_FAILURE;
-import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
-import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
-import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseExternalFields;
 
 @JsonResponseClass
 public class AnomalyDetectorState {
@@ -40,7 +36,7 @@ public class AnomalyDetectorState {
   private static final String SELF_HEALING_ENABLED = "selfHealingEnabled";
   @JsonResponseField
   private static final String SELF_HEALING_DISABLED = "selfHealingDisabled";
-  @JsonResponseField(required = false)
+  @JsonResponseField
   private static final String SELF_HEALING_ENABLED_RATIO = "selfHealingEnabledRatio";
   @JsonResponseField
   private static final String RECENT_GOAL_VIOLATIONS = "recentGoalViolations";
@@ -100,7 +96,7 @@ public class AnomalyDetectorState {
     _ongoingAnomalyDurationSumForAverageMs = 0;
     _numSelfHealingStarted = new AtomicLong(0L);
 
-    Map<AnomalyType, Double> meanTimeBetweenAnomaliesMs = new HashMap<>(KafkaAnomalyType.cachedValues().size());;
+    Map<AnomalyType, Double> meanTimeBetweenAnomaliesMs = new HashMap<>(KafkaAnomalyType.cachedValues().size());
     for (AnomalyType anomalyType : KafkaAnomalyType.cachedValues()) {
       meanTimeBetweenAnomaliesMs.put(anomalyType, 0.0);
     }
@@ -295,7 +291,7 @@ public class AnomalyDetectorState {
     Map<String, AnomalyState> anomaliesById = _recentAnomaliesByType.get(anomalyType);
     Set<Map<String, Object>> recentAnomalies = new HashSet<>(_numCachedRecentAnomalyStates);
     for (Map.Entry<String, AnomalyState> entry: anomaliesById.entrySet()) {
-      recentAnomalies.add(new AnomalyDetails(entry.getValue(), anomalyType, false, isJson).getJsonStructure());
+      recentAnomalies.add(new AnomalyDetails(entry.getValue(), anomalyType, false, isJson).populateAnomalyDetails());
     }
     return recentAnomalies;
   }
@@ -346,109 +342,5 @@ public class AnomalyDetectorState {
                          ONGOING_SELF_HEALING_ANOMALY, _ongoingSelfHealingAnomaly == null
                                                        ? "None" : _ongoingSelfHealingAnomaly.anomalyId(),
                          BALANCEDNESS_SCORE, _balancednessScore);
-  }
-
-  @JsonResponseClass
-  @JsonResponseExternalFields(KafkaAnomalyType.class)
-  protected static class SelfHealingEnabledRatio {
-    private Map<String, Float> _selfHealingEnabledRatioMap = new HashMap<>(KafkaAnomalyType.cachedValues().size());
-
-    SelfHealingEnabledRatio(int size) {
-      _selfHealingEnabledRatioMap = new HashMap<>(size);
-    }
-
-    public void put(AnomalyType anomalyType, Float value) {
-      _selfHealingEnabledRatioMap.put(anomalyType.toString(), value);
-    }
-
-    protected Map<String, Float> getJsonStructure() {
-      return _selfHealingEnabledRatioMap;
-    }
-  }
-
-  @JsonResponseClass
-  protected static class AnomalyDetails {
-    @JsonResponseField(required = false)
-    private static final String STATUS_UPDATE_MS = "statusUpdateMs";
-    @JsonResponseField(required = false)
-    private static final String STATUS_UPDATE_DATE = "statusUpdateDate";
-    @JsonResponseField(required = false)
-    private static final String DETECTION_MS = "detectionMs";
-    @JsonResponseField(required = false)
-    private static final String DETECTION_DATE = "detectionDate";
-    @JsonResponseField
-    private static final String STATUS = "status";
-    @JsonResponseField
-    private static final String ANOMALY_ID = "anomalyId";
-    @JsonResponseField(required = false)
-    private static final String FIXABLE_VIOLATED_GOALS = "fixableViolatedGoals";
-    @JsonResponseField(required = false)
-    private static final String UNFIXABLE_VIOLATED_GOALS = "unfixableViolatedGoals";
-    @JsonResponseField(required = false)
-    private static final String FAILED_BROKERS_BY_TIME_MS = "failedBrokersByTimeMs";
-    @JsonResponseField(required = false)
-    private static final String FAILED_DISKS_BY_TIME_MS = "failedDisksByTimeMs";
-    @JsonResponseField(required = false)
-    private static final String OPTIMIZATION_RESULT = "optimizationResult";
-    @JsonResponseField(required = false)
-    private static final String DESCRIPTION = "description";
-
-    protected AnomalyState _anomalyState;
-    protected AnomalyType _anomalyType;
-    protected boolean _hasFixStarted;
-    protected boolean _isJson;
-
-    AnomalyDetails(AnomalyState anomalyState, AnomalyType anomalyType, boolean hasFixStarted, boolean isJson) {
-      _anomalyState = anomalyState;
-      _anomalyType = anomalyType;
-      _hasFixStarted = hasFixStarted;
-      _isJson = isJson;
-    }
-
-    public Map<String, Object> getJsonStructure() {
-    // Goal violation has one more field than other anomaly types.
-      Map<String, Object> anomalyDetails = new HashMap<>((_hasFixStarted ? 6 : 5) + (_anomalyType == GOAL_VIOLATION ? 1 : 0));
-      anomalyDetails.put(_isJson ? DETECTION_MS : DETECTION_DATE,
-                        _isJson ? _anomalyState.detectionMs() : utcDateFor(_anomalyState.detectionMs()));
-      anomalyDetails.put(STATUS, _anomalyState.status());
-      anomalyDetails.put(ANOMALY_ID, _anomalyState.anomalyId());
-      anomalyDetails.put(_isJson ? STATUS_UPDATE_MS : STATUS_UPDATE_DATE,
-                        _isJson ? _anomalyState.statusUpdateMs() : utcDateFor(_anomalyState.statusUpdateMs()));
-      switch ((KafkaAnomalyType) _anomalyType) {
-        case GOAL_VIOLATION:
-          GoalViolations goalViolations = (GoalViolations) _anomalyState.anomaly();
-          Map<Boolean, List<String>> violatedGoalsByFixability = goalViolations.violatedGoalsByFixability();
-          anomalyDetails.put(FIXABLE_VIOLATED_GOALS, violatedGoalsByFixability.getOrDefault(true, Collections.emptyList()));
-          anomalyDetails.put(UNFIXABLE_VIOLATED_GOALS, violatedGoalsByFixability.getOrDefault(false, Collections.emptyList()));
-          if (_hasFixStarted) {
-            anomalyDetails.put(OPTIMIZATION_RESULT, goalViolations.optimizationResult(_isJson));
-          }
-          break;
-        case BROKER_FAILURE:
-          BrokerFailures brokerFailures = (BrokerFailures) _anomalyState.anomaly();
-          anomalyDetails.put(FAILED_BROKERS_BY_TIME_MS, brokerFailures.failedBrokers());
-          if (_hasFixStarted) {
-            anomalyDetails.put(OPTIMIZATION_RESULT, brokerFailures.optimizationResult(_isJson));
-          }
-          break;
-        case DISK_FAILURE:
-          DiskFailures diskFailures = (DiskFailures) _anomalyState.anomaly();
-          anomalyDetails.put(FAILED_DISKS_BY_TIME_MS, diskFailures.failedDisks());
-          if (_hasFixStarted) {
-            anomalyDetails.put(OPTIMIZATION_RESULT, diskFailures.optimizationResult(_isJson));
-          }
-          break;
-        case METRIC_ANOMALY:
-          KafkaMetricAnomaly metricAnomaly = (KafkaMetricAnomaly) _anomalyState.anomaly();
-          anomalyDetails.put(DESCRIPTION, metricAnomaly.description());
-          if (_hasFixStarted) {
-            anomalyDetails.put(OPTIMIZATION_RESULT, metricAnomaly.optimizationResult(_isJson));
-          }
-          break;
-        default:
-          throw new IllegalStateException("Unrecognized anomaly type " + _anomalyType);
-      }
-      return anomalyDetails;
-    }
   }
 }
