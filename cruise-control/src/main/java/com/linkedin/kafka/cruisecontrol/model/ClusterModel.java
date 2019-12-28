@@ -48,1199 +48,1199 @@ import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVA
  * the input of the analyzer to generate the proposals for load rebalance.
  */
 public class ClusterModel implements Serializable {
-	private static final long serialVersionUID = -6840253566423285966L;
-	// Hypothetical broker that indicates the original broker of replicas to be created in the existing cluster model.
-	private static final Broker GENESIS_BROKER = new Broker(null, -1, new BrokerCapacityInfo(Collections.emptyMap()));
-
-	private final ModelGeneration _generation;
-	private final Map<String, Rack> _racksById;
-	private final Map<Integer, Rack> _brokerIdToRack;
-	private final Map<TopicPartition, Partition> _partitionsByTopicPartition;
-	private final Set<Replica> _selfHealingEligibleReplicas;
-	private final SortedSet<Broker> _newBrokers;
-	private final Set<Broker> _aliveBrokers;
-	private final SortedSet<Broker> _deadBrokers;
-	private final SortedSet<Broker> _brokers;
-	private final double _monitoredPartitionsRatio;
-	private final double[] _clusterCapacity;
-	private Load _load;
-	// An integer to keep track of the maximum replication factor that a partition was ever created with.
-	private int _maxReplicationFactor;
-	// The replication factor that each topic in the cluster created with ().
-	private Map<String, Integer> _replicationFactorByTopic;
-	private Map<Integer, Load> _potentialLeadershipLoadByBrokerId;
-	private int _unknownHostId;
-	private Map<Integer, String> _capacityEstimationInfoByBrokerId;
-
-	/**
-	 * Constructor for the cluster class. It creates data structures to hold a list of racks, a map for partitions by
-	 * topic partition, topic replica collocation by topic.
-	 */
-	public ClusterModel(ModelGeneration generation, double monitoredPartitionsRatio) {
-		_generation = generation;
-		_racksById = new HashMap<>();
-		_brokerIdToRack = new HashMap<>();
-		_partitionsByTopicPartition = new HashMap<>();
-		// Replicas are added/removed only when broker alive status is set via setState(). Replica contents are
-		// automatically updated in case of replica or leadership relocation.
-		_selfHealingEligibleReplicas = new HashSet<>();
-		// A sorted set of newly added brokers
-		_newBrokers = new TreeSet<>();
-		// A set of alive brokers
-		_aliveBrokers = new HashSet<>();
-		// A set of all brokers
-		_brokers = new TreeSet<>();
-		// A set of dead brokers
-		_deadBrokers = new TreeSet<>();
-		// Initially cluster does not contain any load.
-		_load = new Load();
-		_clusterCapacity = new double[Resource.cachedValues().size()];
-		_maxReplicationFactor = 1;
-		_replicationFactorByTopic = new HashMap<>();
-		_potentialLeadershipLoadByBrokerId = new HashMap<>();
-		_monitoredPartitionsRatio = monitoredPartitionsRatio;
-		_unknownHostId = 0;
-		_capacityEstimationInfoByBrokerId = new HashMap<>();
-	}
-
-	/**
-	 * get the metadata generation for this cluster model.
-	 */
-	public ModelGeneration generation() {
-		return _generation;
-	}
-
-	/**
-	 * Get the coverage of this cluster model. This shows how representative the cluster is.
-	 */
-	public double monitoredPartitionsRatio() {
-		return _monitoredPartitionsRatio;
-	}
-
-	/**
-	 * Populate the analysis stats with this cluster and given balancing constraint.
-	 *
-	 * @param balancingConstraint Balancing constraint.
-	 * @return Analysis stats with this cluster and given balancing constraint.
-	 */
-	public ClusterModelStats getClusterStats(BalancingConstraint balancingConstraint) {
-		return (new ClusterModelStats()).populate(this, balancingConstraint);
-	}
-
-	/**
-	 * Get the rack with the rack id if it is found in the cluster; null otherwise.
-	 */
-	public Rack rack(String rackId) {
-		return _racksById.get(rackId);
-	}
-
-	/**
-	 * Get the distribution of replicas in the cluster at the point of call. Replica distribution is represented by the
-	 * map: topic-partition -&gt; broker-id-of-replicas. broker-id-of-replicas[0] represents the leader's broker id.
-	 *
-	 * @return The replica distribution of leader and follower replicas in the cluster at the point of call.
-	 */
-	public Map<TopicPartition, List<Integer>> getReplicaDistribution() {
-		Map<TopicPartition, List<Integer>> replicaDistribution = new HashMap<>(_partitionsByTopicPartition.size());
-
-		for (Map.Entry<TopicPartition, Partition> entry : _partitionsByTopicPartition.entrySet()) {
-			TopicPartition tp = entry.getKey();
-			Partition partition = entry.getValue();
-			List<Integer> brokerIds = partition.replicas().stream().map(r -> r.broker().id()).collect(Collectors.toList());
-			// Add distribution of replicas in the partition.
-			replicaDistribution.put(tp, brokerIds);
-		}
-
-		return replicaDistribution;
-	}
-
-	/**
-	 * Get leader broker ids for each partition.
-	 */
-	public Map<TopicPartition, Integer> getLeaderDistribution() {
-		Map<TopicPartition, Integer> leaders = new HashMap<>(_partitionsByTopicPartition.size());
-		for (Map.Entry<TopicPartition, Partition> entry : _partitionsByTopicPartition.entrySet()) {
-			leaders.put(entry.getKey(), entry.getValue().leader().broker().id());
-		}
-		return leaders;
-	}
-
-	/**
-	 * Get replicas eligible for self-healing.
-	 */
-	public Set<Replica> selfHealingEligibleReplicas() {
-		return _selfHealingEligibleReplicas;
-	}
-
-	/**
-	 * Get the recent cluster load information.
-	 */
-	public Load load() {
-		return _load;
-	}
-
-	/**
-	 * Get the leadership load for given broker id. Leadership load is the accumulated outbound network load for leader
-	 * of each replica in a broker. This is the hypothetical maximum that would be realized if the specified broker
-	 * became the leader of all the replicas it currently owns.
-	 *
-	 * @param brokerId Broker id.
-	 * @return The leadership load for broker.
-	 */
-	public Load potentialLeadershipLoadFor(Integer brokerId) {
-		return _potentialLeadershipLoadByBrokerId.get(brokerId);
-	}
-
-	/**
-	 * Get the maximum replication factor of a replica that was added to the cluster before.
-	 */
-	public int maxReplicationFactor() {
-		return _maxReplicationFactor;
-	}
-	/**
-	 * Get the replication factor that each topic in the cluster created with.
-	 */
-	public Map<String, Integer> replicationFactorByTopic() {
-		return _replicationFactorByTopic;
-	}
-
-	/**
-	 * Get partition of the given replica.
-	 *
-	 * @param tp Topic partition of the replica for which the partition is requested.
-	 * @return Partition of the given replica.
-	 */
-	public Partition partition(TopicPartition tp) {
-		return _partitionsByTopicPartition.get(tp);
-	}
-
-	/**
-	 * Get a map of partitions by topic names.
-	 */
-	public SortedMap<String, List<Partition>> getPartitionsByTopic() {
-		SortedMap<String, List<Partition>> partitionsByTopic = new TreeMap<>();
-		for (String topicName: topics()) {
-			partitionsByTopic.put(topicName, new ArrayList<>());
-		}
-		for (Map.Entry<TopicPartition, Partition> entry: _partitionsByTopicPartition.entrySet()) {
-			partitionsByTopic.get(entry.getKey().topic()).add(entry.getValue());
-		}
-		return partitionsByTopic;
-	}
-
-	/**
-	 * Get all the leader replicas in the cluster.
-	 */
-	public Set<Replica> leaderReplicas() {
-		return _partitionsByTopicPartition.values().stream().map(Partition::leader).collect(Collectors.toSet());
-	}
-
-	/**
-	 * Set the {@link Broker.State liveness state} of the given broker.
-	 * <ul>
-	 * <li>Replicas on dead brokers are considered to be self healing eligible.</li>
-	 * </ul>
-	 *
-	 * @param brokerId Id of the broker for which the alive status is set.
-	 * @param newState The new state of the broker.
-	 */
-	public void setBrokerState(int brokerId, Broker.State newState) {
-		Broker broker = broker(brokerId);
-		if (broker == null) {
-			throw new IllegalArgumentException("Broker " + brokerId + " does not exist.");
-		}
-		// We need to go through rack so all the cached capacity will be updated.
-		broker.rack().setBrokerState(brokerId, newState);
-		refreshCapacity();
-		switch (newState) {
-			case DEAD:
-				_selfHealingEligibleReplicas.addAll(broker.replicas());
-				_aliveBrokers.remove(broker);
-				_deadBrokers.add(broker);
-				break;
-			case NEW:
-				_newBrokers.add(broker);
-				// fall through to remove the replicas from selfHealingEligibleReplicas
-			case DEMOTED:
-				// As of now we still treat demoted brokers as alive brokers.
-			case ALIVE:
-				_selfHealingEligibleReplicas.removeAll(broker.replicas());
-				_aliveBrokers.add(broker);
-				_deadBrokers.remove(broker);
-				break;
-			default:
-				throw new IllegalArgumentException("Illegal broker state " + newState + " is provided.");
-		}
-	}
-
-	/**
-	 * (1) Remove the replica from the source broker,
-	 * (2) Set the broker of the removed replica as the destination broker,
-	 * (3) Add this replica to the destination broker.
-	 * * There is no need to make any modifications to _partitionsByTopicPartition because even after the move,
-	 * partitions will contain the same replicas.
-	 *
-	 * @param tp      Partition Info of the replica to be relocated.
-	 * @param sourceBrokerId      Source broker id.
-	 * @param destinationBrokerId Destination broker id.
-	 */
-	public void relocateReplica(TopicPartition tp, int sourceBrokerId, int destinationBrokerId) {
-		// Removes the replica and related load from the source broker / source rack / cluster.
-		Replica replica = removeReplica(sourceBrokerId, tp);
-		if (replica == null) {
-			throw new IllegalArgumentException("Replica is not in the cluster.");
-		}
-		// Updates the broker of the removed replica with destination broker.
-		replica.setBroker(broker(destinationBrokerId));
-
-		// Add this replica and related load to the destination broker / destination rack / cluster.
-		replica.broker().rack().addReplica(replica);
-		_load.addLoad(replica.load());
-		// Add leadership load to the destination replica.
-		_potentialLeadershipLoadByBrokerId.get(destinationBrokerId).addLoad(partition(tp).leader().load());
-	}
-
-	/**
-	 * (1) Removes leadership from source replica.
-	 * (2) Adds this leadership to the destination replica.
-	 * (3) Transfers the whole outbound network and a fraction of CPU load of source replica to the destination replica.
-	 * (4) Updates the leader and list of followers of the partition.
-	 *
-	 * @param tp      Topic partition of this replica.
-	 * @param sourceBrokerId      Source broker id.
-	 * @param destinationBrokerId Destination broker id.
-	 * @return True if relocation is successful, false otherwise.
-	 */
-	public boolean relocateLeadership(TopicPartition tp, int sourceBrokerId, int destinationBrokerId) {
-		// Sanity check to see if the source replica is the leader.
-		Replica sourceReplica = _partitionsByTopicPartition.get(tp).replica(sourceBrokerId);
-		if (!sourceReplica.isLeader()) {
-			return false;
-		}
-		// Sanity check to see if the destination replica is a follower.
-		Replica destinationReplica = _partitionsByTopicPartition.get(tp).replica(destinationBrokerId);
-		if (destinationReplica.isLeader()) {
-			throw new IllegalArgumentException("Cannot relocate leadership of partition " + tp + "from broker "
-																				 + sourceBrokerId + " to broker " + destinationBrokerId
-																				 + " because the destination replica is a leader.");
-		}
-
-		// Transfer the leadership load (whole outbound network and a fraction of CPU load) of source replica to the
-		// destination replica.
-		// (1) Remove and get the outbound network load and a fraction of CPU load associated with leadership from the
-		// given replica.
-		// (2) Add the outbound network load and CPU load associated with leadership to the given replica.
-		//
-		// Remove the load from the source rack.
-		Rack rack = broker(sourceBrokerId).rack();
-		AggregatedMetricValues leadershipLoadDelta = rack.makeFollower(sourceBrokerId, tp);
-		// Add the load to the destination rack.
-		rack = broker(destinationBrokerId).rack();
-		rack.makeLeader(destinationBrokerId, tp, leadershipLoadDelta);
-
-		// Update the leader and list of followers of the partition.
-		Partition partition = _partitionsByTopicPartition.get(tp);
-		partition.relocateLeadership(destinationReplica);
-
-		return true;
-	}
-
-	/**
-	 * Get alive brokers in the cluster.
-	 */
-	public Set<Broker> aliveBrokers() {
-		return _aliveBrokers;
-	}
-
-	/**
-	 * Get the dead brokers in the cluster.
-	 */
-	public SortedSet<Broker> deadBrokers() {
-		return new TreeSet<>(_deadBrokers);
-	}
-
-	/**
-	 * @return Capacity estimation info by broker id for which there has been an estimation.
-	 */
-	public Map<Integer, String> capacityEstimationInfoByBrokerId() {
-		return Collections.unmodifiableMap(_capacityEstimationInfoByBrokerId);
-	}
-
-	/**
-	 * Get the demoted brokers in the cluster.
-	 */
-	public SortedSet<Broker> demotedBrokers() {
-		SortedSet<Broker> demotedBrokers = new TreeSet<>();
-		for (Rack rack : _racksById.values()) {
-			rack.brokers().forEach(b -> {
-				if (b.isDemoted()) {
-					demotedBrokers.add(b);
-				}
-			});
-		}
-		return demotedBrokers;
-	}
-
-	/**
-	 * Get the set of new brokers.
-	 */
-	public SortedSet<Broker> newBrokers() {
-		return _newBrokers;
-	}
-
-	/**
-	 * Checks if cluster has at least one alive rack. If none of the racks are alive, cluster is considered dead.
-	 */
-	public boolean isClusterAlive() {
-		for (Rack rack : _racksById.values()) {
-			if (rack.isRackAlive()) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	/**
-	 * Clear the content of monitoring data at each replica in the cluster.
-	 * Typically, if a change is detected in topology, this method is called to clear the monitoring data collected with
-	 * the old topology.
-	 */
-	public void clearLoad() {
-		_racksById.values().forEach(Rack::clearLoad);
-		_load.clearLoad();
-	}
-
-	/**
-	 * Remove and get removed replica from the cluster.
-	 *
-	 * @param brokerId       Id of the broker containing the partition.
-	 * @param tp Topic partition of the replica to be removed.
-	 * @return The requested replica if the id exists in the rack and the partition is found in the broker, null
-	 * otherwise.
-	 */
-	public Replica removeReplica(int brokerId, TopicPartition tp) {
-		for (Rack rack : _racksById.values()) {
-			// Remove the replica and the associated load from the rack that it resides in.
-			Replica removedReplica = rack.removeReplica(brokerId, tp);
-			if (removedReplica != null) {
-				// Remove the load of the removed replica from the recent load of the cluster.
-				_load.subtractLoad(removedReplica.load());
-				_potentialLeadershipLoadByBrokerId.get(brokerId).subtractLoad(partition(tp).leader().load());
-				// Return the removed replica.
-				return removedReplica;
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * Get the set of brokers in the cluster.
-	 */
-	public SortedSet<Broker> brokers() {
-		return new TreeSet<>(_brokers);
-	}
-
-	/**
-	 * Get the requested broker in the cluster.
-	 *
-	 * @param brokerId Id of the requested broker.
-	 * @return Requested broker if it is in the cluster, null otherwise.
-	 */
-	public Broker broker(int brokerId) {
-		Rack rack = _brokerIdToRack.get(brokerId);
-		return rack == null ? null : rack.broker(brokerId);
-	}
-
-	/**
-	 * Ask the cluster model to keep track of the replicas sorted with the given score function.
-	 *
-	 * It is recommended to use the functions from {@link ReplicaSortFunctionFactory} so the functions can be maintained
-	 * in a single place.
-	 *
-	 * The sorted replica will only be updated in the following cases:
-	 * 1. A replica is added to or removed from a broker
-	 * 2. A replica's role has changed from leader to follower, and vice versa.
-	 *
-	 * The sorted replicas are named using the given sortName, and can be accessed using
-	 * {@link Broker#trackedSortedReplicas(String)}. If the sorted replicas are no longer needed,
-	 * {@link #untrackSortedReplicas(String)} to release memory.
-	 *
-	 * @param sortName the name of the sorted replicas.
-	 * @param scoreFunction the score function to sort the replicas with the same priority, replicas are sorted in ascending
-	 *                      order of score.
-	 * @see SortedReplicas
-	 */
-	public void trackSortedReplicas(String sortName, Function<Replica, Double> scoreFunction) {
-		trackSortedReplicas(sortName, null, scoreFunction);
-	}
-
-	/**
-	 * Ask the cluster model to keep track of the replicas sorted with the given priority function and score function.
-	 *
-	 * It is recommended to use the functions from {@link ReplicaSortFunctionFactory} so the functions can be maintained
-	 * in a single place.
-	 *
-	 * The sort will first use the priority function then the score function. The priority function allows the
-	 * caller to prioritize a certain type of replicas, e.g immigrant replicas.
-	 *
-	 * The sorted replica will only be updated in the following cases:
-	 * 1. A replica is added to or removed from abroker
-	 * 2. A replica's role has changed from leader to follower, and vice versa.
-	 *
-	 * The sorted replicas are named using the given sortName, and can be accessed using
-	 * {@link Broker#trackedSortedReplicas(String)}. If the sorted replicas are no longer needed,
-	 * {@link #untrackSortedReplicas(String)} to release memory.
-	 *
-	 * @param sortName the name of the sorted replicas.
-	 * @param priorityFunc the priority function to sort the replicas
-	 * @param scoreFunc the score function to sort the replicas with the same priority, replicas are sorted in ascending
-	 *                  order of score.
-	 * @see SortedReplicas
-	 */
-	public void trackSortedReplicas(String sortName,
-																	Function<Replica, Integer> priorityFunc,
-																	Function<Replica, Double> scoreFunc) {
-		trackSortedReplicas(sortName, null, priorityFunc, scoreFunc);
-	}
-
-	/**
-	 * Ask the cluster model to keep track of the replicas sorted with the given priority function and score function.
-	 *
-	 * The sort will first use the priority function then the score function. The priority function allows the
-	 * caller to prioritize a certain type of replicas, e.g immigrant replicas. The selection function determines
-	 * which replicas to be included in the sorted replicas.
-	 *
-	 * It is recommended to use the functions from {@link ReplicaSortFunctionFactory} so the functions can be maintained
-	 * in a single place.
-	 *
-	 * The sorted replica will only be updated in the following cases:
-	 * 1. A replica is added to or removed from a broker
-	 * 2. A replica's role has changed from leader to follower, and vice versa.
-	 *
-	 * The sorted replicas are named using the given sortName, and can be accessed using
-	 * {@link Broker#trackedSortedReplicas(String)}. If the sorted replicas are no longer needed,
-	 * {@link #untrackSortedReplicas(String)} to release memory.
-	 *
-	 * @param sortName the name of the sorted replicas.
-	 * @param selectionFunc the selection function to decide which replicas to include in the sort. If it is {@code null},
-	 *                      all the replicas are to be included.
-	 * @param priorityFunc the priority function to sort the replicas
-	 * @param scoreFunc the score function to sort the replicas with the same priority, replicas are sorted in ascending
-	 *                  order of score.
-	 * @see SortedReplicas
-	 */
-	public void trackSortedReplicas(String sortName,
-																	Function<Replica, Boolean> selectionFunc,
-																	Function<Replica, Integer> priorityFunc,
-																	Function<Replica, Double> scoreFunc) {
-		_brokers.forEach(b -> b.trackSortedReplicas(sortName, selectionFunc, priorityFunc, scoreFunc));
-	}
-
-	/**
-	 * Untrack the sorted replicas with the given name to release memory.
-	 *
-	 * @param sortName the name of the sorted replicas.
-	 */
-	public void untrackSortedReplicas(String sortName) {
-		_brokers.forEach(b -> b.untrackSortedReplicas(sortName));
-	}
-
-	/**
-	 * Clear the content and structure of the cluster.
-	 */
-	public void clear() {
-		_racksById.clear();
-		_partitionsByTopicPartition.clear();
-		_load.clearLoad();
-		_maxReplicationFactor = 1;
-		_replicationFactorByTopic.clear();
-		_capacityEstimationInfoByBrokerId.clear();
-	}
-
-	/**
-	 * Get number of alive racks in the cluster.
-	 */
-	public int numAliveRacks() {
-		int numAliveRacks = 0;
-		for (Rack rack : _racksById.values()) {
-			if (rack.isRackAlive()) {
-				numAliveRacks++;
-			}
-		}
-		return numAliveRacks;
-	}
-
-	/**
-	 * Get the number of replicas with the given topic name in cluster.
-	 *
-	 * @param topic Name of the topic for which the number of replicas in cluster will be counted.
-	 * @return Number of replicas with the given topic name in cluster.
-	 */
-	public int numTopicReplicas(String topic) {
-		int numTopicReplicas = 0;
-
-		for (Rack rack : _racksById.values()) {
-			numTopicReplicas += rack.numTopicReplicas(topic);
-		}
-		return numTopicReplicas;
-	}
-
-	/**
-	 * Get the number of leader replicas in cluster.
-	 *
-	 * @return Number of leader replicas in cluster.
-	 */
-	public int numLeaderReplicas() {
-		return _partitionsByTopicPartition.size();
-	}
-
-	/**
-	 * Get the number of replicas in cluster.
-	 *
-	 * @return Number of replicas in cluster.
-	 */
-	public int numReplicas() {
-		return _partitionsByTopicPartition.values().stream().mapToInt(p -> p.replicas().size()).sum();
-	}
-
-	/**
-	 * Get topics in the cluster.
-	 */
-	public Set<String> topics() {
-		Set<String> topics = new HashSet<>();
-
-		for (Rack rack : _racksById.values()) {
-			topics.addAll(rack.topics());
-		}
-		return topics;
-	}
-
-	/**
-	 * Get cluster capacity for the requested resource. Cluster capacity represents the total capacity of the live
-	 * brokers in the cluster for the requested resource.
-	 *
-	 * @param resource Resource for which the capacity will be provided.
-	 * @return Alive cluster capacity of the resource.
-	 */
-	public double capacityFor(Resource resource) {
-		return _clusterCapacity[resource.id()];
-	}
-
-	/**
-	 * Set the load for the given replica. This method should be called only once for each replica.
-	 *
-	 * @param rackId         Rack id.
-	 * @param brokerId       Broker Id containing the replica with the given topic partition.
-	 * @param tp             Topic partition that identifies the replica in this broker.
-	 * @param metricValues   The load of the replica.
-	 * @param windows        The windows list of the aggregated metrics.
-	 */
-	public void setReplicaLoad(String rackId,
-														 int brokerId,
-														 TopicPartition tp,
-														 AggregatedMetricValues metricValues,
-														 List<Long> windows) {
-		// Sanity check for the attempts to push more than allowed number of snapshots having different times.
-		if (!broker(brokerId).replica(tp).load().isEmpty()) {
-			throw new IllegalStateException(String.format("The load for %s on broker %d, rack %s already has metric values.",
-																										tp, brokerId, rackId));
-		}
-
-		Rack rack = rack(rackId);
-		rack.setReplicaLoad(brokerId, tp, metricValues, windows);
-
-		// Update the recent load of cluster.
-		_load.addMetricValues(metricValues, windows);
-		// If this snapshot belongs to leader, update leadership load.
-		Replica leader = partition(tp).leader();
-		if (leader != null && leader.broker().id() == brokerId) {
-			// load must be updated for each broker containing a replica of the same partition.
-			for (Replica replica : partition(tp).replicas()) {
-				_potentialLeadershipLoadByBrokerId.get(replica.broker().id()).addMetricValues(metricValues, windows);
-			}
-		}
-	}
-
-	/**
-	 * If the rack or broker does not exist, create them with UNKNOWN host name. This allows handling
-	 * of cases where the information of a dead broker is no longer available.
-	 *
-	 * @param rackId         Rack id under which the replica will be created.
-	 * @param brokerId       Broker id under which the replica will be created.
-	 * @param brokerCapacityInfo The capacity information to use if the broker does not exist.
-	 */
-	public void handleDeadBroker(String rackId, int brokerId, BrokerCapacityInfo brokerCapacityInfo) {
-		if (rack(rackId) == null) {
-			createRack(rackId);
-		}
-		if (broker(brokerId) == null) {
-			createBroker(rackId, String.format("UNKNOWN_HOST-%d", _unknownHostId++), brokerId, brokerCapacityInfo);
-		}
-	}
-
-	/**
-	 * Create a replica under given cluster/rack/broker. Add replica to rack and corresponding partition. Get the
-	 * created replica.
-	 *
-	 * @param rackId         Rack id under which the replica will be created.
-	 * @param brokerId       Broker id under which the replica will be created.
-	 * @param tp             Topic partition information of the replica.
-	 * @param index          The index of the replica in the replica list.
-	 * @param isLeader       True if the replica is a leader, false otherwise.
-	 * @return Created replica.
-	 */
-	public Replica createReplica(String rackId, int brokerId, TopicPartition tp, int index, boolean isLeader) {
-		return createReplica(rackId, brokerId, tp, index, isLeader, false);
-	}
-
-	/**
-	 * Create a replica under given cluster/rack/broker. Add replica to rack and corresponding partition. Get the
-	 * created replica.
-	 *
-	 * @param rackId         Rack id under which the replica will be created.
-	 * @param brokerId       Broker id under which the replica will be created.
-	 * @param tp             Topic partition information of the replica.
-	 * @param index          The index of the replica in the replica list.
-	 * @param isLeader       True if the replica is a leader, false otherwise.
-	 * @param isFuture       True if the replica does not correspond to any existing replica in the cluster, but a replica
-	 *                       we are going to add to the cluster. This replica's original broker will not be any existing broker
-	 *                       so that it will be treated as an immigrant replica for whatever broker it is assigned to and
-	 *                       grant goals greatest freedom to allocate to an existing broker.
-	 * @return Created replica.
-	 */
-	public Replica createReplica(String rackId, int brokerId, TopicPartition tp, int index, boolean isLeader, boolean isFuture) {
-		Replica replica;
-		if (!isFuture) {
-			replica = new Replica(tp, broker(brokerId), isLeader);
-		} else {
-			replica = new Replica(tp, GENESIS_BROKER, false);
-			replica.setBroker(broker(brokerId));
-		}
-		rack(rackId).addReplica(replica);
-
-		// Add replica to its partition.
-		if (!_partitionsByTopicPartition.containsKey(tp)) {
-			// Partition has not been created before.
-			_partitionsByTopicPartition.put(tp, new Partition(tp));
-			_replicationFactorByTopic.putIfAbsent(tp.topic(), 1);
-		}
-
-		Partition partition = _partitionsByTopicPartition.get(tp);
-		if (replica.isLeader()) {
-			partition.addLeader(replica, index);
-			return replica;
-		}
-
-		partition.addFollower(replica, index);
-		// If leader of this follower was already created and load was pushed to it, add that load to the follower.
-		Replica leaderReplica = partition(tp).leader();
-		if (leaderReplica != null) {
-			_potentialLeadershipLoadByBrokerId.get(brokerId).addLoad(leaderReplica.load());
-		}
-
-		// Keep track of the replication factor per topic.
-		int replicationFactor = Math.max(_replicationFactorByTopic.get(tp.topic()), partition.followers().size() + 1);
-		_replicationFactorByTopic.put(tp.topic(), replicationFactor);
-
-		// Increment the maximum replication factor if the number of replicas of the partition is larger than the
-		//  maximum replication factor of previously existing partitions.
-		_maxReplicationFactor = Math.max(_maxReplicationFactor, replicationFactor);
-
-		return replica;
-	}
-
-	/**
-	 * Delete a replica from cluster. This method is expected to be called in a batch for all partitions of the topic and in
-	 * the end the replication factor across partitions are consistent. Also the caller of this method is expected to call
-	 * {@link #refreshClusterMaxReplicationFactor()} after all replica deletion.
-	 * @param topicPartition Topic partition of the replica to be removed.
-	 * @param brokerId Id of the broker hosting the replica.
-	 */
-	public void deleteReplica(TopicPartition topicPartition, int brokerId) {
-		int currentReplicaCount = _partitionsByTopicPartition.get(topicPartition).replicas().size();
-		if (currentReplicaCount < 2) {
-			throw new IllegalStateException(String.format("Unable to delete replica for topic partition %s since it only has %d replicas.",
-																										topicPartition, currentReplicaCount));
-		}
-		removeReplica(brokerId, topicPartition);
-		// Update partition info.
-		Partition partition = _partitionsByTopicPartition.get(topicPartition);
-		partition.deleteReplica(brokerId);
-		_replicationFactorByTopic.put(topicPartition.topic(), partition.replicas().size());
-	}
-
-	/**
-	 * Refresh the maximum topic replication factor statistic.
-	 */
-	public void refreshClusterMaxReplicationFactor() {
-		_maxReplicationFactor =  _replicationFactorByTopic.values().stream().max(Integer::compareTo).orElse(0);
-	}
-
-	/**
-	 * Create a broker under this cluster/rack and get the created broker.
-	 * Add the broker id and info to {@link #_capacityEstimationInfoByBrokerId} if the broker capacity has been estimated.
-	 *
-	 * @param rackId Id of the rack that the broker will be created in.
-	 * @param host The host of this broker
-	 * @param brokerId Id of the broker to be created.
-	 * @param brokerCapacityInfo Capacity information of the created broker.
-	 * @return Created broker.
-	 */
-	public Broker createBroker(String rackId,
-														 String host,
-														 int brokerId,
-														 BrokerCapacityInfo brokerCapacityInfo) {
-		_potentialLeadershipLoadByBrokerId.putIfAbsent(brokerId, new Load());
-		Rack rack = rack(rackId);
-		_brokerIdToRack.put(brokerId, rack);
-
-		if (brokerCapacityInfo.isEstimated()) {
-			_capacityEstimationInfoByBrokerId.put(brokerId, brokerCapacityInfo.estimationInfo());
-		}
-		Broker broker = rack.createBroker(brokerId, host, brokerCapacityInfo);
-		_aliveBrokers.add(broker);
-		_brokers.add(broker);
-		refreshCapacity();
-		return broker;
-	}
-
-	/**
-	 * Create a rack under this cluster.
-	 *
-	 * @param rackId Id of the rack to be created.
-	 * @return Created rack.
-	 */
-	public Rack createRack(String rackId) {
-		Rack rack = new Rack(rackId);
-		return _racksById.putIfAbsent(rackId, rack);
-	}
-
-	/**
-	 * For partitions of specified topics, create or delete replicas in given cluster model to change the partition's replication
-	 * factor to target replication factor. New replicas for partition are added in a rack-aware, round-robin way.
-	 *
-	 * @param topicsByReplicationFactor The topics to modify replication factor with target replication factor.
-	 * @param brokersByRack A map from rack to broker.
-	 * @param rackByBroker A map from broker to rack.
-	 * @param cluster The metadata of the cluster.
-	 */
-	public void createOrDeleteReplicas(Map<Short, Set<String>> topicsByReplicationFactor,
-																		 Map<String, List<Integer>> brokersByRack,
-																		 Map<Integer, String> rackByBroker,
-																		 Cluster cluster) {
-		// After replica deletion of some topic partitions, the cluster's maximal replication factor may decrease.
-		boolean needToRefreshClusterMaxReplicationFactor = false;
-
-		for (Map.Entry<Short, Set<String>> entry : topicsByReplicationFactor.entrySet()) {
-			short replicationFactor = entry.getKey();
-			Set<String> topics = entry.getValue();
-			for (String topic : topics) {
-				List<String> racks = new ArrayList<>(brokersByRack.keySet());
-				int[] cursors = new int[racks.size()];
-				int rackCursor = 0;
-				for (PartitionInfo partitionInfo : cluster.partitionsForTopic(topic)) {
-					if (partitionInfo.replicas().length == replicationFactor) {
-						continue;
-					}
-					List<Integer> newAssignedReplica = new ArrayList<>();
-					if (partitionInfo.replicas().length < replicationFactor) {
-						Set<String> currentOccupiedRack = new HashSet<>();
-						// Make sure the current replicas are in new replica list.
-						for (Node node : partitionInfo.replicas()) {
-							newAssignedReplica.add(node.id());
-							currentOccupiedRack.add(rackByBroker.get(node.id()));
-						}
-						// Add new replica to partition in rack-aware(if possible), round-robin way.
-						while (newAssignedReplica.size() < replicationFactor) {
-							String rack = racks.get(rackCursor);
-							if (!currentOccupiedRack.contains(rack) || currentOccupiedRack.size() == racks.size()) {
-								int cursor = cursors[rackCursor];
-								Integer brokerId = brokersByRack.get(rack).get(cursor);
-								if (!newAssignedReplica.contains(brokerId)) {
-									newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
-									// Create a new replica in the cluster model and populate its load from the leader replica.
-									TopicPartition tp = new TopicPartition(topic, partitionInfo.partition());
-									Load load = partition(tp).leader().getFollowerLoadFromLeader();
-									createReplica(rack, brokerId, tp, partitionInfo.replicas().length, false, true);
-									setReplicaLoad(rack, brokerId, tp, load.loadByWindows(), load.windows());
-									currentOccupiedRack.add(rack);
-								}
-								cursors[rackCursor] = (cursor + 1) % brokersByRack.get(rack).size();
-							}
-							rackCursor = (rackCursor + 1) % racks.size();
-						}
-					} else {
-						// Make sure the leader replica is in new replica list.
-						newAssignedReplica.add(partitionInfo.leader().id());
-						for (Node node : partitionInfo.replicas()) {
-							if (node.id() != newAssignedReplica.get(0)) {
-								if (newAssignedReplica.size() < replicationFactor) {
-									newAssignedReplica.add(node.id());
-								} else {
-									deleteReplica(new TopicPartition(topic, partitionInfo.partition()), node.id());
-									needToRefreshClusterMaxReplicationFactor = true;
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		if (needToRefreshClusterMaxReplicationFactor) {
-			refreshClusterMaxReplicationFactor();
-		}
-	}
-
-	/**
-	 * Get a list of sorted (in ascending order by resource) alive brokers having utilization under:
-	 * (given utilization threshold) * (broker and/or host capacity (see {@link Resource#isHostResource} and
-	 * {@link Resource#isBrokerResource}). Utilization threshold might be any capacity constraint thresholds such as
-	 * balance or capacity.
-	 *
-	 * @param resource             Resource for which brokers will be sorted.
-	 * @param utilizationThreshold Utilization threshold for the given resource.
-	 * @return A list of sorted (in ascending order by resource) alive brokers having utilization under:
-	 * (given utilization threshold) * (broker and/or host capacity).
-	 */
-	public List<Broker> sortedAliveBrokersUnderThreshold(Resource resource, double utilizationThreshold) {
-		List<Broker> sortedTargetBrokersUnderCapacityLimit = aliveBrokersUnderThreshold(resource, utilizationThreshold);
-
-		sortedTargetBrokersUnderCapacityLimit.sort((o1, o2) -> {
-			double expectedBrokerLoad1 = o1.load().expectedUtilizationFor(resource);
-			double expectedBrokerLoad2 = o2.load().expectedUtilizationFor(resource);
-			// For host resource we first compare host util then look at the broker util -- even if a resource is a
-			// host-resource, but not broker-resource.
-			int hostComparison = 0;
-			if (resource.isHostResource()) {
-				double expectedHostLoad1 = o1.host().load().expectedUtilizationFor(resource);
-				double expectedHostLoad2 = o2.host().load().expectedUtilizationFor(resource);
-				hostComparison = Double.compare(expectedHostLoad1, expectedHostLoad2);
-			}
-			return hostComparison == 0 ? Double.compare(expectedBrokerLoad1, expectedBrokerLoad2) : hostComparison;
-		});
-		return sortedTargetBrokersUnderCapacityLimit;
-	}
-
-	public List<Broker> aliveBrokersUnderThreshold(Resource resource, double utilizationThreshold) {
-		List<Broker> aliveBrokersUnderThreshold = new ArrayList<>();
-
-		for (Broker aliveBroker : aliveBrokers()) {
-			if (resource.isBrokerResource()) {
-				double brokerCapacityLimit = aliveBroker.capacityFor(resource) * utilizationThreshold;
-				double brokerUtilization = aliveBroker.load().expectedUtilizationFor(resource);
-				if (brokerUtilization >= brokerCapacityLimit) {
-					continue;
-				}
-			}
-			if (resource.isHostResource()) {
-				double hostCapacityLimit = aliveBroker.host().capacityFor(resource) * utilizationThreshold;
-				double hostUtilization = aliveBroker.host().load().expectedUtilizationFor(resource);
-				if (hostUtilization >= hostCapacityLimit) {
-					continue;
-				}
-			}
-			aliveBrokersUnderThreshold.add(aliveBroker);
-		}
-		return aliveBrokersUnderThreshold;
-	}
-
-	public List<Broker> aliveBrokersOverThreshold(Resource resource, double utilizationThreshold) {
-		List<Broker> aliveBrokersOverThreshold = new ArrayList<>();
-
-		for (Broker aliveBroker : aliveBrokers()) {
-			if (resource.isBrokerResource()) {
-				double brokerCapacityLimit = aliveBroker.capacityFor(resource) * utilizationThreshold;
-				double brokerUtilization = aliveBroker.load().expectedUtilizationFor(resource);
-				if (brokerUtilization <= brokerCapacityLimit) {
-					continue;
-				}
-			}
-			if (resource.isHostResource()) {
-				double hostCapacityLimit = aliveBroker.host().capacityFor(resource) * utilizationThreshold;
-				double hostUtilization = aliveBroker.host().load().expectedUtilizationFor(resource);
-				if (hostUtilization <= hostCapacityLimit) {
-					continue;
-				}
-			}
-			aliveBrokersOverThreshold.add(aliveBroker);
-		}
-		return aliveBrokersOverThreshold;
-	}
-
-	/**
-	 * Sort the partitions in the cluster by the utilization of the given resource.
-	 * @param resource the resource type.
-	 * @param wantMaxLoad True if the requested utilization represents the peak load, false otherwise.
-	 * @param wantAvgLoad True if the requested utilization represents the avg load, false otherwise.
-	 * @return a list of partitions sorted by utilization of the given resource.
-	 */
-	public List<Partition> replicasSortedByUtilization(Resource resource, boolean wantMaxLoad, boolean wantAvgLoad) {
-		List<Partition> partitionList = new ArrayList<>(_partitionsByTopicPartition.values());
-		partitionList.sort((o1, o2) -> Double.compare(o2.leader().load().expectedUtilizationFor(resource, wantMaxLoad, wantAvgLoad),
-																									o1.leader().load().expectedUtilizationFor(resource, wantMaxLoad, wantAvgLoad)));
-		return partitionList;
-	}
-
-	/**
-	 * (1) Check whether each load in the cluster contains exactly the number of windows defined by the Load.
-	 * (2) Check whether sum of loads in the cluster / rack / broker / replica are consistent with each other.
-	 */
-	public void sanityCheck() {
-		// SANITY CHECK #1: Each load in the cluster must contain exactly the number of windows defined by the Load.
-		Map<String, Integer> errorMsgAndNumWindows = new HashMap<>();
-
-		int expectedNumWindows = _load.numWindows();
-
-		// Check leadership loads.
-		for (Map.Entry<Integer, Load> entry : _potentialLeadershipLoadByBrokerId.entrySet()) {
-			int brokerId = entry.getKey();
-			Load load = entry.getValue();
-			if (load.numWindows() != expectedNumWindows && broker(brokerId).replicas().size() != 0) {
-				errorMsgAndNumWindows.put(String.format("Leadership(%d)", brokerId), load.numWindows());
-			}
-		}
-
-		// Check rack loads.
-		for (Rack rack : _racksById.values()) {
-			if (rack.load().numWindows() != expectedNumWindows && rack.replicas().size() != 0) {
-				errorMsgAndNumWindows.put(String.format("Rack(%s)", rack.id()), rack.load().numWindows());
-			}
-
-			// Check the host load.
-			for (Host host : rack.hosts()) {
-				if (host.load().numWindows() != expectedNumWindows && host.replicas().size() != 0) {
-					errorMsgAndNumWindows.put(String.format("Host(%s)", host.name()), host.load().numWindows());
-				}
-
-				// Check broker loads.
-				for (Broker broker : rack.brokers()) {
-					if (broker.load().numWindows() != expectedNumWindows && broker.replicas().size() != 0) {
-						errorMsgAndNumWindows.put(String.format("Broker(%d)", broker.id()), broker.load().numWindows());
-					}
-
-					// Check replica loads.
-					for (Replica replica : broker.replicas()) {
-						if (replica.load().numWindows() != expectedNumWindows) {
-							errorMsgAndNumWindows.put(String.format("Replica(%s-%d)", replica.topicPartition(), broker.id()),
-																				replica.load().numWindows());
-						}
-					}
-				}
-			}
-		}
-		StringBuilder exceptionMsg = new StringBuilder();
-		for (Map.Entry<String, Integer> entry : errorMsgAndNumWindows.entrySet()) {
-			exceptionMsg.append(String.format("[%s: %d]%n", entry.getKey(), entry.getValue()));
-		}
-
-		if (exceptionMsg.length() > 0) {
-			throw new IllegalArgumentException(String.format("Loads must have all have %d windows. Following loads violate this "
-																											 + "constraint with specified number of windows: %s",
-																											 expectedNumWindows, exceptionMsg));
-		}
-		// SANITY CHECK #2: Sum of loads in the cluster / rack / broker / replica must be consistent with each other.
-		String prologueErrorMsg = "Inconsistent load distribution.";
-
-		// Check equality of sum of the replica load to their broker load for each resource.
-		for (Broker broker : brokers()) {
-			for (Resource resource : Resource.cachedValues()) {
-				double sumOfReplicaUtilization = 0.0;
-				for (Replica replica : broker.replicas()) {
-					sumOfReplicaUtilization += replica.load().expectedUtilizationFor(resource);
-				}
-				double brokerUtilization = broker.load().expectedUtilizationFor(resource);
-				if (AnalyzerUtils.compare(sumOfReplicaUtilization, brokerUtilization, resource) != 0) {
-					throw new IllegalArgumentException(String.format("%s Broker utilization for %s is different from the total replica "
-																													 + "utilization in the broker with id: %d. Sum of the replica utilization: %f, "
-																													 + "broker utilization: %f", prologueErrorMsg, resource, broker.id(),
-																													 sumOfReplicaUtilization, brokerUtilization));
-				}
-			}
-		}
-
-		// Check equality of sum of the broker load to their rack load for each resource.
-		Map<Resource, Double> sumOfRackUtilizationByResource = new HashMap<>(Resource.cachedValues().size());
-		for (Rack rack : _racksById.values()) {
-			Map<Resource, Double> sumOfHostUtilizationByResource = new HashMap<>(Resource.cachedValues().size());
-			for (Host host : rack.hosts()) {
-				for (Resource resource : Resource.cachedValues()) {
-					double sumOfBrokerUtilization = 0.0;
-					for (Broker broker : host.brokers()) {
-						sumOfBrokerUtilization += broker.load().expectedUtilizationFor(resource);
-					}
-					double hostUtilization = host.load().expectedUtilizationFor(resource);
-					if (AnalyzerUtils.compare(sumOfBrokerUtilization, hostUtilization, resource) != 0) {
-						throw new IllegalArgumentException(String.format("%s Host utilization for %s is different from the total broker "
-																														 + "utilization in the host : %s. Sum of the broker utilization: %f, "
-																														 + "host utilization: %f", prologueErrorMsg, resource, host.name(),
-																														 sumOfBrokerUtilization, hostUtilization));
-					}
-					sumOfHostUtilizationByResource.compute(resource, (k, v) -> (v == null ? 0 : v) + hostUtilization);
-				}
-			}
-
-			// Check equality of sum of the host load to the rack load for each resource.
-			for (Map.Entry<Resource, Double> entry : sumOfHostUtilizationByResource.entrySet()) {
-				Resource resource = entry.getKey();
-				double sumOfHostsUtil = entry.getValue();
-				double rackUtilization = rack.load().expectedUtilizationFor(resource);
-				if (AnalyzerUtils.compare(rackUtilization, sumOfHostsUtil, resource) != 0) {
-					throw new IllegalArgumentException(String.format("%s Rack utilization for %s is different from the total host "
-																													 + "utilization in rack : %s. Sum of the host utilization: %f, "
-																													 + "rack utilization: %f", prologueErrorMsg, resource, rack.id(),
-																													 sumOfHostsUtil, rackUtilization));
-				}
-				sumOfRackUtilizationByResource.compute(resource, (k, v) -> (v == null ? 0 : v) + sumOfHostsUtil);
-			}
-		}
-
-		// Check equality of sum of the rack load to the cluster load for each resource.
-		for (Map.Entry<Resource, Double> entry : sumOfRackUtilizationByResource.entrySet()) {
-			Resource resource = entry.getKey();
-			double sumOfRackUtil = entry.getValue();
-			double clusterUtilization = _load.expectedUtilizationFor(resource);
-			if (AnalyzerUtils.compare(_load.expectedUtilizationFor(resource), sumOfRackUtil, resource) != 0) {
-				throw new IllegalArgumentException(String.format("%s Cluster utilization for %s is different from the total rack "
-																												 + "utilization in the cluster. Sum of the rack utilization: %f, "
-																												 + "cluster utilization: %f", prologueErrorMsg, resource,
-																												 sumOfRackUtil, clusterUtilization));
-			}
-		}
-
-		// Check equality of the sum of the leadership load to the sum of the load of leader at each broker.
-		for (Broker broker : brokers()) {
-			double sumOfLeaderOfReplicaUtilization = 0.0;
-			for (Replica replica : broker.replicas()) {
-				sumOfLeaderOfReplicaUtilization +=
-						partition(replica.topicPartition()).leader().load().expectedUtilizationFor(Resource.NW_OUT);
-			}
-			double potentialLeadershipLoad =
-					_potentialLeadershipLoadByBrokerId.get(broker.id()).expectedUtilizationFor(Resource.NW_OUT);
-			if (AnalyzerUtils.compare(sumOfLeaderOfReplicaUtilization, potentialLeadershipLoad, Resource.NW_OUT) != 0) {
-				throw new IllegalArgumentException(String.format("%s Leadership utilization for %s is different from the total utilization "
-																												 + "leader of replicas in the broker with id: %d. Expected: %f Received: %f",
-																												 prologueErrorMsg, Resource.NW_OUT, broker.id(), sumOfLeaderOfReplicaUtilization,
-																												 potentialLeadershipLoad));
-			}
-
-			for (Resource resource : Resource.cachedValues()) {
-				if (resource == Resource.CPU) {
-					continue;
-				}
-				double leaderSum = broker.leaderReplicas().stream().mapToDouble(r -> r.load().expectedUtilizationFor(resource)).sum();
-				double cachedLoad = broker.leadershipLoadForNwResources().expectedUtilizationFor(resource);
-				if (AnalyzerUtils.compare(leaderSum, cachedLoad, resource) != 0) {
-					throw new IllegalArgumentException(String.format("%s Leadership load for resource %s is %f but recomputed sum is %f",
-																													 prologueErrorMsg, resource, cachedLoad, leaderSum));
-				}
-			}
-		}
-	}
-
-	/**
-	 * Return the broker stats related to resource utilization
-	 */
-	public BrokerStats brokerStats(KafkaCruiseControlConfig config) {
-		BrokerUtilizationStats brokerUtilizationStats = new BrokerUtilizationStats(config);
-		brokers().forEach(broker -> {
-			double leaderBytesInRate = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN);
-			double cpuUsagePercent = UNIT_INTERVAL_TO_PERCENTAGE * broker.load().expectedUtilizationFor(Resource.CPU)
-															 / broker.capacityFor(Resource.CPU);
-			brokerUtilizationStats.addSingleBrokerUtilizationStats(broker.host().name(),
-																														 broker.id(),
-																														 broker.state(),
-																														 broker.replicas().isEmpty() ? 0 : broker.load().expectedUtilizationFor(Resource.DISK),
-																														 cpuUsagePercent,
-																														 leaderBytesInRate,
-																														 broker.load().expectedUtilizationFor(Resource.NW_IN) - leaderBytesInRate,
-																														 broker.load().expectedUtilizationFor(Resource.NW_OUT),
-																														 potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT),
-																														 broker.replicas().size(), broker.leaderReplicas().size(),
-																														 _capacityEstimationInfoByBrokerId.get(broker.id()) != null,
-																														 broker.capacityFor(Resource.DISK));
-		});
-		return brokerUtilizationStats;
-	}
-
-	/**
-	 * The variance of the derived resources.
-	 * @return a non-null array where the ith index is the variance of RawAndDerivedResource.ordinal().
-	 */
-	public double[] variance() {
-		RawAndDerivedResource[] resources = RawAndDerivedResource.values();
-		double[][] utilization = utilizationMatrix();
-
-		double[] variance = new double[resources.length];
-
-		for (int resourceIndex = 0; resourceIndex < resources.length; resourceIndex++) {
-			Variance varianceCalculator = new Variance();
-			variance[resourceIndex] = varianceCalculator.evaluate(utilization[resourceIndex]);
-		}
-		return variance;
-	}
-
-	/**
-	 *
-	 * @return a RawAndDerivedResource x nBroker matrix of derived resource utilization.
-	 */
-	public double[][] utilizationMatrix() {
-		RawAndDerivedResource[] resources = RawAndDerivedResource.values();
-		double[][] utilization = new double[resources.length][brokers().size()];
-		int brokerIndex = 0;
-		for (Broker broker : brokers()) {
-			double leaderBytesInRate = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN);
-			for (RawAndDerivedResource derivedResource : resources) {
-				switch (derivedResource) {
-					case DISK: //fall through
-					case NW_OUT: //fall through
-					case CPU:  utilization[derivedResource.ordinal()][brokerIndex] =
-							broker.load().expectedUtilizationFor(derivedResource.derivedFrom());
-						break;
-					case FOLLOWER_NW_IN:
-						utilization[derivedResource.ordinal()][brokerIndex] =
-							broker.load().expectedUtilizationFor(derivedResource.derivedFrom()) - leaderBytesInRate;
-						break;
-					case LEADER_NW_IN:
-						utilization[derivedResource.ordinal()][brokerIndex] = leaderBytesInRate;
-						break;
-					case PWN_NW_OUT:
-						utilization[derivedResource.ordinal()][brokerIndex] =
-							potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT);
-						break;
-					case REPLICAS:
-						utilization[derivedResource.ordinal()][brokerIndex] = broker.replicas().size();
-						break;
-					default:
-						throw new IllegalStateException("Unhandled case " + derivedResource + ".");
-				}
-			}
-			brokerIndex++;
-		}
-		return utilization;
-	}
-
-	public void writeTo(OutputStream out) throws IOException {
-		String cluster = String.format("<Cluster maxPartitionReplicationFactor=\"%d\">%n", _maxReplicationFactor);
-		out.write(cluster.getBytes(StandardCharsets.UTF_8));
-		for (Rack rack : _racksById.values()) {
-			rack.writeTo(out);
-		}
-		out.write("</Cluster>".getBytes(StandardCharsets.UTF_8));
-	}
-
-	@Override
-	public String toString() {
-		return String.format("ClusterModel[brokerCount=%d,partitionCount=%d,aliveBrokerCount=%d]",
-												 _brokers.size(), _partitionsByTopicPartition.size(), _aliveBrokers.size());
-	}
-
-	private void refreshCapacity() {
-		for (Resource r : Resource.cachedValues()) {
-			double capacity = 0;
-			for (Rack rack : _racksById.values()) {
-				capacity += rack.capacityFor(r);
-			}
-			_clusterCapacity[r.id()] = capacity;
-		}
-	}
+  private static final long serialVersionUID = -6840253566423285966L;
+  // Hypothetical broker that indicates the original broker of replicas to be created in the existing cluster model.
+  private static final Broker GENESIS_BROKER = new Broker(null, -1, new BrokerCapacityInfo(Collections.emptyMap()));
+
+  private final ModelGeneration _generation;
+  private final Map<String, Rack> _racksById;
+  private final Map<Integer, Rack> _brokerIdToRack;
+  private final Map<TopicPartition, Partition> _partitionsByTopicPartition;
+  private final Set<Replica> _selfHealingEligibleReplicas;
+  private final SortedSet<Broker> _newBrokers;
+  private final Set<Broker> _aliveBrokers;
+  private final SortedSet<Broker> _deadBrokers;
+  private final SortedSet<Broker> _brokers;
+  private final double _monitoredPartitionsRatio;
+  private final double[] _clusterCapacity;
+  private Load _load;
+  // An integer to keep track of the maximum replication factor that a partition was ever created with.
+  private int _maxReplicationFactor;
+  // The replication factor that each topic in the cluster created with ().
+  private Map<String, Integer> _replicationFactorByTopic;
+  private Map<Integer, Load> _potentialLeadershipLoadByBrokerId;
+  private int _unknownHostId;
+  private Map<Integer, String> _capacityEstimationInfoByBrokerId;
+
+  /**
+   * Constructor for the cluster class. It creates data structures to hold a list of racks, a map for partitions by
+   * topic partition, topic replica collocation by topic.
+   */
+  public ClusterModel(ModelGeneration generation, double monitoredPartitionsRatio) {
+    _generation = generation;
+    _racksById = new HashMap<>();
+    _brokerIdToRack = new HashMap<>();
+    _partitionsByTopicPartition = new HashMap<>();
+    // Replicas are added/removed only when broker alive status is set via setState(). Replica contents are
+    // automatically updated in case of replica or leadership relocation.
+    _selfHealingEligibleReplicas = new HashSet<>();
+    // A sorted set of newly added brokers
+    _newBrokers = new TreeSet<>();
+    // A set of alive brokers
+    _aliveBrokers = new HashSet<>();
+    // A set of all brokers
+    _brokers = new TreeSet<>();
+    // A set of dead brokers
+    _deadBrokers = new TreeSet<>();
+    // Initially cluster does not contain any load.
+    _load = new Load();
+    _clusterCapacity = new double[Resource.cachedValues().size()];
+    _maxReplicationFactor = 1;
+    _replicationFactorByTopic = new HashMap<>();
+    _potentialLeadershipLoadByBrokerId = new HashMap<>();
+    _monitoredPartitionsRatio = monitoredPartitionsRatio;
+    _unknownHostId = 0;
+    _capacityEstimationInfoByBrokerId = new HashMap<>();
+  }
+
+  /**
+   * get the metadata generation for this cluster model.
+   */
+  public ModelGeneration generation() {
+    return _generation;
+  }
+
+  /**
+   * Get the coverage of this cluster model. This shows how representative the cluster is.
+   */
+  public double monitoredPartitionsRatio() {
+    return _monitoredPartitionsRatio;
+  }
+
+  /**
+   * Populate the analysis stats with this cluster and given balancing constraint.
+   *
+   * @param balancingConstraint Balancing constraint.
+   * @return Analysis stats with this cluster and given balancing constraint.
+   */
+  public ClusterModelStats getClusterStats(BalancingConstraint balancingConstraint) {
+    return (new ClusterModelStats()).populate(this, balancingConstraint);
+  }
+
+  /**
+   * Get the rack with the rack id if it is found in the cluster; null otherwise.
+   */
+  public Rack rack(String rackId) {
+    return _racksById.get(rackId);
+  }
+
+  /**
+   * Get the distribution of replicas in the cluster at the point of call. Replica distribution is represented by the
+   * map: topic-partition -&gt; broker-id-of-replicas. broker-id-of-replicas[0] represents the leader's broker id.
+   *
+   * @return The replica distribution of leader and follower replicas in the cluster at the point of call.
+   */
+  public Map<TopicPartition, List<Integer>> getReplicaDistribution() {
+    Map<TopicPartition, List<Integer>> replicaDistribution = new HashMap<>(_partitionsByTopicPartition.size());
+
+    for (Map.Entry<TopicPartition, Partition> entry : _partitionsByTopicPartition.entrySet()) {
+      TopicPartition tp = entry.getKey();
+      Partition partition = entry.getValue();
+      List<Integer> brokerIds = partition.replicas().stream().map(r -> r.broker().id()).collect(Collectors.toList());
+      // Add distribution of replicas in the partition.
+      replicaDistribution.put(tp, brokerIds);
+    }
+
+    return replicaDistribution;
+  }
+
+  /**
+   * Get leader broker ids for each partition.
+   */
+  public Map<TopicPartition, Integer> getLeaderDistribution() {
+    Map<TopicPartition, Integer> leaders = new HashMap<>(_partitionsByTopicPartition.size());
+    for (Map.Entry<TopicPartition, Partition> entry : _partitionsByTopicPartition.entrySet()) {
+      leaders.put(entry.getKey(), entry.getValue().leader().broker().id());
+    }
+    return leaders;
+  }
+
+  /**
+   * Get replicas eligible for self-healing.
+   */
+  public Set<Replica> selfHealingEligibleReplicas() {
+    return _selfHealingEligibleReplicas;
+  }
+
+  /**
+   * Get the recent cluster load information.
+   */
+  public Load load() {
+    return _load;
+  }
+
+  /**
+   * Get the leadership load for given broker id. Leadership load is the accumulated outbound network load for leader
+   * of each replica in a broker. This is the hypothetical maximum that would be realized if the specified broker
+   * became the leader of all the replicas it currently owns.
+   *
+   * @param brokerId Broker id.
+   * @return The leadership load for broker.
+   */
+  public Load potentialLeadershipLoadFor(Integer brokerId) {
+    return _potentialLeadershipLoadByBrokerId.get(brokerId);
+  }
+
+  /**
+   * Get the maximum replication factor of a replica that was added to the cluster before.
+   */
+  public int maxReplicationFactor() {
+    return _maxReplicationFactor;
+  }
+  /**
+   * Get the replication factor that each topic in the cluster created with.
+   */
+  public Map<String, Integer> replicationFactorByTopic() {
+    return _replicationFactorByTopic;
+  }
+
+  /**
+   * Get partition of the given replica.
+   *
+   * @param tp Topic partition of the replica for which the partition is requested.
+   * @return Partition of the given replica.
+   */
+  public Partition partition(TopicPartition tp) {
+    return _partitionsByTopicPartition.get(tp);
+  }
+
+  /**
+   * Get a map of partitions by topic names.
+   */
+  public SortedMap<String, List<Partition>> getPartitionsByTopic() {
+    SortedMap<String, List<Partition>> partitionsByTopic = new TreeMap<>();
+    for (String topicName: topics()) {
+      partitionsByTopic.put(topicName, new ArrayList<>());
+    }
+    for (Map.Entry<TopicPartition, Partition> entry: _partitionsByTopicPartition.entrySet()) {
+      partitionsByTopic.get(entry.getKey().topic()).add(entry.getValue());
+    }
+    return partitionsByTopic;
+  }
+
+  /**
+   * Get all the leader replicas in the cluster.
+   */
+  public Set<Replica> leaderReplicas() {
+    return _partitionsByTopicPartition.values().stream().map(Partition::leader).collect(Collectors.toSet());
+  }
+
+  /**
+   * Set the {@link Broker.State liveness state} of the given broker.
+   * <ul>
+   * <li>Replicas on dead brokers are considered to be self healing eligible.</li>
+   * </ul>
+   *
+   * @param brokerId Id of the broker for which the alive status is set.
+   * @param newState The new state of the broker.
+   */
+  public void setBrokerState(int brokerId, Broker.State newState) {
+    Broker broker = broker(brokerId);
+    if (broker == null) {
+      throw new IllegalArgumentException("Broker " + brokerId + " does not exist.");
+    }
+    // We need to go through rack so all the cached capacity will be updated.
+    broker.rack().setBrokerState(brokerId, newState);
+    refreshCapacity();
+    switch (newState) {
+      case DEAD:
+        _selfHealingEligibleReplicas.addAll(broker.replicas());
+        _aliveBrokers.remove(broker);
+        _deadBrokers.add(broker);
+        break;
+      case NEW:
+        _newBrokers.add(broker);
+        // fall through to remove the replicas from selfHealingEligibleReplicas
+      case DEMOTED:
+        // As of now we still treat demoted brokers as alive brokers.
+      case ALIVE:
+        _selfHealingEligibleReplicas.removeAll(broker.replicas());
+        _aliveBrokers.add(broker);
+        _deadBrokers.remove(broker);
+        break;
+      default:
+        throw new IllegalArgumentException("Illegal broker state " + newState + " is provided.");
+    }
+  }
+
+  /**
+   * (1) Remove the replica from the source broker,
+   * (2) Set the broker of the removed replica as the destination broker,
+   * (3) Add this replica to the destination broker.
+   * * There is no need to make any modifications to _partitionsByTopicPartition because even after the move,
+   * partitions will contain the same replicas.
+   *
+   * @param tp      Partition Info of the replica to be relocated.
+   * @param sourceBrokerId      Source broker id.
+   * @param destinationBrokerId Destination broker id.
+   */
+  public void relocateReplica(TopicPartition tp, int sourceBrokerId, int destinationBrokerId) {
+    // Removes the replica and related load from the source broker / source rack / cluster.
+    Replica replica = removeReplica(sourceBrokerId, tp);
+    if (replica == null) {
+      throw new IllegalArgumentException("Replica is not in the cluster.");
+    }
+    // Updates the broker of the removed replica with destination broker.
+    replica.setBroker(broker(destinationBrokerId));
+
+    // Add this replica and related load to the destination broker / destination rack / cluster.
+    replica.broker().rack().addReplica(replica);
+    _load.addLoad(replica.load());
+    // Add leadership load to the destination replica.
+    _potentialLeadershipLoadByBrokerId.get(destinationBrokerId).addLoad(partition(tp).leader().load());
+  }
+
+  /**
+   * (1) Removes leadership from source replica.
+   * (2) Adds this leadership to the destination replica.
+   * (3) Transfers the whole outbound network and a fraction of CPU load of source replica to the destination replica.
+   * (4) Updates the leader and list of followers of the partition.
+   *
+   * @param tp      Topic partition of this replica.
+   * @param sourceBrokerId      Source broker id.
+   * @param destinationBrokerId Destination broker id.
+   * @return True if relocation is successful, false otherwise.
+   */
+  public boolean relocateLeadership(TopicPartition tp, int sourceBrokerId, int destinationBrokerId) {
+    // Sanity check to see if the source replica is the leader.
+    Replica sourceReplica = _partitionsByTopicPartition.get(tp).replica(sourceBrokerId);
+    if (!sourceReplica.isLeader()) {
+      return false;
+    }
+    // Sanity check to see if the destination replica is a follower.
+    Replica destinationReplica = _partitionsByTopicPartition.get(tp).replica(destinationBrokerId);
+    if (destinationReplica.isLeader()) {
+      throw new IllegalArgumentException("Cannot relocate leadership of partition " + tp + "from broker "
+                                         + sourceBrokerId + " to broker " + destinationBrokerId
+                                         + " because the destination replica is a leader.");
+    }
+
+    // Transfer the leadership load (whole outbound network and a fraction of CPU load) of source replica to the
+    // destination replica.
+    // (1) Remove and get the outbound network load and a fraction of CPU load associated with leadership from the
+    // given replica.
+    // (2) Add the outbound network load and CPU load associated with leadership to the given replica.
+    //
+    // Remove the load from the source rack.
+    Rack rack = broker(sourceBrokerId).rack();
+    AggregatedMetricValues leadershipLoadDelta = rack.makeFollower(sourceBrokerId, tp);
+    // Add the load to the destination rack.
+    rack = broker(destinationBrokerId).rack();
+    rack.makeLeader(destinationBrokerId, tp, leadershipLoadDelta);
+
+    // Update the leader and list of followers of the partition.
+    Partition partition = _partitionsByTopicPartition.get(tp);
+    partition.relocateLeadership(destinationReplica);
+
+    return true;
+  }
+
+  /**
+   * Get alive brokers in the cluster.
+   */
+  public Set<Broker> aliveBrokers() {
+    return _aliveBrokers;
+  }
+
+  /**
+   * Get the dead brokers in the cluster.
+   */
+  public SortedSet<Broker> deadBrokers() {
+    return new TreeSet<>(_deadBrokers);
+  }
+
+  /**
+   * @return Capacity estimation info by broker id for which there has been an estimation.
+   */
+  public Map<Integer, String> capacityEstimationInfoByBrokerId() {
+    return Collections.unmodifiableMap(_capacityEstimationInfoByBrokerId);
+  }
+
+  /**
+   * Get the demoted brokers in the cluster.
+   */
+  public SortedSet<Broker> demotedBrokers() {
+    SortedSet<Broker> demotedBrokers = new TreeSet<>();
+    for (Rack rack : _racksById.values()) {
+      rack.brokers().forEach(b -> {
+        if (b.isDemoted()) {
+          demotedBrokers.add(b);
+        }
+      });
+    }
+    return demotedBrokers;
+  }
+
+  /**
+   * Get the set of new brokers.
+   */
+  public SortedSet<Broker> newBrokers() {
+    return _newBrokers;
+  }
+
+  /**
+   * Checks if cluster has at least one alive rack. If none of the racks are alive, cluster is considered dead.
+   */
+  public boolean isClusterAlive() {
+    for (Rack rack : _racksById.values()) {
+      if (rack.isRackAlive()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Clear the content of monitoring data at each replica in the cluster.
+   * Typically, if a change is detected in topology, this method is called to clear the monitoring data collected with
+   * the old topology.
+   */
+  public void clearLoad() {
+    _racksById.values().forEach(Rack::clearLoad);
+    _load.clearLoad();
+  }
+
+  /**
+   * Remove and get removed replica from the cluster.
+   *
+   * @param brokerId       Id of the broker containing the partition.
+   * @param tp Topic partition of the replica to be removed.
+   * @return The requested replica if the id exists in the rack and the partition is found in the broker, null
+   * otherwise.
+   */
+  public Replica removeReplica(int brokerId, TopicPartition tp) {
+    for (Rack rack : _racksById.values()) {
+      // Remove the replica and the associated load from the rack that it resides in.
+      Replica removedReplica = rack.removeReplica(brokerId, tp);
+      if (removedReplica != null) {
+        // Remove the load of the removed replica from the recent load of the cluster.
+        _load.subtractLoad(removedReplica.load());
+        _potentialLeadershipLoadByBrokerId.get(brokerId).subtractLoad(partition(tp).leader().load());
+        // Return the removed replica.
+        return removedReplica;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Get the set of brokers in the cluster.
+   */
+  public SortedSet<Broker> brokers() {
+    return new TreeSet<>(_brokers);
+  }
+
+  /**
+   * Get the requested broker in the cluster.
+   *
+   * @param brokerId Id of the requested broker.
+   * @return Requested broker if it is in the cluster, null otherwise.
+   */
+  public Broker broker(int brokerId) {
+    Rack rack = _brokerIdToRack.get(brokerId);
+    return rack == null ? null : rack.broker(brokerId);
+  }
+
+  /**
+   * Ask the cluster model to keep track of the replicas sorted with the given score function.
+   *
+   * It is recommended to use the functions from {@link ReplicaSortFunctionFactory} so the functions can be maintained
+   * in a single place.
+   *
+   * The sorted replica will only be updated in the following cases:
+   * 1. A replica is added to or removed from a broker
+   * 2. A replica's role has changed from leader to follower, and vice versa.
+   *
+   * The sorted replicas are named using the given sortName, and can be accessed using
+   * {@link Broker#trackedSortedReplicas(String)}. If the sorted replicas are no longer needed,
+   * {@link #untrackSortedReplicas(String)} to release memory.
+   *
+   * @param sortName the name of the sorted replicas.
+   * @param scoreFunction the score function to sort the replicas with the same priority, replicas are sorted in ascending
+   *                      order of score.
+   * @see SortedReplicas
+   */
+  public void trackSortedReplicas(String sortName, Function<Replica, Double> scoreFunction) {
+    trackSortedReplicas(sortName, null, scoreFunction);
+  }
+
+  /**
+   * Ask the cluster model to keep track of the replicas sorted with the given priority function and score function.
+   *
+   * It is recommended to use the functions from {@link ReplicaSortFunctionFactory} so the functions can be maintained
+   * in a single place.
+   *
+   * The sort will first use the priority function then the score function. The priority function allows the
+   * caller to prioritize a certain type of replicas, e.g immigrant replicas.
+   *
+   * The sorted replica will only be updated in the following cases:
+   * 1. A replica is added to or removed from abroker
+   * 2. A replica's role has changed from leader to follower, and vice versa.
+   *
+   * The sorted replicas are named using the given sortName, and can be accessed using
+   * {@link Broker#trackedSortedReplicas(String)}. If the sorted replicas are no longer needed,
+   * {@link #untrackSortedReplicas(String)} to release memory.
+   *
+   * @param sortName the name of the sorted replicas.
+   * @param priorityFunc the priority function to sort the replicas
+   * @param scoreFunc the score function to sort the replicas with the same priority, replicas are sorted in ascending
+   *                  order of score.
+   * @see SortedReplicas
+   */
+  public void trackSortedReplicas(String sortName,
+                                  Function<Replica, Integer> priorityFunc,
+                                  Function<Replica, Double> scoreFunc) {
+    trackSortedReplicas(sortName, null, priorityFunc, scoreFunc);
+  }
+
+  /**
+   * Ask the cluster model to keep track of the replicas sorted with the given priority function and score function.
+   *
+   * The sort will first use the priority function then the score function. The priority function allows the
+   * caller to prioritize a certain type of replicas, e.g immigrant replicas. The selection function determines
+   * which replicas to be included in the sorted replicas.
+   *
+   * It is recommended to use the functions from {@link ReplicaSortFunctionFactory} so the functions can be maintained
+   * in a single place.
+   *
+   * The sorted replica will only be updated in the following cases:
+   * 1. A replica is added to or removed from a broker
+   * 2. A replica's role has changed from leader to follower, and vice versa.
+   *
+   * The sorted replicas are named using the given sortName, and can be accessed using
+   * {@link Broker#trackedSortedReplicas(String)}. If the sorted replicas are no longer needed,
+   * {@link #untrackSortedReplicas(String)} to release memory.
+   *
+   * @param sortName the name of the sorted replicas.
+   * @param selectionFunc the selection function to decide which replicas to include in the sort. If it is {@code null},
+   *                      all the replicas are to be included.
+   * @param priorityFunc the priority function to sort the replicas
+   * @param scoreFunc the score function to sort the replicas with the same priority, replicas are sorted in ascending
+   *                  order of score.
+   * @see SortedReplicas
+   */
+  public void trackSortedReplicas(String sortName,
+                                  Function<Replica, Boolean> selectionFunc,
+                                  Function<Replica, Integer> priorityFunc,
+                                  Function<Replica, Double> scoreFunc) {
+    _brokers.forEach(b -> b.trackSortedReplicas(sortName, selectionFunc, priorityFunc, scoreFunc));
+  }
+
+  /**
+   * Untrack the sorted replicas with the given name to release memory.
+   *
+   * @param sortName the name of the sorted replicas.
+   */
+  public void untrackSortedReplicas(String sortName) {
+    _brokers.forEach(b -> b.untrackSortedReplicas(sortName));
+  }
+
+  /**
+   * Clear the content and structure of the cluster.
+   */
+  public void clear() {
+    _racksById.clear();
+    _partitionsByTopicPartition.clear();
+    _load.clearLoad();
+    _maxReplicationFactor = 1;
+    _replicationFactorByTopic.clear();
+    _capacityEstimationInfoByBrokerId.clear();
+  }
+
+  /**
+   * Get number of alive racks in the cluster.
+   */
+  public int numAliveRacks() {
+    int numAliveRacks = 0;
+    for (Rack rack : _racksById.values()) {
+      if (rack.isRackAlive()) {
+        numAliveRacks++;
+      }
+    }
+    return numAliveRacks;
+  }
+
+  /**
+   * Get the number of replicas with the given topic name in cluster.
+   *
+   * @param topic Name of the topic for which the number of replicas in cluster will be counted.
+   * @return Number of replicas with the given topic name in cluster.
+   */
+  public int numTopicReplicas(String topic) {
+    int numTopicReplicas = 0;
+
+    for (Rack rack : _racksById.values()) {
+      numTopicReplicas += rack.numTopicReplicas(topic);
+    }
+    return numTopicReplicas;
+  }
+
+  /**
+   * Get the number of leader replicas in cluster.
+   *
+   * @return Number of leader replicas in cluster.
+   */
+  public int numLeaderReplicas() {
+    return _partitionsByTopicPartition.size();
+  }
+
+  /**
+   * Get the number of replicas in cluster.
+   *
+   * @return Number of replicas in cluster.
+   */
+  public int numReplicas() {
+    return _partitionsByTopicPartition.values().stream().mapToInt(p -> p.replicas().size()).sum();
+  }
+
+  /**
+   * Get topics in the cluster.
+   */
+  public Set<String> topics() {
+    Set<String> topics = new HashSet<>();
+
+    for (Rack rack : _racksById.values()) {
+      topics.addAll(rack.topics());
+    }
+    return topics;
+  }
+
+  /**
+   * Get cluster capacity for the requested resource. Cluster capacity represents the total capacity of the live
+   * brokers in the cluster for the requested resource.
+   *
+   * @param resource Resource for which the capacity will be provided.
+   * @return Alive cluster capacity of the resource.
+   */
+  public double capacityFor(Resource resource) {
+    return _clusterCapacity[resource.id()];
+  }
+
+  /**
+   * Set the load for the given replica. This method should be called only once for each replica.
+   *
+   * @param rackId         Rack id.
+   * @param brokerId       Broker Id containing the replica with the given topic partition.
+   * @param tp             Topic partition that identifies the replica in this broker.
+   * @param metricValues   The load of the replica.
+   * @param windows        The windows list of the aggregated metrics.
+   */
+  public void setReplicaLoad(String rackId,
+                             int brokerId,
+                             TopicPartition tp,
+                             AggregatedMetricValues metricValues,
+                             List<Long> windows) {
+    // Sanity check for the attempts to push more than allowed number of snapshots having different times.
+    if (!broker(brokerId).replica(tp).load().isEmpty()) {
+      throw new IllegalStateException(String.format("The load for %s on broker %d, rack %s already has metric values.",
+                                                    tp, brokerId, rackId));
+    }
+
+    Rack rack = rack(rackId);
+    rack.setReplicaLoad(brokerId, tp, metricValues, windows);
+
+    // Update the recent load of cluster.
+    _load.addMetricValues(metricValues, windows);
+    // If this snapshot belongs to leader, update leadership load.
+    Replica leader = partition(tp).leader();
+    if (leader != null && leader.broker().id() == brokerId) {
+      // load must be updated for each broker containing a replica of the same partition.
+      for (Replica replica : partition(tp).replicas()) {
+        _potentialLeadershipLoadByBrokerId.get(replica.broker().id()).addMetricValues(metricValues, windows);
+      }
+    }
+  }
+
+  /**
+   * If the rack or broker does not exist, create them with UNKNOWN host name. This allows handling
+   * of cases where the information of a dead broker is no longer available.
+   *
+   * @param rackId         Rack id under which the replica will be created.
+   * @param brokerId       Broker id under which the replica will be created.
+   * @param brokerCapacityInfo The capacity information to use if the broker does not exist.
+   */
+  public void handleDeadBroker(String rackId, int brokerId, BrokerCapacityInfo brokerCapacityInfo) {
+    if (rack(rackId) == null) {
+      createRack(rackId);
+    }
+    if (broker(brokerId) == null) {
+      createBroker(rackId, String.format("UNKNOWN_HOST-%d", _unknownHostId++), brokerId, brokerCapacityInfo);
+    }
+  }
+
+  /**
+   * Create a replica under given cluster/rack/broker. Add replica to rack and corresponding partition. Get the
+   * created replica.
+   *
+   * @param rackId         Rack id under which the replica will be created.
+   * @param brokerId       Broker id under which the replica will be created.
+   * @param tp             Topic partition information of the replica.
+   * @param index          The index of the replica in the replica list.
+   * @param isLeader       True if the replica is a leader, false otherwise.
+   * @return Created replica.
+   */
+  public Replica createReplica(String rackId, int brokerId, TopicPartition tp, int index, boolean isLeader) {
+    return createReplica(rackId, brokerId, tp, index, isLeader, false);
+  }
+
+  /**
+   * Create a replica under given cluster/rack/broker. Add replica to rack and corresponding partition. Get the
+   * created replica.
+   *
+   * @param rackId         Rack id under which the replica will be created.
+   * @param brokerId       Broker id under which the replica will be created.
+   * @param tp             Topic partition information of the replica.
+   * @param index          The index of the replica in the replica list.
+   * @param isLeader       True if the replica is a leader, false otherwise.
+   * @param isFuture       True if the replica does not correspond to any existing replica in the cluster, but a replica
+   *                       we are going to add to the cluster. This replica's original broker will not be any existing broker
+   *                       so that it will be treated as an immigrant replica for whatever broker it is assigned to and
+   *                       grant goals greatest freedom to allocate to an existing broker.
+   * @return Created replica.
+   */
+  public Replica createReplica(String rackId, int brokerId, TopicPartition tp, int index, boolean isLeader, boolean isFuture) {
+    Replica replica;
+    if (!isFuture) {
+      replica = new Replica(tp, broker(brokerId), isLeader);
+    } else {
+      replica = new Replica(tp, GENESIS_BROKER, false);
+      replica.setBroker(broker(brokerId));
+    }
+    rack(rackId).addReplica(replica);
+
+    // Add replica to its partition.
+    if (!_partitionsByTopicPartition.containsKey(tp)) {
+      // Partition has not been created before.
+      _partitionsByTopicPartition.put(tp, new Partition(tp));
+      _replicationFactorByTopic.putIfAbsent(tp.topic(), 1);
+    }
+
+    Partition partition = _partitionsByTopicPartition.get(tp);
+    if (replica.isLeader()) {
+      partition.addLeader(replica, index);
+      return replica;
+    }
+
+    partition.addFollower(replica, index);
+    // If leader of this follower was already created and load was pushed to it, add that load to the follower.
+    Replica leaderReplica = partition(tp).leader();
+    if (leaderReplica != null) {
+      _potentialLeadershipLoadByBrokerId.get(brokerId).addLoad(leaderReplica.load());
+    }
+
+    // Keep track of the replication factor per topic.
+    int replicationFactor = Math.max(_replicationFactorByTopic.get(tp.topic()), partition.followers().size() + 1);
+    _replicationFactorByTopic.put(tp.topic(), replicationFactor);
+
+    // Increment the maximum replication factor if the number of replicas of the partition is larger than the
+    //  maximum replication factor of previously existing partitions.
+    _maxReplicationFactor = Math.max(_maxReplicationFactor, replicationFactor);
+
+    return replica;
+  }
+
+  /**
+   * Delete a replica from cluster. This method is expected to be called in a batch for all partitions of the topic and in
+   * the end the replication factor across partitions are consistent. Also the caller of this method is expected to call
+   * {@link #refreshClusterMaxReplicationFactor()} after all replica deletion.
+   * @param topicPartition Topic partition of the replica to be removed.
+   * @param brokerId Id of the broker hosting the replica.
+   */
+  public void deleteReplica(TopicPartition topicPartition, int brokerId) {
+    int currentReplicaCount = _partitionsByTopicPartition.get(topicPartition).replicas().size();
+    if (currentReplicaCount < 2) {
+      throw new IllegalStateException(String.format("Unable to delete replica for topic partition %s since it only has %d replicas.",
+                                                    topicPartition, currentReplicaCount));
+    }
+    removeReplica(brokerId, topicPartition);
+    // Update partition info.
+    Partition partition = _partitionsByTopicPartition.get(topicPartition);
+    partition.deleteReplica(brokerId);
+    _replicationFactorByTopic.put(topicPartition.topic(), partition.replicas().size());
+  }
+
+  /**
+   * Refresh the maximum topic replication factor statistic.
+   */
+  public void refreshClusterMaxReplicationFactor() {
+    _maxReplicationFactor =  _replicationFactorByTopic.values().stream().max(Integer::compareTo).orElse(0);
+  }
+
+  /**
+   * Create a broker under this cluster/rack and get the created broker.
+   * Add the broker id and info to {@link #_capacityEstimationInfoByBrokerId} if the broker capacity has been estimated.
+   *
+   * @param rackId Id of the rack that the broker will be created in.
+   * @param host The host of this broker
+   * @param brokerId Id of the broker to be created.
+   * @param brokerCapacityInfo Capacity information of the created broker.
+   * @return Created broker.
+   */
+  public Broker createBroker(String rackId,
+                             String host,
+                             int brokerId,
+                             BrokerCapacityInfo brokerCapacityInfo) {
+    _potentialLeadershipLoadByBrokerId.putIfAbsent(brokerId, new Load());
+    Rack rack = rack(rackId);
+    _brokerIdToRack.put(brokerId, rack);
+
+    if (brokerCapacityInfo.isEstimated()) {
+      _capacityEstimationInfoByBrokerId.put(brokerId, brokerCapacityInfo.estimationInfo());
+    }
+    Broker broker = rack.createBroker(brokerId, host, brokerCapacityInfo);
+    _aliveBrokers.add(broker);
+    _brokers.add(broker);
+    refreshCapacity();
+    return broker;
+  }
+
+  /**
+   * Create a rack under this cluster.
+   *
+   * @param rackId Id of the rack to be created.
+   * @return Created rack.
+   */
+  public Rack createRack(String rackId) {
+    Rack rack = new Rack(rackId);
+    return _racksById.putIfAbsent(rackId, rack);
+  }
+
+  /**
+   * For partitions of specified topics, create or delete replicas in given cluster model to change the partition's replication
+   * factor to target replication factor. New replicas for partition are added in a rack-aware, round-robin way.
+   *
+   * @param topicsByReplicationFactor The topics to modify replication factor with target replication factor.
+   * @param brokersByRack A map from rack to broker.
+   * @param rackByBroker A map from broker to rack.
+   * @param cluster The metadata of the cluster.
+   */
+  public void createOrDeleteReplicas(Map<Short, Set<String>> topicsByReplicationFactor,
+                                     Map<String, List<Integer>> brokersByRack,
+                                     Map<Integer, String> rackByBroker,
+                                     Cluster cluster) {
+    // After replica deletion of some topic partitions, the cluster's maximal replication factor may decrease.
+    boolean needToRefreshClusterMaxReplicationFactor = false;
+
+    for (Map.Entry<Short, Set<String>> entry : topicsByReplicationFactor.entrySet()) {
+      short replicationFactor = entry.getKey();
+      Set<String> topics = entry.getValue();
+      for (String topic : topics) {
+        List<String> racks = new ArrayList<>(brokersByRack.keySet());
+        int[] cursors = new int[racks.size()];
+        int rackCursor = 0;
+        for (PartitionInfo partitionInfo : cluster.partitionsForTopic(topic)) {
+          if (partitionInfo.replicas().length == replicationFactor) {
+            continue;
+          }
+          List<Integer> newAssignedReplica = new ArrayList<>();
+          if (partitionInfo.replicas().length < replicationFactor) {
+            Set<String> currentOccupiedRack = new HashSet<>();
+            // Make sure the current replicas are in new replica list.
+            for (Node node : partitionInfo.replicas()) {
+              newAssignedReplica.add(node.id());
+              currentOccupiedRack.add(rackByBroker.get(node.id()));
+            }
+            // Add new replica to partition in rack-aware(if possible), round-robin way.
+            while (newAssignedReplica.size() < replicationFactor) {
+              String rack = racks.get(rackCursor);
+              if (!currentOccupiedRack.contains(rack) || currentOccupiedRack.size() == racks.size()) {
+                int cursor = cursors[rackCursor];
+                Integer brokerId = brokersByRack.get(rack).get(cursor);
+                if (!newAssignedReplica.contains(brokerId)) {
+                  newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
+                  // Create a new replica in the cluster model and populate its load from the leader replica.
+                  TopicPartition tp = new TopicPartition(topic, partitionInfo.partition());
+                  Load load = partition(tp).leader().getFollowerLoadFromLeader();
+                  createReplica(rack, brokerId, tp, partitionInfo.replicas().length, false, true);
+                  setReplicaLoad(rack, brokerId, tp, load.loadByWindows(), load.windows());
+                  currentOccupiedRack.add(rack);
+                }
+                cursors[rackCursor] = (cursor + 1) % brokersByRack.get(rack).size();
+              }
+              rackCursor = (rackCursor + 1) % racks.size();
+            }
+          } else {
+            // Make sure the leader replica is in new replica list.
+            newAssignedReplica.add(partitionInfo.leader().id());
+            for (Node node : partitionInfo.replicas()) {
+              if (node.id() != newAssignedReplica.get(0)) {
+                if (newAssignedReplica.size() < replicationFactor) {
+                  newAssignedReplica.add(node.id());
+                } else {
+                  deleteReplica(new TopicPartition(topic, partitionInfo.partition()), node.id());
+                  needToRefreshClusterMaxReplicationFactor = true;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    if (needToRefreshClusterMaxReplicationFactor) {
+      refreshClusterMaxReplicationFactor();
+    }
+  }
+
+  /**
+   * Get a list of sorted (in ascending order by resource) alive brokers having utilization under:
+   * (given utilization threshold) * (broker and/or host capacity (see {@link Resource#isHostResource} and
+   * {@link Resource#isBrokerResource}). Utilization threshold might be any capacity constraint thresholds such as
+   * balance or capacity.
+   *
+   * @param resource             Resource for which brokers will be sorted.
+   * @param utilizationThreshold Utilization threshold for the given resource.
+   * @return A list of sorted (in ascending order by resource) alive brokers having utilization under:
+   * (given utilization threshold) * (broker and/or host capacity).
+   */
+  public List<Broker> sortedAliveBrokersUnderThreshold(Resource resource, double utilizationThreshold) {
+    List<Broker> sortedTargetBrokersUnderCapacityLimit = aliveBrokersUnderThreshold(resource, utilizationThreshold);
+
+    sortedTargetBrokersUnderCapacityLimit.sort((o1, o2) -> {
+      double expectedBrokerLoad1 = o1.load().expectedUtilizationFor(resource);
+      double expectedBrokerLoad2 = o2.load().expectedUtilizationFor(resource);
+      // For host resource we first compare host util then look at the broker util -- even if a resource is a
+      // host-resource, but not broker-resource.
+      int hostComparison = 0;
+      if (resource.isHostResource()) {
+        double expectedHostLoad1 = o1.host().load().expectedUtilizationFor(resource);
+        double expectedHostLoad2 = o2.host().load().expectedUtilizationFor(resource);
+        hostComparison = Double.compare(expectedHostLoad1, expectedHostLoad2);
+      }
+      return hostComparison == 0 ? Double.compare(expectedBrokerLoad1, expectedBrokerLoad2) : hostComparison;
+    });
+    return sortedTargetBrokersUnderCapacityLimit;
+  }
+
+  public List<Broker> aliveBrokersUnderThreshold(Resource resource, double utilizationThreshold) {
+    List<Broker> aliveBrokersUnderThreshold = new ArrayList<>();
+
+    for (Broker aliveBroker : aliveBrokers()) {
+      if (resource.isBrokerResource()) {
+        double brokerCapacityLimit = aliveBroker.capacityFor(resource) * utilizationThreshold;
+        double brokerUtilization = aliveBroker.load().expectedUtilizationFor(resource);
+        if (brokerUtilization >= brokerCapacityLimit) {
+          continue;
+        }
+      }
+      if (resource.isHostResource()) {
+        double hostCapacityLimit = aliveBroker.host().capacityFor(resource) * utilizationThreshold;
+        double hostUtilization = aliveBroker.host().load().expectedUtilizationFor(resource);
+        if (hostUtilization >= hostCapacityLimit) {
+          continue;
+        }
+      }
+      aliveBrokersUnderThreshold.add(aliveBroker);
+    }
+    return aliveBrokersUnderThreshold;
+  }
+
+  public List<Broker> aliveBrokersOverThreshold(Resource resource, double utilizationThreshold) {
+    List<Broker> aliveBrokersOverThreshold = new ArrayList<>();
+
+    for (Broker aliveBroker : aliveBrokers()) {
+      if (resource.isBrokerResource()) {
+        double brokerCapacityLimit = aliveBroker.capacityFor(resource) * utilizationThreshold;
+        double brokerUtilization = aliveBroker.load().expectedUtilizationFor(resource);
+        if (brokerUtilization <= brokerCapacityLimit) {
+          continue;
+        }
+      }
+      if (resource.isHostResource()) {
+        double hostCapacityLimit = aliveBroker.host().capacityFor(resource) * utilizationThreshold;
+        double hostUtilization = aliveBroker.host().load().expectedUtilizationFor(resource);
+        if (hostUtilization <= hostCapacityLimit) {
+          continue;
+        }
+      }
+      aliveBrokersOverThreshold.add(aliveBroker);
+    }
+    return aliveBrokersOverThreshold;
+  }
+
+  /**
+   * Sort the partitions in the cluster by the utilization of the given resource.
+   * @param resource the resource type.
+   * @param wantMaxLoad True if the requested utilization represents the peak load, false otherwise.
+   * @param wantAvgLoad True if the requested utilization represents the avg load, false otherwise.
+   * @return a list of partitions sorted by utilization of the given resource.
+   */
+  public List<Partition> replicasSortedByUtilization(Resource resource, boolean wantMaxLoad, boolean wantAvgLoad) {
+    List<Partition> partitionList = new ArrayList<>(_partitionsByTopicPartition.values());
+    partitionList.sort((o1, o2) -> Double.compare(o2.leader().load().expectedUtilizationFor(resource, wantMaxLoad, wantAvgLoad),
+                                                  o1.leader().load().expectedUtilizationFor(resource, wantMaxLoad, wantAvgLoad)));
+    return partitionList;
+  }
+
+  /**
+   * (1) Check whether each load in the cluster contains exactly the number of windows defined by the Load.
+   * (2) Check whether sum of loads in the cluster / rack / broker / replica are consistent with each other.
+   */
+  public void sanityCheck() {
+    // SANITY CHECK #1: Each load in the cluster must contain exactly the number of windows defined by the Load.
+    Map<String, Integer> errorMsgAndNumWindows = new HashMap<>();
+
+    int expectedNumWindows = _load.numWindows();
+
+    // Check leadership loads.
+    for (Map.Entry<Integer, Load> entry : _potentialLeadershipLoadByBrokerId.entrySet()) {
+      int brokerId = entry.getKey();
+      Load load = entry.getValue();
+      if (load.numWindows() != expectedNumWindows && broker(brokerId).replicas().size() != 0) {
+        errorMsgAndNumWindows.put(String.format("Leadership(%d)", brokerId), load.numWindows());
+      }
+    }
+
+    // Check rack loads.
+    for (Rack rack : _racksById.values()) {
+      if (rack.load().numWindows() != expectedNumWindows && rack.replicas().size() != 0) {
+        errorMsgAndNumWindows.put(String.format("Rack(%s)", rack.id()), rack.load().numWindows());
+      }
+
+      // Check the host load.
+      for (Host host : rack.hosts()) {
+        if (host.load().numWindows() != expectedNumWindows && host.replicas().size() != 0) {
+          errorMsgAndNumWindows.put(String.format("Host(%s)", host.name()), host.load().numWindows());
+        }
+
+        // Check broker loads.
+        for (Broker broker : rack.brokers()) {
+          if (broker.load().numWindows() != expectedNumWindows && broker.replicas().size() != 0) {
+            errorMsgAndNumWindows.put(String.format("Broker(%d)", broker.id()), broker.load().numWindows());
+          }
+
+          // Check replica loads.
+          for (Replica replica : broker.replicas()) {
+            if (replica.load().numWindows() != expectedNumWindows) {
+              errorMsgAndNumWindows.put(String.format("Replica(%s-%d)", replica.topicPartition(), broker.id()),
+                                        replica.load().numWindows());
+            }
+          }
+        }
+      }
+    }
+    StringBuilder exceptionMsg = new StringBuilder();
+    for (Map.Entry<String, Integer> entry : errorMsgAndNumWindows.entrySet()) {
+      exceptionMsg.append(String.format("[%s: %d]%n", entry.getKey(), entry.getValue()));
+    }
+
+    if (exceptionMsg.length() > 0) {
+      throw new IllegalArgumentException(String.format("Loads must have all have %d windows. Following loads violate this "
+                                                       + "constraint with specified number of windows: %s",
+                                                       expectedNumWindows, exceptionMsg));
+    }
+    // SANITY CHECK #2: Sum of loads in the cluster / rack / broker / replica must be consistent with each other.
+    String prologueErrorMsg = "Inconsistent load distribution.";
+
+    // Check equality of sum of the replica load to their broker load for each resource.
+    for (Broker broker : brokers()) {
+      for (Resource resource : Resource.cachedValues()) {
+        double sumOfReplicaUtilization = 0.0;
+        for (Replica replica : broker.replicas()) {
+          sumOfReplicaUtilization += replica.load().expectedUtilizationFor(resource);
+        }
+        double brokerUtilization = broker.load().expectedUtilizationFor(resource);
+        if (AnalyzerUtils.compare(sumOfReplicaUtilization, brokerUtilization, resource) != 0) {
+          throw new IllegalArgumentException(String.format("%s Broker utilization for %s is different from the total replica "
+                                                           + "utilization in the broker with id: %d. Sum of the replica utilization: %f, "
+                                                           + "broker utilization: %f", prologueErrorMsg, resource, broker.id(),
+                                                           sumOfReplicaUtilization, brokerUtilization));
+        }
+      }
+    }
+
+    // Check equality of sum of the broker load to their rack load for each resource.
+    Map<Resource, Double> sumOfRackUtilizationByResource = new HashMap<>(Resource.cachedValues().size());
+    for (Rack rack : _racksById.values()) {
+      Map<Resource, Double> sumOfHostUtilizationByResource = new HashMap<>(Resource.cachedValues().size());
+      for (Host host : rack.hosts()) {
+        for (Resource resource : Resource.cachedValues()) {
+          double sumOfBrokerUtilization = 0.0;
+          for (Broker broker : host.brokers()) {
+            sumOfBrokerUtilization += broker.load().expectedUtilizationFor(resource);
+          }
+          double hostUtilization = host.load().expectedUtilizationFor(resource);
+          if (AnalyzerUtils.compare(sumOfBrokerUtilization, hostUtilization, resource) != 0) {
+            throw new IllegalArgumentException(String.format("%s Host utilization for %s is different from the total broker "
+                                                             + "utilization in the host : %s. Sum of the broker utilization: %f, "
+                                                             + "host utilization: %f", prologueErrorMsg, resource, host.name(),
+                                                             sumOfBrokerUtilization, hostUtilization));
+          }
+          sumOfHostUtilizationByResource.compute(resource, (k, v) -> (v == null ? 0 : v) + hostUtilization);
+        }
+      }
+
+      // Check equality of sum of the host load to the rack load for each resource.
+      for (Map.Entry<Resource, Double> entry : sumOfHostUtilizationByResource.entrySet()) {
+        Resource resource = entry.getKey();
+        double sumOfHostsUtil = entry.getValue();
+        double rackUtilization = rack.load().expectedUtilizationFor(resource);
+        if (AnalyzerUtils.compare(rackUtilization, sumOfHostsUtil, resource) != 0) {
+          throw new IllegalArgumentException(String.format("%s Rack utilization for %s is different from the total host "
+                                                           + "utilization in rack : %s. Sum of the host utilization: %f, "
+                                                           + "rack utilization: %f", prologueErrorMsg, resource, rack.id(),
+                                                           sumOfHostsUtil, rackUtilization));
+        }
+        sumOfRackUtilizationByResource.compute(resource, (k, v) -> (v == null ? 0 : v) + sumOfHostsUtil);
+      }
+    }
+
+    // Check equality of sum of the rack load to the cluster load for each resource.
+    for (Map.Entry<Resource, Double> entry : sumOfRackUtilizationByResource.entrySet()) {
+      Resource resource = entry.getKey();
+      double sumOfRackUtil = entry.getValue();
+      double clusterUtilization = _load.expectedUtilizationFor(resource);
+      if (AnalyzerUtils.compare(_load.expectedUtilizationFor(resource), sumOfRackUtil, resource) != 0) {
+        throw new IllegalArgumentException(String.format("%s Cluster utilization for %s is different from the total rack "
+                                                         + "utilization in the cluster. Sum of the rack utilization: %f, "
+                                                         + "cluster utilization: %f", prologueErrorMsg, resource,
+                                                         sumOfRackUtil, clusterUtilization));
+      }
+    }
+
+    // Check equality of the sum of the leadership load to the sum of the load of leader at each broker.
+    for (Broker broker : brokers()) {
+      double sumOfLeaderOfReplicaUtilization = 0.0;
+      for (Replica replica : broker.replicas()) {
+        sumOfLeaderOfReplicaUtilization +=
+            partition(replica.topicPartition()).leader().load().expectedUtilizationFor(Resource.NW_OUT);
+      }
+      double potentialLeadershipLoad =
+          _potentialLeadershipLoadByBrokerId.get(broker.id()).expectedUtilizationFor(Resource.NW_OUT);
+      if (AnalyzerUtils.compare(sumOfLeaderOfReplicaUtilization, potentialLeadershipLoad, Resource.NW_OUT) != 0) {
+        throw new IllegalArgumentException(String.format("%s Leadership utilization for %s is different from the total utilization "
+                                                         + "leader of replicas in the broker with id: %d. Expected: %f Received: %f",
+                                                         prologueErrorMsg, Resource.NW_OUT, broker.id(), sumOfLeaderOfReplicaUtilization,
+                                                         potentialLeadershipLoad));
+      }
+
+      for (Resource resource : Resource.cachedValues()) {
+        if (resource == Resource.CPU) {
+          continue;
+        }
+        double leaderSum = broker.leaderReplicas().stream().mapToDouble(r -> r.load().expectedUtilizationFor(resource)).sum();
+        double cachedLoad = broker.leadershipLoadForNwResources().expectedUtilizationFor(resource);
+        if (AnalyzerUtils.compare(leaderSum, cachedLoad, resource) != 0) {
+          throw new IllegalArgumentException(String.format("%s Leadership load for resource %s is %f but recomputed sum is %f",
+                                                           prologueErrorMsg, resource, cachedLoad, leaderSum));
+        }
+      }
+    }
+  }
+
+  /**
+   * Return the broker stats related to resource utilization
+   */
+  public BrokerStats brokerStats(KafkaCruiseControlConfig config) {
+    BrokerUtilizationStats brokerUtilizationStats = new BrokerUtilizationStats(config);
+    brokers().forEach(broker -> {
+      double leaderBytesInRate = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN);
+      double cpuUsagePercent = UNIT_INTERVAL_TO_PERCENTAGE * broker.load().expectedUtilizationFor(Resource.CPU)
+                               / broker.capacityFor(Resource.CPU);
+      brokerUtilizationStats.addSingleBrokerUtilizationStats(broker.host().name(),
+                                                             broker.id(),
+                                                             broker.state(),
+                                                             broker.replicas().isEmpty() ? 0 : broker.load().expectedUtilizationFor(Resource.DISK),
+                                                             cpuUsagePercent,
+                                                             leaderBytesInRate,
+                                                             broker.load().expectedUtilizationFor(Resource.NW_IN) - leaderBytesInRate,
+                                                             broker.load().expectedUtilizationFor(Resource.NW_OUT),
+                                                             potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT),
+                                                             broker.replicas().size(), broker.leaderReplicas().size(),
+                                                             _capacityEstimationInfoByBrokerId.get(broker.id()) != null,
+                                                             broker.capacityFor(Resource.DISK));
+    });
+    return brokerUtilizationStats;
+  }
+
+  /**
+   * The variance of the derived resources.
+   * @return a non-null array where the ith index is the variance of RawAndDerivedResource.ordinal().
+   */
+  public double[] variance() {
+    RawAndDerivedResource[] resources = RawAndDerivedResource.values();
+    double[][] utilization = utilizationMatrix();
+
+    double[] variance = new double[resources.length];
+
+    for (int resourceIndex = 0; resourceIndex < resources.length; resourceIndex++) {
+      Variance varianceCalculator = new Variance();
+      variance[resourceIndex] = varianceCalculator.evaluate(utilization[resourceIndex]);
+    }
+    return variance;
+  }
+
+  /**
+   *
+   * @return a RawAndDerivedResource x nBroker matrix of derived resource utilization.
+   */
+  public double[][] utilizationMatrix() {
+    RawAndDerivedResource[] resources = RawAndDerivedResource.values();
+    double[][] utilization = new double[resources.length][brokers().size()];
+    int brokerIndex = 0;
+    for (Broker broker : brokers()) {
+      double leaderBytesInRate = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN);
+      for (RawAndDerivedResource derivedResource : resources) {
+        switch (derivedResource) {
+          case DISK: //fall through
+          case NW_OUT: //fall through
+          case CPU:  utilization[derivedResource.ordinal()][brokerIndex] =
+              broker.load().expectedUtilizationFor(derivedResource.derivedFrom());
+            break;
+          case FOLLOWER_NW_IN:
+            utilization[derivedResource.ordinal()][brokerIndex] =
+              broker.load().expectedUtilizationFor(derivedResource.derivedFrom()) - leaderBytesInRate;
+            break;
+          case LEADER_NW_IN:
+            utilization[derivedResource.ordinal()][brokerIndex] = leaderBytesInRate;
+            break;
+          case PWN_NW_OUT:
+            utilization[derivedResource.ordinal()][brokerIndex] =
+              potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT);
+            break;
+          case REPLICAS:
+            utilization[derivedResource.ordinal()][brokerIndex] = broker.replicas().size();
+            break;
+          default:
+            throw new IllegalStateException("Unhandled case " + derivedResource + ".");
+        }
+      }
+      brokerIndex++;
+    }
+    return utilization;
+  }
+
+  public void writeTo(OutputStream out) throws IOException {
+    String cluster = String.format("<Cluster maxPartitionReplicationFactor=\"%d\">%n", _maxReplicationFactor);
+    out.write(cluster.getBytes(StandardCharsets.UTF_8));
+    for (Rack rack : _racksById.values()) {
+      rack.writeTo(out);
+    }
+    out.write("</Cluster>".getBytes(StandardCharsets.UTF_8));
+  }
+
+  @Override
+  public String toString() {
+    return String.format("ClusterModel[brokerCount=%d,partitionCount=%d,aliveBrokerCount=%d]",
+                         _brokers.size(), _partitionsByTopicPartition.size(), _aliveBrokers.size());
+  }
+
+  private void refreshCapacity() {
+    for (Resource r : Resource.cachedValues()) {
+      double capacity = 0;
+      for (Rack rack : _racksById.values()) {
+        capacity += rack.capacityFor(r);
+      }
+      _clusterCapacity[r.id()] = capacity;
+    }
+  }
 }
