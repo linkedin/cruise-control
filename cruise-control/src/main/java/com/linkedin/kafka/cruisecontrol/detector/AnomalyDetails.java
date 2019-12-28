@@ -54,6 +54,9 @@ AnomalyDetails(AnomalyState anomalyState, AnomalyType anomalyType, boolean hasFi
     _isJson = isJson;
 }
 
+/** 
+* @return An object that can be further used to encode into JSON to represent anomaly data
+*/
 
 public Map<String, Object> populateAnomalyDetails() {
 // Goal violation has one more field than other anomaly types.
