@@ -1,14 +1,33 @@
-FixOfflineReplicasEndpoint:
+TopicConfigurationEndpoint:
   post:
-    operationId: fixOfflineReplicas
-    summary: Fix offline replicas by moving currently offline replicas to healthy brokers.
+    summary: Change the configuration of a topic
     parameters:
       - name: dryrun
         in: query
-        description: Whether dry-run the request or not.
+        description: Whether to dry-run the request or not.
         schema:
           type: boolean
           default: true
+      - name: topic
+        in: query
+        description: Regular expression to specify subject topics.
+        schema:
+          type: string # topics regex
+          default: null
+          example: topic_%5B0-9%5D.%2A
+      - name: replication_factor
+        in: query
+        description: Target replication factor.
+        schema:
+          type: integer
+          format: int32
+          minimum: 1
+      - name: data_from
+        in: query
+        description: Whether to calculate proposal from available valid partitions or valid windows.
+        schema:
+          type: string
+          default: VALID_WINDOWS
       - name: goals
         in: query
         description: List of goals used to generate proposal, the default goals will be used if this parameter is not specified.
@@ -16,6 +35,7 @@ FixOfflineReplicasEndpoint:
           type: array
           items:
             type: string
+            # default is every goal
           example: ["RackAwareGoal", "ReplicaCapacityGoal", "ReplicaDistributionGoal"]
       - name: allow_capacity_estimation
         in: query
@@ -37,40 +57,9 @@ FixOfflineReplicasEndpoint:
           type: integer
           format: int32
           minimum: 1
-      - name: json
-        in: query
-        description: Whether to return in JSON format or not.
-        schema:
-          type: boolean
-          default: false
       - name: skip_hard_goal_check
         in: query
         description: Whether to allow hard goals be skipped in proposal generation.
-        schema:
-          type: boolean
-          default: false
-      - name: excluded_topics
-        in: query
-        description: Specify topic whose partition is excluded from replica movement.
-        schema:
-          type: string # topics regex
-          default: null
-        exmaple: "__CruiseControl.%2A"
-      - name: use_ready_default_goals
-        in: query
-        description: Whether to only use ready goals to generate proposal.
-        schema:
-          type: boolean
-          default: false
-      - name: data_from
-        in: query
-        description: Whether to calculate proposal from available valid partitions or valid windows.
-        schema:
-          type: string
-          default: VALID_WINDOWS
-      - name: verbose
-        in: query
-        description: Return detailed state information.
         schema:
           type: boolean
           default: false
@@ -82,32 +71,17 @@ FixOfflineReplicasEndpoint:
           default: false
       - name: exclude_recently_removed_brokers
         in: query
-        description: Whether to allow leader replicas to be moved to recently removed broker.
+        description: Whether to allow replicas to be moved to recently removed broker.
         schema:
           type: boolean
-          default: true
-      - name: replica_movement_strategies
+          default: false
+      - name: excluded_topics
         in: query
-        description: Replica movement strategies to use.
+        description: Specify topic whose partition is excluded from replica movement.
         schema:
-          type: array
-          items:
-            type: string
-          example: ["PrioritizeLargeReplicaMovementStrategy", "PostponeUrpReplicaMovementStrategy"]
-      - name: review_id
-        in: query
-        description: Review id for 2FA
-        schema:
-          type: integer
-          format: int32
-          minimum: 0
-      - name: replication_throttle
-        in: query
-        description: Upper bound on the bandwidth in bytes per second used to move replicas.
-        schema:
-          type: integer
-          format: int64
-          minimum: 1
+          type: string # topics regex
+          default: null
+          example: "__CruiseControl.%2A"
       - name: execution_progress_check_interval_ms
         in: query
         description: Execution progress check interval in milliseconds.
@@ -120,16 +94,59 @@ FixOfflineReplicasEndpoint:
         description: Reason for request.
         schema:
           type: string
-        example: "Move offline replicas away from broken brokers."
+      - name: replica_movement_strategies
+        in: query
+        description: Replica movement strategies to use.
+        schema:
+          type: array
+          items:
+            type: string
+          example: ["PrioritizeLargeReplicaMovementStrategy", "PostponeUrpReplicaMovementStrategy"]
+      - name: replication_throttle
+        in: query
+        description: Upper bound on the bandwidth in bytes per second used to move replicas.
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+      - name: json
+        in: query
+        description: Whether to return in JSON format or not.
+        schema:
+          type: boolean
+          default: false
+      - name: review_id
+        in: query
+        description: Review id for 2FA.
+        schema:
+          type: string
+      - name: skip_rack_awareness_check
+        in: query
+        description: Whether to allow rack awareness check to be skipped.
+        schema:
+          type: boolean
+          default: false
       - name: stop_ongoing_execution
         in: query
         description: Whether to stop the ongoing execution (if any) and start executing the given request.
         schema:
           type: boolean
           default: false
+      - name: use_ready_default_goals
+        in: query
+        description: Whether to only use ready goals to generate proposal.
+        schema:
+          type: boolean
+          default: false
+      - name: verbose
+        in: query
+        description: Return detailed state information.
+        schema:
+          type: boolean
+          default: false
     responses:
       '200':
-        description: Successful rebalance response.
+        description: Successful topic configuration response.
         content:
           application/json:
             schema:
@@ -138,7 +155,7 @@ FixOfflineReplicasEndpoint:
             schema:
               type: string
       '202':
-        description: Fix in progress.
+        description: Topic configuration in progress.
         content:
           application/json:
             schema:

@@ -5,7 +5,7 @@ RebalanceEndpoint:
     parameters:
       - name: dryrun
         in: query
-        description: Whether dry-run the request or not.
+        description: Whether to dry-run the request or not.
         schema:
           type: boolean
           default: true
@@ -19,13 +19,13 @@ RebalanceEndpoint:
           example: ["RackAwareGoal", "ReplicaCapacityGoal", "ReplicaDistributionGoal"]
       - name: allow_capacity_estimation
         in: query
-        description: Whether to allow broker capacity to be estimated.
+        description: Whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information.
         schema:
           type: boolean
           default: false
       - name: stop_ongoing_execution
         in: query
-        description: Whether to stop the ongoing execution (if any) and start executing the given request
+        description: Whether to stop the ongoing execution (if any) and start executing the given request.
         schema:
           type: boolean
           default: false
@@ -68,7 +68,7 @@ RebalanceEndpoint:
         schema:
           type: string # topics regex
           default: null
-        exmaple: "__CruiseControl.%2A"
+          example: "__CruiseControl.%2A"
       - name: use_ready_default_goals
         in: query
         description: Whether to only use ready goals to generate proposal.
@@ -135,7 +135,7 @@ RebalanceEndpoint:
           default: false
       - name: review_id
         in: query
-        description: Review id for 2FA
+        description: Review id for 2FA.
         schema:
           type: integer
           format: int32

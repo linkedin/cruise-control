@@ -1,73 +1,53 @@
-FixOfflineReplicasEndpoint:
+DemoteBrokerEndpoint:
   post:
-    operationId: fixOfflineReplicas
-    summary: Fix offline replicas by moving currently offline replicas to healthy brokers.
+    operationId: demoteBroker
+    summary: Demote specified brokers.
     parameters:
+      - name: brokerid
+        in: query
+        description: List of target broker ids.
+        schema:
+          type: set
+          items:
+            type: int32
+        required: true
       - name: dryrun
         in: query
-        description: Whether dry-run the request or not.
-        schema:
+        description: Whether to dry-run the request or not.	
+        schema: 
           type: boolean
           default: true
-      - name: goals
+      - name: concurrent_leader_movements
         in: query
-        description: List of goals used to generate proposal, the default goals will be used if this parameter is not specified.
+        description: The upper bound of ongoing leadership movements.
         schema:
-          type: array
-          items:
-            type: string
-          example: ["RackAwareGoal", "ReplicaCapacityGoal", "ReplicaDistributionGoal"]
+          type: int32
+          default: 1000
+          minimum: 1
       - name: allow_capacity_estimation
         in: query
         description: Whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information.
         schema:
           type: boolean
-          default: false
-      - name: concurrent_partition_movements_per_broker
-        in: query
-        description: The upper bound of ongoing replica movements going into/out of each broker.
-        schema:
-          type: integer
-          format: int32
-          minimum: 1
-      - name: concurrent_leader_movements
-        in: query
-        description: The upper bound of ongoing leadership movements.
-        schema:
-          type: integer
-          format: int32
-          minimum: 1
+          default: true
       - name: json
         in: query
         description: Whether to return in JSON format or not.
         schema:
           type: boolean
           default: false
-      - name: skip_hard_goal_check
+      - name: skip_urp_demotion
         in: query
-        description: Whether to allow hard goals be skipped in proposal generation.
+        description: Whether to operate on partitions which are currently under-replicated.
         schema:
           type: boolean
           default: false
-      - name: excluded_topics
+      - name: exclude_follower_demotion
         in: query
-        description: Specify topic whose partition is excluded from replica movement.
-        schema:
-          type: string # topics regex
-          default: null
-        exmaple: "__CruiseControl.%2A"
-      - name: use_ready_default_goals
-        in: query
-        description: Whether to only use ready goals to generate proposal.
-        schema:
+        description: Whether to operate on partitions which only have follower replicas on the specified broker(s).
+        schma:
           type: boolean
-          default: false
-      - name: data_from
-        in: query
-        description: Whether to calculate proposal from available valid partitions or valid windows.
-        schema:
-          type: string
-          default: VALID_WINDOWS
+          default: true
       - name: verbose
         in: query
         description: Return detailed state information.
@@ -80,12 +60,6 @@ FixOfflineReplicasEndpoint:
         schema:
           type: boolean
           default: false
-      - name: exclude_recently_removed_brokers
-        in: query
-        description: Whether to allow leader replicas to be moved to recently removed broker.
-        schema:
-          type: boolean
-          default: true
       - name: replica_movement_strategies
         in: query
         description: Replica movement strategies to use.
@@ -93,14 +67,20 @@ FixOfflineReplicasEndpoint:
           type: array
           items:
             type: string
+          default: null
           example: ["PrioritizeLargeReplicaMovementStrategy", "PostponeUrpReplicaMovementStrategy"]
-      - name: review_id
+      - name: brokerid_and_logdirs
         in: query
-        description: Review id for 2FA
+        description: List of broker id and logdir pair to be demoted in the cluster.
         schema:
-          type: integer
-          format: int32
-          minimum: 0
+          type: map
+          key:
+            type: int32
+          items:
+            type: set
+            items:
+              type: string
+        # default is an empty map
       - name: replication_throttle
         in: query
         description: Upper bound on the bandwidth in bytes per second used to move replicas.
@@ -108,6 +88,11 @@ FixOfflineReplicasEndpoint:
           type: integer
           format: int64
           minimum: 1
+      - name: reason
+        in: query
+        description: Reason for request.
+        schema:
+          type: string
       - name: execution_progress_check_interval_ms
         in: query
         description: Execution progress check interval in milliseconds.
@@ -115,37 +100,38 @@ FixOfflineReplicasEndpoint:
           type: integer
           format: int64
           minimum: 5000
-      - name: reason
-        in: query
-        description: Reason for request.
-        schema:
-          type: string
-        example: "Move offline replicas away from broken brokers."
       - name: stop_ongoing_execution
         in: query
         description: Whether to stop the ongoing execution (if any) and start executing the given request.
         schema:
           type: boolean
           default: false
+      - name: review_id
+        in: query
+        description: Review id for 2FA.
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
     responses:
       '200':
-        description: Successful rebalance response.
+        description: Successful demote brokers response.
         content:
           application/json:
             schema:
               $ref: '../responses/optimizationResult.yaml#/OptimizationResult'
           text/plain:
-            schema:
-              type: string
+             schema:
+               type: string
       '202':
-        description: Fix in progress.
+        description: Demote brokers in progress.
         content:
           application/json:
             schema:
               $ref: '../responses/progressResult.yaml#/ProgressResult'
           text/plain:
-            schema:
-              type: string
+             schema:
+               type: string
       # Response for all errors
       default:
         description: Error response.

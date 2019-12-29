@@ -28,3 +28,13 @@ paths:
     $ref: 'endpoints/admin.yaml#/AdminEndpoint'
   /kafkacruisecontrol/review:
     $ref: 'endpoints/review.yaml#/ReviewEndpoint'
+  /kafkacruisecontrol/topic_configuration:
+    $ref: 'endpoints/topicConfiguration.yaml#/TopicConfigurationEndpoint'
+  /kafkacruisecontrol/user_tasks:
+    $ref: 'endpoints/userTasks.yaml#/UserTasksEndpoint'
+  /kafkacruisecontrol/add_broker:
+    $ref: 'endpoints/addBroker.yaml#/AddBrokerEndpoint'
+  /kafkacruisecontrol/remove_broker:
+    $ref: 'endpoints/removeBroker.yaml#/RemoveBrokerEndpoint'
+  /kafkacruisecontrol/demote_broker:
+    $ref: 'endpoints/demoteBroker.yaml#/DemoteBrokerEndpoint'
