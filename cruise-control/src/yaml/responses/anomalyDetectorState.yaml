@@ -56,13 +56,9 @@ AnomalyDetails:
     statusUpdateMs:
       type: integer
       format: int64
-    statusUpdateDate:
-      type: string
     detectionMs:
       type: integer
       format: int64
-    detectionDate:
-      type: string
     status:
       type: string
       enum:

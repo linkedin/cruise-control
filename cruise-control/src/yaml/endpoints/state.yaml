@@ -33,7 +33,7 @@ StateEndpoint:
           default: false
     responses:
       '200':
-        description: Successful state response
+        description: Successful state response.
         content:
           application/json:
             schema:
@@ -42,7 +42,7 @@ StateEndpoint:
             schema:
               type: string
       '202':
-        description: State querying in progress
+        description: State querying in progress.
         content:
           application/json:
             schema:
@@ -52,7 +52,7 @@ StateEndpoint:
               type: string
       # Response for all errors
       default:
-        description: Unexpected error
+        description: Error response.
         content:
           application/json:
             schema:

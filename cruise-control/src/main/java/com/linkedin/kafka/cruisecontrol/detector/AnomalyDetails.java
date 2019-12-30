@@ -17,49 +17,47 @@ import java.util.Map;
 
 @JsonResponseClass
 public class AnomalyDetails {
-@JsonResponseField
-protected static final String STATUS_UPDATE_MS = "statusUpdateMs";
-@JsonResponseField(required = false)
-protected static final String STATUS_UPDATE_DATE = "statusUpdateDate";
-@JsonResponseField
-protected static final String DETECTION_MS = "detectionMs";
-@JsonResponseField(required = false)
-protected static final String DETECTION_DATE = "detectionDate";
-@JsonResponseField
-protected static final String STATUS = "status";
-@JsonResponseField
-protected static final String ANOMALY_ID = "anomalyId";
-@JsonResponseField(required = false)
-protected static final String FIXABLE_VIOLATED_GOALS = "fixableViolatedGoals";
-@JsonResponseField(required = false)
-protected static final String UNFIXABLE_VIOLATED_GOALS = "unfixableViolatedGoals";
-@JsonResponseField(required = false)
-protected static final String FAILED_BROKERS_BY_TIME_MS = "failedBrokersByTimeMs";
-@JsonResponseField(required = false)
-protected static final String FAILED_DISKS_BY_TIME_MS = "failedDisksByTimeMs";
-@JsonResponseField(required = false)
-protected static final String OPTIMIZATION_RESULT = "optimizationResult";
-@JsonResponseField(required = false)
-protected static final String DESCRIPTION = "description";
+  @JsonResponseField
+  protected static final String STATUS_UPDATE_MS = "statusUpdateMs";
+  protected static final String STATUS_UPDATE_DATE = "statusUpdateDate";
+  @JsonResponseField
+  protected static final String DETECTION_MS = "detectionMs";
+  protected static final String DETECTION_DATE = "detectionDate";
+  @JsonResponseField
+  protected static final String STATUS = "status";
+  @JsonResponseField
+  protected static final String ANOMALY_ID = "anomalyId";
+  @JsonResponseField(required = false)
+  protected static final String FIXABLE_VIOLATED_GOALS = "fixableViolatedGoals";
+  @JsonResponseField(required = false)
+  protected static final String UNFIXABLE_VIOLATED_GOALS = "unfixableViolatedGoals";
+  @JsonResponseField(required = false)
+  protected static final String FAILED_BROKERS_BY_TIME_MS = "failedBrokersByTimeMs";
+  @JsonResponseField(required = false)
+  protected static final String FAILED_DISKS_BY_TIME_MS = "failedDisksByTimeMs";
+  @JsonResponseField(required = false)
+  protected static final String OPTIMIZATION_RESULT = "optimizationResult";
+  @JsonResponseField(required = false)
+  protected static final String DESCRIPTION = "description";
 
-protected AnomalyState _anomalyState;
-protected AnomalyType _anomalyType;
-protected boolean _hasFixStarted;
-protected boolean _isJson;
+  protected AnomalyState _anomalyState;
+  protected AnomalyType _anomalyType;
+  protected boolean _hasFixStarted;
+  protected boolean _isJson;
 
-AnomalyDetails(AnomalyState anomalyState, AnomalyType anomalyType, boolean hasFixStarted, boolean isJson) {
+  AnomalyDetails(AnomalyState anomalyState, AnomalyType anomalyType, boolean hasFixStarted, boolean isJson) {
     _anomalyState = anomalyState;
     _anomalyType = anomalyType;
     _hasFixStarted = hasFixStarted;
     _isJson = isJson;
-}
+  }
 
-/** 
-* @return An object that can be further used to encode into JSON to represent anomaly data
-*/
+    /** 
+    * @return An object that can be further used to encode into JSON to represent anomaly data
+    */
 
-public Map<String, Object> populateAnomalyDetails() {
-// Goal violation has one more field than other anomaly types.
+  public Map<String, Object> populateAnomalyDetails() {
+    // Goal violation has one more field than other anomaly types.
     Map<String, Object> anomalyDetails = new HashMap<>((_hasFixStarted ? 6 : 5) + (_anomalyType == GOAL_VIOLATION ? 1 : 0));
     anomalyDetails.put(_isJson ? DETECTION_MS : DETECTION_DATE,
                     _isJson ? _anomalyState.detectionMs() : utcDateFor(_anomalyState.detectionMs()));
@@ -102,5 +100,5 @@ public Map<String, Object> populateAnomalyDetails() {
         throw new IllegalStateException("Unrecognized anomaly type " + _anomalyType);
     }
     return anomalyDetails;
-}
+  }
 }
