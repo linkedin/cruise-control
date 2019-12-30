@@ -106,7 +106,7 @@ ProposalsEndpoint:
         content:
           application/json:
             schema:
-              $ref: '../responses/operationProgress.yaml#/OperationProgress'
+              $ref: '../responses/progressResult.yaml#/ProgressResult'
       # Response for all errors
       default:
         description: Error response.
