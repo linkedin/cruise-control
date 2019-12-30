@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.response.stats;
 
+import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,7 +39,10 @@ public class BrokerCapacityStats extends BrokerStats {
   }
 
   @Override
-  protected void discardIrrelevantResponse() {
+  protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
+    // Cache relevant response.
+    _cachedJSONResponse = getJSONString();
+    _cachedPlainTextResponse = toString();
     // Discard irrelevant response.
     _brokerCapacityStats.clear();
     _hostCapacityStats.clear();

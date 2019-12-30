@@ -48,15 +48,7 @@ public abstract class BrokerStats extends AbstractCruiseControlResponse {
    */
   public abstract Map<String, Object> getJsonStructure();
 
-  protected abstract void discardIrrelevantResponse();
-
-  @Override
-  protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
-    // Cache relevant response.
-    _cachedJSONResponse = getJSONString();
-    _cachedPlainTextResponse = toString();
-    discardIrrelevantResponse();
-  }
+  protected abstract void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters);
 
   @Override
   public void discardIrrelevantResponse(CruiseControlParameters parameters) {
