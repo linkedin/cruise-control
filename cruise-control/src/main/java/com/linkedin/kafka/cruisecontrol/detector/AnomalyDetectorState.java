@@ -10,11 +10,11 @@ import com.codahale.metrics.MetricRegistry;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
-import java.util.Collections;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
@@ -22,7 +22,6 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.utcDateFor;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.SEC_TO_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector.METRIC_REGISTRY_NAME;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.GOAL_VIOLATION;
@@ -30,43 +29,37 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyTyp
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.BROKER_FAILURE;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.DISK_FAILURE;
 
-
+@JsonResponseClass
 public class AnomalyDetectorState {
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetectorState.class);
-  private static final String DETECTION_MS = "detectionMs";
-  private static final String DETECTION_DATE = "detectionDate";
-  private static final String ANOMALY_ID = "anomalyId";
-  private static final String STATUS = "status";
-  private static final String STATUS_UPDATE_MS = "statusUpdateMs";
-  private static final String STATUS_UPDATE_DATE = "statusUpdateDate";
-  private static final String FIXABLE_VIOLATED_GOALS = "fixableViolatedGoals";
-  private static final String UNFIXABLE_VIOLATED_GOALS = "unfixableViolatedGoals";
-  private static final String FAILED_BROKERS_BY_TIME_MS = "failedBrokersByTimeMs";
-  private static final String FAILED_DISKS_BY_TIME_MS = "failedDisksByTimeMs";
-  private static final String DESCRIPTION = "description";
+  @JsonResponseField
   private static final String SELF_HEALING_ENABLED = "selfHealingEnabled";
+  @JsonResponseField
   private static final String SELF_HEALING_DISABLED = "selfHealingDisabled";
+  @JsonResponseField
   private static final String SELF_HEALING_ENABLED_RATIO = "selfHealingEnabledRatio";
+  @JsonResponseField
   private static final String RECENT_GOAL_VIOLATIONS = "recentGoalViolations";
+  @JsonResponseField
   private static final String RECENT_BROKER_FAILURES = "recentBrokerFailures";
+  @JsonResponseField
   private static final String RECENT_METRIC_ANOMALIES = "recentMetricAnomalies";
+  @JsonResponseField
   private static final String RECENT_DISK_FAILURES = "recentDiskFailures";
+  @JsonResponseField(required = false)
   private static final String ONGOING_SELF_HEALING_ANOMALY = "ongoingSelfHealingAnomaly";
-  private static final String OPTIMIZATION_RESULT = "optimizationResult";
+  @JsonResponseField
   private static final String METRICS = "metrics";
-  private static final String MEAN_TIME_BETWEEN_ANOMALIES_MS = "meanTimeBetweenAnomaliesMs";
-  private static final String MEAN_TIME_TO_START_FIX_MS = "meanTimeToStartFixMs";
+  @JsonResponseField
   private static final String BALANCEDNESS_SCORE = "balancednessScore";
-  // Package private for testing.
   static final String NUM_SELF_HEALING_STARTED = "numSelfHealingStarted";
-  private static final String ONGOING_ANOMALY_DURATION_MS = "ongoingAnomalyDurationMs";
   private static final long NO_ONGOING_ANOMALY_FLAG = -1L;
 
   // Recent anomalies with anomaly state by the anomaly type.
   private final Map<AnomalyType, Map<String, AnomalyState>> _recentAnomaliesByType;
   private Anomaly _ongoingSelfHealingAnomaly;
   private final Map<AnomalyType, Boolean> _selfHealingEnabled;
-  private Map<String, Float> _selfHealingEnabledRatio;
+  SelfHealingEnabledRatio _selfHealingEnabledRatio;
   // Maximum number of anomalies to keep in the anomaly detector state.
   private final int _numCachedRecentAnomalyStates;
   private AnomalyMetrics _metrics;
@@ -160,8 +153,8 @@ public class AnomalyDetectorState {
     }
 
     _metrics = new AnomalyMetrics(meanTimeBetweenAnomaliesMs, meanTimeToStartFixMs(), _numSelfHealingStarted.get(), ongoingAnomalyDurationMs());
-    _selfHealingEnabledRatio = new HashMap<>(selfHealingEnabledRatio.size());
-    selfHealingEnabledRatio.forEach((key, value) -> _selfHealingEnabledRatio.put(key.toString(), value));
+    _selfHealingEnabledRatio = new SelfHealingEnabledRatio(selfHealingEnabledRatio.size());
+    selfHealingEnabledRatio.forEach((key, value) -> _selfHealingEnabledRatio.put(key, value));
     _balancednessScore = balancednessScore;
   }
 
@@ -225,17 +218,11 @@ public class AnomalyDetectorState {
    * Package private for testing
    */
   Map<String, Object> metrics() {
-    Map<String, Object> metrics = new HashMap<>(4);
-    metrics.put(MEAN_TIME_BETWEEN_ANOMALIES_MS, _metrics.meanTimeBetweenAnomaliesMs());
-    metrics.put(MEAN_TIME_TO_START_FIX_MS, _metrics.meanTimeToStartFixMs());
-    metrics.put(NUM_SELF_HEALING_STARTED, _metrics.numSelfHealingStarted());
-    metrics.put(ONGOING_ANOMALY_DURATION_MS, _metrics.ongoingAnomalyDurationMs());
-
-    return metrics;
+    return _metrics.getJsonStructure();
   }
 
-  private Map<String, Float> selfHealingEnabledRatio() {
-    return _selfHealingEnabledRatio == null ? Collections.emptyMap() : _selfHealingEnabledRatio;
+  private SelfHealingEnabledRatio selfHealingEnabledRatio() {
+    return _selfHealingEnabledRatio == null ? new SelfHealingEnabledRatio(0) : _selfHealingEnabledRatio;
   }
 
   /**
@@ -293,55 +280,6 @@ public class AnomalyDetectorState {
     _selfHealingEnabled.put(anomalyType, isSelfHealingEnabled);
   }
 
-  private static Map<String, Object> populateAnomalyDetails(AnomalyState anomalyState,
-                                                            AnomalyType anomalyType,
-                                                            boolean hasFixStarted,
-                                                            boolean isJson) {
-    // Goal violation has one more field than other anomaly types.
-    Map<String, Object> anomalyDetails = new HashMap<>((hasFixStarted ? 6 : 5) + (anomalyType == GOAL_VIOLATION ? 1 : 0));
-    anomalyDetails.put(isJson ? DETECTION_MS : DETECTION_DATE,
-                       isJson ? anomalyState.detectionMs() : utcDateFor(anomalyState.detectionMs()));
-    anomalyDetails.put(STATUS, anomalyState.status());
-    anomalyDetails.put(ANOMALY_ID, anomalyState.anomalyId());
-    anomalyDetails.put(isJson ? STATUS_UPDATE_MS : STATUS_UPDATE_DATE,
-                       isJson ? anomalyState.statusUpdateMs() : utcDateFor(anomalyState.statusUpdateMs()));
-    switch ((KafkaAnomalyType) anomalyType) {
-      case GOAL_VIOLATION:
-        GoalViolations goalViolations = (GoalViolations) anomalyState.anomaly();
-        Map<Boolean, List<String>> violatedGoalsByFixability = goalViolations.violatedGoalsByFixability();
-        anomalyDetails.put(FIXABLE_VIOLATED_GOALS, violatedGoalsByFixability.getOrDefault(true, Collections.emptyList()));
-        anomalyDetails.put(UNFIXABLE_VIOLATED_GOALS, violatedGoalsByFixability.getOrDefault(false, Collections.emptyList()));
-        if (hasFixStarted) {
-          anomalyDetails.put(OPTIMIZATION_RESULT, goalViolations.optimizationResult(isJson));
-        }
-        break;
-      case BROKER_FAILURE:
-        BrokerFailures brokerFailures = (BrokerFailures) anomalyState.anomaly();
-        anomalyDetails.put(FAILED_BROKERS_BY_TIME_MS, brokerFailures.failedBrokers());
-        if (hasFixStarted) {
-          anomalyDetails.put(OPTIMIZATION_RESULT, brokerFailures.optimizationResult(isJson));
-        }
-        break;
-      case DISK_FAILURE:
-        DiskFailures diskFailures = (DiskFailures) anomalyState.anomaly();
-        anomalyDetails.put(FAILED_DISKS_BY_TIME_MS, diskFailures.failedDisks());
-        if (hasFixStarted) {
-          anomalyDetails.put(OPTIMIZATION_RESULT, diskFailures.optimizationResult(isJson));
-        }
-        break;
-      case METRIC_ANOMALY:
-        KafkaMetricAnomaly metricAnomaly = (KafkaMetricAnomaly) anomalyState.anomaly();
-        anomalyDetails.put(DESCRIPTION, metricAnomaly.description());
-        if (hasFixStarted) {
-          anomalyDetails.put(OPTIMIZATION_RESULT, metricAnomaly.optimizationResult(isJson));
-        }
-        break;
-      default:
-        throw new IllegalStateException("Unrecognized anomaly type " + anomalyType);
-    }
-    return anomalyDetails;
-  }
-
   /**
    * Package private for unit tests.
    */
@@ -353,7 +291,7 @@ public class AnomalyDetectorState {
     Map<String, AnomalyState> anomaliesById = _recentAnomaliesByType.get(anomalyType);
     Set<Map<String, Object>> recentAnomalies = new HashSet<>(_numCachedRecentAnomalyStates);
     for (Map.Entry<String, AnomalyState> entry: anomaliesById.entrySet()) {
-      recentAnomalies.add(populateAnomalyDetails(entry.getValue(), anomalyType, false, isJson));
+      recentAnomalies.add(new AnomalyDetails(entry.getValue(), anomalyType, false, isJson).populateAnomalyDetails());
     }
     return recentAnomalies;
   }
@@ -376,7 +314,7 @@ public class AnomalyDetectorState {
     Map<Boolean, Set<String>> selfHealingByEnableStatus = getSelfHealingByEnableStatus();
     anomalyDetectorState.put(SELF_HEALING_ENABLED, selfHealingByEnableStatus.get(true));
     anomalyDetectorState.put(SELF_HEALING_DISABLED, selfHealingByEnableStatus.get(false));
-    anomalyDetectorState.put(SELF_HEALING_ENABLED_RATIO, selfHealingEnabledRatio());
+    anomalyDetectorState.put(SELF_HEALING_ENABLED_RATIO, selfHealingEnabledRatio().getJsonStructure());
     anomalyDetectorState.put(RECENT_GOAL_VIOLATIONS, recentAnomalies(GOAL_VIOLATION, true));
     anomalyDetectorState.put(RECENT_BROKER_FAILURES, recentAnomalies(BROKER_FAILURE, true));
     anomalyDetectorState.put(RECENT_METRIC_ANOMALIES, recentAnomalies(METRIC_ANOMALY, true));
@@ -395,7 +333,7 @@ public class AnomalyDetectorState {
     return String.format("{%s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%.3f}%n",
                          SELF_HEALING_ENABLED, selfHealingByEnableStatus.get(true),
                          SELF_HEALING_DISABLED, selfHealingByEnableStatus.get(false),
-                         SELF_HEALING_ENABLED_RATIO, selfHealingEnabledRatio(),
+                         SELF_HEALING_ENABLED_RATIO, selfHealingEnabledRatio().getJsonStructure(),
                          RECENT_GOAL_VIOLATIONS, recentAnomalies(GOAL_VIOLATION, false),
                          RECENT_BROKER_FAILURES, recentAnomalies(BROKER_FAILURE, false),
                          RECENT_METRIC_ANOMALIES, recentAnomalies(METRIC_ANOMALY, false),

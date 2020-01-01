@@ -38,3 +38,5 @@ paths:
     $ref: 'endpoints/removeBroker.yaml#/RemoveBrokerEndpoint'
   /kafkacruisecontrol/demote_broker:
     $ref: 'endpoints/demoteBroker.yaml#/DemoteBrokerEndpoint'
+  /kafkacruisecontrol/state:
+    $ref: 'endpoints/state.yaml#/StateEndpoint'
