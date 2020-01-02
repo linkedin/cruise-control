@@ -8,7 +8,26 @@ ProgressResult:
       type: integer
       format: int32
     progress:
-      $ref: '#/StepProgress'
+      type: array
+      items:
+        $ref: '#/OperationProgress'
+
+OperationProgress:
+  type: object
+  required:
+    - version
+    - operation
+    - operationProgress
+  properties:
+    version:
+      type: integer
+      format: int32
+    operation:
+      type: string
+    operationProgress:
+      type: array
+      items:
+        $ref: '#/StepProgress'
 
 StepProgress:
   type: object
