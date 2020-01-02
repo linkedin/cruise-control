@@ -16,6 +16,8 @@ paths:
     $ref: 'endpoints/fixOfflineReplicas.yaml#/FixOfflineReplicasEndpoint'
   /kafkacruisecontrol/kafka_cluster_state:
     $ref: 'endpoints/kafkaClusterState.yaml#/KafkaClusterStateEndpoint'
+  /kafkacruisecontrol/load:
+    $ref: 'endpoints/load.yaml#/LoadEndpoint'
   /kafkacruisecontrol/partition_load:
     $ref: 'endpoints/partitionLoad.yaml#/PartitionLoadEndpoint'
   /kafkacruisecontrol/pause_sampling:
