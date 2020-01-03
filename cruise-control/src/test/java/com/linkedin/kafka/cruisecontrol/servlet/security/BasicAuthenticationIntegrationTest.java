@@ -42,7 +42,7 @@ public class BasicAuthenticationIntegrationTest extends CruiseControlIntegration
   public void testBasicAuthenticationAsUser() throws IOException, URISyntaxException {
     HttpURLConnection stateEndpointConnection = (HttpURLConnection) new URI(_app.serverUrl())
         .resolve(CRUISE_CONTROL_STATE_ENDPOINT).toURL().openConnection();
-    String userCreds = Base64.getEncoder().encodeToString(("ccuser" + ":" + "pwd123").getBytes(StandardCharsets.UTF_8));
+    String userCreds = Base64.getEncoder().encodeToString(("ccTestUser" + ":" + "TestPwd123").getBytes(StandardCharsets.UTF_8));
     stateEndpointConnection.setRequestProperty(HttpHeader.AUTHORIZATION.asString(), "Basic " + userCreds);
     assertEquals(HttpServletResponse.SC_OK, stateEndpointConnection.getResponseCode());
 
@@ -57,7 +57,7 @@ public class BasicAuthenticationIntegrationTest extends CruiseControlIntegration
   public void testBasicAuthenticationAsAdmin() throws IOException, URISyntaxException {
     HttpURLConnection stateEndpointConnection = (HttpURLConnection) new URI(_app.serverUrl())
         .resolve(CRUISE_CONTROL_STATE_ENDPOINT).toURL().openConnection();
-    String adminCreds = Base64.getEncoder().encodeToString(("ccadmin" + ":" + "pass123").getBytes(StandardCharsets.UTF_8));
+    String adminCreds = Base64.getEncoder().encodeToString(("ccTestAdmin" + ":" + "TestPass123").getBytes(StandardCharsets.UTF_8));
     stateEndpointConnection.setRequestProperty(HttpHeader.AUTHORIZATION.asString(), "Basic " + adminCreds);
     assertEquals(HttpServletResponse.SC_OK, stateEndpointConnection.getResponseCode());
 
