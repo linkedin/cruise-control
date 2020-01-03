@@ -23,7 +23,7 @@ public interface SecurityProvider {
    * Sets the configuration to allow the initialization of the provider with custom configurable values.
    *
    * @param config is the global {@link KafkaCruiseControlConfig} object.
-   * @throws ServletException if any problem occured during the initialization.
+   * @throws ServletException if any problem occurred during the initialization.
    */
   void init(KafkaCruiseControlConfig config) throws ServletException;
 
@@ -39,7 +39,7 @@ public interface SecurityProvider {
    * Associates a username, credentials and roles with a {@link org.eclipse.jetty.server.UserIdentity}
    * that will be used by Jetty to manage the authentication.
    *
-   * @throws ServletException if any problem occured during the initialization of the LoginService.
+   * @throws ServletException if any problem occurred during the initialization of the LoginService.
    * @return a new {@link LoginService}.
    */
   LoginService loginService() throws ServletException;
@@ -49,7 +49,7 @@ public interface SecurityProvider {
    * according to authentication method and decide if the user has valid credentials according
    * to the authentication method.
    *
-   * @throws ServletException if any problem occured during the initialization of the Authenticator.
+   * @throws ServletException if any problem occurred during the initialization of the Authenticator.
    * @return the {@link Authenticator} that'll be used for checking the incoming requests.
    */
   Authenticator authenticator() throws ServletException;
