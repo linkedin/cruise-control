@@ -50,10 +50,7 @@ public class KafkaCruiseControlApp {
     _server.setConnectors(new Connector[]{ setupHttpConnector(hostname, port) });
 
     ServletContextHandler contextHandler = createContextHandler();
-    ConstraintSecurityHandler securityHandler = createSecurityHandler();
-    if (securityHandler != null) {
-      contextHandler.setSecurityHandler(securityHandler);
-    }
+    maybeSetSecurityHandler(contextHandler);
     _server.setHandler(contextHandler);
 
     setupWebUi(contextHandler);
@@ -159,19 +156,19 @@ public class KafkaCruiseControlApp {
     return context;
   }
 
-  private ConstraintSecurityHandler createSecurityHandler() throws ServletException {
-    ConstraintSecurityHandler securityHandler = new CruiseControlSecurityHandler();
+  private void maybeSetSecurityHandler(ServletContextHandler contextHandler) throws ServletException {
     SecurityProvider securityProvider = null;
     if (_config.getBoolean(WebServerConfig.WEBSERVER_SECURITY_ENABLE_CONFIG)) {
       securityProvider = _config.getConfiguredInstance(WebServerConfig.WEBSERVER_SECURITY_PROVIDER_CONFIG, SecurityProvider.class);
     }
     if (securityProvider != null) {
       securityProvider.init(_config);
+      ConstraintSecurityHandler securityHandler = new CruiseControlSecurityHandler();
       securityHandler.setConstraintMappings(securityProvider.constraintMappings());
       securityHandler.setAuthenticator(securityProvider.authenticator());
       securityHandler.setLoginService(securityProvider.loginService());
       securityHandler.setRoles(securityProvider.roles());
+      contextHandler.setSecurityHandler(securityHandler);
     }
-    return securityHandler;
   }
 }
