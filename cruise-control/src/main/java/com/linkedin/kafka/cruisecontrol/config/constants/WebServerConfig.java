@@ -183,6 +183,12 @@ public class WebServerConfig {
       "HashLoginService's credentials file format.";
 
   /**
+   * <code>webserver.ssl.enable</code>
+   */
+  public static final String WEBSERVER_SSL_ENABLE_CONFIG = "webserver.ssl.enable";
+  private static final String WEBSERVER_SSL_ENABLE_DOC = "Enables SSL on the webserver.";
+
+  /**
    * <code>webserver.ssl.keystore.location</code>
    */
   public static final String WEBSERVER_SSL_KEYSTORE_LOCATION_CONFIG = "webserver.ssl.keystore.location";
@@ -192,13 +198,15 @@ public class WebServerConfig {
    * <code>webserver.ssl.keystore.password</code>
    */
   public static final String WEBSERVER_SSL_KEYSTORE_PASSWORD_CONFIG = "webserver.ssl.keystore.password";
-  private static final String WEBSERVER_SSL_KEYSTORE_PASSWORD_DOC = "The store password for the key store file.";
+  private static final String WEBSERVER_SSL_KEYSTORE_PASSWORD_DOC = "The store password for the key store file. If this " +
+      "isn't set we fall back to Jetty's default behavior.";
 
   /**
    * <code>webserver.ssl.keystore.type</code>
    */
   public static final String WEBSERVER_SSL_KEYSTORE_TYPE_CONFIG = "webserver.ssl.keystore.type";
-  private static final String WEBSERVER_SSL_KEYSTORE_TYPE_DOC = "The file format of the key store file. This is an optional config.";
+  private static final String WEBSERVER_SSL_KEYSTORE_TYPE_DOC = "The file format of the key store file. This is an optional config. This is an " +
+      "optional config. If this isn't set we fall back to Jetty's default behavior.";
 
   /**
    * <code>webserver.ssl.key.password</code>
@@ -336,6 +344,11 @@ public class WebServerConfig {
                             "/etc/cruisecontrol-basic-auth.credentials",
                             ConfigDef.Importance.MEDIUM,
                             BASIC_AUTH_CREDENTIALS_FILE_DOCS)
+                    .define(WEBSERVER_SSL_ENABLE_CONFIG,
+                            ConfigDef.Type.BOOLEAN,
+                            false,
+                            ConfigDef.Importance.MEDIUM,
+                            WEBSERVER_SSL_ENABLE_DOC)
                     .define(WEBSERVER_SSL_KEYSTORE_LOCATION_CONFIG,
                             ConfigDef.Type.STRING,
                             null,
