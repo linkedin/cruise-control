@@ -26,15 +26,15 @@ import static org.junit.Assert.assertEquals;
 
 public class BasicAuthenticationIntegrationTest extends CruiseControlIntegrationTestHarness {
 
-  private static final String CRUISE_CONTROL_STATE_ENDPOINT = "kafkacruisecontrol/" + STATE.name();
-  private static final String CRUISE_CONTROL_PAUSE_SAMPLING_ENDPOINT = "kafkacruisecontrol/" + STOP_PROPOSAL_EXECUTION.name();
+  private static final String CRUISE_CONTROL_STATE_ENDPOINT = "kafkacruisecontrol/" + STATE;
+  private static final String CRUISE_CONTROL_PAUSE_SAMPLING_ENDPOINT = "kafkacruisecontrol/" + STOP_PROPOSAL_EXECUTION;
 
   @Override
   protected Map<String, Object> withConfigs() {
     Map<String, Object> configs = new HashMap<>();
     configs.put(WebServerConfig.WEBSERVER_SECURITY_ENABLE_CONFIG, true);
     configs.put(WebServerConfig.BASIC_AUTH_CREDENTIALS_FILE_CONFIG,
-        Objects.requireNonNull(this.getClass().getClassLoader().getResource("basic-auth.credentials")).toString());
+        Objects.requireNonNull(this.getClass().getClassLoader().getResource("basic-auth.credentials")).getPath());
     return configs;
   }
 

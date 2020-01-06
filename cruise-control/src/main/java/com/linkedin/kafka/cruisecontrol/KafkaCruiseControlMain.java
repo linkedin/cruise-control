@@ -49,29 +49,31 @@ public class KafkaCruiseControlMain {
   }
 
   private static Integer parsePort(String[] args, KafkaCruiseControlConfig config) {
+    Integer port = null;
     try {
       if (args.length > 1) {
-        return Integer.parseInt(args[1]);
+        port = Integer.parseInt(args[1]);
       } else {
         return config.getInt(WebServerConfig.WEBSERVER_HTTP_PORT_CONFIG);
       }
     } catch (Exception e) {
       printErrorMessageAndDie();
-      throw e;
     }
+    return port;
   }
 
   private static String parseHostname(String[] args, KafkaCruiseControlConfig config) {
+    String hostname = null;
     try {
       if (args.length > 2) {
-        return args[2];
+        hostname = args[2];
       } else {
         return config.getString(WebServerConfig.WEBSERVER_HTTP_ADDRESS_CONFIG);
       }
     } catch (Exception e) {
       printErrorMessageAndDie();
-      throw e;
     }
+    return hostname;
   }
 
   private static void printErrorMessageAndDie() {
