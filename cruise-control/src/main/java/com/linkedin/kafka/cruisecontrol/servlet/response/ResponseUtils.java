@@ -142,13 +142,8 @@ public class ResponseUtils {
       JsonArray arr = node.getAsJsonArray();
       if (arr.size() > 0) {
         result.append(", \"items\": [");
-        for (int i = 0; i < arr.size(); i++) {
-          node = arr.get(i);
-          result.append(convertNodeToStringSchemaNode(node, null));
-          if (i != arr.size() - 1) {
-            result.append(",");
-          }
-        }
+        // Generate schema based on the first item of the array, since the schema should be consistent between elements in the array.
+        result.append(convertNodeToStringSchemaNode(arr.get(0), null));
         result.append("]");
       }
       result.append("}");
