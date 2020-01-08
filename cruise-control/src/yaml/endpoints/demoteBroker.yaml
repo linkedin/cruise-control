@@ -13,8 +13,8 @@ DemoteBrokerEndpoint:
         required: true
       - name: dryrun
         in: query
-        description: Whether to dry-run the request or not.	
-        schema: 
+        description: Whether to dry-run the request or not.
+        schema:
           type: boolean
           default: true
       - name: concurrent_leader_movements
@@ -113,6 +113,12 @@ DemoteBrokerEndpoint:
           type: integer
           format: int32
           minimum: 0
+      - name: get_response_schema
+        in: query
+        description: Whether to return in JSON schema in response header or not.
+        schema:
+          type: boolean
+          default: false
     responses:
       '200':
         description: Successful demote brokers response.

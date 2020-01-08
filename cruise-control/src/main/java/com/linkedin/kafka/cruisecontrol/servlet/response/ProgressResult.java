@@ -57,8 +57,9 @@ public class ProgressResult extends AbstractCruiseControlResponse {
   @Override
   public void writeSuccessResponse(CruiseControlParameters parameters, HttpServletResponse response) throws IOException {
     boolean json = parameters.json();
+    boolean wantResponseSchema = parameters.wantResponseSchema();
     discardIrrelevantResponse(parameters);
-    writeResponseToOutputStream(response, SC_ACCEPTED, json, _cachedResponse, _config);
+    writeResponseToOutputStream(response, SC_ACCEPTED, json, wantResponseSchema, _cachedResponse, _config);
   }
 
   @Override

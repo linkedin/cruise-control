@@ -14,19 +14,19 @@ RemoveBrokerEndpoint:
       - name: dryrun
         in: query
         description: Whether to dry-run the request or not.
-        schema: 
+        schema:
           type: boolean
           default: true
       - name: throttle_removed_broker
         in: query
         description: Whether to throttle the added broker.
-        schema: 
+        schema:
           type: boolean
           default: true
       - name: goals
         in: query
         description: List of goals used to generate proposal, the default goals will be used if this parameter is not specified.
-        schema: 
+        schema:
           type: array
           items:
             type: string
@@ -159,6 +159,12 @@ RemoveBrokerEndpoint:
           type: integer
           format: int64
           minimum: 1
+      - name: get_response_schema
+        in: query
+        description: Whether to return in JSON schema in response header or not.
+        schema:
+          type: boolean
+          default: false
     responses:
       '200':
         description: Successful add brokers response.

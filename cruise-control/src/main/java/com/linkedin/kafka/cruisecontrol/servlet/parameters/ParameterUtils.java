@@ -62,6 +62,7 @@ import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
  */
 public class ParameterUtils {
   public static final String JSON_PARAM = "json";
+  public static final String GET_RESPONSE_SCHEMA = "get_response_schema";
   public static final String START_MS_PARAM = "start";
   public static final String END_MS_PARAM = "end";
   public static final String ENTRIES_PARAM = "entries";
@@ -180,8 +181,9 @@ public class ParameterUtils {
                                             HttpServletResponse response,
                                             String errorMessage,
                                             boolean json,
+                                            boolean wantJsonSchema,
                                             KafkaCruiseControlConfig config) throws IOException {
-    writeErrorResponse(response, e, errorMessage, SC_BAD_REQUEST, json, config);
+    writeErrorResponse(response, e, errorMessage, SC_BAD_REQUEST, json, wantJsonSchema, config);
   }
 
   /**
@@ -210,7 +212,7 @@ public class ParameterUtils {
       // User request specifies parameters that are not a subset of the valid parameters.
       String errorMessage = String.format("Unrecognized endpoint parameters in %s %s request: %s.",
                                           endPoint, request.getMethod(), userParams.toString());
-      writeErrorResponse(response, null, errorMessage, SC_BAD_REQUEST, wantJSON(request), config);
+      writeErrorResponse(response, null, errorMessage, SC_BAD_REQUEST, wantJSON(request), wantResponseSchema(request), config);
       return false;
     }
     return true;
@@ -253,6 +255,10 @@ public class ParameterUtils {
 
   public static boolean wantJSON(HttpServletRequest request) {
     return getBooleanParam(request, JSON_PARAM, false);
+  }
+
+  public static boolean wantResponseSchema(HttpServletRequest request) {
+    return getBooleanParam(request, GET_RESPONSE_SCHEMA, false);
   }
 
   static boolean allowCapacityEstimation(HttpServletRequest request) {

@@ -33,6 +33,12 @@ ReviewEndpoint:
         schema:
           type: boolean
           default: false
+      - name: get_response_schema
+        in: query
+        description: Whether to return in JSON schema in response header or not.
+        schema:
+          type: boolean
+          default: false
     responses:
       '200':
         description: Successful review response.

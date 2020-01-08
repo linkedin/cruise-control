@@ -28,6 +28,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  * <pre>
  * Stop the proposal execution.
  *    POST /kafkacruisecontrol/stop_proposal_execution?json=[true/false]&amp;review_id=[id]&amp;force_stop=[true/false]
+ *    &amp;get_response_schema=[true/false]
  * </pre>
  */
 public class StopProposalParameters extends AbstractParameters {

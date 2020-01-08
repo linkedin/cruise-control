@@ -48,6 +48,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *    &amp;brokerid_and_logdirs=[broker_id1-logdir1,broker_id2-logdir2]&amp;review_id=[id]
  *    &amp;replication_throttle=[bytes_per_second]&amp;reason=[reason-for-request]
  *    &amp;execution_progress_check_interval_ms=[interval_in_ms]&amp;stop_ongoing_execution=[true/false]
+ *    &amp;get_response_schema=[true/false]
  * </pre>
  */
 public class DemoteBrokerParameters extends KafkaOptimizationParameters {

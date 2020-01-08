@@ -41,7 +41,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *    &amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]&amp;data_from=[valid_windows/valid_partitions]
  *    &amp;replica_movement_strategies=[strategy1,strategy2...]
  *    &amp;replication_throttle=[bytes_per_second]
- *    &amp;review_id=[id]&amp;reason=[reason-for-request]
+ *    &amp;review_id=[id]&amp;reason=[reason-for-request]&amp;get_response_schema=[true/false]
  *    &amp;execution_progress_check_interval_ms=[interval_in_ms]&amp;stop_ongoing_execution=[true/false]
  * </pre>
  */

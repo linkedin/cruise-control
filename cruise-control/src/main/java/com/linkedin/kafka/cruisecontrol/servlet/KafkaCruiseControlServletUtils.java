@@ -200,7 +200,7 @@ public class KafkaCruiseControlServletUtils {
                                           request.getPathInfo(), method, method.equals(GET_METHOD)
                                                                          ? CruiseControlEndPoint.getEndpoints()
                                                                          : CruiseControlEndPoint.postEndpoints());
-      writeErrorResponse(response, null, errorMessage, SC_NOT_FOUND, wantJSON(request), config);
+      writeErrorResponse(response, null, errorMessage, SC_NOT_FOUND, wantJSON(request), wantResponseSchema(request), config);
       return null;
     }
     return endPoint;
@@ -215,7 +215,7 @@ public class KafkaCruiseControlServletUtils {
                                            KafkaCruiseControlConfig config)
       throws IOException {
     String errorMessage = String.format("Bad %s request '%s' due to '%s'.", request.getMethod(), request.getPathInfo(), ure.getMessage());
-    writeErrorResponse(response, ure, errorMessage, SC_BAD_REQUEST, wantJSON(request), config);
+    writeErrorResponse(response, ure, errorMessage, SC_BAD_REQUEST, wantJSON(request), wantResponseSchema(request), config);
     return errorMessage;
   }
 
@@ -229,7 +229,7 @@ public class KafkaCruiseControlServletUtils {
       throws IOException {
     String errorMessage = String.format("Cannot process %s request '%s' due to: '%s'.",
                                         request.getMethod(), request.getPathInfo(), ce.getMessage());
-    writeErrorResponse(response, ce, errorMessage, SC_FORBIDDEN, wantJSON(request), config);
+    writeErrorResponse(response, ce, errorMessage, SC_FORBIDDEN, wantJSON(request), wantResponseSchema(request), config);
     return errorMessage;
   }
 
@@ -243,7 +243,7 @@ public class KafkaCruiseControlServletUtils {
       throws IOException {
     String errorMessage = String.format("Error processing %s request '%s' due to: '%s'.",
                                         request.getMethod(), request.getPathInfo(), e.getMessage());
-    writeErrorResponse(response, e, errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request), config);
+    writeErrorResponse(response, e, errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request), wantResponseSchema(request), config);
     return errorMessage;
   }
 
