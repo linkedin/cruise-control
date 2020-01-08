@@ -30,7 +30,7 @@ import org.apache.kafka.common.TopicPartition;
  * created as part of a rack structure.
  */
 public class Broker implements Serializable, Comparable<Broker> {
-  private static final double DEAD_BROKER_CAPACITY = -1.0;
+  public static final double DEAD_BROKER_CAPACITY = -1.0;
 
   public enum State {
     ALIVE, DEAD, NEW, DEMOTED

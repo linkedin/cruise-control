@@ -7,6 +7,8 @@ package com.linkedin.kafka.cruisecontrol.servlet.response.stats;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.linkedin.kafka.cruisecontrol.model.Broker;
+
 
 class BasicCapacityStats {
     private static final String DISK_CAPACITY = "diskCapacity";
@@ -19,10 +21,10 @@ class BasicCapacityStats {
     private double _bytesOutCapacity;
 
   BasicCapacityStats(double diskCapacity, double cpuCapacity, double nwInCapacity, double nwOutCapacity) {
-    _diskCapacity = diskCapacity < 0.0 ? 0.0 : diskCapacity;
-    _cpuCapacity = cpuCapacity < 0.0 ? 0.0 : cpuCapacity;
-    _bytesInCapacity = nwInCapacity < 0.0 ? 0.0 : nwInCapacity;
-    _bytesOutCapacity = nwOutCapacity < 0.0 ? 0.0 : nwOutCapacity;
+    _diskCapacity = diskCapacity < 0.0 ? Broker.DEAD_BROKER_CAPACITY : diskCapacity;
+    _cpuCapacity = cpuCapacity < 0.0 ? Broker.DEAD_BROKER_CAPACITY : cpuCapacity;
+    _bytesInCapacity = nwInCapacity < 0.0 ? Broker.DEAD_BROKER_CAPACITY : nwInCapacity;
+    _bytesOutCapacity = nwOutCapacity < 0.0 ? Broker.DEAD_BROKER_CAPACITY : nwOutCapacity;
   }
 
   double diskCapacity() {
