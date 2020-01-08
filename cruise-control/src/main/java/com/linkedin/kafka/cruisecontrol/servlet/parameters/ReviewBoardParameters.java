@@ -20,6 +20,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *
  * <pre>
  *    GET /kafkacruisecontrol/review_board?json=[true/false]&amp;review_ids=[id1,id2,...]
+ *    &amp;get_response_schema=[true/false]
  * </pre>
  */
 public class ReviewBoardParameters extends AbstractParameters {

@@ -31,8 +31,9 @@ public abstract class AbstractCruiseControlResponse implements CruiseControlResp
   @Override
   public void writeSuccessResponse(CruiseControlParameters parameters, HttpServletResponse response) throws IOException {
     boolean json = parameters.json();
+    boolean wantResponseSchema = parameters.wantResponseSchema();
     discardIrrelevantResponse(parameters);
-    writeResponseToOutputStream(response, SC_OK, json, _cachedResponse, _config);
+    writeResponseToOutputStream(response, SC_OK, json, wantResponseSchema, _cachedResponse, _config);
   }
 
   @Override

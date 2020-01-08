@@ -23,11 +23,13 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  * <pre>
  * 1. RANGE MODE:
  *    GET /kafkacruisecontrol/bootstrap?start=[START_TIMESTAMP]&amp;end=[END_TIMESTAMP]&amp;clearmetrics=[true/false]
- *    &amp;json=[true/false]
+ *    &amp;json=[true/false]&amp;get_response_schema=[true/false]
  * 2. SINCE MODE:
  *    GET /kafkacruisecontrol/bootstrap?start=[START_TIMESTAMP]&amp;clearmetrics=[true/false]&amp;json=[true/false]
+ *    &amp;get_response_schema=[true/false]
  * 3. RECENT MODE:
  *    GET /kafkacruisecontrol/bootstrap?clearmetrics=[true/false]&amp;json=[true/false]
+ *    &amp;get_response_schema=[true/false]
  * </pre>
  */
 public class BootstrapParameters extends AbstractParameters {

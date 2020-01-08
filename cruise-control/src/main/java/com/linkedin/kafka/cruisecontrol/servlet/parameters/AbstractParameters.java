@@ -22,6 +22,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.KAFKA_CRUISE_CONTROL_HTTP_SERVLET_REQUEST_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.handleParameterParseException;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.JSON_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.GET_RESPONSE_SCHEMA;
 
 
 /**
@@ -34,6 +35,7 @@ public abstract class AbstractParameters implements CruiseControlParameters {
   static {
     SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     validParameterNames.add(JSON_PARAM);
+    validParameterNames.add(GET_RESPONSE_SCHEMA);
     CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
 
   }
@@ -42,6 +44,7 @@ public abstract class AbstractParameters implements CruiseControlParameters {
   protected KafkaCruiseControlConfig _config;
   // Common to all parameters, expected to be populated via initParameters.
   protected boolean _json = false;
+  protected boolean _wantResponseSchema = false;
   protected EndPoint _endPoint = null;
 
   public AbstractParameters() {
@@ -52,6 +55,7 @@ public abstract class AbstractParameters implements CruiseControlParameters {
     _initialized = true;
     _endPoint = ParameterUtils.endPoint(_request);
     _json = ParameterUtils.wantJSON(_request);
+    _wantResponseSchema = ParameterUtils.wantResponseSchema(_request);
   }
 
   @Override
@@ -65,7 +69,7 @@ public abstract class AbstractParameters implements CruiseControlParameters {
       return false;
     } catch (Exception e) {
       try {
-        handleParameterParseException(e, response, e.getMessage(), _json, _config);
+        handleParameterParseException(e, response, e.getMessage(), _json, _wantResponseSchema, _config);
       } catch (IOException ioe) {
         LOG.error(String.format("Failed to write parse parameter exception to output stream. Endpoint: %s.", _endPoint), ioe);
       }
@@ -76,6 +80,11 @@ public abstract class AbstractParameters implements CruiseControlParameters {
   @Override
   public boolean json() {
     return _json;
+  }
+
+  @Override
+  public boolean wantResponseSchema() {
+    return _wantResponseSchema;
   }
 
   @Override

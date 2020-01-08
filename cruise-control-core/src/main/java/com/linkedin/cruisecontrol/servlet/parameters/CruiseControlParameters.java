@@ -37,6 +37,11 @@ public interface CruiseControlParameters extends CruiseControlConfigurable {
   boolean json();
 
   /**
+   * @return True if requested response should contain a JSON schema in the header, false otherwise.
+   */
+  boolean wantResponseSchema();
+
+  /**
    * @param reviewId The review id.
    */
   void setReviewId(int reviewId);
