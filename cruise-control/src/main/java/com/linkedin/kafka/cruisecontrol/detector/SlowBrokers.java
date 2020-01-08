@@ -36,24 +36,25 @@ public class SlowBrokers extends KafkaMetricAnomaly {
 
   @Override
   public boolean fix() throws KafkaCruiseControlException {
+    boolean hasProposalsToFix = false;
     if (!_fixable) {
-      return false;
+      return hasProposalsToFix;
     }
 
     if (_removeBrokersRunnable != null) {
       // Fix the cluster by removing the slow brokers.
       _optimizationResult = new OptimizationResult(_removeBrokersRunnable.removeBrokers(), null);
+      hasProposalsToFix = hasProposalsToFix();
       // Ensure that only the relevant response is cached to avoid memory pressure.
       _optimizationResult.discardIrrelevantAndCacheJsonAndPlaintext();
-      return true;
     } else if (_demoteBrokerRunnable != null) {
       // Fix the cluster by demoting the slow brokers.
       _optimizationResult = new OptimizationResult(_demoteBrokerRunnable.demoteBrokers(), null);
+      hasProposalsToFix = hasProposalsToFix();
       // Ensure that only the relevant response is cached to avoid memory pressure.
       _optimizationResult.discardIrrelevantAndCacheJsonAndPlaintext();
-      return true;
     }
-    return false;
+    return hasProposalsToFix;
   }
 
   @SuppressWarnings("unchecked")

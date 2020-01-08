@@ -44,14 +44,15 @@ public class BrokerFailures extends KafkaAnomaly {
 
   @Override
   public boolean fix() throws KafkaCruiseControlException {
+    boolean hasProposalsToFix = false;
     // Fix the cluster by removing the failed brokers (mode: non-Kafka_assigner).
     if (_removeBrokersRunnable != null) {
       _optimizationResult = new OptimizationResult(_removeBrokersRunnable.removeBrokers(), null);
+      hasProposalsToFix = hasProposalsToFix();
       // Ensure that only the relevant response is cached to avoid memory pressure.
       _optimizationResult.discardIrrelevantAndCacheJsonAndPlaintext();
-      return true;
     }
-    return false;
+    return hasProposalsToFix;
   }
 
   @Override

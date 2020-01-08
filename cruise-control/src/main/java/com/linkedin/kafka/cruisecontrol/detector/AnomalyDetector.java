@@ -227,6 +227,14 @@ public class AnomalyDetector {
   }
 
   /**
+   * @return Number of anomaly fixes failed to start despite the anomaly in progress being ready to fix. This typically
+   * indicates the need for expanding the cluster or relaxing the constraints of self-healing goals.
+   */
+  long numSelfHealingFailedToStart() {
+    return _anomalyDetectorState.numSelfHealingFailedToStart();
+  }
+
+  /**
    * See {@link AnomalyDetectorState#maybeClearOngoingAnomalyDetectionTimeMs}.
    */
   public void maybeClearOngoingAnomalyDetectionTimeMs() {
@@ -456,9 +464,10 @@ public class AnomalyDetector {
           boolean skipReportingIfNotUpdated = false;
           try {
             if (isReadyToFix) {
-              LOG.info("Fixing anomaly {}", _anomalyInProgress);
+              LOG.info("Generating a fix for the anomaly {}.", _anomalyInProgress);
               fixStarted = _anomalyInProgress.fix();
-              String optimizationResult = _anomalyInProgress.optimizationResult(false);
+              LOG.info("{} the anomaly {}.", fixStarted ? "Fixing" : "Cannot fix", _anomalyInProgress);
+              String optimizationResult = fixStarted ? _anomalyInProgress.optimizationResult(false) : null;
               _anomalyLoggerExecutor.submit(() -> logSelfHealingOperation(anomalyId, null, optimizationResult));
             }
           } catch (OptimizationFailureException ofe) {
@@ -480,6 +489,7 @@ public class AnomalyDetector {
           _anomalyDetectorState.incrementNumSelfHealingStarted();
           LOG.info("[{}] Self-healing started successfully.", anomalyId);
         } else {
+          _anomalyDetectorState.incrementNumSelfHealingFailedToStart();
           LOG.warn("[{}] Self-healing failed to start.", anomalyId);
         }
       }

@@ -9,6 +9,8 @@ import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
 
@@ -17,6 +19,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANO
  * The interface for a Kafka anomaly.
  */
 public abstract class KafkaAnomaly implements Anomaly, CruiseControlConfigurable {
+  private static final Logger LOG = LoggerFactory.getLogger(KafkaAnomaly.class);
   protected OptimizationResult _optimizationResult;
   protected long _detectionTimeMs;
   protected UUID _anomalyId;
@@ -27,6 +30,25 @@ public abstract class KafkaAnomaly implements Anomaly, CruiseControlConfigurable
       return null;
     }
     return isJson ? _optimizationResult.cachedJSONResponse() : _optimizationResult.cachedPlaintextResponse();
+  }
+
+  /**
+   * Checks whether the optimization result has any proposals to fix.
+   *
+   * @return True if {@link #_optimizationResult} has proposals to fix, false otherwise.
+   */
+  protected boolean hasProposalsToFix() {
+    if (_optimizationResult == null) {
+      throw new IllegalArgumentException("Attempt to check proposals before generating or after discarding them.");
+    }
+    boolean hasProposalsToFix = !_optimizationResult.optimizerResult().goalProposals().isEmpty();
+    if (!hasProposalsToFix) {
+      LOG.info("Skip fixing the anomaly due to inability to optimize combined self-healing goals ({})."
+               + " Consider expanding the cluster or relaxing the combined goal requirements.",
+               _optimizationResult.optimizerResult().statsByGoalName().keySet());
+    }
+
+    return hasProposalsToFix;
   }
 
   @Override

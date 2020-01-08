@@ -70,6 +70,7 @@ public class AnomalyDetectorState {
   private double _ongoingAnomalyDurationSumForAverageMs;
   private final Time _time;
   private AtomicLong _numSelfHealingStarted;
+  private AtomicLong _numSelfHealingFailedToStart;
   private final Map<AnomalyType, Meter> _anomalyRateByType;
   private double _balancednessScore;
 
@@ -95,18 +96,21 @@ public class AnomalyDetectorState {
     _ongoingAnomalyCount = 0L;
     _ongoingAnomalyDurationSumForAverageMs = 0;
     _numSelfHealingStarted = new AtomicLong(0L);
+    _numSelfHealingFailedToStart = new AtomicLong(0L);
 
     Map<AnomalyType, Double> meanTimeBetweenAnomaliesMs = new HashMap<>(KafkaAnomalyType.cachedValues().size());
     for (AnomalyType anomalyType : KafkaAnomalyType.cachedValues()) {
       meanTimeBetweenAnomaliesMs.put(anomalyType, 0.0);
     }
-    _metrics = new AnomalyMetrics(meanTimeBetweenAnomaliesMs, 0.0, 0L, 0L);
+    _metrics = new AnomalyMetrics(meanTimeBetweenAnomaliesMs, 0.0, 0L, 0L, 0L);
 
     if (dropwizardMetricRegistry != null) {
       dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "mean-time-to-start-fix-ms"),
                                         (Gauge<Double>) this::meanTimeToStartFixMs);
       dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "number-of-self-healing-started"),
                                         (Gauge<Long>) this::numSelfHealingStarted);
+      dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "number-of-self-healing-failed-to-start"),
+                                        (Gauge<Long>) this::numSelfHealingFailedToStart);
       dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "ongoing-anomaly-duration-ms"),
                                         (Gauge<Long>) this::ongoingAnomalyDurationMs);
 
@@ -152,7 +156,8 @@ public class AnomalyDetectorState {
       meanTimeBetweenAnomaliesMs.put(anomalyType, _anomalyRateByType.get(anomalyType).getMeanRate() * SEC_TO_MS);
     }
 
-    _metrics = new AnomalyMetrics(meanTimeBetweenAnomaliesMs, meanTimeToStartFixMs(), _numSelfHealingStarted.get(), ongoingAnomalyDurationMs());
+    _metrics = new AnomalyMetrics(meanTimeBetweenAnomaliesMs, meanTimeToStartFixMs(), numSelfHealingStarted(),
+                                  numSelfHealingFailedToStart(), ongoingAnomalyDurationMs());
     _selfHealingEnabledRatio = new SelfHealingEnabledRatio(selfHealingEnabledRatio.size());
     selfHealingEnabledRatio.forEach((key, value) -> _selfHealingEnabledRatio.put(key, value));
     _balancednessScore = balancednessScore;
@@ -212,6 +217,21 @@ public class AnomalyDetectorState {
    */
   void incrementNumSelfHealingStarted() {
     _numSelfHealingStarted.incrementAndGet();
+  }
+
+  /**
+   * @return Number of anomaly fixes failed to start despite the anomaly in progress being ready to fix. This typically
+   * indicates the need for expanding the cluster or relaxing the constraints of self-healing goals.
+   */
+  long numSelfHealingFailedToStart() {
+    return _numSelfHealingFailedToStart.get();
+  }
+
+  /**
+   * Increment the number of self healing actions failed to start despite the anomaly in progress being ready to fix.
+   */
+  void incrementNumSelfHealingFailedToStart() {
+    _numSelfHealingFailedToStart.incrementAndGet();
   }
 
   /**

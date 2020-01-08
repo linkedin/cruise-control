@@ -18,6 +18,7 @@ import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotificationRes
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotifier;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
+import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
@@ -130,9 +131,10 @@ public class AnomalyDetectorTest {
   }
 
   private static void expectAndReplayFixMocks(OptimizerResult mockOptimizerResult, BrokerStats mockBrokerStats) {
-    EasyMock.expect(mockOptimizerResult.goalProposals()).andReturn(Collections.emptySet());
+    EasyMock.expect(mockOptimizerResult.goalProposals()).andReturn(Collections.singleton(
+        EasyMock.mock(ExecutionProposal.class))).times(2);
     EasyMock.expect(mockOptimizerResult.getProposalSummaryForJson()).andReturn(Collections.emptyMap());
-    EasyMock.expect(mockOptimizerResult.statsByGoalName()).andReturn(new LinkedHashMap<>(0)).times(2);
+    EasyMock.expect(mockOptimizerResult.statsByGoalName()).andReturn(new LinkedHashMap<>(0)).times(3);
     EasyMock.expect(mockOptimizerResult.brokerStatsAfterOptimization()).andReturn(mockBrokerStats).times(2);
     EasyMock.expect(mockBrokerStats.getJsonStructure()).andReturn(Collections.emptyMap());
     EasyMock.expect(mockOptimizerResult.getProposalSummary()).andReturn(null);
