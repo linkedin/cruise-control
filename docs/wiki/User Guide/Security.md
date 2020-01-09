@@ -9,7 +9,7 @@ the properties file.
 
 ### HTTP Basic
 
-By configuring Cruise Control with the `BasicSecurityProvider`, the user will gain a simple HTTP Basic
+By configuring Cruise Control with the `BasicSecurityProvider`, the user will gain simple HTTP Basic
 authentication where the users' credentials are stored in a file given by the `basic.auth.credentials.file` config.
 This file is assumed to be stored in a safe, protected location and only accessible by Cruise Control. The format of the
 file follows Jetty's `HashLoginService`'s file format:
@@ -18,11 +18,12 @@ file follows Jetty's `HashLoginService`'s file format:
 ## HTTPS
 
 HTTPS can be configured with the following configs:
-* `webserver.ssl.keystore.location`: Sets the location of the keystore file
-* `webserver.ssl.keystore.password`: Sets the password for accessing the keystore file
+* `webserver.ssl.enable`: Enables or disables the HTTPS configuration.
+* `webserver.ssl.keystore.location`: Sets the location of the keystore file.
+* `webserver.ssl.keystore.password`: Sets the password for accessing the keystore file.
 * `webserver.ssl.keystore.type`: Defines the type of the keystore (JKS, JCEKS, PKCS12, PKCS11 and DKS). It defaults
    to the Java version default.
-* `webserver.ssl.key.password`: This is the password of the key stored in the keystore
+* `webserver.ssl.key.password`: This is the password of the key stored in the keystore.
 * `webserver.ssl.protocol`: The protocol to use for creating the SSL connection. By default it's "TLS".
 
 ## Authorization

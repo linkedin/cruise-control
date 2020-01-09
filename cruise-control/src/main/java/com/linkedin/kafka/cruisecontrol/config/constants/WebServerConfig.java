@@ -205,7 +205,7 @@ public class WebServerConfig {
    * <code>webserver.ssl.keystore.type</code>
    */
   public static final String WEBSERVER_SSL_KEYSTORE_TYPE_CONFIG = "webserver.ssl.keystore.type";
-  private static final String WEBSERVER_SSL_KEYSTORE_TYPE_DOC = "The file format of the key store file. This is an optional config. This is an " +
+  private static final String WEBSERVER_SSL_KEYSTORE_TYPE_DOC = "The file format of the key store file. This is an " +
       "optional config. If this isn't set we fall back to Jetty's default behavior.";
 
   /**
