@@ -69,13 +69,13 @@ public class RandomCluster {
     }
     // Create brokers and assign a broker to each rack.
     for (int i = 0; i < numRacks; i++) {
-      cluster.createBroker(Integer.toString(i), Integer.toString(i), i, configFileResolver.capacityForBroker("", "", i),
+      cluster.createBroker(Integer.toString(i), Integer.toString(i), i, true, configFileResolver.capacityForBroker("", "", i),
                            populateReplicaPlacementInfo);
     }
     // Assign the rest of the brokers over racks randomly.
     for (int i = numRacks; i < numBrokers; i++) {
       int randomRackId = uniformlyRandom(0, numRacks - 1, TestConstants.SEED_BASE + i);
-      cluster.createBroker(Integer.toString(randomRackId), Integer.toString(i), i, configFileResolver.capacityForBroker("", "", i),
+      cluster.createBroker(Integer.toString(randomRackId), Integer.toString(i), i, true, configFileResolver.capacityForBroker("", "", i),
                            populateReplicaPlacementInfo);
     }
     return cluster;

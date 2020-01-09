@@ -248,21 +248,25 @@ public class Rack implements Serializable {
    *
    * @param brokerId Id of the broker to be created.
    * @param hostName The hostName of the broker
+   * @param isBrokerAlive Whether broker is alive or not.
    * @param brokerCapacityInfo Capacity information of the created broker.
    * @param populateReplicaPlacementInfo Whether populate replica placement over disk information or not.
    * @return Created broker.
    */
   Broker createBroker(int brokerId,
                       String hostName,
+                      boolean isBrokerAlive,
                       BrokerCapacityInfo brokerCapacityInfo,
                       boolean populateReplicaPlacementInfo) {
     Host host = _hosts.computeIfAbsent(hostName, name -> new Host(name, this));
-    Broker broker = host.createBroker(brokerId, brokerCapacityInfo, populateReplicaPlacementInfo);
+    Broker broker = host.createBroker(brokerId, isBrokerAlive, brokerCapacityInfo, populateReplicaPlacementInfo);
     _brokers.put(brokerId, broker);
-    for (Map.Entry<Resource, Double> entry : brokerCapacityInfo.capacity().entrySet()) {
-      Resource resource = entry.getKey();
-      _rackCapacity[resource.id()] += (resource == Resource.CPU) ? (entry.getValue() * brokerCapacityInfo.numCpuCores())
-                                                                 : entry.getValue();
+    if (isBrokerAlive) {
+      for (Map.Entry<Resource, Double> entry : brokerCapacityInfo.capacity().entrySet()) {
+        Resource resource = entry.getKey();
+        _rackCapacity[resource.id()] += (resource == Resource.CPU) ? (entry.getValue() * brokerCapacityInfo.numCpuCores())
+                                                                   : entry.getValue();
+      }
     }
     return broker;
   }

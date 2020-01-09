@@ -513,7 +513,7 @@ public class LoadMonitor {
         BrokerCapacityInfo brokerCapacity = _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id());
         LOG.debug("Get capacity info for broker {}: total capacity {}, capacity by logdir {}.",
                   node.id(), brokerCapacity.capacity().get(Resource.DISK), brokerCapacity.diskCapacityByLogDir());
-        clusterModel.createBroker(rack, node.host(), node.id(), brokerCapacity, populateReplicaPlacementInfo);
+        clusterModel.createBroker(rack, node.host(), node.id(), true, brokerCapacity, populateReplicaPlacementInfo);
       }
 
       // Populate replica placement information for the cluster model if requested.
@@ -526,7 +526,7 @@ public class LoadMonitor {
       for (Map.Entry<PartitionEntity, ValuesAndExtrapolations> entry : partitionValuesAndExtrapolations.entrySet()) {
         TopicPartition tp = entry.getKey().tp();
         ValuesAndExtrapolations leaderLoad = entry.getValue();
-        populatePartitionLoad(cluster, clusterModel, tp, leaderLoad, replicaPlacementInfo, _brokerCapacityConfigResolver);
+        populatePartitionLoad(cluster, clusterModel, tp, leaderLoad, replicaPlacementInfo);
         step.incrementPopulatedNumPartitions();
       }
       // Set the state of bad brokers in clusterModel based on the Kafka cluster state.

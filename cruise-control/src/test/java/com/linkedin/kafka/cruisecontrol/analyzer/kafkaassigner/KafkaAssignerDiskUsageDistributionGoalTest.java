@@ -228,10 +228,10 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
     BrokerCapacityInfo commonBrokerCapacityInfo = new BrokerCapacityInfo(TestConstants.BROKER_CAPACITY);
     int i = 0;
     for (; i < 2; i++) {
-      clusterModel.createBroker("r0", "h" + i, i, commonBrokerCapacityInfo, false);
+      clusterModel.createBroker("r0", "h" + i, i, true, commonBrokerCapacityInfo, false);
     }
     for (int j = 1; j < numRacks; j++, i++) {
-      clusterModel.createBroker("r" + j, "h" + i, i, commonBrokerCapacityInfo, false);
+      clusterModel.createBroker("r" + j, "h" + i, i, true, commonBrokerCapacityInfo, false);
     }
 
     clusterModel.createReplica("r0", 0, T0P0, 0, true);

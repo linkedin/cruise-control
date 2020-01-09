@@ -48,7 +48,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVA
 public class ClusterModel implements Serializable {
   private static final long serialVersionUID = -6840253566423285966L;
   // Hypothetical broker that indicates the original broker of replicas to be created in the existing cluster model.
-  private static final Broker GENESIS_BROKER = new Broker(null, -1, new BrokerCapacityInfo(Collections.emptyMap()), false);
+  private static final Broker GENESIS_BROKER = new Broker(null, -1, true, new BrokerCapacityInfo(Collections.emptyMap()), false);
 
   private final ModelGeneration _generation;
   private final Map<String, Rack> _racksById;
@@ -713,14 +713,13 @@ public class ClusterModel implements Serializable {
    *
    * @param rackId         Rack id under which the replica will be created.
    * @param brokerId       Broker id under which the replica will be created.
-   * @param brokerCapacityInfo The capacity information to use if the broker does not exist.
    */
-  public void handleDeadBroker(String rackId, int brokerId, BrokerCapacityInfo brokerCapacityInfo) {
+  public void handleDeadBroker(String rackId, int brokerId) {
     if (rack(rackId) == null) {
       createRack(rackId);
     }
     if (broker(brokerId) == null) {
-      createBroker(rackId, String.format("UNKNOWN_HOST-%d", _unknownHostId++), brokerId, brokerCapacityInfo, false);
+      createBroker(rackId, String.format("UNKNOWN_HOST-%d", _unknownHostId++), brokerId, false, null, false);
     }
   }
 
@@ -860,6 +859,7 @@ public class ClusterModel implements Serializable {
    * @param rackId Id of the rack that the broker will be created in.
    * @param host The host of this broker
    * @param brokerId Id of the broker to be created.
+   * @param isBrokerAlive Whether broker is alive or not.
    * @param brokerCapacityInfo Capacity information of the created broker.
    * @param populateReplicaPlacementInfo Whether populate replica placement over disk information or not.
    * @return Created broker.
@@ -867,17 +867,20 @@ public class ClusterModel implements Serializable {
   public Broker createBroker(String rackId,
                              String host,
                              int brokerId,
+                             boolean isBrokerAlive,
                              BrokerCapacityInfo brokerCapacityInfo,
                              boolean populateReplicaPlacementInfo) {
     _potentialLeadershipLoadByBrokerId.putIfAbsent(brokerId, new Load());
     Rack rack = rack(rackId);
     _brokerIdToRack.put(brokerId, rack);
 
-    if (brokerCapacityInfo.isEstimated()) {
+    if (isBrokerAlive && brokerCapacityInfo.isEstimated()) {
       _capacityEstimationInfoByBrokerId.put(brokerId, brokerCapacityInfo.estimationInfo());
     }
-    Broker broker = rack.createBroker(brokerId, host, brokerCapacityInfo, populateReplicaPlacementInfo);
-    _aliveBrokers.add(broker);
+    Broker broker = rack.createBroker(brokerId, host, isBrokerAlive, brokerCapacityInfo, populateReplicaPlacementInfo);
+    if (isBrokerAlive) {
+      _aliveBrokers.add(broker);
+    }
     _brokers.add(broker);
     refreshCapacity();
     return broker;

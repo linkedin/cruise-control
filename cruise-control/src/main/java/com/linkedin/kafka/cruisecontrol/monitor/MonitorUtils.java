@@ -11,7 +11,6 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapola
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver;
-import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -347,7 +346,6 @@ public class MonitorUtils {
   /**
    * Set the state of bad brokers in clusterModel based on the given Kafka cluster state:
    * <ul>
-   *   <li>Get the dead brokers and mark them as dead.</li>
    *   <li>Get the alive brokers with bad disks and mark them accordingly.</li>
    * </ul>
    *
@@ -355,7 +353,6 @@ public class MonitorUtils {
    * @param cluster Kafka cluster.
    */
   static void setBadBrokerState(ClusterModel clusterModel, Cluster cluster) {
-    MonitorUtils.deadBrokersWithReplicas(cluster).forEach(brokerId -> clusterModel.setBrokerState(brokerId, Broker.State.DEAD));
     for (Integer brokerId : MonitorUtils.brokersWithOfflineReplicas(cluster)) {
       if (clusterModel.broker(brokerId).isAlive()) {
         clusterModel.setBrokerState(brokerId, Broker.State.BAD_DISKS);
@@ -435,14 +432,12 @@ public class MonitorUtils {
    * @param tp Topic partition that identifies the partition to populate the load for.
    * @param valuesAndExtrapolations The values and extrapolations of the leader replica.
    * @param replicaPlacementInfo The distribution of replicas over broker logdirs if available, {@code null} otherwise.
-   * @param brokerCapacityConfigResolver The resolver for retrieving broker capacities.
    */
   static void populatePartitionLoad(Cluster cluster,
                                     ClusterModel clusterModel,
                                     TopicPartition tp,
                                     ValuesAndExtrapolations valuesAndExtrapolations,
-                                    Map<TopicPartition, Map<Integer, String>> replicaPlacementInfo,
-                                    BrokerCapacityConfigResolver brokerCapacityConfigResolver) {
+                                    Map<TopicPartition, Map<Integer, String>> replicaPlacementInfo) {
     PartitionInfo partitionInfo = cluster.partition(tp);
     // If partition info does not exist, the topic may have been deleted.
     if (partitionInfo != null) {
@@ -450,11 +445,7 @@ public class MonitorUtils {
       for (int index = 0; index < partitionInfo.replicas().length; index++) {
         Node replica = partitionInfo.replicas()[index];
         String rack = getRackHandleNull(replica);
-        // Note that we assume the capacity resolver can still return the broker capacity even if the broker
-        // is dead. We need this to get the host resource capacity.
-        BrokerCapacityInfo brokerCapacity =
-            brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id());
-        clusterModel.handleDeadBroker(rack, replica.id(), brokerCapacity);
+        clusterModel.handleDeadBroker(rack, replica.id());
         boolean isLeader;
         if (partitionInfo.leader() == null) {
           LOG.warn("Detected offline partition {}-{}, skipping", partitionInfo.topic(), partitionInfo.partition());

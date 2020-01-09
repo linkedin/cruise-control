@@ -138,18 +138,21 @@ public class Host implements Serializable {
    * Create a broker under this host, and get the created broker.
    *
    * @param brokerId Id of the broker to be created.
+   * @param isBrokerAlive Whether broker is alive or not.
    * @param brokerCapacityInfo Capacity information of the created broker.
    * @param populateReplicaPlacementInfo Whether populate replica placement over disk information or not.
    * @return Created broker.
    */
-  Broker createBroker(Integer brokerId, BrokerCapacityInfo brokerCapacityInfo, boolean populateReplicaPlacementInfo) {
-    Broker broker = new Broker(this, brokerId, brokerCapacityInfo, populateReplicaPlacementInfo);
+  Broker createBroker(Integer brokerId, boolean isBrokerAlive, BrokerCapacityInfo brokerCapacityInfo, boolean populateReplicaPlacementInfo) {
+    Broker broker = new Broker(this, brokerId, isBrokerAlive, brokerCapacityInfo, populateReplicaPlacementInfo);
     _brokers.put(brokerId, broker);
-    _aliveBrokers++;
-    for (Map.Entry<Resource, Double> entry : brokerCapacityInfo.capacity().entrySet()) {
-      Resource resource = entry.getKey();
-      _hostCapacity[resource.id()] += (resource == Resource.CPU) ? (entry.getValue() * brokerCapacityInfo.numCpuCores())
-                                                                 : entry.getValue();
+    if (isBrokerAlive) {
+      _aliveBrokers++;
+      for (Map.Entry<Resource, Double> entry : brokerCapacityInfo.capacity().entrySet()) {
+        Resource resource = entry.getKey();
+        _hostCapacity[resource.id()] += (resource == Resource.CPU) ? (entry.getValue() * brokerCapacityInfo.numCpuCores())
+                                                                   : entry.getValue();
+      }
     }
     return broker;
   }
