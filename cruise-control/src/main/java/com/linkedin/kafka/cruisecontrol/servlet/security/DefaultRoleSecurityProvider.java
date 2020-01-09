@@ -1,0 +1,80 @@
+/*
+ * Copyright 2019 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ */
+
+package com.linkedin.kafka.cruisecontrol.servlet.security;
+
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
+import org.eclipse.jetty.security.ConstraintMapping;
+import org.eclipse.jetty.util.security.Constraint;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * <p>A base class that defines the default role structure for Cruise Control and can be used for implementing custom
+ * security providers.</p>
+ *
+ * <p>This class defines three roles: VIEWER, USER and ADMIN.
+ * <ul>
+ *   <li>VIEWER role: has access to the most lightweight <code>kafka_cluster_state</code>, <code>user_tasks</code> and
+ *     <code>review_board</code> endpoints.
+ *   <li>USER role: has access to all the GET endpoints except <code>bootstrap</code> and <code>train</code>.
+ *   <li>ADMIN role: has access to all endpoints.
+ * </ul>
+ * </p>
+ *
+ */
+public abstract class DefaultRoleSecurityProvider implements SecurityProvider {
+
+  public static final String ADMIN = "ADMIN";
+  public static final String USER = "USER";
+  public static final String VIEWER = "VIEWER";
+
+  private String _webServerApiUrlPrefix;
+
+  @Override
+  public void init(KafkaCruiseControlConfig config) {
+    this._webServerApiUrlPrefix = config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG);
+  }
+
+  @Override
+  public List<ConstraintMapping> constraintMappings() {
+    List<ConstraintMapping> constraintMappings = new ArrayList<>();
+    CruiseControlEndPoint.getEndpoints().forEach(ep -> {
+      if (ep == CruiseControlEndPoint.KAFKA_CLUSTER_STATE
+          || ep == CruiseControlEndPoint.USER_TASKS
+          || ep == CruiseControlEndPoint.REVIEW_BOARD) {
+        constraintMappings.add(mapping(ep, VIEWER, USER, ADMIN));
+      } else if (ep == CruiseControlEndPoint.BOOTSTRAP || ep == CruiseControlEndPoint.TRAIN) {
+        constraintMappings.add(mapping(ep, ADMIN));
+      } else {
+        constraintMappings.add(mapping(ep, USER, ADMIN));
+      }
+    });
+    CruiseControlEndPoint.postEndpoints().forEach(ep -> constraintMappings.add(mapping(ep, ADMIN)));
+    return constraintMappings;
+  }
+
+  @Override
+  public Set<String> roles() {
+    return Collections.unmodifiableSet(new HashSet<>(Arrays.asList(VIEWER, USER, ADMIN)));
+  }
+
+  private ConstraintMapping mapping(CruiseControlEndPoint endpoint, String... roles) {
+    Constraint constraint = new Constraint();
+    constraint.setName(Constraint.__BASIC_AUTH);
+    constraint.setRoles(roles);
+    constraint.setAuthenticate(true);
+    ConstraintMapping mapping = new ConstraintMapping();
+    mapping.setPathSpec(_webServerApiUrlPrefix.replace("*", endpoint.name().toLowerCase()));
+    mapping.setConstraint(constraint);
+    return mapping;
+  }
+}

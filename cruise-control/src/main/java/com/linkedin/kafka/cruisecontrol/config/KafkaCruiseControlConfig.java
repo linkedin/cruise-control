@@ -14,9 +14,15 @@ import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.UserTaskManagerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
+
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+
+import com.linkedin.kafka.cruisecontrol.servlet.security.BasicSecurityProvider;
+import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityProvider;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import java.util.Map;
@@ -302,6 +308,42 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     }
   }
 
+  /**
+   * Sanity check to ensure that SSL and authentication is set up correctly. This means the following:
+   * <ul>
+   *   <li>If <code>webserver.ssl.enable</code> is set, then <code>webserver.ssl.keystore.location</code> and
+   *   <code>webserver.ssl.protocol</code> must also be set.</li>
+   *   <li><code>If webserver.security.enable</code> is set, then <code>webserver.security.provider</code> must also be
+   *   set to be an implementation of the {@link SecurityProvider} interface. Also if it's {@link BasicSecurityProvider}
+   *   then <code>basic.auth.credentials.file</code> must point to an existing file.</li>
+   * </ul>
+   */
+  void sanityCheckSecurity() { // visible for testing
+    Boolean sslEnabled = getBoolean(WebServerConfig.WEBSERVER_SSL_ENABLE_CONFIG);
+    if (sslEnabled) {
+      if (getString(WebServerConfig.WEBSERVER_SSL_KEYSTORE_LOCATION_CONFIG) == null) {
+        throw new ConfigException("If webserver SSL is enabled, the keystore location must be set.");
+      }
+      if (getString(WebServerConfig.WEBSERVER_SSL_PROTOCOL_CONFIG) == null) {
+        throw new ConfigException("If webserver SSL is enabled, a valid SSL protocol must be set.");
+      }
+    }
+    Boolean securityEnabled = getBoolean(WebServerConfig.WEBSERVER_SECURITY_ENABLE_CONFIG);
+    if (securityEnabled) {
+      Class<?> securityProvider = getClass(WebServerConfig.WEBSERVER_SECURITY_PROVIDER_CONFIG);
+      if (securityProvider == null || !SecurityProvider.class.isAssignableFrom(securityProvider)) {
+        throw new ConfigException(String.format("If webserver security is enabled, a valid security provider must be set " +
+            "that is an implementation of %s.", SecurityProvider.class.getName()));
+      }
+      String basicAuthCredentialsFile = getString(WebServerConfig.BASIC_AUTH_CREDENTIALS_FILE_CONFIG);
+      if (BasicSecurityProvider.class.isAssignableFrom(securityProvider) && (basicAuthCredentialsFile == null
+          || !Files.exists(Paths.get(basicAuthCredentialsFile)))) {
+        throw new ConfigException(String.format("If %s is used, an existing credentials file must be set.",
+            BasicSecurityProvider.class.getName()));
+      }
+    }
+  }
+
   public KafkaCruiseControlConfig(Map<?, ?> originals) {
     this(originals, true);
   }
@@ -312,5 +354,6 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     sanityCheckSamplingPeriod(originals);
     sanityCheckConcurrency();
     sanityCheckTaskExecutionAlertingThreshold();
+    sanityCheckSecurity();
   }
 }
