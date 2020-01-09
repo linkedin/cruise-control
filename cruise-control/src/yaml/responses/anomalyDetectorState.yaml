@@ -122,6 +122,7 @@ AnomalyMetrics:
     - meanTimeBetweenAnomaliesMs
     - meanTimeToStartFixMs
     - numSelfHealingStarted
+    - numSelfHealingFailedToStart
     - ongoingAnomalyDurationMs
   properties:
     meanTimeBetweenAnomaliesMs:
@@ -131,11 +132,14 @@ AnomalyMetrics:
       type: number
       format: double
     numSelfHealingStarted:
-      type: number
-      format: double
+      type: integer
+      format: int64
+    numSelfHealingFailedToStart:
+      type: integer
+      format: int64
     ongoingAnomalyDurationMs:
-      type: number
-      format: double
+      type: integer
+      format: int64
 
 MeanTimeBetweenAnomaliesMs:
   required:

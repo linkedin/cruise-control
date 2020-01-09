@@ -31,7 +31,7 @@ public interface Anomaly {
   /**
    * Fix the anomaly with the system.
    *
-   * @return True if fix was started successfully, false otherwise.
+   * @return True if fix was started successfully (i.e. there is actual work towards a fix), false otherwise.
    */
   boolean fix() throws Exception;
 

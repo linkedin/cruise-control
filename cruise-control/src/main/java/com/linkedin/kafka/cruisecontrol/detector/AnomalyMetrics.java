@@ -27,10 +27,13 @@ public class AnomalyMetrics {
   private static final String ONGOING_ANOMALY_DURATION_MS = "ongoingAnomalyDurationMs";
   @JsonResponseField
   private static final String NUM_SELF_HEALING_STARTED = "numSelfHealingStarted";
+  @JsonResponseField
+  private static final String NUM_SELF_HEALING_FAILED_TO_START = "numSelfHealingFailedToStart";
 
   private final MeanTimeBetweenAnomaliesMs _meanTimeBetweenAnomaliesMs;
   private final double _meanTimeToStartFixMs;
   private final long _numSelfHealingStarted;
+  private final long _numSelfHealingFailedToStart;
   private final long _ongoingAnomalyDurationMs;
 
   /**
@@ -47,11 +50,14 @@ public class AnomalyMetrics {
    * @param meanTimeBetweenAnomaliesMs Mean time between anomalies by the corresponding type.
    * @param meanTimeToStartFixMs Mean time to start fix for any anomaly.
    * @param numSelfHealingStarted Number of fixes started by the anomaly detector as a result of self healing.
+   * @param numSelfHealingFailedToStart Number of anomaly fixes failed to start despite the anomaly in progress being ready
+   * to fix. This typically indicates the need for expanding the cluster or relaxing the constraints of self-healing goals.
    * @param ongoingAnomalyDurationMs The duration of the ongoing (unfixed/unfixable) anomaly if there is any, 0 otherwise.
    */
   public AnomalyMetrics(Map<AnomalyType, Double> meanTimeBetweenAnomaliesMs,
                         double meanTimeToStartFixMs,
                         long numSelfHealingStarted,
+                        long numSelfHealingFailedToStart,
                         long ongoingAnomalyDurationMs) {
     if (meanTimeBetweenAnomaliesMs == null) {
       throw new IllegalArgumentException("Attempt to set meanTimeBetweenAnomaliesMs with null.");
@@ -64,6 +70,7 @@ public class AnomalyMetrics {
     _meanTimeBetweenAnomaliesMs = new MeanTimeBetweenAnomaliesMs(meanTimeBetweenAnomaliesMs);
     _meanTimeToStartFixMs = meanTimeToStartFixMs;
     _numSelfHealingStarted = numSelfHealingStarted;
+    _numSelfHealingFailedToStart = numSelfHealingFailedToStart;
     _ongoingAnomalyDurationMs = ongoingAnomalyDurationMs;
   }
 
@@ -89,6 +96,14 @@ public class AnomalyMetrics {
   }
 
   /**
+   * @return Number of anomaly fixes failed to start despite the anomaly in progress being ready to fix.
+   * This typically indicates the need for expanding the cluster or relaxing the constraints of self-healing goals.
+   */
+  public long numSelfHealingFailedToStart() {
+    return _numSelfHealingFailedToStart;
+  }
+
+  /**
    * @return The duration of ongoing anomaly in milliseconds.
    */
   public long ongoingAnomalyDurationMs() {
@@ -99,10 +114,11 @@ public class AnomalyMetrics {
    * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure() {
-    Map<String, Object> metrics = new HashMap<>(4);
+    Map<String, Object> metrics = new HashMap<>(5);
     metrics.put(MEAN_TIME_BETWEEN_ANOMALIES_MS, meanTimeBetweenAnomaliesMs().getJsonStructure());
     metrics.put(MEAN_TIME_TO_START_FIX_MS, meanTimeToStartFixMs());
     metrics.put(NUM_SELF_HEALING_STARTED, numSelfHealingStarted());
+    metrics.put(NUM_SELF_HEALING_FAILED_TO_START, numSelfHealingFailedToStart());
     metrics.put(ONGOING_ANOMALY_DURATION_MS, ongoingAnomalyDurationMs());
     return metrics;
   }
@@ -110,13 +126,13 @@ public class AnomalyMetrics {
   @Override
   public String toString() {
     Map<AnomalyType, Double> meanTimeBetweenAnomalies = _meanTimeBetweenAnomaliesMs.getJsonStructure();
-    return String.format("{meanTimeBetweenAnomalies:{%s:%s, %s:%s, %s:%s, %s:%s}, "
-                         + "meanTimeToStartFix:%s, numSelfHealingStarted:%d, ongoingAnomalyDuration=%s}",
+    return String.format("{meanTimeBetweenAnomalies:{%s:%s, %s:%s, %s:%s, %s:%s}, meanTimeToStartFix:%s, "
+                         + "numSelfHealingStarted:%d, numSelfHealingFailedToStart:%d, ongoingAnomalyDuration=%s}",
                          GOAL_VIOLATION, toPrettyDuration(meanTimeBetweenAnomalies.get(GOAL_VIOLATION)),
                          BROKER_FAILURE, toPrettyDuration(meanTimeBetweenAnomalies.get(BROKER_FAILURE)),
                          METRIC_ANOMALY, toPrettyDuration(meanTimeBetweenAnomalies.get(METRIC_ANOMALY)),
                          DISK_FAILURE, toPrettyDuration(meanTimeBetweenAnomalies.get(DISK_FAILURE)),
-                         toPrettyDuration(_meanTimeToStartFixMs), _numSelfHealingStarted,
+                         toPrettyDuration(_meanTimeToStartFixMs), _numSelfHealingStarted, _numSelfHealingFailedToStart,
                          toPrettyDuration(_ongoingAnomalyDurationMs));
   }
 }
