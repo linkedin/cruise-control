@@ -523,10 +523,11 @@ public class LoadMonitor {
       }
 
       // Populate snapshots for the cluster model.
+      Set<Integer> deadBrokers = MonitorUtils.deadBrokersWithReplicas(cluster);
       for (Map.Entry<PartitionEntity, ValuesAndExtrapolations> entry : partitionValuesAndExtrapolations.entrySet()) {
         TopicPartition tp = entry.getKey().tp();
         ValuesAndExtrapolations leaderLoad = entry.getValue();
-        populatePartitionLoad(cluster, clusterModel, tp, leaderLoad, replicaPlacementInfo, _brokerCapacityConfigResolver);
+        populatePartitionLoad(cluster, clusterModel, tp, leaderLoad, replicaPlacementInfo, _brokerCapacityConfigResolver, deadBrokers);
         step.incrementPopulatedNumPartitions();
       }
       // Set the state of bad brokers in clusterModel based on the Kafka cluster state.

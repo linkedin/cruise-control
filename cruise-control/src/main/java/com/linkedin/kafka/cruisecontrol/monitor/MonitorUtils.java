@@ -22,6 +22,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrap
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -436,13 +437,15 @@ public class MonitorUtils {
    * @param valuesAndExtrapolations The values and extrapolations of the leader replica.
    * @param replicaPlacementInfo The distribution of replicas over broker logdirs if available, {@code null} otherwise.
    * @param brokerCapacityConfigResolver The resolver for retrieving broker capacities.
+   * @param deadBrokers Set of dead brokers in the cluster.
    */
   static void populatePartitionLoad(Cluster cluster,
                                     ClusterModel clusterModel,
                                     TopicPartition tp,
                                     ValuesAndExtrapolations valuesAndExtrapolations,
                                     Map<TopicPartition, Map<Integer, String>> replicaPlacementInfo,
-                                    BrokerCapacityConfigResolver brokerCapacityConfigResolver) {
+                                    BrokerCapacityConfigResolver brokerCapacityConfigResolver,
+                                    Set<Integer> deadBrokers) {
     PartitionInfo partitionInfo = cluster.partition(tp);
     // If partition info does not exist, the topic may have been deleted.
     if (partitionInfo != null) {
@@ -450,10 +453,17 @@ public class MonitorUtils {
       for (int index = 0; index < partitionInfo.replicas().length; index++) {
         Node replica = partitionInfo.replicas()[index];
         String rack = getRackHandleNull(replica);
-        // Note that we assume the capacity resolver can still return the broker capacity even if the broker
-        // is dead. We need this to get the host resource capacity.
-        BrokerCapacityInfo brokerCapacity =
-            brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id());
+        BrokerCapacityInfo brokerCapacity;
+        try {
+          brokerCapacity = brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id());
+        } catch (Exception e) {
+          //Capacity resolver may not be able to return the capacity information of dead brokers.
+          if (deadBrokers.contains(replica.id())) {
+            brokerCapacity = new BrokerCapacityInfo(Collections.emptyMap());
+          } else {
+            throw e;
+          }
+        }
         clusterModel.handleDeadBroker(rack, replica.id(), brokerCapacity);
         boolean isLeader;
         if (partitionInfo.leader() == null) {
