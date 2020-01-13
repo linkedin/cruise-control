@@ -95,7 +95,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   // The score threshold to trigger a removal for slow broker.
   private static final int SLOW_BROKER_DECOMMISSION_SCORE = 50;
   // The maximum ratio of slow brokers in the cluster to trigger self-healing operation.
-  private static double SELF_HEALING_UNFIXABLE_RATIO = 0.1;
+  private static final double SELF_HEALING_UNFIXABLE_RATIO = 0.1;
   private KafkaCruiseControl _kafkaCruiseControl;
   private boolean _slowBrokerRemovalEnabled;
   private final Map<BrokerEntity, Integer> _brokerSlownessScore;
@@ -147,7 +147,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     }
 
     if (!skippedBrokers.isEmpty()) {
-      LOG.info("Skip broker slowness checking for brokers {} because they serve no traffic.", skippedBrokers);
+      LOG.info("Skip broker slowness checking for brokers {} because they serve negligible traffic.", skippedBrokers);
     }
 
     Set<BrokerEntity> detectedMetricAnomalies = new HashSet<>();
