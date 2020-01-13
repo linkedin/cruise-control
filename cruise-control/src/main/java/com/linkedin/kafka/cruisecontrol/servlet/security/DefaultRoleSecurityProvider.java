@@ -21,14 +21,13 @@ import java.util.Set;
  * <p>A base class that defines the default role structure for Cruise Control and can be used for implementing custom
  * security providers.</p>
  *
- * <p>This class defines three roles: VIEWER, USER and ADMIN.
+ * This class defines three roles: VIEWER, USER and ADMIN.
  * <ul>
  *   <li>VIEWER role: has access to the most lightweight <code>kafka_cluster_state</code>, <code>user_tasks</code> and
  *     <code>review_board</code> endpoints.
  *   <li>USER role: has access to all the GET endpoints except <code>bootstrap</code> and <code>train</code>.
  *   <li>ADMIN role: has access to all endpoints.
  * </ul>
- * </p>
  *
  */
 public abstract class DefaultRoleSecurityProvider implements SecurityProvider {

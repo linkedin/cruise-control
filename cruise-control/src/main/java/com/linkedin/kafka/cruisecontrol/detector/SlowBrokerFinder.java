@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomaly;
 import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyFinder;
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
@@ -94,7 +95,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   // The score threshold to trigger a removal for slow broker.
   private static final int SLOW_BROKER_DECOMMISSION_SCORE = 50;
   // The maximum ratio of slow brokers in the cluster to trigger self-healing operation.
-  private static double SELF_HEALING_UNFIXABLE_RATIO = 0.1;
+  private static final double SELF_HEALING_UNFIXABLE_RATIO = 0.1;
   private KafkaCruiseControl _kafkaCruiseControl;
   private boolean _slowBrokerRemovalEnabled;
   private final Map<BrokerEntity, Integer> _brokerSlownessScore;
@@ -112,19 +113,26 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     // Preprocess raw metrics to get the derived metrics for each broker.
     Map<BrokerEntity, List<Double>> historicalValueByBroker = new HashMap<>();
     Map<BrokerEntity, Double> currentValueByBroker = new HashMap<>();
+    Set<Integer> skippedBrokers = new HashSet<>();
     for (Map.Entry<BrokerEntity, ValuesAndExtrapolations> entry : currentMetricsByBroker.entrySet()) {
       BrokerEntity entity = entry.getKey();
-      ValuesAndExtrapolations valuesAndExtrapolations = entry.getValue();
-      double latestTotalBytesIn = valuesAndExtrapolations.metricValues().valuesFor(ALL_TOPIC_BYTES_IN.id()).latest() +
-                                  valuesAndExtrapolations.metricValues().valuesFor(ALL_TOPIC_REPLICATION_BYTES_IN.id()).latest();
-      double latestLogFlushTime = valuesAndExtrapolations.metricValues().valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH.id()).latest();
+      AggregatedMetricValues aggregatedMetricValues = entry.getValue().metricValues();
+      // BROKER_LOG_FLUSH_TIME_MS_999TH comes from a Timer metric, which may not report if there is no value recorded (
+      // the broker serves no traffic and never performs log flush operation).
+      if (aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH.id()) == null) {
+        skippedBrokers.add(entity.brokerId());
+        continue;
+      }
+      double latestLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH.id()).latest();
+      double latestTotalBytesIn = aggregatedMetricValues.valuesFor(ALL_TOPIC_BYTES_IN.id()).latest() +
+                                  aggregatedMetricValues.valuesFor(ALL_TOPIC_REPLICATION_BYTES_IN.id()).latest();
       // Ignore brokers which currently does not serve any traffic.
       if (latestTotalBytesIn > 0) {
         currentValueByBroker.put(entity, latestLogFlushTime / latestTotalBytesIn);
-        valuesAndExtrapolations = metricsHistoryByBroker.get(entity);
-        double[] historicalBytesIn = valuesAndExtrapolations.metricValues().valuesFor(ALL_TOPIC_BYTES_IN.id()).doubleArray();
-        double[] historicalReplicationBytesIn = valuesAndExtrapolations.metricValues().valuesFor(ALL_TOPIC_REPLICATION_BYTES_IN.id()).doubleArray();
-        double[] historicalLogFlushTime = valuesAndExtrapolations.metricValues().valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH.id()).doubleArray();
+        aggregatedMetricValues = metricsHistoryByBroker.get(entity).metricValues();
+        double[] historicalBytesIn = aggregatedMetricValues.valuesFor(ALL_TOPIC_BYTES_IN.id()).doubleArray();
+        double[] historicalReplicationBytesIn = aggregatedMetricValues.valuesFor(ALL_TOPIC_REPLICATION_BYTES_IN.id()).doubleArray();
+        double[] historicalLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH.id()).doubleArray();
         List<Double> historicalValue = new ArrayList<>(historicalBytesIn.length);
         for (int i = 0; i < historicalBytesIn.length; i++) {
           double totalBytesIn = historicalBytesIn[i] + historicalReplicationBytesIn[i];
@@ -133,7 +141,13 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
           }
         }
         historicalValueByBroker.put(entity, historicalValue);
+      } else {
+        skippedBrokers.add(entity.brokerId());
       }
+    }
+
+    if (!skippedBrokers.isEmpty()) {
+      LOG.info("Skip broker slowness checking for brokers {} because they serve negligible traffic.", skippedBrokers);
     }
 
     Set<BrokerEntity> detectedMetricAnomalies = new HashSet<>();
@@ -201,6 +215,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   @Override
   public Collection<MetricAnomaly<BrokerEntity>> metricAnomalies(Map<BrokerEntity, ValuesAndExtrapolations> metricsHistoryByBroker,
                                                                  Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker) {
+    LOG.info("Slow broker detection started.");
     try {
       Set<BrokerEntity> detectedMetricAnomalies = detectMetricAnomalies(metricsHistoryByBroker, currentMetricsByBroker);
       updateBrokerSlownessScore(detectedMetricAnomalies);
@@ -208,7 +223,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     } catch (Exception e) {
       LOG.warn("Slow broker detector encountered exception: ", e);
     } finally {
-      LOG.debug("Slow broker detection finished.");
+      LOG.info("Slow broker detection finished.");
     }
     return Collections.emptySet();
   }
