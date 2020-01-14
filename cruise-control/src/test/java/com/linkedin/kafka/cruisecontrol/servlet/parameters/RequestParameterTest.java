@@ -58,7 +58,7 @@ public class RequestParameterTest {
     SwaggerParseResult parseResult = openApiParser.readLocation(OPENAPI_SPEC_PATH, null, options);
     _openAPI = parseResult.getOpenAPI();
     Map<String, Set<String>> schema = parseSchema();
-    // TODO: Check the number of entries in parsed schema is the same as _endpointsToClass
+    Assert.assertEquals(schema.keySet(), _endpointToClass.keySet());
     for (Map.Entry<String, Set<String>> endpoint: schema.entrySet()) {
       Assert.assertTrue(_endpointToClass.containsKey(endpoint.getKey()));
       CruiseControlParameters endpointParams = _endpointToClass.get(endpoint.getKey());

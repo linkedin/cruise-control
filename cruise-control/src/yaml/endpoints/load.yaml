@@ -5,25 +5,26 @@ LoadEndpoint:
     parameters:
       - name: start
         in: query
-        description: Start time of the cluster load.
+        description: Start time of the cluster load. Default is time of earliest valid window.
         schema:
           type: long
+          default: -1
           format: int64
-          # Default is time of earliest valid window.
+          minimum: -1
       - name: end
         in: query
-        description: End time of the cluster load.
+        description: End time of the cluster load. Default is current system time.
         schema:
           type: long
           format: int64
-          # Default is current system time.
+          minimum: 0
       - name: time
         in: query
-        description: End time of the clutser load.
+        description: End time of the clutser load. Default is current system time, mutually exclusive with end parameter.
         schema:
           type: long
           format: int64
-        # Default is current system time, mutually exclusive from end parameter.
+          minimum: 0
       - name: allow_capacity_estimation
         in: query
         description: Whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information.
