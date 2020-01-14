@@ -65,7 +65,7 @@ public class PartitionState {
   protected String writeKafkaPartitionState(int topicNameLength) {
     return String.format("%" + topicNameLength + "s%10s%10s%30s%30s%25s%25s%n",
                          _topic, _partition,
-                         _replicas,
+                         _leader, _replicas,
                          _inSyncReplicas,
                          _outOfSyncReplicas,
                          _offlineReplicas);
