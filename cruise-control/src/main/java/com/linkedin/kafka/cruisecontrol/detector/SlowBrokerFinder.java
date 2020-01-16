@@ -10,6 +10,7 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricVa
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -30,16 +31,13 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANO
 import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_DESCRIPTION_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.ALL_TOPIC_BYTES_IN;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.ALL_TOPIC_REPLICATION_BYTES_IN;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_LOG_FLUSH_TIME_MS_999TH;
 
 
 /**
  * This class will check whether there is broker performance degradation (i.e. slow broker) from collected broker metrics.
  *
  * Slow brokers are identified by calculating a derived broker metric
- * {@code BROKER_LOG_FLUSH_TIME_MS_999TH / (ALL_TOPIC_BYTES_IN + ALL_TOPIC_REPLICATION_BYTES_IN) for each broker and then
+ * {@code BROKER_LOG_FLUSH_TIME_MS_999TH / (LEADER_BYTES_IN + REPLICATION_BYTES_IN_RATE) for each broker and then
  * checking in two ways.
  * <ul>
  *   <li>Comparing the latest metric value against broker's own history. If the latest value is larger than
@@ -96,6 +94,12 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   private static final int SLOW_BROKER_DECOMMISSION_SCORE = 50;
   // The maximum ratio of slow brokers in the cluster to trigger self-healing operation.
   private static final double SELF_HEALING_UNFIXABLE_RATIO = 0.1;
+  private static final short BROKER_LOG_FLUSH_TIME_MS_999TH_ID =
+      KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.BROKER_LOG_FLUSH_TIME_MS_999TH.name()).id();
+  private static final short LEADER_BYTES_IN_ID =
+      KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.LEADER_BYTES_IN.name()).id();
+  private static final short REPLICATION_BYTES_IN_RATE_ID =
+      KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.REPLICATION_BYTES_IN_RATE.name()).id();
   private KafkaCruiseControl _kafkaCruiseControl;
   private boolean _slowBrokerRemovalEnabled;
   private final Map<BrokerEntity, Integer> _brokerSlownessScore;
@@ -117,22 +121,16 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     for (Map.Entry<BrokerEntity, ValuesAndExtrapolations> entry : currentMetricsByBroker.entrySet()) {
       BrokerEntity entity = entry.getKey();
       AggregatedMetricValues aggregatedMetricValues = entry.getValue().metricValues();
-      // BROKER_LOG_FLUSH_TIME_MS_999TH comes from a Timer metric, which may not report if there is no value recorded (
-      // the broker serves no traffic and never performs log flush operation).
-      if (aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH.id()) == null) {
-        skippedBrokers.add(entity.brokerId());
-        continue;
-      }
-      double latestLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH.id()).latest();
-      double latestTotalBytesIn = aggregatedMetricValues.valuesFor(ALL_TOPIC_BYTES_IN.id()).latest() +
-                                  aggregatedMetricValues.valuesFor(ALL_TOPIC_REPLICATION_BYTES_IN.id()).latest();
+      double latestLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH_ID).latest();
+      double latestTotalBytesIn = aggregatedMetricValues.valuesFor(LEADER_BYTES_IN_ID).latest() +
+                                  aggregatedMetricValues.valuesFor(REPLICATION_BYTES_IN_RATE_ID).latest();
       // Ignore brokers which currently does not serve any traffic.
-      if (latestTotalBytesIn > 0) {
+      if (latestTotalBytesIn > 0 && latestLogFlushTime > 0) {
         currentValueByBroker.put(entity, latestLogFlushTime / latestTotalBytesIn);
         aggregatedMetricValues = metricsHistoryByBroker.get(entity).metricValues();
-        double[] historicalBytesIn = aggregatedMetricValues.valuesFor(ALL_TOPIC_BYTES_IN.id()).doubleArray();
-        double[] historicalReplicationBytesIn = aggregatedMetricValues.valuesFor(ALL_TOPIC_REPLICATION_BYTES_IN.id()).doubleArray();
-        double[] historicalLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH.id()).doubleArray();
+        double[] historicalBytesIn = aggregatedMetricValues.valuesFor(LEADER_BYTES_IN_ID).doubleArray();
+        double[] historicalReplicationBytesIn = aggregatedMetricValues.valuesFor(REPLICATION_BYTES_IN_RATE_ID).doubleArray();
+        double[] historicalLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH_ID).doubleArray();
         List<Double> historicalValue = new ArrayList<>(historicalBytesIn.length);
         for (int i = 0; i < historicalBytesIn.length; i++) {
           double totalBytesIn = historicalBytesIn[i] + historicalReplicationBytesIn[i];
