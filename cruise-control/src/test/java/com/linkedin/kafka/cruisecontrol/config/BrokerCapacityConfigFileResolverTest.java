@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.common.Resource;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeoutException;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -30,7 +31,7 @@ public class BrokerCapacityConfigFileResolverTest {
   }
 
   @Test
-  public void testParseConfigFile() {
+  public void testParseConfigFile() throws TimeoutException {
     BrokerCapacityConfigResolver configResolver = getBrokerCapacityConfigResolver("testCapacityConfig.json", this.getClass());
 
     assertEquals(200000.0, configResolver.capacityForBroker("", "", 0)
@@ -49,7 +50,7 @@ public class BrokerCapacityConfigFileResolverTest {
   }
 
   @Test
-  public void testParseConfigJBODFile() {
+  public void testParseConfigJBODFile() throws TimeoutException {
     BrokerCapacityConfigResolver configResolver = getBrokerCapacityConfigResolver("testCapacityConfigJBOD.json", this.getClass());
 
     assertEquals(2000000.0, configResolver.capacityForBroker("", "", 0)
@@ -65,7 +66,7 @@ public class BrokerCapacityConfigFileResolverTest {
   }
 
   @Test
-  public void testParseConfigCoresFile() {
+  public void testParseConfigCoresFile() throws TimeoutException {
     BrokerCapacityConfigResolver configResolver = getBrokerCapacityConfigResolver("testCapacityConfigCores.json", this.getClass());
 
     assertEquals(BrokerCapacityConfigFileResolver.DEFAULT_CPU_CAPACITY_WITH_CORES, configResolver

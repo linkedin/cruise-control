@@ -34,6 +34,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.Cluster;
 import org.easymock.EasyMock;
@@ -208,22 +209,25 @@ public class AnomalyDetectorTest {
   }
 
   @Test
-  public void testFixGoalViolation() throws InterruptedException, KafkaCruiseControlException, NotEnoughValidWindowsException {
+  public void testFixGoalViolation()
+      throws InterruptedException, KafkaCruiseControlException, NotEnoughValidWindowsException, TimeoutException {
     testFixAnomaly(KafkaAnomalyType.GOAL_VIOLATION);
   }
 
   @Test
-  public void testFixDiskFailure() throws InterruptedException, KafkaCruiseControlException, NotEnoughValidWindowsException {
+  public void testFixDiskFailure()
+      throws InterruptedException, KafkaCruiseControlException, NotEnoughValidWindowsException, TimeoutException {
     testFixAnomaly(KafkaAnomalyType.DISK_FAILURE);
   }
 
   @Test
-  public void testFixSlowBroker() throws InterruptedException, KafkaCruiseControlException, NotEnoughValidWindowsException {
+  public void testFixSlowBroker()
+  throws InterruptedException, KafkaCruiseControlException, NotEnoughValidWindowsException, TimeoutException {
     testFixAnomaly(KafkaAnomalyType.METRIC_ANOMALY);
   }
 
   private void testFixAnomaly(AnomalyType anomalyType)
-      throws InterruptedException, KafkaCruiseControlException, NotEnoughValidWindowsException {
+      throws InterruptedException, KafkaCruiseControlException, NotEnoughValidWindowsException, TimeoutException {
     PriorityBlockingQueue<Anomaly> anomalies = new PriorityBlockingQueue<>(ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE,
                                                                            anomalyComparator());
     AdminClient mockAdminClient = EasyMock.createNiceMock(AdminClient.class);

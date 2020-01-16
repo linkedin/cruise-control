@@ -58,6 +58,13 @@ public class MonitorUtils {
   // A utility variable for conversion of unit interval to percentage -- i.e. [0, 1.0] -> [0, 100.0].
   public static final double UNIT_INTERVAL_TO_PERCENTAGE = 100.0;
   private static final Logger LOG = LoggerFactory.getLogger(MonitorUtils.class);
+  public static final Map<Resource, Double> EMPTY_BROKER_CAPACITY;
+
+  static {
+    Map<Resource, Double> emptyBrokerCapacity = new HashMap<>(Resource.cachedValues().size());
+    Resource.cachedValues().forEach(r -> emptyBrokerCapacity.put(r, 0.0));
+    EMPTY_BROKER_CAPACITY = Collections.unmodifiableMap(emptyBrokerCapacity);
+  }
 
   private MonitorUtils() {
 
@@ -437,16 +444,15 @@ public class MonitorUtils {
    * @param valuesAndExtrapolations The values and extrapolations of the leader replica.
    * @param replicaPlacementInfo The distribution of replicas over broker logdirs if available, {@code null} otherwise.
    * @param brokerCapacityConfigResolver The resolver for retrieving broker capacities.
-   * @param deadBrokers Set of dead brokers in the cluster.
    */
   static void populatePartitionLoad(Cluster cluster,
                                     ClusterModel clusterModel,
                                     TopicPartition tp,
                                     ValuesAndExtrapolations valuesAndExtrapolations,
                                     Map<TopicPartition, Map<Integer, String>> replicaPlacementInfo,
-                                    BrokerCapacityConfigResolver brokerCapacityConfigResolver,
-                                    Set<Integer> deadBrokers) {
+                                    BrokerCapacityConfigResolver brokerCapacityConfigResolver) throws TimeoutException {
     PartitionInfo partitionInfo = cluster.partition(tp);
+    Set<Integer> aliveBrokers = cluster.nodes().stream().mapToInt(Node::id).boxed().collect(Collectors.toSet());
     // If partition info does not exist, the topic may have been deleted.
     if (partitionInfo != null) {
       boolean needToAdjustCpuUsage = true;
@@ -456,12 +462,12 @@ public class MonitorUtils {
         BrokerCapacityInfo brokerCapacity;
         try {
           brokerCapacity = brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id());
-        } catch (Exception e) {
+        } catch (TimeoutException tme) {
           //Capacity resolver may not be able to return the capacity information of dead brokers.
-          if (deadBrokers.contains(replica.id())) {
-            brokerCapacity = new BrokerCapacityInfo(Collections.emptyMap());
+          if (!aliveBrokers.contains(replica.id())) {
+            brokerCapacity = new BrokerCapacityInfo(EMPTY_BROKER_CAPACITY);
           } else {
-            throw e;
+            throw tme;
           }
         }
         clusterModel.handleDeadBroker(rack, replica.id(), brokerCapacity);

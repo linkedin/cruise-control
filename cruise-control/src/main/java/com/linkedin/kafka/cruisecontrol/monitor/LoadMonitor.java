@@ -49,6 +49,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.clients.Metadata;
@@ -427,7 +428,7 @@ public class LoadMonitor {
   public ClusterModel clusterModel(long now,
                                    ModelCompletenessRequirements requirements,
                                    OperationProgress operationProgress)
-      throws NotEnoughValidWindowsException {
+      throws NotEnoughValidWindowsException, TimeoutException {
     ClusterModel clusterModel = clusterModel(DEFAULT_START_TIME_FOR_CLUSTER_MODEL, now, requirements, operationProgress);
     // Micro optimization: put the broker stats construction out of the lock.
     BrokerStats brokerStats = clusterModel.brokerStats(_config);
@@ -453,7 +454,7 @@ public class LoadMonitor {
                                    long to,
                                    ModelCompletenessRequirements requirements,
                                    OperationProgress operationProgress)
-      throws NotEnoughValidWindowsException {
+      throws NotEnoughValidWindowsException, TimeoutException {
     return clusterModel(from, to, requirements, false, operationProgress);
   }
 
@@ -473,7 +474,7 @@ public class LoadMonitor {
                                    ModelCompletenessRequirements requirements,
                                    boolean populateReplicaPlacementInfo,
                                    OperationProgress operationProgress)
-      throws NotEnoughValidWindowsException {
+      throws NotEnoughValidWindowsException, TimeoutException {
     long start = System.currentTimeMillis();
 
     MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
@@ -523,11 +524,10 @@ public class LoadMonitor {
       }
 
       // Populate snapshots for the cluster model.
-      Set<Integer> deadBrokers = MonitorUtils.deadBrokersWithReplicas(cluster);
       for (Map.Entry<PartitionEntity, ValuesAndExtrapolations> entry : partitionValuesAndExtrapolations.entrySet()) {
         TopicPartition tp = entry.getKey().tp();
         ValuesAndExtrapolations leaderLoad = entry.getValue();
-        populatePartitionLoad(cluster, clusterModel, tp, leaderLoad, replicaPlacementInfo, _brokerCapacityConfigResolver, deadBrokers);
+        populatePartitionLoad(cluster, clusterModel, tp, leaderLoad, replicaPlacementInfo, _brokerCapacityConfigResolver);
         step.incrementPopulatedNumPartitions();
       }
       // Set the state of bad brokers in clusterModel based on the Kafka cluster state.

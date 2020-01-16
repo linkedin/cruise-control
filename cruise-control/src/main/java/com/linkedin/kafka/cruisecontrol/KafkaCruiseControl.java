@@ -46,6 +46,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.Cluster;
@@ -259,7 +260,7 @@ public class KafkaCruiseControl {
    * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
    */
   public ClusterModel clusterModel(ModelCompletenessRequirements requirements, OperationProgress operationProgress)
-      throws NotEnoughValidWindowsException {
+      throws NotEnoughValidWindowsException, TimeoutException {
     return _loadMonitor.clusterModel(timeMs(), requirements, operationProgress);
   }
 
@@ -278,7 +279,7 @@ public class KafkaCruiseControl {
                                    ModelCompletenessRequirements requirements,
                                    boolean populateReplicaPlacementInfo,
                                    OperationProgress operationProgress)
-      throws NotEnoughValidWindowsException {
+      throws NotEnoughValidWindowsException, TimeoutException {
     return _loadMonitor.clusterModel(from, to, requirements, populateReplicaPlacementInfo, operationProgress);
   }
 

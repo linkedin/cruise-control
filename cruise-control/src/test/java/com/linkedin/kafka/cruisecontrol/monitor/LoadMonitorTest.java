@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.TimeoutException;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DescribeLogDirsResult;
@@ -237,7 +238,7 @@ public class LoadMonitorTest {
 
   // Test the case with enough snapshot windows and valid partitions.
   @Test
-  public void testBasicClusterModel() throws NotEnoughValidWindowsException {
+  public void testBasicClusterModel() throws NotEnoughValidWindowsException, TimeoutException {
     TestContext context = prepareContext();
     LoadMonitor loadMonitor = context.loadmonitor();
     KafkaPartitionMetricSampleAggregator aggregator = context.aggregator();
@@ -258,7 +259,7 @@ public class LoadMonitorTest {
 
   // Test build cluster model for JBOD broker.
   @Test
-  public void testJBODClusterModel() throws NotEnoughValidWindowsException {
+  public void testJBODClusterModel() throws NotEnoughValidWindowsException, TimeoutException {
     TestContext context = prepareContext(NUM_WINDOWS, true);
     LoadMonitor loadMonitor = context.loadmonitor();
     KafkaPartitionMetricSampleAggregator aggregator = context.aggregator();
@@ -285,7 +286,7 @@ public class LoadMonitorTest {
   // Not enough snapshot windows and some partitions are missing from all snapshot windows.
   @Test
   public void testClusterModelWithInvalidPartitionAndInsufficientSnapshotWindows()
-      throws NotEnoughValidWindowsException {
+      throws NotEnoughValidWindowsException, TimeoutException {
     TestContext context = prepareContext();
     LoadMonitor loadMonitor = context.loadmonitor();
     KafkaPartitionMetricSampleAggregator aggregator = context.aggregator();
@@ -334,7 +335,7 @@ public class LoadMonitorTest {
 
   // Enough snapshot windows, some partitions are invalid in all snapshot windows.
   @Test
-  public void testClusterWithInvalidPartitions() throws NotEnoughValidWindowsException {
+  public void testClusterWithInvalidPartitions() throws NotEnoughValidWindowsException, TimeoutException {
     TestContext context = prepareContext();
     LoadMonitor loadMonitor = context.loadmonitor();
     KafkaPartitionMetricSampleAggregator aggregator = context.aggregator();
@@ -385,7 +386,7 @@ public class LoadMonitorTest {
 
   // Enough snapshot windows, some partitions are not available in some snapshot windows.
   @Test
-  public void testClusterModelWithPartlyInvalidPartitions() throws NotEnoughValidWindowsException {
+  public void testClusterModelWithPartlyInvalidPartitions() throws NotEnoughValidWindowsException, TimeoutException {
     TestContext context = prepareContext();
     LoadMonitor loadMonitor = context.loadmonitor();
     KafkaPartitionMetricSampleAggregator aggregator = context.aggregator();
@@ -444,7 +445,7 @@ public class LoadMonitorTest {
   }
 
   @Test
-  public void testClusterModelWithInvalidSnapshotWindows() throws NotEnoughValidWindowsException {
+  public void testClusterModelWithInvalidSnapshotWindows() throws NotEnoughValidWindowsException, TimeoutException {
     TestContext context = prepareContext(4, false);
     LoadMonitor loadMonitor = context.loadmonitor();
     KafkaPartitionMetricSampleAggregator aggregator = context.aggregator();

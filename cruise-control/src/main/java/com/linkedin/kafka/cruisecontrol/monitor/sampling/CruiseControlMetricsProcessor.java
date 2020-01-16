@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeoutException;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
@@ -76,9 +77,14 @@ public class CruiseControlMetricsProcessor {
           LOG.warn("Received metrics from unrecognized broker {}.", bid);
           return null;
         }
-        BrokerCapacityInfo capacity = _brokerCapacityConfigResolver.capacityForBroker(getRackHandleNull(node), node.host(), bid);
-        // No mapping shall be recorded if capacity is estimated, but estimation is not allowed.
-        return (!_allowCpuCapacityEstimation && capacity.isEstimated()) ? null : capacity.numCpuCores();
+        try {
+          BrokerCapacityInfo capacity = _brokerCapacityConfigResolver.capacityForBroker(getRackHandleNull(node), node.host(), bid);
+          // No mapping shall be recorded if capacity is estimated, but estimation is not allowed.
+          return (!_allowCpuCapacityEstimation && capacity.isEstimated()) ? null : capacity.numCpuCores();
+        } catch (TimeoutException tme) {
+          LOG.warn("Unable to get core number of broker {}.", node.id());
+          return null;
+        }
       });
     }
   }

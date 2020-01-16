@@ -5,7 +5,9 @@
 package com.linkedin.kafka.cruisecontrol.config;
 
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 
 public class BrokerCapacityInfo {
@@ -29,6 +31,16 @@ public class BrokerCapacityInfo {
                             String estimationInfo,
                             Map<String, Double> diskCapacityByLogDir,
                             short numCpuCores) {
+    Set<Resource> providedResource = capacity.keySet();
+    Set<Resource> missingResource = new HashSet<>();
+    for (Resource resource : Resource.cachedValues()) {
+      if (!providedResource.contains(resource) && resource != Resource.CPU) {
+        missingResource.add(resource);
+      }
+    }
+    if (!missingResource.isEmpty()) {
+      throw new IllegalArgumentException(String.format("Provided capacity information missing value for resource %s.", missingResource));
+    }
     _capacity = capacity;
     _estimationInfo = estimationInfo == null ? DEFAULT_ESTIMATION_INFO : estimationInfo;
     _diskCapacityByLogDir = diskCapacityByLogDir;
