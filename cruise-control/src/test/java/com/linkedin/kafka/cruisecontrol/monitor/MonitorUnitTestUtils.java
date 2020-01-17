@@ -93,7 +93,7 @@ public class MonitorUnitTestUtils {
   public static Cluster getCluster(Collection<TopicPartition> partitions) {
     Set<Node> allNodes = new HashSet<>(2);
     allNodes.add(NODE_0);
-    //allNodes.add(NODE_1);
+    allNodes.add(NODE_1);
     Set<PartitionInfo> partitionInfo = new HashSet<>(partitions.size());
     for (TopicPartition tp : partitions) {
       partitionInfo.add(new PartitionInfo(tp.topic(), tp.partition(), NODE_0, NODES, NODES));
