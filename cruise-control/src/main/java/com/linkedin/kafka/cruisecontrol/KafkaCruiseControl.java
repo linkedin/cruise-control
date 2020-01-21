@@ -627,7 +627,7 @@ public class KafkaCruiseControl {
       //     are throttled by concurrentLeaderMovements and config max.num.cluster.movements.
       int concurrentSwaps = concurrentLeaderMovements != null
                             ? concurrentLeaderMovements
-                            : _config.getInt(ExecutorConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG);
+                            : _config.getInt(ExecutorConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
       concurrentSwaps = Math.min(_config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG) / brokerCount, concurrentSwaps);
 
       // Set the execution mode and start execution.
