@@ -28,9 +28,10 @@ public interface BrokerCapacityConfigResolver extends CruiseControlConfigurable,
    *
    * @param rack The rack of the broker
    * @param host The host of the broker
-   * @param brokerId the id of the broker
+   * @param brokerId The id of the broker
+   * @param timeoutMs The timeout in millisecond.
    * @return The capacity of each resource for the broker
-   * @throws TimeoutException if resolver is unable to resolve broker capacity.
+   * @throws TimeoutException if resolver is unable to resolve broker capacity in time.
    */
-  BrokerCapacityInfo capacityForBroker(String rack, String host, int brokerId) throws TimeoutException;
+  BrokerCapacityInfo capacityForBroker(String rack, String host, int brokerId, long timeoutMs) throws TimeoutException;
 }

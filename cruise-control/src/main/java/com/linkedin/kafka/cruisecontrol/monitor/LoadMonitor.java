@@ -69,6 +69,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.getReplicaPl
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.partitionSampleExtrapolations;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.populatePartitionLoad;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.setBadBrokerState;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.BROKER_CAPACITY_FETCH_TIMEOUT_MS;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL;
 
 /**
@@ -424,6 +425,7 @@ public class LoadMonitor {
    * @param operationProgress the progress to report.
    * @return A cluster model with the configured number of windows whose timestamp is before given timestamp.
    * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
+   * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity.
    */
   public ClusterModel clusterModel(long now,
                                    ModelCompletenessRequirements requirements,
@@ -449,6 +451,7 @@ public class LoadMonitor {
    * @param operationProgress the progress of the job to report.
    * @return A cluster model with the available snapshots whose timestamp is in the given window.
    * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
+   * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity.
    */
   public ClusterModel clusterModel(long from,
                                    long to,
@@ -468,6 +471,7 @@ public class LoadMonitor {
    * @param operationProgress the progress of the job to report.
    * @return A cluster model with the available snapshots whose timestamp is in the given window.
    * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
+   * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity.
    */
   public ClusterModel clusterModel(long from,
                                    long to,
@@ -511,7 +515,7 @@ public class LoadMonitor {
         // If the rack is not specified, we use the host info as rack info.
         String rack = getRackHandleNull(node);
         clusterModel.createRack(rack);
-        BrokerCapacityInfo brokerCapacity = _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id());
+        BrokerCapacityInfo brokerCapacity = _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id(), BROKER_CAPACITY_FETCH_TIMEOUT_MS);
         LOG.debug("Get capacity info for broker {}: total capacity {}, capacity by logdir {}.",
                   node.id(), brokerCapacity.capacity().get(Resource.DISK), brokerCapacity.diskCapacityByLogDir());
         clusterModel.createBroker(rack, node.host(), node.id(), brokerCapacity, populateReplicaPlacementInfo);

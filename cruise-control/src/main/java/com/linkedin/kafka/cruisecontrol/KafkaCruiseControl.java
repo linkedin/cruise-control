@@ -258,6 +258,7 @@ public class KafkaCruiseControl {
    * @param operationProgress the progress of the job to report.
    * @return The cluster workload model.
    * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
+   * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity.
    */
   public ClusterModel clusterModel(ModelCompletenessRequirements requirements, OperationProgress operationProgress)
       throws NotEnoughValidWindowsException, TimeoutException {
@@ -273,6 +274,7 @@ public class KafkaCruiseControl {
    * @param operationProgress the progress of the job to report.
    * @return The cluster workload model.
    * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
+   * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity.
    */
   public ClusterModel clusterModel(long from,
                                    long to,

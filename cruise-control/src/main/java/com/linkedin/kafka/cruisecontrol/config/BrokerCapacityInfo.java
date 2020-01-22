@@ -5,9 +5,9 @@
 package com.linkedin.kafka.cruisecontrol.config;
 
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 
 public class BrokerCapacityInfo {
@@ -31,16 +31,7 @@ public class BrokerCapacityInfo {
                             String estimationInfo,
                             Map<String, Double> diskCapacityByLogDir,
                             short numCpuCores) {
-    Set<Resource> providedResource = capacity.keySet();
-    Set<Resource> missingResource = new HashSet<>();
-    for (Resource resource : Resource.cachedValues()) {
-      if (!providedResource.contains(resource) && resource != Resource.CPU) {
-        missingResource.add(resource);
-      }
-    }
-    if (!missingResource.isEmpty()) {
-      throw new IllegalArgumentException(String.format("Provided capacity information missing value for resource %s.", missingResource));
-    }
+    sanityCheckCapcity(capacity);
     _capacity = capacity;
     _estimationInfo = estimationInfo == null ? DEFAULT_ESTIMATION_INFO : estimationInfo;
     _diskCapacityByLogDir = diskCapacityByLogDir;
@@ -141,5 +132,18 @@ public class BrokerCapacityInfo {
    */
   public short numCpuCores() {
     return _numCpuCores;
+  }
+
+  /**
+   * Sanity check to ensure the provided capacity information contains all the resource type.
+   * @param capacity The provided capacity map.
+   */
+  static void sanityCheckCapcity(Map<Resource, Double> capacity) {
+    Set<Resource> providedResource = capacity.keySet();
+    Set<Resource> missingResource = Resource.cachedValues().stream().filter(r -> !providedResource.contains(r))
+                                            .collect(Collectors.toSet());
+    if (!missingResource.isEmpty()) {
+      throw new IllegalArgumentException(String.format("Provided capacity information missing value for resource %s.", missingResource));
+    }
   }
 }

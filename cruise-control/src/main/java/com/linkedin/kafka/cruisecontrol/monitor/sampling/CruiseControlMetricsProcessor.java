@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.getRackHandleNull;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.BROKER_CAPACITY_FETCH_TIMEOUT_MS;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.UNRECOGNIZED_BROKER_ID;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.buildBrokerMetricSample;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.buildPartitionMetricSample;
@@ -66,6 +67,8 @@ public class CruiseControlMetricsProcessor {
 
   /**
    * Update the cached number of cores by broker id. The cache is refreshed only for brokers with missing number of cores.
+   * Note that if the broker capacity resolver is unable to resolve or can only estimate certain broker's capacity, the core
+   * number for that broker will not be updated.
    * @param cluster Kafka cluster.
    */
   private void updateCachedNumCoresByBroker(Cluster cluster) {
@@ -78,11 +81,12 @@ public class CruiseControlMetricsProcessor {
           return null;
         }
         try {
-          BrokerCapacityInfo capacity = _brokerCapacityConfigResolver.capacityForBroker(getRackHandleNull(node), node.host(), bid);
+          BrokerCapacityInfo capacity =
+              _brokerCapacityConfigResolver.capacityForBroker(getRackHandleNull(node), node.host(), bid, BROKER_CAPACITY_FETCH_TIMEOUT_MS);
           // No mapping shall be recorded if capacity is estimated, but estimation is not allowed.
           return (!_allowCpuCapacityEstimation && capacity.isEstimated()) ? null : capacity.numCpuCores();
         } catch (TimeoutException tme) {
-          LOG.warn("Unable to get core number of broker {}.", node.id());
+          LOG.warn("Unable to get number of CPU cores for broker {}.", node.id());
           return null;
         }
       });
