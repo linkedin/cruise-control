@@ -112,8 +112,8 @@ public class AnomalyDetector {
     _anomalyInProgress = null;
     _numCheckedWithDelay = 0L;
     _shutdownLock = new Object();
-    dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "balancedness-score"),
-                                      (Gauge<Double>) _goalViolationDetector::balancednessScore);
+    // Register gauge sensors.
+    registerGaugeSensors(dropwizardMetricRegistry);
     _anomalyDetectorState = new AnomalyDetectorState(time,
                                                      _anomalyNotifier.selfHealingEnabled(),
                                                      numCachedRecentAnomalyStates,
@@ -155,6 +155,21 @@ public class AnomalyDetector {
     _shutdownLock = new Object();
     // Add anomaly detector state
     _anomalyDetectorState = new AnomalyDetectorState(new SystemTime(), new HashMap<>(KafkaAnomalyType.cachedValues().size()), 10, null);
+  }
+
+  /**
+   * Register gauge sensors.
+   */
+  private void registerGaugeSensors(MetricRegistry dropwizardMetricRegistry) {
+    dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "balancedness-score"),
+                                      (Gauge<Double>) _goalViolationDetector::balancednessScore);
+
+    // Self-Healing is turned on/off. 1/0 metric for each of the self-healing options.
+    for (KafkaAnomalyType anomalyType : KafkaAnomalyType.cachedValues()) {
+      dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME,
+                                                            String.format("%s-self-healing-enabled", anomalyType.toString().toLowerCase())),
+                                        (Gauge<Integer>) () -> _anomalyNotifier.selfHealingEnabled().get(anomalyType) ? 1 : 0);
+    }
   }
 
   /**
