@@ -823,9 +823,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    */
   private boolean isAcceptableAfterReplicaMove(Replica sourceReplica, Broker destinationBroker) {
     double sourceUtilizationDelta = - sourceReplica.load().expectedUtilizationFor(resource());
-
-    double destinationBrokerUtilization = destinationBroker.load().expectedUtilizationFor(resource());
-    return isGettingMoreBalanced(sourceReplica, sourceUtilizationDelta, destinationBrokerUtilization);
+    return isGettingMoreBalanced(sourceReplica.broker(), sourceUtilizationDelta, destinationBroker);
   }
 
   /**
@@ -838,25 +836,26 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   private boolean isSelfSatisfiedAfterSwap(Replica sourceReplica, Replica destinationReplica) {
     double sourceUtilizationDelta = destinationReplica.load().expectedUtilizationFor(resource())
                                     - sourceReplica.load().expectedUtilizationFor(resource());
-
-    double destinationBrokerUtilization = destinationReplica.broker().load().expectedUtilizationFor(resource());
-    return isGettingMoreBalanced(sourceReplica, sourceUtilizationDelta, destinationBrokerUtilization);
+    return isGettingMoreBalanced(sourceReplica.broker(), sourceUtilizationDelta, destinationReplica.broker());
   }
 
   /**
    * Check if the utilization difference between source and destination brokers would decrease after the source
    * utilization delta is removed from the destination and added to source broker.
    *
-   * @param sourceReplica Source replica.
+   * @param sourceBroker Source broker.
    * @param sourceUtilizationDelta Utilization that would be removed from the destination and added to source broker.
-   * @param destinationBrokerUtilization The utilization of destination broker.
+   * @param destinationBroker Destination broker.
    * @return True if the change would lead to a better balance, false otherwise.
    */
-  private boolean isGettingMoreBalanced(Replica sourceReplica, double sourceUtilizationDelta, double destinationBrokerUtilization) {
-    double sourceBrokerUtilization = sourceReplica.broker().load().expectedUtilizationFor(resource());
+  private boolean isGettingMoreBalanced(Broker sourceBroker, double sourceUtilizationDelta, Broker destinationBroker) {
+    double sourceBrokerUtilization = sourceBroker.load().expectedUtilizationFor(resource());
+    double destinationBrokerUtilization = destinationBroker.load().expectedUtilizationFor(resource());
+    double sourceBrokerCapacity = sourceBroker.capacityFor(resource());
+    double destinationBrokerCapacity = destinationBroker.capacityFor(resource());
 
-    double prevDiff = sourceBrokerUtilization - destinationBrokerUtilization;
-    double nextDiff = prevDiff + (2 * sourceUtilizationDelta);
+    double prevDiff = sourceBrokerUtilization / sourceBrokerCapacity - destinationBrokerUtilization / destinationBrokerCapacity;
+    double nextDiff = prevDiff + sourceUtilizationDelta / sourceBrokerCapacity + sourceUtilizationDelta / destinationBrokerCapacity;
 
     return Math.abs(nextDiff) < Math.abs(prevDiff);
   }
