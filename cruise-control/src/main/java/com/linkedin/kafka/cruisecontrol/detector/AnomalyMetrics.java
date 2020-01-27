@@ -14,6 +14,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyTyp
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.METRIC_ANOMALY;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.BROKER_FAILURE;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.DISK_FAILURE;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.TOPIC_ANOMALY;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
 
@@ -126,12 +127,13 @@ public class AnomalyMetrics {
   @Override
   public String toString() {
     Map<AnomalyType, Double> meanTimeBetweenAnomalies = _meanTimeBetweenAnomaliesMs.getJsonStructure();
-    return String.format("{meanTimeBetweenAnomalies:{%s:%s, %s:%s, %s:%s, %s:%s}, meanTimeToStartFix:%s, "
+    return String.format("{meanTimeBetweenAnomalies:{%s:%s, %s:%s, %s:%s, %s:%s, %s:%s}, meanTimeToStartFix:%s, "
                          + "numSelfHealingStarted:%d, numSelfHealingFailedToStart:%d, ongoingAnomalyDuration=%s}",
                          GOAL_VIOLATION, toPrettyDuration(meanTimeBetweenAnomalies.get(GOAL_VIOLATION)),
                          BROKER_FAILURE, toPrettyDuration(meanTimeBetweenAnomalies.get(BROKER_FAILURE)),
                          METRIC_ANOMALY, toPrettyDuration(meanTimeBetweenAnomalies.get(METRIC_ANOMALY)),
                          DISK_FAILURE, toPrettyDuration(meanTimeBetweenAnomalies.get(DISK_FAILURE)),
+                         TOPIC_ANOMALY, toPrettyDuration(meanTimeBetweenAnomalies.get(TOPIC_ANOMALY)),
                          toPrettyDuration(_meanTimeToStartFixMs), _numSelfHealingStarted, _numSelfHealingFailedToStart,
                          toPrettyDuration(_ongoingAnomalyDurationMs));
   }

@@ -22,6 +22,7 @@ import java.util.List;
  *  <li>{@link #DISK_FAILURE}: Fail-stop failure of disks.</li>
  *  <li>{@link #METRIC_ANOMALY}: Abnormal changes in broker metrics.</li>
  *  <li>{@link #GOAL_VIOLATION}: Violation of anomaly detection goals.</li>
+ *  <li>{@link #TOPIC_ANOMALY}: Topic violating some desired properties.</li>
  * </ul>
  */
 public enum KafkaAnomalyType implements AnomalyType {
@@ -32,7 +33,9 @@ public enum KafkaAnomalyType implements AnomalyType {
   @JsonResponseField
   METRIC_ANOMALY(2),
   @JsonResponseField
-  GOAL_VIOLATION(3);
+  GOAL_VIOLATION(3),
+  @JsonResponseField
+  TOPIC_ANOMALY(4);
 
   private final int _priority;
 

@@ -41,6 +41,9 @@ import org.easymock.EasyMock;
 import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.smallClusterModel;
+import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced;
+import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.generateClusterFromClusterModel;
+import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.T1;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorState.NUM_SELF_HEALING_STARTED;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
@@ -49,6 +52,8 @@ import static com.linkedin.kafka.cruisecontrol.detector.BrokerFailureDetector.FA
 import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.SlowBrokerFinder.REMOVE_SLOW_BROKERS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder.SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder.TOPICS_WITH_BAD_REPLICATION_FACTOR_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.model.RandomCluster.singleBrokerWithBadDisk;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RebalanceRunnable.SELF_HEALING_IGNORE_PROPOSAL_CACHE;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RebalanceRunnable.SELF_HEALING_IS_REBALANCE_DISK_MODE;
@@ -82,6 +87,7 @@ public class AnomalyDetectorTest {
                                              GoalViolationDetector mockGoalViolationDetector,
                                              MetricAnomalyDetector mockMetricAnomalyDetector,
                                              DiskFailureDetector mockDiskFailureDetector,
+                                             TopicAnomalyDetector mockTopicAnomalyDetector,
                                              ScheduledExecutorService executorService) {
     // Starting periodic goal violation detection.
     EasyMock.expect(mockDetectorScheduler.scheduleAtFixedRate(EasyMock.eq(mockGoalViolationDetector),
@@ -99,6 +105,13 @@ public class AnomalyDetectorTest {
 
     // Starting periodic disk failure detection.
     EasyMock.expect(mockDetectorScheduler.scheduleAtFixedRate(EasyMock.eq(mockDiskFailureDetector),
+                                                              EasyMock.anyLong(),
+                                                              EasyMock.eq(MOCK_ANOMALY_DETECTION_INTERVAL_MS),
+                                                              EasyMock.eq(TimeUnit.MILLISECONDS)))
+            .andReturn(null);
+
+    // Starting periodic topic anomaly detection
+    EasyMock.expect(mockDetectorScheduler.scheduleAtFixedRate(EasyMock.eq(mockTopicAnomalyDetector),
                                                               EasyMock.anyLong(),
                                                               EasyMock.eq(MOCK_ANOMALY_DETECTION_INTERVAL_MS),
                                                               EasyMock.eq(TimeUnit.MILLISECONDS)))
@@ -154,6 +167,7 @@ public class AnomalyDetectorTest {
     BrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(BrokerFailureDetector.class);
     GoalViolationDetector mockGoalViolationDetector = EasyMock.createNiceMock(GoalViolationDetector.class);
     MetricAnomalyDetector mockMetricAnomalyDetector = EasyMock.createNiceMock(MetricAnomalyDetector.class);
+    TopicAnomalyDetector mockTopicAnomalyDetector = EasyMock.createNiceMock(TopicAnomalyDetector.class);
     DiskFailureDetector mockDiskFailureDetector = EasyMock.createNiceMock(DiskFailureDetector.class);
     ScheduledExecutorService mockDetectorScheduler = EasyMock.mock(ScheduledExecutorService.class);
     ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
@@ -164,7 +178,8 @@ public class AnomalyDetectorTest {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
     EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).times(1, 2);
-    startPeriodicDetectors(mockDetectorScheduler, mockGoalViolationDetector, mockMetricAnomalyDetector, mockDiskFailureDetector, executorService);
+    startPeriodicDetectors(mockDetectorScheduler, mockGoalViolationDetector, mockMetricAnomalyDetector, mockDiskFailureDetector,
+                           mockTopicAnomalyDetector, executorService);
     // Schedule a delayed check
     EasyMock.expect(mockDetectorScheduler.schedule(EasyMock.isA(Runnable.class),
                                                    EasyMock.eq(MOCK_DELAY_CHECK_MS),
@@ -179,7 +194,8 @@ public class AnomalyDetectorTest {
 
     AnomalyDetector anomalyDetector = new AnomalyDetector(anomalies, mockAdminClient, MOCK_ANOMALY_DETECTION_INTERVAL_MS, mockKafkaCruiseControl,
                                                           mockAnomalyNotifier, mockGoalViolationDetector, mockBrokerFailureDetector,
-                                                          mockMetricAnomalyDetector, mockDiskFailureDetector, mockDetectorScheduler);
+                                                          mockMetricAnomalyDetector, mockDiskFailureDetector, mockTopicAnomalyDetector,
+                                                          mockDetectorScheduler);
 
     try {
       anomalyDetector.startDetection();
@@ -226,6 +242,11 @@ public class AnomalyDetectorTest {
     testFixAnomaly(KafkaAnomalyType.METRIC_ANOMALY);
   }
 
+  @Test
+  public void testFixTopicAnomaly() throws InterruptedException, KafkaCruiseControlException, NotEnoughValidWindowsException {
+    testFixAnomaly(KafkaAnomalyType.TOPIC_ANOMALY);
+  }
+
   private void testFixAnomaly(AnomalyType anomalyType)
       throws InterruptedException, KafkaCruiseControlException, NotEnoughValidWindowsException, TimeoutException {
     PriorityBlockingQueue<Anomaly> anomalies = new PriorityBlockingQueue<>(ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE,
@@ -235,6 +256,7 @@ public class AnomalyDetectorTest {
     BrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(BrokerFailureDetector.class);
     GoalViolationDetector mockGoalViolationDetector = EasyMock.createNiceMock(GoalViolationDetector.class);
     MetricAnomalyDetector mockMetricAnomalyDetector = EasyMock.createNiceMock(MetricAnomalyDetector.class);
+    TopicAnomalyDetector mockTopicAnomalyDetector = EasyMock.createNiceMock(TopicAnomalyDetector.class);
     DiskFailureDetector mockDiskFailureDetector = EasyMock.createNiceMock(DiskFailureDetector.class);
     ScheduledExecutorService mockDetectorScheduler = EasyMock.mock(ScheduledExecutorService.class);
     ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
@@ -255,7 +277,8 @@ public class AnomalyDetectorTest {
     EasyMock.expect(mockKafkaCruiseControl.getLoadMonitorTaskRunnerState())
             .andReturn(LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING).times(1, 4);
 
-    startPeriodicDetectors(mockDetectorScheduler, mockGoalViolationDetector, mockMetricAnomalyDetector, mockDiskFailureDetector, executorService);
+    startPeriodicDetectors(mockDetectorScheduler, mockGoalViolationDetector, mockMetricAnomalyDetector, mockDiskFailureDetector,
+                           mockTopicAnomalyDetector, executorService);
     shutdownDetector(mockDetectorScheduler, executorService);
 
     // The following state are used to test the delayed check when executor is idle.
@@ -351,6 +374,37 @@ public class AnomalyDetectorTest {
                                              EasyMock.anyString(),
                                              EasyMock.anyObject());
       EasyMock.expect(mockAnomalyNotifier.onMetricAnomaly(EasyMock.isA(SlowBrokers.class))).andReturn(AnomalyNotificationResult.fix());
+    } else if (anomalyType == KafkaAnomalyType.TOPIC_ANOMALY) {
+      ClusterModel clusterModel = unbalanced();
+      EasyMock.expect(mockKafkaCruiseControl.clusterModel(EasyMock.anyObject(), EasyMock.anyObject())).andReturn(clusterModel);
+      EasyMock.expect(mockKafkaCruiseControl.kafkaCluster()).andReturn(generateClusterFromClusterModel(clusterModel));
+      EasyMock.expect(mockKafkaCruiseControl.acquireForModelGeneration(EasyMock.anyObject())).andReturn(null);
+      ExecutorState executorState = EasyMock.mock(ExecutorState.class);
+      EasyMock.expect(mockKafkaCruiseControl.executorState()).andReturn(executorState);
+      EasyMock.expect(executorState.recentlyDemotedBrokers()).andReturn(Collections.emptySet());
+      EasyMock.expect(executorState.recentlyRemovedBrokers()).andReturn(Collections.emptySet());
+      EasyMock.replay(executorState);
+      EasyMock.expect(mockKafkaCruiseControl.excludedTopics(clusterModel, SELF_HEALING_EXCLUDED_TOPICS)).andReturn(Collections.emptySet());
+      EasyMock.expect(mockKafkaCruiseControl.optimizations(EasyMock.anyObject(),
+                                                           EasyMock.anyObject(),
+                                                           EasyMock.anyObject(),
+                                                           EasyMock.anyObject(),
+                                                           EasyMock.anyObject()))
+              .andReturn(mockOptimizerResult);
+
+      mockKafkaCruiseControl.executeProposals(EasyMock.anyObject(),
+                                              EasyMock.eq(Collections.emptySet()),
+                                              EasyMock.eq(false),
+                                              EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
+                                              EasyMock.eq(0),
+                                              EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
+                                              EasyMock.eq(SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS),
+                                              EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
+                                              EasyMock.eq(null),
+                                              EasyMock.eq(false),
+                                              EasyMock.anyString(),
+                                              EasyMock.anyString());
+      EasyMock.expect(mockAnomalyNotifier.onTopicAnomaly(EasyMock.isA(TopicAnomaly.class))).andReturn(AnomalyNotificationResult.fix());
     }
     EasyMock.expect(mockKafkaCruiseControl.meetCompletenessRequirements(Collections.emptyList())).andReturn(true);
     EasyMock.expect(mockDetectorScheduler.schedule(EasyMock.isA(Runnable.class),
@@ -363,15 +417,16 @@ public class AnomalyDetectorTest {
 
     AnomalyDetector anomalyDetector = new AnomalyDetector(anomalies, mockAdminClient, MOCK_ANOMALY_DETECTION_INTERVAL_MS, mockKafkaCruiseControl,
                                                           mockAnomalyNotifier, mockGoalViolationDetector, mockBrokerFailureDetector,
-                                                          mockMetricAnomalyDetector, mockDiskFailureDetector, mockDetectorScheduler);
+                                                          mockMetricAnomalyDetector, mockDiskFailureDetector, mockTopicAnomalyDetector,
+                                                          mockDetectorScheduler);
 
     try {
+      Map<String, Object> parameterConfigOverrides = new HashMap<>(10);
+      parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
+      parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 100L);
       if (anomalyType == KafkaAnomalyType.GOAL_VIOLATION ||
           anomalyType == KafkaAnomalyType.METRIC_ANOMALY ||
           anomalyType == KafkaAnomalyType.DISK_FAILURE) {
-        Map<String, Object> parameterConfigOverrides = new HashMap<>(2);
-        parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
-        parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 100L);
         GoalViolations violations = kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.GOAL_VIOLATIONS_CLASS_CONFIG,
                                                                                    GoalViolations.class,
                                                                                    parameterConfigOverrides);
@@ -383,12 +438,9 @@ public class AnomalyDetectorTest {
       if (anomalyType == KafkaAnomalyType.METRIC_ANOMALY ||
           anomalyType == KafkaAnomalyType.DISK_FAILURE) {
         Map<BrokerEntity, Long> detectedSlowBrokers = Collections.singletonMap(new BrokerEntity("", 0), 100L);
-        Map<String, Object> parameterConfigOverrides = new HashMap<>(5);
-        parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
         parameterConfigOverrides.put(METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG, detectedSlowBrokers);
         parameterConfigOverrides.put(REMOVE_SLOW_BROKERS_CONFIG, false);
         parameterConfigOverrides.put(METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG, true);
-        parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 100L);
         SlowBrokers slowBrokers = kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.METRIC_ANOMALY_CLASS_CONFIG,
                                                                                  SlowBrokers.class,
                                                                                  parameterConfigOverrides);
@@ -396,14 +448,21 @@ public class AnomalyDetectorTest {
       }
       if (anomalyType == KafkaAnomalyType.DISK_FAILURE) {
         Map<Integer, Map<String, Long>> failedDisksByBroker = Collections.singletonMap(0, Collections.singletonMap("tmp", 100L));
-        Map<String, Object> parameterConfigOverrides = new HashMap<>(3);
-        parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
         parameterConfigOverrides.put(FAILED_DISKS_OBJECT_CONFIG, failedDisksByBroker);
-        parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 100L);
         DiskFailures diskFailures = kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.DISK_FAILURES_CLASS_CONFIG,
                                                                                    DiskFailures.class,
                                                                                    parameterConfigOverrides);
         anomalies.add(diskFailures);
+      }
+      if (anomalyType == KafkaAnomalyType.GOAL_VIOLATION ||
+          anomalyType == KafkaAnomalyType.METRIC_ANOMALY ||
+          anomalyType == KafkaAnomalyType.DISK_FAILURE ||
+          anomalyType == KafkaAnomalyType.TOPIC_ANOMALY) {
+        parameterConfigOverrides.put(TOPICS_WITH_BAD_REPLICATION_FACTOR_CONFIG, Collections.singleton(T1));
+        parameterConfigOverrides.put(SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG, (short) 2);
+        TopicAnomaly topicAnomaly = new TopicReplicationFactorAnomaly();
+        topicAnomaly.configure(parameterConfigOverrides);
+        anomalies.add(topicAnomaly);
       }
       anomalyDetector.startDetection();
       while (anomalyDetector.numSelfHealingStarted() < 1) {
@@ -422,6 +481,8 @@ public class AnomalyDetectorTest {
                    anomalyType == KafkaAnomalyType.DISK_FAILURE ? 1 : 0);
       assertEquals(anomalyDetectorState.recentAnomaliesByType().get(KafkaAnomalyType.METRIC_ANOMALY).size(),
                    anomalyType == KafkaAnomalyType.METRIC_ANOMALY ? 1 : 0);
+      assertEquals(anomalyDetectorState.recentAnomaliesByType().get(KafkaAnomalyType.TOPIC_ANOMALY).size(),
+                   anomalyType == KafkaAnomalyType.TOPIC_ANOMALY ? 1 : 0);
       EasyMock.verify(mockAnomalyNotifier, mockDetectorScheduler, mockKafkaCruiseControl);
     } finally {
       executorService.shutdown();
@@ -438,6 +499,7 @@ public class AnomalyDetectorTest {
     BrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(BrokerFailureDetector.class);
     GoalViolationDetector mockGoalViolationDetector = EasyMock.createNiceMock(GoalViolationDetector.class);
     MetricAnomalyDetector mockMetricAnomalyDetector = EasyMock.createNiceMock(MetricAnomalyDetector.class);
+    TopicAnomalyDetector mockTopicAnomalyDetector = EasyMock.createNiceMock(TopicAnomalyDetector.class);
     DiskFailureDetector mockDiskFailureDetector = EasyMock.createNiceMock(DiskFailureDetector.class);
     ScheduledExecutorService mockDetectorScheduler = EasyMock.mock(ScheduledExecutorService.class);
     ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
@@ -446,7 +508,8 @@ public class AnomalyDetectorTest {
     KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
     EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).times(2);
 
-    startPeriodicDetectors(mockDetectorScheduler, mockGoalViolationDetector, mockMetricAnomalyDetector, mockDiskFailureDetector, executorService);
+    startPeriodicDetectors(mockDetectorScheduler, mockGoalViolationDetector, mockMetricAnomalyDetector, mockDiskFailureDetector,
+                           mockTopicAnomalyDetector, executorService);
     shutdownDetector(mockDetectorScheduler, executorService);
     EasyMock.expect(mockAnomalyNotifier.selfHealingEnabledRatio()).andReturn(MOCK_SELF_HEALING_ENABLED_RATIO);
 
@@ -459,7 +522,8 @@ public class AnomalyDetectorTest {
 
     AnomalyDetector anomalyDetector = new AnomalyDetector(anomalies, mockAdminClient, MOCK_ANOMALY_DETECTION_INTERVAL_MS, mockKafkaCruiseControl,
                                                           mockAnomalyNotifier, mockGoalViolationDetector, mockBrokerFailureDetector,
-                                                          mockMetricAnomalyDetector, mockDiskFailureDetector, mockDetectorScheduler);
+                                                          mockMetricAnomalyDetector, mockDiskFailureDetector, mockTopicAnomalyDetector,
+                                                          mockDetectorScheduler);
 
     try {
       anomalyDetector.startDetection();
@@ -496,6 +560,7 @@ public class AnomalyDetectorTest {
     BrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(BrokerFailureDetector.class);
     GoalViolationDetector mockGoalViolationDetector = EasyMock.createNiceMock(GoalViolationDetector.class);
     MetricAnomalyDetector mockMetricAnomalyDetector = EasyMock.createNiceMock(MetricAnomalyDetector.class);
+    TopicAnomalyDetector mockTopicAnomalyDetector = EasyMock.createNiceMock(TopicAnomalyDetector.class);
     DiskFailureDetector mockDiskFailureDetector = EasyMock.createNiceMock(DiskFailureDetector.class);
     KafkaCruiseControl mockKafkaCruiseControl = EasyMock.createNiceMock(KafkaCruiseControl.class);
     ScheduledExecutorService detectorScheduler =
@@ -504,7 +569,7 @@ public class AnomalyDetectorTest {
     AnomalyDetector anomalyDetector = new AnomalyDetector(anomalies, mockAdminClient, MOCK_ANOMALY_DETECTION_INTERVAL_MS,
                                                           mockKafkaCruiseControl, mockAnomalyNotifier, mockGoalViolationDetector,
                                                           mockBrokerFailureDetector, mockMetricAnomalyDetector, mockDiskFailureDetector,
-                                                          detectorScheduler);
+                                                          mockTopicAnomalyDetector, detectorScheduler);
 
     anomalyDetector.shutdown();
     Thread t = new Thread(anomalyDetector::shutdown);

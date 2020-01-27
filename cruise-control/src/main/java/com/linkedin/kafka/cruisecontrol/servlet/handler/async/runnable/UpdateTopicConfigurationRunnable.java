@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
@@ -37,6 +38,14 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPr
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckGoals;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckLoadMonitorReadiness;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_DRYRUN;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_SKIP_RACK_AWARENESS_CHECK;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_CONCURRENT_MOVEMENTS;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_SKIP_HARD_GOAL_CHECK;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_MODEL_COMPLETENESS_REQUIREMENTS;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_STOP_ONGOING_EXECUTION;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.maybeStopOngoingExecutionToModifyAndWait;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.populateRackInfoForReplicationFactorChange;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.partitionWithOfflineReplicas;
@@ -48,38 +57,107 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
  */
 public class UpdateTopicConfigurationRunnable extends OperationRunnable {
   private static final Logger LOG = LoggerFactory.getLogger(UpdateTopicConfigurationRunnable.class);
-  protected final TopicReplicationFactorChangeParameters _topicReplicationFactorChangeParameters;
   protected final String _uuid;
+  protected Map<Short, Pattern> _topicPatternByReplicationFactor;
+  protected List<String> _goals;
+  protected boolean _skipRackAwarenessCheck;
+  protected ModelCompletenessRequirements _requirements;
+  protected boolean _allowCapacityEstimation;
+  protected Integer _concurrentInterBrokerPartitionMovements;
+  protected Integer _concurrentLeaderMovements;
+  protected Long _executionProgressCheckIntervalMs;
+  protected boolean _skipHardGoalCheck;
+  protected ReplicaMovementStrategy _replicaMovementStrategy;
+  protected Long _replicationThrottle;
+  protected boolean _excludeRecentlyDemotedBrokers;
+  protected boolean _excludeRecentlyRemovedBrokers;
+  protected boolean _dryRun;
+  protected String _reason;
+  protected boolean _stopOngoingExecution;
+  protected boolean _isTriggeredByUserRequest;
 
   public UpdateTopicConfigurationRunnable(KafkaCruiseControl kafkaCruiseControl,
                                           OperationFuture future,
                                           String uuid,
                                           TopicConfigurationParameters parameters) {
     super(kafkaCruiseControl, future);
-    _topicReplicationFactorChangeParameters = parameters.topicReplicationFactorChangeParameters();
+    TopicReplicationFactorChangeParameters topicReplicationFactorChangeParameters = parameters.topicReplicationFactorChangeParameters();
+    if (topicReplicationFactorChangeParameters != null) {
+      _topicPatternByReplicationFactor = topicReplicationFactorChangeParameters.topicPatternByReplicationFactor();
+      _goals = topicReplicationFactorChangeParameters.goals();
+      _skipRackAwarenessCheck = topicReplicationFactorChangeParameters.skipRackAwarenessCheck();
+      _requirements = topicReplicationFactorChangeParameters.modelCompletenessRequirements();
+      _allowCapacityEstimation = topicReplicationFactorChangeParameters.allowCapacityEstimation();
+      _concurrentInterBrokerPartitionMovements = topicReplicationFactorChangeParameters.concurrentInterBrokerPartitionMovements();
+      _concurrentLeaderMovements = topicReplicationFactorChangeParameters.concurrentLeaderMovements();
+      _executionProgressCheckIntervalMs = topicReplicationFactorChangeParameters.executionProgressCheckIntervalMs();
+      _skipHardGoalCheck = topicReplicationFactorChangeParameters.skipHardGoalCheck();
+      _replicaMovementStrategy = topicReplicationFactorChangeParameters.replicaMovementStrategy();
+      _replicationThrottle = topicReplicationFactorChangeParameters.replicationThrottle();
+      _excludeRecentlyDemotedBrokers = topicReplicationFactorChangeParameters.excludeRecentlyDemotedBrokers();
+      _excludeRecentlyRemovedBrokers = topicReplicationFactorChangeParameters.excludeRecentlyRemovedBrokers();
+      _dryRun = topicReplicationFactorChangeParameters.dryRun();
+      _reason = topicReplicationFactorChangeParameters.reason();
+      _stopOngoingExecution = topicReplicationFactorChangeParameters.stopOngoingExecution();
+      }
     _uuid = uuid;
+    _isTriggeredByUserRequest = true;
   }
 
+  /**
+   * Constructor to be used for creating a runnable for self-healing.
+   */
+  public UpdateTopicConfigurationRunnable(KafkaCruiseControl kafkaCruiseControl,
+                                          Map<Short, Pattern> topicPatternByReplicationFactor,
+                                          List<String> selfHealingGoals,
+                                          boolean allowCapacityEstimation,
+                                          boolean excludeRecentlyDemotedBrokers,
+                                          boolean excludeRecentlyRemovedBrokers,
+                                          String anomalyId,
+                                          String reason) {
+    super(kafkaCruiseControl, new OperationFuture("Topic replication factor anomaly self-healing."));
+    _topicPatternByReplicationFactor = topicPatternByReplicationFactor;
+    _goals = selfHealingGoals;
+    _skipRackAwarenessCheck = SELF_HEALING_SKIP_RACK_AWARENESS_CHECK;
+    _requirements = SELF_HEALING_MODEL_COMPLETENESS_REQUIREMENTS;
+    _allowCapacityEstimation = allowCapacityEstimation;
+    _concurrentInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
+    _concurrentLeaderMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
+    _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
+    _skipHardGoalCheck = SELF_HEALING_SKIP_HARD_GOAL_CHECK;
+    _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
+    _replicationThrottle = kafkaCruiseControl.config().getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
+    _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
+    _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
+    _dryRun = SELF_HEALING_DRYRUN;
+    _reason = reason;
+    _stopOngoingExecution = SELF_HEALING_STOP_ONGOING_EXECUTION;
+    _uuid = anomalyId;
+    _isTriggeredByUserRequest = false;
+  }
+
+
   @Override
-  protected OptimizationResult getResult() throws Exception {
-    if (_topicReplicationFactorChangeParameters != null) {
+  public OptimizationResult getResult() throws Exception {
+    if (_topicPatternByReplicationFactor != null) {
       return new OptimizationResult(
-          updateTopicReplicationFactor(_topicReplicationFactorChangeParameters.topicPatternByReplicationFactor(),
-                                       _topicReplicationFactorChangeParameters.goals(),
-                                       _topicReplicationFactorChangeParameters.skipRackAwarenessCheck(),
-                                       _topicReplicationFactorChangeParameters.modelCompletenessRequirements(),
-                                       _topicReplicationFactorChangeParameters.allowCapacityEstimation(),
-                                       _topicReplicationFactorChangeParameters.concurrentInterBrokerPartitionMovements(),
-                                       _topicReplicationFactorChangeParameters.concurrentLeaderMovements(),
-                                       _topicReplicationFactorChangeParameters.executionProgressCheckIntervalMs(),
-                                       _topicReplicationFactorChangeParameters.skipHardGoalCheck(),
-                                       _topicReplicationFactorChangeParameters.replicaMovementStrategy(),
-                                       _topicReplicationFactorChangeParameters.replicationThrottle(),
-                                       _topicReplicationFactorChangeParameters.excludeRecentlyDemotedBrokers(),
-                                       _topicReplicationFactorChangeParameters.excludeRecentlyRemovedBrokers(),
-                                       _topicReplicationFactorChangeParameters.dryRun(),
-                                       _topicReplicationFactorChangeParameters.reason(),
-                                       _topicReplicationFactorChangeParameters.stopOngoingExecution()),
+          updateTopicReplicationFactor(_topicPatternByReplicationFactor,
+                                       _goals,
+                                       _skipRackAwarenessCheck,
+                                       _requirements,
+                                       _allowCapacityEstimation,
+                                       _concurrentInterBrokerPartitionMovements,
+                                       _concurrentLeaderMovements,
+                                       _executionProgressCheckIntervalMs,
+                                       _skipHardGoalCheck,
+                                       _replicaMovementStrategy,
+                                       _replicationThrottle,
+                                       _excludeRecentlyDemotedBrokers,
+                                       _excludeRecentlyRemovedBrokers,
+                                       _dryRun,
+                                       _reason,
+                                       _stopOngoingExecution,
+                                       _isTriggeredByUserRequest),
           _kafkaCruiseControl.config());
     }
     // Never reaches here.
@@ -134,6 +212,7 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
    * @param reason Reason of execution.
    * @param stopOngoingExecution True to stop the ongoing execution (if any) and start executing the given proposals,
    *                             false otherwise.
+   * @param isTriggeredByUserRequest True if proposals is triggered by user request, false otherwise.
    *
    * @return The optimization result.
    * @throws KafkaCruiseControlException When any exception occurred during the topic configuration updating.
@@ -153,7 +232,8 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
                                                       boolean excludeRecentlyRemovedBrokers,
                                                       boolean dryRun,
                                                       String reason,
-                                                      boolean stopOngoingExecution)
+                                                      boolean stopOngoingExecution,
+                                                      boolean isTriggeredByUserRequest)
       throws KafkaCruiseControlException {
     _kafkaCruiseControl.sanityCheckDryRun(dryRun, stopOngoingExecution);
     sanityCheckGoals(goals, skipHardGoalCheck, _kafkaCruiseControl.config());
@@ -216,7 +296,7 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
       if (!dryRun) {
         _kafkaCruiseControl.executeProposals(result.goalProposals(), Collections.emptySet(), false, concurrentInterBrokerPartitionMovements,
                                              0, concurrentLeaderMovements, executionProgressCheckIntervalMs,
-                                             replicaMovementStrategy, replicationThrottle, true, _uuid, () -> reason);
+                                             replicaMovementStrategy, replicationThrottle, isTriggeredByUserRequest, _uuid, () -> reason);
       }
     } catch (KafkaCruiseControlException kcce) {
       throw kcce;

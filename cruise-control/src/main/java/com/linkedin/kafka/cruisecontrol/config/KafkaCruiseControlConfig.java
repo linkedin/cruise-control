@@ -97,27 +97,9 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    */
   public <T> T getConfiguredInstance(String key, Class<T> t, Map<String, Object> configOverrides) {
     Class<?> c = getClass(key);
-    Object instance;
-    try {
-      instance = c.newInstance();
-    } catch (IllegalAccessException e) {
-      throw new IllegalArgumentException("Could not instantiate class " + c.getName(), e);
-    } catch (InstantiationException e) {
-      throw new IllegalArgumentException("Could not instantiate class " + c.getName() + " Does it have a public no-argument constructor?", e);
-    } catch (NullPointerException e) {
-      throw new IllegalArgumentException("Attempt to get configured instance of null configuration " + t.getName(), e);
-    }
-
-    if (!t.isInstance(instance)) {
-      throw new IllegalArgumentException(c.getName() + " is not an instance of " + t.getName());
-    }
-    T o = t.cast(instance);
-    if (o instanceof CruiseControlConfigurable) {
-      Map<String, Object> configPairs = mergedConfigValues();
-      configPairs.putAll(configOverrides);
-      ((CruiseControlConfigurable) o).configure(configPairs);
-    }
-    return o;
+    Map<String, Object> configPairs = mergedConfigValues();
+    configPairs.putAll(configOverrides);
+    return KafkaCruiseControlConfigUtils.getConfiguredInstance(c, t, configPairs);
   }
 
   /**
