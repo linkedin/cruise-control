@@ -75,7 +75,7 @@ public class AnalyzerState {
         Goal goal = entry.getKey();
         String goalReadyStatus = entry.getValue() ? READY : NOT_READY;
         GoalReadinessRecord goalReadinessRecord = new GoalReadinessRecord(goal, goalReadyStatus);
-        goalReadinessList.add(goalReadinessRecord);
+        goalReadinessList.add(goalReadinessRecord.getJsonStructure());
       }
       analyzerState.put(GOAL_READINESS, goalReadinessList);
     }
