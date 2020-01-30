@@ -59,10 +59,10 @@ public class GoalUtils {
    * @param replica Replica affected from the action.
    * @param action Action that affects the given replica.
    */
-  private static void filterOutBrokersExcludedForLeadership(List<Broker> originalBrokers,
-                                                            OptimizationOptions optimizationOptions,
-                                                            Replica replica,
-                                                            ActionType action) {
+  public static void filterOutBrokersExcludedForLeadership(List<Broker> originalBrokers,
+                                                           OptimizationOptions optimizationOptions,
+                                                           Replica replica,
+                                                           ActionType action) {
     Set<Integer> requestedDestinationBrokerIds = optimizationOptions.requestedDestinationBrokerIds();
     if (requestedDestinationBrokerIds.isEmpty() || (action == ActionType.LEADERSHIP_MOVEMENT)) {
       Set<Integer> excludedBrokers = optimizationOptions.excludedBrokersForLeadership();
@@ -88,9 +88,9 @@ public class GoalUtils {
    * @param optimizationOptions Options to take into account while filtering out brokers.
    * @param action Action that affects the given replica.
    */
-  private static void filterOutBrokersExcludedForReplicaMove(List<Broker> originalBrokers,
-                                                             OptimizationOptions optimizationOptions,
-                                                             ActionType action) {
+  public static void filterOutBrokersExcludedForReplicaMove(List<Broker> originalBrokers,
+                                                            OptimizationOptions optimizationOptions,
+                                                            ActionType action) {
     Set<Integer> requestedDestinationBrokerIds = optimizationOptions.requestedDestinationBrokerIds();
     if (requestedDestinationBrokerIds.isEmpty()) {
       Set<Integer> excludedBrokers = optimizationOptions.excludedBrokersForReplicaMove();
@@ -118,11 +118,11 @@ public class GoalUtils {
    * @param optimizationOptions Options to take into account while applying the given action.
    * @return List of eligible brokers with a fixed order.
    */
-  static List<Broker> eligibleBrokers(ClusterModel clusterModel,
-                                      Replica replica,
-                                      Collection<Broker> candidates,
-                                      ActionType action,
-                                      OptimizationOptions optimizationOptions) {
+  public static List<Broker> eligibleBrokers(ClusterModel clusterModel,
+                                             Replica replica,
+                                             Collection<Broker> candidates,
+                                             ActionType action,
+                                             OptimizationOptions optimizationOptions) {
     List<Broker> eligibleBrokers = new ArrayList<>(candidates);
     filterOutBrokersExcludedForLeadership(eligibleBrokers, optimizationOptions, replica, action);
     filterOutBrokersExcludedForReplicaMove(eligibleBrokers, optimizationOptions, action);
@@ -150,10 +150,10 @@ public class GoalUtils {
    * @param actionType Action type.
    * @return True if the move is legit, false otherwise.
    */
-  static boolean legitMove(Replica replica,
-                           Broker destinationBroker,
-                           ClusterModel clusterModel,
-                           ActionType actionType) {
+  public static boolean legitMove(Replica replica,
+                                  Broker destinationBroker,
+                                  ClusterModel clusterModel,
+                                  ActionType actionType) {
     switch (actionType) {
       case INTER_BROKER_REPLICA_MOVEMENT:
         return clusterModel.partition(replica.topicPartition()).canAssignReplicaToBroker(destinationBroker)
@@ -174,9 +174,9 @@ public class GoalUtils {
    * @param actionType Action type.
    * @return True if the move is legit, false otherwise.
    */
-  static boolean legitMoveBetweenDisks(Replica replica,
-                                       Disk destinationDisk,
-                                       ActionType actionType) {
+  public static boolean legitMoveBetweenDisks(Replica replica,
+                                              Disk destinationDisk,
+                                              ActionType actionType) {
     return actionType == ActionType.INTRA_BROKER_REPLICA_MOVEMENT
            && destinationDisk != null
            && destinationDisk.broker() == replica.broker()
@@ -195,10 +195,10 @@ public class GoalUtils {
    * @param optimizationOptions Options to take into account while applying the given action.
    * @return Eligible replicas for swap.
    */
-  static SortedSet<Replica> eligibleReplicasForSwap(ClusterModel clusterModel,
-                                                    Replica sourceReplica,
-                                                    SortedSet<Replica> candidateReplicas,
-                                                    OptimizationOptions optimizationOptions) {
+  public static SortedSet<Replica> eligibleReplicasForSwap(ClusterModel clusterModel,
+                                                           Replica sourceReplica,
+                                                           SortedSet<Replica> candidateReplicas,
+                                                           OptimizationOptions optimizationOptions) {
     if (candidateReplicas.isEmpty()) {
       return candidateReplicas;
     }
@@ -284,7 +284,7 @@ public class GoalUtils {
    * @param immigrantsOnly True if replicas should be filtered to ensure that they contain only the immigrants.
    * @return A filtered set of leaders from the given broker based on given filtering requirements.
    */
-  private static Set<Replica> filterLeaders(Broker broker, boolean immigrantsOnly) {
+  public static Set<Replica> filterLeaders(Broker broker, boolean immigrantsOnly) {
     Set<Replica> filteredLeaders;
     if (immigrantsOnly) {
       filteredLeaders = new HashSet<>(broker.immigrantReplicas());
@@ -345,7 +345,7 @@ public class GoalUtils {
    * @param replicas A list of replicas to be sorted by the amount of resources that their broker contains.
    * @param resource Resource for which the given replicas will be sorted.
    */
-  static void sortReplicasInAscendingOrderByBrokerResourceUtilization(List<Replica> replicas, Resource resource) {
+  public static void sortReplicasInAscendingOrderByBrokerResourceUtilization(List<Replica> replicas, Resource resource) {
     replicas.sort((r1, r2) -> {
       double expectedBrokerLoad1 = r1.broker().load().expectedUtilizationFor(resource);
       double expectedBrokerLoad2 = r2.broker().load().expectedUtilizationFor(resource);
@@ -363,7 +363,7 @@ public class GoalUtils {
    * @param leaderOnly Whether the {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas} tracks only leader replicas or all replicas.
    * @return A descriptive name for the {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas}.
    */
-  static String replicaSortName(Goal goal, boolean reverse, boolean leaderOnly) {
+  public static String replicaSortName(Goal goal, boolean reverse, boolean leaderOnly) {
     return String.format("%s%s%s", goal.name(), reverse ? "-REVERSE" : "", leaderOnly ? "-LEADER" : "");
   }
 
@@ -374,7 +374,7 @@ public class GoalUtils {
    * @param optimizationOptions Options to take into account during optimization.
    * @return A message that is intended to help with the mitigation of of optimization failures.
    */
-  static String mitigationForOptimizationFailures(OptimizationOptions optimizationOptions) {
+  public static String mitigationForOptimizationFailures(OptimizationOptions optimizationOptions) {
     StringBuilder sb = new StringBuilder();
 
     if (optimizationOptions.onlyMoveImmigrantReplicas()) {
