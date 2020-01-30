@@ -135,8 +135,8 @@ project(':cruise-control-core') {
   }
 
   dependencies {
-    compile "org.slf4j:slf4j-api:1.7.29"
-    compile 'junit:junit:4.12'
+    compile "org.slf4j:slf4j-api:1.7.30"
+    compile 'junit:junit:4.13'
     compile 'org.apache.commons:commons-math3:3.6.1'
     compile 'org.eclipse.jetty:jetty-servlet:9.4.23.v20191118'
 
@@ -209,12 +209,12 @@ project(':cruise-control') {
   dependencies {
     compile project(':cruise-control-metrics-reporter')
     compile project(':cruise-control-core')
-    compile "org.slf4j:slf4j-api:1.7.29" // TODO: Upgrade log4j to log4j2 to use async logger.
+    compile "org.slf4j:slf4j-api:1.7.30" // TODO: Upgrade log4j to log4j2 to use async logger.
     compile "org.apache.zookeeper:zookeeper:3.5.6"
     compile "org.apache.kafka:kafka_2.11:2.3.0"
     compile 'org.apache.kafka:kafka-clients:2.3.0'
     compile "org.scala-lang:scala-library:2.11.11"
-    compile 'junit:junit:4.12'
+    compile 'junit:junit:4.13'
     compile 'org.apache.commons:commons-math3:3.6.1'
     compile 'org.apache.httpcomponents:httpclient:4.5.10'
     compile 'com.google.code.gson:gson:2.8.6'
@@ -323,10 +323,10 @@ project(':cruise-control-metrics-reporter') {
   }
 
   dependencies {
-    compile "org.slf4j:slf4j-api:1.7.29"
+    compile "org.slf4j:slf4j-api:1.7.30"
     compile "org.apache.kafka:kafka_2.11:2.3.0"
     compile 'org.apache.kafka:kafka-clients:2.3.0'
-    compile 'junit:junit:4.12'
+    compile 'junit:junit:4.13'
     compile 'org.apache.commons:commons-math3:3.6.1'
 
     testCompile 'org.bouncycastle:bcpkix-jdk15on:1.64'
