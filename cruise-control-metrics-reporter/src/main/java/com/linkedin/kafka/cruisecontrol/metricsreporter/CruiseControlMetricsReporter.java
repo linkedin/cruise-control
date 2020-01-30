@@ -191,7 +191,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       try {
         Collection<TopicListing> topicListings = _adminClient.listTopics().listings().get();
         boolean topicExists = false;
-        for(TopicListing topicListing : topicListings) {
+        for (TopicListing topicListing : topicListings) {
           if (topicListing.name().equals(_cruiseControlMetricsTopic)) {
             topicExists = true;
             break;
