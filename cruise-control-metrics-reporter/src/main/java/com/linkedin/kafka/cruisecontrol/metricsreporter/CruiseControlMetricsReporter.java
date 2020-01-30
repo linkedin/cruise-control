@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.TopicMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.YammerMetricProcessor;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Metric;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -23,14 +24,16 @@ import kafka.server.KafkaConfig;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
+import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.admin.TopicDescription;
+import org.apache.kafka.clients.admin.TopicListing;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.errors.InterruptException;
-import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.metrics.KafkaMetric;
 import org.apache.kafka.common.metrics.MetricsReporter;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -162,20 +165,48 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       createTopicsResult.values().get(_newTopic.name()).get();
       LOG.info("Cruise Control metrics topic created: {}", _cruiseControlMetricsTopic);
     } catch (InterruptedException | ExecutionException e) {
-      if (!(e.getCause() instanceof TopicExistsException)) {
-        LOG.error("Unable to create Cruise Control topic", e);
-      }
+      LOG.warn("Unable to create Cruise Control metrics topic " + _cruiseControlMetricsTopic, e);
     }
   }
+
+  private void maybeUpdateCruiseControlMetricsTopic() {
+    try {
+      TopicDescription topicDescription =
+          _adminClient.describeTopics(Collections.singletonList(_cruiseControlMetricsTopic)).values()
+                      .get(_cruiseControlMetricsTopic).get();
+      if (topicDescription.partitions().size() < _newTopic.numPartitions()) {
+        _adminClient.createPartitions(Collections.singletonMap(_cruiseControlMetricsTopic,
+                                                               NewPartitions.increaseTo(_newTopic.numPartitions())));
+      }
+    } catch (InterruptedException | ExecutionException e) {
+      LOG.warn(String.format("Unable to increase Cruise Cruise Control metrics topic %s's partition number to %d",
+                             _cruiseControlMetricsTopic, _newTopic.replicationFactor()), e);
+      }
+    }
 
   @Override
   public void run() {
     LOG.info("Starting Cruise Control metrics reporter with reporting interval of {} ms.", _reportingIntervalMs);
-
     if (_newTopic != null && _adminClient != null) {
-      LOG.info("Try to create Cruise Control metrics topic if not exist");
-      createCruiseControlMetricsTopic();
-      CruiseControlMetricsUtils.closeAdminClientWithTimeout(_adminClient, 5000);
+      try {
+        Collection<TopicListing> topicListings = _adminClient.listTopics().listings().get();
+        boolean topicExists = false;
+        for(TopicListing topicListing : topicListings) {
+          if (topicListing.name().equals(_cruiseControlMetricsTopic)) {
+            topicExists = true;
+            break;
+          }
+        }
+        if (topicExists) {
+          maybeUpdateCruiseControlMetricsTopic();
+        } else {
+          createCruiseControlMetricsTopic();
+        }
+      } catch (InterruptedException | ExecutionException e) {
+        LOG.warn("Skip checking Cruise Control metrics topic " + _newTopic.name(), e);
+      } finally {
+        CruiseControlMetricsUtils.closeAdminClientWithTimeout(_adminClient, 5000);
+      }
     }
 
     try {
