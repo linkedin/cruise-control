@@ -163,9 +163,9 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     try {
       final CreateTopicsResult createTopicsResult = _adminClient.createTopics(Collections.singletonList(_newTopic));
       createTopicsResult.values().get(_newTopic.name()).get();
-      LOG.info("Cruise Control metrics topic created: {}", _cruiseControlMetricsTopic);
+      LOG.info("Cruise Control metrics topic {} is created.", _cruiseControlMetricsTopic);
     } catch (InterruptedException | ExecutionException e) {
-      LOG.warn("Unable to create Cruise Control metrics topic " + _cruiseControlMetricsTopic, e);
+      LOG.warn("Unable to create Cruise Control metrics topic {}.", _cruiseControlMetricsTopic, e);
     }
   }
 
@@ -205,7 +205,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       } catch (InterruptedException | ExecutionException e) {
         LOG.warn("Skip checking Cruise Control metrics topic " + _newTopic.name(), e);
       } finally {
-        CruiseControlMetricsUtils.closeAdminClientWithTimeout(_adminClient, 5000);
+        CruiseControlMetricsUtils.closeAdminClientWithTimeout(_adminClient);
       }
     }
 
