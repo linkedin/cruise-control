@@ -143,8 +143,8 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
 
   }
 
-  private NewTopic createNewTopicFromReporterConfig(CruiseControlMetricsReporterConfig reporterConfig)
-  throws CruiseControlMetricsReporterException {
+  protected NewTopic createNewTopicFromReporterConfig(CruiseControlMetricsReporterConfig reporterConfig)
+      throws CruiseControlMetricsReporterException {
     String cruiseControlMetricsTopic =
         reporterConfig.getString(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG);
     Integer cruiseControlMetricsTopicNumPartition =
@@ -159,7 +159,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     return new NewTopic(cruiseControlMetricsTopic, cruiseControlMetricsTopicNumPartition, cruiseControlMetricsTopicReplicaFactor);
   }
 
-  private void createCruiseControlMetricsTopic() {
+  protected void createCruiseControlMetricsTopic() {
     try {
       final CreateTopicsResult createTopicsResult = _adminClient.createTopics(Collections.singletonList(_newTopic));
       createTopicsResult.values().get(_newTopic.name()).get();
@@ -169,7 +169,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     }
   }
 
-  private void maybeUpdateCruiseControlMetricsTopic() {
+  protected void maybeUpdateCruiseControlMetricsTopic() {
     try {
       TopicDescription topicDescription =
           _adminClient.describeTopics(Collections.singletonList(_cruiseControlMetricsTopic)).values()
