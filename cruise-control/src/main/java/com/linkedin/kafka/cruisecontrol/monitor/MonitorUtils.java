@@ -457,7 +457,7 @@ public class MonitorUtils {
     if (partitionInfo != null) {
       Set<Integer> aliveBrokers = cluster.nodes().stream().mapToInt(Node::id).boxed().collect(Collectors.toSet());
       boolean needToAdjustCpuUsage = true;
-      Set<Integer> deadBrokers = new HashSet<>();
+      Set<Integer> deadBrokersWithUnknownCapacity = new HashSet<>();
       for (int index = 0; index < partitionInfo.replicas().length; index++) {
         Node replica = partitionInfo.replicas()[index];
         String rack = getRackHandleNull(replica);
@@ -468,9 +468,12 @@ public class MonitorUtils {
           // Capacity resolver may not be able to return the capacity information of dead brokers.
           if (!aliveBrokers.contains(replica.id())) {
             brokerCapacity = new BrokerCapacityInfo(EMPTY_BROKER_CAPACITY);
-            deadBrokers.add(replica.id());
+            deadBrokersWithUnknownCapacity.add(replica.id());
           } else {
-            throw tme;
+            String errorMessage = String.format("Unable to retrieve capacity for broker %d. This may be caused by churn in "
+                                                + "the cluster, please retry.", replica.id());
+            LOG.warn(errorMessage, tme);
+            throw new TimeoutException(errorMessage);
           }
         }
         clusterModel.handleDeadBroker(rack, replica.id(), brokerCapacity);
@@ -498,8 +501,9 @@ public class MonitorUtils {
                                     valuesAndExtrapolations.windows());
         needToAdjustCpuUsage = false;
       }
-      if (!deadBrokers.isEmpty()) {
-        LOG.info("Assign empty capacity to dead brokers {} in cluster model.", deadBrokers);
+      if (!deadBrokersWithUnknownCapacity.isEmpty()) {
+        LOG.info("Assign empty capacity to brokers {} because they are dead and capacity resolver is unable to fetch their capacity.",
+                 deadBrokersWithUnknownCapacity);
       }
     }
   }

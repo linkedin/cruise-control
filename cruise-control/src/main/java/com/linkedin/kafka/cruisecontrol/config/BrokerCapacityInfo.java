@@ -31,7 +31,7 @@ public class BrokerCapacityInfo {
                             String estimationInfo,
                             Map<String, Double> diskCapacityByLogDir,
                             short numCpuCores) {
-    sanityCheckCapcity(capacity);
+    sanityCheckCapacity(capacity);
     _capacity = capacity;
     _estimationInfo = estimationInfo == null ? DEFAULT_ESTIMATION_INFO : estimationInfo;
     _diskCapacityByLogDir = diskCapacityByLogDir;
@@ -138,7 +138,7 @@ public class BrokerCapacityInfo {
    * Sanity check to ensure the provided capacity information contains all the resource type.
    * @param capacity The provided capacity map.
    */
-  static void sanityCheckCapcity(Map<Resource, Double> capacity) {
+  static void sanityCheckCapacity(Map<Resource, Double> capacity) {
     Set<Resource> providedResource = capacity.keySet();
     Set<Resource> missingResource = Resource.cachedValues().stream().filter(r -> !providedResource.contains(r))
                                             .collect(Collectors.toSet());

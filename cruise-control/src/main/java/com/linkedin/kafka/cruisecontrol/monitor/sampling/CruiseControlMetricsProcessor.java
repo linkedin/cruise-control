@@ -86,7 +86,7 @@ public class CruiseControlMetricsProcessor {
           // No mapping shall be recorded if capacity is estimated, but estimation is not allowed.
           return (!_allowCpuCapacityEstimation && capacity.isEstimated()) ? null : capacity.numCpuCores();
         } catch (TimeoutException tme) {
-          LOG.warn("Unable to get number of CPU cores for broker {}.", node.id());
+          LOG.warn("Unable to get number of CPU cores for broker {}.", node.id(), tme);
           return null;
         }
       });

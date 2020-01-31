@@ -515,9 +515,17 @@ public class LoadMonitor {
         // If the rack is not specified, we use the host info as rack info.
         String rack = getRackHandleNull(node);
         clusterModel.createRack(rack);
-        BrokerCapacityInfo brokerCapacity = _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id(), BROKER_CAPACITY_FETCH_TIMEOUT_MS);
-        LOG.debug("Get capacity info for broker {}: total capacity {}, capacity by logdir {}.",
-                  node.id(), brokerCapacity.capacity().get(Resource.DISK), brokerCapacity.diskCapacityByLogDir());
+        BrokerCapacityInfo brokerCapacity;
+        try {
+          brokerCapacity = _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id(), BROKER_CAPACITY_FETCH_TIMEOUT_MS);
+          LOG.debug("Get capacity info for broker {}: total capacity {}, capacity by logdir {}.", node.id(),
+                    brokerCapacity.capacity().get(Resource.DISK), brokerCapacity.diskCapacityByLogDir());
+        } catch (TimeoutException tme) {
+          String errorMessage = String.format("Unable to retrieve capacity for broker %d. This may be caused by churn in "
+                                              + "the cluster, please retry.", node.id());
+          LOG.warn(errorMessage, tme);
+          throw new TimeoutException(errorMessage);
+        }
         clusterModel.createBroker(rack, node.host(), node.id(), brokerCapacity, populateReplicaPlacementInfo);
       }
 
