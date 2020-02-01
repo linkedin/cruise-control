@@ -29,6 +29,7 @@ import org.apache.kafka.common.TopicPartition;
 
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.JBOD_BROKER_CAPACITY_CONFIG_FILE;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.DEFAULT_BROKER_CAPACITY_CONFIG_FILE;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.BROKER_CAPACITY_FETCH_TIMEOUT_MS;
 
 /**
  * A class to generate and populate random clusters with given properties.
@@ -69,13 +70,15 @@ public class RandomCluster {
     }
     // Create brokers and assign a broker to each rack.
     for (int i = 0; i < numRacks; i++) {
-      cluster.createBroker(Integer.toString(i), Integer.toString(i), i, configFileResolver.capacityForBroker("", "", i),
+      cluster.createBroker(Integer.toString(i), Integer.toString(i), i,
+                           configFileResolver.capacityForBroker("", "", i, BROKER_CAPACITY_FETCH_TIMEOUT_MS),
                            populateReplicaPlacementInfo);
     }
     // Assign the rest of the brokers over racks randomly.
     for (int i = numRacks; i < numBrokers; i++) {
       int randomRackId = uniformlyRandom(0, numRacks - 1, TestConstants.SEED_BASE + i);
-      cluster.createBroker(Integer.toString(randomRackId), Integer.toString(i), i, configFileResolver.capacityForBroker("", "", i),
+      cluster.createBroker(Integer.toString(randomRackId), Integer.toString(i), i,
+                           configFileResolver.capacityForBroker("", "", i, BROKER_CAPACITY_FETCH_TIMEOUT_MS),
                            populateReplicaPlacementInfo);
     }
     return cluster;

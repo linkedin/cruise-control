@@ -49,6 +49,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.clients.Metadata;
@@ -68,6 +69,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.getReplicaPl
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.partitionSampleExtrapolations;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.populatePartitionLoad;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.setBadBrokerState;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.BROKER_CAPACITY_FETCH_TIMEOUT_MS;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL;
 
 /**
@@ -423,11 +425,12 @@ public class LoadMonitor {
    * @param operationProgress the progress to report.
    * @return A cluster model with the configured number of windows whose timestamp is before given timestamp.
    * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
+   * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity.
    */
   public ClusterModel clusterModel(long now,
                                    ModelCompletenessRequirements requirements,
                                    OperationProgress operationProgress)
-      throws NotEnoughValidWindowsException {
+      throws NotEnoughValidWindowsException, TimeoutException {
     ClusterModel clusterModel = clusterModel(DEFAULT_START_TIME_FOR_CLUSTER_MODEL, now, requirements, operationProgress);
     // Micro optimization: put the broker stats construction out of the lock.
     BrokerStats brokerStats = clusterModel.brokerStats(_config);
@@ -448,12 +451,13 @@ public class LoadMonitor {
    * @param operationProgress the progress of the job to report.
    * @return A cluster model with the available snapshots whose timestamp is in the given window.
    * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
+   * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity.
    */
   public ClusterModel clusterModel(long from,
                                    long to,
                                    ModelCompletenessRequirements requirements,
                                    OperationProgress operationProgress)
-      throws NotEnoughValidWindowsException {
+      throws NotEnoughValidWindowsException, TimeoutException {
     return clusterModel(from, to, requirements, false, operationProgress);
   }
 
@@ -467,13 +471,14 @@ public class LoadMonitor {
    * @param operationProgress the progress of the job to report.
    * @return A cluster model with the available snapshots whose timestamp is in the given window.
    * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
+   * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity.
    */
   public ClusterModel clusterModel(long from,
                                    long to,
                                    ModelCompletenessRequirements requirements,
                                    boolean populateReplicaPlacementInfo,
                                    OperationProgress operationProgress)
-      throws NotEnoughValidWindowsException {
+      throws NotEnoughValidWindowsException, TimeoutException {
     long start = System.currentTimeMillis();
 
     MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
@@ -510,9 +515,17 @@ public class LoadMonitor {
         // If the rack is not specified, we use the host info as rack info.
         String rack = getRackHandleNull(node);
         clusterModel.createRack(rack);
-        BrokerCapacityInfo brokerCapacity = _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id());
-        LOG.debug("Get capacity info for broker {}: total capacity {}, capacity by logdir {}.",
-                  node.id(), brokerCapacity.capacity().get(Resource.DISK), brokerCapacity.diskCapacityByLogDir());
+        BrokerCapacityInfo brokerCapacity;
+        try {
+          brokerCapacity = _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id(), BROKER_CAPACITY_FETCH_TIMEOUT_MS);
+          LOG.debug("Get capacity info for broker {}: total capacity {}, capacity by logdir {}.", node.id(),
+                    brokerCapacity.capacity().get(Resource.DISK), brokerCapacity.diskCapacityByLogDir());
+        } catch (TimeoutException tme) {
+          String errorMessage = String.format("Unable to retrieve capacity for broker %d. This may be caused by churn in "
+                                              + "the cluster, please retry.", node.id());
+          LOG.warn(errorMessage, tme);
+          throw new TimeoutException(errorMessage);
+        }
         clusterModel.createBroker(rack, node.host(), node.id(), brokerCapacity, populateReplicaPlacementInfo);
       }
 

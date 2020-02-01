@@ -37,8 +37,8 @@ import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.EMPTY_BROKER_CAPACITY;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVAL_TO_PERCENTAGE;
-
 
 /**
  * A class that holds the information of the cluster, including topology, liveness and load for racks, brokers and
@@ -48,7 +48,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVA
 public class ClusterModel implements Serializable {
   private static final long serialVersionUID = -6840253566423285966L;
   // Hypothetical broker that indicates the original broker of replicas to be created in the existing cluster model.
-  private static final Broker GENESIS_BROKER = new Broker(null, -1, new BrokerCapacityInfo(Collections.emptyMap()), false);
+  private static final Broker GENESIS_BROKER = new Broker(null, -1, new BrokerCapacityInfo(EMPTY_BROKER_CAPACITY), false);
 
   private final ModelGeneration _generation;
   private final Map<String, Rack> _racksById;

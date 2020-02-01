@@ -22,6 +22,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrap
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -57,6 +58,14 @@ public class MonitorUtils {
   // A utility variable for conversion of unit interval to percentage -- i.e. [0, 1.0] -> [0, 100.0].
   public static final double UNIT_INTERVAL_TO_PERCENTAGE = 100.0;
   private static final Logger LOG = LoggerFactory.getLogger(MonitorUtils.class);
+  public static final Map<Resource, Double> EMPTY_BROKER_CAPACITY;
+  public static final long BROKER_CAPACITY_FETCH_TIMEOUT_MS = 10000L;
+
+  static {
+    Map<Resource, Double> emptyBrokerCapacity = new HashMap<>(Resource.cachedValues().size());
+    Resource.cachedValues().forEach(r -> emptyBrokerCapacity.put(r, 0.0));
+    EMPTY_BROKER_CAPACITY = Collections.unmodifiableMap(emptyBrokerCapacity);
+  }
 
   private MonitorUtils() {
 
@@ -442,18 +451,31 @@ public class MonitorUtils {
                                     TopicPartition tp,
                                     ValuesAndExtrapolations valuesAndExtrapolations,
                                     Map<TopicPartition, Map<Integer, String>> replicaPlacementInfo,
-                                    BrokerCapacityConfigResolver brokerCapacityConfigResolver) {
+                                    BrokerCapacityConfigResolver brokerCapacityConfigResolver) throws TimeoutException {
     PartitionInfo partitionInfo = cluster.partition(tp);
     // If partition info does not exist, the topic may have been deleted.
     if (partitionInfo != null) {
+      Set<Integer> aliveBrokers = cluster.nodes().stream().mapToInt(Node::id).boxed().collect(Collectors.toSet());
       boolean needToAdjustCpuUsage = true;
+      Set<Integer> deadBrokersWithUnknownCapacity = new HashSet<>();
       for (int index = 0; index < partitionInfo.replicas().length; index++) {
         Node replica = partitionInfo.replicas()[index];
         String rack = getRackHandleNull(replica);
-        // Note that we assume the capacity resolver can still return the broker capacity even if the broker
-        // is dead. We need this to get the host resource capacity.
-        BrokerCapacityInfo brokerCapacity =
-            brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id());
+        BrokerCapacityInfo brokerCapacity;
+        try {
+          brokerCapacity = brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id(), BROKER_CAPACITY_FETCH_TIMEOUT_MS);
+        } catch (TimeoutException tme) {
+          // Capacity resolver may not be able to return the capacity information of dead brokers.
+          if (!aliveBrokers.contains(replica.id())) {
+            brokerCapacity = new BrokerCapacityInfo(EMPTY_BROKER_CAPACITY);
+            deadBrokersWithUnknownCapacity.add(replica.id());
+          } else {
+            String errorMessage = String.format("Unable to retrieve capacity for broker %d. This may be caused by churn in "
+                                                + "the cluster, please retry.", replica.id());
+            LOG.warn(errorMessage, tme);
+            throw new TimeoutException(errorMessage);
+          }
+        }
         clusterModel.handleDeadBroker(rack, replica.id(), brokerCapacity);
         boolean isLeader;
         if (partitionInfo.leader() == null) {
@@ -478,6 +500,10 @@ public class MonitorUtils {
                                                               needToAdjustCpuUsage),
                                     valuesAndExtrapolations.windows());
         needToAdjustCpuUsage = false;
+      }
+      if (!deadBrokersWithUnknownCapacity.isEmpty()) {
+        LOG.info("Assign empty capacity to brokers {} because they are dead and capacity resolver is unable to fetch their capacity.",
+                 deadBrokersWithUnknownCapacity);
       }
     }
   }

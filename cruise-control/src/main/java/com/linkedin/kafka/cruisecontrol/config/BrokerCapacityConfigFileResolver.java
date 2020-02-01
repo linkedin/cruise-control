@@ -163,7 +163,7 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
   }
 
   @Override
-  public BrokerCapacityInfo capacityForBroker(String rack, String host, int brokerId) {
+  public BrokerCapacityInfo capacityForBroker(String rack, String host, int brokerId, long timeoutMs) {
     if (brokerId >= 0) {
       BrokerCapacityInfo capacity = _capacitiesForBrokers.get(brokerId);
       if (capacity != null) {
