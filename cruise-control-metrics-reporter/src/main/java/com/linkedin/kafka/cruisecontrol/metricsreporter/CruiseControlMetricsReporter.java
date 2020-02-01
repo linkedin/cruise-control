@@ -14,16 +14,25 @@ import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Metric;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import kafka.log.LogConfig;
 import kafka.server.KafkaConfig;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AlterConfigOp;
+import org.apache.kafka.clients.admin.AlterConfigsResult;
+import org.apache.kafka.clients.admin.Config;
+import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
+import org.apache.kafka.clients.admin.DescribeConfigsResult;
 import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
@@ -33,6 +42,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.metrics.KafkaMetric;
 import org.apache.kafka.common.metrics.MetricsReporter;
@@ -140,7 +150,6 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
         LOG.warn("Cruise Control metrics topic auto creation was disabled", e);
       }
     }
-
   }
 
   protected NewTopic createNewTopicFromReporterConfig(CruiseControlMetricsReporterConfig reporterConfig)
@@ -151,12 +160,18 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
         reporterConfig.getInt(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS_CONFIG);
     Short cruiseControlMetricsTopicReplicaFactor =
         reporterConfig.getShort(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_CONFIG);
-
     if (cruiseControlMetricsTopicReplicaFactor <= 0 || cruiseControlMetricsTopicNumPartition <= 0) {
       throw new CruiseControlMetricsReporterException("The topic configuration must explicitly set the replication factor and the num partitions");
     }
+    NewTopic newTopic = new NewTopic(cruiseControlMetricsTopic, cruiseControlMetricsTopicNumPartition, cruiseControlMetricsTopicReplicaFactor);
 
-    return new NewTopic(cruiseControlMetricsTopic, cruiseControlMetricsTopicNumPartition, cruiseControlMetricsTopicReplicaFactor);
+    Map<String, String> config = new HashMap<>(2);
+    config.put(LogConfig.RetentionMsProp(),
+               Long.toString(reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_RETENTION_MS_CONFIG)));
+    config.put(LogConfig.CleanupPolicyProp(),
+               reporterConfig.getString(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY_CONFIG));
+    newTopic.configs(config);
+    return newTopic;
   }
 
   protected void createCruiseControlMetricsTopic() {
@@ -171,6 +186,33 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
 
   protected void maybeUpdateCruiseControlMetricsTopic() {
     try {
+      // Retrieve topic config to check and update.
+      ConfigResource topicResource = new ConfigResource(ConfigResource.Type.TOPIC, _cruiseControlMetricsTopic);
+      DescribeConfigsResult describeConfigsResult = _adminClient.describeConfigs(Collections.singleton(topicResource));
+      Config topicConfig = describeConfigsResult.values().get(topicResource).get();
+      Set<AlterConfigOp> configsToBeSet = new HashSet<>(2);
+      if(topicConfig.get(LogConfig.RetentionMsProp()) == null ||
+         !topicConfig.get(LogConfig.RetentionMsProp()).value().equals(_newTopic.configs().get(LogConfig.RetentionMsProp()))) {
+        configsToBeSet.add(new AlterConfigOp(new ConfigEntry(LogConfig.RetentionMsProp(),
+                                                             _newTopic.configs().get(LogConfig.RetentionMsProp())),
+                                             AlterConfigOp.OpType.SET));
+      }
+      if(topicConfig.get(LogConfig.CleanupPolicyProp()) == null ||
+         !topicConfig.get(LogConfig.CleanupPolicyProp()).value().equals(_newTopic.configs().get(LogConfig.CleanupPolicyProp()))) {
+        configsToBeSet.add(new AlterConfigOp(new ConfigEntry(LogConfig.CleanupPolicyProp(),
+                                                             _newTopic.configs().get(LogConfig.CleanupPolicyProp())),
+                                             AlterConfigOp.OpType.SET));
+      }
+      if (!configsToBeSet.isEmpty()) {
+        AlterConfigsResult alterConfigsResult = _adminClient.incrementalAlterConfigs(Collections.singletonMap(topicResource, configsToBeSet));
+        alterConfigsResult.values().get(topicResource).get();
+      }
+    } catch (InterruptedException | ExecutionException e) {
+      LOG.warn("Unable to update config of Cruise Cruise Control metrics topic {}", _cruiseControlMetricsTopic, e);
+    }
+
+    try {
+      // Retrieve topic partition count to check and update.
       TopicDescription topicDescription =
           _adminClient.describeTopics(Collections.singletonList(_cruiseControlMetricsTopic)).values()
                       .get(_cruiseControlMetricsTopic).get();
@@ -179,8 +221,8 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
                                                                NewPartitions.increaseTo(_newTopic.numPartitions())));
       }
     } catch (InterruptedException | ExecutionException e) {
-      LOG.warn(String.format("Unable to increase Cruise Cruise Control metrics topic %s's partition number to %d",
-                             _cruiseControlMetricsTopic, _newTopic.replicationFactor()), e);
+      LOG.warn("Unable to increase Cruise Cruise Control metrics topic {} partition number to {}",
+               _cruiseControlMetricsTopic, _newTopic.replicationFactor(), e);
       }
     }
 

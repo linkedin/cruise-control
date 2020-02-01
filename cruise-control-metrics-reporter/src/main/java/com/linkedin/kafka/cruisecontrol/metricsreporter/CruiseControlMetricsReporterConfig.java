@@ -31,6 +31,10 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   private static final String CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS_DOC = "The number of partitions of Cruise Control metrics topic";
   public static final String CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_CONFIG = "cruise.control.metrics.topic.replication.factor";
   private static final String CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_DOC = "The replication factor of Cruise Control metrics topic";
+  public static final String CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY_CONFIG = "cruise.control.metrics.topic.clean.up.policy";
+  private static final String CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY_DOC = "The clean up policy of Cruise Control metrics topic";
+  public static final String CRUISE_CONTROL_METRICS_TOPIC_RETENTION_MS_CONFIG = "cruise.control.metrics.topic.retention.ms";
+  private static final String CRUISE_CONTROL_METRICS_TOPIC_RETENTION_MS_DOC = "The retention time of Cruise Control metrics topic";
   public static final String CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG = PREFIX + "metrics.reporting.interval.ms";
   private static final String CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_DOC = "The interval in milliseconds the "
       + "metrics reporter should report the metrics.";
@@ -48,6 +52,8 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   private static final Integer DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS = -1;
   private static final boolean DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE = false;
   private static final Short DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR = -1;
+  private static final String DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY = "delete";
+  private static final long DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_RETENTION_MS = 18000000L;
   private static final long DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS = 60000;
   private static final String PRODUCER_ID = "CruiseControlMetricsReporter";
   private static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS = 30 * 1000;
@@ -91,6 +97,16 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
                 DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR,
                 ConfigDef.Importance.LOW,
                 CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_DOC)
+        .define(CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY_CONFIG,
+                ConfigDef.Type.STRING,
+                DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY,
+                ConfigDef.Importance.LOW,
+                CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY_DOC)
+        .define(CRUISE_CONTROL_METRICS_TOPIC_RETENTION_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_RETENTION_MS,
+                ConfigDef.Importance.LOW,
+                CRUISE_CONTROL_METRICS_TOPIC_RETENTION_MS_DOC)
         .define(CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS_CONFIG,
                 ConfigDef.Type.LONG,
                 DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS,
