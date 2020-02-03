@@ -191,14 +191,14 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       DescribeConfigsResult describeConfigsResult = _adminClient.describeConfigs(Collections.singleton(topicResource));
       Config topicConfig = describeConfigsResult.values().get(topicResource).get();
       Set<AlterConfigOp> configsToBeSet = new HashSet<>(2);
-      if(topicConfig.get(LogConfig.RetentionMsProp()) == null ||
-         !topicConfig.get(LogConfig.RetentionMsProp()).value().equals(_newTopic.configs().get(LogConfig.RetentionMsProp()))) {
+      if (topicConfig.get(LogConfig.RetentionMsProp()) == null ||
+          !topicConfig.get(LogConfig.RetentionMsProp()).value().equals(_newTopic.configs().get(LogConfig.RetentionMsProp()))) {
         configsToBeSet.add(new AlterConfigOp(new ConfigEntry(LogConfig.RetentionMsProp(),
                                                              _newTopic.configs().get(LogConfig.RetentionMsProp())),
                                              AlterConfigOp.OpType.SET));
       }
-      if(topicConfig.get(LogConfig.CleanupPolicyProp()) == null ||
-         !topicConfig.get(LogConfig.CleanupPolicyProp()).value().equals(_newTopic.configs().get(LogConfig.CleanupPolicyProp()))) {
+      if (topicConfig.get(LogConfig.CleanupPolicyProp()) == null ||
+          topicConfig.get(LogConfig.CleanupPolicyProp()).value().equals(_newTopic.configs().get(LogConfig.CleanupPolicyProp()))) {
         configsToBeSet.add(new AlterConfigOp(new ConfigEntry(LogConfig.CleanupPolicyProp(),
                                                              _newTopic.configs().get(LogConfig.CleanupPolicyProp())),
                                              AlterConfigOp.OpType.SET));
