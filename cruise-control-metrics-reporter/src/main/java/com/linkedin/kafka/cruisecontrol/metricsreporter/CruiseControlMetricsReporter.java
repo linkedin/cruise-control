@@ -65,6 +65,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   private volatile boolean _shutdown = false;
   private NewTopic _newTopic;
   private AdminClient _adminClient;
+  protected static final String CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY = "delete";
 
   @Override
   public void init(List<KafkaMetric> metrics) {
@@ -168,8 +169,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     Map<String, String> config = new HashMap<>(2);
     config.put(LogConfig.RetentionMsProp(),
                Long.toString(reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_RETENTION_MS_CONFIG)));
-    config.put(LogConfig.CleanupPolicyProp(),
-               reporterConfig.getString(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY_CONFIG));
+    config.put(LogConfig.CleanupPolicyProp(), CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY);
     newTopic.configs(config);
     return newTopic;
   }
@@ -185,24 +185,25 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   }
 
   protected void maybeUpdateCruiseControlMetricsTopic() {
+    maybeUpdateTopicConfig();
+    maybeIncreaseTopicPartitionCount();
+  }
+
+  protected void maybeUpdateTopicConfig() {
     try {
       // Retrieve topic config to check and update.
       ConfigResource topicResource = new ConfigResource(ConfigResource.Type.TOPIC, _cruiseControlMetricsTopic);
       DescribeConfigsResult describeConfigsResult = _adminClient.describeConfigs(Collections.singleton(topicResource));
       Config topicConfig = describeConfigsResult.values().get(topicResource).get();
       Set<AlterConfigOp> configsToBeSet = new HashSet<>(2);
-      if (topicConfig.get(LogConfig.RetentionMsProp()) == null ||
-          !topicConfig.get(LogConfig.RetentionMsProp()).value().equals(_newTopic.configs().get(LogConfig.RetentionMsProp()))) {
-        configsToBeSet.add(new AlterConfigOp(new ConfigEntry(LogConfig.RetentionMsProp(),
-                                                             _newTopic.configs().get(LogConfig.RetentionMsProp())),
-                                             AlterConfigOp.OpType.SET));
-      }
-      if (topicConfig.get(LogConfig.CleanupPolicyProp()) == null ||
-          topicConfig.get(LogConfig.CleanupPolicyProp()).value().equals(_newTopic.configs().get(LogConfig.CleanupPolicyProp()))) {
-        configsToBeSet.add(new AlterConfigOp(new ConfigEntry(LogConfig.CleanupPolicyProp(),
-                                                             _newTopic.configs().get(LogConfig.CleanupPolicyProp())),
-                                             AlterConfigOp.OpType.SET));
-      }
+      maybeUpdateConfig(configsToBeSet,
+                        LogConfig.RetentionMsProp(),
+                        _newTopic.configs().get(LogConfig.RetentionMsProp()),
+                        topicConfig);
+      maybeUpdateConfig(configsToBeSet,
+                        LogConfig.CleanupPolicyProp(),
+                        _newTopic.configs().get(LogConfig.CleanupPolicyProp()),
+                        topicConfig);
       if (!configsToBeSet.isEmpty()) {
         AlterConfigsResult alterConfigsResult = _adminClient.incrementalAlterConfigs(Collections.singletonMap(topicResource, configsToBeSet));
         alterConfigsResult.values().get(topicResource).get();
@@ -210,7 +211,18 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     } catch (InterruptedException | ExecutionException e) {
       LOG.warn("Unable to update config of Cruise Cruise Control metrics topic {}", _cruiseControlMetricsTopic, e);
     }
+  }
 
+  protected void maybeUpdateConfig(Set<AlterConfigOp> configsToAlter,
+                                   String configName,
+                                   String targetConfigValue,
+                                   Config currentConfig) {
+    if (currentConfig.get(configName) == null || !currentConfig.get(configName).value().equals(targetConfigValue)) {
+      configsToAlter.add(new AlterConfigOp(new ConfigEntry(configName, targetConfigValue), AlterConfigOp.OpType.SET));
+    }
+  }
+
+  protected void maybeIncreaseTopicPartitionCount() {
     try {
       // Retrieve topic partition count to check and update.
       TopicDescription topicDescription =
@@ -223,8 +235,8 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     } catch (InterruptedException | ExecutionException e) {
       LOG.warn("Unable to increase Cruise Cruise Control metrics topic {} partition number to {}",
                _cruiseControlMetricsTopic, _newTopic.replicationFactor(), e);
-      }
     }
+  }
 
   @Override
   public void run() {
