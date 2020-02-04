@@ -3,8 +3,12 @@
  */
 package com.linkedin.kafka.cruisecontrol.metricsreporter;
 
+import java.util.Set;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.AlterConfigOp;
+import org.apache.kafka.clients.admin.Config;
+import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.config.SaslConfigs;
@@ -104,6 +108,22 @@ public class CruiseControlMetricsUtils {
       props.put(name, configs.getString(name));
     } catch (ConfigException ce) {
       // let it go.
+    }
+  }
+
+  /**
+   * Create a config altering operation if config's current value does not equal to target value.
+   * @param configsToAlter Set of config altering operations to be applied.
+   * @param configName Name of config to check.
+   * @param targetConfigValue Target value of the config.
+   * @param currentConfig Current value of the config.
+   */
+  public static void maybeUpdateConfig(Set<AlterConfigOp> configsToAlter,
+                                       String configName,
+                                       String targetConfigValue,
+                                       Config currentConfig) {
+    if (currentConfig.get(configName) == null || !currentConfig.get(configName).value().equals(targetConfigValue)) {
+      configsToAlter.add(new AlterConfigOp(new ConfigEntry(configName, targetConfigValue), AlterConfigOp.OpType.SET));
     }
   }
 }

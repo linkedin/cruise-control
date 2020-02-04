@@ -51,6 +51,9 @@ import org.apache.kafka.common.utils.KafkaThread;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtils.maybeUpdateConfig;
+
+
 public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(CruiseControlMetricsReporter.class);
   private YammerMetricProcessor _yammerMetricProcessor;
@@ -210,15 +213,6 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       }
     } catch (InterruptedException | ExecutionException e) {
       LOG.warn("Unable to update config of Cruise Cruise Control metrics topic {}", _cruiseControlMetricsTopic, e);
-    }
-  }
-
-  protected void maybeUpdateConfig(Set<AlterConfigOp> configsToAlter,
-                                   String configName,
-                                   String targetConfigValue,
-                                   Config currentConfig) {
-    if (currentConfig.get(configName) == null || !currentConfig.get(configName).value().equals(targetConfigValue)) {
-      configsToAlter.add(new AlterConfigOp(new ConfigEntry(configName, targetConfigValue), AlterConfigOp.OpType.SET));
     }
   }
 
