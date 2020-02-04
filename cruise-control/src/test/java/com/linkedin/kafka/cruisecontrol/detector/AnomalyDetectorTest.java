@@ -243,7 +243,8 @@ public class AnomalyDetectorTest {
   }
 
   @Test
-  public void testFixTopicAnomaly() throws InterruptedException, KafkaCruiseControlException, NotEnoughValidWindowsException {
+  public void testFixTopicAnomaly()
+      throws InterruptedException, KafkaCruiseControlException, NotEnoughValidWindowsException, TimeoutException {
     testFixAnomaly(KafkaAnomalyType.TOPIC_ANOMALY);
   }
 
