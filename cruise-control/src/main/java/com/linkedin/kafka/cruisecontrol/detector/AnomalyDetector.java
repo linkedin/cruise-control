@@ -462,8 +462,11 @@ public class AnomalyDetector {
     private void logSelfHealingOperation(String anomalyId, OptimizationFailureException ofe, String optimizationResult) {
       if (optimizationResult != null) {
         OPERATION_LOG.info("[{}] Self-healing started successfully:\n{}", anomalyId, optimizationResult);
-      } else {
+      } else if (ofe != null) {
         OPERATION_LOG.warn("[{}] Self-healing failed to start:\n{}", anomalyId, ofe);
+      } else {
+        OPERATION_LOG.warn("[{}] Self-healing failed to start due to inability to optimize combined self-healing goals ({}).",
+                           anomalyId, _selfHealingGoals);
       }
     }
 
