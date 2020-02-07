@@ -32,7 +32,6 @@ Cruise Control can use token based authentication. To enable this, use the follo
 
 #### Configuring JWT authentication with Apache Knox
 To set up an environment for *demo purposes*, please follow these instructions.
-Testing with Apache Knox:
 1. Download Knox (http://www.apache.org/dyn/closer.cgi/knox or https://knox.apache.org/books/knox-1-3-0/user-guide.html#Quick+Start)
 2. `cd {KNOX_HOME}`
 3. `bin/ldap.sh start`
