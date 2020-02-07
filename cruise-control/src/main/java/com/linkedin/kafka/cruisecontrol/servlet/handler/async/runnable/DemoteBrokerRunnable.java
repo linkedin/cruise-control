@@ -164,11 +164,8 @@ public class DemoteBrokerRunnable extends OperationRunnable {
           broker.disk(logdir).setState(DEMOTED);
         }
       });
-      List<Goal> goalsByPriority = goalsByPriority(Collections.singletonList(goal.getClass().getSimpleName()),
-                                                   _kafkaCruiseControl.config());
-      if (goalsByPriority.isEmpty()) {
-        throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");
-      } else if (!clusterModel.isClusterAlive()) {
+      List<Goal> goalsByPriority = Collections.singletonList(goal);
+      if (!clusterModel.isClusterAlive()) {
         throw new IllegalArgumentException("All brokers are dead in the cluster.");
       }
       sanityCheckCapacityEstimation(_allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
