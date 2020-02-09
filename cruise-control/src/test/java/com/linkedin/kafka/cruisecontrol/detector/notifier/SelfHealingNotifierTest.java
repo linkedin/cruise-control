@@ -146,7 +146,7 @@ public class SelfHealingNotifierTest {
     selfHealingExplicitlyDisabled.put(SelfHealingNotifier.SELF_HEALING_ENABLED_CONFIG, "true");
     anomalyNotifier.configure(selfHealingExplicitlyDisabled);
 
-    // (1) Broker Failure
+    // (1) Test broker failure anomaly can be detected by notifier.
     final long failureTime1 = 200L;
     final long failureTime2 = 400L;
     Map<Integer, Long> failedBrokers = new HashMap<>();
@@ -176,7 +176,7 @@ public class SelfHealingNotifierTest {
     assertTrue(anomalyNotifier._alertCalled.get(KafkaAnomalyType.BROKER_FAILURE));
     assertFalse(anomalyNotifier._autoFixTriggered.get(KafkaAnomalyType.BROKER_FAILURE));
 
-    // (2) Goal Violation
+    // (2) Test goal violation anomaly can be detected by notifier.
     anomalyNotifier.resetAlert(KafkaAnomalyType.GOAL_VIOLATION);
     result = anomalyNotifier.onGoalViolation(
         kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.GOAL_VIOLATIONS_CLASS_CONFIG,
@@ -186,7 +186,7 @@ public class SelfHealingNotifierTest {
     assertTrue(anomalyNotifier._alertCalled.get(KafkaAnomalyType.GOAL_VIOLATION));
     assertFalse(anomalyNotifier._autoFixTriggered.get(KafkaAnomalyType.GOAL_VIOLATION));
 
-    // (3) Metric Anomaly
+    // (3) Test metric anomaly can be detected by notifier.
     anomalyNotifier.resetAlert(KafkaAnomalyType.METRIC_ANOMALY);
     result = anomalyNotifier.onMetricAnomaly(kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.METRIC_ANOMALY_CLASS_CONFIG,
                                                                                             KafkaMetricAnomaly.class,
@@ -195,7 +195,7 @@ public class SelfHealingNotifierTest {
     assertTrue(anomalyNotifier._alertCalled.get(KafkaAnomalyType.METRIC_ANOMALY));
     assertFalse(anomalyNotifier._autoFixTriggered.get(KafkaAnomalyType.METRIC_ANOMALY));
 
-    // (4) Disk Failure
+    // (4) Test disk failure anomaly can be detected by notifier.
     anomalyNotifier.resetAlert(KafkaAnomalyType.DISK_FAILURE);
     result = anomalyNotifier.onDiskFailure(kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.DISK_FAILURES_CLASS_CONFIG,
                                                                                           DiskFailures.class,
@@ -204,7 +204,7 @@ public class SelfHealingNotifierTest {
     assertTrue(anomalyNotifier._alertCalled.get(KafkaAnomalyType.DISK_FAILURE));
     assertFalse(anomalyNotifier._autoFixTriggered.get(KafkaAnomalyType.DISK_FAILURE));
 
-    // (5) Topic Anomaly
+    // (5) Test topic anomaly can be detected by notifier.
     anomalyNotifier.resetAlert(KafkaAnomalyType.TOPIC_ANOMALY);
     TopicReplicationFactorAnomaly topicReplicationFactorAnomaly = new TopicReplicationFactorAnomaly();
     topicReplicationFactorAnomaly.configure(parameterConfigOverrides);

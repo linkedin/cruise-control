@@ -11,12 +11,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
-import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.shouldSkipAnomalyDetection;
 
 /**
@@ -40,30 +38,10 @@ public class TopicAnomalyDetector implements Runnable {
                                                                               configWithCruiseControlObject);
   }
 
-  /**
-   * Skip topic anomaly detection if any of the following is true:
-   * <ul>
-   *  <li>There is offline replicas in the cluster, which means there is dead brokers/disks. In this case
-   * {@link BrokerFailureDetector} or {@link DiskFailureDetector} should take care of the anomaly.</li>
-   *  <li>{@link AnomalyDetectorUtils#shouldSkipAnomalyDetection(KafkaCruiseControl)} returns true.
-   * </ul>
-   *
-   * @return True to skip topic anomaly detection based on the current state, false otherwise.
-   */
-  private boolean shouldSkipMetricAnomalyDetection() {
-    Set<Integer> brokersWithOfflineReplicas = _kafkaCruiseControl.loadMonitor().brokersWithOfflineReplicas(MAX_METADATA_WAIT_MS);
-    if (!brokersWithOfflineReplicas.isEmpty()) {
-      LOG.info("Skipping topic anomaly detection because there are dead brokers/disks in the cluster, flawed brokers: {}",
-          brokersWithOfflineReplicas);
-      return true;
-    }
-    return shouldSkipAnomalyDetection(_kafkaCruiseControl);
-  }
-
   @Override
   public void run() {
     try {
-      if (shouldSkipMetricAnomalyDetection()) {
+      if (shouldSkipAnomalyDetection(_kafkaCruiseControl, true)) {
         return;
       }
       for (TopicAnomalyFinder topicAnomalyFinder : _topicAnomalyFinders) {

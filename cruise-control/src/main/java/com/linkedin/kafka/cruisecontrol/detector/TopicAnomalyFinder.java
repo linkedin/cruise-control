@@ -5,7 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
-import java.util.List;
+import java.util.Set;
 import org.apache.yetus.audience.InterfaceStability;
 
 
@@ -16,8 +16,8 @@ import org.apache.yetus.audience.InterfaceStability;
 public interface  TopicAnomalyFinder extends CruiseControlConfigurable {
 
   /**
-   * Get a list of topic anomalies for topics which are misconfigured or violate some desired property.
-   * @return List of topic anomalies.
+   * Get a collection of topic anomalies for topics which are misconfigured or violate some desired property.
+   * @return Set of topic anomalies.
    */
-  List<TopicAnomaly> topicAnomalies();
+  Set<TopicAnomaly> topicAnomalies();
 }

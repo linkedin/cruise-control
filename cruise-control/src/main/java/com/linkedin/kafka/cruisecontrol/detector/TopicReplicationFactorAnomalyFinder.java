@@ -9,25 +9,32 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.PartitionInfo;
 
-import static com.linkedin.cruisecontrol.common.config.ConfigDef.Type.*;
-import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfigUtils.*;
+import static com.linkedin.cruisecontrol.common.config.ConfigDef.Type.CLASS;
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfigUtils.getConfiguredInstance;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
 
 
 /**
  * The class will check whether there are topics having partition(s) with replication factor different than the desired value.
+ * Required configurations for this class.
+ * <ul>
+ *   <li>{@link #SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG}: The config for the target replication factor of topics.
+ *   <li>{@link #TOPIC_EXCLUDED_FROM_REPLICATION_FACTOR_CHECK}: The config to specify topics excluded from the anomaly checking.
+ *   The value is treated as a regular expression, default value is set to
+ *   {@link #DEFAULT_TOPIC_EXCLUDED_FROM_REPLICATION_FACTOR_CHECK}.
+ *   <li>{@link #TOPIC_REPLICATION_FACTOR_ANOMALY_CLASS_CONFIG}: The config for the topic anomaly class name,
+ *   default value is set to {@link #DEFAULT_TOPIC_REPLICATION_FACTOR_ANOMALY_CLASS}.
+ * </ul>
  */
 public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
   public static final String SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG = "self.healing.target.topic.replication.factor";
-  public static final short DEFAULT_SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR = 3;
   public static final String TOPIC_EXCLUDED_FROM_REPLICATION_FACTOR_CHECK = "topic.excluded.from.replication.factor.check";
   public static final String DEFAULT_TOPIC_EXCLUDED_FROM_REPLICATION_FACTOR_CHECK = "";
   public static final String TOPIC_REPLICATION_FACTOR_ANOMALY_CLASS_CONFIG = "topic.replication.topic.anomaly.class";
@@ -39,7 +46,7 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
   private Class<?> _topicReplicationTopicAnomalyClass;
 
   @Override
-  public List<TopicAnomaly> topicAnomalies() {
+  public Set<TopicAnomaly> topicAnomalies() {
     Cluster cluster = _kafkaCruiseControl.kafkaCluster();
     Set<String> topicsWithBadReplicationFactor = new HashSet<>();
     for (String topic : cluster.topics()) {
@@ -54,10 +61,10 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
       }
     }
     if (!topicsWithBadReplicationFactor.isEmpty()) {
-      return Collections.singletonList(createTopicReplicationFactorAnomaly(topicsWithBadReplicationFactor,
-                                                                           _targetReplicationFactor));
+      return Collections.singleton(createTopicReplicationFactorAnomaly(topicsWithBadReplicationFactor,
+                                                                       _targetReplicationFactor));
     }
-    return Collections.emptyList();
+    return Collections.emptySet();
   }
 
   private TopicAnomaly createTopicReplicationFactorAnomaly(Set<String> topicsWithBadReplicationFactor,
@@ -67,18 +74,20 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
     configs.put(TOPICS_WITH_BAD_REPLICATION_FACTOR_CONFIG, topicsWithBadReplicationFactor);
     configs.put(SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG, targetReplicationFactor);
     configs.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
-    return getConfiguredInstance(_topicReplicationTopicAnomalyClass, TopicReplicationFactorAnomaly.class, configs);
+    return getConfiguredInstance(_topicReplicationTopicAnomalyClass, TopicAnomaly.class, configs);
   }
 
   @Override
   public void configure(Map<String, ?> configs) {
     _kafkaCruiseControl = (KafkaCruiseControl) configs.get(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG);
     if (_kafkaCruiseControl == null) {
-      throw new IllegalArgumentException("Topic replication factor anomaly detector is missing " + KAFKA_CRUISE_CONTROL_OBJECT_CONFIG);
+      throw new IllegalArgumentException("Topic replication factor anomaly finder is missing " + KAFKA_CRUISE_CONTROL_OBJECT_CONFIG);
     }
     Short targetReplicationFactor = (Short) configs.get(SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG);
-    _targetReplicationFactor = targetReplicationFactor == null ? DEFAULT_SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR
-                                                               : _targetReplicationFactor;
+    if (targetReplicationFactor == null) {
+      throw new IllegalArgumentException("Topic replication factor anomaly finder is missing " + SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG);
+    }
+    _targetReplicationFactor = targetReplicationFactor;
     String topicExcludedFromCheck = (String) configs.get(TOPIC_EXCLUDED_FROM_REPLICATION_FACTOR_CHECK);
     _topicExcludedFromCheck = Pattern.compile(topicExcludedFromCheck == null ? DEFAULT_TOPIC_EXCLUDED_FROM_REPLICATION_FACTOR_CHECK
                                                                              : topicExcludedFromCheck);
@@ -89,6 +98,10 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
       _topicReplicationTopicAnomalyClass = (Class<?>) ConfigDef.parseType(TOPIC_REPLICATION_FACTOR_ANOMALY_CLASS_CONFIG,
                                                                           topicReplicationTopicAnomalyClass,
                                                                           CLASS);
+      if (_topicReplicationTopicAnomalyClass == null || !TopicAnomaly.class.isAssignableFrom(_topicReplicationTopicAnomalyClass)) {
+          throw new IllegalArgumentException(String.format("Invalid %s is provided to replication factor anomaly finder, provided %s",
+              TOPIC_REPLICATION_FACTOR_ANOMALY_CLASS_CONFIG, _topicReplicationTopicAnomalyClass));
+      }
     }
   }
 }

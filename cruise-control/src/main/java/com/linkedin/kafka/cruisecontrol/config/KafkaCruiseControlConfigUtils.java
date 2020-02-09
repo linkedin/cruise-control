@@ -15,7 +15,13 @@ public class KafkaCruiseControlConfigUtils {
   }
 
   /**
-   * @return Configured instance.
+   * Get a configured instance of the given concrete class. If the object implements {@link CruiseControlConfigurable},
+   * configure it using the configuration.
+   *
+   * @param c The concrete class of the returned instance
+   * @param t The interface of the returned instance
+   * @param configs Configuration to used to config the returned instance.
+   * @return A configured instance of the class c
    */
   public static <T> T getConfiguredInstance(Class<?> c, Class<T> t, Map<String, Object> configs) {
     Object instance;

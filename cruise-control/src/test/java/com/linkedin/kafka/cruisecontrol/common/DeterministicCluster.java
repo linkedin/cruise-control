@@ -29,7 +29,8 @@ public class DeterministicCluster {
   public static final String T1 = "T1";
   public static final String T2 = "T2";
   public static final Map<Integer, Integer> RACK_BY_BROKER;
-  public static final String CLUSTER_ID = "TEST";
+  public static final String CLUSTER_ID = "DETERMINISTIC_CLUSTER";
+  public static final int PORT = 0;
   static {
     Map<Integer, Integer> racksByBrokerIds = new HashMap<>();
     racksByBrokerIds.put(0, 0);
@@ -517,7 +518,7 @@ public class DeterministicCluster {
    */
   public static Cluster generateClusterFromClusterModel(ClusterModel clusterModel) {
     Map<Integer, Node> nodes = new HashMap<>();
-    clusterModel.brokers().forEach(b -> nodes.put(b.id(), new Node(b.id(), b.host().toString(), 0, b.rack().id())));
+    clusterModel.brokers().forEach(b -> nodes.put(b.id(), new Node(b.id(), b.host().name(), PORT, b.rack().id())));
     List<PartitionInfo> partitions = new ArrayList<>();
     for (List<Partition> pList : clusterModel.getPartitionsByTopic().values()) {
       for (Partition p : pList) {

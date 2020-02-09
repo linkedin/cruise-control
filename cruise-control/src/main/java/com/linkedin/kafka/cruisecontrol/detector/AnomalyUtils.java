@@ -8,6 +8,9 @@ import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.Map;
+import java.util.Set;
+import java.util.StringJoiner;
+import java.util.regex.Pattern;
 
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 
@@ -46,5 +49,16 @@ public class AnomalyUtils {
   public static boolean isLoadMonitorReady(LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState) {
     return !(loadMonitorTaskRunnerState == LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.LOADING
            || loadMonitorTaskRunnerState == LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.BOOTSTRAPPING);
+  }
+
+  /**
+   * Build a regular expression which can match and only match given set of strings.
+   * @param stringsToMatch The set of strings to be matched.
+   * @return The matching regular expression.
+   */
+  public static Pattern buildTopicRegex(Set<String> stringsToMatch) {
+    StringJoiner sj = new StringJoiner("|");
+    stringsToMatch.forEach(sj::add);
+    return Pattern.compile("(" + sj.toString() + ")");
   }
 }

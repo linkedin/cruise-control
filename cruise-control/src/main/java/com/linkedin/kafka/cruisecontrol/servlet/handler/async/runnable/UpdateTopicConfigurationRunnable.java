@@ -140,25 +140,7 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
   @Override
   public OptimizationResult getResult() throws Exception {
     if (_topicPatternByReplicationFactor != null) {
-      return new OptimizationResult(
-          updateTopicReplicationFactor(_topicPatternByReplicationFactor,
-                                       _goals,
-                                       _skipRackAwarenessCheck,
-                                       _requirements,
-                                       _allowCapacityEstimation,
-                                       _concurrentInterBrokerPartitionMovements,
-                                       _concurrentLeaderMovements,
-                                       _executionProgressCheckIntervalMs,
-                                       _skipHardGoalCheck,
-                                       _replicaMovementStrategy,
-                                       _replicationThrottle,
-                                       _excludeRecentlyDemotedBrokers,
-                                       _excludeRecentlyRemovedBrokers,
-                                       _dryRun,
-                                       _reason,
-                                       _stopOngoingExecution,
-                                       _isTriggeredByUserRequest),
-          _kafkaCruiseControl.config());
+      return new OptimizationResult(updateTopicReplicationFactor(), _kafkaCruiseControl.config());
     }
     // Never reaches here.
     throw new IllegalArgumentException("Nothing executable found in request.");
@@ -188,60 +170,18 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
    * If partition's current replication factor is larger than target replication factor, remove one or more follower replicas
    * from the partition. Replicas are removed following the reverse order of position in partition's replica list.
    *
-   * @param topicPatternByReplicationFactor The name patterns of topic to apply the change with the target replication factor.
-   *                                        If no topic in the cluster matches the patterns, an exception will be thrown.
-   * @param goals The goals to be met during the new replica assignment. When empty all goals will be used.
-   * @param skipTopicRackAwarenessCheck Whether ignore rack awareness property if number of rack in cluster is less
-   *                                    than target replication factor.
-   * @param requirements The cluster model completeness requirements.
-   * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
-   * @param concurrentInterBrokerPartitionMovements The maximum number of concurrent inter-broker partition movements per broker
-   *                                                (if null, use num.concurrent.partition.movements.per.broker).
-   * @param concurrentLeaderMovements The maximum number of concurrent leader movements
-   *                                  (if null, use num.concurrent.leader.movements).
-   * @param executionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
-   *                                         execution (if null, use execution.progress.check.interval.ms).
-   * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
-   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
-   *                                (if null, use default.replica.movement.strategies).
-   * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
-   *                            when executing demote operations (if null, no throttling is applied).
-   * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
-   * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
-   * @param dryRun Whether it is a dry run or not.
-   * @param reason Reason of execution.
-   * @param stopOngoingExecution True to stop the ongoing execution (if any) and start executing the given proposals,
-   *                             false otherwise.
-   * @param isTriggeredByUserRequest True if proposals is triggered by user request, false otherwise.
-   *
    * @return The optimization result.
    * @throws KafkaCruiseControlException When any exception occurred during the topic configuration updating.
    */
-  public OptimizerResult updateTopicReplicationFactor(Map<Short, Pattern> topicPatternByReplicationFactor,
-                                                      List<String> goals,
-                                                      boolean skipTopicRackAwarenessCheck,
-                                                      ModelCompletenessRequirements requirements,
-                                                      boolean allowCapacityEstimation,
-                                                      Integer concurrentInterBrokerPartitionMovements,
-                                                      Integer concurrentLeaderMovements,
-                                                      Long executionProgressCheckIntervalMs,
-                                                      boolean skipHardGoalCheck,
-                                                      ReplicaMovementStrategy replicaMovementStrategy,
-                                                      Long replicationThrottle,
-                                                      boolean excludeRecentlyDemotedBrokers,
-                                                      boolean excludeRecentlyRemovedBrokers,
-                                                      boolean dryRun,
-                                                      String reason,
-                                                      boolean stopOngoingExecution,
-                                                      boolean isTriggeredByUserRequest)
+  public OptimizerResult updateTopicReplicationFactor()
       throws KafkaCruiseControlException {
-    _kafkaCruiseControl.sanityCheckDryRun(dryRun, stopOngoingExecution);
-    sanityCheckGoals(goals, skipHardGoalCheck, _kafkaCruiseControl.config());
-    List<Goal> goalsByPriority = goalsByPriority(goals, _kafkaCruiseControl.config());
+    _kafkaCruiseControl.sanityCheckDryRun(_dryRun, _stopOngoingExecution);
+    sanityCheckGoals(_goals, _skipHardGoalCheck, _kafkaCruiseControl.config());
+    List<Goal> goalsByPriority = goalsByPriority(_goals, _kafkaCruiseControl.config());
     OperationProgress operationProgress = _future.operationProgress();
     if (goalsByPriority.isEmpty()) {
       throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");
-    } else if (stopOngoingExecution) {
+    } else if (_stopOngoingExecution) {
       maybeStopOngoingExecutionToModifyAndWait(_kafkaCruiseControl, operationProgress);
     }
 
@@ -254,25 +194,25 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
                                                     Arrays.stream(partitionInfo.offlineReplicas()).mapToInt(Node::id)
                                                           .boxed().collect(Collectors.toSet())));
     }
-    Map<Short, Set<String>> topicsToChangeByReplicationFactor = topicsForReplicationFactorChange(topicPatternByReplicationFactor, cluster);
+    Map<Short, Set<String>> topicsToChangeByReplicationFactor = topicsForReplicationFactorChange(_topicPatternByReplicationFactor, cluster);
 
     // Generate cluster model and get proposal
     OptimizerResult result;
     Map<String, List<Integer>> brokersByRack = new HashMap<>();
     Map<Integer, String> rackByBroker = new HashMap<>();
-    ModelCompletenessRequirements completenessRequirements = _kafkaCruiseControl.modelCompletenessRequirements(goalsByPriority).weaker(requirements);
+    ModelCompletenessRequirements completenessRequirements = _kafkaCruiseControl.modelCompletenessRequirements(goalsByPriority).weaker(_requirements);
     sanityCheckLoadMonitorReadiness(completenessRequirements, _kafkaCruiseControl.getLoadMonitorTaskRunnerState());
     try (AutoCloseable ignored = _kafkaCruiseControl.acquireForModelGeneration(operationProgress)) {
       ExecutorState executorState = _kafkaCruiseControl.executorState();
-      Set<Integer> excludedBrokersForLeadership = excludeRecentlyDemotedBrokers ? executorState.recentlyDemotedBrokers()
-                                                                                : Collections.emptySet();
-      Set<Integer> excludedBrokersForReplicaMove = excludeRecentlyRemovedBrokers ? executorState.recentlyRemovedBrokers()
+      Set<Integer> excludedBrokersForLeadership = _excludeRecentlyDemotedBrokers ? executorState.recentlyDemotedBrokers()
                                                                                  : Collections.emptySet();
+      Set<Integer> excludedBrokersForReplicaMove = _excludeRecentlyRemovedBrokers ? executorState.recentlyRemovedBrokers()
+                                                                                  : Collections.emptySet();
       populateRackInfoForReplicationFactorChange(topicsToChangeByReplicationFactor, cluster, excludedBrokersForReplicaMove,
-                                                 skipTopicRackAwarenessCheck, brokersByRack, rackByBroker);
+                                                 _skipRackAwarenessCheck, brokersByRack, rackByBroker);
 
       ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(completenessRequirements, operationProgress);
-      sanityCheckCapacityEstimation(allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
+      sanityCheckCapacityEstimation(_allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
       Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = clusterModel.getReplicaDistribution();
 
       // First try to add and remove replicas to achieve the replication factor for topics of interest.
@@ -293,10 +233,10 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
       // Then further optimize the location of newly added replicas based on goals. Here we restrict the replica movement to
       // only considering newly added replicas, in order to minimize the total bytes to move.
       result = _kafkaCruiseControl.optimizations(clusterModel, goalsByPriority, operationProgress, initReplicaDistribution, optimizationOptions);
-      if (!dryRun) {
-        _kafkaCruiseControl.executeProposals(result.goalProposals(), Collections.emptySet(), false, concurrentInterBrokerPartitionMovements,
-                                             0, concurrentLeaderMovements, executionProgressCheckIntervalMs,
-                                             replicaMovementStrategy, replicationThrottle, isTriggeredByUserRequest, _uuid, () -> reason);
+      if (!_dryRun) {
+        _kafkaCruiseControl.executeProposals(result.goalProposals(), Collections.emptySet(), false, _concurrentInterBrokerPartitionMovements,
+                                             0, _concurrentLeaderMovements, _executionProgressCheckIntervalMs,
+                                             _replicaMovementStrategy, _replicationThrottle, _isTriggeredByUserRequest, _uuid, () -> _reason);
       }
     } catch (KafkaCruiseControlException kcce) {
       throw kcce;

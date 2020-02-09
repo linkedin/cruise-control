@@ -11,13 +11,12 @@ import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.UpdateTop
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
-import java.util.StringJoiner;
-import java.util.regex.Pattern;
 
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getSelfHealingGoalNames;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyUtils.buildTopicRegex;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyUtils.extractKafkaCruiseControlObjectFromConfig;
 import static com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder.SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder.TOPICS_WITH_BAD_REPLICATION_FACTOR_CONFIG;
@@ -72,16 +71,10 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
 
   }
 
-  private Pattern buildTopicRegex(Set<String> topics) {
-    StringJoiner sj = new StringJoiner("|");
-    topics.forEach(sj::add);
-    return Pattern.compile("(" + sj.toString() + ")");
-  }
-
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append("{Detected follow topics have at least one partition with replication factor other than ")
+    sb.append("{Detected following topics which have at least one partition with replication factor other than ")
       .append(_targetReplicationFactor)
       .append("\n");
     _topicsWithBadReplicationFactor.forEach(t -> sb.append(t).append("\n"));

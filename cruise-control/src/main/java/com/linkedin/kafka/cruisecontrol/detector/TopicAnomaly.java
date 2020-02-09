@@ -10,6 +10,8 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyTyp
 
 /**
  * The interface for a topic anomaly.
+ * Topic anomaly refers to one or more topics are under an undesired state which may jeopardize data completeness or
+ * cluster balanceness (e.g. topic having small replication factor or gigantic replicas).
  */
 public abstract class TopicAnomaly extends KafkaAnomaly {
   @Override
