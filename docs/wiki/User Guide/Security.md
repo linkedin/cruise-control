@@ -22,7 +22,7 @@ Cruise Control can use token based authentication. To enable this, use the follo
 * `webserver.security.provider`: This must be changed to com.linkedin.kafka.cruisecontrol.servlet.security.jwt.JwtSecurityProvider.
 * `webserver.auth.credentials.file`: It must point to a file in the `HashLoginService`'s file format introduced above
    but without the password part so `username: ,ROLE`. The possible roles are explained below.
-* `jwt.authentication.provider.url`: This must point to the token prodiver's endpoint. It can contain a `{redirectUrl}`
+* `jwt.authentication.provider.url`: This must point to the token provider's endpoint. It can contain a `{redirectUrl}`
    part which will be replaced by Cruise Control and points to the accessed Cruise Control endpoint.
 * `jwt.cookie.name`: This can be set to provide a cookie name that points to a cookie issued by the token provider and
    which contains the JSON web token.
