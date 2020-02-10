@@ -55,7 +55,7 @@ public class JwtAuthenticator extends LoginAuthenticator {
   static final Logger JWT_LOGGER = LoggerFactory.getLogger("kafka.cruisecontrol.jwt.logger");
 
   private static final String METHOD = "JWT";
-  private static final String BEARER = "Bearer ";
+  private static final String BEARER = "Bearer";
 
   private final String _cookieName;
   private final Function<HttpServletRequest, String> _authenticationProviderUrlGenerator;
@@ -161,7 +161,7 @@ public class JwtAuthenticator extends LoginAuthenticator {
     if (authorizationHeader == null || !authorizationHeader.startsWith(BEARER)) {
       return null;
     } else {
-      return authorizationHeader.substring(BEARER.length());
+      return authorizationHeader.substring(BEARER.length()).trim();
     }
   }
 
