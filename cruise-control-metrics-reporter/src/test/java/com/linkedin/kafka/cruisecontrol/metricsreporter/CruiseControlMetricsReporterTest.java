@@ -181,6 +181,7 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
   @Test
   public void testUpdatingMetricsTopicConfig() throws ExecutionException, InterruptedException {
     Properties props = new Properties();
+    setSecurityConfigs(props, "admin");
     props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
     AdminClient adminClient = AdminClient.create(props);
     TopicDescription topicDescription = adminClient.describeTopics(Collections.singleton(TOPIC)).values().get(TOPIC).get();
@@ -196,7 +197,7 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     // Restart broker
     broker.startup();
     // Wait for broker to boot up
-    Thread.sleep(5000);
+    Thread.sleep(10000);
     topicDescription = adminClient.describeTopics(Collections.singleton(TOPIC)).values().get(TOPIC).get();
     assertEquals(2, topicDescription.partitions().size());
   }
