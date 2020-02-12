@@ -197,7 +197,8 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     // Restart broker
     broker.startup();
     // Wait for broker to boot up
-    Thread.sleep(30000);
+    Thread.sleep(5000);
+    // Check whether the topic config is updated
     topicDescription = adminClient.describeTopics(Collections.singleton(TOPIC)).values().get(TOPIC).get();
     assertEquals(2, topicDescription.partitions().size());
   }
