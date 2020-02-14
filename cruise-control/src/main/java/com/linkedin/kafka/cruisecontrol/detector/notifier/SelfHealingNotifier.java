@@ -10,7 +10,6 @@ import com.linkedin.kafka.cruisecontrol.detector.DiskFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
@@ -18,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.hasUnfixableGoals;
 
 
 /**
@@ -91,11 +91,6 @@ public class SelfHealingNotifier implements AnomalyNotifier {
     _latestFailedBrokersByAutoFixTriggered = new HashMap<>(2);
     _latestFailedBrokersByAutoFixTriggered.put(true, new HashMap<>());
     _latestFailedBrokersByAutoFixTriggered.put(false, new HashMap<>());
-  }
-
-  private static boolean hasUnfixableGoals(GoalViolations goalViolations) {
-    List<String> unfixableGoals = goalViolations.violatedGoalsByFixability().get(false);
-    return unfixableGoals != null && !unfixableGoals.isEmpty();
   }
 
   @Override

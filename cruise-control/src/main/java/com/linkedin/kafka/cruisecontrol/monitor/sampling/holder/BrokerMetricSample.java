@@ -55,7 +55,7 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
   }
 
   /**
-   * Serialize the partition metric sample using the {@link #LATEST_SUPPORTED_VERSION} protocol. The version field
+   * Serialize the broker metric sample using the {@link #LATEST_SUPPORTED_VERSION} protocol. The version field
    * indicates the version that a deserializer should use.
    *
    * 1 byte - version

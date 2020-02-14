@@ -555,6 +555,7 @@ public class Executor {
     sanityCheckOngoingMovement();
     _hasOngoingExecution = true;
     _anomalyDetector.maybeClearOngoingAnomalyDetectionTimeMs();
+    _anomalyDetector.resetHasUnfixableGoals();
     _stopSignal.set(NO_STOP_EXECUTION);
     _executionStoppedByUser.set(false);
     if (_isKafkaAssignerMode) {

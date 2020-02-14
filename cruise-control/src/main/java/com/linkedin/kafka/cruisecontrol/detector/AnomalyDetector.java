@@ -257,6 +257,13 @@ public class AnomalyDetector {
   }
 
   /**
+   * See {@link AnomalyDetectorState#resetHasUnfixableGoals}.
+   */
+  public void resetHasUnfixableGoals() {
+    _anomalyDetectorState.resetHasUnfixableGoals();
+  }
+
+  /**
    * (1) Enable or disable self healing for the given anomaly type and (2) update the cached anomaly detector state.
    *
    * @param anomalyType Type of anomaly for which to enable or disable self healing.
@@ -389,6 +396,7 @@ public class AnomalyDetector {
         case GOAL_VIOLATION:
           GoalViolations goalViolations = (GoalViolations) _anomalyInProgress;
           notificationResult = _anomalyNotifier.onGoalViolation(goalViolations);
+          _anomalyDetectorState.refreshHasUnfixableGoal(goalViolations);
           break;
         case BROKER_FAILURE:
           BrokerFailures brokerFailures = (BrokerFailures) _anomalyInProgress;

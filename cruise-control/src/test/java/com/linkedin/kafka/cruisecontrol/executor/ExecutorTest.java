@@ -318,6 +318,8 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     AnomalyDetector mockAnomalyDetector = EasyMock.mock(AnomalyDetector.class);
     mockAnomalyDetector.maybeClearOngoingAnomalyDetectionTimeMs();
     expectLastCall().anyTimes();
+    mockAnomalyDetector.resetHasUnfixableGoals();
+    expectLastCall().anyTimes();
     mockAnomalyDetector.markSelfHealingFinished(anomalyId);
     expectLastCall().anyTimes();
     EasyMock.replay(mockAnomalyDetector);
