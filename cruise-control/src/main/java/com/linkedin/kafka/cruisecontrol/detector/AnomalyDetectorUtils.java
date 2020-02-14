@@ -77,4 +77,15 @@ public class AnomalyDetectorUtils {
     return Comparator.comparing((Anomaly anomaly) -> anomaly.anomalyType().priority())
                      .thenComparingLong(Anomaly::detectionTimeMs);
   }
+
+  /**
+   * Check whether the given goal violations has unfixable goals.
+   *
+   * @param goalViolations Goal violations to check whether there are unfixable goals.
+   * @return True if the given goal violations contain unfixable goals, false otherwise.
+   */
+  public static boolean hasUnfixableGoals(GoalViolations goalViolations) {
+    List<String> unfixableGoals = goalViolations.violatedGoalsByFixability().get(false);
+    return unfixableGoals != null && !unfixableGoals.isEmpty();
+  }
 }

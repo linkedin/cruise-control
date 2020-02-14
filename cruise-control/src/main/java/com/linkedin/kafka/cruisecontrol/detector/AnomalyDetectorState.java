@@ -52,6 +52,7 @@ public class AnomalyDetectorState {
   private static final String METRICS = "metrics";
   @JsonResponseField
   private static final String BALANCEDNESS_SCORE = "balancednessScore";
+  private static final double INITIAL_BALANCEDNESS_SCORE = 100.0;
   static final String NUM_SELF_HEALING_STARTED = "numSelfHealingStarted";
   private static final long NO_ONGOING_ANOMALY_FLAG = -1L;
 
@@ -73,6 +74,7 @@ public class AnomalyDetectorState {
   private AtomicLong _numSelfHealingFailedToStart;
   private final Map<AnomalyType, Meter> _anomalyRateByType;
   private double _balancednessScore;
+  private boolean _hasUnfixableGoals;
 
   public AnomalyDetectorState(Time time,
                               Map<AnomalyType, Boolean> selfHealingEnabled,
@@ -113,6 +115,8 @@ public class AnomalyDetectorState {
                                         (Gauge<Long>) this::numSelfHealingFailedToStart);
       dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "ongoing-anomaly-duration-ms"),
                                         (Gauge<Long>) this::ongoingAnomalyDurationMs);
+      dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, String.format("%s-has-unfixable-goals", GOAL_VIOLATION)),
+                                        (Gauge<Integer>) () -> hasUnfixableGoals() ? 1 : 0);
 
       _anomalyRateByType = new HashMap<>(KafkaAnomalyType.cachedValues().size());
       _anomalyRateByType.put(BROKER_FAILURE,
@@ -127,6 +131,8 @@ public class AnomalyDetectorState {
       _anomalyRateByType = new HashMap<>(KafkaAnomalyType.cachedValues().size());
       KafkaAnomalyType.cachedValues().forEach(anomalyType -> _anomalyRateByType.put(anomalyType, new Meter()));
     }
+    _balancednessScore = INITIAL_BALANCEDNESS_SCORE;
+    _hasUnfixableGoals = false;
   }
 
   /**
@@ -136,6 +142,30 @@ public class AnomalyDetectorState {
    */
   void markAnomalyRate(AnomalyType anomalyType) {
     _anomalyRateByType.get(anomalyType).mark();
+  }
+
+  /**
+   * Refreshes the anomaly detector cache that indicates whether unfixable goals were detected in the cluster.
+   *
+   * @param goalViolations Goal violation to check whether there are unfixable goals.
+   */
+  void refreshHasUnfixableGoal(GoalViolations goalViolations) {
+    _hasUnfixableGoals = AnomalyDetectorUtils.hasUnfixableGoals(goalViolations);
+  }
+
+  /**
+   * @return True if the latest goal violation contains unfixable goals, false if either the latest goal violation
+   * contains no unfixable goals or if any execution was started after the latest goal violation.
+   */
+  public boolean hasUnfixableGoals() {
+    return _hasUnfixableGoals;
+  }
+
+  /**
+   * Resets the state corresponding to {@link #hasUnfixableGoals()}.
+   */
+  void resetHasUnfixableGoals() {
+    _hasUnfixableGoals = false;
   }
 
   /**
