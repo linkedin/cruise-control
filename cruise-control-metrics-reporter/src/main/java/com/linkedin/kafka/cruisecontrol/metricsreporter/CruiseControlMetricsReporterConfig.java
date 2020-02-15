@@ -47,15 +47,15 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
       + "Control metrics reporter. Set this config and cruise.control.metrics.reporter.linger.ms to a large number to have better batching.";
   // Default values
   public static final String DEFAULT_CRUISE_CONTROL_METRICS_TOPIC = "__CruiseControlMetrics";
-  private static final Integer DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS = -1;
-  private static final boolean DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE = false;
-  private static final Short DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR = -1;
-  private static final long DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_RETENTION_MS = 18000000L;
-  private static final long DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS = 60000;
-  private static final String PRODUCER_ID = "CruiseControlMetricsReporter";
-  private static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS = 30 * 1000;
-  private static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_MAX_BLOCK_MS = 60 * 1000;
-  private static final int DEFAULT_CRUISE_CONTROL_METRICS_BATCH_SIZE = 800 * 1000;
+  public static final Integer DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS = -1;
+  public static final boolean DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE = false;
+  public static final Short DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR = -1;
+  public static final long DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_RETENTION_MS = 18000000L;
+  public static final long DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS = 60000;
+  public static final String PRODUCER_ID = "CruiseControlMetricsReporter";
+  public static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS = 30 * 1000;
+  public static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_MAX_BLOCK_MS = 60 * 1000;
+  public static final int DEFAULT_CRUISE_CONTROL_METRICS_BATCH_SIZE = 800 * 1000;
 
   public CruiseControlMetricsReporterConfig(Map<?, ?> originals, boolean doLog) {
     super(CONFIG, originals, doLog);
