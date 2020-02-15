@@ -50,7 +50,9 @@ public class AnomalyDetector {
   static final String METRIC_REGISTRY_NAME = "AnomalyDetector";
   private static final int INIT_JITTER_BOUND = 10000;
   private static final long SCHEDULER_SHUTDOWN_TIMEOUT_MS = 5000L;
-  private static final int NUM_ANOMALY_DETECTION_THREADS = 6;
+  // For each anomaly type, one thread is needed to run corresponding anomaly detector.
+  // One more thread is needed to run anomaly handler task.
+  private static final int NUM_ANOMALY_DETECTION_THREADS = KafkaAnomalyType.cachedValues().size() + 1;
   private static final int ANOMALY_QUEUE_INITIAL_CAPACITY = 10;
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetector.class);
   private static final Logger OPERATION_LOG = LoggerFactory.getLogger(OPERATION_LOGGER);

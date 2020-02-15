@@ -18,9 +18,9 @@ import static org.junit.Assert.assertTrue;
  * Unit test class for anomaly utilization methods.
  */
 public class AnomalyUtilsTest {
-    private static String TOPIC1 = "abc";
-    private static String TOPIC2 = "def";
-    private static String TOPIC3 = "ghi";
+    private static final String TOPIC1 = "abc";
+    private static final String TOPIC2 = "def";
+    private static final String TOPIC3 = "ghi";
 
     @Test
     public void testBuildTopicRegex() {

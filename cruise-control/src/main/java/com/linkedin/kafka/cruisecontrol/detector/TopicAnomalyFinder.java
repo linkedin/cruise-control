@@ -10,13 +10,14 @@ import org.apache.yetus.audience.InterfaceStability;
 
 
 /**
- * The finder which checks topics against certain desired topic property to identify topic anomaly.
+ * The finder which checks violation of user-defined topic properties.
  */
 @InterfaceStability.Evolving
 public interface  TopicAnomalyFinder extends CruiseControlConfigurable {
 
   /**
-   * Get a collection of topic anomalies for topics which are misconfigured or violate some desired property.
+   * Get a collection of topic anomalies for topics which are misconfigured or violate user-defined topic properties.
+   *
    * @return Set of topic anomalies.
    */
   Set<TopicAnomaly> topicAnomalies();

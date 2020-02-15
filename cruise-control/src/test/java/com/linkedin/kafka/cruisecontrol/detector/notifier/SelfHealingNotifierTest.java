@@ -42,6 +42,9 @@ import static org.junit.Assert.assertTrue;
  * Unit test for SelfHealingNotifier.
  */
 public class SelfHealingNotifierTest {
+  public static final String BAD_LOGDIR = "logdir1";
+  public static final String BAD_TOPIC = "topic1";
+  public static final short SELF_HEALING_TARGET_REPLICATION_FACTOR = 3;
 
   @Test
   public void testOnBrokerFailure() {
@@ -165,9 +168,9 @@ public class SelfHealingNotifierTest {
     parameterConfigOverrides.put(METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG,
                                  Collections.singletonMap(brokerWithMetricAnomaly, anomalyDetectionTime));
     parameterConfigOverrides.put(FAILED_DISKS_OBJECT_CONFIG,
-                                 Collections.singletonMap(1, Collections.singletonMap("logdir1", failureTime1)));
-    parameterConfigOverrides.put(SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG, (short) 3);
-    parameterConfigOverrides.put(TOPICS_WITH_BAD_REPLICATION_FACTOR_CONFIG, Collections.singleton("topic1"));
+                                 Collections.singletonMap(1, Collections.singletonMap(BAD_LOGDIR, failureTime1)));
+    parameterConfigOverrides.put(SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG, SELF_HEALING_TARGET_REPLICATION_FACTOR);
+    parameterConfigOverrides.put(TOPICS_WITH_BAD_REPLICATION_FACTOR_CONFIG, Collections.singleton(BAD_TOPIC));
     AnomalyNotificationResult result = anomalyNotifier.onBrokerFailure(
         kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
                                                        BrokerFailures.class,

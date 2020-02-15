@@ -59,6 +59,6 @@ public class AnomalyUtils {
   public static Pattern buildTopicRegex(Set<String> stringsToMatch) {
     StringJoiner sj = new StringJoiner("|");
     stringsToMatch.forEach(sj::add);
-    return Pattern.compile("(" + sj.toString() + ")");
+    return Pattern.compile(sj.toString());
   }
 }

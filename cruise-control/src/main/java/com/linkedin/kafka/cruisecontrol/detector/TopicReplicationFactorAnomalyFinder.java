@@ -68,7 +68,7 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
   }
 
   private TopicAnomaly createTopicReplicationFactorAnomaly(Set<String> topicsWithBadReplicationFactor,
-                                                          int targetReplicationFactor) {
+                                                           int targetReplicationFactor) {
     Map<String, Object> configs = new HashMap<>(4);
     configs.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl);
     configs.put(TOPICS_WITH_BAD_REPLICATION_FACTOR_CONFIG, topicsWithBadReplicationFactor);
