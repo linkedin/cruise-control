@@ -131,8 +131,4 @@ object ExecutorUtils {
   def getAllLiveBrokerIdsInCluster(kafkaZkClient: KafkaZkClient): java.util.List[java.lang.Integer] = {
     seqAsJavaList(kafkaZkClient.getAllBrokersInCluster.map(_.id : java.lang.Integer))
   }
-
-  def getAllTopicsInCluster(kafkaZkClient: KafkaZkClient): java.util.List[String] = {
-    seqAsJavaList(kafkaZkClient.getAllTopicsInCluster)
-  }
 }
