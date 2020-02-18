@@ -445,13 +445,15 @@ public class MonitorUtils {
    * @param valuesAndExtrapolations The values and extrapolations of the leader replica.
    * @param replicaPlacementInfo The distribution of replicas over broker logdirs if available, {@code null} otherwise.
    * @param brokerCapacityConfigResolver The resolver for retrieving broker capacities.
+   * @param allowBrokerCapacityEstimation Whether allow broker capacity resolver to estimate broker capacity
    */
   static void populatePartitionLoad(Cluster cluster,
                                     ClusterModel clusterModel,
                                     TopicPartition tp,
                                     ValuesAndExtrapolations valuesAndExtrapolations,
                                     Map<TopicPartition, Map<Integer, String>> replicaPlacementInfo,
-                                    BrokerCapacityConfigResolver brokerCapacityConfigResolver) throws TimeoutException {
+                                    BrokerCapacityConfigResolver brokerCapacityConfigResolver,
+                                    boolean allowBrokerCapacityEstimation) throws TimeoutException {
     PartitionInfo partitionInfo = cluster.partition(tp);
     // If partition info does not exist, the topic may have been deleted.
     if (partitionInfo != null) {
@@ -463,7 +465,9 @@ public class MonitorUtils {
         String rack = getRackHandleNull(replica);
         BrokerCapacityInfo brokerCapacity;
         try {
-          brokerCapacity = brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id(), BROKER_CAPACITY_FETCH_TIMEOUT_MS);
+          // Do not allow capacity estimation for dead brokers.
+          brokerCapacity = brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id(), BROKER_CAPACITY_FETCH_TIMEOUT_MS,
+                                                                          aliveBrokers.contains(replica.id()) && allowBrokerCapacityEstimation);
         } catch (TimeoutException tme) {
           // Capacity resolver may not be able to return the capacity information of dead brokers.
           if (!aliveBrokers.contains(replica.id())) {

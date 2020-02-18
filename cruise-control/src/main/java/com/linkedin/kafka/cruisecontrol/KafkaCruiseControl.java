@@ -256,14 +256,15 @@ public class KafkaCruiseControl {
   /**
    * Get the cluster model cutting off at the current timestamp.
    * @param requirements the model completeness requirements.
+   * @param allowBrokerCapacityEstimation Whether allow broker capacity resolver to estimate broker capacity.
    * @param operationProgress the progress of the job to report.
    * @return The cluster workload model.
    * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
    * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity.
    */
-  public ClusterModel clusterModel(ModelCompletenessRequirements requirements, OperationProgress operationProgress)
+  public ClusterModel clusterModel(ModelCompletenessRequirements requirements, Boolean allowBrokerCapacityEstimation, OperationProgress operationProgress)
       throws NotEnoughValidWindowsException, TimeoutException {
-    return _loadMonitor.clusterModel(timeMs(), requirements, operationProgress);
+    return _loadMonitor.clusterModel(timeMs(), requirements, allowBrokerCapacityEstimation, operationProgress);
   }
 
   /**
@@ -272,6 +273,7 @@ public class KafkaCruiseControl {
    * @param to the end time of the window
    * @param requirements the load completeness requirements.
    * @param populateReplicaPlacementInfo whether populate replica placement information.
+   * @param allowBrokerCapacityEstimation Whether allow broker capacity resolver to estimate broker capacity.
    * @param operationProgress the progress of the job to report.
    * @return The cluster workload model.
    * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
@@ -281,9 +283,10 @@ public class KafkaCruiseControl {
                                    long to,
                                    ModelCompletenessRequirements requirements,
                                    boolean populateReplicaPlacementInfo,
+                                   boolean allowBrokerCapacityEstimation,
                                    OperationProgress operationProgress)
       throws NotEnoughValidWindowsException, TimeoutException {
-    return _loadMonitor.clusterModel(from, to, requirements, populateReplicaPlacementInfo, operationProgress);
+    return _loadMonitor.clusterModel(from, to, requirements, populateReplicaPlacementInfo, allowBrokerCapacityEstimation, operationProgress);
   }
 
   /**

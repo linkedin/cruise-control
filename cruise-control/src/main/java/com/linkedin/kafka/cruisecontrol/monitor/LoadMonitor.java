@@ -422,6 +422,7 @@ public class LoadMonitor {
    *
    * @param now The current time in millisecond.
    * @param requirements the load requirements for getting the cluster model.
+   * @param allowBrokerCapacityEstimation Whether allow broker capacity resolver to estimate broker capacity.
    * @param operationProgress the progress to report.
    * @return A cluster model with the configured number of windows whose timestamp is before given timestamp.
    * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
@@ -429,9 +430,10 @@ public class LoadMonitor {
    */
   public ClusterModel clusterModel(long now,
                                    ModelCompletenessRequirements requirements,
+                                   boolean allowBrokerCapacityEstimation,
                                    OperationProgress operationProgress)
       throws NotEnoughValidWindowsException, TimeoutException {
-    ClusterModel clusterModel = clusterModel(DEFAULT_START_TIME_FOR_CLUSTER_MODEL, now, requirements, operationProgress);
+    ClusterModel clusterModel = clusterModel(DEFAULT_START_TIME_FOR_CLUSTER_MODEL, now, requirements, allowBrokerCapacityEstimation, operationProgress);
     // Micro optimization: put the broker stats construction out of the lock.
     BrokerStats brokerStats = clusterModel.brokerStats(_config);
     // update the cached brokerLoadStats
@@ -448,6 +450,7 @@ public class LoadMonitor {
    * @param from start of the time window
    * @param to end of the time window
    * @param requirements the load completeness requirements.
+   * @param allowBrokerCapacityEstimation Whether allow broker capacity resolver to estimate broker capacity
    * @param operationProgress the progress of the job to report.
    * @return A cluster model with the available snapshots whose timestamp is in the given window.
    * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
@@ -456,9 +459,10 @@ public class LoadMonitor {
   public ClusterModel clusterModel(long from,
                                    long to,
                                    ModelCompletenessRequirements requirements,
+                                   boolean allowBrokerCapacityEstimation,
                                    OperationProgress operationProgress)
       throws NotEnoughValidWindowsException, TimeoutException {
-    return clusterModel(from, to, requirements, false, operationProgress);
+    return clusterModel(from, to, requirements, false, allowBrokerCapacityEstimation, operationProgress);
   }
 
   /**
@@ -468,6 +472,7 @@ public class LoadMonitor {
    * @param to end of the time window
    * @param requirements the load completeness requirements.
    * @param populateReplicaPlacementInfo whether populate replica placement information.
+   * @param allowBrokerCapacityEstimation Whether allow broker capacity resolver to estimate broker capacity
    * @param operationProgress the progress of the job to report.
    * @return A cluster model with the available snapshots whose timestamp is in the given window.
    * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
@@ -477,6 +482,7 @@ public class LoadMonitor {
                                    long to,
                                    ModelCompletenessRequirements requirements,
                                    boolean populateReplicaPlacementInfo,
+                                   boolean allowBrokerCapacityEstimation,
                                    OperationProgress operationProgress)
       throws NotEnoughValidWindowsException, TimeoutException {
     long start = System.currentTimeMillis();
@@ -517,7 +523,8 @@ public class LoadMonitor {
         clusterModel.createRack(rack);
         BrokerCapacityInfo brokerCapacity;
         try {
-          brokerCapacity = _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id(), BROKER_CAPACITY_FETCH_TIMEOUT_MS);
+          brokerCapacity = _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id(), BROKER_CAPACITY_FETCH_TIMEOUT_MS,
+                                                                           allowBrokerCapacityEstimation);
           LOG.debug("Get capacity info for broker {}: total capacity {}, capacity by logdir {}.", node.id(),
                     brokerCapacity.capacity().get(Resource.DISK), brokerCapacity.diskCapacityByLogDir());
         } catch (TimeoutException tme) {
@@ -539,7 +546,7 @@ public class LoadMonitor {
       for (Map.Entry<PartitionEntity, ValuesAndExtrapolations> entry : partitionValuesAndExtrapolations.entrySet()) {
         TopicPartition tp = entry.getKey().tp();
         ValuesAndExtrapolations leaderLoad = entry.getValue();
-        populatePartitionLoad(cluster, clusterModel, tp, leaderLoad, replicaPlacementInfo, _brokerCapacityConfigResolver);
+        populatePartitionLoad(cluster, clusterModel, tp, leaderLoad, replicaPlacementInfo, _brokerCapacityConfigResolver, allowBrokerCapacityEstimation);
         step.incrementPopulatedNumPartitions();
       }
       // Set the state of bad brokers in clusterModel based on the Kafka cluster state.

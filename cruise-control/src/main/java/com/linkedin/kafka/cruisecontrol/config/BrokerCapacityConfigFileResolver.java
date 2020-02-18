@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeoutException;
 
 
 /**
@@ -151,28 +152,35 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
   private static final String NUM_CORES_CONFIG = "num.cores";
   public static final double DEFAULT_CPU_CAPACITY_WITH_CORES = 100.0;
   private static Map<Integer, BrokerCapacityInfo> _capacitiesForBrokers;
+  private String _configFile;
 
   @Override
   public void configure(Map<String, ?> configs) {
-    String configFile = KafkaCruiseControlUtils.getRequiredConfig(configs, CAPACITY_CONFIG_FILE);
+    _configFile = KafkaCruiseControlUtils.getRequiredConfig(configs, CAPACITY_CONFIG_FILE);
     try {
-      loadCapacities(configFile);
+      loadCapacities(_configFile);
     } catch (FileNotFoundException e) {
       throw new IllegalArgumentException(e);
     }
   }
 
   @Override
-  public BrokerCapacityInfo capacityForBroker(String rack, String host, int brokerId, long timeoutMs) {
+  public BrokerCapacityInfo capacityForBroker(String rack, String host, int brokerId, long timeoutMs, boolean allowCapacityEstimation)
+      throws TimeoutException {
     if (brokerId >= 0) {
       BrokerCapacityInfo capacity = _capacitiesForBrokers.get(brokerId);
       if (capacity != null) {
         return capacity;
       } else {
-        String info = String.format("Missing broker id(%d) in capacity config file.", brokerId);
-        return new BrokerCapacityInfo(_capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).capacity(), info,
-                                      _capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).diskCapacityByLogDir(),
-                                      _capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).numCpuCores());
+        if (allowCapacityEstimation) {
+          String info = String.format("Missing broker id(%d) in capacity config file.", brokerId);
+          return new BrokerCapacityInfo(_capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).capacity(), info,
+                                        _capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).diskCapacityByLogDir(),
+                                        _capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).numCpuCores());
+        } else {
+          throw new TimeoutException(String.format("Unable to resolve capacity of broker %d. Either allow capacity estimation "
+                                                   + "or add broker's capacity information in file %s.", brokerId, _configFile));
+        }
       }
     } else {
       throw new IllegalArgumentException("The broker id(" + brokerId + ") should be non-negative.");

@@ -25,6 +25,7 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.concurrent.TimeoutException;
 import org.apache.kafka.common.TopicPartition;
 
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.JBOD_BROKER_CAPACITY_CONFIG_FILE;
@@ -45,8 +46,9 @@ public class RandomCluster {
    *
    * @param clusterProperties Cluster properties specifying number of racks and brokers.
    * @return Cluster with the specified number of racks and brokers.
+   * @throws TimeoutException If broker capacity is unable to be determined.
    */
-  public static ClusterModel generate(Map<ClusterProperty, Number> clusterProperties) {
+  public static ClusterModel generate(Map<ClusterProperty, Number> clusterProperties) throws TimeoutException {
     int numRacks = clusterProperties.get(ClusterProperty.NUM_RACKS).intValue();
     int numBrokers = clusterProperties.get(ClusterProperty.NUM_BROKERS).intValue();
     BrokerCapacityConfigFileResolver configFileResolver = new BrokerCapacityConfigFileResolver();
@@ -71,14 +73,14 @@ public class RandomCluster {
     // Create brokers and assign a broker to each rack.
     for (int i = 0; i < numRacks; i++) {
       cluster.createBroker(Integer.toString(i), Integer.toString(i), i,
-                           configFileResolver.capacityForBroker("", "", i, BROKER_CAPACITY_FETCH_TIMEOUT_MS),
+                           configFileResolver.capacityForBroker("", "", i, BROKER_CAPACITY_FETCH_TIMEOUT_MS, true),
                            populateReplicaPlacementInfo);
     }
     // Assign the rest of the brokers over racks randomly.
     for (int i = numRacks; i < numBrokers; i++) {
       int randomRackId = uniformlyRandom(0, numRacks - 1, TestConstants.SEED_BASE + i);
       cluster.createBroker(Integer.toString(randomRackId), Integer.toString(i), i,
-                           configFileResolver.capacityForBroker("", "", i, BROKER_CAPACITY_FETCH_TIMEOUT_MS),
+                           configFileResolver.capacityForBroker("", "", i, BROKER_CAPACITY_FETCH_TIMEOUT_MS, true),
                            populateReplicaPlacementInfo);
     }
     return cluster;
@@ -489,7 +491,7 @@ public class RandomCluster {
   /**
    * @return Get a cluster model having a single broker with bad disk.
    */
-  public static ClusterModel singleBrokerWithBadDisk() {
+  public static ClusterModel singleBrokerWithBadDisk() throws TimeoutException {
     Map<ClusterProperty, Number> singleBrokerWithBadDisk = new HashMap<>();
     singleBrokerWithBadDisk.put(ClusterProperty.NUM_BROKERS, 3);
     singleBrokerWithBadDisk.put(ClusterProperty.NUM_RACKS, 3);

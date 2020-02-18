@@ -250,6 +250,7 @@ public class LoadMonitorTest {
 
     ClusterModel clusterModel = loadMonitor.clusterModel(-1, Long.MAX_VALUE,
                                                          new ModelCompletenessRequirements(2, 1.0, false),
+                                                         true,
                                                          new OperationProgress());
     assertEquals(6.5, clusterModel.partition(T0P0).leader().load().expectedUtilizationFor(Resource.CPU), 0.0);
     assertEquals(13, clusterModel.partition(T0P0).leader().load().expectedUtilizationFor(Resource.NW_IN), 0.0);
@@ -271,6 +272,7 @@ public class LoadMonitorTest {
 
     ClusterModel clusterModel = loadMonitor.clusterModel(DEFAULT_START_TIME_FOR_CLUSTER_MODEL, Long.MAX_VALUE,
                                                          new ModelCompletenessRequirements(2, 1.0, false),
+                                                         true,
                                                          true,
                                                          new OperationProgress());
 
@@ -303,13 +305,13 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(2, 4, aggregator, PE_T1P0, 0, WINDOW_MS, METRIC_DEF);
 
     try {
-      loadMonitor.clusterModel(-1, Long.MAX_VALUE, requirements1, new OperationProgress());
+      loadMonitor.clusterModel(-1, Long.MAX_VALUE, requirements1, true, new OperationProgress());
       fail("Should have thrown NotEnoughValidWindowsException.");
     } catch (NotEnoughValidWindowsException nevwe) {
       // let it go
     }
 
-    ClusterModel clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements2, new OperationProgress());
+    ClusterModel clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements2, true, new OperationProgress());
     assertNotNull(clusterModel.partition(T1P0));
     assertNull(clusterModel.partition(T1P1));
     assertEquals(1, clusterModel.partition(T0P0).leader().load().numWindows());
@@ -319,14 +321,14 @@ public class LoadMonitorTest {
     assertEquals(3.0, clusterModel.partition(T0P0).leader().load().expectedUtilizationFor(Resource.NW_OUT), 0.0);
 
     try {
-      loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements3, new OperationProgress());
+      loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements3, true, new OperationProgress());
       fail("Should have thrown NotEnoughValidWindowsException.");
     } catch (NotEnoughValidWindowsException nevwe) {
       // let it go
     }
 
     try {
-      loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements4, new OperationProgress());
+      loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements4, true, new OperationProgress());
       fail("Should have thrown NotEnoughValidWindowsException.");
     } catch (NotEnoughValidWindowsException nevwe) {
       // let it go
@@ -352,13 +354,13 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(3, 4, aggregator, PE_T1P0, 0, WINDOW_MS, METRIC_DEF);
 
     try {
-      loadMonitor.clusterModel(-1, Long.MAX_VALUE, requirements1, new OperationProgress());
+      loadMonitor.clusterModel(-1, Long.MAX_VALUE, requirements1, true, new OperationProgress());
       fail("Should have thrown NotEnoughValidWindowsException.");
     } catch (NotEnoughValidWindowsException nevwe) {
       // let it go
     }
 
-    ClusterModel clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements2, new OperationProgress());
+    ClusterModel clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements2, true, new OperationProgress());
     assertNotNull(clusterModel.partition(T1P0));
     assertNull(clusterModel.partition(T1P1));
     assertEquals(2, clusterModel.partition(T0P0).leader().load().numWindows());
@@ -368,13 +370,13 @@ public class LoadMonitorTest {
     assertEquals(13, clusterModel.partition(T0P0).leader().load().expectedUtilizationFor(Resource.NW_OUT), 0.0);
 
     try {
-      loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements3, new OperationProgress());
+      loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements3, true, new OperationProgress());
       fail("Should have thrown NotEnoughValidWindowsException.");
     } catch (NotEnoughValidWindowsException nevwe) {
       // let it go
     }
 
-    clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements4, new OperationProgress());
+    clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements4, true, new OperationProgress());
     assertNotNull(clusterModel.partition(T1P0));
     assertNull(clusterModel.partition(T1P1));
     assertEquals(2, clusterModel.partition(T0P0).leader().load().numWindows());
@@ -403,7 +405,7 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(3, 4, aggregator, PE_T1P0, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 1, aggregator, PE_T1P1, 1, WINDOW_MS, METRIC_DEF);
 
-    ClusterModel clusterModel =  loadMonitor.clusterModel(-1, Long.MAX_VALUE, requirements1, new OperationProgress());
+    ClusterModel clusterModel =  loadMonitor.clusterModel(-1, Long.MAX_VALUE, requirements1, true, new OperationProgress());
     for (TopicPartition tp : Arrays.asList(T0P0, T0P1, T1P0, T1P1)) {
       assertNotNull(clusterModel.partition(tp));
     }
@@ -418,7 +420,7 @@ public class LoadMonitorTest {
     assertEquals(20, clusterModel.partition(T1P1).leader().load().expectedUtilizationFor(Resource.NW_IN), 0.0);
     assertEquals(20, clusterModel.partition(T1P1).leader().load().expectedUtilizationFor(Resource.NW_OUT), 0.0);
 
-    clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements2, new OperationProgress());
+    clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements2, true, new OperationProgress());
     assertNotNull(clusterModel.partition(T1P0));
     assertNull(clusterModel.partition(T1P1));
     assertEquals(2, clusterModel.partition(T0P0).leader().load().numWindows());
@@ -428,13 +430,13 @@ public class LoadMonitorTest {
     assertEquals(13.0, clusterModel.partition(T0P0).leader().load().expectedUtilizationFor(Resource.NW_OUT), 0.0);
 
     try {
-      loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements3, new OperationProgress());
+      loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements3, true, new OperationProgress());
       fail("Should have thrown NotEnoughValidWindowsException.");
     } catch (NotEnoughValidWindowsException nevwe) {
       // let it go
     }
 
-    clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements4, new OperationProgress());
+    clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements4, true, new OperationProgress());
     assertNotNull(clusterModel.partition(T1P0));
     assertNull(clusterModel.partition(T1P1));
     assertEquals(2, clusterModel.partition(T0P0).leader().load().numWindows());
@@ -466,8 +468,9 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T1P1, 4, WINDOW_MS, METRIC_DEF);
 
     ClusterModel clusterModel = loadMonitor.clusterModel(-1, Long.MAX_VALUE,
-        new ModelCompletenessRequirements(2, 0, false),
-        new OperationProgress());
+                                                         new ModelCompletenessRequirements(2, 0, false),
+                                                         true,
+                                                         new OperationProgress());
 
     assertEquals(2, clusterModel.partition(T0P0).leader().load().numWindows());
     assertEquals(16.5, clusterModel.partition(T0P0).leader().load().expectedUtilizationFor(Resource.CPU), 0.0);

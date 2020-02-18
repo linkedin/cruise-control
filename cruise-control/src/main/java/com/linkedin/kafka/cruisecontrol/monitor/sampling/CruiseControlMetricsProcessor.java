@@ -82,9 +82,9 @@ public class CruiseControlMetricsProcessor {
         }
         try {
           BrokerCapacityInfo capacity =
-              _brokerCapacityConfigResolver.capacityForBroker(getRackHandleNull(node), node.host(), bid, BROKER_CAPACITY_FETCH_TIMEOUT_MS);
-          // No mapping shall be recorded if capacity is estimated, but estimation is not allowed.
-          return (!_allowCpuCapacityEstimation && capacity.isEstimated()) ? null : capacity.numCpuCores();
+              _brokerCapacityConfigResolver.capacityForBroker(getRackHandleNull(node), node.host(), bid, BROKER_CAPACITY_FETCH_TIMEOUT_MS,
+                                                              _allowCpuCapacityEstimation);
+          return capacity.numCpuCores();
         } catch (TimeoutException tme) {
           LOG.warn("Unable to get number of CPU cores for broker {}.", node.id(), tme);
           return null;

@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.balancednessCostByGoal;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.MAX_BALANCEDNESS_SCORE;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.shouldSkipAnomalyDetection;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
@@ -144,6 +143,7 @@ public class GoalViolationDetector implements Runnable {
             // Make cluster model null before generating a new cluster model so the current one can be GCed.
             clusterModel = null;
             clusterModel = _kafkaCruiseControl.clusterModel(goal.clusterModelCompletenessRequirements(),
+                                                            _allowCapacityEstimation,
                                                             new OperationProgress());
 
             // If the clusterModel contains dead brokers or disks, goal violation detector will ignore any goal violations.
@@ -151,7 +151,6 @@ public class GoalViolationDetector implements Runnable {
             if (skipDueToOfflineReplicas(clusterModel)) {
               return;
             }
-            sanityCheckCapacityEstimation(_allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
             _lastCheckedModelGeneration = clusterModel.generation();
           }
           newModelNeeded = optimizeForGoal(clusterModel, goal, goalViolations, excludedBrokersForLeadership, excludedBrokersForReplicaMove);

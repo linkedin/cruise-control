@@ -117,7 +117,8 @@ public class CruiseControlMetricsProcessorTest {
 
   private static BrokerCapacityConfigResolver mockBrokerCapacityConfigResolver() throws TimeoutException {
     BrokerCapacityConfigResolver brokerCapacityConfigResolver = EasyMock.mock(BrokerCapacityConfigResolver.class);
-    EasyMock.expect(brokerCapacityConfigResolver.capacityForBroker(EasyMock.anyString(), EasyMock.anyString(), EasyMock.anyInt(), EasyMock.anyLong()))
+    EasyMock.expect(brokerCapacityConfigResolver.capacityForBroker(EasyMock.anyString(), EasyMock.anyString(), EasyMock.anyInt(),
+                                                                   EasyMock.anyLong(), EasyMock.anyBoolean()))
             .andReturn(new BrokerCapacityInfo(EMPTY_BROKER_CAPACITY, Collections.emptyMap(), MOCK_NUM_CPU_CORES)).anyTimes();
     EasyMock.replay(brokerCapacityConfigResolver);
     return brokerCapacityConfigResolver;
@@ -129,8 +130,8 @@ public class CruiseControlMetricsProcessorTest {
     // All estimated.
     BrokerCapacityConfigResolver brokerCapacityConfigResolverAllEstimated = EasyMock.mock(BrokerCapacityConfigResolver.class);
     EasyMock.expect(brokerCapacityConfigResolverAllEstimated.capacityForBroker(EasyMock.anyString(), EasyMock.anyString(),
-                                                                               EasyMock.anyInt(), EasyMock.anyLong()))
-            .andReturn(new BrokerCapacityInfo(EMPTY_BROKER_CAPACITY, "All estimated", Collections.emptyMap(), MOCK_NUM_CPU_CORES)).anyTimes();
+                                                                               EasyMock.anyInt(), EasyMock.anyLong(), EasyMock.eq(false)))
+            .andThrow(new TimeoutException("Unable to resolve capacity.")).anyTimes();
     EasyMock.replay(brokerCapacityConfigResolverAllEstimated);
 
     CruiseControlMetricsProcessor processor = new CruiseControlMetricsProcessor(brokerCapacityConfigResolverAllEstimated, false);
@@ -147,7 +148,7 @@ public class CruiseControlMetricsProcessorTest {
     // Capacity resolver unable to retrieve broker capacity.
     BrokerCapacityConfigResolver brokerCapacityConfigResolverTimeout = EasyMock.mock(BrokerCapacityConfigResolver.class);
     EasyMock.expect(brokerCapacityConfigResolverTimeout.capacityForBroker(EasyMock.anyString(), EasyMock.anyString(),
-                                                                          EasyMock.anyInt(), EasyMock.anyLong()))
+                                                                          EasyMock.anyInt(), EasyMock.anyLong(), EasyMock.anyBoolean()))
             .andThrow(new TimeoutException("Unable to resolve capacity.")).anyTimes();
     EasyMock.replay(brokerCapacityConfigResolverTimeout);
 
@@ -165,10 +166,10 @@ public class CruiseControlMetricsProcessorTest {
     // Some estimated.
     BrokerCapacityConfigResolver brokerCapacityConfigResolverSomeEstimated = EasyMock.mock(BrokerCapacityConfigResolver.class);
     EasyMock.expect(brokerCapacityConfigResolverSomeEstimated.capacityForBroker(EasyMock.anyString(), EasyMock.anyString(),
-                                                                                EasyMock.eq(BROKER_ID_1), EasyMock.anyLong()))
-            .andReturn(new BrokerCapacityInfo(EMPTY_BROKER_CAPACITY, "1 estimated", Collections.emptyMap(), MOCK_NUM_CPU_CORES)).anyTimes();
+                                                                                EasyMock.eq(BROKER_ID_1), EasyMock.anyLong(), EasyMock.anyBoolean()))
+        .andThrow(new TimeoutException("Unable to resolve capacity.")).anyTimes();
     EasyMock.expect(brokerCapacityConfigResolverSomeEstimated.capacityForBroker(EasyMock.anyString(), EasyMock.anyString(),
-                                                                                EasyMock.eq(BROKER_ID_0), EasyMock.anyLong()))
+                                                                                EasyMock.eq(BROKER_ID_0), EasyMock.anyLong(), EasyMock.anyBoolean()))
             .andReturn(new BrokerCapacityInfo(EMPTY_BROKER_CAPACITY, Collections.emptyMap(), MOCK_NUM_CPU_CORES)).anyTimes();
     EasyMock.replay(brokerCapacityConfigResolverSomeEstimated);
 
@@ -320,7 +321,8 @@ public class CruiseControlMetricsProcessorTest {
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
     // All estimated.
     BrokerCapacityConfigResolver brokerCapacityConfigResolver = EasyMock.mock(BrokerCapacityConfigResolver.class);
-    EasyMock.expect(brokerCapacityConfigResolver.capacityForBroker(EasyMock.anyString(), EasyMock.anyString(), EasyMock.anyInt(), EasyMock.anyLong()))
+    EasyMock.expect(brokerCapacityConfigResolver.capacityForBroker(EasyMock.anyString(), EasyMock.anyString(), EasyMock.anyInt(),
+                                                                   EasyMock.anyLong(), EasyMock.anyBoolean()))
             .andReturn(new BrokerCapacityInfo(Collections.emptyMap(), Collections.emptyMap(), MOCK_NUM_CPU_CORES)).anyTimes();
     EasyMock.replay(brokerCapacityConfigResolver);
 
