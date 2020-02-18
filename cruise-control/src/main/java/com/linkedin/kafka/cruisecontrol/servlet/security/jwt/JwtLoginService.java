@@ -9,6 +9,7 @@ import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
+import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import org.eclipse.jetty.security.DefaultIdentityService;
 import org.eclipse.jetty.security.IdentityService;
@@ -30,8 +31,12 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
 import java.text.ParseException;
+import java.time.Clock;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.security.jwt.JwtAuthenticator.JWT_LOGGER;
 
@@ -43,6 +48,8 @@ import static com.linkedin.kafka.cruisecontrol.servlet.security.jwt.JwtAuthentic
  * this class, so opening and closing connections should be done by implementing the {@link AbstractLifeCycle} interface's
  * {@link #doStart()} and {@link #doStop()} methods respectively. For a simple example see
  * {@link UserStoreAuthorizationService}.</p>
+ * <p>The login service also validates expiration time of the token and it expects the token to contain the expiration
+ * in Unix epoch time format in UTC.</p>
  */
 public class JwtLoginService extends AbstractLifeCycle implements LoginService {
 
@@ -50,6 +57,7 @@ public class JwtLoginService extends AbstractLifeCycle implements LoginService {
   private IdentityService _identityService = new DefaultIdentityService();
   private final RSAPublicKey _publicKey;
   private final List<String> _audiences;
+  private Clock _clock;
 
   public JwtLoginService(AuthorizationService authorizationService, String publicKeyLocation, List<String> audiences)
       throws IOException, CertificateException {
@@ -57,9 +65,14 @@ public class JwtLoginService extends AbstractLifeCycle implements LoginService {
   }
 
   public JwtLoginService(AuthorizationService authorizationService, RSAPublicKey publicKey, List<String> audiences) {
+    this(authorizationService, publicKey, audiences, Clock.systemUTC());
+  }
+
+  public JwtLoginService(AuthorizationService authorizationService, RSAPublicKey publicKey, List<String> audiences, Clock clock) {
     _authorizationService = authorizationService;
     _publicKey = publicKey;
     _audiences = audiences;
+    _clock = clock;
   }
 
   @Override
@@ -94,9 +107,11 @@ public class JwtLoginService extends AbstractLifeCycle implements LoginService {
     }
 
     SignedJWT jwtToken = (SignedJWT) credentials;
+    JWTClaimsSet claimsSet;
     boolean valid;
     try {
-      valid = validateToken(jwtToken, username);
+      claimsSet = jwtToken.getJWTClaimsSet();
+      valid = validateToken(jwtToken, claimsSet, username);
     } catch (ParseException e) {
       JWT_LOGGER.warn(String.format("%s: Couldn't parse a JWT token", username), e);
       return null;
@@ -104,7 +119,7 @@ public class JwtLoginService extends AbstractLifeCycle implements LoginService {
     if (valid) {
       String serializedToken = (String) request.getAttribute(JwtAuthenticator.JWT_TOKEN_REQUEST_ATTRIBUTE);
       UserIdentity rolesDelegate = _authorizationService.getUserIdentity((HttpServletRequest) request, username);
-      return getUserIdentity(jwtToken, serializedToken, username, rolesDelegate);
+      return getUserIdentity(jwtToken, claimsSet, serializedToken, username, rolesDelegate);
     } else {
       return null;
     }
@@ -112,7 +127,8 @@ public class JwtLoginService extends AbstractLifeCycle implements LoginService {
 
   @Override
   public boolean validate(UserIdentity user) {
-    return false;
+    Set<JWTClaimsSet> claims = user.getSubject().getPrivateCredentials(JWTClaimsSet.class);
+    return !claims.isEmpty() && claims.stream().allMatch(this::validateExpiration);
   }
 
   @Override
@@ -130,16 +146,21 @@ public class JwtLoginService extends AbstractLifeCycle implements LoginService {
 
   }
 
-  private boolean validateToken(SignedJWT jwtToken, String username) throws ParseException {
+  // visible for testing
+  void setClock(Clock newClock) {
+    _clock = newClock;
+  }
+
+  private boolean validateToken(SignedJWT jwtToken, JWTClaimsSet claimsSet, String username) {
     boolean sigValid = validateSignature(jwtToken);
     if (!sigValid) {
       JWT_LOGGER.warn(String.format("%s: Signature could not be verified", username));
     }
-    boolean audValid = validateAudiences(jwtToken);
+    boolean audValid = validateAudiences(claimsSet);
     if (!audValid) {
       JWT_LOGGER.warn(String.format("%s: Audience validation failed", username));
     }
-    boolean expValid = validateExpiration(jwtToken);
+    boolean expValid = validateExpiration(claimsSet);
     if (!expValid) {
       JWT_LOGGER.warn(String.format("%s: Expiration validation failed", username));
     }
@@ -160,11 +181,11 @@ public class JwtLoginService extends AbstractLifeCycle implements LoginService {
     }
   }
 
-  private boolean validateAudiences(SignedJWT jwtToken) throws ParseException {
+  private boolean validateAudiences(JWTClaimsSet claimsSet) {
     if (_audiences == null) {
       return true;
     }
-    List<String> tokenAudienceList = jwtToken.getJWTClaimsSet().getAudience();
+    List<String> tokenAudienceList = claimsSet.getAudience();
     for (String aud : tokenAudienceList) {
       if (_audiences.contains(aud)) {
         JWT_LOGGER.trace("JWT token audience has been successfully validated");
@@ -175,6 +196,11 @@ public class JwtLoginService extends AbstractLifeCycle implements LoginService {
     return false;
   }
 
+  private boolean validateExpiration(JWTClaimsSet claimsSet) {
+    Date expires = claimsSet.getExpirationTime();
+    return expires == null || _clock.instant().isBefore(expires.toInstant());
+  }
+
   private static RSAPublicKey readPublicKey(String location) throws CertificateException, IOException {
     byte[] publicKeyBytes = Files.readAllBytes(Paths.get(location));
     CertificateFactory fact = CertificateFactory.getInstance("X.509");
@@ -182,16 +208,12 @@ public class JwtLoginService extends AbstractLifeCycle implements LoginService {
     return (RSAPublicKey) cer.getPublicKey();
   }
 
-  private static boolean validateExpiration(SignedJWT jwtToken) throws ParseException {
-    Date expires = jwtToken.getJWTClaimsSet().getExpirationTime();
-    return expires == null || new Date().before(expires);
-  }
-
-  private static UserIdentity getUserIdentity(SignedJWT jwtToken, String serializedToken, String username, UserIdentity rolesDelegate) {
+  private static UserIdentity getUserIdentity(SignedJWT jwtToken, JWTClaimsSet claimsSet, String serializedToken, String username, UserIdentity rolesDelegate) {
     JwtUserPrincipal principal = new JwtUserPrincipal(username, serializedToken);
-    Subject subject = new Subject();
-    subject.getPrincipals().add(principal);
-    subject.getPrivateCredentials(SignedJWT.class).add(jwtToken);
+    Set<Object> privCreds = new HashSet<>();
+    privCreds.add(jwtToken);
+    privCreds.add(claimsSet);
+    Subject subject = new Subject(true, Collections.singleton(principal), Collections.emptySet(), privCreds);
     return new JwtUserIdentity(subject, principal, rolesDelegate);
   }
 }
