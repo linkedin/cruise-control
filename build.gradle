@@ -211,8 +211,8 @@ project(':cruise-control') {
     compile project(':cruise-control-core')
     compile "org.slf4j:slf4j-api:1.7.30" // TODO: Upgrade log4j to log4j2 to use async logger.
     compile "org.apache.zookeeper:zookeeper:3.5.6"
-    compile "org.apache.kafka:kafka_2.11:2.3.0"
-    compile 'org.apache.kafka:kafka-clients:2.3.0'
+    compile "org.apache.kafka:kafka_2.11:$kafkaVersion"
+    compile "org.apache.kafka:kafka-clients:$kafkaVersion"
     compile "org.scala-lang:scala-library:2.11.11"
     compile 'junit:junit:4.13'
     compile 'org.apache.commons:commons-math3:3.6.1'
@@ -227,8 +227,8 @@ project(':cruise-control') {
     testCompile project(path: ':cruise-control-core', configuration: 'testOutput')
     testCompile "org.scala-lang:scala-library:2.11.11"
     testCompile 'org.easymock:easymock:4.1'
-    testCompile 'org.apache.kafka:kafka_2.11:2.3.0:test'
-    testCompile 'org.apache.kafka:kafka-clients:2.3.0:test'
+    testCompile "org.apache.kafka:kafka_2.11:$kafkaVersion:test"
+    testCompile "org.apache.kafka:kafka-clients:$kafkaVersion:test"
     testCompile 'commons-io:commons-io:2.6'
   }
 
@@ -324,14 +324,14 @@ project(':cruise-control-metrics-reporter') {
 
   dependencies {
     compile "org.slf4j:slf4j-api:1.7.30"
-    compile "org.apache.kafka:kafka_2.11:2.3.0"
-    compile 'org.apache.kafka:kafka-clients:2.3.0'
+    compile "org.apache.kafka:kafka_2.11:$kafkaVersion"
+    compile "org.apache.kafka:kafka-clients:$kafkaVersion"
     compile 'junit:junit:4.13'
     compile 'org.apache.commons:commons-math3:3.6.1'
 
     testCompile 'org.bouncycastle:bcpkix-jdk15on:1.64'
-    testCompile 'org.apache.kafka:kafka-clients:2.3.0:test'
-    testCompile 'org.apache.kafka:kafka-clients:2.3.0'
+    testCompile "org.apache.kafka:kafka-clients:$kafkaVersion:test"
+    testCompile "org.apache.kafka:kafka-clients:$kafkaVersion"
     testCompile 'commons-io:commons-io:2.6'
     testOutput sourceSets.test.output
   }
