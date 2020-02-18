@@ -43,48 +43,56 @@ public class MonitorConfig {
    * <code>metadata.max.age.ms</code>
    */
   public static final String METADATA_MAX_AGE_CONFIG = CommonClientConfigs.METADATA_MAX_AGE_CONFIG;
+  public static final long DEFAULT_METADATA_MAX_AGE = 55000L;
   public static final String METADATA_MAX_AGE_DOC = CommonClientConfigs.METADATA_MAX_AGE_DOC;
 
   /**
    * <code>client.id</code>
    */
   public static final String CLIENT_ID_CONFIG = CommonClientConfigs.CLIENT_ID_CONFIG;
+  public static final String DEFAULT_CLIENT_ID = "kafka-cruise-control";
   public static final String CLIENT_ID_DOC = CommonClientConfigs.CLIENT_ID_DOC;
 
   /**
    * <code>send.buffer.bytes</code>
    */
   public static final String SEND_BUFFER_CONFIG = CommonClientConfigs.SEND_BUFFER_CONFIG;
+  public static final int DEFAULT_SEND_BUFFER = 128 * 1024;
   public static final String SEND_BUFFER_DOC = CommonClientConfigs.SEND_BUFFER_DOC;
 
   /**
    * <code>receive.buffer.bytes</code>
    */
   public static final String RECEIVE_BUFFER_CONFIG = CommonClientConfigs.RECEIVE_BUFFER_CONFIG;
+  public static final int DEFAULT_RECEIVE_BUFFER = 32 * 1024;
   public static final String RECEIVE_BUFFER_DOC = CommonClientConfigs.RECEIVE_BUFFER_DOC;
 
   /**
    * <code>connections.max.idle.ms</code>
    */
   public static final String CONNECTIONS_MAX_IDLE_MS_CONFIG = CommonClientConfigs.CONNECTIONS_MAX_IDLE_MS_CONFIG;
+  public static final long DEFAULT_CONNECTIONS_MAX_IDLE_MS = 9 * 60 * 1000;
   public static final String CONNECTIONS_MAX_IDLE_MS_DOC = CommonClientConfigs.CONNECTIONS_MAX_IDLE_MS_DOC;
 
   /**
    * <code>reconnect.backoff.ms</code>
    */
   public static final String RECONNECT_BACKOFF_MS_CONFIG = CommonClientConfigs.RECONNECT_BACKOFF_MS_CONFIG;
+  public static final long DEFAULT_RECONNECT_BACKOFF_MS = 50L;
   public static final String RECONNECT_BACKOFF_MS_DOC = CommonClientConfigs.RECONNECT_BACKOFF_MS_DOC;
 
   /**
    * <code>request.timeout.ms</code>
    */
   public static final String REQUEST_TIMEOUT_MS_CONFIG = CommonClientConfigs.REQUEST_TIMEOUT_MS_CONFIG;
+  public static final int DEFAULT_REQUEST_TIMEOUT_MS = 30000;
   public static final String REQUEST_TIMEOUT_MS_DOC = CommonClientConfigs.REQUEST_TIMEOUT_MS_DOC;
 
   /**
    * <code>partition.metrics.windows.ms</code>
    */
   public static final String PARTITION_METRICS_WINDOW_MS_CONFIG = "partition.metrics.window.ms";
+  public static final long DEFAULT_PARTITION_METRICS_WINDOW_MS = 60 * 60 * 1000;
   public static final String PARTITION_METRICS_WINDOW_MS_DOC = "The size of the window in milliseconds to aggregate "
       + "the Kafka partition metrics.";
 
@@ -92,6 +100,7 @@ public class MonitorConfig {
    * <code>num.partition.metrics.windows</code>
    */
   public static final String NUM_PARTITION_METRICS_WINDOWS_CONFIG = "num.partition.metrics.windows";
+  public static final int DEFAULT_NUM_PARTITION_METRICS_WINDOWS = 5;
   public static final String NUM_PARTITION_METRICS_WINDOWS_DOC = "The total number of windows to keep for partition "
       + "metric samples";
 
@@ -108,12 +117,14 @@ public class MonitorConfig {
    * <code>skip.loading.samples</code>
    */
   public static final String SKIP_LOADING_SAMPLES_CONFIG = "skip.loading.samples";
+  public static final boolean DEFAULT_SKIP_LOADING_SAMPLES = false;
   public static final String SKIP_LOADING_SAMPLES_DOC = "Specify if sample loading will be skipped upon startup.";
 
   /**
    * <code>min.samples.per.partition.metrics.window</code>
    */
   public static final String MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG = "min.samples.per.partition.metrics.window";
+  public static final int DEFAULT_MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW = 3;
   public static final String MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_DOC = "The minimum number of "
       + "PartitionMetricSamples needed to make a partition metrics window valid without extrapolation.";
 
@@ -121,6 +132,7 @@ public class MonitorConfig {
    * <code>max.allowed.extrapolations.per.partition</code>
    */
   public static final String MAX_ALLOWED_EXTRAPOLATIONS_PER_PARTITION_CONFIG = "max.allowed.extrapolations.per.partition";
+  public static final int DEFAULT_MAX_ALLOWED_EXTRAPOLATIONS_PER_PARTITION = 5;
   public static final String MAX_ALLOWED_EXTRAPOLATIONS_PER_PARTITION_DOC = "The maximum allowed number of extrapolations "
       + "for each partition. A partition will be considered as invalid if the total number extrapolations in all the "
       + "windows goes above this number.";
@@ -130,6 +142,7 @@ public class MonitorConfig {
    */
   public static final String PARTITION_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG =
       "partition.metric.sample.aggregator.completeness.cache.size";
+  public static final int DEFAULT_PARTITION_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE = 5;
   public static final String PARTITION_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_DOC = "The metric sample "
       + "aggregator caches the completeness metadata for fast query. The completeness describes the confidence "
       + "level of the data in the metric sample aggregator. It is primarily measured by the validity of the metrics"
@@ -140,6 +153,7 @@ public class MonitorConfig {
    * <code>broker.metrics.window.ms</code>
    */
   public static final String BROKER_METRICS_WINDOW_MS_CONFIG = "broker.metrics.window.ms";
+  public static final long DEFAULT_BROKER_METRICS_WINDOW_MS = 60 * 60 * 1000;
   public static final String BROKER_METRICS_WINDOW_MS_DOC = "The size of the window in milliseconds to aggregate the"
       + " Kafka broker metrics.";
 
@@ -147,12 +161,14 @@ public class MonitorConfig {
    * <code>num.broker.metrics.windows</code>
    */
   public static final String NUM_BROKER_METRICS_WINDOWS_CONFIG = "num.broker.metrics.windows";
+  public static final int DEFAULT_NUM_BROKER_METRICS_WINDOWS = 5;
   public static final String NUM_BROKER_METRICS_WINDOWS_DOC = "The total number of windows to keep for broker metric samples";
 
   /**
    * <code>min.samples.per.broker.metrics.window</code>
    */
   public static final String MIN_SAMPLES_PER_BROKER_METRICS_WINDOW_CONFIG = "min.samples.per.broker.metrics.window";
+  public static final int DEFAULT_MIN_SAMPLES_PER_BROKER_METRICS_WINDOW = 3;
   public static final String MIN_SAMPLES_PER_BROKER_METRICS_WINDOW_DOC = "The minimum number of BrokerMetricSamples "
       + "needed to make a broker metrics window valid without extrapolation.";
 
@@ -160,6 +176,7 @@ public class MonitorConfig {
    * <code>max.allowed.extrapolations.per.broker</code>
    */
   public static final String MAX_ALLOWED_EXTRAPOLATIONS_PER_BROKER_CONFIG = "max.allowed.extrapolations.per.broker";
+  public static final int DEFAULT_MAX_ALLOWED_EXTRAPOLATIONS_PER_BROKER = 5;
   public static final String MAX_ALLOWED_EXTRAPOLATIONS_PER_BROKER_DOC = "The maximum allowed number of extrapolations "
       + "for each broker. A broker will be considered as invalid if the total number extrapolations in all the windows"
       + " goes above this number.";
@@ -169,6 +186,7 @@ public class MonitorConfig {
    */
   public static final String BROKER_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG =
       "broker.metric.sample.aggregator.completeness.cache.size";
+  public static final int DEFAULT_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG = 5;
   public static final String BROKER_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_DOC = "The metric sample "
       + "aggregator caches the completeness metadata for fast query. The completeness describes the confidence "
       + "level of the data in the metric sample aggregator. It is primarily measured by the validity of the metrics"
@@ -180,6 +198,7 @@ public class MonitorConfig {
    * <code>num.metric.fetchers</code>
    */
   public static final String NUM_METRIC_FETCHERS_CONFIG = "num.metric.fetchers";
+  public static final int DEFAULT_NUM_METRIC_FETCHERS = 1;
   public static final String NUM_METRIC_FETCHERS_DOC = "The number of metric fetchers to fetch from the Kafka cluster.";
 
   /**
@@ -201,12 +220,14 @@ public class MonitorConfig {
    * <code>metric.sampling.interval.ms</code>
    */
   public static final String METRIC_SAMPLING_INTERVAL_MS_CONFIG = "metric.sampling.interval.ms";
+  public static final long DEFAULT_METRIC_SAMPLING_INTERVAL_MS = 60000L;
   public static final String METRIC_SAMPLING_INTERVAL_MS_DOC = "The interval of metric sampling.";
 
   /**
    * <code>min.valid.partition.ratio</code>
    */
   public static final String MIN_VALID_PARTITION_RATIO_CONFIG = "min.valid.partition.ratio";
+  public static final double DEFAULT_MIN_VALID_PARTITION_RATIO = 0.995;
   public static final String MIN_VALID_PARTITION_RATIO_DOC = "The minimum percentage of the total partitions "
       + "required to be monitored in order to generate a valid load model. Because the topic and partitions in a "
       + "Kafka cluster are dynamically changing. The load monitor will exclude some of the topics that does not have "
@@ -217,6 +238,7 @@ public class MonitorConfig {
    * <code>leader.network.inbound.weight.for.cpu.util</code>
    */
   public static final String LEADER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG = "leader.network.inbound.weight.for.cpu.util";
+  public static final double DEFAULT_LEADER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL = 0.7;
   public static final String LEADER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_DOC = "Kafka Cruise Control uses the following model to "
       + "derive replica level CPU utilization: REPLICA_CPU_UTIL = a * LEADER_BYTES_IN_RATE + b * LEADER_BYTES_OUT_RATE + "
       + "c * FOLLOWER_BYTES_IN_RATE. This configuration will be used as the weight for LEADER_BYTES_IN_RATE.";
@@ -225,6 +247,7 @@ public class MonitorConfig {
    * <code>leader.network.outbound.weight.for.cpu.util</code>
    */
   public static final String LEADER_NETWORK_OUTBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG = "leader.network.outbound.weight.for.cpu.util";
+  public static final double DEFAULT_LEADER_NETWORK_OUTBOUND_WEIGHT_FOR_CPU_UTIL = 0.15;
   public static final String LEADER_NETWORK_OUTBOUND_WEIGHT_FOR_CPU_UTIL_DOC = "Kafka Cruise Control uses the following model to "
       + "derive replica level CPU utilization: REPLICA_CPU_UTIL = a * LEADER_BYTES_IN_RATE + b * LEADER_BYTES_OUT_RATE + "
       + "c * FOLLOWER_BYTES_IN_RATE. This configuration will be used as the weight for LEADER_BYTES_OUT_RATE.";
@@ -233,6 +256,7 @@ public class MonitorConfig {
    * <code>follower.network.inbound.weight.for.cpu.util</code>
    */
   public static final String FOLLOWER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG = "follower.network.inbound.weight.for.cpu.util";
+  public static final double DEFAULT_FOLLOWER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL = 0.15;
   public static final String FOLLOWER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_DOC = "Kafka Cruise Control uses the following model to "
       + "derive replica level CPU utilization: REPLICA_CPU_UTIL = a * LEADER_BYTES_IN_RATE + b * LEADER_BYTES_OUT_RATE + "
       + "c * FOLLOWER_BYTES_IN_RATE. This configuration will be used as the weight for FOLLOWER_BYTES_IN_RATE.";
@@ -241,6 +265,7 @@ public class MonitorConfig {
    * <code>linear.regression.model.cpu.util.bucket.size</code>
    */
   public static final String LINEAR_REGRESSION_MODEL_CPU_UTIL_BUCKET_SIZE_CONFIG = "linear.regression.model.cpu.util.bucket.size";
+  public static final int DEFAULT_LINEAR_REGRESSION_MODEL_CPU_UTIL_BUCKET_SIZE = 5;
   public static final String LINEAR_REGRESSION_MODEL_CPU_UTIL_BUCKET_SIZE_DOC = "The CPU utilization bucket size for linear regression "
       + "model training data. The unit is percents.";
 
@@ -249,6 +274,7 @@ public class MonitorConfig {
    */
   public static final String LINEAR_REGRESSION_MODEL_REQUIRED_SAMPLES_PER_CPU_UTIL_BUCKET_CONFIG =
       "linear.regression.model.required.samples.per.bucket";
+  public static final int DEFAULT_LINEAR_REGRESSION_MODEL_REQUIRED_SAMPLES_PER_CPU_UTIL_BUCKET = 100;
   public static final String LINEAR_REGRESSION_MODEL_REQUIRED_SAMPLES_PER_CPU_UTIL_BUCKET_DOC = "The number of training samples"
       + " required in each CPU utilization bucket specified by linear.regression.model.cpu.util.bucket";
 
@@ -257,6 +283,7 @@ public class MonitorConfig {
    */
   public static final String LINEAR_REGRESSION_MODEL_MIN_NUM_CPU_UTIL_BUCKETS_CONFIG =
       "linear.regression.model.min.num.cpu.util.buckets";
+  public static final int DEFAULT_LINEAR_REGRESSION_MODEL_MIN_NUM_CPU_UTIL_BUCKETS = 5;
   public static final String LINEAR_REGRESSION_MODEL_MIN_NUM_CPU_UTIL_BUCKETS_DOC = "The minimum number of full CPU"
       + " utilization buckets required to generate a linear regression model.";
 
@@ -264,6 +291,7 @@ public class MonitorConfig {
    * <code>sampling.allow.cpu.capacity.estimation</code>
    */
   public static final String SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG = "sampling.allow.cpu.capacity.estimation";
+  public static final boolean DEFAULT_SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION = true;
   public static final String SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_DOC = "The flag to indicate whether sampling "
       + "process allows CPU capacity estimation of brokers used for CPU utilization estimation.";
 
@@ -288,12 +316,14 @@ public class MonitorConfig {
    * <code>topic.config.provider.class</code>
    */
   public static final String TOPIC_CONFIG_PROVIDER_CLASS_CONFIG = "topic.config.provider.class";
+  public static final String DEFAULT_TOPIC_CONFIG_PROVIDER_CLASS = KafkaTopicConfigProvider.class.getName();
   public static final String TOPIC_CONFIG_PROVIDER_CLASS_DOC = "The provider class that reports the active configuration of topics.";
 
   /**
    * <code>broker.capacity.config.resolver.class</code>
    */
   public static final String BROKER_CAPACITY_CONFIG_RESOLVER_CLASS_CONFIG = "broker.capacity.config.resolver.class";
+  public static final String DEFAULT_BROKER_CAPACITY_CONFIG_RESOLVER_CLASS = BrokerCapacityConfigFileResolver.class.getName();
   public static final String BROKER_CAPACITY_CONFIG_RESOLVER_CLASS_DOC = "The broker capacity configuration resolver "
       + "class name. The broker capacity configuration resolver is responsible for getting the broker capacity. The "
       + "default implementation is a file based solution.";
@@ -317,53 +347,53 @@ public class MonitorConfig {
                             SECURITY_PROTOCOL_DOC)
                     .define(METADATA_MAX_AGE_CONFIG,
                             ConfigDef.Type.LONG,
-                            55 * 1000,
+                            DEFAULT_METADATA_MAX_AGE,
                             atLeast(0),
                             ConfigDef.Importance.LOW,
                             METADATA_MAX_AGE_DOC)
                     .define(CLIENT_ID_CONFIG,
                             ConfigDef.Type.STRING,
-                            "kafka-cruise-control",
+                            DEFAULT_CLIENT_ID,
                             ConfigDef.Importance.MEDIUM,
                             CLIENT_ID_DOC)
                     .define(SEND_BUFFER_CONFIG,
                             ConfigDef.Type.INT,
-                            128 * 1024,
+                            DEFAULT_SEND_BUFFER,
                             atLeast(0),
                             ConfigDef.Importance.MEDIUM,
                             SEND_BUFFER_DOC)
                     .define(RECEIVE_BUFFER_CONFIG,
                             ConfigDef.Type.INT,
-                            32 * 1024,
+                            DEFAULT_RECEIVE_BUFFER,
                             atLeast(0),
                             ConfigDef.Importance.MEDIUM,
                             RECEIVE_BUFFER_DOC)
                     .define(CONNECTIONS_MAX_IDLE_MS_CONFIG,
                             ConfigDef.Type.LONG,
-                            9 * 60 * 1000,
+                            DEFAULT_CONNECTIONS_MAX_IDLE_MS,
                             ConfigDef.Importance.MEDIUM,
                             CONNECTIONS_MAX_IDLE_MS_DOC)
                     .define(RECONNECT_BACKOFF_MS_CONFIG,
                             ConfigDef.Type.LONG,
-                            50L,
+                            DEFAULT_RECONNECT_BACKOFF_MS,
                             atLeast(0L),
                             ConfigDef.Importance.LOW,
                             RECONNECT_BACKOFF_MS_DOC)
                     .define(REQUEST_TIMEOUT_MS_CONFIG,
                             ConfigDef.Type.INT,
-                            30 * 1000,
+                            DEFAULT_REQUEST_TIMEOUT_MS,
                             atLeast(0),
                             ConfigDef.Importance.MEDIUM,
                             REQUEST_TIMEOUT_MS_DOC)
                     .define(PARTITION_METRICS_WINDOW_MS_CONFIG,
                             ConfigDef.Type.LONG,
-                            60 * 60 * 1000,
+                            DEFAULT_PARTITION_METRICS_WINDOW_MS,
                             atLeast(1),
                             ConfigDef.Importance.HIGH,
                             PARTITION_METRICS_WINDOW_MS_DOC)
                     .define(NUM_PARTITION_METRICS_WINDOWS_CONFIG,
                             ConfigDef.Type.INT,
-                            5,
+                            DEFAULT_NUM_PARTITION_METRICS_WINDOWS,
                             atLeast(1),
                             ConfigDef.Importance.HIGH,
                             NUM_PARTITION_METRICS_WINDOWS_DOC)
@@ -374,60 +404,60 @@ public class MonitorConfig {
                             NETWORK_CLIENT_PROVIDER_CLASS_DOC)
                     .define(SKIP_LOADING_SAMPLES_CONFIG,
                             ConfigDef.Type.BOOLEAN,
-                            false,
+                            DEFAULT_SKIP_LOADING_SAMPLES,
                             ConfigDef.Importance.MEDIUM,
                             SKIP_LOADING_SAMPLES_DOC)
                     .define(MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG,
                             ConfigDef.Type.INT,
-                            3,
+                            DEFAULT_MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW,
                             atLeast(1),
                             ConfigDef.Importance.HIGH,
                             MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_DOC)
                     .define(MAX_ALLOWED_EXTRAPOLATIONS_PER_PARTITION_CONFIG,
                             ConfigDef.Type.INT,
-                            5,
+                            DEFAULT_MAX_ALLOWED_EXTRAPOLATIONS_PER_PARTITION,
                             atLeast(0),
                             ConfigDef.Importance.MEDIUM,
                             MAX_ALLOWED_EXTRAPOLATIONS_PER_PARTITION_DOC)
                     .define(PARTITION_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG,
                             ConfigDef.Type.INT,
-                            5,
+                            DEFAULT_PARTITION_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE,
                             atLeast(0),
                             ConfigDef.Importance.LOW,
                             PARTITION_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_DOC)
                     .define(BROKER_METRICS_WINDOW_MS_CONFIG,
                             ConfigDef.Type.LONG,
-                            60 * 60 * 1000,
+                            DEFAULT_BROKER_METRICS_WINDOW_MS,
                             atLeast(1),
                             ConfigDef.Importance.HIGH,
                             BROKER_METRICS_WINDOW_MS_DOC)
                     .define(NUM_BROKER_METRICS_WINDOWS_CONFIG,
                             ConfigDef.Type.INT,
-                            5,
+                            DEFAULT_NUM_BROKER_METRICS_WINDOWS,
                             atLeast(1),
                             ConfigDef.Importance.HIGH,
                             NUM_BROKER_METRICS_WINDOWS_DOC)
                     .define(MIN_SAMPLES_PER_BROKER_METRICS_WINDOW_CONFIG,
                             ConfigDef.Type.INT,
-                            3,
+                            DEFAULT_MIN_SAMPLES_PER_BROKER_METRICS_WINDOW,
                             atLeast(1),
                             ConfigDef.Importance.HIGH,
                             MIN_SAMPLES_PER_BROKER_METRICS_WINDOW_DOC)
                     .define(MAX_ALLOWED_EXTRAPOLATIONS_PER_BROKER_CONFIG,
                             ConfigDef.Type.INT,
-                            5,
+                            DEFAULT_MAX_ALLOWED_EXTRAPOLATIONS_PER_BROKER,
                             atLeast(0),
                             ConfigDef.Importance.MEDIUM,
                             MAX_ALLOWED_EXTRAPOLATIONS_PER_BROKER_DOC)
                     .define(BROKER_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG,
                             ConfigDef.Type.INT,
-                            5,
+                            DEFAULT_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG,
                             atLeast(0),
                             ConfigDef.Importance.LOW,
                             BROKER_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_DOC)
                     .define(NUM_METRIC_FETCHERS_CONFIG,
                             ConfigDef.Type.INT,
-                            1,
+                            DEFAULT_NUM_METRIC_FETCHERS,
                             ConfigDef.Importance.HIGH,
                             NUM_METRIC_FETCHERS_DOC)
                     .define(METRIC_SAMPLER_CLASS_CONFIG,
@@ -442,54 +472,54 @@ public class MonitorConfig {
                             METRIC_SAMPLER_PARTITION_ASSIGNOR_CLASS_DOC)
                     .define(METRIC_SAMPLING_INTERVAL_MS_CONFIG,
                             ConfigDef.Type.LONG,
-                            60 * 1000,
+                            DEFAULT_METRIC_SAMPLING_INTERVAL_MS,
                             atLeast(0),
                             ConfigDef.Importance.HIGH,
                             METRIC_SAMPLING_INTERVAL_MS_DOC)
                     .define(MIN_VALID_PARTITION_RATIO_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            0.995,
+                            DEFAULT_MIN_VALID_PARTITION_RATIO,
                             between(0, 1),
                             ConfigDef.Importance.HIGH,
                             MIN_VALID_PARTITION_RATIO_DOC)
                     .define(LEADER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            0.7,
+                            DEFAULT_LEADER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL,
                             between(0, 1),
                             ConfigDef.Importance.MEDIUM,
                             LEADER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_DOC)
                     .define(LEADER_NETWORK_OUTBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            0.15,
+                            DEFAULT_LEADER_NETWORK_OUTBOUND_WEIGHT_FOR_CPU_UTIL,
                             between(0, 1),
                             ConfigDef.Importance.MEDIUM,
                             LEADER_NETWORK_OUTBOUND_WEIGHT_FOR_CPU_UTIL_DOC)
                     .define(FOLLOWER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            0.15,
+                            DEFAULT_FOLLOWER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL,
                             between(0, 1),
                             ConfigDef.Importance.MEDIUM,
                             FOLLOWER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_DOC)
                     .define(LINEAR_REGRESSION_MODEL_CPU_UTIL_BUCKET_SIZE_CONFIG,
                             ConfigDef.Type.INT,
-                            5,
+                            DEFAULT_LINEAR_REGRESSION_MODEL_CPU_UTIL_BUCKET_SIZE,
                             between(0, 100),
                             ConfigDef.Importance.MEDIUM,
                             LINEAR_REGRESSION_MODEL_CPU_UTIL_BUCKET_SIZE_DOC)
                     .define(LINEAR_REGRESSION_MODEL_REQUIRED_SAMPLES_PER_CPU_UTIL_BUCKET_CONFIG,
                             ConfigDef.Type.INT,
-                            100,
+                            DEFAULT_LINEAR_REGRESSION_MODEL_REQUIRED_SAMPLES_PER_CPU_UTIL_BUCKET,
                             atLeast(1),
                             ConfigDef.Importance.MEDIUM,
                             LINEAR_REGRESSION_MODEL_REQUIRED_SAMPLES_PER_CPU_UTIL_BUCKET_DOC)
                     .define(LINEAR_REGRESSION_MODEL_MIN_NUM_CPU_UTIL_BUCKETS_CONFIG,
                             ConfigDef.Type.INT,
-                            5,
+                            DEFAULT_LINEAR_REGRESSION_MODEL_MIN_NUM_CPU_UTIL_BUCKETS,
                             ConfigDef.Importance.MEDIUM,
                             LINEAR_REGRESSION_MODEL_MIN_NUM_CPU_UTIL_BUCKETS_DOC)
                     .define(SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG,
                             ConfigDef.Type.BOOLEAN,
-                            true,
+                            DEFAULT_SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION,
                             ConfigDef.Importance.LOW,
                             SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_DOC)
                     .define(USE_LINEAR_REGRESSION_MODEL_CONFIG,
@@ -504,12 +534,12 @@ public class MonitorConfig {
                             SAMPLE_STORE_CLASS_DOC)
                     .define(TOPIC_CONFIG_PROVIDER_CLASS_CONFIG,
                             ConfigDef.Type.CLASS,
-                            KafkaTopicConfigProvider.class.getName(),
+                            DEFAULT_TOPIC_CONFIG_PROVIDER_CLASS,
                             ConfigDef.Importance.LOW,
                             TOPIC_CONFIG_PROVIDER_CLASS_DOC)
                     .define(BROKER_CAPACITY_CONFIG_RESOLVER_CLASS_CONFIG,
                             ConfigDef.Type.CLASS,
-                            BrokerCapacityConfigFileResolver.class.getName(),
+                            DEFAULT_BROKER_CAPACITY_CONFIG_RESOLVER_CLASS,
                             ConfigDef.Importance.MEDIUM,
                             BROKER_CAPACITY_CONFIG_RESOLVER_CLASS_DOC);
   }

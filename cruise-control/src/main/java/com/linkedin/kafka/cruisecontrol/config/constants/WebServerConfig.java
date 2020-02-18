@@ -17,9 +17,6 @@ import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
  * DO NOT CHANGE EXISTING CONFIG NAMES AS CHANGES WOULD BREAK USER CODE.
  */
 public class WebServerConfig {
-
-  private static final String DEFAULT_WEBSERVER_SECURITY_PROVIDER = BasicSecurityProvider.class.getName();
-
   private WebServerConfig() {
 
   }
@@ -165,6 +162,7 @@ public class WebServerConfig {
    * <code>webserver.security.provider</code>
    */
   public static final String WEBSERVER_SECURITY_PROVIDER_CONFIG = "webserver.security.provider";
+  private static final String DEFAULT_WEBSERVER_SECURITY_PROVIDER = BasicSecurityProvider.class.getName();
   private static final String WEBSERVER_SECURITY_PROVIDER_DOC = "SecurityProvider implementation for defining authentication " +
       "and authorization rules for accessing the web API.";
 
@@ -172,12 +170,14 @@ public class WebServerConfig {
    * <code>webserver.security.enable</code>
    */
   public static final String WEBSERVER_SECURITY_ENABLE_CONFIG = "webserver.security.enable";
+  public static final boolean DEFAULT_WEBSERVER_SECURITY_ENABLE = false;
   private static final String WEBSERVER_SECURITY_ENABLE_DOCS = "Enables the use of authentication and authorization features.";
 
   /**
    * <code>basic.auth.credentials.file</code>
    */
   public static final String BASIC_AUTH_CREDENTIALS_FILE_CONFIG = "basic.auth.credentials.file";
+  public static final String DEFAULT_BASIC_AUTH_CREDENTIALS_FILE = "/etc/cruisecontrol-basic-auth.credentials";
   private static final String BASIC_AUTH_CREDENTIALS_FILE_DOCS = "A file that contains credentials for basic authentication." +
       "The format of the file is the following: username: password [,rolename ...] which corresponds to Jetty's " +
       "HashLoginService's credentials file format.";
@@ -186,18 +186,21 @@ public class WebServerConfig {
    * <code>webserver.ssl.enable</code>
    */
   public static final String WEBSERVER_SSL_ENABLE_CONFIG = "webserver.ssl.enable";
+  public static final boolean DEFAULT_WEBSERVER_SSL_ENABLE = false;
   private static final String WEBSERVER_SSL_ENABLE_DOC = "Enables SSL on the webserver.";
 
   /**
    * <code>webserver.ssl.keystore.location</code>
    */
   public static final String WEBSERVER_SSL_KEYSTORE_LOCATION_CONFIG = "webserver.ssl.keystore.location";
+  public static final String DEFAULT_WEBSERVER_SSL_KEYSTORE_LOCATION = null;
   private static final String WEBSERVER_SSL_KEYSTORE_LOCATION_DOC = "The location of the SSL keystore file";
 
   /**
    * <code>webserver.ssl.keystore.password</code>
    */
   public static final String WEBSERVER_SSL_KEYSTORE_PASSWORD_CONFIG = "webserver.ssl.keystore.password";
+  public static final String DEFAULT_WEBSERVER_SSL_KEYSTORE_PASSWORD = null;
   private static final String WEBSERVER_SSL_KEYSTORE_PASSWORD_DOC = "The store password for the key store file. If this " +
       "isn't set we fall back to Jetty's default behavior.";
 
@@ -205,6 +208,7 @@ public class WebServerConfig {
    * <code>webserver.ssl.keystore.type</code>
    */
   public static final String WEBSERVER_SSL_KEYSTORE_TYPE_CONFIG = "webserver.ssl.keystore.type";
+  public static final String DEFAULT_WEBSERVER_SSL_KEYSTORE_TYPE = null;
   private static final String WEBSERVER_SSL_KEYSTORE_TYPE_DOC = "The file format of the key store file. This is an " +
       "optional config. If this isn't set we fall back to Jetty's default behavior.";
 
@@ -212,12 +216,14 @@ public class WebServerConfig {
    * <code>webserver.ssl.key.password</code>
    */
   public static final String WEBSERVER_SSL_KEY_PASSWORD_CONFIG = "webserver.ssl.key.password";
+  public static final String DEFAULT_WEBSERVER_SSL_KEY_PASSWORD = null;
   private static final String WEBSERVER_SSL_KEY_PASSWORD_DOC = "The password of the private key in the key store file.";
 
   /**
    * <code>webserver.ssl.protocol</code>
    */
   public static final String WEBSERVER_SSL_PROTOCOL_CONFIG = "webserver.ssl.protocol";
+  public static final String DEFAULT_WEBSERVER_SSL_PROTOCOL = "TLS";
   private static final String WEBSERVER_SSL_PROTOCOL_DOC = "Sets the SSL protocol to use. By default it's TLS.";
 
   /**
@@ -331,7 +337,7 @@ public class WebServerConfig {
                             MAX_ACTIVE_USER_TASKS_DOC)
                     .define(WEBSERVER_SECURITY_ENABLE_CONFIG,
                             ConfigDef.Type.BOOLEAN,
-                            false,
+                            DEFAULT_WEBSERVER_SECURITY_ENABLE,
                             ConfigDef.Importance.MEDIUM,
                             WEBSERVER_SECURITY_ENABLE_DOCS)
                     .define(WEBSERVER_SECURITY_PROVIDER_CONFIG,
@@ -341,37 +347,37 @@ public class WebServerConfig {
                             WEBSERVER_SECURITY_PROVIDER_DOC)
                     .define(BASIC_AUTH_CREDENTIALS_FILE_CONFIG,
                             ConfigDef.Type.STRING,
-                            "/etc/cruisecontrol-basic-auth.credentials",
+                            DEFAULT_BASIC_AUTH_CREDENTIALS_FILE,
                             ConfigDef.Importance.MEDIUM,
                             BASIC_AUTH_CREDENTIALS_FILE_DOCS)
                     .define(WEBSERVER_SSL_ENABLE_CONFIG,
                             ConfigDef.Type.BOOLEAN,
-                            false,
+                            DEFAULT_WEBSERVER_SSL_ENABLE,
                             ConfigDef.Importance.MEDIUM,
                             WEBSERVER_SSL_ENABLE_DOC)
                     .define(WEBSERVER_SSL_KEYSTORE_LOCATION_CONFIG,
                             ConfigDef.Type.STRING,
-                            null,
+                            DEFAULT_WEBSERVER_SSL_KEYSTORE_LOCATION,
                             ConfigDef.Importance.MEDIUM,
                             WEBSERVER_SSL_KEYSTORE_LOCATION_DOC)
                     .define(WEBSERVER_SSL_KEYSTORE_PASSWORD_CONFIG,
                             ConfigDef.Type.STRING,
-                            null,
+                            DEFAULT_WEBSERVER_SSL_KEYSTORE_PASSWORD,
                             ConfigDef.Importance.MEDIUM,
                             WEBSERVER_SSL_KEYSTORE_PASSWORD_DOC)
                     .define(WEBSERVER_SSL_KEYSTORE_TYPE_CONFIG,
                             ConfigDef.Type.STRING,
-                            null,
+                            DEFAULT_WEBSERVER_SSL_KEYSTORE_TYPE,
                             ConfigDef.Importance.MEDIUM,
                             WEBSERVER_SSL_KEYSTORE_TYPE_DOC)
                     .define(WEBSERVER_SSL_KEY_PASSWORD_CONFIG,
                             ConfigDef.Type.STRING,
-                            null,
+                            DEFAULT_WEBSERVER_SSL_KEY_PASSWORD,
                             ConfigDef.Importance.MEDIUM,
                             WEBSERVER_SSL_KEY_PASSWORD_DOC)
                     .define(WEBSERVER_SSL_PROTOCOL_CONFIG,
                             ConfigDef.Type.STRING,
-                            "TLS",
+                            DEFAULT_WEBSERVER_SSL_PROTOCOL,
                             ConfigDef.Importance.MEDIUM,
                             WEBSERVER_SSL_PROTOCOL_DOC);
   }

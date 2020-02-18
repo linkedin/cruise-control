@@ -36,12 +36,14 @@ public class ExecutorConfig {
    * <code>zookeeper.security.enabled</code>
    */
   public static final String ZOOKEEPER_SECURITY_ENABLED_CONFIG = "zookeeper.security.enabled";
+  public static final boolean DEFAULT_ZOOKEEPER_SECURITY_ENABLED = false;
   public static final String ZOOKEEPER_SECURITY_ENABLED_DOC = "Specify if ZooKeeper is secured, true or false";
 
   /**
    * <code>num.concurrent.partition.movements.per.broker</code>
    */
   public static final String NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG = "num.concurrent.partition.movements.per.broker";
+  public static final int DEFAULT_NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER = 5;
   public static final String NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_DOC = "The maximum number of partitions "
       + "the executor will move to or out of a broker at the same time. e.g. setting the value to 10 means that the "
       + "executor will at most allow 10 partitions move out of a broker and 10 partitions move into a broker at any "
@@ -51,6 +53,7 @@ public class ExecutorConfig {
    * <code>num.concurrent.intra.broker.partition.movements</code>
    */
   public static final String NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG = "num.concurrent.intra.broker.partition.movements";
+  public static final int DEFAULT_NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS = 2;
   public static final String NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_DOC = "The maximum number of partitions "
       + "the executor will move across disks within a broker at the same time. e.g. setting the value to 10 means that the "
       + "executor will at most allow 10 partitions to move across disks within a broker at any given point. This is to avoid "
@@ -60,6 +63,7 @@ public class ExecutorConfig {
    * <code>num.concurrent.leader.movements</code>
    */
   public static final String NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG = "num.concurrent.leader.movements";
+  public static final int DEFAULT_NUM_CONCURRENT_LEADER_MOVEMENTS = 1000;
   public static final String NUM_CONCURRENT_LEADER_MOVEMENTS_DOC = "The maximum number of leader "
       + "movements the executor will take as one batch. This is mainly because the ZNode has a 1 MB size upper limit. And it "
       + "will also reduce the controller burden.";
@@ -79,6 +83,7 @@ public class ExecutorConfig {
    * <code>default.replication.throttle</code>
    */
   public static final String DEFAULT_REPLICATION_THROTTLE_CONFIG = "default.replication.throttle";
+  public static final Long DEFAULT_DEFAULT_REPLICATION_THROTTLE = null;
   public static final String DEFAULT_REPLICATION_THROTTLE_DOC = "The replication throttle applied to replicas being "
       + "moved, in bytes per second.";
 
@@ -106,6 +111,7 @@ public class ExecutorConfig {
    * <code>execution.progress.check.interval.ms</code>
    */
   public static final String EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG = "execution.progress.check.interval.ms";
+  public static final long DEFAULT_EXECUTION_PROGRESS_CHECK_INTERVAL_MS = 10000L;
   public static final String EXECUTION_PROGRESS_CHECK_INTERVAL_MS_DOC = "The interval in milliseconds that the executor "
       + "will check on the execution progress.";
   /*
@@ -120,6 +126,7 @@ public class ExecutorConfig {
    * <code>leader.movement.timeout.ms</code>
    */
   public static final String LEADER_MOVEMENT_TIMEOUT_MS_CONFIG = "leader.movement.timeout.ms";
+  public static final long DEFAULT_LEADER_MOVEMENT_TIMEOUT_MS = 180000L;
   public static final String LEADER_MOVEMENT_TIMEOUT_MS_DOC = "The maximum time to wait for a leader movement to finish. "
       + "A leader movement will be marked as failed if it takes longer than this time to finish.";
 
@@ -127,12 +134,14 @@ public class ExecutorConfig {
    * <code>task.execution.alerting.threshold.ms</code>
    */
   public static final String TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG = "task.execution.alerting.threshold.ms";
+  public static final long DEFAULT_TASK_EXECUTION_ALERTING_THRESHOLD_MS = 90000L;
 
   /**
    * <code>inter.broker.replica.movement.rate.alerting.threshold</code>
    */
   public static final String INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG =
       "inter.broker.replica.movement.rate.alerting.threshold";
+  public static final double DEFAULT_INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD = 0.1;
   public static final String INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_DOC = "Threshold of data movement rate (in MB/s) "
       + "for inter-broker replica movement task. If the task's data movement rate is lower than this and the task's execution time exceeds "
       + "the threshold set via " + TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG + ", an alert will be sent via notifier set by config "
@@ -143,6 +152,7 @@ public class ExecutorConfig {
    */
   public static final String INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG =
       "intra.broker.replica.movement.rate.alerting.threshold";
+  public static final double DEFAULT_INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD = 0.2;
   public static final String INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_DOC = "Threshold of data movement rate (in MB/s) "
       + "for intra-broker replica movement task. If task's data movement rate is lower than this and the task's execution time exceeds "
       + "the threshold set via " + TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG + ", an alert will be sent via notifier set by config "
@@ -159,6 +169,7 @@ public class ExecutorConfig {
    * <code>request.reason.required</code>
    */
   public static final String REQUEST_REASON_REQUIRED_CONFIG = "request.reason.required";
+  public static final boolean DEFAULT_REQUEST_REASON_REQUIRED = false;
   public static final String REQUEST_REASON_REQUIRED_DOC = "Require specifying reason via " + REASON_PARAM + " parameter "
       + "for non-dryrun rebalance/add_broker/remove_broker/demote_broker/fix_offline_replicas/topic_configuration request.";
 
@@ -166,6 +177,7 @@ public class ExecutorConfig {
    * <code>logdir.response.timeout.ms</code>
    */
   public static final String LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG = "logdir.response.timeout.ms";
+  public static final long DEFAULT_LOGDIR_RESPONSE_TIMEOUT_MS = 10000L;
   public static final String LOGDIR_RESPONSE_TIMEOUT_MS_DOC = "Timeout in ms for broker logdir to respond";
 
   /**
@@ -197,24 +209,24 @@ public class ExecutorConfig {
                             ZOOKEEPER_CONNECT_DOC)
                     .define(ZOOKEEPER_SECURITY_ENABLED_CONFIG,
                             ConfigDef.Type.BOOLEAN,
-                            false,
+                            DEFAULT_ZOOKEEPER_SECURITY_ENABLED,
                             ConfigDef.Importance.HIGH,
                             ZOOKEEPER_SECURITY_ENABLED_DOC)
                     .define(NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG,
                             ConfigDef.Type.INT,
-                            5,
+                            DEFAULT_NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER,
                             atLeast(1),
                             ConfigDef.Importance.MEDIUM,
                             NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_DOC)
                     .define(NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG,
                             ConfigDef.Type.INT,
-                            2,
+                            DEFAULT_NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS,
                             atLeast(1),
                             ConfigDef.Importance.MEDIUM,
                             NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_DOC)
                     .define(NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG,
                             ConfigDef.Type.INT,
-                            1000,
+                            DEFAULT_NUM_CONCURRENT_LEADER_MOVEMENTS,
                             atLeast(1),
                             ConfigDef.Importance.MEDIUM,
                             NUM_CONCURRENT_LEADER_MOVEMENTS_DOC)
@@ -226,7 +238,7 @@ public class ExecutorConfig {
                             MAX_NUM_CLUSTER_MOVEMENTS_DOC)
                     .define(DEFAULT_REPLICATION_THROTTLE_CONFIG,
                             ConfigDef.Type.LONG,
-                            null,
+                            DEFAULT_DEFAULT_REPLICATION_THROTTLE,
                             ConfigDef.Importance.MEDIUM,
                             DEFAULT_REPLICATION_THROTTLE_DOC)
                     .define(REPLICA_MOVEMENT_STRATEGIES_CONFIG,
@@ -241,7 +253,7 @@ public class ExecutorConfig {
                             DEFAULT_REPLICA_MOVEMENT_STRATEGIES_DOC)
                     .define(EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG,
                             ConfigDef.Type.LONG,
-                            10000L,
+                            DEFAULT_EXECUTION_PROGRESS_CHECK_INTERVAL_MS,
                             atLeast(0),
                             ConfigDef.Importance.LOW,
                             EXECUTION_PROGRESS_CHECK_INTERVAL_MS_DOC)
@@ -252,32 +264,32 @@ public class ExecutorConfig {
                             EXECUTOR_NOTIFIER_CLASS_DOC)
                     .define(LEADER_MOVEMENT_TIMEOUT_MS_CONFIG,
                             ConfigDef.Type.LONG,
-                            180000L,
+                            DEFAULT_LEADER_MOVEMENT_TIMEOUT_MS,
                             ConfigDef.Importance.LOW,
                             LEADER_MOVEMENT_TIMEOUT_MS_DOC)
                     .define(TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG,
                             ConfigDef.Type.LONG,
-                            90000L,
+                            DEFAULT_TASK_EXECUTION_ALERTING_THRESHOLD_MS,
                             ConfigDef.Importance.LOW,
                             TASK_EXECUTION_ALERTING_THRESHOLD_MS_DOC)
                     .define(INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            0.1,
+                            DEFAULT_INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD,
                             ConfigDef.Importance.LOW,
                             INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_DOC)
                     .define(INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            0.2,
+                            DEFAULT_INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD,
                             ConfigDef.Importance.LOW,
                             INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_DOC)
                     .define(REQUEST_REASON_REQUIRED_CONFIG,
                             ConfigDef.Type.BOOLEAN,
-                            false,
+                            DEFAULT_REQUEST_REASON_REQUIRED,
                             ConfigDef.Importance.MEDIUM,
                             REQUEST_REASON_REQUIRED_DOC)
                     .define(LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG,
                             ConfigDef.Type.LONG,
-                            10000L,
+                            DEFAULT_LOGDIR_RESPONSE_TIMEOUT_MS,
                             ConfigDef.Importance.LOW,
                             LOGDIR_RESPONSE_TIMEOUT_MS_DOC)
                     .define(DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG,

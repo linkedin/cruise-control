@@ -151,7 +151,7 @@ The following configurations are inherited from the open source Kafka client con
 |max.cached.completed.kafka.admin.user.tasks	 | Int	 | N	 | null	 | The maximum number of completed kafka administration user tasks for which the response and access details will be cached. If this config is missing, the value set in config max.cached.completed.user.tasks will be used.	 |
 |max.cached.completed.cruise.control.admin.user.tasks	 | Int	 | N	 | null	 | The maximum number of completed cruise control administration user tasks for which the response and access details will be cached. If this config is missing, the value set in config max.cached.completed.user.tasks will be used.	 |
 
-### Servelet Configurations
+### Servlet Configurations
 | Name                                              | Type   | Required? | Default Value            | Description                                                                                                                                                                                                                                            |
 |---------------------------------------------------|--------|-----------|--------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 |topic.config.provider.class	 | Class	 | N	 | com.linkedin.kafka.cruisecontrol.config.KafkaTopicConfigProvider	 | The provider class that reports the active configuration of topics.	 |
@@ -208,9 +208,29 @@ We are still trying to improve cruise control. And following are some configurat
 | skip.sample.store.topic.rack.awareness.check    | Boolean |  N         |   false           | The config to skip rack awareness sanity check for sample store topics  |
 
 ### BrokerCapacityConfigurationFileResolver configurations
-| Name                 | Type   | Required? | Default Value | Description                                                                        |
-|----------------------|--------|-----------|---------------|------------------------------------------------------------------------------------|
-| capacity.config.file | String | Y         |               | The path to the configuration JSON file that provides the capacity of the brokers. |
+| Name                 | Type   | Required? | Default Value             | Description                                                                        |
+|----------------------|--------|-----------|---------------------------|------------------------------------------------------------------------------------|
+| capacity.config.file | String | Y         | config/capacityJBOD.json  | The path to the configuration JSON file that provides the capacity of the brokers. |
+
+#### Populating the Capacity Config File
+`Option-1`: The following steps allow users to set the initial broker capacities or update capacities upon addition of 
+new brokers out-of-the-box:
+1. Check `cruisecontrol.properties` file to verify that the `capacity.config.file=` config points to the file you are modifying.
+By default, this config is set to use `config/capacityJBOD.json`. If you have 
+    * a non-JBOD deployment, where each broker has the same number of cores, you may use `config/capacity.json`, or
+    * a non-JBOD deployment, where brokers may have varying number of cores, you may use `config/capacityCores.json`
+ and modify this file.
+2. Ensure that the capacity file picked in `step-1` contains either a default capacity for missing broker ids, or 
+explicitly specifies capacities for brokers with specific ids provided by user.
+3. Finally, bounce your Cruise Control instance.
+
+`Option-2`: `BrokerCapacityConfigResolver` is a pluggable component. Hence, you can write your own pluggable capacity 
+resolver to dynamically resolve the broker capacities if you have a source to provide the capacity information. 
+Using this approach, you may avoid restarting your CC instance upon a (1) capacity change or (2) addition of a broker 
+with a non-default capacity. See:
+1. [The relevant interface](https://github.com/linkedin/cruise-control/blob/master/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/config/BrokerCapacityConfigResolver.java),
+2. Its default implementation by [BrokerCapacityConfigFileResolver](https://github.com/linkedin/cruise-control/blob/master/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/config/BrokerCapacityConfigFileResolver.java), and 
+3. The [relevant configuration](https://github.com/linkedin/cruise-control/blob/master/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/config/constants/MonitorConfig.java#L294) to set the config resolver to be used.
 
 ### SelfHealingNotifer configurations
 | Name                                     | Type    | Required? | Default Value | Description                                                                                                                                                                                                                                                          |
