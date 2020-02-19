@@ -9,6 +9,7 @@ import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomaly;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,6 +79,11 @@ public class KafkaMetricAnomaly extends KafkaAnomaly implements MetricAnomaly<Br
       return null;
     }
     return isJson ? _optimizationResult.cachedJSONResponse() : _optimizationResult.cachedPlaintextResponse();
+  }
+
+  @Override
+  public Supplier<String> reasonSupplier() {
+    return () -> String.format("Self healing for %s: %s", METRIC_ANOMALY, this);
   }
 
   @Override

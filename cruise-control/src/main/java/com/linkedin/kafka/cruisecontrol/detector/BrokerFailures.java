@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RemoveBrokersRunnable;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG;
@@ -61,6 +62,11 @@ public class BrokerFailures extends KafkaAnomaly {
   }
 
   @Override
+  public Supplier<String> reasonSupplier() {
+    return () -> String.format("Self healing for %s: %s", BROKER_FAILURE, this);
+  }
+
+  @Override
   public String toString() {
     StringBuilder sb = new StringBuilder().append("{\n");
     _failedBrokers.forEach((key, value) -> {
@@ -91,7 +97,7 @@ public class BrokerFailures extends KafkaAnomaly {
                                                                                 excludeRecentlyDemotedBrokers,
                                                                                 excludeRecentlyRemovedBrokers,
                                                                                 _anomalyId.toString(),
-                                                                                String.format("Self healing for %s: %s", BROKER_FAILURE, this))
+                                                                                reasonSupplier())
                                                     : null;
     }
 }

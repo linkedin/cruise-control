@@ -23,10 +23,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPriority;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ensureDisjoint;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
 import static com.linkedin.kafka.cruisecontrol.model.Disk.State.DEMOTED;
@@ -55,7 +55,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
   protected final boolean _excludeFollowerDemotion;
   protected final Long _replicationThrottle;
   protected final String _uuid;
-  protected final String _reason;
+  protected final Supplier<String> _reasonSupplier;
   protected final boolean _excludeRecentlyDemotedBrokers;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Map<Integer, Set<String>> _brokerIdAndLogdirs;
@@ -70,7 +70,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
                               boolean allowCapacityEstimation,
                               boolean excludeRecentlyDemotedBrokers,
                               String anomalyId,
-                              String reason) {
+                              Supplier<String> reasonSupplier) {
     super(kafkaCruiseControl, new OperationFuture("Slow Broker Self-Healing"));
     _brokerIds = demotedBrokerIds;
     _dryRun = SELF_HEALING_DRYRUN;
@@ -84,7 +84,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
     _uuid = anomalyId;
     _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
     _brokerIdAndLogdirs = Collections.emptyMap();
-    _reason = reason;
+    _reasonSupplier = reasonSupplier;
     _isTriggeredByUserRequest = false;
     _stopOngoingExecution = SELF_HEALING_STOP_ONGOING_EXECUTION;
   }
@@ -104,7 +104,8 @@ public class DemoteBrokerRunnable extends OperationRunnable {
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
     _replicationThrottle = parameters.replicationThrottle();
     _uuid = uuid;
-    _reason = parameters.reason();
+    String reason = parameters.reason();
+    _reasonSupplier = () -> reason;
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _brokerIdAndLogdirs = parameters.brokerIdAndLogdirs();
     _isTriggeredByUserRequest = true;
@@ -186,7 +187,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
       if (!_dryRun) {
         _kafkaCruiseControl.executeDemotion(result.goalProposals(), _brokerIds, _concurrentLeaderMovements, clusterModel.brokers().size(),
                                             _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle, _isTriggeredByUserRequest,
-                                            _uuid, _reason);
+                                            _uuid, _reasonSupplier);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {

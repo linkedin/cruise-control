@@ -47,6 +47,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.Cluster;
@@ -531,7 +532,7 @@ public class KafkaCruiseControl {
    *                            when executing proposals (if null, no throttling is applied).
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
-   * @param reason Reason of the execution.
+   * @param reasonSupplier Reason supplier for the execution.
    */
   public void executeProposals(Set<ExecutionProposal> proposals,
                                Set<Integer> unthrottledBrokers,
@@ -544,14 +545,14 @@ public class KafkaCruiseControl {
                                Long replicationThrottle,
                                boolean isTriggeredByUserRequest,
                                String uuid,
-                               String reason) {
+                               Supplier<String> reasonSupplier) {
     if (hasProposalsToExecute(proposals, uuid)) {
       // Set the execution mode and start execution.
       _executor.setExecutionMode(isKafkaAssignerMode);
       _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor,
                                  concurrentInterBrokerPartitionMovements, concurrentIntraBrokerPartitionMovements,
                                  concurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy,
-                                 replicationThrottle, isTriggeredByUserRequest, uuid, reason);
+                                 replicationThrottle, isTriggeredByUserRequest, uuid, reasonSupplier);
     }
   }
 
@@ -573,7 +574,7 @@ public class KafkaCruiseControl {
    *                            when executing remove operations (if null, no throttling is applied).
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
-   * @param reason Reason of the execution.
+   * @param reasonSupplier Reason supplier for the execution.
    */
   public void executeRemoval(Set<ExecutionProposal> proposals,
                              boolean throttleDecommissionedBroker,
@@ -586,14 +587,14 @@ public class KafkaCruiseControl {
                              Long replicationThrottle,
                              boolean isTriggeredByUserRequest,
                              String uuid,
-                             String reason) {
+                             Supplier<String> reasonSupplier) {
     if (hasProposalsToExecute(proposals, uuid)) {
       // Set the execution mode and start execution.
       _executor.setExecutionMode(isKafkaAssignerMode);
       _executor.executeProposals(proposals, throttleDecommissionedBroker ? Collections.emptySet() : removedBrokers,
                                  removedBrokers, _loadMonitor, concurrentInterBrokerPartitionMovements, 0,
                                  concurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy,
-                                 replicationThrottle, isTriggeredByUserRequest, uuid, reason);
+                                 replicationThrottle, isTriggeredByUserRequest, uuid, reasonSupplier);
     }
   }
 
@@ -612,7 +613,7 @@ public class KafkaCruiseControl {
    *                            when executing demote operations (if null, no throttling is applied).
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
-   * @param reason Reason of the execution.
+   * @param reasonSupplier Reason supplier for the execution.
    */
   public void executeDemotion(Set<ExecutionProposal> proposals,
                               Set<Integer> demotedBrokers,
@@ -623,7 +624,7 @@ public class KafkaCruiseControl {
                               Long replicationThrottle,
                               boolean isTriggeredByUserRequest,
                               String uuid,
-                              String reason) {
+                              Supplier<String> reasonSupplier) {
     if (hasProposalsToExecute(proposals, uuid)) {
       // (1) Kafka Assigner mode is irrelevant for demoting.
       // (2) Ensure that replica swaps within partitions, which are prerequisites for broker demotion and does not trigger data move,
@@ -637,7 +638,7 @@ public class KafkaCruiseControl {
       _executor.setExecutionMode(false);
       _executor.executeDemoteProposals(proposals, demotedBrokers, _loadMonitor, concurrentSwaps, concurrentLeaderMovements,
                                        executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle,
-                                       isTriggeredByUserRequest, uuid, reason);
+                                       isTriggeredByUserRequest, uuid, reasonSupplier);
     }
   }
 

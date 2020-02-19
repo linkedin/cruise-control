@@ -30,6 +30,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import kafka.zk.KafkaZkClient;
 import kafka.zk.ZkVersion;
@@ -102,7 +103,7 @@ public class Executor {
   private volatile boolean _hasOngoingExecution;
   private volatile ExecutorState _executorState;
   private volatile String _uuid;
-  private volatile String _reason;
+  private volatile Supplier<String> _reasonSupplier;
   private final ExecutorNotifier _executorNotifier;
 
   private final AtomicInteger _numExecutionStopped;
@@ -199,7 +200,7 @@ public class Executor {
     _stopSignal = new AtomicInteger(NO_STOP_EXECUTION);
     _hasOngoingExecution = false;
     _uuid = null;
-    _reason = null;
+    _reasonSupplier = null;
     _executorNotifier = executorNotifier != null ? executorNotifier
                                                  : config.getConfiguredInstance(ExecutorConfig.EXECUTOR_NOTIFIER_CLASS_CONFIG,
                                                                                 ExecutorNotifier.class);
@@ -388,7 +389,7 @@ public class Executor {
    *                            when executing a proposal (if null, no throttling is applied).
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
-   * @param reason Reason of the execution.
+   * @param reasonSupplier Reason supplier for the execution.
    */
   public synchronized void executeProposals(Collection<ExecutionProposal> proposals,
                                             Set<Integer> unthrottledBrokers,
@@ -402,10 +403,10 @@ public class Executor {
                                             Long replicationThrottle,
                                             boolean isTriggeredByUserRequest,
                                             String uuid,
-                                            String reason) {
+                                            Supplier<String> reasonSupplier) {
     initProposalExecution(proposals, unthrottledBrokers, loadMonitor, requestedInterBrokerPartitionMovementConcurrency,
                           requestedIntraBrokerPartitionMovementConcurrency, requestedLeadershipMovementConcurrency,
-                          requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid, reason);
+                          requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid, reasonSupplier);
     startExecution(loadMonitor, null, removedBrokers, replicationThrottle, isTriggeredByUserRequest);
   }
 
@@ -418,7 +419,7 @@ public class Executor {
                                                   Long requestedExecutionProgressCheckIntervalMs,
                                                   ReplicaMovementStrategy replicaMovementStrategy,
                                                   String uuid,
-                                                  String reason) {
+                                                  Supplier<String> reasonSupplier) {
     if (_hasOngoingExecution) {
       throw new IllegalStateException("Cannot execute new proposals while there is an ongoing execution.");
     }
@@ -437,7 +438,7 @@ public class Executor {
     setRequestedLeadershipMovementConcurrency(requestedLeadershipMovementConcurrency);
     setRequestedExecutionProgressCheckIntervalMs(requestedExecutionProgressCheckIntervalMs);
     _uuid = uuid;
-    _reason = reason;
+    _reasonSupplier = reasonSupplier;
   }
 
   /**
@@ -456,7 +457,7 @@ public class Executor {
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
-   * @param reason Reason of the execution.
+   * @param reasonSupplier Reason supplier for the execution.
    */
   public synchronized void executeDemoteProposals(Collection<ExecutionProposal> proposals,
                                                   Collection<Integer> demotedBrokers,
@@ -468,9 +469,9 @@ public class Executor {
                                                   Long replicationThrottle,
                                                   boolean isTriggeredByUserRequest,
                                                   String uuid,
-                                                  String reason) {
+                                                  Supplier<String> reasonSupplier) {
     initProposalExecution(proposals, demotedBrokers, loadMonitor, concurrentSwaps, 0, requestedLeadershipMovementConcurrency,
-                          requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid, reason);
+                          requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid, reasonSupplier);
     startExecution(loadMonitor, demotedBrokers, null, replicationThrottle, isTriggeredByUserRequest);
   }
 
@@ -589,7 +590,7 @@ public class Executor {
   private void processOngoingMovementSanityCheckFailure() {
     _executionTaskManager.clear();
     _uuid = null;
-    _reason = null;
+    _reasonSupplier = null;
   }
 
   /**
@@ -759,8 +760,9 @@ public class Executor {
         userTaskInfo = _userTaskManager.markTaskExecutionBegan(_uuid);
       }
       _state = STARTING_EXECUTION;
-      _executorState = ExecutorState.executionStarted(_uuid, _reason, _recentlyDemotedBrokers, _recentlyRemovedBrokers, _isTriggeredByUserRequest);
-      OPERATION_LOG.info("Task [{}] execution starts. The reason of execution is {}.", _uuid, _reason);
+      String reason = _reasonSupplier.get();
+      _executorState = ExecutorState.executionStarted(_uuid, reason, _recentlyDemotedBrokers, _recentlyRemovedBrokers, _isTriggeredByUserRequest);
+      OPERATION_LOG.info("Task [{}] execution starts. The reason of execution is {}.", _uuid, reason);
       _ongoingExecutionIsBeingModified.set(false);
 
       return userTaskInfo;
@@ -800,7 +802,7 @@ public class Executor {
                                                              _executionTaskManager.intraBrokerPartitionMovementConcurrency(),
                                                              _executionTaskManager.leadershipMovementConcurrency(),
                                                              _uuid,
-                                                             _reason,
+                                                             _reasonSupplier.get(),
                                                              _recentlyDemotedBrokers,
                                                              _recentlyRemovedBrokers,
                                                              _isTriggeredByUserRequest);
@@ -819,7 +821,7 @@ public class Executor {
                                                              _executionTaskManager.intraBrokerPartitionMovementConcurrency(),
                                                              _executionTaskManager.leadershipMovementConcurrency(),
                                                              _uuid,
-                                                             _reason,
+                                                             _reasonSupplier.get(),
                                                              _recentlyDemotedBrokers,
                                                              _recentlyRemovedBrokers,
                                                              _isTriggeredByUserRequest);
@@ -838,7 +840,7 @@ public class Executor {
                                                              _executionTaskManager.intraBrokerPartitionMovementConcurrency(),
                                                              _executionTaskManager.leadershipMovementConcurrency(),
                                                              _uuid,
-                                                             _reason,
+                                                             _reasonSupplier.get(),
                                                              _recentlyDemotedBrokers,
                                                              _recentlyRemovedBrokers,
                                                              _isTriggeredByUserRequest);
@@ -896,7 +898,7 @@ public class Executor {
     private void clearCompletedExecution() {
       _executionTaskManager.clear();
       _uuid = null;
-      _reason = null;
+      _reasonSupplier = null;
       _state = NO_TASK_IN_PROGRESS;
       // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
       _executorState = ExecutorState.noTaskInProgress(_recentlyDemotedBrokers, _recentlyRemovedBrokers);
@@ -917,7 +919,7 @@ public class Executor {
                                                                _executionTaskManager.intraBrokerPartitionMovementConcurrency(),
                                                                _executionTaskManager.leadershipMovementConcurrency(),
                                                                _uuid,
-                                                               _reason,
+                                                               _reasonSupplier.get(),
                                                                _recentlyDemotedBrokers,
                                                                _recentlyRemovedBrokers,
                                                                _isTriggeredByUserRequest);
@@ -930,7 +932,7 @@ public class Executor {
                                                                _executionTaskManager.intraBrokerPartitionMovementConcurrency(),
                                                                _executionTaskManager.leadershipMovementConcurrency(),
                                                                _uuid,
-                                                               _reason,
+                                                               _reasonSupplier.get(),
                                                                _recentlyDemotedBrokers,
                                                                _recentlyRemovedBrokers,
                                                                _isTriggeredByUserRequest);
@@ -943,7 +945,7 @@ public class Executor {
                                                                _executionTaskManager.intraBrokerPartitionMovementConcurrency(),
                                                                _executionTaskManager.leadershipMovementConcurrency(),
                                                                _uuid,
-                                                               _reason,
+                                                               _reasonSupplier.get(),
                                                                _recentlyDemotedBrokers,
                                                                _recentlyRemovedBrokers,
                                                                _isTriggeredByUserRequest);
@@ -959,7 +961,7 @@ public class Executor {
                                                            _executionTaskManager.intraBrokerPartitionMovementConcurrency(),
                                                            _executionTaskManager.leadershipMovementConcurrency(),
                                                            _uuid,
-                                                           _reason,
+                                                           _reasonSupplier.get(),
                                                            _recentlyDemotedBrokers,
                                                            _recentlyRemovedBrokers,
                                                            _isTriggeredByUserRequest);

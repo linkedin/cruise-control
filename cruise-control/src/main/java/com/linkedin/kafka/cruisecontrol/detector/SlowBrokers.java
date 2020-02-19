@@ -8,10 +8,12 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.DemoteBrokerRunnable;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RemoveBrokersRunnable;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG;
@@ -57,7 +59,11 @@ public class SlowBrokers extends KafkaMetricAnomaly {
     return hasProposalsToFix;
   }
 
-  @SuppressWarnings("unchecked")
+  @Override
+  public Supplier<String> reasonSupplier() {
+    return () -> String.format("Self healing for slow brokers: %s", this);
+  }
+
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
@@ -74,23 +80,23 @@ public class SlowBrokers extends KafkaMetricAnomaly {
       if (removeSlowBroker) {
         _removeBrokersRunnable =
             new RemoveBrokersRunnable(kafkaCruiseControl,
-                                      _brokerEntitiesWithDetectionTimeMs.keySet().stream().mapToInt(e -> e.brokerId()).boxed()
+                                      _brokerEntitiesWithDetectionTimeMs.keySet().stream().mapToInt(BrokerEntity::brokerId).boxed()
                                                                         .collect(Collectors.toSet()),
                                       getSelfHealingGoalNames(config),
                                       allowCapacityEstimation,
                                       excludeRecentlyDemotedBrokers,
                                       excludeRecentlyRemovedBrokers,
                                       _anomalyId.toString(),
-                                      String.format("Self healing for slow brokers: %s", this));
+                                      reasonSupplier());
       } else {
         _demoteBrokerRunnable =
             new DemoteBrokerRunnable(kafkaCruiseControl,
-                                     _brokerEntitiesWithDetectionTimeMs.keySet().stream().mapToInt(e -> e.brokerId()).boxed()
+                                     _brokerEntitiesWithDetectionTimeMs.keySet().stream().mapToInt(BrokerEntity::brokerId).boxed()
                                                                        .collect(Collectors.toSet()),
                                      allowCapacityEstimation,
                                      excludeRecentlyDemotedBrokers,
                                      _anomalyId.toString(),
-                                     String.format("Self healing for slow brokers: %s", this));
+                                     reasonSupplier());
       }
     }
   }
