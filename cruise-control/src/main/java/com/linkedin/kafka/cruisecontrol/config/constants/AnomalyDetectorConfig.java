@@ -44,6 +44,7 @@ public class AnomalyDetectorConfig {
    * <code>num.cached.recent.anomaly.states</code>
    */
   public static final String NUM_CACHED_RECENT_ANOMALY_STATES_CONFIG = "num.cached.recent.anomaly.states";
+  public static final int DEFAULT_NUM_CACHED_RECENT_ANOMALY_STATES = 10;
   public static final String NUM_CACHED_RECENT_ANOMALY_STATES_DOC = "The number of recent anomaly states cached for "
       + "different anomaly types presented via the anomaly substate response of the state endpoint.";
 
@@ -83,7 +84,7 @@ public class AnomalyDetectorConfig {
    * <code>self.healing.goals</code>
    */
   public static final String SELF_HEALING_GOALS_CONFIG = "self.healing.goals";
-  public static final List DEFAULT_SELF_HEALING_GOALS = Collections.emptyList();
+  public static final List<String> DEFAULT_SELF_HEALING_GOALS = Collections.emptyList();
   public static final String SELF_HEALING_GOALS_DOC = "The list of goals to be used for self-healing relevant anomalies."
       + " If empty, uses the default.goals for self healing.";
 
@@ -93,7 +94,7 @@ public class AnomalyDetectorConfig {
   public static final String ANOMALY_NOTIFIER_CLASS_CONFIG = "anomaly.notifier.class";
   public static final String DEFAULT_ANOMALY_NOTIFIER_CLASS = NoopNotifier.class.getName();
   public static final String ANOMALY_NOTIFIER_CLASS_DOC = "The notifier class to trigger an alert when an "
-      + "anomaly is violated. The anomaly could be either a goal violation, broker failure, or metric anomaly.";
+      + "anomaly is violated.";
 
   /**
    * <code>anomaly.detection.goals</code>
@@ -130,6 +131,7 @@ public class AnomalyDetectorConfig {
    * <code>anomaly.detection.interval.ms</code>
    */
   public static final String ANOMALY_DETECTION_INTERVAL_MS_CONFIG = "anomaly.detection.interval.ms";
+  public static final long DEFAULT_ANOMALY_DETECTION_INTERVAL_MS = 300000L;
   public static final String ANOMALY_DETECTION_INTERVAL_MS_DOC = "The interval in millisecond that the detectors will "
       + "run to detect the anomalies.";
 
@@ -137,6 +139,7 @@ public class AnomalyDetectorConfig {
    * <code>goal.violation.detection.interval.ms</code>
    */
   public static final String GOAL_VIOLATION_DETECTION_INTERVAL_MS_CONFIG = "goal.violation.detection.interval.ms";
+  public static final Long DEFAULT_GOAL_VIOLATION_DETECTION_INTERVAL_MS = null;
   public static final String GOAL_VIOLATION_DETECTION_INTERVAL_MS_DOC = "The interval in millisecond that goal violation "
       + "detector will run to detect goal violations. If this interval time is not specified, goal violation detector "
       + "will run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ".";
@@ -145,6 +148,7 @@ public class AnomalyDetectorConfig {
    * <code>metric.anomaly.detection.interval.ms</code>
    */
   public static final String METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG = "metric.anomaly.detection.interval.ms";
+  public static final Long DEFAULT_METRIC_ANOMALY_DETECTION_INTERVAL_MS = null;
   public static final String METRIC_ANOMALY_DETECTION_INTERVAL_MS_DOC = "The interval in millisecond that metric anomaly "
       + "detector will run to detect metric anomalies. If this interval time is not specified, metric anomaly detector "
       + "will run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ".";
@@ -153,6 +157,7 @@ public class AnomalyDetectorConfig {
    * <code>disk.failure.detection.interval.ms</code>
    */
   public static final String DISK_FAILURE_DETECTION_INTERVAL_MS_CONFIG = "disk.failure.detection.interval.ms";
+  public static final Long DEFAULT_DISK_FAILURE_DETECTION_INTERVAL_MS = null;
   public static final String DISK_FAILURE_DETECTION_INTERVAL_MS_DOC = "The interval in millisecond that disk failure "
       + "detector will run to detect disk failures. If this interval time is not specified, disk failure detector "
       + "will run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ".";
@@ -161,6 +166,7 @@ public class AnomalyDetectorConfig {
    * <code>broker.failure.detection.backoff.ms</code>
    */
   public static final String BROKER_FAILURE_DETECTION_BACKOFF_MS_CONFIG = "broker.failure.detection.backoff.ms";
+  public static final long DEFAULT_BROKER_FAILURE_DETECTION_BACKOFF_MS = 300000L;
   public static final String BROKER_FAILURE_DETECTION_BACKOFF_MS_DOC = "The backoff time in millisecond before broker failure "
       + "detector triggers another broker failure detection if currently detected broker failure is not ready to fix.";
 
@@ -186,7 +192,7 @@ public class AnomalyDetectorConfig {
                             METRIC_ANOMALY_FINDER_CLASSES_DOC)
                     .define(NUM_CACHED_RECENT_ANOMALY_STATES_CONFIG,
                             ConfigDef.Type.INT,
-                            10,
+                            DEFAULT_NUM_CACHED_RECENT_ANOMALY_STATES,
                             between(1, 100),
                             ConfigDef.Importance.LOW,
                             NUM_CACHED_RECENT_ANOMALY_STATES_DOC)
@@ -242,27 +248,27 @@ public class AnomalyDetectorConfig {
                             FAILED_BROKERS_ZK_PATH_DOC)
                     .define(ANOMALY_DETECTION_INTERVAL_MS_CONFIG,
                             ConfigDef.Type.LONG,
-                            300000L,
+                            DEFAULT_ANOMALY_DETECTION_INTERVAL_MS,
                             ConfigDef.Importance.LOW,
                             ANOMALY_DETECTION_INTERVAL_MS_DOC)
                     .define(GOAL_VIOLATION_DETECTION_INTERVAL_MS_CONFIG,
                             ConfigDef.Type.LONG,
-                            null,
+                            DEFAULT_GOAL_VIOLATION_DETECTION_INTERVAL_MS,
                             ConfigDef.Importance.LOW,
                             GOAL_VIOLATION_DETECTION_INTERVAL_MS_DOC)
                     .define(METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG,
                             ConfigDef.Type.LONG,
-                            null,
+                            DEFAULT_METRIC_ANOMALY_DETECTION_INTERVAL_MS,
                             ConfigDef.Importance.LOW,
                             METRIC_ANOMALY_DETECTION_INTERVAL_MS_DOC)
                     .define(DISK_FAILURE_DETECTION_INTERVAL_MS_CONFIG,
                             ConfigDef.Type.LONG,
-                            null,
+                            DEFAULT_DISK_FAILURE_DETECTION_INTERVAL_MS,
                             ConfigDef.Importance.LOW,
                             DISK_FAILURE_DETECTION_INTERVAL_MS_DOC)
                     .define(BROKER_FAILURE_DETECTION_BACKOFF_MS_CONFIG,
                             ConfigDef.Type.LONG,
-                            300000L,
+                            DEFAULT_BROKER_FAILURE_DETECTION_BACKOFF_MS,
                             ConfigDef.Importance.LOW,
                             BROKER_FAILURE_DETECTION_BACKOFF_MS_DOC)
                     .define(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG,

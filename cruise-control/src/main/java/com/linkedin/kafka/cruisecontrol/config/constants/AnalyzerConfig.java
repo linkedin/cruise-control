@@ -44,6 +44,7 @@ public class AnalyzerConfig {
    * <code>cpu.balance.threshold</code>
    */
   public static final String CPU_BALANCE_THRESHOLD_CONFIG = "cpu.balance.threshold";
+  public static final double DEFAULT_CPU_BALANCE_THRESHOLD = 1.10;
   public static final String CPU_BALANCE_THRESHOLD_DOC = "The maximum allowed extent of unbalance for CPU utilization. "
       + "For example, 1.10 means the highest CPU usage of a broker should not be above 1.10x of average CPU utilization"
       + " of all the brokers.";
@@ -52,6 +53,7 @@ public class AnalyzerConfig {
    * <code>disk.balance.threshold</code>
    */
   public static final String DISK_BALANCE_THRESHOLD_CONFIG = "disk.balance.threshold";
+  public static final double DEFAULT_DISK_BALANCE_THRESHOLD = 1.10;
   public static final String DISK_BALANCE_THRESHOLD_DOC = "The maximum allowed extent of unbalance for disk utilization. "
       + "For example, 1.10 means the highest disk usage of a broker should not be above 1.10x of average disk utilization"
       + " of all the brokers.";
@@ -60,6 +62,7 @@ public class AnalyzerConfig {
    * <code>network.inbound.balance.threshold</code>
    */
   public static final String NETWORK_INBOUND_BALANCE_THRESHOLD_CONFIG = "network.inbound.balance.threshold";
+  public static final double DEFAULT_NETWORK_INBOUND_BALANCE_THRESHOLD = 1.10;
   public static final String NETWORK_INBOUND_BALANCE_THRESHOLD_DOC = "The maximum allowed extent of unbalance for network "
       + "inbound usage. For example, 1.10 means the highest network inbound usage of a broker should not be above "
       + "1.10x of average network inbound usage of all the brokers.";
@@ -68,6 +71,7 @@ public class AnalyzerConfig {
    * <code>network.outbound.balance.threshold</code>
    */
   public static final String NETWORK_OUTBOUND_BALANCE_THRESHOLD_CONFIG = "network.outbound.balance.threshold";
+  public static final double DEFAULT_NETWORK_OUTBOUND_BALANCE_THRESHOLD = 1.10;
   public static final String NETWORK_OUTBOUND_BALANCE_THRESHOLD_DOC = "The maximum allowed extent of unbalance for network "
       + "outbound usage. For example, 1.10 means the highest network outbound usage of a broker should not be above "
       + "1.10x of average network outbound usage of all the brokers.";
@@ -76,6 +80,7 @@ public class AnalyzerConfig {
    * <code>replica.count.balance.threshold</code>
    */
   public static final String REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG = "replica.count.balance.threshold";
+  public static final double DEFAULT_REPLICA_COUNT_BALANCE_THRESHOLD = 1.10;
   public static final String REPLICA_COUNT_BALANCE_THRESHOLD_DOC = "The maximum allowed extent of unbalance for replica "
       + "distribution. For example, 1.10 means the highest replica count of a broker should not be above 1.10x of "
       + "average replica count of all brokers.";
@@ -84,6 +89,7 @@ public class AnalyzerConfig {
    * <code>leader.replica.count.balance.threshold</code>
    */
   public static final String LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG = "leader.replica.count.balance.threshold";
+  public static final double DEFAULT_LEADER_REPLICA_COUNT_BALANCE_THRESHOLD = 1.10;
   public static final String LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_DOC = "The maximum allowed extent of unbalance for "
       + "leader replica distribution. For example, 1.10 means the highest leader replica count of a broker should not be "
       + "above 1.10x of average leader replica count of all alive brokers.";
@@ -92,6 +98,7 @@ public class AnalyzerConfig {
    * <code>topic.replica.count.balance.threshold</code>
    */
   public static final String TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG = "topic.replica.count.balance.threshold";
+  public static final double DEFAULT_TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD = 3.00;
   public static final String TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_DOC = "The maximum allowed extent of unbalance for "
       + "replica distribution from each topic. For example, 1.80 means the highest topic replica count of a broker "
       + "should not be above 1.80x of average replica count of all brokers for the same topic.";
@@ -100,6 +107,7 @@ public class AnalyzerConfig {
    * <code>cpu.capacity.threshold</code>
    */
   public static final String CPU_CAPACITY_THRESHOLD_CONFIG = "cpu.capacity.threshold";
+  public static final double DEFAULT_CPU_CAPACITY_THRESHOLD = 0.8;
   public static final String CPU_CAPACITY_THRESHOLD_DOC = "The maximum percentage of the total broker.cpu.capacity that is "
       + "allowed to be used on a broker. The analyzer will enforce a hard goal that the cpu utilization "
       + "of a broker cannot be higher than (broker.cpu.capacity * cpu.capacity.threshold).";
@@ -108,6 +116,7 @@ public class AnalyzerConfig {
    * <code>cpu.capacity.threshold</code>
    */
   public static final String DISK_CAPACITY_THRESHOLD_CONFIG = "disk.capacity.threshold";
+  public static final double DEFAULT_DISK_CAPACITY_THRESHOLD = 0.8;
   public static final String DISK_CAPACITY_THRESHOLD_DOC = "The maximum percentage of the total broker.disk.capacity that is "
       + "allowed to be used on a broker. The analyzer will enforce a hard goal that the disk usage "
       + "of a broker cannot be higher than (broker.disk.capacity * disk.capacity.threshold).";
@@ -116,6 +125,7 @@ public class AnalyzerConfig {
    * <code>network.inbound.capacity.threshold</code>
    */
   public static final String NETWORK_INBOUND_CAPACITY_THRESHOLD_CONFIG = "network.inbound.capacity.threshold";
+  public static final double DEFAULT_NETWORK_INBOUND_CAPACITY_THRESHOLD = 0.8;
   public static final String NETWORK_INBOUND_CAPACITY_THRESHOLD_DOC = "The maximum percentage of the total "
       + "broker.network.inbound.capacity that is allowed to be used on a broker. The analyzer will enforce a hard goal "
       + "that the disk usage of a broker cannot be higher than (broker.network.inbound.capacity * "
@@ -125,6 +135,7 @@ public class AnalyzerConfig {
    * <code>network.outbound.capacity.threshold</code>
    */
   public static final String NETWORK_OUTBOUND_CAPACITY_THRESHOLD_CONFIG = "network.outbound.capacity.threshold";
+  public static final double DEFAULT_NETWORK_OUTBOUND_CAPACITY_THRESHOLD = 0.8;
   public static final String NETWORK_OUTBOUND_CAPACITY_THRESHOLD_DOC = "The maximum percentage of the total "
       + "broker.network.outbound.capacity that is allowed to be used on a broker. The analyzer will enforce a hard goal "
       + "that the disk usage of a broker cannot be higher than (broker.network.outbound.capacity * "
@@ -134,6 +145,7 @@ public class AnalyzerConfig {
    * <code>cpu.low.utilization.threshold</code>
    */
   public static final String CPU_LOW_UTILIZATION_THRESHOLD_CONFIG = "cpu.low.utilization.threshold";
+  public static final double DEFAULT_CPU_LOW_UTILIZATION_THRESHOLD = 0.0;
   public static final String CPU_LOW_UTILIZATION_THRESHOLD_DOC = "The threshold for Kafka Cruise Control to define the "
       + "utilization of CPU is low enough that rebalance is not worthwhile. The cluster will only be in a low "
       + "utilization state when all the brokers are below the low utilization threshold. The threshold is in percentage.";
@@ -142,6 +154,7 @@ public class AnalyzerConfig {
    * <code>disk.low.utilization.threshold</code>
    */
   public static final String DISK_LOW_UTILIZATION_THRESHOLD_CONFIG = "disk.low.utilization.threshold";
+  public static final double DEFAULT_DISK_LOW_UTILIZATION_THRESHOLD = 0.0;
   public static final String DISK_LOW_UTILIZATION_THRESHOLD_DOC = "The threshold for Kafka Cruise Control to define the "
       + "utilization of DISK is low enough that rebalance is not worthwhile. The cluster will only be in a low "
       + "utilization state when all the brokers are below the low utilization threshold. The threshold is in percentage.";
@@ -150,6 +163,7 @@ public class AnalyzerConfig {
    * <code>network.inbound.low.utilization.threshold</code>
    */
   public static final String NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG = "network.inbound.low.utilization.threshold";
+  public static final double DEFAULT_NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD = 0.0;
   public static final String NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD_DOC = "The threshold for Kafka Cruise Control to define the"
       + " utilization of network inbound rate is low enough that rebalance is not worthwhile. The cluster will only be in "
       + "a low utilization state when all the brokers are below the low utilization threshold. The threshold is in percentage.";
@@ -158,6 +172,7 @@ public class AnalyzerConfig {
    * <code>network.outbound.low.utilization.threshold</code>
    */
   public static final String NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG = "network.outbound.low.utilization.threshold";
+  public static final double DEFAULT_NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD = 0.0;
   public static final String NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_DOC = "The threshold for Kafka Cruise Control to define the"
       + " utilization of network outbound rate is low enough that rebalance is not worthwhile. The cluster will only be in a "
       + "low utilization state when all the brokers are below the low utilization threshold. The threshold is in percentage.";
@@ -166,6 +181,7 @@ public class AnalyzerConfig {
    * <code>proposal.expiration.ms</code>
    */
   public static final String PROPOSAL_EXPIRATION_MS_CONFIG = "proposal.expiration.ms";
+  public static final long DEFAULT_PROPOSAL_EXPIRATION_MS = 900000L;
   public static final String PROPOSAL_EXPIRATION_MS_DOC = "Kafka Cruise Control will cache one of the best proposal among all "
       + "the optimization proposal candidates it recently computed. This configuration defines when will the"
       + "cached proposal be invalidated and needs a recomputation. If proposal.expiration.ms is set to 0, Cruise Control"
@@ -175,6 +191,7 @@ public class AnalyzerConfig {
    * <code>max.replicas.per.broker</code>
    */
   public static final String MAX_REPLICAS_PER_BROKER_CONFIG = "max.replicas.per.broker";
+  public static final long DEFAULT_MAX_REPLICAS_PER_BROKER = 10000L;
   public static final String MAX_REPLICAS_PER_BROKER_DOC = "The maximum number of replicas allowed to reside on a "
       + "broker. The analyzer will enforce a hard goal that the number of replica on a broker cannot be higher than "
       + "this config.";
@@ -183,6 +200,7 @@ public class AnalyzerConfig {
    * <code>num.proposal.precompute.threads</code>
    */
   public static final String NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG = "num.proposal.precompute.threads";
+  public static final int DEFAULT_NUM_PROPOSAL_PRECOMPUTE_THREADS = 1;
   public static final String NUM_PROPOSAL_PRECOMPUTE_THREADS_DOC = "The number of thread used to precompute the "
       + "optimization proposal candidates. The more threads are used, the more memory and CPU resource will be used.";
 
@@ -260,6 +278,7 @@ public class AnalyzerConfig {
    * <code>goal.balancedness.priority.weight</code>
    */
   public static final String GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG = "goal.balancedness.priority.weight";
+  public static final double DEFAULT_GOAL_BALANCEDNESS_PRIORITY_WEIGHT = 1.1;
   public static final String GOAL_BALANCEDNESS_PRIORITY_WEIGHT_DOC = "The impact of having one level higher goal priority"
       + " on the relative balancedness score. For example, 1.1 means that a goal with higher priority will have the 1.1x"
       + " balancedness weight of the lower priority goal (assuming the same goal.balancedness.strictness.weight values for"
@@ -269,6 +288,7 @@ public class AnalyzerConfig {
    * <code>goal.balancedness.strictness.weight</code>
    */
   public static final String GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_CONFIG = "goal.balancedness.strictness.weight";
+  public static final double DEFAULT_GOAL_BALANCEDNESS_STRICTNESS_WEIGHT = 1.5;
   public static final String GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_DOC = "The impact of strictness (i.e. hard or soft goal)"
       + " on the relative balancedness score. For example, 1.5 means that a hard goal will have the 1.5x balancedness "
       + "weight of a soft goal (assuming goal.balancedness.priority.weight is 1).";
@@ -277,6 +297,7 @@ public class AnalyzerConfig {
    * <code>allow.capacity.estimation.on.proposal.precompute</code>
    */
   public static final String ALLOW_CAPACITY_ESTIMATION_ON_PROPOSAL_PRECOMPUTE_CONFIG = "allow.capacity.estimation.on.proposal.precompute";
+  public static final boolean DEFAULT_ALLOW_CAPACITY_ESTIMATION_ON_PROPOSAL_PRECOMPUTE = true;
   public static final String ALLOW_CAPACITY_ESTIMATION_ON_PROPOSAL_PRECOMPUTE_DOC = "The flag to indicate whether to "
       + "allow capacity estimation on proposal precomputation.";
 
@@ -284,6 +305,7 @@ public class AnalyzerConfig {
    * <code>topics.excluded.from.partition.movement</code>
    */
   public static final String TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG = "topics.excluded.from.partition.movement";
+  public static final String DEFAULT_TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT = "";
   public static final String TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_DOC = "The topics that should be excluded from the "
       + "partition movement. It is a regex. Notice that this regex will be ignored when decommission a broker is invoked.";
 
@@ -291,6 +313,7 @@ public class AnalyzerConfig {
    * <code>goal.violation.distribution.threshold.multiplier</code>
    */
   public static final String GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG = "goal.violation.distribution.threshold.multiplier";
+  public static final double DEFAULT_GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER = 1.0;
   public static final String GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_DOC = "The multiplier applied to the threshold"
       + " of distribution goals used for detecting and fixing anomalies. For example, 2.50 means the threshold for each "
       + "distribution goal (i.e. Replica Distribution, Leader Replica Distribution, Resource Distribution, and Topic Replica "
@@ -305,109 +328,109 @@ public class AnalyzerConfig {
   public static ConfigDef define(ConfigDef configDef) {
     return configDef.define(CPU_BALANCE_THRESHOLD_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            1.10,
+                            DEFAULT_CPU_BALANCE_THRESHOLD,
                             atLeast(1),
                             ConfigDef.Importance.HIGH,
                             CPU_BALANCE_THRESHOLD_DOC)
                     .define(DISK_BALANCE_THRESHOLD_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            1.10,
+                            DEFAULT_DISK_BALANCE_THRESHOLD,
                             atLeast(1),
                             ConfigDef.Importance.HIGH,
                             DISK_BALANCE_THRESHOLD_DOC)
                     .define(NETWORK_INBOUND_BALANCE_THRESHOLD_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            1.10,
+                            DEFAULT_NETWORK_INBOUND_BALANCE_THRESHOLD,
                             atLeast(1),
                             ConfigDef.Importance.HIGH,
                             NETWORK_INBOUND_BALANCE_THRESHOLD_DOC)
                     .define(NETWORK_OUTBOUND_BALANCE_THRESHOLD_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            1.10,
+                            DEFAULT_NETWORK_OUTBOUND_BALANCE_THRESHOLD,
                             atLeast(1),
                             ConfigDef.Importance.HIGH,
                             NETWORK_OUTBOUND_BALANCE_THRESHOLD_DOC)
                     .define(REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            1.10,
+                            DEFAULT_REPLICA_COUNT_BALANCE_THRESHOLD,
                             atLeast(1),
                             ConfigDef.Importance.HIGH,
                             REPLICA_COUNT_BALANCE_THRESHOLD_DOC)
                     .define(LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            1.10,
+                            DEFAULT_LEADER_REPLICA_COUNT_BALANCE_THRESHOLD,
                             atLeast(1),
                             ConfigDef.Importance.HIGH,
                             LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_DOC)
                     .define(TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            3.00,
+                            DEFAULT_TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD,
                             atLeast(1),
                             ConfigDef.Importance.HIGH,
                             TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_DOC)
                     .define(CPU_CAPACITY_THRESHOLD_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            0.8,
+                            DEFAULT_CPU_CAPACITY_THRESHOLD,
                             between(0, 1),
                             ConfigDef.Importance.HIGH,
                             CPU_CAPACITY_THRESHOLD_DOC)
                     .define(DISK_CAPACITY_THRESHOLD_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            0.8,
+                            DEFAULT_DISK_CAPACITY_THRESHOLD,
                             between(0, 1),
                             ConfigDef.Importance.HIGH,
                             DISK_CAPACITY_THRESHOLD_DOC)
                     .define(NETWORK_INBOUND_CAPACITY_THRESHOLD_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            0.8,
+                            DEFAULT_NETWORK_INBOUND_CAPACITY_THRESHOLD,
                             between(0, 1),
                             ConfigDef.Importance.HIGH,
                             NETWORK_INBOUND_CAPACITY_THRESHOLD_DOC)
                     .define(NETWORK_OUTBOUND_CAPACITY_THRESHOLD_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            0.8,
+                            DEFAULT_NETWORK_OUTBOUND_CAPACITY_THRESHOLD,
                             between(0, 1),
                             ConfigDef.Importance.HIGH,
                             NETWORK_OUTBOUND_CAPACITY_THRESHOLD_DOC)
                     .define(CPU_LOW_UTILIZATION_THRESHOLD_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            0.0,
+                            DEFAULT_CPU_LOW_UTILIZATION_THRESHOLD,
                             between(0, 1),
                             ConfigDef.Importance.MEDIUM,
                             CPU_LOW_UTILIZATION_THRESHOLD_DOC)
                     .define(DISK_LOW_UTILIZATION_THRESHOLD_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            0.0,
+                            DEFAULT_DISK_LOW_UTILIZATION_THRESHOLD,
                             between(0, 1),
                             ConfigDef.Importance.MEDIUM,
                             DISK_LOW_UTILIZATION_THRESHOLD_DOC)
                     .define(NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            0.0,
+                            DEFAULT_NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD,
                             between(0, 1),
                             ConfigDef.Importance.MEDIUM,
                             NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD_DOC)
                     .define(NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            0.0,
+                            DEFAULT_NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD,
                             between(0, 1),
                             ConfigDef.Importance.MEDIUM,
                             NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_DOC)
                     .define(PROPOSAL_EXPIRATION_MS_CONFIG,
                             ConfigDef.Type.LONG,
-                            900000,
+                            DEFAULT_PROPOSAL_EXPIRATION_MS,
                             atLeast(0),
                             ConfigDef.Importance.MEDIUM,
                             PROPOSAL_EXPIRATION_MS_DOC)
                     .define(MAX_REPLICAS_PER_BROKER_CONFIG,
                             ConfigDef.Type.LONG,
-                            10000,
+                            DEFAULT_MAX_REPLICAS_PER_BROKER,
                             atLeast(0),
                             ConfigDef.Importance.MEDIUM,
                             MAX_REPLICAS_PER_BROKER_DOC)
                     .define(NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG,
                             ConfigDef.Type.INT,
-                            1,
+                            DEFAULT_NUM_PROPOSAL_PRECOMPUTE_THREADS,
                             between(0, 1),
                             ConfigDef.Importance.LOW,
                             NUM_PROPOSAL_PRECOMPUTE_THREADS_DOC)
@@ -433,30 +456,31 @@ public class AnalyzerConfig {
                             DEFAULT_GOALS_DOC)
                     .define(GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            1.1,
+                            DEFAULT_GOAL_BALANCEDNESS_PRIORITY_WEIGHT,
                             between(1, 2),
                             ConfigDef.Importance.LOW,
                             GOAL_BALANCEDNESS_PRIORITY_WEIGHT_DOC)
                     .define(GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            1.5,
+                            DEFAULT_GOAL_BALANCEDNESS_STRICTNESS_WEIGHT,
                             between(1, 2),
                             ConfigDef.Importance.LOW,
                             GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_DOC)
                     .define(ALLOW_CAPACITY_ESTIMATION_ON_PROPOSAL_PRECOMPUTE_CONFIG,
                             ConfigDef.Type.BOOLEAN,
-                            true,
+                            DEFAULT_ALLOW_CAPACITY_ESTIMATION_ON_PROPOSAL_PRECOMPUTE,
                             ConfigDef.Importance.LOW,
                             ALLOW_CAPACITY_ESTIMATION_ON_PROPOSAL_PRECOMPUTE_DOC)
                     .define(TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG,
                             ConfigDef.Type.STRING,
-                            "",
+                            DEFAULT_TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT,
                             ConfigDef.Importance.LOW,
                             TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_DOC)
                     .define(GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG,
                             ConfigDef.Type.DOUBLE,
-                            1.00,
+                            DEFAULT_GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER,
                             atLeast(1),
-                            ConfigDef.Importance.MEDIUM, GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_DOC);
+                            ConfigDef.Importance.MEDIUM,
+                            GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_DOC);
   }
 }
