@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.UpdateTop
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG;
@@ -67,8 +68,13 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
                                                                              excludeRecentlyDemotedBrokers,
                                                                              excludeRecentlyRemovedBrokers,
                                                                              _anomalyId.toString(),
-                                                                             String.format("Self healing for %s: %s", TOPIC_ANOMALY, this));
+                                                                             reasonSupplier());
 
+  }
+
+  @Override
+  public Supplier<String> reasonSupplier() {
+    return () -> String.format("Self healing for %s: %s", TOPIC_ANOMALY, this);
   }
 
   @Override

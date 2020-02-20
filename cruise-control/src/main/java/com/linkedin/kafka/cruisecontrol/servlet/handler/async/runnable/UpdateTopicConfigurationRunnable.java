@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.Cluster;
@@ -114,7 +115,7 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
                                           boolean excludeRecentlyDemotedBrokers,
                                           boolean excludeRecentlyRemovedBrokers,
                                           String anomalyId,
-                                          String reason) {
+                                          Supplier<String> reasonSupplier) {
     super(kafkaCruiseControl, new OperationFuture("Topic replication factor anomaly self-healing."));
     _topicPatternByReplicationFactor = topicPatternByReplicationFactor;
     _goals = selfHealingGoals;
@@ -130,7 +131,7 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
     _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
     _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
     _dryRun = SELF_HEALING_DRYRUN;
-    _reason = reason;
+    _reason = reasonSupplier.get();
     _stopOngoingExecution = SELF_HEALING_STOP_ONGOING_EXECUTION;
     _uuid = anomalyId;
     _isTriggeredByUserRequest = false;

@@ -1,4 +1,5 @@
 ## Architecture
+## Architecture
 The architecture of Cruise Control is illustrated below:
 ![Architecture](https://github.com/linkedin/cruise-control/blob/master/docs/images/architecture.png)
 
@@ -74,6 +75,8 @@ The anomaly detector identifies four types of anomalies:
 * Goal violations - i.e. an optimization goal is violated. When this happens, Cruise Control will send a notification out and if self-healing for this anomaly type is enabled, Cruise Control will proactively attempt to address the goal violation by automatically analyzing the workload, and executing optimization proposals. 
 * Disk failure - i.e. one of the non-empty disk dies, note this is only related with Kafka broker running on JBOD disk. When this happens, Cruise Control will send a notification out and if self-healing for this anomaly type is enabled, Cruise Control will trigger an operation to move all the offline replicas to other healthy brokers in the cluster. 
 * Metric anomaly - i.e. one of the metrics Cruise Control collected observes anomaly in value(e.g. a sudden rise in log flush time metrics). When this happens, Cruise Control will send a notification out. Currently there is no standardized self-healing operation defined for metric anomaly since different different metric anomalies expect different remediations. User can define their own anomaly and remediation operation by implementing their own [MetricAnomaly](https://github.com/linkedin/cruise-control/blob/master/cruise-control-core/src/main/java/com/linkedin/cruisecontrol/detector/metricanomaly/MetricAnomaly.java) and [MetricAnomalyFinder](https://github.com/linkedin/cruise-control/blob/master/cruise-control-core/src/main/java/com/linkedin/cruisecontrol/detector/metricanomaly/MetricAnomalyFinder.java).
+* Topic anomaly - i.e. one or more topics in cluster violates user-defined properties(e.g. some partitions are too large in disk). When this happens, Cruise Control will send a notification out. Currently there is no standardized self-healing operation defined for topic anomaly since different different topic anomalies expect different remediations. User can define their own anomaly and remediation operation by implementing their own [TopicAnomaly](https://github.com/linkedin/cruise-control/blob/master/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/detector/TopicAnomaly.java) and [TopicAnomalyFinder](https://github.com/linkedin/cruise-control/blob/master/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/detector/TopicAnomalyFinder.java).
+
 
 ### Executor
 The executor is responsible for carrying out the optimization proposals from the analyzer. The executor is designed in a way that it is safely interruptible when executing the proposals. The executor ensures that the execution is resource-aware and does not overwhelm any broker.
