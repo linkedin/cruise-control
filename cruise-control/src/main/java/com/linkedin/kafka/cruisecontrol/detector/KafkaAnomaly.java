@@ -9,6 +9,7 @@ import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +51,11 @@ public abstract class KafkaAnomaly implements Anomaly, CruiseControlConfigurable
 
     return hasProposalsToFix;
   }
+
+  /**
+   * @return A reason supplier that enables lazy evaluation.
+   */
+  public abstract Supplier<String> reasonSupplier();
 
   @Override
   public long detectionTimeMs() {

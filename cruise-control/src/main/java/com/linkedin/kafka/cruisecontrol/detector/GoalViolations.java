@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +33,8 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyTyp
  */
 public class GoalViolations extends KafkaAnomaly {
   private static final Logger LOG = LoggerFactory.getLogger(GoalViolations.class);
+  public static final String UNFIXABLE_GOAL_VIOLATIONS = "Unfixable goal violations";
+  public static final String FIXABLE_GOAL_VIOLATIONS = "Fixable goal violations";
   // The priority order of goals is maintained here.
   protected Map<Boolean, List<String>> _violatedGoalsByFixability;
   protected boolean _excludeRecentlyDemotedBrokers;
@@ -86,13 +89,18 @@ public class GoalViolations extends KafkaAnomaly {
   }
 
   @Override
+  public Supplier<String> reasonSupplier() {
+    return () -> String.format("Self healing for %s: %s", GOAL_VIOLATION, this);
+  }
+
+  @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append("{Unfixable goal violations: {");
+    sb.append(String.format("{%s: {", UNFIXABLE_GOAL_VIOLATIONS));
     StringJoiner joiner = new StringJoiner(",");
     _violatedGoalsByFixability.getOrDefault(false, Collections.emptyList()).forEach(joiner::add);
     sb.append(joiner.toString());
-    sb.append("}, Fixable goal violations: {");
+    sb.append(String.format("}, %s: {", FIXABLE_GOAL_VIOLATIONS));
     joiner = new StringJoiner(",");
     _violatedGoalsByFixability.getOrDefault(true, Collections.emptyList()).forEach(joiner::add);
     sb.append(joiner.toString());
@@ -117,6 +125,6 @@ public class GoalViolations extends KafkaAnomaly {
                                                _excludeRecentlyDemotedBrokers,
                                                _excludeRecentlyRemovedBrokers,
                                                _anomalyId.toString(),
-                                                String.format("Self healing for %s: %s", GOAL_VIOLATION, this));
+                                               reasonSupplier());
   }
 }

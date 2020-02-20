@@ -21,6 +21,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +62,7 @@ public class RemoveBrokersRunnable extends OperationRunnable {
   protected final boolean _skipHardGoalCheck;
   protected final Pattern _excludedTopics;
   protected final String _uuid;
-  protected final String _reason;
+  protected final Supplier<String> _reasonSupplier;
   protected final boolean _excludeRecentlyDemotedBrokers;
   protected final boolean _excludeRecentlyRemovedBrokers;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
@@ -79,7 +80,7 @@ public class RemoveBrokersRunnable extends OperationRunnable {
                                boolean excludeRecentlyDemotedBrokers,
                                boolean excludeRecentlyRemovedBrokers,
                                String anomalyId,
-                               String reason) {
+                               Supplier<String> reasonSupplier) {
     super(kafkaCruiseControl, new OperationFuture("Broker Failure Self-Healing"));
     _removedBrokerIds = removedBrokerIds;
     _dryRun = SELF_HEALING_DRYRUN;
@@ -96,7 +97,7 @@ public class RemoveBrokersRunnable extends OperationRunnable {
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
     _replicationThrottle = kafkaCruiseControl.config().getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
     _uuid = anomalyId;
-    _reason = reason;
+    _reasonSupplier = reasonSupplier;
     _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
     _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
     _stopOngoingExecution = SELF_HEALING_STOP_ONGOING_EXECUTION;
@@ -123,7 +124,8 @@ public class RemoveBrokersRunnable extends OperationRunnable {
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
     _replicationThrottle = parameters.replicationThrottle();
     _uuid = uuid;
-    _reason = parameters.reason();
+    String reason = parameters.reason();
+    _reasonSupplier = () -> reason;
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
     _stopOngoingExecution = parameters.stopOngoingExecution();
@@ -187,7 +189,7 @@ public class RemoveBrokersRunnable extends OperationRunnable {
         _kafkaCruiseControl.executeRemoval(result.goalProposals(), _throttleRemovedBrokers, _removedBrokerIds, isKafkaAssignerMode(_goals),
                                            _concurrentInterBrokerPartitionMovements, _concurrentLeaderMovements,
                                            _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle,
-                                           _isTriggeredByUserRequest, _uuid, _reason);
+                                           _isTriggeredByUserRequest, _uuid, _reasonSupplier);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {

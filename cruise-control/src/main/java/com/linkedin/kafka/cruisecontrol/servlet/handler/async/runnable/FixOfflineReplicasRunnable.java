@@ -19,6 +19,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +56,7 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
   protected final boolean _skipHardGoalCheck;
   protected final Pattern _excludedTopics;
   protected final String _uuid;
-  protected final String _reason;
+  protected final Supplier<String> _reasonSupplier;
   protected final boolean _excludeRecentlyDemotedBrokers;
   protected final boolean _excludeRecentlyRemovedBrokers;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
@@ -72,7 +73,7 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
                                     boolean excludeRecentlyDemotedBrokers,
                                     boolean excludeRecentlyRemovedBrokers,
                                     String anomalyId,
-                                    String reason) {
+                                    Supplier<String> reasonSupplier) {
     super(kafkaCruiseControl, new OperationFuture("Disk Failure Self-Healing"));
     _dryRun = SELF_HEALING_DRYRUN;
     _goals = selfHealingGoals;
@@ -84,7 +85,7 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
     _skipHardGoalCheck = SELF_HEALING_SKIP_HARD_GOAL_CHECK;
     _excludedTopics = SELF_HEALING_EXCLUDED_TOPICS;
     _uuid = anomalyId;
-    _reason = reason;
+    _reasonSupplier = reasonSupplier;
     _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
     _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
@@ -108,7 +109,8 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
     _skipHardGoalCheck = parameters.skipHardGoalCheck();
     _excludedTopics = parameters.excludedTopics();
     _uuid = uuid;
-    _reason = parameters.reason();
+    String reason = parameters.reason();
+    _reasonSupplier = () -> reason;
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
@@ -179,7 +181,7 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
                                              _replicationThrottle,
                                              _isTriggeredByUserRequest,
                                              _uuid,
-                                             _reason);
+                                             _reasonSupplier);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {

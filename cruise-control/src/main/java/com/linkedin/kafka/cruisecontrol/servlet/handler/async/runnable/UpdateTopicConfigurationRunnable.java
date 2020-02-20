@@ -216,7 +216,7 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
       if (!dryRun) {
         _kafkaCruiseControl.executeProposals(result.goalProposals(), Collections.emptySet(), false, concurrentInterBrokerPartitionMovements,
                                              0, concurrentLeaderMovements, executionProgressCheckIntervalMs,
-                                             replicaMovementStrategy, replicationThrottle, true, _uuid, reason);
+                                             replicaMovementStrategy, replicationThrottle, true, _uuid, () -> reason);
       }
     } catch (KafkaCruiseControlException kcce) {
       throw kcce;

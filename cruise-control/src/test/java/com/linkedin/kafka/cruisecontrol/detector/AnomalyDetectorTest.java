@@ -288,7 +288,7 @@ public class AnomalyDetectorTest {
                                               EasyMock.eq(null),
                                               EasyMock.eq(false),
                                               EasyMock.anyString(),
-                                              EasyMock.anyString());
+                                              EasyMock.anyObject());
 
       EasyMock.expect(mockAnomalyNotifier.onGoalViolation(EasyMock.isA(GoalViolations.class))).andReturn(AnomalyNotificationResult.fix());
     } else if (anomalyType == KafkaAnomalyType.DISK_FAILURE) {
@@ -318,7 +318,7 @@ public class AnomalyDetectorTest {
                                               EasyMock.eq(null),
                                               EasyMock.eq(false),
                                               EasyMock.anyString(),
-                                              EasyMock.anyString());
+                                              EasyMock.anyObject());
 
       EasyMock.expect(mockKafkaCruiseControl.acquireForModelGeneration(EasyMock.anyObject())).andReturn(null);
       EasyMock.expect(mockAnomalyNotifier.onDiskFailure(EasyMock.isA(DiskFailures.class))).andReturn(AnomalyNotificationResult.fix());
@@ -349,7 +349,7 @@ public class AnomalyDetectorTest {
                                              EasyMock.eq(null),
                                              EasyMock.eq(false),
                                              EasyMock.anyString(),
-                                             EasyMock.anyString());
+                                             EasyMock.anyObject());
       EasyMock.expect(mockAnomalyNotifier.onMetricAnomaly(EasyMock.isA(SlowBrokers.class))).andReturn(AnomalyNotificationResult.fix());
     }
     EasyMock.expect(mockKafkaCruiseControl.meetCompletenessRequirements(Collections.emptyList())).andReturn(true);
@@ -375,7 +375,9 @@ public class AnomalyDetectorTest {
         GoalViolations violations = kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.GOAL_VIOLATIONS_CLASS_CONFIG,
                                                                                    GoalViolations.class,
                                                                                    parameterConfigOverrides);
+        assertTrue(violations.reasonSupplier().get().contains(String.format("%s: {}", GoalViolations.FIXABLE_GOAL_VIOLATIONS)));
         violations.addViolation("RackAwareGoal", true);
+        assertTrue(violations.reasonSupplier().get().contains(String.format("%s: {RackAwareGoal}", GoalViolations.FIXABLE_GOAL_VIOLATIONS)));
         anomalies.add(violations);
       }
       if (anomalyType == KafkaAnomalyType.METRIC_ANOMALY ||

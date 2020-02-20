@@ -146,7 +146,7 @@ public class AddBrokersRunnable extends OperationRunnable {
                                              _replicationThrottle,
                                              true,
                                              _uuid,
-                                             _reason);
+                                             () -> _reason);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
