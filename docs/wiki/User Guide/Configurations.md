@@ -213,9 +213,15 @@ We are still trying to improve cruise control. And following are some configurat
 | capacity.config.file | String | Y         | config/capacityJBOD.json  | The path to the configuration JSON file that provides the capacity of the brokers. |
 
 #### Populating the Capacity Config File
-`Option-1`: The following steps allow users to set the initial broker capacities or update capacities upon addition of 
+
+`Overview:` Broker capacity resolution is handled by a pluggable component.
+The default capacity resolver implementation requires users to manually populate a capacity file with broker capacities.
+If users have access to an external resolver for broker capacities, they can also customize their resolver to use this 
+source for the capacity information. The rest of this section describes how to use one of these options.
+
+`Option-1 (default)`: The following steps allow users to set the initial broker capacities or update capacities upon addition of 
 new brokers out-of-the-box:
-1. Check `cruisecontrol.properties` file to verify that the `capacity.config.file=` config points to the file you are modifying.
+1. Check `cruisecontrol.properties` file to verify that the `capacity.config.file` config points to the file you are modifying.
 By default, this config is set to use `config/capacityJBOD.json`. If you have 
     * a non-JBOD deployment, where each broker has the same number of cores, you may use `config/capacity.json`, or
     * a non-JBOD deployment, where brokers may have varying number of cores, you may use `config/capacityCores.json`
@@ -224,7 +230,7 @@ By default, this config is set to use `config/capacityJBOD.json`. If you have
 explicitly specifies capacities for brokers with specific ids provided by user.
 3. Finally, bounce your Cruise Control instance.
 
-`Option-2`: `BrokerCapacityConfigResolver` is a pluggable component. Hence, you can write your own pluggable capacity 
+`Option-2 (implement your own resolver)`: `BrokerCapacityConfigResolver` is a pluggable component. Hence, you can write your own pluggable capacity 
 resolver to dynamically resolve the broker capacities if you have a source to provide the capacity information. 
 Using this approach, you may avoid restarting your CC instance upon a (1) capacity change or (2) addition of a broker 
 with a non-default capacity. See:
