@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import java.util.Set;
-import org.apache.yetus.audience.InterfaceStability;
+import org.apache.kafka.common.annotation.InterfaceStability;
 
 
 /**
