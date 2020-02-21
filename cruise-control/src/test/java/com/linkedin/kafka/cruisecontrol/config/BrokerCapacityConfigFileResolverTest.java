@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.config;
 
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolvingException;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
@@ -31,8 +32,8 @@ public class BrokerCapacityConfigFileResolverTest {
     return configResolver;
   }
 
-  @Test
-  public void testParseConfigFile() throws TimeoutException {
+  @Test(expected = BrokerCapacityResolvingException.class)
+  public void testParseConfigFile() throws TimeoutException, BrokerCapacityResolvingException {
     BrokerCapacityConfigResolver configResolver = getBrokerCapacityConfigResolver("testCapacityConfig.json", this.getClass());
 
     assertEquals(200000.0, configResolver.capacityForBroker("", "", 0, BROKER_CAPACITY_FETCH_TIMEOUT_MS, false)
@@ -48,10 +49,13 @@ public class BrokerCapacityConfigFileResolverTest {
 
     assertTrue(configResolver.capacityForBroker("", "", 2, BROKER_CAPACITY_FETCH_TIMEOUT_MS, true).isEstimated());
     assertTrue(configResolver.capacityForBroker("", "", 2, BROKER_CAPACITY_FETCH_TIMEOUT_MS, true).estimationInfo().length() > 0);
+
+    // If resolver is unable to get broker capacity and not allowed to estimate, an BrokerCapacityResolvingException will be thrown.
+    configResolver.capacityForBroker("", "", 2, BROKER_CAPACITY_FETCH_TIMEOUT_MS, false);
   }
 
   @Test
-  public void testParseConfigJBODFile() throws TimeoutException {
+  public void testParseConfigJBODFile() throws TimeoutException, BrokerCapacityResolvingException {
     BrokerCapacityConfigResolver configResolver = getBrokerCapacityConfigResolver("testCapacityConfigJBOD.json", this.getClass());
 
     assertEquals(2000000.0, configResolver.capacityForBroker("", "", 0, BROKER_CAPACITY_FETCH_TIMEOUT_MS, false)
@@ -67,7 +71,7 @@ public class BrokerCapacityConfigFileResolverTest {
   }
 
   @Test
-  public void testParseConfigCoresFile() throws TimeoutException {
+  public void testParseConfigCoresFile() throws TimeoutException, BrokerCapacityResolvingException {
     BrokerCapacityConfigResolver configResolver = getBrokerCapacityConfigResolver("testCapacityConfigCores.json", this.getClass());
 
     assertEquals(BrokerCapacityConfigFileResolver.DEFAULT_CPU_CAPACITY_WITH_CORES, configResolver

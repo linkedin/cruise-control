@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.common.ClusterProperty;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
+import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolvingException;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 
 import java.util.ArrayList;
@@ -25,7 +26,6 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.concurrent.TimeoutException;
 import org.apache.kafka.common.TopicPartition;
 
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.JBOD_BROKER_CAPACITY_CONFIG_FILE;
@@ -46,9 +46,10 @@ public class RandomCluster {
    *
    * @param clusterProperties Cluster properties specifying number of racks and brokers.
    * @return Cluster with the specified number of racks and brokers.
-   * @throws TimeoutException If broker capacity is unable to be determined.
+   * @throws BrokerCapacityResolvingException If broker capacity resolver fails to resolve broker capacity.
    */
-  public static ClusterModel generate(Map<ClusterProperty, Number> clusterProperties) throws TimeoutException {
+  public static ClusterModel generate(Map<ClusterProperty, Number> clusterProperties)
+      throws BrokerCapacityResolvingException {
     int numRacks = clusterProperties.get(ClusterProperty.NUM_RACKS).intValue();
     int numBrokers = clusterProperties.get(ClusterProperty.NUM_BROKERS).intValue();
     BrokerCapacityConfigFileResolver configFileResolver = new BrokerCapacityConfigFileResolver();
@@ -491,7 +492,7 @@ public class RandomCluster {
   /**
    * @return Get a cluster model having a single broker with bad disk.
    */
-  public static ClusterModel singleBrokerWithBadDisk() throws TimeoutException {
+  public static ClusterModel singleBrokerWithBadDisk() throws BrokerCapacityResolvingException {
     Map<ClusterProperty, Number> singleBrokerWithBadDisk = new HashMap<>();
     singleBrokerWithBadDisk.put(ClusterProperty.NUM_BROKERS, 3);
     singleBrokerWithBadDisk.put(ClusterProperty.NUM_RACKS, 3);

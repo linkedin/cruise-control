@@ -13,6 +13,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolvingException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ModelUtils;
@@ -445,7 +446,7 @@ public class MonitorUtils {
    * @param valuesAndExtrapolations The values and extrapolations of the leader replica.
    * @param replicaPlacementInfo The distribution of replicas over broker logdirs if available, {@code null} otherwise.
    * @param brokerCapacityConfigResolver The resolver for retrieving broker capacities.
-   * @param allowBrokerCapacityEstimation Whether allow broker capacity resolver to estimate broker capacity
+   * @param allowCapacityEstimation whether allow capacity estimation in cluster model if the underlying live broker capacity is unavailable.
    */
   static void populatePartitionLoad(Cluster cluster,
                                     ClusterModel clusterModel,
@@ -453,7 +454,8 @@ public class MonitorUtils {
                                     ValuesAndExtrapolations valuesAndExtrapolations,
                                     Map<TopicPartition, Map<Integer, String>> replicaPlacementInfo,
                                     BrokerCapacityConfigResolver brokerCapacityConfigResolver,
-                                    boolean allowBrokerCapacityEstimation) throws TimeoutException {
+                                    boolean allowCapacityEstimation)
+      throws TimeoutException {
     PartitionInfo partitionInfo = cluster.partition(tp);
     // If partition info does not exist, the topic may have been deleted.
     if (partitionInfo != null) {
@@ -467,8 +469,8 @@ public class MonitorUtils {
         try {
           // Do not allow capacity estimation for dead brokers.
           brokerCapacity = brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id(), BROKER_CAPACITY_FETCH_TIMEOUT_MS,
-                                                                          aliveBrokers.contains(replica.id()) && allowBrokerCapacityEstimation);
-        } catch (TimeoutException tme) {
+                                                                          aliveBrokers.contains(replica.id()) && allowCapacityEstimation);
+        } catch (TimeoutException | BrokerCapacityResolvingException e) {
           // Capacity resolver may not be able to return the capacity information of dead brokers.
           if (!aliveBrokers.contains(replica.id())) {
             brokerCapacity = new BrokerCapacityInfo(EMPTY_BROKER_CAPACITY);
@@ -476,7 +478,7 @@ public class MonitorUtils {
           } else {
             String errorMessage = String.format("Unable to retrieve capacity for broker %d. This may be caused by churn in "
                                                 + "the cluster, please retry.", replica.id());
-            LOG.warn(errorMessage, tme);
+            LOG.warn(errorMessage, e);
             throw new TimeoutException(errorMessage);
           }
         }

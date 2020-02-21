@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
+import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolvingException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerLoad;
@@ -84,9 +85,9 @@ public class CruiseControlMetricsProcessor {
           BrokerCapacityInfo capacity =
               _brokerCapacityConfigResolver.capacityForBroker(getRackHandleNull(node), node.host(), bid, BROKER_CAPACITY_FETCH_TIMEOUT_MS,
                                                               _allowCpuCapacityEstimation);
-          return capacity.numCpuCores();
-        } catch (TimeoutException tme) {
-          LOG.warn("Unable to get number of CPU cores for broker {}.", node.id(), tme);
+          return capacity == null ? null : capacity.numCpuCores();
+        } catch (TimeoutException | BrokerCapacityResolvingException e) {
+          LOG.warn("Unable to get number of CPU cores for broker {}.", node.id(), e);
           return null;
         }
       });

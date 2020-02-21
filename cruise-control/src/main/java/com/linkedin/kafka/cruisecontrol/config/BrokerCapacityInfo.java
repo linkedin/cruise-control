@@ -10,6 +10,17 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 
+/**
+ * A class encapsulate the capacity information of a broker, which includes all the resources defined in {@link Resource}.
+ *
+ * The units for each resource are:
+ * DISK - MegaBytes
+ * CPU - Percentage (0 - 100)
+ * Network Inbound - KB/s
+ * Network Outbounds - KB/s
+ *
+ * The information also contains the number of CPU cores and may contain disk capacities by logDirs (i.e. for JBOD).
+ */
 public class BrokerCapacityInfo {
   public final static short DEFAULT_NUM_CPU_CORES = 1;
   private final static String DEFAULT_ESTIMATION_INFO = "";

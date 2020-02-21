@@ -8,6 +8,7 @@ import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
+import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolvingException;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -18,7 +19,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeoutException;
 
 
 /**
@@ -156,9 +156,10 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
 
   @Override
   public void configure(Map<String, ?> configs) {
-    _configFile = KafkaCruiseControlUtils.getRequiredConfig(configs, CAPACITY_CONFIG_FILE);
+    String configFile = KafkaCruiseControlUtils.getRequiredConfig(configs, CAPACITY_CONFIG_FILE);
+    _configFile = configFile;
     try {
-      loadCapacities(_configFile);
+      loadCapacities(configFile);
     } catch (FileNotFoundException e) {
       throw new IllegalArgumentException(e);
     }
@@ -166,7 +167,7 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
 
   @Override
   public BrokerCapacityInfo capacityForBroker(String rack, String host, int brokerId, long timeoutMs, boolean allowCapacityEstimation)
-      throws TimeoutException {
+      throws BrokerCapacityResolvingException {
     if (brokerId >= 0) {
       BrokerCapacityInfo capacity = _capacitiesForBrokers.get(brokerId);
       if (capacity != null) {
@@ -178,8 +179,9 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
                                         _capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).diskCapacityByLogDir(),
                                         _capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).numCpuCores());
         } else {
-          throw new TimeoutException(String.format("Unable to resolve capacity of broker %d. Either allow capacity estimation "
-                                                   + "or add broker's capacity information in file %s.", brokerId, _configFile));
+          throw new BrokerCapacityResolvingException(String.format("Unable to resolve capacity of broker %d.Either (1) adding the "
+              + "default broker capacity (via adding capacity for broker %d and allowing capacity estimation or (2) add missing "
+              + "broker's capacity in file %s.", brokerId, DEFAULT_CAPACITY_BROKER_ID, _configFile));
         }
       }
     } else {
