@@ -377,7 +377,7 @@ public class AnomalyDetectorTest {
       EasyMock.expect(mockAnomalyNotifier.onMetricAnomaly(EasyMock.isA(SlowBrokers.class))).andReturn(AnomalyNotificationResult.fix());
     } else if (anomalyType == KafkaAnomalyType.TOPIC_ANOMALY) {
       ClusterModel clusterModel = unbalanced();
-      EasyMock.expect(mockKafkaCruiseControl.clusterModel(EasyMock.anyObject(), EasyMock.anyObject())).andReturn(clusterModel);
+      EasyMock.expect(mockKafkaCruiseControl.clusterModel(EasyMock.anyObject(), EasyMock.eq(true), EasyMock.anyObject())).andReturn(clusterModel);
       EasyMock.expect(mockKafkaCruiseControl.kafkaCluster()).andReturn(generateClusterFromClusterModel(clusterModel));
       EasyMock.expect(mockKafkaCruiseControl.acquireForModelGeneration(EasyMock.anyObject())).andReturn(null);
       ExecutorState executorState = EasyMock.mock(ExecutorState.class);
