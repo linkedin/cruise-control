@@ -183,7 +183,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       LOG.info("Cruise Control metrics topic {} is created.", _cruiseControlMetricsTopic);
     } catch (ExecutionException e) {
       if (e.getCause() instanceof TopicExistsException) {
-        throw (TopicExistsException) e.getCause();
+        throw new TopicExistsException(e.getMessage());
       } else {
         LOG.warn("Unable to create Cruise Control metrics topic {}.", _cruiseControlMetricsTopic, e);
       }
