@@ -3,8 +3,13 @@
  */
 package com.linkedin.kafka.cruisecontrol.metricsreporter;
 
+import java.util.Map;
+import java.util.Set;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.AlterConfigOp;
+import org.apache.kafka.clients.admin.Config;
+import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.config.SaslConfigs;
@@ -13,7 +18,8 @@ import java.util.Properties;
 
 public class CruiseControlMetricsUtils {
 
-  public static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = 10000;
+  public static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = 10000L;
+  public static final long CLIENT_REQUEST_TIMEOUT_MS = 10000L;
 
   private CruiseControlMetricsUtils() {
 
@@ -104,6 +110,24 @@ public class CruiseControlMetricsUtils {
       props.put(name, configs.getString(name));
     } catch (ConfigException ce) {
       // let it go.
+    }
+  }
+
+  /**
+   * Create a config altering operation if config's current value does not equal to target value.
+   * @param configsToAlter Set of config altering operations to be applied.
+   * @param configsToSet Configs to set.
+   * @param currentConfig Current value of the config.
+   */
+  public static void maybeUpdateConfig(Set<AlterConfigOp> configsToAlter,
+                                       Map<String, String> configsToSet,
+                                       Config currentConfig) {
+    for (Map.Entry<String, String> entry : configsToSet.entrySet()) {
+      String configName = entry.getKey();
+      String targetConfigValue = entry.getValue();
+      if (currentConfig.get(configName) == null || !currentConfig.get(configName).value().equals(targetConfigValue)) {
+        configsToAlter.add(new AlterConfigOp(new ConfigEntry(configName, targetConfigValue), AlterConfigOp.OpType.SET));
+      }
     }
   }
 }
