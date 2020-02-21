@@ -18,8 +18,8 @@ import java.util.Properties;
 
 public class CruiseControlMetricsUtils {
 
-  public static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = 10000;
-  public static final long CLIENT_REQUEST_TIMEOUT_MS = 10000;
+  public static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = 10000L;
+  public static final long CLIENT_REQUEST_TIMEOUT_MS = 10000L;
 
   private CruiseControlMetricsUtils() {
 
