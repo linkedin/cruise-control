@@ -42,6 +42,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.errors.InterruptException;
+import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.metrics.KafkaMetric;
 import org.apache.kafka.common.metrics.MetricsReporter;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -175,11 +176,17 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     return newTopic;
   }
 
-  protected void createCruiseControlMetricsTopic() throws ExecutionException {
+  protected void createCruiseControlMetricsTopic() throws TopicExistsException {
     try {
       CreateTopicsResult createTopicsResult = _adminClient.createTopics(Collections.singletonList(_metricsTopic));
       createTopicsResult.values().get(_metricsTopic.name()).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
       LOG.info("Cruise Control metrics topic {} is created.", _cruiseControlMetricsTopic);
+    } catch (ExecutionException e) {
+      if (e.getCause() instanceof TopicExistsException) {
+        throw (TopicExistsException) e.getCause();
+      } else {
+        LOG.warn("Unable to create Cruise Control metrics topic {}.", _cruiseControlMetricsTopic, e);
+      }
     } catch (InterruptedException | TimeoutException e) {
       LOG.warn("Unable to create Cruise Control metrics topic {}.", _cruiseControlMetricsTopic, e);
     }
@@ -232,7 +239,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     if (_metricsTopic != null && _adminClient != null) {
       try {
         createCruiseControlMetricsTopic();
-      } catch (ExecutionException e) {
+      } catch (TopicExistsException e) {
         maybeUpdateCruiseControlMetricsTopic();
       } finally {
         CruiseControlMetricsUtils.closeAdminClientWithTimeout(_adminClient);
