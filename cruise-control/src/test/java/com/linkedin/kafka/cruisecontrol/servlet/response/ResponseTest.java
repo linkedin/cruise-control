@@ -148,7 +148,7 @@ public class ResponseTest {
       if (properties.size() - fields.size() == 1) {
         assertTrue(properties.get(VERSION) instanceof IntegerSchema);
       } else {
-        assertEquals(properties.size(), fields.size());
+        assertEquals(className, properties.size(), fields.size());
       }
     }
 

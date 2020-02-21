@@ -38,7 +38,6 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.balancedn
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.MAX_BALANCEDNESS_SCORE;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.shouldSkipAnomalyDetection;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 
@@ -88,9 +87,7 @@ public class GoalViolationDetector implements Runnable {
    * Skip goal violation detection if any of the following is true:
    * <ul>
    * <li>Cluster model generation has not changed since the last goal violation check.</li>
-   * <li>There is offline replicas in the cluster, which means there is dead brokers/disks. In this case
-   * {@link BrokerFailureDetector} or {@link DiskFailureDetector} should take care of the anomaly.</li>
-   * <li>{@link AnomalyDetectorUtils#shouldSkipAnomalyDetection(KafkaCruiseControl)} returns true.
+   * <li>{@link AnomalyDetectorUtils#shouldSkipAnomalyDetection(KafkaCruiseControl, boolean)} returns true.
    * </ul>
    *
    * @return True to skip goal violation detection based on the current state, false otherwise.
@@ -103,16 +100,7 @@ public class GoalViolationDetector implements Runnable {
       }
       return true;
     }
-
-    Set<Integer> brokersWithOfflineReplicas = _kafkaCruiseControl.loadMonitor().brokersWithOfflineReplicas(MAX_METADATA_WAIT_MS);
-    if (!brokersWithOfflineReplicas.isEmpty()) {
-      LOG.info("Skipping goal violation detection because there are dead brokers/disks in the cluster, flawed brokers: {}",
-                brokersWithOfflineReplicas);
-      setBalancednessWithOfflineReplicas();
-      return true;
-    }
-
-    return shouldSkipAnomalyDetection(_kafkaCruiseControl);
+    return shouldSkipAnomalyDetection(_kafkaCruiseControl, true);
   }
 
   @Override

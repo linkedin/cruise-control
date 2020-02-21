@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import com.linkedin.kafka.cruisecontrol.detector.DiskFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
+import com.linkedin.kafka.cruisecontrol.detector.TopicAnomaly;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.common.utils.SystemTime;
@@ -27,6 +28,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.has
  * <li>The goal violations will trigger an immediate fix.</li>
  * <li>The metric anomalies will trigger an immediate fix.</li>
  * <li>The disk failures will trigger an immediate fix.</li>
+ * <li>The topic anomalies will trigger an immediate fix.</li>
  * <li>The broker failures are handled in the following way:
  *   <ol>
  *     <li>If a broker disappears from a cluster at timestamp <b>T</b>, the detector will start down counting.</li>
@@ -45,6 +47,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.has
  * <li>{@link #SELF_HEALING_GOAL_VIOLATION_ENABLED_CONFIG}: Enable self healing for goal violation detector.</li>
  * <li>{@link #SELF_HEALING_METRIC_ANOMALY_ENABLED_CONFIG}: Enable self healing for metric anomaly detector.</li>
  * <li>{@link #SELF_HEALING_DISK_FAILURE_ENABLED_CONFIG}: Enable self healing for disk failure detector.</li>
+ * <li>{@link #SELF_HEALING_TOPIC_ANOMALY_ENABLED_CONFIG}: Enable self healing for topic anomaly detector.</li>
  * </ul>
  */
 public class SelfHealingNotifier implements AnomalyNotifier {
@@ -54,6 +57,7 @@ public class SelfHealingNotifier implements AnomalyNotifier {
   public static final String SELF_HEALING_GOAL_VIOLATION_ENABLED_CONFIG = "self.healing.goal.violation.enabled";
   public static final String SELF_HEALING_METRIC_ANOMALY_ENABLED_CONFIG = "self.healing.metric.anomaly.enabled";
   public static final String SELF_HEALING_DISK_FAILURE_ENABLED_CONFIG = "self.healing.disk.failure.enabled";
+  public static final String SELF_HEALING_TOPIC_ANOMALY_ENABLED_CONFIG = "self.healing.topic.anomaly.enabled";
   public static final String BROKER_FAILURE_SELF_HEALING_THRESHOLD_MS_CONFIG = "broker.failure.self.healing.threshold.ms";
   static final long DEFAULT_ALERT_THRESHOLD_MS = 900000;
   static final long DEFAULT_AUTO_FIX_THRESHOLD_MS = 1800000;
@@ -114,6 +118,13 @@ public class SelfHealingNotifier implements AnomalyNotifier {
   public AnomalyNotificationResult onMetricAnomaly(KafkaMetricAnomaly metricAnomaly) {
     boolean autoFixTriggered = _selfHealingEnabled.get(KafkaAnomalyType.METRIC_ANOMALY) && metricAnomaly.fixable();
     alert(metricAnomaly, autoFixTriggered, _time.milliseconds(), KafkaAnomalyType.METRIC_ANOMALY);
+    return autoFixTriggered ? AnomalyNotificationResult.fix() : AnomalyNotificationResult.ignore();
+  }
+
+  @Override
+  public AnomalyNotificationResult onTopicAnomaly(TopicAnomaly topicAnomaly) {
+    boolean autoFixTriggered = _selfHealingEnabled.get(KafkaAnomalyType.TOPIC_ANOMALY);
+    alert(topicAnomaly, autoFixTriggered, _time.milliseconds(), KafkaAnomalyType.TOPIC_ANOMALY);
     return autoFixTriggered ? AnomalyNotificationResult.fix() : AnomalyNotificationResult.ignore();
   }
 
@@ -280,6 +291,10 @@ public class SelfHealingNotifier implements AnomalyNotifier {
     _selfHealingEnabled.put(KafkaAnomalyType.DISK_FAILURE, selfHealingDiskFailuresEnabledString == null
                                                            ? selfHealingAllEnabled
                                                            : Boolean.parseBoolean(selfHealingDiskFailuresEnabledString));
+    String selfHealingTopicAnomalyEnabledString = (String) config.get(SELF_HEALING_TOPIC_ANOMALY_ENABLED_CONFIG);
+    _selfHealingEnabled.put(KafkaAnomalyType.TOPIC_ANOMALY, selfHealingTopicAnomalyEnabledString == null
+                                                            ? selfHealingAllEnabled
+                                                            : Boolean.parseBoolean(selfHealingTopicAnomalyEnabledString));
     // Set self-healing current state start time.
     _selfHealingEnabled.forEach((key, value) -> _selfHealingStateChangeTimeMs.get(value).put(key, _notifierStartTimeMs));
   }

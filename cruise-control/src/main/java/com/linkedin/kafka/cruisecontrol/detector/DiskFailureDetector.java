@@ -56,7 +56,7 @@ public class DiskFailureDetector implements Runnable {
    * <ul>
    * <li>Cluster model generation has not changed since the last disk failure check.</li>
    * <li>There are dead brokers in the cluster, {@link BrokerFailureDetector} should take care of the anomaly.</li>
-   * <li>{@link AnomalyDetectorUtils#shouldSkipAnomalyDetection(KafkaCruiseControl)} returns true.
+   * <li>{@link AnomalyDetectorUtils#shouldSkipAnomalyDetection(KafkaCruiseControl, boolean)} returns true.
    * </ul>
    *
    * @return True to skip disk failure detection based on the current state, false otherwise.
@@ -78,7 +78,7 @@ public class DiskFailureDetector implements Runnable {
       return true;
     }
 
-    return shouldSkipAnomalyDetection(_kafkaCruiseControl);
+    return shouldSkipAnomalyDetection(_kafkaCruiseControl, false);
   }
 
   @Override

@@ -14,6 +14,7 @@ import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.UserTaskManagerConfig;
+import com.linkedin.kafka.cruisecontrol.detector.NoopTopicAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
 import java.util.Properties;
@@ -60,6 +61,7 @@ public class KafkaCruiseControlUnitTestUtils {
                       Boolean.toString(AnomalyDetectorConfig.DEFAULT_SELF_HEALING_EXCLUDE_RECENT_BROKERS_CONFIG));
     props.setProperty(AnomalyDetectorConfig.SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG,
                       Boolean.toString(AnomalyDetectorConfig.DEFAULT_SELF_HEALING_EXCLUDE_RECENT_BROKERS_CONFIG));
+    props.setProperty(AnomalyDetectorConfig.TOPIC_ANOMALY_FINDER_CLASSES_CONFIG, NoopTopicAnomalyFinder.class.getName());
     props.setProperty(AnomalyDetectorConfig.SELF_HEALING_GOALS_CONFIG, "");
     props.setProperty(
         AnalyzerConfig.DEFAULT_GOALS_CONFIG,

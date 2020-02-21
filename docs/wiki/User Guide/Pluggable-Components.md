@@ -59,6 +59,7 @@ The anomaly notifier is a communication channel between cruise control and users
 * Goal violation
 * Metric Anomaly
 * Disk failure (not available in `kafka_0_11_and_1_0` branch)
+* Topic Anomaly
 
 The actions users can take are:
 * Fix the anomaly

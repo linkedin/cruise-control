@@ -22,6 +22,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -39,6 +40,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityChe
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.anomalyComparator;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getSelfHealingGoalNames;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.SHUTDOWN_ANOMALY;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.*;
 
 
 /**
@@ -48,7 +50,9 @@ public class AnomalyDetector {
   static final String METRIC_REGISTRY_NAME = "AnomalyDetector";
   private static final int INIT_JITTER_BOUND = 10000;
   private static final long SCHEDULER_SHUTDOWN_TIMEOUT_MS = 5000L;
-  private static final int NUM_ANOMALY_DETECTION_THREADS = 5;
+  // For each anomaly type, one thread is needed to run corresponding anomaly detector.
+  // One more thread is needed to run anomaly handler task.
+  private static final int NUM_ANOMALY_DETECTION_THREADS = KafkaAnomalyType.cachedValues().size() + 1;
   private static final int ANOMALY_QUEUE_INITIAL_CAPACITY = 10;
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetector.class);
   private static final Logger OPERATION_LOG = LoggerFactory.getLogger(OPERATION_LOGGER);
@@ -60,10 +64,9 @@ public class AnomalyDetector {
   private final BrokerFailureDetector _brokerFailureDetector;
   private final MetricAnomalyDetector _metricAnomalyDetector;
   private final DiskFailureDetector _diskFailureDetector;
+  private final TopicAnomalyDetector _topicAnomalyDetector;
   private final ScheduledExecutorService _detectorScheduler;
-  private final long _goalViolationDetectionIntervalMs;
-  private final long _diskFailureDetectionIntervalMs;
-  private final long _metricAnomalyDetectionIntervalMs;
+  private final Map<KafkaAnomalyType, Long> _anomalyDetectionIntervalMsByType;
   private final long _brokerFailureDetectionBackoffMs;
   private final PriorityBlockingQueue<Anomaly> _anomalies;
   private volatile boolean _shutdown;
@@ -82,16 +85,20 @@ public class AnomalyDetector {
     _anomalies = new PriorityBlockingQueue<>(ANOMALY_QUEUE_INITIAL_CAPACITY, anomalyComparator());
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
     _adminClient = KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
-    long anomalyDetectionIntervalMs = config.getLong(AnomalyDetectorConfig.ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
+    Long anomalyDetectionIntervalMs = config.getLong(AnomalyDetectorConfig.ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
+    _anomalyDetectionIntervalMsByType = new HashMap<>(KafkaAnomalyType.cachedValues().size() - 1);
     Long goalViolationDetectionIntervalMs = config.getLong(AnomalyDetectorConfig.GOAL_VIOLATION_DETECTION_INTERVAL_MS_CONFIG);
-    _goalViolationDetectionIntervalMs = goalViolationDetectionIntervalMs == null ? anomalyDetectionIntervalMs
-                                                                                 : goalViolationDetectionIntervalMs;
+    _anomalyDetectionIntervalMsByType.put(GOAL_VIOLATION, goalViolationDetectionIntervalMs == null ? anomalyDetectionIntervalMs
+                                                                                                   : goalViolationDetectionIntervalMs);
     Long metricAnomalyDetectionIntervalMs = config.getLong(AnomalyDetectorConfig.METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
-    _metricAnomalyDetectionIntervalMs = metricAnomalyDetectionIntervalMs == null ? anomalyDetectionIntervalMs
-                                                                                 : metricAnomalyDetectionIntervalMs;
+    _anomalyDetectionIntervalMsByType.put(METRIC_ANOMALY, metricAnomalyDetectionIntervalMs == null ? anomalyDetectionIntervalMs
+                                                                                                   : metricAnomalyDetectionIntervalMs);
+    Long topicAnomalyDetectionIntervalMs = config.getLong(AnomalyDetectorConfig.TOPIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
+    _anomalyDetectionIntervalMsByType.put(TOPIC_ANOMALY, topicAnomalyDetectionIntervalMs == null ? anomalyDetectionIntervalMs
+                                                                                                 : topicAnomalyDetectionIntervalMs);
     Long diskFailureDetectionIntervalMs = config.getLong(AnomalyDetectorConfig.DISK_FAILURE_DETECTION_INTERVAL_MS_CONFIG);
-    _diskFailureDetectionIntervalMs = diskFailureDetectionIntervalMs == null ? anomalyDetectionIntervalMs
-                                                                             : diskFailureDetectionIntervalMs;
+    _anomalyDetectionIntervalMsByType.put(DISK_FAILURE, diskFailureDetectionIntervalMs == null ? anomalyDetectionIntervalMs
+                                                                                               : diskFailureDetectionIntervalMs);
     _brokerFailureDetectionBackoffMs = config.getLong(AnomalyDetectorConfig.BROKER_FAILURE_DETECTION_BACKOFF_MS_CONFIG);
     _anomalyNotifier = config.getConfiguredInstance(AnomalyDetectorConfig.ANOMALY_NOTIFIER_CLASS_CONFIG,
                                                     AnomalyNotifier.class);
@@ -102,6 +109,7 @@ public class AnomalyDetector {
     _brokerFailureDetector = new BrokerFailureDetector(_anomalies, _kafkaCruiseControl);
     _metricAnomalyDetector = new MetricAnomalyDetector(_anomalies, _kafkaCruiseControl);
     _diskFailureDetector = new DiskFailureDetector(_adminClient, _anomalies, _kafkaCruiseControl);
+    _topicAnomalyDetector = new TopicAnomalyDetector(_anomalies, _kafkaCruiseControl);
     _detectorScheduler = Executors.newScheduledThreadPool(NUM_ANOMALY_DETECTION_THREADS,
                                                           new KafkaCruiseControlThreadFactory(METRIC_REGISTRY_NAME, false, LOG));
     _shutdown = false;
@@ -132,18 +140,21 @@ public class AnomalyDetector {
                   BrokerFailureDetector brokerFailureDetector,
                   MetricAnomalyDetector metricAnomalyDetector,
                   DiskFailureDetector diskFailureDetector,
+                  TopicAnomalyDetector topicAnomalyDetector,
                   ScheduledExecutorService detectorScheduler) {
     _anomalies = anomalies;
     _adminClient = adminClient;
-    _goalViolationDetectionIntervalMs = anomalyDetectionIntervalMs;
-    _metricAnomalyDetectionIntervalMs = anomalyDetectionIntervalMs;
-    _diskFailureDetectionIntervalMs = anomalyDetectionIntervalMs;
+    _anomalyDetectionIntervalMsByType = new HashMap<>(KafkaAnomalyType.cachedValues().size() - 1);
+    KafkaAnomalyType.cachedValues().stream().filter(type -> type != BROKER_FAILURE)
+                    .forEach(type -> _anomalyDetectionIntervalMsByType.put(type, anomalyDetectionIntervalMs));
+
     _brokerFailureDetectionBackoffMs = anomalyDetectionIntervalMs;
     _anomalyNotifier = anomalyNotifier;
     _goalViolationDetector = goalViolationDetector;
     _brokerFailureDetector = brokerFailureDetector;
     _metricAnomalyDetector = metricAnomalyDetector;
     _diskFailureDetector = diskFailureDetector;
+    _topicAnomalyDetector = topicAnomalyDetector;
     _kafkaCruiseControl = kafkaCruiseControl;
     _detectorScheduler = detectorScheduler;
     _shutdown = false;
@@ -180,21 +191,31 @@ public class AnomalyDetector {
     _brokerFailureDetector.startDetection();
     int jitter = new Random().nextInt(INIT_JITTER_BOUND);
     LOG.debug("Starting goal violation detector with delay of {} ms", jitter);
+    long goalViolationDetectionIntervalMs = _anomalyDetectionIntervalMsByType.get(GOAL_VIOLATION);
     _detectorScheduler.scheduleAtFixedRate(_goalViolationDetector,
-                                           _goalViolationDetectionIntervalMs / 2 + jitter,
-                                           _goalViolationDetectionIntervalMs,
+                                           goalViolationDetectionIntervalMs / 2 + jitter,
+                                           goalViolationDetectionIntervalMs,
                                            TimeUnit.MILLISECONDS);
     jitter = new Random().nextInt(INIT_JITTER_BOUND);
+    long metricAnomalyDetectionIntervalMs = _anomalyDetectionIntervalMsByType.get(METRIC_ANOMALY);
     LOG.debug("Starting metric anomaly detector with delay of {} ms", jitter);
     _detectorScheduler.scheduleAtFixedRate(_metricAnomalyDetector,
-                                           _metricAnomalyDetectionIntervalMs / 2 + jitter,
-                                           _metricAnomalyDetectionIntervalMs,
+                                           metricAnomalyDetectionIntervalMs / 2 + jitter,
+                                           metricAnomalyDetectionIntervalMs,
                                            TimeUnit.MILLISECONDS);
     jitter = new Random().nextInt(INIT_JITTER_BOUND);
+    long topicAnomalyDetectionIntervalMs = _anomalyDetectionIntervalMsByType.get(TOPIC_ANOMALY);
+    LOG.debug("Starting topic anomaly detector with delay of {} ms", jitter);
+    _detectorScheduler.scheduleAtFixedRate(_topicAnomalyDetector,
+                                           topicAnomalyDetectionIntervalMs / 2 + jitter,
+                                           topicAnomalyDetectionIntervalMs,
+                                           TimeUnit.MILLISECONDS);
+    jitter = new Random().nextInt(INIT_JITTER_BOUND);
+    long diskFailureDetectionIntervalMs = _anomalyDetectionIntervalMsByType.get(DISK_FAILURE);
     LOG.debug("Starting disk failure detector with delay of {} ms", jitter);
     _detectorScheduler.scheduleAtFixedRate(_diskFailureDetector,
-                                           _diskFailureDetectionIntervalMs / 2 + jitter,
-                                           _diskFailureDetectionIntervalMs,
+                                           diskFailureDetectionIntervalMs / 2 + jitter,
+                                           diskFailureDetectionIntervalMs,
                                            TimeUnit.MILLISECONDS);
     _detectorScheduler.submit(new AnomalyHandlerTask());
   }
@@ -409,6 +430,10 @@ public class AnomalyDetector {
         case DISK_FAILURE:
           DiskFailures diskFailures = (DiskFailures) _anomalyInProgress;
           notificationResult = _anomalyNotifier.onDiskFailure(diskFailures);
+          break;
+        case TOPIC_ANOMALY:
+          TopicAnomaly topicAnomaly = (TopicAnomaly) _anomalyInProgress;
+          notificationResult = _anomalyNotifier.onTopicAnomaly(topicAnomaly);
           break;
         default:
           throw new IllegalStateException("Unrecognized anomaly type.");

@@ -8,13 +8,18 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricVa
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
+import com.linkedin.kafka.cruisecontrol.model.Partition;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.Node;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.getAggregatedMetricValues;
@@ -24,6 +29,8 @@ public class DeterministicCluster {
   public static final String T1 = "T1";
   public static final String T2 = "T2";
   public static final Map<Integer, Integer> RACK_BY_BROKER;
+  public static final String CLUSTER_ID = "DETERMINISTIC_CLUSTER";
+  public static final int PORT = 0;
   static {
     Map<Integer, Integer> racksByBrokerIds = new HashMap<>();
     racksByBrokerIds.put(0, 0);
@@ -502,5 +509,32 @@ public class DeterministicCluster {
     rackByBroker.forEach(
         (key, value) -> cluster.createBroker(value.toString(), Integer.toString(key), key, commonBrokerCapacityInfo, diskCapacityByLogDir != null));
     return cluster;
+  }
+
+  /**
+   * Generate the cluster metadata from given cluster model.
+   * @param clusterModel The cluster model.
+   * @return The cluster metadata.
+   */
+  public static Cluster generateClusterFromClusterModel(ClusterModel clusterModel) {
+    Map<Integer, Node> nodes = new HashMap<>();
+    clusterModel.brokers().forEach(b -> nodes.put(b.id(), new Node(b.id(), b.host().name(), PORT, b.rack().id())));
+    List<PartitionInfo> partitions = new ArrayList<>();
+    for (List<Partition> pList : clusterModel.getPartitionsByTopic().values()) {
+      for (Partition p : pList) {
+        Node[] replicas = new Node [p.replicas().size()];
+        for (int i = 0; i < p.replicas().size(); i++) {
+          replicas[i] = nodes.get(p.replicas().get(i).broker().id());
+        }
+        Node[] inSyncReplicas = new Node[p.onlineFollowers().size() + 1];
+        inSyncReplicas[0] = nodes.get(p.leader().broker().id());
+        for (int i = 0; i < p.onlineFollowers().size(); i++) {
+          replicas[i + 1] = nodes.get(p.onlineFollowers().get(i).broker().id());
+        }
+        partitions.add(new PartitionInfo(p.topicPartition().topic(), p.topicPartition().partition(),
+                                         nodes.get(p.leader().broker().id()), replicas, inSyncReplicas));
+      }
+    }
+    return new Cluster(CLUSTER_ID, nodes.values(), partitions, Collections.emptySet(), Collections.emptySet());
   }
 }

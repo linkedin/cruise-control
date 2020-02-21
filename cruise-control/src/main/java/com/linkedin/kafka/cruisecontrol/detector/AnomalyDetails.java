@@ -52,7 +52,7 @@ public class AnomalyDetails {
     _isJson = isJson;
   }
 
-    /** 
+    /**
     * @return An object that can be further used to encode into JSON to represent anomaly data
     */
 
@@ -94,6 +94,13 @@ public class AnomalyDetails {
         anomalyDetails.put(DESCRIPTION, metricAnomaly.description());
         if (_hasFixStarted) {
         anomalyDetails.put(OPTIMIZATION_RESULT, metricAnomaly.optimizationResult(_isJson));
+        }
+        break;
+    case TOPIC_ANOMALY:
+        TopicAnomaly topicAnomaly = (TopicAnomaly) _anomalyState.anomaly();
+        anomalyDetails.put(DESCRIPTION, topicAnomaly.toString());
+        if (_hasFixStarted) {
+          anomalyDetails.put(OPTIMIZATION_RESULT, topicAnomaly.optimizationResult(_isJson));
         }
         break;
     default:

@@ -14,6 +14,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,13 +47,22 @@ public class AnomalyDetectorUtils {
   /**
    * Skip anomaly detection if any of the following is true:
    * <ul>
-   * <li>Load monitor is not ready.</li>
-   * <li>There is an ongoing execution.</li>
+   *  <li>Load monitor is not ready.</li>
+   *  <li>There is an ongoing execution.</li>
+   *  <li> (optional) There is any offline replica in the cluster.</li>
    * </ul>
    *
    * @return True to skip anomaly detection, false otherwise.
    */
-  static boolean shouldSkipAnomalyDetection(KafkaCruiseControl kafkaCruiseControl) {
+  static boolean shouldSkipAnomalyDetection(KafkaCruiseControl kafkaCruiseControl, boolean checkOfflineReplica) {
+    if (checkOfflineReplica) {
+      Set<Integer> brokersWithOfflineReplicas = kafkaCruiseControl.loadMonitor().brokersWithOfflineReplicas(MAX_METADATA_WAIT_MS);
+      if (!brokersWithOfflineReplicas.isEmpty()) {
+        LOG.info("Skipping anomaly detection because there are dead brokers/disks in the cluster, flawed brokers: {}",
+                 brokersWithOfflineReplicas);
+        return true;
+      }
+    }
     LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = kafkaCruiseControl.getLoadMonitorTaskRunnerState();
     if (!AnomalyUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
       LOG.info("Skipping anomaly detection because load monitor is in {} state.", loadMonitorTaskRunnerState);

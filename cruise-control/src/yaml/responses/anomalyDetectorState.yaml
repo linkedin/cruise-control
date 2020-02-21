@@ -7,6 +7,7 @@ AnomalyDetectorState:
     - recentBrokerFailures
     - recentMetricAnomalies
     - recentDiskFailures
+    - recentTopicAnomalies
     - metrics
     - balancednessScore
     - selfHealingEnabledRatio
@@ -34,6 +35,10 @@ AnomalyDetectorState:
       items:
         $ref: '#/AnomalyDetails'
     recentDiskFailures:
+      type: array
+      items:
+        $ref: '#/AnomalyDetails'
+    recentTopicAnomalies:
       type: array
       items:
         $ref: '#/AnomalyDetails'
@@ -102,6 +107,7 @@ SelfHealingEnabledRatio:
     - BROKER_FAILURE
     - METRIC_ANOMALY
     - DISK_FAILURE
+    - TOPIC_ANOMALY
   properties:
     GOAL_VIOLATION:
       type: number
@@ -113,6 +119,9 @@ SelfHealingEnabledRatio:
       type: number
       format: float
     DISK_FAILURE:
+      type: number
+      format: float
+    TOPIC_ANOMALY:
       type: number
       format: float
 
@@ -147,6 +156,7 @@ MeanTimeBetweenAnomaliesMs:
     - BROKER_FAILURE
     - METRIC_ANOMALY
     - DISK_FAILURE
+    - TOPIC_ANOMALY
   properties:
     GOAL_VIOLATION:
       type: number
@@ -158,5 +168,8 @@ MeanTimeBetweenAnomaliesMs:
       type: number
       format: double
     DISK_FAILURE:
+      type: number
+      format: double
+    TOPIC_ANOMALY:
       type: number
       format: double

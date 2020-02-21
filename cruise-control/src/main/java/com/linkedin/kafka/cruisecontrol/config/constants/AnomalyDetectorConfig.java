@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.detector.DiskFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
 import com.linkedin.kafka.cruisecontrol.detector.NoopMetricAnomalyFinder;
+import com.linkedin.kafka.cruisecontrol.detector.NoopTopicAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.NoopNotifier;
 import java.util.Collections;
 import java.util.List;
@@ -179,6 +180,23 @@ public class AnomalyDetectorConfig {
       + "detection threads allow capacity estimation in the generated cluster model they use.";
 
   /**
+   * <code>topic.anomaly.detection.interval.ms</code>
+   */
+  public static final String TOPIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG = "topic.anomaly.detection.interval.ms";
+  public static final Long DEFAULT_TOPIC_ANOMALY_DETECTION_INTERVAL_MS = null;
+  public static final String TOPIC_ANOMALY_DETECTION_INTERVAL_MS_DOC = "The interval in millisecond that topic anomaly "
+      + "detector will run to detect topic anomalies. If this interval time is not specified, topic anomaly detector "
+      + "will run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ".";
+
+  /**
+   * <code>topic.anomaly.finder.class</code>
+   */
+  public static final String TOPIC_ANOMALY_FINDER_CLASSES_CONFIG = "topic.anomaly.finder.class";
+  public static final String DEFAULT_TOPIC_ANOMALY_FINDER_CLASS = NoopTopicAnomalyFinder.class.getName();
+  public static final String TOPIC_ANOMALY_FINDER_CLASSES_DOC = "A list of topic anomaly finder classes to check the current "
+      + "topic state to identify topic anomalies.";
+
+  /**
    * Define configs for Anomaly Detector.
    *
    * @param configDef Config definition.
@@ -275,6 +293,16 @@ public class AnomalyDetectorConfig {
                             ConfigDef.Type.BOOLEAN,
                             DEFAULT_ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG,
                             ConfigDef.Importance.LOW,
-                            ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_DOC);
+                            ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_DOC)
+                    .define(TOPIC_ANOMALY_FINDER_CLASSES_CONFIG,
+                            ConfigDef.Type.LIST,
+                            DEFAULT_TOPIC_ANOMALY_FINDER_CLASS,
+                            ConfigDef.Importance.MEDIUM,
+                            TOPIC_ANOMALY_FINDER_CLASSES_DOC)
+                    .define(TOPIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG,
+                            ConfigDef.Type.LONG,
+                            DEFAULT_TOPIC_ANOMALY_DETECTION_INTERVAL_MS,
+                            ConfigDef.Importance.LOW,
+                            TOPIC_ANOMALY_DETECTION_INTERVAL_MS_DOC);
   }
 }
