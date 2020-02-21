@@ -317,7 +317,7 @@ public class AnomalyDetectorTest {
       EasyMock.expect(mockAnomalyNotifier.onGoalViolation(EasyMock.isA(GoalViolations.class))).andReturn(AnomalyNotificationResult.fix());
     } else if (anomalyType == KafkaAnomalyType.DISK_FAILURE) {
       ClusterModel singleBrokerWithBadDisk = singleBrokerWithBadDisk();
-      EasyMock.expect(mockKafkaCruiseControl.clusterModel(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject())).andReturn(singleBrokerWithBadDisk);
+      EasyMock.expect(mockKafkaCruiseControl.clusterModel(EasyMock.anyObject(), EasyMock.eq(true), EasyMock.anyObject())).andReturn(singleBrokerWithBadDisk);
       ExecutorState executorState = EasyMock.mock(ExecutorState.class);
       EasyMock.expect(mockKafkaCruiseControl.executorState()).andReturn(executorState);
       EasyMock.expect(executorState.recentlyDemotedBrokers()).andReturn(Collections.emptySet());
@@ -348,7 +348,7 @@ public class AnomalyDetectorTest {
       EasyMock.expect(mockAnomalyNotifier.onDiskFailure(EasyMock.isA(DiskFailures.class))).andReturn(AnomalyNotificationResult.fix());
     } else if (anomalyType == KafkaAnomalyType.METRIC_ANOMALY) {
       ClusterModel smallCluster = smallClusterModel(TestConstants.BROKER_CAPACITY);
-      EasyMock.expect(mockKafkaCruiseControl.clusterModel(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject())).andReturn(smallCluster);
+      EasyMock.expect(mockKafkaCruiseControl.clusterModel(EasyMock.anyObject(), EasyMock.eq(true), EasyMock.anyObject())).andReturn(smallCluster);
       EasyMock.expect(mockKafkaCruiseControl.kafkaCluster()).andReturn(Cluster.empty());
       EasyMock.expect(mockKafkaCruiseControl.acquireForModelGeneration(EasyMock.anyObject())).andReturn(null);
       mockKafkaCruiseControl.sanityCheckBrokerPresence(EasyMock.anyObject());
