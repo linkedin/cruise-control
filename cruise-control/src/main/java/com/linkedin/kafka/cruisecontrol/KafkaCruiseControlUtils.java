@@ -337,7 +337,13 @@ public class KafkaCruiseControlUtils {
    * @param timeoutMs the timeout.
    */
   public static void closeAdminClientWithTimeout(AdminClient adminClient, long timeoutMs) {
-    closeClientWithTimeout(adminClient::close, timeoutMs);
+    closeClientWithTimeout(() -> {
+      try {
+        ((AutoCloseable) adminClient).close();
+      } catch (Exception e) {
+        throw new IllegalStateException("Failed to close the Admin Client.", e);
+      }
+    }, timeoutMs);
   }
 
   /**
