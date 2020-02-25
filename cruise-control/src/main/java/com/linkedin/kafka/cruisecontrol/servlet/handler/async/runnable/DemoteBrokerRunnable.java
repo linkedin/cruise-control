@@ -186,8 +186,8 @@ public class DemoteBrokerRunnable extends OperationRunnable {
       OptimizerResult result = _kafkaCruiseControl.optimizations(clusterModel, goalsByPriority, operationProgress, null, optimizationOptions);
       if (!_dryRun) {
         _kafkaCruiseControl.executeDemotion(result.goalProposals(), _brokerIds, _concurrentLeaderMovements, clusterModel.brokers().size(),
-                                            _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle, _isTriggeredByUserRequest,
-                                            _uuid, _reasonSupplier);
+                                            _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle,
+                                            _isTriggeredByUserRequest, _uuid, _reasonSupplier);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {

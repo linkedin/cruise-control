@@ -80,17 +80,21 @@ public class ExcludedBrokersForReplicaMoveTest {
     p.add(params(0, RackAwareGoal.class, excludeB1, null, DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true));
     // With single excluded broker, rack aware satisfiable cluster -- but with a broker excluded on the other rack, no
     // dead brokers (Exception)
-    p.add(params(1, RackAwareGoal.class, excludeB2, OptimizationFailureException.class, DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, null));
+    p.add(params(1, RackAwareGoal.class, excludeB2, OptimizationFailureException.class, DeterministicCluster.rackAwareSatisfiable(),
+                 noDeadBroker, null));
     // With single excluded broker, rack aware satisfiable cluster, one dead broker on this rack (Exception)
-    p.add(params(2, RackAwareGoal.class, excludeB2, OptimizationFailureException.class, DeterministicCluster.rackAwareSatisfiable(), deadBroker0, null));
+    p.add(params(2, RackAwareGoal.class, excludeB2, OptimizationFailureException.class, DeterministicCluster.rackAwareSatisfiable(),
+                 deadBroker0, null));
     // Without excluded broker, rack aware satisfiable cluster, no dead brokers (No exception, Proposal expected, Expected to look optimized)
     p.add(params(3, RackAwareGoal.class, noExclusion, null, DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true));
     // Without excluded broker, rack aware satisfiable cluster, one dead broker (No exception, Proposal expected, Expected to look optimized)
     p.add(params(4, RackAwareGoal.class, noExclusion, null, DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true));
     // With single excluded broker, rack aware unsatisfiable cluster, no dead broker (Exception)
-    p.add(params(5, RackAwareGoal.class, excludeB1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, null));
+    p.add(params(5, RackAwareGoal.class, excludeB1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(),
+                 noDeadBroker, null));
     // With single excluded broker, rack aware unsatisfiable cluster, one dead broker (Exception)
-    p.add(params(6, RackAwareGoal.class, excludeB1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null));
+    p.add(params(6, RackAwareGoal.class, excludeB1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(),
+                 deadBroker0, null));
 
     // ============ReplicaCapacityGoal============
     // Test: With single excluded broker, satisfiable cluster, no dead brokers (No exception, No proposal

@@ -41,7 +41,8 @@ public class ReplicaSortFunctionFactory {
   /** Select immigrants only */
   private static final Function<Replica, Boolean> SELECT_IMMIGRANTS = r -> r.originalBroker() != r.broker();
   /** Select immigrant or offline replicas only */
-  private static final Function<Replica, Boolean> SELECT_IMMIGRANT_OR_OFFLINE_REPLICAS = r -> r.originalBroker() != r.broker() || r.isCurrentOffline();
+  private static final Function<Replica, Boolean> SELECT_IMMIGRANT_OR_OFFLINE_REPLICAS = r -> r.originalBroker() != r.broker()
+                                                                                              || r.isCurrentOffline();
 
   // Score functions
   /**

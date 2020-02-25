@@ -64,7 +64,7 @@ public abstract class AbstractReplicaMovementStrategy implements ReplicaMovement
       SortedSet<ExecutionTask> sourceBrokerTaskSet = tasksByBrokerId.computeIfAbsent(proposal.oldLeader().brokerId(),
                                                                                      k -> new TreeSet<>(taskComparator(cluster)));
       if (!sourceBrokerTaskSet.add(task)) {
-        throw new IllegalStateException("Replica movement strategy " + this.getClass().getSimpleName() + " is unable to determine order of all tasks.");
+        throw new IllegalStateException("Replica movement strategy " + this.getClass().getSimpleName() + " failed to determine order of tasks.");
       }
 
       // Add the task to destination brokers' execution plan
@@ -72,7 +72,7 @@ public abstract class AbstractReplicaMovementStrategy implements ReplicaMovement
         SortedSet<ExecutionTask> destinationBrokerTaskSet = tasksByBrokerId.computeIfAbsent(destinationBroker.brokerId(),
                                                                                             k -> new TreeSet<>(taskComparator(cluster)));
         if (!destinationBrokerTaskSet.add(task)) {
-          throw new IllegalStateException("Replica movement strategy " + this.getClass().getSimpleName() + " is unable to determine order of all tasks.");
+          throw new IllegalStateException("Replica movement strategy " + this.getClass().getSimpleName() + " failed to determine order of tasks.");
         }
       }
     }

@@ -274,10 +274,11 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
     }
 
     // TODO: We do not have the replication bytes rate at this point. Use the default validation after they are available.
-    boolean completeMetrics = sample.isValid(_metricDef)
-                              || (sample.allMetricValues().size() == _metricDef.size() - 2
-                                  && sample.allMetricValues().containsKey(_metricDef.metricInfo(KafkaMetricDef.REPLICATION_BYTES_IN_RATE.name()).id())
-                                  && sample.allMetricValues().containsKey(_metricDef.metricInfo(KafkaMetricDef.REPLICATION_BYTES_OUT_RATE.name()).id()));
+    boolean completeMetrics = sample.isValid(_metricDef) || (sample.allMetricValues().size() == _metricDef.size() - 2
+                                                             && sample.allMetricValues().containsKey(_metricDef.metricInfo(
+                                                                 KafkaMetricDef.REPLICATION_BYTES_IN_RATE.name()).id())
+                                                             && sample.allMetricValues().containsKey(_metricDef.metricInfo(
+                                                                 KafkaMetricDef.REPLICATION_BYTES_OUT_RATE.name()).id()));
 
     if (!completeMetrics) {
       LOG.warn("The metric sample is discarded due to missing metrics. Sample: {}", sample);

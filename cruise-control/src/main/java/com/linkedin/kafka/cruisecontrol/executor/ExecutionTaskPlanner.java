@@ -184,9 +184,10 @@ public class ExecutionTaskPlanner {
       }
       if (!proposal.isInterBrokerMovementCompleted(partitionInfo)) {
         long replicaActionExecutionId = _executionId++;
+        long executionAlertingThresholdMs = Math.max(Math.round(proposal.dataToMoveInMB() / _interBrokerReplicaMovementRateAlertingThreshold),
+                                                     _taskExecutionAlertingThresholdMs);
         ExecutionTask executionTask = new ExecutionTask(replicaActionExecutionId, proposal, INTER_BROKER_REPLICA_ACTION,
-                                                        Math.max(Math.round(proposal.dataToMoveInMB() / _interBrokerReplicaMovementRateAlertingThreshold),
-                                                                 _taskExecutionAlertingThresholdMs));
+                                                        executionAlertingThresholdMs);
         _remainingInterBrokerReplicaMovements.add(executionTask);
         LOG.trace("Added action {} as replica proposal {}", replicaActionExecutionId, proposal);
       }

@@ -87,9 +87,11 @@ public class ExcludedBrokersForLeadershipTest {
     // Without excluded broker, rack aware satisfiable cluster, one dead broker (No exception, Proposal expected, Expected to look optimized)
     p.add(params(3, RackAwareGoal.class, noExclusion, null, DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true));
     // With single excluded broker, rack aware unsatisfiable cluster, no dead broker (Exception)
-    p.add(params(4, RackAwareGoal.class, excludeB1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, null));
+    p.add(params(4, RackAwareGoal.class, excludeB1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(),
+                 noDeadBroker, null));
     // With single excluded broker, rack aware unsatisfiable cluster, one dead broker (Exception)
-    p.add(params(5, RackAwareGoal.class, excludeB1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null));
+    p.add(params(5, RackAwareGoal.class, excludeB1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(),
+                 deadBroker0, null));
 
     // ============ReplicaCapacityGoal============
     // Test: With single excluded broker, satisfiable cluster, no dead brokers (No exception, No proposal

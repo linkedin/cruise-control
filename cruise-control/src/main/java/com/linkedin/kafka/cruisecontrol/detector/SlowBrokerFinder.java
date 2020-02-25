@@ -274,7 +274,10 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
         detectedSlowBrokers.add(createSlowBrokersAnomaly(brokersToDemote, true, false, getSlowBrokerDescription(brokersToDemote)));
       }
       if (!brokersToRemove.isEmpty()) {
-        detectedSlowBrokers.add(createSlowBrokersAnomaly(brokersToRemove, _slowBrokerRemovalEnabled, true, getSlowBrokerDescription(brokersToRemove)));
+        detectedSlowBrokers.add(createSlowBrokersAnomaly(brokersToRemove,
+                                                         _slowBrokerRemovalEnabled,
+                                                         true,
+                                                         getSlowBrokerDescription(brokersToRemove)));
       }
     }
     return detectedSlowBrokers;
@@ -287,6 +290,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
       throw new IllegalArgumentException("Slow broker detector is missing " + KAFKA_CRUISE_CONTROL_OBJECT_CONFIG);
     }
     // Config for slow broker removal.
-    _slowBrokerRemovalEnabled = Boolean.parseBoolean((String) _kafkaCruiseControl.config().originals().get(SELF_HEALING_SLOW_BROKERS_REMOVAL_ENABLED_CONFIG));
+    _slowBrokerRemovalEnabled = Boolean.parseBoolean((String) _kafkaCruiseControl.config().originals()
+                                                                                 .get(SELF_HEALING_SLOW_BROKERS_REMOVAL_ENABLED_CONFIG));
   }
 }

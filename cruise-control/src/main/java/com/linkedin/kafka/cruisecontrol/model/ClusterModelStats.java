@@ -305,7 +305,8 @@ public class ClusterModelStats {
     double varianceSum = 0.0;
     double potentialNwOutInCluster = clusterModel.aliveBrokers()
                                                  .stream()
-                                                 .mapToDouble(b -> clusterModel.potentialLeadershipLoadFor(b.id()).expectedUtilizationFor(Resource.NW_OUT))
+                                                 .mapToDouble(b -> clusterModel.potentialLeadershipLoadFor(b.id())
+                                                                               .expectedUtilizationFor(Resource.NW_OUT))
                                                  .sum();
     double avgPotentialNwOutUtilizationPct = potentialNwOutInCluster / clusterModel.capacityFor(Resource.NW_OUT);
     double capacityThreshold = _balancingConstraint.capacityThreshold(Resource.NW_OUT);

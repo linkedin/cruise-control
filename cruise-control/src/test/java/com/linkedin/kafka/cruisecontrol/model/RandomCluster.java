@@ -53,10 +53,12 @@ public class RandomCluster {
     boolean populateReplicaPlacementInfo = clusterProperties.get(ClusterProperty.POPULATE_REPLICA_PLACEMENT_INFO).intValue() > 0;
     if (populateReplicaPlacementInfo) {
       configFileResolver.configure(Collections.singletonMap(BrokerCapacityConfigFileResolver.CAPACITY_CONFIG_FILE,
-                                                            RandomCluster.class.getClassLoader().getResource(JBOD_BROKER_CAPACITY_CONFIG_FILE).getFile()));
+                                                            RandomCluster.class.getClassLoader()
+                                                                               .getResource(JBOD_BROKER_CAPACITY_CONFIG_FILE).getFile()));
     } else {
       configFileResolver.configure(Collections.singletonMap(BrokerCapacityConfigFileResolver.CAPACITY_CONFIG_FILE,
-                                                            RandomCluster.class.getClassLoader().getResource(DEFAULT_BROKER_CAPACITY_CONFIG_FILE).getFile()));
+                                                            RandomCluster.class.getClassLoader()
+                                                                               .getResource(DEFAULT_BROKER_CAPACITY_CONFIG_FILE).getFile()));
     }
 
     if (numRacks > numBrokers || numBrokers <= 0 || numRacks <= 0) {

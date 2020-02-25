@@ -66,7 +66,7 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.SKIP_LOADING_SAMPLES_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.getRackHandleNull;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.getReplicaPlacementInfo;
-import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.partitionSampleExtrapolations;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.partitionExtrapolations;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.populatePartitionLoad;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.setBadBrokerState;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.BROKER_CAPACITY_FETCH_TIMEOUT_MS;
@@ -245,7 +245,7 @@ public class LoadMonitor {
         MetricSampleAggregationResult<String, PartitionEntity> metricSampleAggregationResult =
             _partitionMetricSampleAggregator.aggregate(kafkaCluster, Long.MAX_VALUE, operationProgress);
         Map<PartitionEntity, ValuesAndExtrapolations> loads = metricSampleAggregationResult.valuesAndExtrapolations();
-        extrapolations = partitionSampleExtrapolations(metricSampleAggregationResult.valuesAndExtrapolations());
+        extrapolations = partitionExtrapolations(metricSampleAggregationResult.valuesAndExtrapolations());
         numValidPartitions = loads.size();
       } catch (Exception e) {
         LOG.warn("Received exception when trying to get the load monitor state", e);

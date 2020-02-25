@@ -298,7 +298,8 @@ public class AnomalyDetectorTest {
                                                EasyMock.eq(SELF_HEALING_IS_REBALANCE_DISK_MODE))).andReturn(false);
 
       EasyMock.expect(mockKafkaCruiseControl.getProposals(EasyMock.anyObject(),
-                                                          EasyMock.eq(AnomalyDetectorConfig.DEFAULT_ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG)))
+                                                          EasyMock.eq(AnomalyDetectorConfig
+                                                                          .DEFAULT_ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG)))
               .andReturn(mockOptimizerResult);
 
       mockKafkaCruiseControl.executeProposals(EasyMock.anyObject(),

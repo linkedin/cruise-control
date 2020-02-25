@@ -308,7 +308,8 @@ public class BrokerLoad {
       }
     });
     boolean result = ((double) missingTopics.size() / topicsInBroker.size()) <= MAX_ALLOWED_MISSING_TOPIC_METRIC_PERCENT
-                     && ((double) missingPartitions.get() / cluster.partitionsForNode(brokerId).size() <= MAX_ALLOWED_MISSING_PARTITION_METRIC_PERCENT);
+                     && ((double) missingPartitions.get() / cluster.partitionsForNode(brokerId).size()
+                         <= MAX_ALLOWED_MISSING_PARTITION_METRIC_PERCENT);
     if (!result) {
       LOG.warn("Broker {} is missing {}/{} topics metrics and {}/{} leader partition metrics. Missing leader topics: {}.", brokerId,
                missingTopics.size(), topicsInBroker.size(), missingPartitions.get(), cluster.partitionsForNode(brokerId).size(), missingTopics);
