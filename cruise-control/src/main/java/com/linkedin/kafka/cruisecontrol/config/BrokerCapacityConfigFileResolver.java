@@ -8,6 +8,7 @@ import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
+import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolutionException;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -151,28 +152,36 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
   private static final String NUM_CORES_CONFIG = "num.cores";
   public static final double DEFAULT_CPU_CAPACITY_WITH_CORES = 100.0;
   private static Map<Integer, BrokerCapacityInfo> _capacitiesForBrokers;
+  private String _configFile;
 
   @Override
   public void configure(Map<String, ?> configs) {
-    String configFile = KafkaCruiseControlUtils.getRequiredConfig(configs, CAPACITY_CONFIG_FILE);
+    _configFile = KafkaCruiseControlUtils.getRequiredConfig(configs, CAPACITY_CONFIG_FILE);
     try {
-      loadCapacities(configFile);
+      loadCapacities();
     } catch (FileNotFoundException e) {
       throw new IllegalArgumentException(e);
     }
   }
 
   @Override
-  public BrokerCapacityInfo capacityForBroker(String rack, String host, int brokerId, long timeoutMs) {
+  public BrokerCapacityInfo capacityForBroker(String rack, String host, int brokerId, long timeoutMs, boolean allowCapacityEstimation)
+      throws BrokerCapacityResolutionException {
     if (brokerId >= 0) {
       BrokerCapacityInfo capacity = _capacitiesForBrokers.get(brokerId);
       if (capacity != null) {
         return capacity;
       } else {
-        String info = String.format("Missing broker id(%d) in capacity config file.", brokerId);
-        return new BrokerCapacityInfo(_capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).capacity(), info,
-                                      _capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).diskCapacityByLogDir(),
-                                      _capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).numCpuCores());
+        if (allowCapacityEstimation) {
+          String info = String.format("Missing broker id(%d) in capacity config file.", brokerId);
+          return new BrokerCapacityInfo(_capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).capacity(), info,
+                                        _capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).diskCapacityByLogDir(),
+                                        _capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).numCpuCores());
+        } else {
+          throw new BrokerCapacityResolutionException(String.format("Unable to resolve capacity of broker %d. Either (1) adding the "
+              + "default broker capacity (via adding capacity for broker %d and allowing capacity estimation) or (2) adding missing "
+              + "broker's capacity in file %s.", brokerId, DEFAULT_CAPACITY_BROKER_ID, _configFile));
+        }
       }
     } else {
       throw new IllegalArgumentException("The broker id(" + brokerId + ") should be non-negative.");
@@ -281,10 +290,10 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
     return brokerCapacityInfo;
   }
 
-  private void loadCapacities(String capacityConfigFile) throws FileNotFoundException {
+  private void loadCapacities() throws FileNotFoundException {
     JsonReader reader = null;
     try {
-      reader = new JsonReader(new InputStreamReader(new FileInputStream(capacityConfigFile), StandardCharsets.UTF_8));
+      reader = new JsonReader(new InputStreamReader(new FileInputStream(_configFile), StandardCharsets.UTF_8));
       Gson gson = new Gson();
       Set<BrokerCapacity> brokerCapacities = ((BrokerCapacities) gson.fromJson(reader, BrokerCapacities.class)).brokerCapacities;
       _capacitiesForBrokers = new HashMap<>(brokerCapacities.size());

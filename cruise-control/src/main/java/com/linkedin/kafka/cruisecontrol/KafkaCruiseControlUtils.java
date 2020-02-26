@@ -221,26 +221,6 @@ public class KafkaCruiseControlUtils {
   }
 
   /**
-   * Check whether the given capacity estimation info indicates estimations for any broker when capacity estimation is
-   * not permitted.
-   *
-   * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
-   * @param capacityEstimationInfoByBrokerId Capacity estimation info by broker id for which there has been an estimation.
-   */
-  public static void sanityCheckCapacityEstimation(boolean allowCapacityEstimation,
-                                                   Map<Integer, String> capacityEstimationInfoByBrokerId) {
-    if (!(allowCapacityEstimation || capacityEstimationInfoByBrokerId.isEmpty())) {
-      StringBuilder sb = new StringBuilder();
-      sb.append(String.format("Failed to capture some broker capacities in the generated cluster model. Either "
-                              + "allow capacity estimation or fix dependencies that capture broker capacities.%n"));
-      for (Map.Entry<Integer, String> entry : capacityEstimationInfoByBrokerId.entrySet()) {
-        sb.append(String.format("Broker: %d: info: %s%n", entry.getKey(), entry.getValue()));
-      }
-      throw new IllegalStateException(sb.toString());
-    }
-  }
-
-  /**
    * Get a goals by priority based on the goal list.
    *
    * @param goals A list of goals.

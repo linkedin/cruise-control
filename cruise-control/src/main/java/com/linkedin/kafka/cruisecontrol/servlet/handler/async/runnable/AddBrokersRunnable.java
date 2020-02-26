@@ -25,7 +25,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPriority;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckGoals;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckLoadMonitorReadiness;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.isKafkaAssignerMode;
@@ -109,14 +108,13 @@ public class AddBrokersRunnable extends OperationRunnable {
     sanityCheckLoadMonitorReadiness(modelCompletenessRequirements, _kafkaCruiseControl.getLoadMonitorTaskRunnerState());
     try (AutoCloseable ignored = _kafkaCruiseControl.acquireForModelGeneration(operationProgress)) {
       _kafkaCruiseControl.sanityCheckBrokerPresence(_brokerIds);
-      ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(modelCompletenessRequirements, operationProgress);
+      ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(modelCompletenessRequirements, _allowCapacityEstimation, operationProgress);
       sanityCheckBrokersHavingOfflineReplicasOnBadDisks(_goals, clusterModel);
       _brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.NEW));
 
       if (!clusterModel.isClusterAlive()) {
         throw new IllegalArgumentException("All brokers are dead in the cluster.");
       }
-      sanityCheckCapacityEstimation(_allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
       ExecutorState executorState = _kafkaCruiseControl.executorState();
       Set<Integer> excludedBrokersForLeadership = _excludeRecentlyDemotedBrokers ? executorState.recentlyDemotedBrokers()
                                                                                  : Collections.emptySet();

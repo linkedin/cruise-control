@@ -13,7 +13,6 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.ClusterLoadParameters
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.PartitionLoadParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
 import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.MIN_VALID_PARTITION_RATIO_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL;
 
@@ -97,8 +96,8 @@ public class LoadRunnable extends OperationRunnable {
                                                                    _end,
                                                                    requirements,
                                                                    _populateDiskInfo,
+                                                                   _allowCapacityEstimation,
                                                                    operationProgress);
-      sanityCheckCapacityEstimation(_allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
       return clusterModel;
     } catch (KafkaCruiseControlException kcce) {
       throw kcce;

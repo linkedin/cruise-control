@@ -36,7 +36,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPriority;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckGoals;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckLoadMonitorReadiness;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_DRYRUN;
@@ -211,9 +210,7 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
                                                                                   : Collections.emptySet();
       populateRackInfoForReplicationFactorChange(topicsToChangeByReplicationFactor, cluster, excludedBrokersForReplicaMove,
                                                  _skipRackAwarenessCheck, brokersByRack, rackByBroker);
-
-      ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(completenessRequirements, operationProgress);
-      sanityCheckCapacityEstimation(_allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
+      ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(completenessRequirements, _allowCapacityEstimation, operationProgress);
       Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = clusterModel.getReplicaDistribution();
 
       // First try to add and remove replicas to achieve the replication factor for topics of interest.

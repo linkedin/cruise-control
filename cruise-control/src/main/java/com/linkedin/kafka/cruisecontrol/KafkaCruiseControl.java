@@ -19,6 +19,7 @@ import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorState;
+import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolutionException;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
@@ -256,14 +257,18 @@ public class KafkaCruiseControl {
   /**
    * Get the cluster model cutting off at the current timestamp.
    * @param requirements the model completeness requirements.
+   * @param allowCapacityEstimation whether allow capacity estimation in cluster model if the underlying live broker capacity is unavailable.
    * @param operationProgress the progress of the job to report.
    * @return The cluster workload model.
    * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
-   * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity.
+   * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity in time.
+   * @throws BrokerCapacityResolutionException If broker capacity resolver fails to resolve broker capacity.
    */
-  public ClusterModel clusterModel(ModelCompletenessRequirements requirements, OperationProgress operationProgress)
-      throws NotEnoughValidWindowsException, TimeoutException {
-    return _loadMonitor.clusterModel(timeMs(), requirements, operationProgress);
+  public ClusterModel clusterModel(ModelCompletenessRequirements requirements,
+                                   boolean allowCapacityEstimation,
+                                   OperationProgress operationProgress)
+      throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
+    return _loadMonitor.clusterModel(timeMs(), requirements, allowCapacityEstimation, operationProgress);
   }
 
   /**
@@ -272,18 +277,21 @@ public class KafkaCruiseControl {
    * @param to the end time of the window
    * @param requirements the load completeness requirements.
    * @param populateReplicaPlacementInfo whether populate replica placement information.
+   * @param allowCapacityEstimation whether allow capacity estimation in cluster model if the underlying live broker capacity is unavailable.
    * @param operationProgress the progress of the job to report.
    * @return The cluster workload model.
    * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
-   * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity.
+   * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity in time.
+   * @throws BrokerCapacityResolutionException If broker capacity resolver fails to resolve broker capacity.
    */
   public ClusterModel clusterModel(long from,
                                    long to,
                                    ModelCompletenessRequirements requirements,
                                    boolean populateReplicaPlacementInfo,
+                                   boolean allowCapacityEstimation,
                                    OperationProgress operationProgress)
-      throws NotEnoughValidWindowsException, TimeoutException {
-    return _loadMonitor.clusterModel(from, to, requirements, populateReplicaPlacementInfo, operationProgress);
+      throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
+    return _loadMonitor.clusterModel(from, to, requirements, populateReplicaPlacementInfo, allowCapacityEstimation, operationProgress);
   }
 
   /**

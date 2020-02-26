@@ -28,7 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ensureDisjoint;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
 import static com.linkedin.kafka.cruisecontrol.model.Disk.State.DEMOTED;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_DRYRUN;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
@@ -149,11 +148,13 @@ public class DemoteBrokerRunnable extends OperationRunnable {
       brokersToCheckPresence.addAll(_brokerIdAndLogdirs.keySet());
       _kafkaCruiseControl.sanityCheckBrokerPresence(brokersToCheckPresence);
       ClusterModel clusterModel = _brokerIdAndLogdirs.isEmpty() ? _kafkaCruiseControl.clusterModel(goal.clusterModelCompletenessRequirements(),
+                                                                                                   _allowCapacityEstimation,
                                                                                                    operationProgress)
                                                                 : _kafkaCruiseControl.clusterModel(DEFAULT_START_TIME_FOR_CLUSTER_MODEL,
                                                                                                    _kafkaCruiseControl.timeMs(),
                                                                                                    goal.clusterModelCompletenessRequirements(),
                                                                                                    true,
+                                                                                                   _allowCapacityEstimation,
                                                                                                    operationProgress);
       _brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEMOTED));
       _brokerIdAndLogdirs.forEach((brokerid, logdirs) -> {
@@ -169,7 +170,6 @@ public class DemoteBrokerRunnable extends OperationRunnable {
       if (!clusterModel.isClusterAlive()) {
         throw new IllegalArgumentException("All brokers are dead in the cluster.");
       }
-      sanityCheckCapacityEstimation(_allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
       ExecutorState executorState = _kafkaCruiseControl.executorState();
       Set<Integer> excludedBrokersForLeadership = _excludeRecentlyDemotedBrokers ? executorState.recentlyDemotedBrokers()
                                                                                 : Collections.emptySet();

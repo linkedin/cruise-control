@@ -23,7 +23,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPriority;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckGoals;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckLoadMonitorReadiness;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.sanityCheckBrokersHavingOfflineReplicasOnBadDisks;
@@ -120,12 +119,12 @@ public class ProposalsRunnable extends OperationRunnable {
                                                                      _kafkaCruiseControl.timeMs(),
                                                                      completenessRequirements,
                                                                      _isRebalanceDiskMode,
+                                                                     _allowCapacityEstimation,
                                                                      operationProgress);
         sanityCheckBrokersHavingOfflineReplicasOnBadDisks(_goals, clusterModel);
         if (!clusterModel.isClusterAlive()) {
           throw new IllegalArgumentException("All brokers are dead in the cluster.");
         }
-        sanityCheckCapacityEstimation(_allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
         if (!_destinationBrokerIds.isEmpty()) {
           _kafkaCruiseControl.sanityCheckBrokerPresence(_destinationBrokerIds);
         }
