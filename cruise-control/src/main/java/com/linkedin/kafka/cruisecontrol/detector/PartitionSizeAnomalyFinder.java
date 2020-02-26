@@ -23,17 +23,19 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.cruisecontrol.common.config.ConfigDef.Type.*;
-import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.*;
-import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfigUtils.*;
-import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.*;
+import static com.linkedin.cruisecontrol.common.config.ConfigDef.Type.CLASS;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfigUtils.getConfiguredInstance;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
+
 
 /**
  * The class will check whether there are topics having partition(s) with gigantic size.
  * Required configurations for this class.
  * <ul>
- *   <li>{@link #SELF_HEALING_PARTITION_SIZE_THRESHOLD_CONFIG}: The config for the partition size threshold to alert,
- *   default value is set to {@link #DEFAULT_SELF_HEALING_PARTITION_SIZE_THRESHOLD}.
+ *   <li>{@link #SELF_HEALING_PARTITION_SIZE_THRESHOLD_BYTE_CONFIG}: The config for the partition size threshold to alert,
+ *   default value is set to {@link #DEFAULT_SELF_HEALING_PARTITION_SIZE_THRESHOLD_BYTE} bytes.
  *   <li>{@link #TOPIC_EXCLUDED_FROM_PARTITION_SIZE_CHECK}: The config to specify topics excluded from the anomaly checking.
  *   The value is treated as a regular expression, default value is set to
  *   {@link #DEFAULT_TOPIC_EXCLUDED_FROM_PARTITION_SIZE_CHECK}.
@@ -41,10 +43,10 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.*;
  *   default value is set to {@link #DEFAULT_TOPIC_PARTITION_SIZE_ANOMALY_CLASS}.
  * </ul>
  */
-public class TopicPartitionSizeAnomalyFinder implements TopicAnomalyFinder {
-  private static final Logger LOG = LoggerFactory.getLogger(TopicPartitionSizeAnomaly.class);
-  public static final String SELF_HEALING_PARTITION_SIZE_THRESHOLD_CONFIG = "self.healing.partition.size.threshold";
-  public static final Integer DEFAULT_SELF_HEALING_PARTITION_SIZE_THRESHOLD = 500 * 1024 * 1024;
+public class PartitionSizeAnomalyFinder implements TopicAnomalyFinder {
+  private static final Logger LOG = LoggerFactory.getLogger(PartitionSizeAnomalyFinder.class);
+  public static final String SELF_HEALING_PARTITION_SIZE_THRESHOLD_BYTE_CONFIG = "self.healing.partition.size.threshold.byte";
+  public static final Integer DEFAULT_SELF_HEALING_PARTITION_SIZE_THRESHOLD_BYTE = 500 * 1024 * 1024;
   public static final String TOPIC_EXCLUDED_FROM_PARTITION_SIZE_CHECK = "topic.excluded.from.partition.size.check";
   public static final String DEFAULT_TOPIC_EXCLUDED_FROM_PARTITION_SIZE_CHECK = "";
   public static final String TOPIC_PARTITION_SIZE_ANOMALY_CLASS_CONFIG = "topic.partition.size.anomaly.class";
@@ -77,7 +79,7 @@ public class TopicPartitionSizeAnomalyFinder implements TopicAnomalyFinder {
     } catch (NotEnoughValidWindowsException nevwe) {
       LOG.debug("Skipping topic partition size anomaly detection because there are not enough valid windows.", nevwe);
     } catch (KafkaCruiseControlException kcce) {
-      LOG.warn("Topic partition size anomaly finder received exception", kcce);
+      LOG.warn("Partition size anomaly finder received exception", kcce);
     } catch (Exception e) {
       LOG.error("Unexpected exception", e);
     }
@@ -99,13 +101,13 @@ public class TopicPartitionSizeAnomalyFinder implements TopicAnomalyFinder {
   public void configure(Map<String, ?> configs) {
     _kafkaCruiseControl = (KafkaCruiseControl) configs.get(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG);
     if (_kafkaCruiseControl == null) {
-      throw new IllegalArgumentException("Topic partition size anomaly finder is missing " + KAFKA_CRUISE_CONTROL_OBJECT_CONFIG);
+      throw new IllegalArgumentException("Partition size anomaly finder is missing " + KAFKA_CRUISE_CONTROL_OBJECT_CONFIG);
     }
     String topicExcludedFromCheck = (String) configs.get(TOPIC_EXCLUDED_FROM_PARTITION_SIZE_CHECK);
     _topicExcludedFromCheck = Pattern.compile(topicExcludedFromCheck == null ? DEFAULT_TOPIC_EXCLUDED_FROM_PARTITION_SIZE_CHECK
                                                                              : topicExcludedFromCheck);
-    Integer partitionSizeThreshold = (Integer) configs.get(SELF_HEALING_PARTITION_SIZE_THRESHOLD_CONFIG);
-    _partitionSizeThreshold = partitionSizeThreshold == null ? DEFAULT_SELF_HEALING_PARTITION_SIZE_THRESHOLD
+    Integer partitionSizeThreshold = (Integer) configs.get(SELF_HEALING_PARTITION_SIZE_THRESHOLD_BYTE_CONFIG);
+    _partitionSizeThreshold = partitionSizeThreshold == null ? DEFAULT_SELF_HEALING_PARTITION_SIZE_THRESHOLD_BYTE
                                                              : partitionSizeThreshold;
     String topicPartitionSizeAnomalyClass = (String) configs.get(TOPIC_PARTITION_SIZE_ANOMALY_CLASS_CONFIG);
     if (topicPartitionSizeAnomalyClass == null) {
@@ -115,7 +117,7 @@ public class TopicPartitionSizeAnomalyFinder implements TopicAnomalyFinder {
                                                                        topicPartitionSizeAnomalyClass,
                                                                        CLASS);
       if (_topicPartitionSizeAnomalyClass == null || !TopicAnomaly.class.isAssignableFrom(_topicPartitionSizeAnomalyClass)) {
-        throw new IllegalArgumentException(String.format("Invalid %s is provided to topic partition size anomaly finder, provided %s",
+        throw new IllegalArgumentException(String.format("Invalid %s is provided to partition size anomaly finder, provided %s",
             TOPIC_PARTITION_SIZE_ANOMALY_CLASS_CONFIG, _topicPartitionSizeAnomalyClass));
       }
     }

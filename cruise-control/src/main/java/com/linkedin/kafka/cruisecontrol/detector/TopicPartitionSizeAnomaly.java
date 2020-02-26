@@ -8,21 +8,23 @@ import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.kafka.common.TopicPartition;
 
-import static com.linkedin.kafka.cruisecontrol.detector.TopicPartitionSizeAnomalyFinder.PARTITIONS_WITH_LARGE_SIZE_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.PartitionSizeAnomalyFinder.PARTITIONS_WITH_LARGE_SIZE_CONFIG;
 
 
 /**
  * Topic partitions with size larger than
- * {@link com.linkedin.kafka.cruisecontrol.detector.TopicPartitionSizeAnomalyFinder#SELF_HEALING_PARTITION_SIZE_THRESHOLD_CONFIG}
+ * {@link com.linkedin.kafka.cruisecontrol.detector.PartitionSizeAnomalyFinder#SELF_HEALING_PARTITION_SIZE_THRESHOLD_BYTE_CONFIG}
+ *
+ * Note this class does not try to self-heal partitions with large size, because all the potential fixing operations have the
+ * risk of breaking the client-side applications. For example, adding more partitions to the topic can make each partition handle
+ * less data, but if the topic's consumer group explicitly assign partition to consumer then the newly added partitions will
+ * have no consumer to consume.
  */
 public class TopicPartitionSizeAnomaly extends TopicAnomaly {
   protected Map<TopicPartition, Double> _sizeByPartition;
 
   /**
-   * There are two potential ways to fix partitions with large size, i.e. increasing topic's partition count and reducing
-   * topic's retention time/size.
-   * But both ways could break the client-side applications, therefore it is safer for Cruise Control to just send out alert
-   * and not try to self-heal the anomaly.
+   * Fix the anomaly.
    *
    * @return True if fix was started successfully (i.e. there is actual work towards a fix), false otherwise.
    */
@@ -43,16 +45,17 @@ public class TopicPartitionSizeAnomaly extends TopicAnomaly {
 
   @Override
   public Supplier<String> reasonSupplier() {
-    return () -> "";
+    return () -> String.format("Self healing for topic partition size anomaly: %s", this);
   }
 
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append("{Detected following topic partitions having too large size:\n");
+    sb.append("{Detected following topic partitions having too large size: ");
     for (Map.Entry<TopicPartition, Double> entry : _sizeByPartition.entrySet()) {
-      sb.append(String.format("\t%s\t%f%n", entry.getKey().toString(), entry.getValue()));
+      sb.append(String.format("%s : %f bytes, ", entry.getKey().toString(), entry.getValue()));
     }
+    sb.setLength(sb.length() - 2);
     sb.append("}");
     return sb.toString();
   }

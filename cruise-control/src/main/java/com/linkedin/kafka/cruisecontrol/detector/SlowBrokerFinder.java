@@ -202,10 +202,11 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   }
 
   private String getSlowBrokerDescription(Map<BrokerEntity, Long> detectedBrokers) {
-    StringBuilder descriptionSb = new StringBuilder().append("{\n");
+    StringBuilder descriptionSb = new StringBuilder().append("{");
     detectedBrokers.forEach((key, value) -> {
-      descriptionSb.append("\tBroker ").append(key.brokerId()).append("'s performance degraded at ").append(toDateString(value)).append("\n");
+      descriptionSb.append("Broker ").append(key.brokerId()).append("'s performance degraded at ").append(toDateString(value)).append(", ");
     });
+    descriptionSb.setLength(descriptionSb.length() - 2);
     descriptionSb.append("}");
     return descriptionSb.toString();
   }
