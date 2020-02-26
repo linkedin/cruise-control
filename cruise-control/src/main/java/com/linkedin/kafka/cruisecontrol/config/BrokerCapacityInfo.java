@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 
 
 /**
- * A class encapsulate the capacity information of a broker, which includes all the resources defined in {@link Resource}.
+ * A class encapsulating the capacity information of a broker, which includes all the resources defined in {@link Resource}.
  *
  * The units for each resource are:
  * DISK - MegaBytes

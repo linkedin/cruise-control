@@ -13,7 +13,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolvingException;
+import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolutionException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ModelUtils;
@@ -470,7 +470,7 @@ public class MonitorUtils {
           // Do not allow capacity estimation for dead brokers.
           brokerCapacity = brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id(), BROKER_CAPACITY_FETCH_TIMEOUT_MS,
                                                                           aliveBrokers.contains(replica.id()) && allowCapacityEstimation);
-        } catch (TimeoutException | BrokerCapacityResolvingException e) {
+        } catch (TimeoutException | BrokerCapacityResolutionException e) {
           // Capacity resolver may not be able to return the capacity information of dead brokers.
           if (!aliveBrokers.contains(replica.id())) {
             brokerCapacity = new BrokerCapacityInfo(EMPTY_BROKER_CAPACITY);

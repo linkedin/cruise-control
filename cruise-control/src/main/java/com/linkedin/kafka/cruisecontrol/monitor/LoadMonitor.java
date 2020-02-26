@@ -26,7 +26,7 @@ import com.linkedin.kafka.cruisecontrol.async.progress.WaitingForClusterModel;
 import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
-import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolvingException;
+import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolutionException;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
@@ -427,14 +427,14 @@ public class LoadMonitor {
    * @param operationProgress the progress to report.
    * @return A cluster model with the configured number of windows whose timestamp is before given timestamp.
    * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
-   * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity.
-   * @throws BrokerCapacityResolvingException If broker capacity resolver fails to resolve broker capacity.
+   * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity in time.
+   * @throws BrokerCapacityResolutionException If broker capacity resolver fails to resolve broker capacity.
    */
   public ClusterModel clusterModel(long now,
                                    ModelCompletenessRequirements requirements,
                                    boolean allowCapacityEstimation,
                                    OperationProgress operationProgress)
-      throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolvingException {
+      throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
     ClusterModel clusterModel = clusterModel(DEFAULT_START_TIME_FOR_CLUSTER_MODEL, now, requirements, allowCapacityEstimation, operationProgress);
     // Micro optimization: put the broker stats construction out of the lock.
     BrokerStats brokerStats = clusterModel.brokerStats(_config);
@@ -456,15 +456,15 @@ public class LoadMonitor {
    * @param operationProgress the progress of the job to report.
    * @return A cluster model with the available snapshots whose timestamp is in the given window.
    * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
-   * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity.
-   * @throws BrokerCapacityResolvingException If broker capacity resolver fails to resolve broker capacity.
+   * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity in time.
+   * @throws BrokerCapacityResolutionException If broker capacity resolver fails to resolve broker capacity.
    */
   public ClusterModel clusterModel(long from,
                                    long to,
                                    ModelCompletenessRequirements requirements,
                                    boolean allowCapacityEstimation,
                                    OperationProgress operationProgress)
-      throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolvingException {
+      throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
     return clusterModel(from, to, requirements, false, allowCapacityEstimation, operationProgress);
   }
 
@@ -479,8 +479,8 @@ public class LoadMonitor {
    * @param operationProgress the progress of the job to report.
    * @return A cluster model with the available snapshots whose timestamp is in the given window.
    * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
-   * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity.
-   * @throws BrokerCapacityResolvingException If broker capacity resolver fails to resolve broker capacity.
+   * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity in time.
+   * @throws BrokerCapacityResolutionException If broker capacity resolver fails to resolve broker capacity.
    */
   public ClusterModel clusterModel(long from,
                                    long to,
@@ -488,7 +488,7 @@ public class LoadMonitor {
                                    boolean populateReplicaPlacementInfo,
                                    boolean allowCapacityEstimation,
                                    OperationProgress operationProgress)
-      throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolvingException {
+      throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
     long start = System.currentTimeMillis();
 
     MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
@@ -519,7 +519,7 @@ public class LoadMonitor {
       // To this end, Cruise Control handles the case that the first node is problematic so the capacity resolver does
       // not have the chance to get the capacity for the other nodes.
       // Shuffling the node order helps, as the problematic node is unlikely to always be the first node in the list.
-      List<Node> shuffledNodes = new ArrayList<>(cluster.nodes());
+      List<Node> shuffledNodes = allowCapacityEstimation ? new ArrayList<>(cluster.nodes()) : cluster.nodes();
       if (allowCapacityEstimation) {
         Collections.shuffle(shuffledNodes);
       }
@@ -533,7 +533,7 @@ public class LoadMonitor {
                                                                            allowCapacityEstimation);
           LOG.debug("Get capacity info for broker {}: total capacity {}, capacity by logdir {}.", node.id(),
                     brokerCapacity.capacity().get(Resource.DISK), brokerCapacity.diskCapacityByLogDir());
-        } catch (TimeoutException | BrokerCapacityResolvingException e) {
+        } catch (TimeoutException | BrokerCapacityResolutionException e) {
           String errorMessage = String.format("Unable to retrieve capacity for broker %d. This may be caused by churn in "
                                               + "the cluster, please retry.", node.id());
           LOG.warn(errorMessage, e);

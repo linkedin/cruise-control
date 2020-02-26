@@ -7,13 +7,13 @@ package com.linkedin.kafka.cruisecontrol.exception;
 /**
  * The exception indicating something went wrong during the broker capacity resolving.
  */
-public class BrokerCapacityResolvingException extends KafkaCruiseControlException {
+public class BrokerCapacityResolutionException extends KafkaCruiseControlException {
 
-  public BrokerCapacityResolvingException(String message, Throwable cause) {
+  public BrokerCapacityResolutionException(String message, Throwable cause) {
     super(message, cause);
   }
 
-  public BrokerCapacityResolvingException(String message) {
+  public BrokerCapacityResolutionException(String message) {
     super(message);
   }
 }

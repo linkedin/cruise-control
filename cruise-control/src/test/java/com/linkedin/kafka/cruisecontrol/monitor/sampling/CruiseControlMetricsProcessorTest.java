@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
-import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolvingException;
+import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolutionException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.BrokerMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType;
@@ -116,7 +116,7 @@ public class CruiseControlMetricsProcessorTest {
   }
   private final Time _time = new MockTime(0, 100L, TimeUnit.NANOSECONDS.convert(100L, TimeUnit.MILLISECONDS));
 
-  private static BrokerCapacityConfigResolver mockBrokerCapacityConfigResolver() throws TimeoutException, BrokerCapacityResolvingException {
+  private static BrokerCapacityConfigResolver mockBrokerCapacityConfigResolver() throws TimeoutException, BrokerCapacityResolutionException {
     BrokerCapacityConfigResolver brokerCapacityConfigResolver = EasyMock.mock(BrokerCapacityConfigResolver.class);
     EasyMock.expect(brokerCapacityConfigResolver.capacityForBroker(EasyMock.anyString(), EasyMock.anyString(), EasyMock.anyInt(),
                                                                    EasyMock.anyLong(), EasyMock.anyBoolean()))
@@ -126,13 +126,13 @@ public class CruiseControlMetricsProcessorTest {
   }
 
   @Test
-  public void testWithCpuCapacityEstimation() throws TimeoutException, BrokerCapacityResolvingException {
+  public void testWithCpuCapacityEstimation() throws TimeoutException, BrokerCapacityResolutionException {
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
     // All estimated.
     BrokerCapacityConfigResolver brokerCapacityConfigResolverAllEstimated = EasyMock.mock(BrokerCapacityConfigResolver.class);
     EasyMock.expect(brokerCapacityConfigResolverAllEstimated.capacityForBroker(EasyMock.anyString(), EasyMock.anyString(),
                                                                                EasyMock.anyInt(), EasyMock.anyLong(), EasyMock.eq(false)))
-            .andThrow(new BrokerCapacityResolvingException("Unable to resolve capacity.")).anyTimes();
+            .andThrow(new BrokerCapacityResolutionException("Unable to resolve capacity.")).anyTimes();
     EasyMock.replay(brokerCapacityConfigResolverAllEstimated);
 
     CruiseControlMetricsProcessor processor = new CruiseControlMetricsProcessor(brokerCapacityConfigResolverAllEstimated, false);
@@ -184,7 +184,7 @@ public class CruiseControlMetricsProcessorTest {
   }
 
   @Test
-  public void testBasic() throws TimeoutException, BrokerCapacityResolvingException {
+  public void testBasic() throws TimeoutException, BrokerCapacityResolutionException {
     CruiseControlMetricsProcessor processor = new CruiseControlMetricsProcessor(mockBrokerCapacityConfigResolver(), false);
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
     Cluster cluster = getCluster();
@@ -231,7 +231,7 @@ public class CruiseControlMetricsProcessorTest {
   }
 
   @Test
-  public void testMissingBrokerCpuUtilization() throws TimeoutException, BrokerCapacityResolvingException {
+  public void testMissingBrokerCpuUtilization() throws TimeoutException, BrokerCapacityResolutionException {
     CruiseControlMetricsProcessor processor = new CruiseControlMetricsProcessor(mockBrokerCapacityConfigResolver(), false);
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
     for (CruiseControlMetric metric : metrics) {
@@ -248,7 +248,7 @@ public class CruiseControlMetricsProcessorTest {
   }
 
   @Test
-  public void testMissingOtherBrokerMetrics() throws TimeoutException, BrokerCapacityResolvingException {
+  public void testMissingOtherBrokerMetrics() throws TimeoutException, BrokerCapacityResolutionException {
     CruiseControlMetricsProcessor processor = new CruiseControlMetricsProcessor(mockBrokerCapacityConfigResolver(), false);
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
     Cluster cluster = getCluster();
@@ -265,7 +265,7 @@ public class CruiseControlMetricsProcessorTest {
   }
 
   @Test
-  public void testMissingPartitionSizeMetric() throws TimeoutException, BrokerCapacityResolvingException {
+  public void testMissingPartitionSizeMetric() throws TimeoutException, BrokerCapacityResolutionException {
     CruiseControlMetricsProcessor processor = new CruiseControlMetricsProcessor(mockBrokerCapacityConfigResolver(), false);
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
     for (CruiseControlMetric metric : metrics) {
@@ -287,7 +287,7 @@ public class CruiseControlMetricsProcessorTest {
   }
 
   @Test
-  public void testMissingTopicBytesInMetric() throws TimeoutException, BrokerCapacityResolvingException {
+  public void testMissingTopicBytesInMetric() throws TimeoutException, BrokerCapacityResolutionException {
     CruiseControlMetricsProcessor processor = new CruiseControlMetricsProcessor(mockBrokerCapacityConfigResolver(), false);
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
     Set<RawMetricType> metricTypeToExclude = new HashSet<>(Arrays.asList(TOPIC_BYTES_IN,
@@ -318,7 +318,7 @@ public class CruiseControlMetricsProcessorTest {
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testMissingBrokerCapacity() throws TimeoutException, BrokerCapacityResolvingException {
+  public void testMissingBrokerCapacity() throws TimeoutException, BrokerCapacityResolutionException {
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
     // All estimated.
     BrokerCapacityConfigResolver brokerCapacityConfigResolver = EasyMock.mock(BrokerCapacityConfigResolver.class);

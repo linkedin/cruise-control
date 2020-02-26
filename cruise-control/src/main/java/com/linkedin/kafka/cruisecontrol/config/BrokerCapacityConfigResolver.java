@@ -5,7 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.config;
 
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
-import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolvingException;
+import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolutionException;
 import java.util.concurrent.TimeoutException;
 
 
@@ -25,10 +25,10 @@ public interface BrokerCapacityConfigResolver extends CruiseControlConfigurable,
    * @param timeoutMs The timeout in millisecond.
    * @param allowCapacityEstimation Whether allow resolver to estimate broker capacity if resolver is unable to get
    *                                capacity information of the broker.
-   * @return A instance of {@link BrokerCapacityInfo}.
+   * @return An instance of {@link BrokerCapacityInfo}.
    * @throws TimeoutException if resolver is unable to resolve broker capacity in time.
-   * @throws BrokerCapacityResolvingException if resolver fails to resolve broker capacity.
+   * @throws BrokerCapacityResolutionException if resolver fails to resolve broker capacity.
    */
   BrokerCapacityInfo capacityForBroker(String rack, String host, int brokerId, long timeoutMs, boolean allowCapacityEstimation)
-      throws TimeoutException, BrokerCapacityResolvingException;
+      throws TimeoutException, BrokerCapacityResolutionException;
 }
