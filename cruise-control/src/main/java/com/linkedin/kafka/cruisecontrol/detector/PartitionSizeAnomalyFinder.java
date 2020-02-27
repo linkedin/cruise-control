@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.cruisecontrol.common.config.ConfigDef.Type.CLASS;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
 import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfigUtils.getConfiguredInstance;
+import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.*;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
 
@@ -56,6 +57,7 @@ public class PartitionSizeAnomalyFinder implements TopicAnomalyFinder {
   private int _partitionSizeThreshold;
   private Pattern _topicExcludedFromCheck;
   private Class<?> _topicPartitionSizeAnomalyClass;
+  private boolean _allowCapacityEstimation;
 
   @Override
   public Set<TopicAnomaly> topicAnomalies() {
@@ -63,8 +65,9 @@ public class PartitionSizeAnomalyFinder implements TopicAnomalyFinder {
     OperationProgress operationProgress = new OperationProgress();
     ClusterModel clusterModel;
     try (AutoCloseable ignored = _kafkaCruiseControl.acquireForModelGeneration(operationProgress)) {
-      clusterModel = _kafkaCruiseControl.clusterModel(
-          new ModelCompletenessRequirements(MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING, 0.0, true), new OperationProgress());
+      clusterModel = _kafkaCruiseControl.clusterModel(new ModelCompletenessRequirements(MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING, 0.0, true),
+                                                      _allowCapacityEstimation,
+                                                      new OperationProgress());
       for (Map.Entry<String, List<Partition>> entry: clusterModel.getPartitionsByTopic().entrySet()) {
         if (_topicExcludedFromCheck.matcher(entry.getKey()).matches()) {
           continue;
@@ -103,6 +106,7 @@ public class PartitionSizeAnomalyFinder implements TopicAnomalyFinder {
     if (_kafkaCruiseControl == null) {
       throw new IllegalArgumentException("Partition size anomaly finder is missing " + KAFKA_CRUISE_CONTROL_OBJECT_CONFIG);
     }
+    _allowCapacityEstimation = _kafkaCruiseControl.config().getBoolean(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
     String topicExcludedFromCheck = (String) configs.get(TOPIC_EXCLUDED_FROM_PARTITION_SIZE_CHECK);
     _topicExcludedFromCheck = Pattern.compile(topicExcludedFromCheck == null ? DEFAULT_TOPIC_EXCLUDED_FROM_PARTITION_SIZE_CHECK
                                                                              : topicExcludedFromCheck);
