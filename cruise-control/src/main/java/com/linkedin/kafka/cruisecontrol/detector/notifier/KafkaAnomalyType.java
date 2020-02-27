@@ -13,7 +13,8 @@ import java.util.List;
 
 /**
  * Flags to indicate the type of an anomaly.
- * Each anomaly type has a priority, which determines order of anomalies being handled by {@link com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector}
+ * Each anomaly type has a priority, which determines order of anomalies being handled by
+ * {@link com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector}
  * The smaller the priority value is, the higher priority the anomaly type has.
  *
  * Currently supported anomaly types are as follows (in descending order of priority).

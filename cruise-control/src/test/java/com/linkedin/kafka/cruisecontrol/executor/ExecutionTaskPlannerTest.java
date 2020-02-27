@@ -186,8 +186,8 @@ public class ExecutionTaskPlannerTest {
     proposals.add(_partitionMovement2);
     proposals.add(_partitionMovement3);
     proposals.add(_partitionMovement4);
-    ExecutionTaskPlanner planner = new ExecutionTaskPlanner(null,
-                                                            new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
+    ExecutionTaskPlanner planner =
+        new ExecutionTaskPlanner(null, new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
 
     Set<PartitionInfo> partitions = new HashSet<>();
     partitions.add(generatePartitionInfo(_partitionMovement1, true));
@@ -279,8 +279,8 @@ public class ExecutionTaskPlannerTest {
                                           Collections.<String>emptySet());
 
 
-    ExecutionTaskPlanner planner = new ExecutionTaskPlanner(mockAdminClient,
-                                                            new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
+    ExecutionTaskPlanner planner =
+        new ExecutionTaskPlanner(mockAdminClient, new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
     planner.addExecutionProposals(proposals, expectedCluster, null);
     assertEquals(1, planner.remainingLeadershipMovements().size());
     assertEquals(2, planner.remainingIntraBrokerReplicaMovements().size());
@@ -294,8 +294,8 @@ public class ExecutionTaskPlannerTest {
     List<ExecutionProposal> proposals = new ArrayList<>();
     proposals.add(_leaderMovement1);
     proposals.add(_partitionMovement1);
-    ExecutionTaskPlanner planner = new ExecutionTaskPlanner(null,
-                                                            new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
+    ExecutionTaskPlanner planner =
+        new ExecutionTaskPlanner(null, new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
 
     Set<PartitionInfo> partitions = new HashSet<>();
 

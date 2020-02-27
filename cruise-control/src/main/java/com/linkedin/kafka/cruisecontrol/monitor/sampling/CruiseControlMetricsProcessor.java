@@ -134,9 +134,10 @@ public class CruiseControlMetricsProcessor {
       skippedBroker = addBrokerMetricSamples(cluster, brokerMetricSamples);
     }
 
-    LOG.info("Generated {}{} partition metric samples and {}{} broker metric samples for timestamp {}.",
-             partitionMetricSamples.size(), (skippedPartitionByBroker != null && !skippedPartitionByBroker.isEmpty()) ?
-             String.format("(%s skipped by broker %s)", skippedPartitionByBroker.values().stream().mapToInt(v -> v).sum(), skippedPartitionByBroker) : "",
+    LOG.info("Generated {}{} partition metric samples and {}{} broker metric samples for timestamp {}.", partitionMetricSamples.size(),
+             (skippedPartitionByBroker != null && !skippedPartitionByBroker.isEmpty()) ?
+             String.format("(%s skipped by broker %s)",
+                           skippedPartitionByBroker.values().stream().mapToInt(v -> v).sum(), skippedPartitionByBroker) : "",
              brokerMetricSamples.size(), skippedBroker > 0 ? "(" + skippedBroker + " skipped)" : "", _maxMetricTimestamp);
     return new MetricSampler.Samples(partitionMetricSamples, brokerMetricSamples);
   }

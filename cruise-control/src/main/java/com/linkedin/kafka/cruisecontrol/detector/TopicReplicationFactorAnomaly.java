@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG;
@@ -50,7 +51,8 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
     _topicsWithBadReplicationFactor = (Set<String>) configs.get(TOPICS_WITH_BAD_REPLICATION_FACTOR_CONFIG);
     if (_topicsWithBadReplicationFactor == null || _topicsWithBadReplicationFactor.isEmpty()) {
-      throw new IllegalArgumentException(String.format("Missing %s for topic replication factor anomaly.", TOPICS_WITH_BAD_REPLICATION_FACTOR_CONFIG));
+      throw new IllegalArgumentException(String.format("Missing %s for topic replication factor anomaly.",
+                                                       TOPICS_WITH_BAD_REPLICATION_FACTOR_CONFIG));
     }
     _targetReplicationFactor = (Short) configs.get(SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG);
     if (_targetReplicationFactor == null) {
@@ -60,9 +62,10 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
     boolean allowCapacityEstimation = config.getBoolean(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
     boolean excludeRecentlyDemotedBrokers = config.getBoolean(SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
     boolean excludeRecentlyRemovedBrokers = config.getBoolean(SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
+    Pattern topicRegex = buildTopicRegex(_topicsWithBadReplicationFactor);
+    Map<Short, Pattern> topicPatternByReplicationFactor = Collections.singletonMap(_targetReplicationFactor, topicRegex);
     _updateTopicConfigurationRunnable = new UpdateTopicConfigurationRunnable(kafkaCruiseControl,
-                                                                             Collections.singletonMap(_targetReplicationFactor,
-                                                                                                      buildTopicRegex(_topicsWithBadReplicationFactor)),
+                                                                             topicPatternByReplicationFactor,
                                                                              getSelfHealingGoalNames(config),
                                                                              allowCapacityEstimation,
                                                                              excludeRecentlyDemotedBrokers,

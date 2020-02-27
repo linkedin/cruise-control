@@ -225,8 +225,9 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
     double balanceLowerThreshold = _balanceLowerThresholdByBroker.get(sourceDisk.broker());
     double sourceDiskAllowance = sourceUtilizationDelta > 0 ? sourceDisk.capacity() * balanceUpperThreshold - sourceDisk.utilization() :
                                                               sourceDisk.utilization() - sourceDisk.capacity() * balanceLowerThreshold;
-    double destinationDiskAllowance = sourceUtilizationDelta > 0 ? destinationDisk.utilization() - destinationDisk.capacity() * balanceLowerThreshold :
-                                                                   destinationDisk.capacity() * balanceUpperThreshold - destinationDisk.utilization();
+    double destinationDiskAllowance =
+        sourceUtilizationDelta > 0 ? destinationDisk.utilization() - destinationDisk.capacity() * balanceLowerThreshold
+                                   : destinationDisk.capacity() * balanceUpperThreshold - destinationDisk.utilization();
     if ((sourceDiskAllowance >= 0 && sourceDiskAllowance < abs(sourceUtilizationDelta)) ||
         (destinationDiskAllowance >= 0 && destinationDiskAllowance < abs(sourceUtilizationDelta))) {
       return true;
@@ -408,7 +409,8 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
         // Try swapping the source with the candidate replicas. Get the swapped in replica if successful, null otherwise.
         Replica swappedIn = maybeSwapReplicaBetweenDisks(clusterModel,
                                                          sourceReplica,
-                                                         candidateDisk.trackedSortedReplicas(replicaSortName(this, false, false)).sortedReplicas(false),
+                                                         candidateDisk.trackedSortedReplicas(replicaSortName(this, false, false))
+                                                                      .sortedReplicas(false),
                                                          optimizedGoals);
         if (swappedIn != null) {
           if (diskUtilizationPercentage(disk) < _balanceUpperThresholdByBroker.get(broker)) {
@@ -460,7 +462,8 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
         // Try swapping the source with the candidate replicas. Get the swapped in replica if successful, null otherwise.
         Replica swappedIn = maybeSwapReplicaBetweenDisks(clusterModel,
                                                          sourceReplica,
-                                                         candidateDisk.trackedSortedReplicas(replicaSortName(this, true, false)).sortedReplicas(false),
+                                                         candidateDisk.trackedSortedReplicas(replicaSortName(this, true, false))
+                                                                      .sortedReplicas(false),
                                                          optimizedGoals);
         if (swappedIn != null) {
           if (diskUtilizationPercentage(disk) > _balanceLowerThresholdByBroker.get(broker)) {

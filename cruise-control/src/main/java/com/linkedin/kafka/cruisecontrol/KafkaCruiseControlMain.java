@@ -77,7 +77,8 @@ public class KafkaCruiseControlMain {
   }
 
   private static void printErrorMessageAndDie() {
-    System.out.println(String.format("USAGE: java %s cruisecontrol.properties [port] [ipaddress|hostname]", KafkaCruiseControlMain.class.getSimpleName()));
+    System.out.println(String.format("USAGE: java %s cruisecontrol.properties [port] [ipaddress|hostname]",
+                                     KafkaCruiseControlMain.class.getSimpleName()));
     System.exit(-1);
   }
 }

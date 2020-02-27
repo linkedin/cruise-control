@@ -156,7 +156,8 @@ public class ClusterBrokerState {
       }
     }
 
-    Map<Integer, KafkaFuture<Map<String, DescribeLogDirsResponse.LogDirInfo>>> logDirsByBrokerId = describeLogDirs(aliveBrokers, _adminClientConfigs).values();
+    Map<Integer, KafkaFuture<Map<String, DescribeLogDirsResponse.LogDirInfo>>> logDirsByBrokerId = describeLogDirs(aliveBrokers,
+                                                                                                                   _adminClientConfigs).values();
     for (Map.Entry<Integer, KafkaFuture<Map<String, DescribeLogDirsResponse.LogDirInfo>>> entry : logDirsByBrokerId.entrySet()) {
       onlineLogDirsByBrokerId.put(entry.getKey(), new HashSet<>());
       offlineLogDirsByBrokerId.put(entry.getKey(), new HashSet<>());

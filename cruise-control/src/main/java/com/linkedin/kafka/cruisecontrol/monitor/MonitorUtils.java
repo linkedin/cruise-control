@@ -374,12 +374,12 @@ public class MonitorUtils {
   }
 
   /**
-   * @param valuesAndExtrapolations The aggregated metric values for windows and the extrapolation information by partitions.
+   * @param valuesExtrapolations The aggregated metric values for windows and the extrapolation information by partitions.
    * @return Sample extrapolations by partitions.
    */
-  static Map<TopicPartition, List<SampleExtrapolation>> partitionSampleExtrapolations(Map<PartitionEntity, ValuesAndExtrapolations> valuesAndExtrapolations) {
+  static Map<TopicPartition, List<SampleExtrapolation>> partitionExtrapolations(Map<PartitionEntity, ValuesAndExtrapolations> valuesExtrapolations) {
     Map<TopicPartition, List<SampleExtrapolation>> sampleExtrapolations = new HashMap<>();
-    for (Map.Entry<PartitionEntity, ValuesAndExtrapolations> entry : valuesAndExtrapolations.entrySet()) {
+    for (Map.Entry<PartitionEntity, ValuesAndExtrapolations> entry : valuesExtrapolations.entrySet()) {
       TopicPartition tp = entry.getKey().tp();
       Map<Integer, Extrapolation> extrapolations = entry.getValue().extrapolations();
       if (!extrapolations.isEmpty()) {

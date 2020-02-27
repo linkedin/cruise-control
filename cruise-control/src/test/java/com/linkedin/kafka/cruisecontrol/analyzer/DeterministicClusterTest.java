@@ -122,8 +122,9 @@ public class DeterministicClusterTest {
     balancingConstraint.setResourceBalancePercentage(TestConstants.ZERO_BALANCE_PERCENTAGE);
     p.add(params(balancingConstraint, DeterministicCluster.unbalanced4(), Collections.singletonList(DiskUsageDistributionGoal.class.getName()),
           verifications, null));
-    p.add(params(balancingConstraint, DeterministicCluster.unbalanced4(), Collections.singletonList(IntraBrokerDiskUsageDistributionGoal.class.getName()),
-          verifications, null));
+    p.add(params(balancingConstraint, DeterministicCluster.unbalanced4(),
+                 Collections.singletonList(IntraBrokerDiskUsageDistributionGoal.class.getName()),
+                 verifications, null));
 
 
     // ----------##TEST: BALANCE PERCENTAGES.

@@ -110,7 +110,8 @@ public class ExecutorState {
   @JsonResponseField(required = false)
   private static final String TOTAL_INTRA_BROKER_DATA_TO_MOVE = "totalIntraBrokerDataToMove";
   @JsonResponseField(required = false)
-  private static final String MAXIMUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER = "maximumConcurrentIntraBrokerPartitionMovementsPerBroker";
+  private static final String MAXIMUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER
+      = "maximumConcurrentIntraBrokerPartitionMovementsPerBroker";
 
   @JsonResponseField(required = false)
   private static final String ERROR = "error";
@@ -445,8 +446,9 @@ public class ExecutorState {
                              _uuid, TRIGGERED_TASK_REASON, _reason, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS:
         interBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTER_BROKER_REPLICA_ACTION);
-        return String.format("{%s: %s, pending/in-progress/aborting/finished/total inter-broker partition movement %d/%d/%d/%d/%d," +
-                             " completed/total bytes(MB): %d/%d, maximum concurrent inter-broker partition movements per-broker: %d, %s: %s, %s: %s%s%s}",
+        return String.format("{%s: %s, pending/in-progress/aborting/finished/total inter-broker partition movement %d/%d/%d/%d/%d,"
+                             + " completed/total bytes(MB): %d/%d, maximum concurrent inter-broker partition movements per-broker:"
+                             + " %d, %s: %s, %s: %s%s%s}",
                              STATE, _state,
                              interBrokerPartitionMovementStats.get(PENDING),
                              interBrokerPartitionMovementStats.get(IN_PROGRESS),

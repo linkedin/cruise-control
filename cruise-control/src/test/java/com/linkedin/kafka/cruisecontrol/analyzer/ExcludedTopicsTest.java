@@ -90,11 +90,14 @@ public class ExcludedTopicsTest {
     // With excluded topics, rack aware unsatisfiable cluster, no dead broker (No exception, No proposal, Expected to look optimized)
     p.add(params(4, RackAwareGoal.class, excludeT1, null, DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, true));
     // With excluded topics, rack aware unsatisfiable cluster, one dead broker (Exception)
-    p.add(params(5, RackAwareGoal.class, excludeT1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null));
+    p.add(params(5, RackAwareGoal.class, excludeT1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(),
+                 deadBroker0, null));
     // Test: Without excluded topics, rack aware unsatisfiable cluster, no dead brokers (Exception expected)
-    p.add(params(6, RackAwareGoal.class, noExclusion, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, null));
+    p.add(params(6, RackAwareGoal.class, noExclusion, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(),
+                 noDeadBroker, null));
     // Test: Without excluded topics, rack aware unsatisfiable cluster, one dead broker (Exception expected)
-    p.add(params(7, RackAwareGoal.class, noExclusion, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null));
+    p.add(params(7, RackAwareGoal.class, noExclusion, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(),
+                 deadBroker0, null));
 
     // ============ReplicaCapacityGoal============
     // Test: With single excluded topic, satisfiable cluster, no dead brokers (No exception, No proposal

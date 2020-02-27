@@ -955,8 +955,9 @@ public class Executor {
         }
       } else {
         _state = ExecutorState.State.STOPPING_EXECUTION;
+        Set<ExecutionTask.TaskType> taskTypesToGetFullList = new HashSet<>(ExecutionTask.TaskType.cachedValues());
         _executorState = ExecutorState.operationInProgress(STOPPING_EXECUTION,
-                                                           _executionTaskManager.getExecutionTasksSummary(new HashSet<>(ExecutionTask.TaskType.cachedValues())),
+                                                           _executionTaskManager.getExecutionTasksSummary(taskTypesToGetFullList),
                                                            _executionTaskManager.interBrokerPartitionMovementConcurrency(),
                                                            _executionTaskManager.intraBrokerPartitionMovementConcurrency(),
                                                            _executionTaskManager.leadershipMovementConcurrency(),

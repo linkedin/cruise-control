@@ -14,3 +14,4 @@ out/
 logs
 *~
 target/
+access.log

@@ -711,7 +711,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                                     !optimizationOptions.onlyMoveImmigrantReplicas())
                               .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(resource().name()))
                               .trackSortedReplicasFor(replicaSortName(this, true, actionType == LEADERSHIP_MOVEMENT), broker);
-    SortedSet<Replica> replicasToMove = broker.trackedSortedReplicas(replicaSortName(this, true, actionType == LEADERSHIP_MOVEMENT)).sortedReplicas(true);
+    SortedSet<Replica> replicasToMove = broker.trackedSortedReplicas(replicaSortName(this, true, actionType == LEADERSHIP_MOVEMENT))
+                                              .sortedReplicas(true);
 
     // Now let's move things around.
     for (Replica replica : replicasToMove) {

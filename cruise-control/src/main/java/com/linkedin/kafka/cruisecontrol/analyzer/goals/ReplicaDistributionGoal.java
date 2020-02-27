@@ -64,7 +64,7 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
 
   /**
    * The rebalance threshold for this goal is set by
-   * {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG}
+   * {@link com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig#REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG}
    */
   @Override
   double balancePercentage() {
@@ -119,13 +119,14 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
   @Override
   protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
     super.initGoalState(clusterModel, optimizationOptions);
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     //Sort replicas for each broker in the cluster.
     for (Broker broker : clusterModel.brokers()) {
       new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
                                                        optimizationOptions.onlyMoveImmigrantReplicas())
                                 .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrantOrOfflineReplicas(),
                                                        !clusterModel.selfHealingEligibleReplicas().isEmpty() && broker.isAlive())
-                                .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(optimizationOptions.excludedTopics()))
+                                .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
                                 .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas())
                                 .maybeAddPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants(),
                                                       !optimizationOptions.onlyMoveImmigrantReplicas())

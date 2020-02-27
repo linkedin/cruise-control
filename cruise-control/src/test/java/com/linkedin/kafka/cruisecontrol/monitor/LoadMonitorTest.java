@@ -402,7 +402,8 @@ public class LoadMonitorTest {
 
   // Enough snapshot windows, some partitions are not available in some snapshot windows.
   @Test
-  public void testClusterModelWithPartlyInvalidPartitions() throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
+  public void testClusterModelWithPartlyInvalidPartitions()
+      throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
     TestContext context = prepareContext();
     LoadMonitor loadMonitor = context.loadmonitor();
     KafkaPartitionMetricSampleAggregator aggregator = context.aggregator();
@@ -461,7 +462,8 @@ public class LoadMonitorTest {
   }
 
   @Test
-  public void testClusterModelWithInvalidSnapshotWindows() throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
+  public void testClusterModelWithInvalidSnapshotWindows()
+      throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
     TestContext context = prepareContext(4, false);
     LoadMonitor loadMonitor = context.loadmonitor();
     KafkaPartitionMetricSampleAggregator aggregator = context.aggregator();
@@ -594,7 +596,8 @@ public class LoadMonitorTest {
       logdirInfoBylogdir.put("/tmp/kafka-logs-1", new DescribeLogDirsResponse.LogDirInfo(Errors.NONE, replicaInfoByPartition));
       logdirInfoBylogdir.put("/tmp/kafka-logs-2",
                              new DescribeLogDirsResponse.LogDirInfo(Errors.NONE,
-                                                                    Collections.singletonMap(T1P1, new DescribeLogDirsResponse.ReplicaInfo(0, 0, false))));
+                                                                    Collections.singletonMap(T1P1,
+                                                                                             new DescribeLogDirsResponse.ReplicaInfo(0, 0, false))));
       futureByBroker.put(1, completedFuture(logdirInfoBylogdir));
       return constructor.newInstance(futureByBroker);
     } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {

@@ -248,7 +248,8 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    */
   @Override
   protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
-    Set<String> topicsToRebalance = topicsToRebalance(clusterModel, optimizationOptions.excludedTopics());
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
+    Set<String> topicsToRebalance = topicsToRebalance(clusterModel, excludedTopics);
 
     // Initialize the average replicas on an alive broker.
     for (String topic : clusterModel.topics()) {
@@ -267,7 +268,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
                                                        optimizationOptions.onlyMoveImmigrantReplicas())
                                 .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrantOrOfflineReplicas(),
                                                        !clusterModel.selfHealingEligibleReplicas().isEmpty() && broker.isAlive())
-                                .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(optimizationOptions.excludedTopics()))
+                                .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
                                 .trackSortedReplicasFor(replicaSortName(this, false, false), broker);
     }
 
