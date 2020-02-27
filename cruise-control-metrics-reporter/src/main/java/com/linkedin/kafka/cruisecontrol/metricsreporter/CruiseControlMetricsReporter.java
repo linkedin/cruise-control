@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.TopicMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.YammerMetricProcessor;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Metric;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -68,6 +69,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   private NewTopic _metricsTopic;
   private AdminClient _adminClient;
   protected static final String CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY = "delete";
+  protected static final Duration PRODUCER_CLOSE_TIMEOUT = Duration.ofSeconds(5);
 
   @Override
   public void init(List<KafkaMetric> metrics) {
@@ -98,7 +100,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       _metricsReporterRunner.interrupt();
     }
     if (_producer != null) {
-      _producer.close(5, TimeUnit.SECONDS);
+      _producer.close(PRODUCER_CLOSE_TIMEOUT);
     }
   }
 
