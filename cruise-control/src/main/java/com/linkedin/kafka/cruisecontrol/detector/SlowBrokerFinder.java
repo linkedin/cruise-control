@@ -235,16 +235,22 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     }
     // For brokers which are previously detected as slow brokers, decrease their slowness score if their metrics has
     // recovered back to normal range.
+    Set<BrokerEntity> brokersRecovered = new HashSet<>();
     for (Map.Entry<BrokerEntity, Integer> entry : _brokerSlownessScore.entrySet()) {
       BrokerEntity broker = entry.getKey();
       if (!detectedMetricAnomalies.contains(broker)) {
-        Integer score = _brokerSlownessScore.get(broker);
-        // If the score reaches zero, remove its suspicion.
+        Integer score = entry.getValue();
         if (score != null && --score == 0) {
-          _brokerSlownessScore.remove(broker);
-          _detectedSlowBrokers.remove(broker);
+          brokersRecovered.add(broker);
+        } else {
+          entry.setValue(score);
         }
       }
+    }
+    // If the broker has recovered, remove its suspicion.
+    for (BrokerEntity broker : brokersRecovered) {
+      _brokerSlownessScore.remove(broker);
+      _detectedSlowBrokers.remove(broker);
     }
   }
 
