@@ -1,0 +1,172 @@
+/*
+ * Copyright 2020 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ */
+
+package com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable;
+
+import com.linkedin.cruisecontrol.exception.NotEnoughValidWindowsException;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
+import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
+import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.GoalBasedOptimizationParameters;
+import java.util.List;
+import java.util.concurrent.TimeoutException;
+import java.util.regex.Pattern;
+
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPriority;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckGoals;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckLoadMonitorReadiness;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_DRYRUN;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_STOP_ONGOING_EXECUTION;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_MODEL_COMPLETENESS_REQUIREMENTS;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_SKIP_HARD_GOAL_CHECK;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXCLUDED_TOPICS;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.maybeStopOngoingExecutionToModifyAndWait;
+
+
+/**
+ * An abstract class to extracting the common logic of goal based operation runnables.
+ */
+public abstract class GoalBasedOperationRunnable extends OperationRunnable {
+  protected final List<String> _goals;
+  protected final ModelCompletenessRequirements _modelCompletenessRequirements;
+  protected final boolean _dryRun;
+  protected final boolean _stopOngoingExecution;
+  protected final boolean _skipHardGoalCheck;
+  protected final Pattern _excludedTopics;
+  protected final boolean _allowCapacityEstimation;
+  protected final boolean _excludeRecentlyDemotedBrokers;
+  protected final boolean _excludeRecentlyRemovedBrokers;
+  protected OperationProgress _operationProgress;
+  // Combined completeness requirements to be used after initialization.
+  protected ModelCompletenessRequirements _combinedCompletenessRequirements;
+  protected List<Goal> _goalsByPriority;
+
+  public GoalBasedOperationRunnable(KafkaCruiseControl kafkaCruiseControl,
+                                    OperationFuture future,
+                                    GoalBasedOptimizationParameters parameters,
+                                    boolean dryRun,
+                                    boolean stopOngoingExecution,
+                                    boolean skipHardGoalCheck) {
+    this(kafkaCruiseControl, future, dryRun, parameters.goals(), stopOngoingExecution,
+         parameters.modelCompletenessRequirements(), skipHardGoalCheck, parameters.excludedTopics(),
+         parameters.allowCapacityEstimation(), parameters.excludeRecentlyDemotedBrokers(),
+         parameters.excludeRecentlyRemovedBrokers());
+  }
+
+  /**
+   * Constructor to be used for creating a runnable for self-healing.
+   */
+  public GoalBasedOperationRunnable(KafkaCruiseControl kafkaCruiseControl,
+                                    OperationFuture future,
+                                    List<String> goals,
+                                    boolean allowCapacityEstimation,
+                                    boolean excludeRecentlyDemotedBrokers,
+                                    boolean excludeRecentlyRemovedBrokers) {
+    this(kafkaCruiseControl, future, SELF_HEALING_DRYRUN, goals, SELF_HEALING_STOP_ONGOING_EXECUTION,
+         SELF_HEALING_MODEL_COMPLETENESS_REQUIREMENTS, SELF_HEALING_SKIP_HARD_GOAL_CHECK, SELF_HEALING_EXCLUDED_TOPICS,
+         allowCapacityEstimation, excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers);
+  }
+
+  public GoalBasedOperationRunnable(KafkaCruiseControl kafkaCruiseControl,
+                                    OperationFuture future,
+                                    boolean dryRun,
+                                    List<String> goals,
+                                    boolean stopOngoingExecution,
+                                    ModelCompletenessRequirements modelCompletenessRequirements,
+                                    boolean skipHardGoalCheck,
+                                    Pattern excludedTopics,
+                                    boolean allowCapacityEstimation,
+                                    boolean excludeRecentlyDemotedBrokers,
+                                    boolean excludeRecentlyRemovedBrokers) {
+    super(kafkaCruiseControl, future);
+    _goals = goals;
+    _modelCompletenessRequirements = modelCompletenessRequirements;
+    _dryRun = dryRun;
+    _stopOngoingExecution = stopOngoingExecution;
+    _skipHardGoalCheck = skipHardGoalCheck;
+    _excludedTopics = excludedTopics;
+    _allowCapacityEstimation = allowCapacityEstimation;
+    _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
+    _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
+    _operationProgress = null;
+    _combinedCompletenessRequirements = null;
+    _goalsByPriority = null;
+  }
+
+  /**
+   * Perform the initializations before {@link #computeResult()}.
+   */
+  protected void init() {
+    _kafkaCruiseControl.sanityCheckDryRun(_dryRun, _stopOngoingExecution);
+    KafkaCruiseControlConfig config = _kafkaCruiseControl.config();
+    sanityCheckGoals(_goals, _skipHardGoalCheck, config);
+    _goalsByPriority = goalsByPriority(_goals, config);
+    _operationProgress = _future.operationProgress();
+    if (_stopOngoingExecution) {
+      maybeStopOngoingExecutionToModifyAndWait(_kafkaCruiseControl, _operationProgress);
+    }
+    _combinedCompletenessRequirements =
+        _kafkaCruiseControl.modelCompletenessRequirements(_goalsByPriority).weaker(_modelCompletenessRequirements);
+    sanityCheckLoadMonitorReadiness(_combinedCompletenessRequirements, _kafkaCruiseControl.getLoadMonitorTaskRunnerState());
+  }
+
+  /**
+   * Compute the underlying goal-based optimization and (if requested and applicable) start execution to reach this outcome.
+   *
+   * @return Optimizer result to indicate the outcome of underlying goal-based optimization.
+   */
+  public OptimizerResult computeResult() throws KafkaCruiseControlException {
+    init();
+    OptimizerResult result;
+    if (shouldWorkWithClusterModel()) {
+      try (AutoCloseable ignored = _kafkaCruiseControl.acquireForModelGeneration(_operationProgress)) {
+        result = workWithClusterModel();
+      } catch (KafkaCruiseControlException kcce) {
+        throw kcce;
+      } catch (Exception e) {
+        throw new KafkaCruiseControlException(e);
+      } finally {
+        finish();
+      }
+    } else {
+      result = workWithoutClusterModel();
+      finish();
+    }
+    return result;
+  }
+
+  /**
+   * @return True to generate an optimizer result with {@link #workWithClusterModel()}, and false to generate an
+   * optimizer result with {@link #workWithoutClusterModel()}.
+   */
+  protected abstract boolean shouldWorkWithClusterModel();
+
+  /**
+   * Work without the need for generating a cluster model, without acquiring the cluster model semaphore.
+   * @return Optimizer result to indicate the outcome of underlying goal-based optimization.
+   */
+  protected abstract OptimizerResult workWithoutClusterModel() throws KafkaCruiseControlException;
+
+  /**
+   * Work while acquiring the cluster model semaphore to throttle simultaneous cluster model creation.
+   * @return Optimizer result to indicate the outcome of underlying goal-based optimization.
+   */
+  protected abstract OptimizerResult workWithClusterModel()
+      throws KafkaCruiseControlException, TimeoutException, NotEnoughValidWindowsException;
+
+  /**
+   * Perform the memory clean up after {@link #computeResult()}.
+   */
+  protected void finish() {
+    _operationProgress = null;
+    _combinedCompletenessRequirements = null;
+    if (_goalsByPriority != null) {
+      _goalsByPriority.clear();
+    }
+  }
+}

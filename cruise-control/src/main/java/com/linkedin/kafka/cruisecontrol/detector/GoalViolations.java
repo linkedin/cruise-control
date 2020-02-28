@@ -70,7 +70,7 @@ public class GoalViolations extends KafkaAnomaly {
     if (_violatedGoalsByFixability.get(false) == null) {
       try {
         // Fix the fixable goal violations with rebalance operation.
-        _optimizationResult = new OptimizationResult(_rebalanceRunnable.rebalance(), null);
+        _optimizationResult = new OptimizationResult(_rebalanceRunnable.computeResult(), null);
         hasProposalsToFix = hasProposalsToFix();
         // Ensure that only the relevant response is cached to avoid memory pressure.
         _optimizationResult.discardIrrelevantAndCacheJsonAndPlaintext();

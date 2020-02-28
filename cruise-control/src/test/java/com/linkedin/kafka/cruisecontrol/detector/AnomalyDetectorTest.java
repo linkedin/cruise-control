@@ -287,6 +287,7 @@ public class AnomalyDetectorTest {
 
     EasyMock.expect(mockAnomalyNotifier.selfHealingEnabledRatio()).andReturn(MOCK_SELF_HEALING_ENABLED_RATIO);
     if (anomalyType == KafkaAnomalyType.GOAL_VIOLATION) {
+      mockKafkaCruiseControl.sanityCheckDryRun(EasyMock.eq(true), EasyMock.eq(false));
       EasyMock.expect(mockKafkaCruiseControl
                           .ignoreProposalCache(EasyMock.anyObject(),
                                                EasyMock.anyObject(),
