@@ -41,7 +41,7 @@ import java.util.Set;
 import static com.linkedin.kafka.cruisecontrol.servlet.security.jwt.JwtAuthenticator.JWT_LOGGER;
 
 /**
- * <p>This class validates a JWT token. The token must be cryptographically encrypted an It uses an RSA public key for
+ * <p>This class validates a JWT token. The token must be cryptographically encrypted and it uses an RSA public key for
  * validation that is expected to be stored in a PEM formatted file.</p>
  * <p>This class implements {@link AbstractLifeCycle} which means it is a managed bean, its lifecycle will be managed
  * by Jetty. It's {@link AuthorizationService} can also be an {@link AbstractLifeCycle} in which case it delegates to
@@ -53,8 +53,9 @@ import static com.linkedin.kafka.cruisecontrol.servlet.security.jwt.JwtAuthentic
  */
 public class JwtLoginService extends AbstractLifeCycle implements LoginService {
 
+  public static final String X_509_CERT_TYPE = "X.509";
   private final AuthorizationService _authorizationService;
-  private IdentityService _identityService = new DefaultIdentityService();
+  private IdentityService _identityService;
   private final RSAPublicKey _publicKey;
   private final List<String> _audiences;
   private Clock _clock;
@@ -70,6 +71,7 @@ public class JwtLoginService extends AbstractLifeCycle implements LoginService {
 
   public JwtLoginService(AuthorizationService authorizationService, RSAPublicKey publicKey, List<String> audiences, Clock clock) {
     _authorizationService = authorizationService;
+    _identityService = new DefaultIdentityService();
     _publicKey = publicKey;
     _audiences = audiences;
     _clock = clock;
@@ -119,7 +121,11 @@ public class JwtLoginService extends AbstractLifeCycle implements LoginService {
     if (valid) {
       String serializedToken = (String) request.getAttribute(JwtAuthenticator.JWT_TOKEN_REQUEST_ATTRIBUTE);
       UserIdentity rolesDelegate = _authorizationService.getUserIdentity((HttpServletRequest) request, username);
-      return getUserIdentity(jwtToken, claimsSet, serializedToken, username, rolesDelegate);
+      if (rolesDelegate == null) {
+        return null;
+      } else {
+        return getUserIdentity(jwtToken, claimsSet, serializedToken, username, rolesDelegate);
+      }
     } else {
       return null;
     }
@@ -203,12 +209,13 @@ public class JwtLoginService extends AbstractLifeCycle implements LoginService {
 
   private static RSAPublicKey readPublicKey(String location) throws CertificateException, IOException {
     byte[] publicKeyBytes = Files.readAllBytes(Paths.get(location));
-    CertificateFactory fact = CertificateFactory.getInstance("X.509");
+    CertificateFactory fact = CertificateFactory.getInstance(X_509_CERT_TYPE);
     X509Certificate cer = (X509Certificate) fact.generateCertificate(new ByteArrayInputStream(publicKeyBytes));
     return (RSAPublicKey) cer.getPublicKey();
   }
 
-  private static UserIdentity getUserIdentity(SignedJWT jwtToken, JWTClaimsSet claimsSet, String serializedToken, String username, UserIdentity rolesDelegate) {
+  private static UserIdentity getUserIdentity(SignedJWT jwtToken, JWTClaimsSet claimsSet, String serializedToken,
+                                              String username, UserIdentity rolesDelegate) {
     JwtUserPrincipal principal = new JwtUserPrincipal(username, serializedToken);
     Set<Object> privCreds = new HashSet<>();
     privCreds.add(jwtToken);

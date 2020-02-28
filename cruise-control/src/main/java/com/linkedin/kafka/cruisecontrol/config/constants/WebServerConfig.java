@@ -171,14 +171,14 @@ public class WebServerConfig {
    */
   public static final String WEBSERVER_SECURITY_ENABLE_CONFIG = "webserver.security.enable";
   public static final boolean DEFAULT_WEBSERVER_SECURITY_ENABLE = false;
-  private static final String WEBSERVER_SECURITY_ENABLE_DOCS = "Enables the use of authentication and authorization features.";
+  private static final String WEBSERVER_SECURITY_ENABLE_DOC = "Enables the use of authentication and authorization features.";
 
   /**
    * <code>webserver.auth.credentials.file</code>
    */
   public static final String WEBSERVER_AUTH_CREDENTIALS_FILE_CONFIG = "webserver.auth.credentials.file";
-  public static final String DEFAULT_BASIC_AUTH_CREDENTIALS_FILE = "/etc/cruisecontrol-basic-auth.credentials";
-  private static final String WEBSERVER_AUTH_CREDENTIALS_FILE_DOCS = "A file that contains credentials for authentication " +
+  public static final String DEFAULT_WEBSERVER_AUTH_CREDENTIALS_FILE = "/etc/cruisecontrol-basic-auth.credentials";
+  private static final String WEBSERVER_AUTH_CREDENTIALS_FILE_DOC = "A file that contains credentials for authentication " +
       "and roles for authorization. The format of the file is the following: username: password [,rolename ...] which " +
       "corresponds to Jetty's HashLoginService's credentials file format.";
 
@@ -230,7 +230,8 @@ public class WebServerConfig {
    * <code>jwt.authentication.provider.url</code>
    */
   public static final String JWT_AUTHENTICATION_PROVIDER_URL_CONFIG = "jwt.authentication.provider.url";
-  private static final String JWT_AUTHENTICATION_PROVIDER_URL_DOCS = "This is an endpoint of the token issuer. " +
+  public static final String DEFAULT_JWT_AUTHENTICATION_PROVIDER_URL = null;
+  private static final String JWT_AUTHENTICATION_PROVIDER_URL_DOC = "This is an endpoint of the token issuer. " +
       "Requests without tokens will be redirected to this endpoint for authentication. The given url can contain " +
       "the {redirectUrl} string which is an instruction to the authentication service to redirect to the original " +
       "Cruise Control URL after a successful login. For instance www.my-auth.service.com/websso?origin={redirectUrl}.";
@@ -239,14 +240,16 @@ public class WebServerConfig {
    * <code>jwt.cookie.name</code>
    */
   public static final String JWT_COOKIE_NAME_CONFIG = "jwt.cookie.name";
-  private static final String JWT_COOKIE_NAME_DOCS = "Cruise Control expects issued tokens to be forwarded in a cookie. " +
+  public static final String DEFAULT_JWT_COOKIE_NAME = null;
+  private static final String JWT_COOKIE_NAME_DOC = "Cruise Control expects issued tokens to be forwarded in a cookie. " +
       "This config specifies which one will contain the token.";
 
   /**
    * <code>jwt.auth.certificate.location</code>
    */
   public static final String JWT_AUTH_CERTIFICATE_LOCATION_CONFIG = "jwt.auth.certificate.location";
-  private static final String JWT_AUTH_CERTIFICATE_LOCATION_DOCS = "A private key is used to sign the JWT token by the " +
+  public static final String DEFAULT_JWT_AUTH_CERTIFICATE_LOCATION = null;
+  private static final String JWT_AUTH_CERTIFICATE_LOCATION_DOC = "A private key is used to sign the JWT token by the " +
       "authentication service and its public key pair is used to validate the signature in the token. This config points " +
       "to the location of the file containing that public key.";
 
@@ -254,7 +257,8 @@ public class WebServerConfig {
    * <code>jwt.expected.audiences</code>
    */
   public static final String JWT_EXPECTED_AUDIENCES_CONFIG = "jwt.expected.audiences";
-  private static final String JWT_EXPECTED_AUDIENCES_DOCS = "A comma separated list of audiences that Cruise Control accepts. " +
+  public static final String DEFAULT_JWT_EXPECTED_AUDIENCES = null;
+  private static final String JWT_EXPECTED_AUDIENCES_DOC = "A comma separated list of audiences that Cruise Control accepts. " +
       "Audience is a way for the issuer to indicate what entities the token is intended for. The default value is null, " +
       "which means all audiences are accepted.";
 
@@ -371,7 +375,7 @@ public class WebServerConfig {
                             ConfigDef.Type.BOOLEAN,
                             DEFAULT_WEBSERVER_SECURITY_ENABLE,
                             ConfigDef.Importance.MEDIUM,
-                            WEBSERVER_SECURITY_ENABLE_DOCS)
+                            WEBSERVER_SECURITY_ENABLE_DOC)
                     .define(WEBSERVER_SECURITY_PROVIDER_CONFIG,
                             ConfigDef.Type.CLASS,
                             DEFAULT_WEBSERVER_SECURITY_PROVIDER,
@@ -379,9 +383,9 @@ public class WebServerConfig {
                             WEBSERVER_SECURITY_PROVIDER_DOC)
                     .define(WEBSERVER_AUTH_CREDENTIALS_FILE_CONFIG,
                             ConfigDef.Type.STRING,
-                            DEFAULT_BASIC_AUTH_CREDENTIALS_FILE,
+                            DEFAULT_WEBSERVER_AUTH_CREDENTIALS_FILE,
                             ConfigDef.Importance.MEDIUM,
-                        WEBSERVER_AUTH_CREDENTIALS_FILE_DOCS)
+                            WEBSERVER_AUTH_CREDENTIALS_FILE_DOC)
                     .define(WEBSERVER_SSL_ENABLE_CONFIG,
                             ConfigDef.Type.BOOLEAN,
                             DEFAULT_WEBSERVER_SSL_ENABLE,
@@ -414,23 +418,23 @@ public class WebServerConfig {
                             WEBSERVER_SSL_PROTOCOL_DOC)
                     .define(JWT_AUTHENTICATION_PROVIDER_URL_CONFIG,
                             ConfigDef.Type.STRING,
-                            null,
+                            DEFAULT_JWT_AUTHENTICATION_PROVIDER_URL,
                             ConfigDef.Importance.MEDIUM,
-                            JWT_AUTHENTICATION_PROVIDER_URL_DOCS)
+                            JWT_AUTHENTICATION_PROVIDER_URL_DOC)
                     .define(JWT_COOKIE_NAME_CONFIG,
                             ConfigDef.Type.STRING,
-                            null,
+                            DEFAULT_JWT_COOKIE_NAME,
                             ConfigDef.Importance.MEDIUM,
-                            JWT_COOKIE_NAME_DOCS)
+                            JWT_COOKIE_NAME_DOC)
                     .define(JWT_AUTH_CERTIFICATE_LOCATION_CONFIG,
                             ConfigDef.Type.STRING,
-                            null,
+                            DEFAULT_JWT_AUTH_CERTIFICATE_LOCATION,
                             ConfigDef.Importance.MEDIUM,
-                            JWT_AUTH_CERTIFICATE_LOCATION_DOCS)
+                            JWT_AUTH_CERTIFICATE_LOCATION_DOC)
                     .define(JWT_EXPECTED_AUDIENCES_CONFIG,
                             ConfigDef.Type.LIST,
-                            null,
+                            DEFAULT_JWT_EXPECTED_AUDIENCES,
                             ConfigDef.Importance.MEDIUM,
-                            JWT_EXPECTED_AUDIENCES_DOCS);
+                            JWT_EXPECTED_AUDIENCES_DOC);
   }
 }

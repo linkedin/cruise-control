@@ -25,7 +25,7 @@ import java.text.ParseException;
 import java.util.function.Function;
 
 /**
- * <p>The {@link JwtAuthenticator} adds SSO capabilites to Cruise Control. The expected token is a Json Web Token (JWT).
+ * <p>The {@link JwtAuthenticator} adds SSO capabilities to Cruise Control. The expected token is a Json Web Token (JWT).
  * This class should be used with {@link JwtLoginService} as the token check is carried out by that one. This class
  * handles redirects for unauthenticated requests and CORS preflight requests.</p>
  * <p>The workflow can be described with the following diagram:
@@ -55,7 +55,8 @@ public class JwtAuthenticator extends LoginAuthenticator {
   static final Logger JWT_LOGGER = LoggerFactory.getLogger("kafka.cruisecontrol.jwt.logger");
 
   private static final String METHOD = "JWT";
-  private static final String BEARER = "Bearer";
+  static final String BEARER = "Bearer";
+  static final String REDIRECT_URL = "{redirectUrl}";
 
   private final String _cookieName;
   private final Function<HttpServletRequest, String> _authenticationProviderUrlGenerator;
@@ -74,7 +75,7 @@ public class JwtAuthenticator extends LoginAuthenticator {
   public JwtAuthenticator(String authenticationProviderUrl, String cookieName) {
     _cookieName = cookieName;
     Function<String, Function<HttpServletRequest, String>> urlGen =
-        url -> req -> url.replace("{redirectUrl}", req.getRequestURL().toString() + getOriginalQueryString(req));
+        url -> req -> url.replace(REDIRECT_URL, req.getRequestURL().toString() + getOriginalQueryString(req));
     _authenticationProviderUrlGenerator = urlGen.apply(authenticationProviderUrl);
   }
 
@@ -121,7 +122,11 @@ public class JwtAuthenticator extends LoginAuthenticator {
         String userName = jwtToken.getJWTClaimsSet().getSubject();
         request.setAttribute(JWT_TOKEN_REQUEST_ATTRIBUTE, serializedJWT);
         UserIdentity identity = login(userName, jwtToken, request);
-        return new UserAuthentication(getAuthMethod(), identity);
+        if (identity == null) {
+          return Authentication.SEND_FAILURE;
+        } else {
+          return new UserAuthentication(getAuthMethod(), identity);
+        }
       } catch (ParseException pe) {
         String loginURL = _authenticationProviderUrlGenerator.apply(req);
         JWT_LOGGER.warn("Unable to parse the JWT token, redirecting back to the login page", pe);

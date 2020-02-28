@@ -38,7 +38,7 @@ public class JwtSecurityProvider extends DefaultRoleSecurityProvider {
   private List<String> _audiences;
 
   @Override
-  public void init(KafkaCruiseControlConfig config) throws ServletException {
+  public void init(KafkaCruiseControlConfig config) {
     super.init(config);
     _authenticationProviderUrl = config.getString(WebServerConfig.JWT_AUTHENTICATION_PROVIDER_URL_CONFIG);
     _cookieName = config.getString(WebServerConfig.JWT_COOKIE_NAME_CONFIG);

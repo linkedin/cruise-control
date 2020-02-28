@@ -11,9 +11,9 @@ import java.security.Principal;
 
 public class JwtUserIdentity implements UserIdentity {
 
-  private Subject _subject;
-  private Principal _principal;
-  private UserIdentity _roleDelegate;
+  private final Subject _subject;
+  private final Principal _principal;
+  private final UserIdentity _roleDelegate;
 
   JwtUserIdentity(Subject subject, Principal principal, UserIdentity roleDelegate) {
     _subject = subject;

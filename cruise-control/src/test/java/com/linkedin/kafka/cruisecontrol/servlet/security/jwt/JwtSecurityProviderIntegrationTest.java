@@ -135,7 +135,7 @@ public class JwtSecurityProviderIntegrationTest extends CruiseControlIntegration
         _tokenProviderServer.getURI().toString() + "?" +
             TEST_USERNAME_KEY + "=" + TEST_USERNAME +
             "&" + TEST_PASSWORD_KEY + "=" + TEST_PASSWORD +
-            "&origin={redirectUrl}");
+            "&origin=" + JwtAuthenticator.REDIRECT_URL);
     securityConfigs.put(WebServerConfig.WEBSERVER_AUTH_CREDENTIALS_FILE_CONFIG,
         Objects.requireNonNull(this.getClass().getClassLoader().getResource("jwt-auth.credentials")).getPath());
     securityConfigs.put(WebServerConfig.JWT_COOKIE_NAME_CONFIG, JWT_TOKEN_COOKIE_NAME);
@@ -174,7 +174,8 @@ public class JwtSecurityProviderIntegrationTest extends CruiseControlIntegration
     String signatureAlgorithm = "SHA256WithRSA";
     ContentSigner contentSigner = new JcaContentSignerBuilder(signatureAlgorithm).build(tokenAndKeys.privateKey());
 
-    JcaX509v3CertificateBuilder certBuilder = new JcaX509v3CertificateBuilder(dnName, certSerialNumber, startDate, endDate, dnName, tokenAndKeys.publicKey());
+    JcaX509v3CertificateBuilder certBuilder = new JcaX509v3CertificateBuilder(
+        dnName, certSerialNumber, startDate, endDate, dnName, tokenAndKeys.publicKey());
 
     X509Certificate cert = new JcaX509CertificateConverter().setProvider(bcProvider).getCertificate(certBuilder.build(contentSigner));
 

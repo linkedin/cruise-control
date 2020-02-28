@@ -14,7 +14,7 @@ import javax.servlet.http.HttpServletRequest;
 
 /**
  * Can be used for authorization scenarios where a file can be created in a secure location with a relatively
- * low amount of users. It follows the <code>username: password [,rolename ...]</code> format which corresponds to
+ * low number of users. It follows the <code>username: password [,rolename ...]</code> format which corresponds to
  * the format used with {@link org.eclipse.jetty.security.HashLoginService}.
  */
 public class UserStoreAuthorizationService extends AbstractLifeCycle implements AuthorizationService {

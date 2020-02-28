@@ -34,17 +34,20 @@ import static org.junit.Assert.assertTrue;
 public class JwtAuthenticatorTest {
 
   private static final String TEST_USER = "testUser";
+  private static final String TEST_USER_2 = "testUser2";
   private static final String JWT_TOKEN = "jwt_token";
   private static final String EXPECTED_TOKEN = "token";
   private static final String RANDOM_COOKIE_NAME = "random_cookie_name";
-  private static final String TOKEN_PROVIDER = "http://mytokenprovider.com?origin={redirectUrl}";
+  private static final String TOKEN_PROVIDER = "http://mytokenprovider.com?origin=" + JwtAuthenticator.REDIRECT_URL;
   private static final String CRUISE_CONTROL_ENDPOINT = "http://cruisecontrol.mycompany.com/state";
+  private static final String USER_ROLE = "USER";
+  private static final String BASIC_SCHEME = "Basic";
 
   @Test
   public void testParseTokenFromAuthHeader() {
     JwtAuthenticator authenticator = new JwtAuthenticator(TOKEN_PROVIDER, JWT_TOKEN);
     HttpServletRequest request = mock(HttpServletRequest.class);
-    expect(request.getHeader(HttpHeader.AUTHORIZATION.asString())).andReturn("Bearer " + EXPECTED_TOKEN);
+    expect(request.getHeader(HttpHeader.AUTHORIZATION.asString())).andReturn(JwtAuthenticator.BEARER + " " + EXPECTED_TOKEN);
     replay(request);
     String actualToken = authenticator.getJwtFromBearerAuthorization(request);
     verify(request);
@@ -55,7 +58,7 @@ public class JwtAuthenticatorTest {
   public void testParseTokenFromAuthHeaderNoBearer() {
     JwtAuthenticator authenticator = new JwtAuthenticator(TOKEN_PROVIDER, JWT_TOKEN);
     HttpServletRequest request = mock(HttpServletRequest.class);
-    expect(request.getHeader(HttpHeader.AUTHORIZATION.asString())).andReturn("Basic " + EXPECTED_TOKEN);
+    expect(request.getHeader(HttpHeader.AUTHORIZATION.asString())).andReturn(BASIC_SCHEME + " " + EXPECTED_TOKEN);
     replay(request);
     String actualToken = authenticator.getJwtFromBearerAuthorization(request);
     verify(request);
@@ -96,7 +99,7 @@ public class JwtAuthenticatorTest {
     expect(request.getRequestURL()).andReturn(new StringBuffer(CRUISE_CONTROL_ENDPOINT));
 
     HttpServletResponse response = mock(HttpServletResponse.class);
-    response.sendRedirect(TOKEN_PROVIDER.replace("{redirectUrl}", CRUISE_CONTROL_ENDPOINT));
+    response.sendRedirect(TOKEN_PROVIDER.replace(JwtAuthenticator.REDIRECT_URL, CRUISE_CONTROL_ENDPOINT));
     expectLastCall().andVoid();
 
     replay(request, response);
@@ -108,7 +111,7 @@ public class JwtAuthenticatorTest {
   @Test
   public void testSuccessfulLogin() throws Exception {
     UserStore testUserStore = new UserStore();
-    testUserStore.addUser(TEST_USER, null, new String[] {"USER"});
+    testUserStore.addUser(TEST_USER, null, new String[] {USER_ROLE});
     TokenGenerator.TokenAndKeys tokenAndKeys = TokenGenerator.generateToken(TEST_USER);
     JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), null);
 
@@ -138,5 +141,69 @@ public class JwtAuthenticatorTest {
     JwtUserPrincipal userPrincipal = (JwtUserPrincipal) authentication.getUserIdentity().getUserPrincipal();
     assertEquals(TEST_USER, userPrincipal.getName());
     assertEquals(tokenAndKeys.token(), userPrincipal.getSerializedToken());
+  }
+
+  @Test
+  public void testFailedLoginWithUserNotFound() throws Exception {
+    UserStore testUserStore = new UserStore();
+    testUserStore.addUser(TEST_USER_2, null, new String[] {USER_ROLE});
+    TokenGenerator.TokenAndKeys tokenAndKeys = TokenGenerator.generateToken(TEST_USER);
+    JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), null);
+
+    Authenticator.AuthConfiguration configuration = mock(Authenticator.AuthConfiguration.class);
+    expect(configuration.getLoginService()).andReturn(loginService);
+    expect(configuration.getIdentityService()).andReturn(new DefaultIdentityService());
+    expect(configuration.isSessionRenewedOnAuthentication()).andReturn(true);
+
+    Request request = niceMock(Request.class);
+    expect(request.getMethod()).andReturn(HttpMethod.GET.asString());
+    expect(request.getHeader(HttpHeader.AUTHORIZATION.asString())).andReturn(null);
+    request.setAttribute(JwtAuthenticator.JWT_TOKEN_REQUEST_ATTRIBUTE, tokenAndKeys.token());
+    expectLastCall().andVoid();
+    expect(request.getCookies()).andReturn(new Cookie[] {new Cookie(JWT_TOKEN, tokenAndKeys.token())});
+    expect(request.getAttribute(JwtAuthenticator.JWT_TOKEN_REQUEST_ATTRIBUTE)).andReturn(tokenAndKeys.token());
+
+    HttpServletResponse response = mock(HttpServletResponse.class);
+
+    replay(configuration, request, response);
+    JwtAuthenticator authenticator = new JwtAuthenticator(TOKEN_PROVIDER, JWT_TOKEN);
+    authenticator.setConfiguration(configuration);
+    Authentication authentication = authenticator.validateRequest(request, response, true);
+    verify(configuration, request, response);
+
+    assertNotNull(authentication);
+    assertEquals(Authentication.SEND_FAILURE, authentication);
+  }
+
+  @Test
+  public void testFailedLoginWithInvalidToken() throws Exception {
+    UserStore testUserStore = new UserStore();
+    testUserStore.addUser(TEST_USER_2, null, new String[] {USER_ROLE});
+    TokenGenerator.TokenAndKeys tokenAndKeys = TokenGenerator.generateToken(TEST_USER);
+    TokenGenerator.TokenAndKeys tokenAndKeys2 = TokenGenerator.generateToken(TEST_USER);
+    JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), null);
+
+    Authenticator.AuthConfiguration configuration = mock(Authenticator.AuthConfiguration.class);
+    expect(configuration.getLoginService()).andReturn(loginService);
+    expect(configuration.getIdentityService()).andReturn(new DefaultIdentityService());
+    expect(configuration.isSessionRenewedOnAuthentication()).andReturn(true);
+
+    Request request = niceMock(Request.class);
+    expect(request.getMethod()).andReturn(HttpMethod.GET.asString());
+    expect(request.getHeader(HttpHeader.AUTHORIZATION.asString())).andReturn(null);
+    request.setAttribute(JwtAuthenticator.JWT_TOKEN_REQUEST_ATTRIBUTE, tokenAndKeys2.token());
+    expectLastCall().andVoid();
+    expect(request.getCookies()).andReturn(new Cookie[] {new Cookie(JWT_TOKEN, tokenAndKeys2.token())});
+
+    HttpServletResponse response = mock(HttpServletResponse.class);
+
+    replay(configuration, request, response);
+    JwtAuthenticator authenticator = new JwtAuthenticator(TOKEN_PROVIDER, JWT_TOKEN);
+    authenticator.setConfiguration(configuration);
+    Authentication authentication = authenticator.validateRequest(request, response, true);
+    verify(configuration, request, response);
+
+    assertNotNull(authentication);
+    assertEquals(Authentication.SEND_FAILURE, authentication);
   }
 }

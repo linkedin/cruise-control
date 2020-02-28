@@ -23,9 +23,9 @@ import java.util.List;
 class TokenGenerator {
 
   static class TokenAndKeys {
-    private String _token;
-    private RSAPrivateKey _privateKey;
-    private RSAPublicKey _publicKey;
+    private final String _token;
+    private final RSAPrivateKey _privateKey;
+    private final RSAPublicKey _publicKey;
 
     private TokenAndKeys(String token, RSAPrivateKey privateKey, RSAPublicKey publicKey) {
       _token = token;

@@ -8,8 +8,8 @@ import java.security.Principal;
 
 public class JwtUserPrincipal implements Principal {
 
-  private String _username;
-  private String _serializedToken;
+  private final String _username;
+  private final String _serializedToken;
 
   JwtUserPrincipal(String username, String serializedToken) {
     _username = username;

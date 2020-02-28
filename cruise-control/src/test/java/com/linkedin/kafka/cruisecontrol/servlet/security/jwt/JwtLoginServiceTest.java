@@ -69,7 +69,8 @@ public class JwtLoginServiceTest {
     UserStore testUserStore = new UserStore();
     testUserStore.addUser(TEST_USER, null, new String[] {"USER"});
     TokenGenerator.TokenAndKeys tokenAndKeys = TokenGenerator.generateToken(TEST_USER, Arrays.asList("A", "B"));
-    JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), Arrays.asList("C", "D"));
+    JwtLoginService loginService = new JwtLoginService(
+        new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), Arrays.asList("C", "D"));
 
     SignedJWT jwtToken = SignedJWT.parse(tokenAndKeys.token());
     HttpServletRequest request = mock(HttpServletRequest.class);

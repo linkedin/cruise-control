@@ -10,7 +10,6 @@ import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import org.eclipse.jetty.security.ConstraintMapping;
 import org.eclipse.jetty.util.security.Constraint;
 
-import javax.servlet.ServletException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -40,7 +39,7 @@ public abstract class DefaultRoleSecurityProvider implements SecurityProvider {
   private String _webServerApiUrlPrefix;
 
   @Override
-  public void init(KafkaCruiseControlConfig config) throws ServletException {
+  public void init(KafkaCruiseControlConfig config) {
     this._webServerApiUrlPrefix = config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG);
   }
 
