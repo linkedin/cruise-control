@@ -29,7 +29,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
 
 
 /**
- * An abstract class to extracting the common logic of goal based operation runnables.
+ * An abstract class to extract the common logic of goal based operation runnables.
  */
 public abstract class GoalBasedOperationRunnable extends OperationRunnable {
   protected final List<String> _goals;
