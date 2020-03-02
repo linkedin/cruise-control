@@ -12,10 +12,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.Config;
@@ -43,6 +47,11 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANO
  *   {@link #DEFAULT_TOPIC_EXCLUDED_FROM_REPLICATION_FACTOR_CHECK}.
  *   <li>{@link #TOPIC_REPLICATION_FACTOR_ANOMALY_CLASS_CONFIG}: The config for the topic anomaly class name,
  *   default value is set to {@link #DEFAULT_TOPIC_REPLICATION_FACTOR_ANOMALY_CLASS}.
+ *   <li>{@link #TOPIC_REPLICATION_FACTOR_MARGIN_CONFIG}: The config for the topic replication factor margin over minISR, i.e.
+ *   a topic is taken as unfixable if the target replication factor is less than its configured minISR value plus this margin.
+ *   Default value is set to {@link #DEFAULT_TOPIC_REPLICATION_FACTOR_MARGIN}.
+ *   <li>{@link #TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS_CONFIG}: The config for TTL time in millisecond of cached topic minISR
+ *   records, default value is set to {@link #DEFAULT_TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS}.
  * </ul>
  */
 public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
@@ -53,11 +62,19 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
   public static final String TOPIC_REPLICATION_FACTOR_ANOMALY_CLASS_CONFIG = "topic.replication.topic.anomaly.class";
   public static final Class<?> DEFAULT_TOPIC_REPLICATION_FACTOR_ANOMALY_CLASS = TopicReplicationFactorAnomaly.class;
   public static final String TOPICS_WITH_BAD_REPLICATION_FACTOR_BY_FIXABILITY_CONFIG = "topics.with.bad.replication.factor.by.fixability";
+  public static final String TOPIC_REPLICATION_FACTOR_MARGIN_CONFIG = "topic.replication.factor.margin";
+  public static final short DEFAULT_TOPIC_REPLICATION_FACTOR_MARGIN = 1;
+  public static final String TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS_CONFIG = "topic.min.isr.record.retention.time.ms";
+  public static final long DEFAULT_TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS = 12 * 60 * 60 * 1000;
+  private static final long METADATA_FETCH_TIMEOUT_MS = 100000L;
   private KafkaCruiseControl _kafkaCruiseControl;
   private short _targetReplicationFactor;
   private Pattern _topicExcludedFromCheck;
   private Class<?> _topicReplicationTopicAnomalyClass;
   private AdminClient _adminClient;
+  private short _topicReplicationFactorMargin;
+  private long _topicMinISRRecordRetentionTimeMs;
+  private Map<String, TopicMinISREntry> _cachedTopicMinISR;
 
   @Override
   public Set<TopicAnomaly> topicAnomalies() {
@@ -75,29 +92,62 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
         }
       }
     }
+    refreshTopicMinISRCache();
     if (!topicsWithBadReplicationFactor.isEmpty()) {
+      maybeRetrieveAndCacheTopicMinISR(topicsWithBadReplicationFactor);
       Map<Boolean, Set<String>> topicsByFixability = new HashMap<>(2);
-      List<ConfigResource> topicResourcesToCheck = new ArrayList<>(topicsWithBadReplicationFactor.size());
-      topicsWithBadReplicationFactor.forEach(t -> topicResourcesToCheck.add(new ConfigResource(ConfigResource.Type.TOPIC, t)));
-      for (Map.Entry<ConfigResource, KafkaFuture<Config>> entry: _adminClient.describeConfigs(topicResourcesToCheck).values().entrySet()) {
-        try {
-          short topicMinISR = Short.valueOf(entry.getValue().get().get(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG).value());
-          if (topicMinISR > _targetReplicationFactor) {
+      for (String topic : topicsWithBadReplicationFactor) {
+        if (_cachedTopicMinISR.containsKey(topic)) {
+          short topicMinISR = _cachedTopicMinISR.get(topic).minISR();
+          if (_targetReplicationFactor < topicMinISR + _topicReplicationFactorMargin) {
             topicsByFixability.putIfAbsent(false, new HashSet<>());
-            topicsByFixability.get(false).add(entry.getKey().name());
+            topicsByFixability.get(false).add(topic);
           } else {
             topicsByFixability.putIfAbsent(true, new HashSet<>());
-            topicsByFixability.get(true).add(entry.getKey().name());
+            topicsByFixability.get(true).add(topic);
           }
-        } catch (InterruptedException | ExecutionException e) {
-          LOG.warn("Skip attempt to fix topic {}'s replication factor due to unable to retrieve its minISR config.",
-                   entry.getKey().name());
         }
       }
       return Collections.singleton(createTopicReplicationFactorAnomaly(topicsByFixability,
                                                                        _targetReplicationFactor));
     }
     return Collections.emptySet();
+  }
+
+  /**
+   * Retrieve topic minISR config information if it is not cached locally.
+   * @param topicsToCheck Set of topics to check.
+   */
+  private void maybeRetrieveAndCacheTopicMinISR(Set<String> topicsToCheck) {
+    List<ConfigResource> topicResourcesToCheck = new ArrayList<>(topicsToCheck.size());
+    topicsToCheck.stream().filter(t -> !_cachedTopicMinISR.containsKey(t))
+                          .forEach(t -> topicResourcesToCheck.add(new ConfigResource(ConfigResource.Type.TOPIC, t)));
+    for (Map.Entry<ConfigResource, KafkaFuture<Config>> entry : _adminClient.describeConfigs(topicResourcesToCheck).values().entrySet()) {
+      try {
+        short topicMinISR = Short.parseShort(entry.getValue().get(METADATA_FETCH_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                                                  .get(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG).value());
+        _cachedTopicMinISR.put(entry.getKey().name(), new TopicMinISREntry(topicMinISR, System.currentTimeMillis()));
+      } catch (TimeoutException | InterruptedException | ExecutionException e) {
+        LOG.warn("Skip attempt to fix topic {}'s replication factor due to unable to retrieve its minISR config.",
+                 entry.getKey().name());
+      }
+    }
+  }
+
+  /**
+   * Invalidate stale topic minISR record from local cache.
+   */
+  private void refreshTopicMinISRCache() {
+    long currentTimeMs = System.currentTimeMillis();
+    Iterator<Map.Entry<String, TopicMinISREntry>> cacheIterator = _cachedTopicMinISR.entrySet().iterator();
+    while (cacheIterator.hasNext()) {
+      Map.Entry<String, TopicMinISREntry> entry = cacheIterator.next();
+      if (entry.getValue().createTimeMs() + _topicMinISRRecordRetentionTimeMs < currentTimeMs) {
+        cacheIterator.remove();
+      } else {
+        break;
+      }
+    }
   }
 
   private TopicAnomaly createTopicReplicationFactorAnomaly(Map<Boolean, Set<String>> topicsByFixability,
@@ -137,7 +187,40 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
               TOPIC_REPLICATION_FACTOR_ANOMALY_CLASS_CONFIG, _topicReplicationTopicAnomalyClass));
       }
     }
+    try {
+      _topicReplicationFactorMargin = Short.parseShort((String) configs.get(TOPIC_REPLICATION_FACTOR_MARGIN_CONFIG));
+    } catch (NumberFormatException e) {
+      _topicReplicationFactorMargin = DEFAULT_TOPIC_REPLICATION_FACTOR_MARGIN;
+    }
+    try {
+      _topicMinISRRecordRetentionTimeMs = Long.parseLong((String) configs.get(TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS_CONFIG));
+    } catch (NumberFormatException e) {
+      _topicMinISRRecordRetentionTimeMs = DEFAULT_TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS;
+    }
+
     KafkaCruiseControlConfig config = _kafkaCruiseControl.config();
     _adminClient = KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
+    _cachedTopicMinISR = new LinkedHashMap<>();
+  }
+
+  /**
+   * A class to encapsulate the retrieved topic minISR config information.
+   */
+  private static class TopicMinISREntry {
+    private final short _minISR;
+    private final long _createTimeMs;
+
+    TopicMinISREntry(short minISR, long createTimeMs) {
+      _minISR = minISR;
+      _createTimeMs = createTimeMs;
+    }
+
+    short minISR() {
+      return _minISR;
+    }
+
+    long createTimeMs() {
+      return _createTimeMs;
+    }
   }
 }

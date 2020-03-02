@@ -31,7 +31,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyTyp
  */
 public class TopicReplicationFactorAnomaly extends TopicAnomaly {
   protected Short _targetReplicationFactor;
-  protected Map<Boolean, Set<String>> _badTopicsByFixability;
+  protected Map<Boolean, Set<String>> _topicsWithBadReplicationFactorByFixability;
   protected UpdateTopicConfigurationRunnable _updateTopicConfigurationRunnable;
 
   @Override
@@ -52,8 +52,8 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
     super.configure(configs);
     KafkaCruiseControl kafkaCruiseControl = extractKafkaCruiseControlObjectFromConfig(configs, KafkaAnomalyType.TOPIC_ANOMALY);
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
-    _badTopicsByFixability = (Map<Boolean, Set<String>>) configs.get(TOPICS_WITH_BAD_REPLICATION_FACTOR_BY_FIXABILITY_CONFIG);
-    if (_badTopicsByFixability == null || _badTopicsByFixability.isEmpty()) {
+    _topicsWithBadReplicationFactorByFixability = (Map<Boolean, Set<String>>) configs.get(TOPICS_WITH_BAD_REPLICATION_FACTOR_BY_FIXABILITY_CONFIG);
+    if (_topicsWithBadReplicationFactorByFixability == null || _topicsWithBadReplicationFactorByFixability.isEmpty()) {
       throw new IllegalArgumentException(String.format("Missing %s for topic replication factor anomaly.",
                                                        TOPICS_WITH_BAD_REPLICATION_FACTOR_BY_FIXABILITY_CONFIG));
     }
@@ -65,8 +65,8 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
     boolean allowCapacityEstimation = config.getBoolean(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
     boolean excludeRecentlyDemotedBrokers = config.getBoolean(SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
     boolean excludeRecentlyRemovedBrokers = config.getBoolean(SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
-    if (_badTopicsByFixability.get(true) != null && !_badTopicsByFixability.get(true).isEmpty()) {
-      Pattern topicRegex = buildTopicRegex(_badTopicsByFixability.get(true));
+    if (_topicsWithBadReplicationFactorByFixability.get(true) != null && !_topicsWithBadReplicationFactorByFixability.get(true).isEmpty()) {
+      Pattern topicRegex = buildTopicRegex(_topicsWithBadReplicationFactorByFixability.get(true));
       _updateTopicConfigurationRunnable = new UpdateTopicConfigurationRunnable(kafkaCruiseControl,
                                                                                Collections.singletonMap(_targetReplicationFactor,
                                                                                                         topicRegex),
@@ -90,13 +90,13 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
     sb.append("{Detected following topics which have at least one partition with replication factor other than ")
       .append(_targetReplicationFactor)
       .append(" : {fixable : [");
-    if (_badTopicsByFixability.get(true) != null && !_badTopicsByFixability.get(true).isEmpty()) {
-      _badTopicsByFixability.get(true).forEach(t -> sb.append(t).append(", "));
+    if (_topicsWithBadReplicationFactorByFixability.get(true) != null && !_topicsWithBadReplicationFactorByFixability.get(true).isEmpty()) {
+      _topicsWithBadReplicationFactorByFixability.get(true).forEach(t -> sb.append(t).append(", "));
       sb.setLength(sb.length() - 2);
     }
     sb.append("], unfixable : [");
-    if (_badTopicsByFixability.get(false) != null && !_badTopicsByFixability.get(false).isEmpty()) {
-      _badTopicsByFixability.get(false).forEach(t -> sb.append(t).append(", "));
+    if (_topicsWithBadReplicationFactorByFixability.get(false) != null && !_topicsWithBadReplicationFactorByFixability.get(false).isEmpty()) {
+      _topicsWithBadReplicationFactorByFixability.get(false).forEach(t -> sb.append(t).append(", "));
       sb.setLength(sb.length() - 2);
     }
     sb.append("]}}");
