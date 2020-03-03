@@ -42,7 +42,7 @@ public class DiskFailures extends KafkaAnomaly {
   @Override
   public boolean fix() throws KafkaCruiseControlException {
     // Fix the cluster by moving replicas off the dead disks.
-    _optimizationResult = new OptimizationResult(_fixOfflineReplicasRunnable.fixOfflineReplicas(), null);
+    _optimizationResult = new OptimizationResult(_fixOfflineReplicasRunnable.computeResult(), null);
     boolean hasProposalsToFix = hasProposalsToFix();
     // Ensure that only the relevant response is cached to avoid memory pressure.
     _optimizationResult.discardIrrelevantAndCacheJsonAndPlaintext();

@@ -45,7 +45,7 @@ public class SlowBrokers extends KafkaMetricAnomaly {
 
     if (_removeBrokersRunnable != null) {
       // Fix the cluster by removing the slow brokers.
-      _optimizationResult = new OptimizationResult(_removeBrokersRunnable.removeBrokers(), null);
+      _optimizationResult = new OptimizationResult(_removeBrokersRunnable.computeResult(), null);
       hasProposalsToFix = hasProposalsToFix();
       // Ensure that only the relevant response is cached to avoid memory pressure.
       _optimizationResult.discardIrrelevantAndCacheJsonAndPlaintext();

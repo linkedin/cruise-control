@@ -35,7 +35,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.eligible
 
 
 /**
- * An abstract class for goals. This class will be extended to crete custom goals for different purposes -- e.g.
+ * An abstract class for goals. This class will be extended to create custom goals for different purposes -- e.g.
  * balancing the distribution of replicas or resources in the cluster.
  */
 public abstract class AbstractGoal implements Goal {

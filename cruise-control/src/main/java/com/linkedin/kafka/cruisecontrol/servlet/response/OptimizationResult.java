@@ -15,7 +15,6 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddedOrRemovedBrokerP
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaOptimizationParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -110,12 +109,7 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
   @Override
   protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
     // Cache relevant response.
-    boolean isVerbose;
-    if (parameters.endPoint() == CruiseControlEndPoint.TOPIC_CONFIGURATION) {
-      isVerbose = ((TopicConfigurationParameters) parameters).topicReplicationFactorChangeParameters().isVerbose();
-    } else {
-      isVerbose = ((KafkaOptimizationParameters) parameters).isVerbose();
-    }
+    boolean isVerbose = ((KafkaOptimizationParameters) parameters).isVerbose();
     _cachedResponse = parameters.json() ? getJSONString(isVerbose) : getPlaintext(isVerbose, getPlaintextPretext(parameters));
     if (parameters.json()) {
       _cachedJSONResponse = _cachedResponse;
