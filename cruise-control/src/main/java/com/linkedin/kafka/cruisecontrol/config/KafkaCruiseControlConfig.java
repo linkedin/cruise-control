@@ -329,7 +329,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       if (JwtSecurityProvider.class == securityProvider) {
         String providerUrl = getString(WebServerConfig.JWT_AUTHENTICATION_PROVIDER_URL_CONFIG);
         if (providerUrl == null || providerUrl.isEmpty()) {
-          throw new ConfigException(String.format("When %s is used, %s must be set",
+          throw new ConfigException(String.format("When %s is used, %s must be set.",
               JwtSecurityProvider.class.getName(), WebServerConfig.JWT_AUTHENTICATION_PROVIDER_URL_CONFIG));
         }
         String certificateFile = getString(WebServerConfig.JWT_AUTH_CERTIFICATE_LOCATION_CONFIG);
