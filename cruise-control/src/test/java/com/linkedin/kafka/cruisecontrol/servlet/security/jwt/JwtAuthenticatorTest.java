@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.security.jwt;
 import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreAuthorizationService;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.http.HttpMethod;
+import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.security.Authenticator;
 import org.eclipse.jetty.security.DefaultIdentityService;
 import org.eclipse.jetty.security.ServerAuthException;
@@ -164,6 +165,8 @@ public class JwtAuthenticatorTest {
     expect(request.getAttribute(JwtAuthenticator.JWT_TOKEN_REQUEST_ATTRIBUTE)).andReturn(tokenAndKeys.token());
 
     HttpServletResponse response = mock(HttpServletResponse.class);
+    response.setStatus(HttpStatus.UNAUTHORIZED_401);
+    expectLastCall().andVoid();
 
     replay(configuration, request, response);
     JwtAuthenticator authenticator = new JwtAuthenticator(TOKEN_PROVIDER, JWT_TOKEN);
@@ -196,6 +199,8 @@ public class JwtAuthenticatorTest {
     expect(request.getCookies()).andReturn(new Cookie[] {new Cookie(JWT_TOKEN, tokenAndKeys2.token())});
 
     HttpServletResponse response = mock(HttpServletResponse.class);
+    response.setStatus(HttpStatus.UNAUTHORIZED_401);
+    expectLastCall().andVoid();
 
     replay(configuration, request, response);
     JwtAuthenticator authenticator = new JwtAuthenticator(TOKEN_PROVIDER, JWT_TOKEN);

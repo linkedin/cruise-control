@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.security.jwt;
 import com.nimbusds.jwt.SignedJWT;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.http.HttpMethod;
+import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.security.ServerAuthException;
 import org.eclipse.jetty.security.UserAuthentication;
 import org.eclipse.jetty.security.authentication.LoginAuthenticator;
@@ -123,6 +124,7 @@ public class JwtAuthenticator extends LoginAuthenticator {
         request.setAttribute(JWT_TOKEN_REQUEST_ATTRIBUTE, serializedJWT);
         UserIdentity identity = login(userName, jwtToken, request);
         if (identity == null) {
+          ((HttpServletResponse) response).setStatus(HttpStatus.UNAUTHORIZED_401);
           return Authentication.SEND_FAILURE;
         } else {
           return new UserAuthentication(getAuthMethod(), identity);
