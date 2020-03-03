@@ -19,6 +19,8 @@ import org.eclipse.jetty.security.authentication.BasicAuthenticator;
 import org.eclipse.jetty.server.UserIdentity;
 import org.eclipse.jetty.util.security.Constraint;
 import org.eclipse.jetty.util.security.Credential;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import javax.security.auth.Subject;
@@ -47,6 +49,16 @@ public class AuthenticationIntegrationTest extends CruiseControlIntegrationTestH
   private static final String ADMIN_ROLE = "admin";
   private static final String CRUISE_CONTROL_STATE_ENDPOINT = "kafkacruisecontrol/" + STATE;
   private static final String ANY_PATH = "/*";
+
+  @Before
+  public void setup() throws Exception {
+    super.start();
+  }
+
+  @After
+  public void teardown() {
+    super.stop();
+  }
 
   @Override
   protected Map<String, Object> withConfigs() {

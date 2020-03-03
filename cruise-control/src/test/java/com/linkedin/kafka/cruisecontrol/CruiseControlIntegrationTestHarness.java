@@ -10,8 +10,6 @@ import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCEmbeddedBroker;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
-import org.junit.After;
-import org.junit.Before;
 
 import java.util.Map;
 import java.util.Properties;
@@ -40,7 +38,6 @@ public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegra
    * Starts up an embedded Cruise Control environment with Zookeeper, Kafka brokers and a Cruise Control instance.
    * @throws Exception
    */
-  @Before
   public void start() throws Exception {
     super.setUp();
     _brokers.values().forEach(CCEmbeddedBroker::startup);
@@ -53,7 +50,6 @@ public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegra
    * Shuts down the CruiseControl instance, Kafka brokers and the Zookeeper instance.
    * @throws Exception
    */
-  @After
   public void stop() {
     if (_app != null) {
       _app.stop();

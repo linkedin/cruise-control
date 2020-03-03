@@ -117,7 +117,7 @@ public class SecurityAndSslConfigTest {
     expect(config.getBoolean(WebServerConfig.WEBSERVER_SSL_ENABLE_CONFIG)).andReturn(false);
     expect(config.getBoolean(WebServerConfig.WEBSERVER_SECURITY_ENABLE_CONFIG)).andReturn(true);
     expect(config.getClass(WebServerConfig.WEBSERVER_SECURITY_PROVIDER_CONFIG)).andReturn((Class) BasicSecurityProvider.class);
-    expect(config.getString(WebServerConfig.BASIC_AUTH_CREDENTIALS_FILE_CONFIG))
+    expect(config.getString(WebServerConfig.WEBSERVER_AUTH_CREDENTIALS_FILE_CONFIG))
         .andReturn(getClass().getClassLoader().getResource("basic-auth.credentials").getPath());
 
     replay(config);

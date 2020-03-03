@@ -23,6 +23,7 @@ import java.util.TreeSet;
 
 import com.linkedin.kafka.cruisecontrol.servlet.security.BasicSecurityProvider;
 import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityProvider;
+import com.linkedin.kafka.cruisecontrol.servlet.security.jwt.JwtSecurityProvider;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import java.util.Map;
@@ -320,13 +321,33 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
         throw new ConfigException(String.format("If webserver security is enabled, a valid security provider must be set " +
             "that is an implementation of %s.", SecurityProvider.class.getName()));
       }
-      String basicAuthCredentialsFile = getString(WebServerConfig.BASIC_AUTH_CREDENTIALS_FILE_CONFIG);
-      if (BasicSecurityProvider.class.isAssignableFrom(securityProvider) && (basicAuthCredentialsFile == null
-          || !Files.exists(Paths.get(basicAuthCredentialsFile)))) {
+      String authCredentialsFile = getString(WebServerConfig.WEBSERVER_AUTH_CREDENTIALS_FILE_CONFIG);
+      if (BasicSecurityProvider.class == securityProvider && !fileExists(authCredentialsFile)) {
         throw new ConfigException(String.format("If %s is used, an existing credentials file must be set.",
             BasicSecurityProvider.class.getName()));
       }
+      if (JwtSecurityProvider.class == securityProvider) {
+        String providerUrl = getString(WebServerConfig.JWT_AUTHENTICATION_PROVIDER_URL_CONFIG);
+        if (providerUrl == null || providerUrl.isEmpty()) {
+          throw new ConfigException(String.format("When %s is used, %s must be set.",
+              JwtSecurityProvider.class.getName(), WebServerConfig.JWT_AUTHENTICATION_PROVIDER_URL_CONFIG));
+        }
+        String certificateFile = getString(WebServerConfig.JWT_AUTH_CERTIFICATE_LOCATION_CONFIG);
+        if (!fileExists(certificateFile)) {
+          throw new ConfigException(String.format("If %s is used, an existing certificate file must be set.",
+              JwtSecurityProvider.class.getName()));
+        }
+        String privilegesFile = getString(WebServerConfig.WEBSERVER_AUTH_CREDENTIALS_FILE_CONFIG);
+        if (!fileExists(privilegesFile)) {
+          throw new ConfigException(String.format("If %s is used, an existing certificate file must be set.",
+              JwtSecurityProvider.class.getName()));
+        }
+      }
     }
+  }
+
+  private boolean fileExists(String file) {
+    return file != null && Files.exists(Paths.get(file));
   }
 
   public KafkaCruiseControlConfig(Map<?, ?> originals) {

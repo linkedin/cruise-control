@@ -22,7 +22,7 @@ public class BasicSecurityProvider extends DefaultRoleSecurityProvider {
   @Override
   public void init(KafkaCruiseControlConfig config) {
     super.init(config);
-    this._userCredentialsFile = config.getString(WebServerConfig.BASIC_AUTH_CREDENTIALS_FILE_CONFIG);
+    this._userCredentialsFile = config.getString(WebServerConfig.WEBSERVER_AUTH_CREDENTIALS_FILE_CONFIG);
   }
 
   @Override

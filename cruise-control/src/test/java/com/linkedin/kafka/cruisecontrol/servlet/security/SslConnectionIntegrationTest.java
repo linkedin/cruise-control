@@ -6,6 +6,8 @@ package com.linkedin.kafka.cruisecontrol.servlet.security;
 
 import com.linkedin.kafka.cruisecontrol.CruiseControlIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -21,13 +23,24 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.STATE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class SslConnectionIntegrationTest extends CruiseControlIntegrationTestHarness {
 
-  private static final String CRUISE_CONTROL_STATE_ENDPOINT = "kafkacruisecontrol/state";
+  private static final String CRUISE_CONTROL_STATE_ENDPOINT = "kafkacruisecontrol/" + STATE;
   public static final String HTTPS = "https";
+
+  @Before
+  public void setup() throws Exception {
+    super.start();
+  }
+
+  @After
+  public void teardown() {
+    super.stop();
+  }
 
   @Override
   protected Map<String, Object> withConfigs() {

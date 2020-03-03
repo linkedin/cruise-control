@@ -220,6 +220,7 @@ project(':cruise-control') {
     compile 'com.google.code.gson:gson:2.8.6'
     compile 'org.eclipse.jetty:jetty-server:9.4.26.v20200117'
     compile 'io.dropwizard.metrics:metrics-core:3.2.6'
+    compile 'com.nimbusds:nimbus-jose-jwt:8.5'
     compile group: 'io.swagger.parser.v3', name: 'swagger-parser', version: '2.0.18'
     compile group: 'io.github.classgraph', name: 'classgraph', version: '4.8.65'
 
@@ -230,6 +231,7 @@ project(':cruise-control') {
     testCompile "org.apache.kafka:kafka_2.11:$kafkaVersion:test"
     testCompile "org.apache.kafka:kafka-clients:$kafkaVersion:test"
     testCompile 'commons-io:commons-io:2.6'
+    testCompile 'org.bouncycastle:bcpkix-jdk15on:1.64'
   }
 
   publishing {

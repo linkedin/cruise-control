@@ -7,6 +7,8 @@ package com.linkedin.kafka.cruisecontrol.servlet.security;
 import com.linkedin.kafka.cruisecontrol.CruiseControlIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import org.eclipse.jetty.http.HttpHeader;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import javax.servlet.http.HttpServletResponse;
@@ -29,11 +31,21 @@ public class BasicAuthenticationIntegrationTest extends CruiseControlIntegration
   private static final String CRUISE_CONTROL_STATE_ENDPOINT = "kafkacruisecontrol/" + STATE;
   private static final String CRUISE_CONTROL_PAUSE_SAMPLING_ENDPOINT = "kafkacruisecontrol/" + STOP_PROPOSAL_EXECUTION;
 
+  @Before
+  public void setup() throws Exception {
+    super.start();
+  }
+
+  @After
+  public void teardown() {
+    super.stop();
+  }
+
   @Override
   protected Map<String, Object> withConfigs() {
     Map<String, Object> configs = new HashMap<>();
     configs.put(WebServerConfig.WEBSERVER_SECURITY_ENABLE_CONFIG, true);
-    configs.put(WebServerConfig.BASIC_AUTH_CREDENTIALS_FILE_CONFIG,
+    configs.put(WebServerConfig.WEBSERVER_AUTH_CREDENTIALS_FILE_CONFIG,
         Objects.requireNonNull(this.getClass().getClassLoader().getResource("basic-auth.credentials")).getPath());
     return configs;
   }
