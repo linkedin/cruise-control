@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.UpdateTop
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
@@ -90,15 +91,12 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
     sb.append("{Detected following topics which have at least one partition with replication factor other than ")
       .append(_targetReplicationFactor)
       .append(" : {fixable : [");
-    if (_topicsWithBadReplicationFactorByFixability.get(true) != null && !_topicsWithBadReplicationFactorByFixability.get(true).isEmpty()) {
-      _topicsWithBadReplicationFactorByFixability.get(true).forEach(t -> sb.append(t).append(", "));
-      sb.setLength(sb.length() - 2);
-    }
-    sb.append("], unfixable : [");
-    if (_topicsWithBadReplicationFactorByFixability.get(false) != null && !_topicsWithBadReplicationFactorByFixability.get(false).isEmpty()) {
-      _topicsWithBadReplicationFactorByFixability.get(false).forEach(t -> sb.append(t).append(", "));
-      sb.setLength(sb.length() - 2);
-    }
+    StringJoiner joiner = new StringJoiner(",");
+    _topicsWithBadReplicationFactorByFixability.getOrDefault(true, Collections.emptySet()).forEach(joiner::add);
+    sb.append(joiner.toString());
+    joiner = new StringJoiner(",");
+    _topicsWithBadReplicationFactorByFixability.getOrDefault(false, Collections.emptySet()).forEach(joiner::add);
+    sb.append(joiner.toString());
     sb.append("]}}");
     return sb.toString();
   }

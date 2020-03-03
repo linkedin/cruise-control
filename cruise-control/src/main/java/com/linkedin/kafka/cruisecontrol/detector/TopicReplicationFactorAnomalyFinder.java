@@ -8,13 +8,11 @@ import com.linkedin.cruisecontrol.common.config.ConfigDef;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -66,7 +64,7 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
   public static final short DEFAULT_TOPIC_REPLICATION_FACTOR_MARGIN = 1;
   public static final String TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS_CONFIG = "topic.min.isr.record.retention.time.ms";
   public static final long DEFAULT_TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS = 12 * 60 * 60 * 1000;
-  private static final long METADATA_FETCH_TIMEOUT_MS = 100000L;
+  private static final long DESCRIBE_TOPIC_CONFIG_TIMEOUT_MS = 100000L;
   private KafkaCruiseControl _kafkaCruiseControl;
   private short _targetReplicationFactor;
   private Pattern _topicExcludedFromCheck;
@@ -95,19 +93,7 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
     refreshTopicMinISRCache();
     if (!topicsWithBadReplicationFactor.isEmpty()) {
       maybeRetrieveAndCacheTopicMinISR(topicsWithBadReplicationFactor);
-      Map<Boolean, Set<String>> topicsByFixability = new HashMap<>(2);
-      for (String topic : topicsWithBadReplicationFactor) {
-        if (_cachedTopicMinISR.containsKey(topic)) {
-          short topicMinISR = _cachedTopicMinISR.get(topic).minISR();
-          if (_targetReplicationFactor < topicMinISR + _topicReplicationFactorMargin) {
-            topicsByFixability.putIfAbsent(false, new HashSet<>());
-            topicsByFixability.get(false).add(topic);
-          } else {
-            topicsByFixability.putIfAbsent(true, new HashSet<>());
-            topicsByFixability.get(true).add(topic);
-          }
-        }
-      }
+      Map<Boolean, Set<String>> topicsByFixability = populateTopicFixability(topicsWithBadReplicationFactor);
       return Collections.singleton(createTopicReplicationFactorAnomaly(topicsByFixability,
                                                                        _targetReplicationFactor));
     }
@@ -119,19 +105,47 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
    * @param topicsToCheck Set of topics to check.
    */
   private void maybeRetrieveAndCacheTopicMinISR(Set<String> topicsToCheck) {
-    List<ConfigResource> topicResourcesToCheck = new ArrayList<>(topicsToCheck.size());
+    Set<ConfigResource> topicResourcesToCheck = new HashSet<>(topicsToCheck.size());
     topicsToCheck.stream().filter(t -> !_cachedTopicMinISR.containsKey(t))
                           .forEach(t -> topicResourcesToCheck.add(new ConfigResource(ConfigResource.Type.TOPIC, t)));
+    if (topicResourcesToCheck.isEmpty()) {
+      return;
+    }
     for (Map.Entry<ConfigResource, KafkaFuture<Config>> entry : _adminClient.describeConfigs(topicResourcesToCheck).values().entrySet()) {
       try {
-        short topicMinISR = Short.parseShort(entry.getValue().get(METADATA_FETCH_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        short topicMinISR = Short.parseShort(entry.getValue().get(DESCRIBE_TOPIC_CONFIG_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                                                   .get(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG).value());
         _cachedTopicMinISR.put(entry.getKey().name(), new TopicMinISREntry(topicMinISR, System.currentTimeMillis()));
       } catch (TimeoutException | InterruptedException | ExecutionException e) {
-        LOG.warn("Skip attempt to fix topic {}'s replication factor due to unable to retrieve its minISR config.",
+        LOG.warn("Skip attempt to fix replication factor of topic {} due to unable to retrieve its minISR config.",
                  entry.getKey().name());
       }
     }
+  }
+
+  /**
+   * Scan through topics with bad replication factor to check whether the topic is fixable or not.
+   * One topic is fixable if the target replication factor is no less than the topic's minISR config plus topic replication
+   * factor margin.
+   *
+   * @param topicsWithBadReplicationFactor Set of topics with bad replication factor.
+   * @return Topics with bad replication factor by fixability.
+   */
+  private Map<Boolean, Set<String>> populateTopicFixability(Set<String> topicsWithBadReplicationFactor) {
+    Map<Boolean, Set<String>> topicsByFixability = new HashMap<>(2);
+    for (String topic : topicsWithBadReplicationFactor) {
+      if (_cachedTopicMinISR.containsKey(topic)) {
+        short topicMinISR = _cachedTopicMinISR.get(topic).minISR();
+        if (_targetReplicationFactor < topicMinISR + _topicReplicationFactorMargin) {
+          topicsByFixability.putIfAbsent(false, new HashSet<>());
+          topicsByFixability.get(false).add(topic);
+        } else {
+          topicsByFixability.putIfAbsent(true, new HashSet<>());
+          topicsByFixability.get(true).add(topic);
+        }
+      }
+    }
+    return topicsByFixability;
   }
 
   /**
@@ -168,9 +182,13 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
     }
     try {
       _targetReplicationFactor = Short.parseShort((String) configs.get(SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG));
+      if (_targetReplicationFactor <= 0) {
+        throw new IllegalArgumentException(String.format("%s config of replication factor anomaly finder should be set to positive,"
+            + " provided %d.", SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG, _targetReplicationFactor));
+      }
     } catch (NumberFormatException e) {
       throw new IllegalArgumentException(SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG +
-                                         "is missing or misconfigured for topic replication factor anomaly finder.");
+                                         " is missing or misconfigured for topic replication factor anomaly finder.");
     }
     String topicExcludedFromCheck = (String) configs.get(TOPIC_EXCLUDED_FROM_REPLICATION_FACTOR_CHECK);
     _topicExcludedFromCheck = Pattern.compile(topicExcludedFromCheck == null ? DEFAULT_TOPIC_EXCLUDED_FROM_REPLICATION_FACTOR_CHECK
@@ -189,11 +207,19 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
     }
     try {
       _topicReplicationFactorMargin = Short.parseShort((String) configs.get(TOPIC_REPLICATION_FACTOR_MARGIN_CONFIG));
+      if (_topicReplicationFactorMargin < 0) {
+        throw new IllegalArgumentException(String.format("%s config of replication factor anomaly finder should not be set to negative,"
+            + " provided %d.", TOPIC_REPLICATION_FACTOR_MARGIN_CONFIG, _topicReplicationFactorMargin));
+      }
     } catch (NumberFormatException e) {
       _topicReplicationFactorMargin = DEFAULT_TOPIC_REPLICATION_FACTOR_MARGIN;
     }
     try {
       _topicMinISRRecordRetentionTimeMs = Long.parseLong((String) configs.get(TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS_CONFIG));
+      if (_topicMinISRRecordRetentionTimeMs <= 0) {
+        throw new IllegalArgumentException(String.format("%s config of replication factor anomaly finder should be set to positive,"
+            + " provided %d.", TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS_CONFIG, _topicMinISRRecordRetentionTimeMs));
+      }
     } catch (NumberFormatException e) {
       _topicMinISRRecordRetentionTimeMs = DEFAULT_TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS;
     }
