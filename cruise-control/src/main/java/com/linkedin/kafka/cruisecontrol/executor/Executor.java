@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
+import com.linkedin.kafka.cruisecontrol.exception.OngoingExecutionException;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
@@ -403,7 +404,7 @@ public class Executor {
                                             Long replicationThrottle,
                                             boolean isTriggeredByUserRequest,
                                             String uuid,
-                                            Supplier<String> reasonSupplier) {
+                                            Supplier<String> reasonSupplier) throws OngoingExecutionException {
     initProposalExecution(proposals, unthrottledBrokers, loadMonitor, requestedInterBrokerPartitionMovementConcurrency,
                           requestedIntraBrokerPartitionMovementConcurrency, requestedLeadershipMovementConcurrency,
                           requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid, reasonSupplier);
@@ -419,9 +420,9 @@ public class Executor {
                                                   Long requestedExecutionProgressCheckIntervalMs,
                                                   ReplicaMovementStrategy replicaMovementStrategy,
                                                   String uuid,
-                                                  Supplier<String> reasonSupplier) {
+                                                  Supplier<String> reasonSupplier) throws OngoingExecutionException {
     if (_hasOngoingExecution) {
-      throw new IllegalStateException("Cannot execute new proposals while there is an ongoing execution.");
+      throw new OngoingExecutionException("Cannot execute new proposals while there is an ongoing execution.");
     }
 
     if (loadMonitor == null) {
@@ -469,7 +470,7 @@ public class Executor {
                                                   Long replicationThrottle,
                                                   boolean isTriggeredByUserRequest,
                                                   String uuid,
-                                                  Supplier<String> reasonSupplier) {
+                                                  Supplier<String> reasonSupplier) throws OngoingExecutionException {
     initProposalExecution(proposals, demotedBrokers, loadMonitor, concurrentSwaps, 0, requestedLeadershipMovementConcurrency,
                           requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid, reasonSupplier);
     startExecution(loadMonitor, demotedBrokers, null, replicationThrottle, isTriggeredByUserRequest);
@@ -551,7 +552,7 @@ public class Executor {
                               Collection<Integer> demotedBrokers,
                               Collection<Integer> removedBrokers,
                               Long replicationThrottle,
-                              boolean isTriggeredByUserRequest) {
+                              boolean isTriggeredByUserRequest) throws OngoingExecutionException {
     _executionStoppedByUser.set(false);
     sanityCheckOngoingMovement();
     _hasOngoingExecution = true;
@@ -571,19 +572,19 @@ public class Executor {
   /**
    * Sanity check whether there are ongoing (1) inter-broker or intra-broker replica movements or (2) leadership movements.
    */
-  private void sanityCheckOngoingMovement() {
+  private void sanityCheckOngoingMovement() throws OngoingExecutionException {
     // Note that in case there is an ongoing partition reassignment, we do not unpause metric sampling.
     if (hasOngoingPartitionReassignments()) {
       processOngoingMovementSanityCheckFailure();
-      throw new IllegalStateException("There are ongoing inter-broker partition movements.");
+      throw new OngoingExecutionException("There are ongoing inter-broker partition movements.");
     } else if (isOngoingIntraBrokerReplicaMovement(_metadataClient.cluster().nodes().stream().mapToInt(Node::id).boxed()
                                                                   .collect(Collectors.toSet()),
                                                    _adminClient, _config)) {
       processOngoingMovementSanityCheckFailure();
-      throw new IllegalStateException("There are ongoing intra-broker partition movements.");
+      throw new OngoingExecutionException("There are ongoing intra-broker partition movements.");
     } else if (hasOngoingLeaderElection()) {
       processOngoingMovementSanityCheckFailure();
-      throw new IllegalStateException("There are ongoing leadership movements.");
+      throw new OngoingExecutionException("There are ongoing leadership movements.");
     }
   }
 

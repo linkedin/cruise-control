@@ -21,6 +21,7 @@ import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorState;
 import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolutionException;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
+import com.linkedin.kafka.cruisecontrol.exception.OngoingExecutionException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
@@ -553,7 +554,7 @@ public class KafkaCruiseControl {
                                Long replicationThrottle,
                                boolean isTriggeredByUserRequest,
                                String uuid,
-                               Supplier<String> reasonSupplier) {
+                               Supplier<String> reasonSupplier) throws OngoingExecutionException {
     if (hasProposalsToExecute(proposals, uuid)) {
       // Set the execution mode and start execution.
       _executor.setExecutionMode(isKafkaAssignerMode);
@@ -595,7 +596,7 @@ public class KafkaCruiseControl {
                              Long replicationThrottle,
                              boolean isTriggeredByUserRequest,
                              String uuid,
-                             Supplier<String> reasonSupplier) {
+                             Supplier<String> reasonSupplier) throws OngoingExecutionException {
     if (hasProposalsToExecute(proposals, uuid)) {
       // Set the execution mode and start execution.
       _executor.setExecutionMode(isKafkaAssignerMode);
@@ -632,7 +633,7 @@ public class KafkaCruiseControl {
                               Long replicationThrottle,
                               boolean isTriggeredByUserRequest,
                               String uuid,
-                              Supplier<String> reasonSupplier) {
+                              Supplier<String> reasonSupplier) throws OngoingExecutionException {
     if (hasProposalsToExecute(proposals, uuid)) {
       // (1) Kafka Assigner mode is irrelevant for demoting.
       // (2) Ensure that replica swaps within partitions, which are prerequisites for broker demotion and does not trigger data move,

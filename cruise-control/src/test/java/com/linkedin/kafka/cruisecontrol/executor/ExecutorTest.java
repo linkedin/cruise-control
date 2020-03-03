@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
+import com.linkedin.kafka.cruisecontrol.exception.OngoingExecutionException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
@@ -84,7 +85,7 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
   }
 
   @Test
-  public void testBalanceMovement() throws InterruptedException {
+  public void testBalanceMovement() throws InterruptedException, OngoingExecutionException {
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
                                                                               "ExecutorTestMetricGroup",
                                                                               "BasicBalanceMovement",
@@ -138,7 +139,7 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
   }
 
   @Test
-  public void testTimeoutAndForceExecutionStop() throws InterruptedException {
+  public void testTimeoutAndForceExecutionStop() throws InterruptedException, OngoingExecutionException {
     createTopics();
     // The proposal tries to move the leader. We fake the replica list to be unchanged so there is no replica
     // movement, but only leader movement.
@@ -328,7 +329,8 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
 
   private void executeAndVerifyProposals(KafkaZkClient kafkaZkClient,
                                          Collection<ExecutionProposal> proposalsToExecute,
-                                         Collection<ExecutionProposal> proposalsToCheck) {
+                                         Collection<ExecutionProposal> proposalsToCheck)
+      throws OngoingExecutionException {
     KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
     UserTaskManager.UserTaskInfo mockUserTaskInfo = EasyMock.mock(UserTaskManager.UserTaskInfo.class);
     UserTaskManager mockUserTaskManager = EasyMock.mock(UserTaskManager.class);
