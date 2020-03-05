@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
@@ -257,6 +258,72 @@ public class RunnableUtils {
       }
     }
     step.done();
+  }
+
+  /**
+   * Compute optimization options, update recently removed brokers (if not dryRun) and return the computed result.
+   *
+   * @param clusterModel The state of the cluster.
+   * @param isTriggeredByGoalViolation True if proposals is triggered by goal violation, false otherwise.
+   * @param kafkaCruiseControl The Kafka Cruise Control instance.
+   * @param brokersToDropFromRecentlyRemoved Brokers to drop from recently removed brokers. Modifies the actual values if not dryRun.
+   * @param dryRun True if dryrun, false otherwise.
+   * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
+   * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
+   * @param excludedTopicsPattern The topics that should be excluded from the optimization action.
+   * @param requestedDestinationBrokerIds Explicitly requested destination broker Ids to limit the replica movement to
+   *                                      these brokers (if empty, no explicit filter is enforced -- cannot be null).
+   * @param onlyMoveImmigrantReplicas True to move only immigrant replicas, false otherwise.
+   * @return Computed optimization options.
+   */
+  public static OptimizationOptions computeOptimizationOptions(ClusterModel clusterModel,
+                                                               boolean isTriggeredByGoalViolation,
+                                                               KafkaCruiseControl kafkaCruiseControl,
+                                                               Set<Integer> brokersToDropFromRecentlyRemoved,
+                                                               boolean dryRun,
+                                                               boolean excludeRecentlyDemotedBrokers,
+                                                               boolean excludeRecentlyRemovedBrokers,
+                                                               Pattern excludedTopicsPattern,
+                                                               Set<Integer> requestedDestinationBrokerIds,
+                                                               boolean onlyMoveImmigrantReplicas) {
+
+    // Update recently removed brokers.
+    Set<Integer> intendedRecentlyRemovedBrokers = maybeDropRecentlyRemovedBrokers(kafkaCruiseControl,
+                                                                                  brokersToDropFromRecentlyRemoved,
+                                                                                  dryRun);
+
+    Set<Integer> excludedBrokersForLeadership = excludeRecentlyDemotedBrokers ? kafkaCruiseControl.executorState().recentlyDemotedBrokers()
+                                                                              : Collections.emptySet();
+
+    Set<Integer> excludedBrokersForReplicaMove = excludeRecentlyRemovedBrokers ? intendedRecentlyRemovedBrokers
+                                                                               : Collections.emptySet();
+
+    Set<String> excludedTopics = kafkaCruiseControl.excludedTopics(clusterModel, excludedTopicsPattern);
+    LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
+    return new OptimizationOptions(excludedTopics, excludedBrokersForLeadership, excludedBrokersForReplicaMove,
+                                   isTriggeredByGoalViolation, requestedDestinationBrokerIds, onlyMoveImmigrantReplicas);
+  }
+
+
+  /**
+   * Update recently removed brokers with the given brokers to drop if the given dryrun is false.
+   *
+   * @param kafkaCruiseControl The Kafka Cruise Control instance.
+   * @param brokersToDropFromRecentlyRemoved Brokers to drop from recently removed brokers (if exist).
+   * @param dryRun True if dryrun, false otherwise.
+   * @return Brokers intended to be in recently removed brokers.
+   */
+  private static Set<Integer> maybeDropRecentlyRemovedBrokers(KafkaCruiseControl kafkaCruiseControl,
+                                                              Set<Integer> brokersToDropFromRecentlyRemoved,
+                                                              boolean dryRun) {
+    if (!dryRun) {
+      kafkaCruiseControl.dropRecentBrokers(brokersToDropFromRecentlyRemoved, true);
+      return kafkaCruiseControl.executorState().recentlyRemovedBrokers();
+    } else {
+      Set<Integer> recentlyRemoved = new HashSet<>(kafkaCruiseControl.executorState().recentlyRemovedBrokers());
+      recentlyRemoved.removeAll(brokersToDropFromRecentlyRemoved);
+      return recentlyRemoved;
+    }
   }
 
   /**

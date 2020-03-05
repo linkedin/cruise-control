@@ -12,7 +12,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGo
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
-import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -24,8 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ensureDisjoint;
 import static com.linkedin.kafka.cruisecontrol.model.Disk.State.DEMOTED;
@@ -36,6 +33,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_SKIP_URP_DEMOTION;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXCLUDE_FOLLOWER_DEMOTION;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_STOP_ONGOING_EXECUTION;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.computeOptimizationOptions;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.maybeStopOngoingExecutionToModifyAndWait;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL;
 
@@ -44,7 +42,6 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  * The async runnable for broker demotion.
  */
 public class DemoteBrokerRunnable extends OperationRunnable {
-  private static final Logger LOG = LoggerFactory.getLogger(DemoteBrokerRunnable.class);
   protected final Set<Integer> _brokerIds;
   protected final boolean _dryRun;
   protected final boolean _allowCapacityEstimation;
@@ -170,18 +167,17 @@ public class DemoteBrokerRunnable extends OperationRunnable {
       if (!clusterModel.isClusterAlive()) {
         throw new IllegalArgumentException("All brokers are dead in the cluster.");
       }
-      ExecutorState executorState = _kafkaCruiseControl.executorState();
-      Set<Integer> excludedBrokersForLeadership = _excludeRecentlyDemotedBrokers ? executorState.recentlyDemotedBrokers()
-                                                                                : Collections.emptySet();
 
-      Set<String> excludedTopics = _kafkaCruiseControl.excludedTopics(clusterModel, null);
-      LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
-      OptimizationOptions optimizationOptions = new OptimizationOptions(excludedTopics,
-                                                                        excludedBrokersForLeadership,
-                                                                        Collections.emptySet(),
-                                                                        false,
-                                                                        Collections.emptySet(),
-                                                                        false);
+      OptimizationOptions optimizationOptions = computeOptimizationOptions(clusterModel,
+                                                                           false,
+                                                                           _kafkaCruiseControl,
+                                                                           Collections.emptySet(),
+                                                                           _dryRun,
+                                                                           _excludeRecentlyDemotedBrokers,
+                                                                           false,
+                                                                           null,
+                                                                           Collections.emptySet(),
+                                                                           false);
 
       OptimizerResult result = _kafkaCruiseControl.optimizations(clusterModel, goalsByPriority, operationProgress, null, optimizationOptions);
       if (!_dryRun) {

@@ -11,7 +11,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
-import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
@@ -32,13 +31,12 @@ import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_SKIP_RACK_AWARENESS_CHECK;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_CONCURRENT_MOVEMENTS;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.computeOptimizationOptions;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.populateRackInfoForReplicationFactorChange;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.partitionWithOfflineReplicas;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.topicsForReplicationFactorChange;
@@ -70,7 +68,6 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
  * replicas from the partition. Replicas are removed following the reverse order of position in replica list of partition.
  */
 public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable {
-  private static final Logger LOG = LoggerFactory.getLogger(UpdateTopicConfigurationRunnable.class);
   protected final String _uuid;
   protected final Map<Short, Pattern> _topicPatternByReplicationFactor;
   protected final boolean _skipRackAwarenessCheck;
@@ -177,31 +174,27 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
   protected OptimizerResult workWithClusterModel() throws KafkaCruiseControlException, TimeoutException, NotEnoughValidWindowsException {
     Map<String, List<Integer>> brokersByRack = new HashMap<>();
     Map<Integer, String> rackByBroker = new HashMap<>();
-    ExecutorState executorState = _kafkaCruiseControl.executorState();
-    Set<Integer> excludedBrokersForLeadership = _excludeRecentlyDemotedBrokers ? executorState.recentlyDemotedBrokers()
-                                                                               : Collections.emptySet();
-    Set<Integer> excludedBrokersForReplicaMove = _excludeRecentlyRemovedBrokers ? executorState.recentlyRemovedBrokers()
-                                                                                : Collections.emptySet();
-    populateRackInfoForReplicationFactorChange(_topicsToChangeByReplicationFactor, _cluster, excludedBrokersForReplicaMove,
-                                               _skipRackAwarenessCheck, brokersByRack, rackByBroker);
+
     ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(_combinedCompletenessRequirements, _allowCapacityEstimation, _operationProgress);
-    Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = clusterModel.getReplicaDistribution();
-
-    // First try to add and remove replicas to achieve the replication factor for topics of interest.
-    clusterModel.createOrDeleteReplicas(_topicsToChangeByReplicationFactor, brokersByRack, rackByBroker, _cluster);
-
     if (!clusterModel.isClusterAlive()) {
       throw new IllegalArgumentException("All brokers are dead in the cluster.");
     }
 
-    Set<String> excludedTopics = _kafkaCruiseControl.excludedTopics(clusterModel, _excludedTopics);
-    LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
-    OptimizationOptions optimizationOptions = new OptimizationOptions(excludedTopics,
-                                                                      excludedBrokersForLeadership,
-                                                                      excludedBrokersForReplicaMove,
-                                                                      false,
-                                                                      Collections.emptySet(),
-                                                                      true);
+    OptimizationOptions optimizationOptions = computeOptimizationOptions(clusterModel,
+                                                                         false,
+                                                                         _kafkaCruiseControl,
+                                                                         Collections.emptySet(),
+                                                                         _dryRun,
+                                                                         _excludeRecentlyDemotedBrokers,
+                                                                         _excludeRecentlyRemovedBrokers,
+                                                                         _excludedTopics,
+                                                                         Collections.emptySet(),
+                                                                         true);
+    populateRackInfoForReplicationFactorChange(_topicsToChangeByReplicationFactor, _cluster, optimizationOptions.excludedBrokersForReplicaMove(),
+                                               _skipRackAwarenessCheck, brokersByRack, rackByBroker);
+    Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = clusterModel.getReplicaDistribution();
+    // First try to add and remove replicas to achieve the replication factor for topics of interest.
+    clusterModel.createOrDeleteReplicas(_topicsToChangeByReplicationFactor, brokersByRack, rackByBroker, _cluster);
     // Then further optimize the location of newly added replicas based on goals. Here we restrict the replica movement to
     // only considering newly added replicas, in order to minimize the total bytes to move.
     OptimizerResult result = _kafkaCruiseControl.optimizations(clusterModel, _goalsByPriority, _operationProgress,
