@@ -1,24 +1,38 @@
 ## A NOTE ON USING UUID/COOKIES
-**For all the requests, make sure that you interact with endpoints using UUID or cookies, explicitly.** Cruise Control requests have been redesigned as async calls to avoid blocking. Hence, if you don't use UUID nor cookies, you won't be able to see the server response if it takes longer than a predefined time (default: `10 seconds`). You can retrieve the response within a predefined time(default: `6 hours`) using the UUID returned in initial response; or you can reuse the session to get response if the session has not expired (default: `1 minutes`). If you do not specify UUID or cookie in subsequent requests, such requests will each create a new session and excessive number of ongoing requests will make CC unable to create a new session due to hitting the maximum number of active user task limit. `GET` requests that are sent via a web browser typically use cookies by default; hence, you will preserve the session upon multiple calls to the same endpoint via a web browser.
+**Please ensure proper use of UUIDs or cookies to interact with async endpoints.**
+Selected Cruise Control (CC) endpoints accept async calls to avoid blocking more than a configured period of time 
+(via `webserver.request.maxBlockTimeMs` configuration).
+If the server-side processing of such requests takes more than this configured time, along with a with `SC_ACCEPTED` code, 
+CC returns a progress response.
+This response contains both (1) a sessionId, and (2) a UUID corresponding to the client cookie and the request, respectively.
+The completed response of an in-progress request can be retrieved within a predefined time.
+Using cookies, this response can be retrieved before the timeout is configured via `webserver.session.maxExpiryTimeMs`.
+Using the UUID, the timout is configured via relevant completed user task retention time configuration 
+(see `completed.kafka.monitor.user.task.retention.time.ms`, `completed.cruise.control.monitor.user.task.retention.time.ms`,
+`completed.kafka.admin.user.task.retention.time.ms`, `completed.cruise.control.admin.user.task.retention.time.ms`,
+and `completed.user.task.retention.time.ms` ).
 
 * Here is a quick recap of how to use **UUID** with requests using `cURL`:
-1. Create a cookie associated with a new request
+1. Create a new request
 
- `curl -vv -X POST -c /tmp/mycookie-jar.txt "http://CRUISE_CONTROL_HOST:2540/kafkacruisecontrol/remove_broker?brokerid=1234&dryrun=false"`
+ `curl -vv -X POST "http://CRUISE_CONTROL_HOST:9090/kafkacruisecontrol/remove_broker?brokerid=1234&dryrun=false"`
 
-2. Record the User-Task-ID in response, e.g. `User-Task-ID: 5ce7c299-53b3-48b6-b72e-6623e25bd9a8`
-3. Specifying the User-Task-ID in request that has not completed
+2. Retrieve the `User-Task-ID` from response header, e.g. `User-Task-ID: 5ce7c299-53b3-48b6-b72e-6623e25bd9a8`
+3. Specifying the `User-Task-ID` in request that has not completed
 
- `curl -vv -X POST -H "User-Task-ID: 5ce7c299-53b3-48b6-b72e-6623e25bd9a8" "http://CRUISE_CONTROL_HOST:2540/kafkacruisecontrol/remove_broker?brokerid=1234&dryrun=false"`
+ `curl -vv -X POST -H "User-Task-ID: 5ce7c299-53b3-48b6-b72e-6623e25bd9a8" "http://CRUISE_CONTROL_HOST:9090/kafkacruisecontrol/remove_broker?brokerid=1234&dryrun=false"`
 
 * Here is a quick recap of how to use **cookies** with requests using `cURL`:
 1. Create a cookie associated with a new request
 
- `curl -X POST -c /tmp/mycookie-jar.txt "http://CRUISE_CONTROL_HOST:2540/kafkacruisecontrol/remove_broker?brokerid=1234&dryrun=false"`
+ `curl -X POST -c /tmp/mycookie-jar.txt "http://CRUISE_CONTROL_HOST:9090/kafkacruisecontrol/remove_broker?brokerid=1234&dryrun=false"`
 
 2. Use an existing cookie from the created file for a request that has not completed
 
- `curl -X POST -b /tmp/mycookie-jar.txt "http://CRUISE_CONTROL_HOST:2540/kafkacruisecontrol/remove_broker?brokerid=1234&dryrun=false"`
+ `curl -X POST -b /tmp/mycookie-jar.txt "http://CRUISE_CONTROL_HOST:9090/kafkacruisecontrol/remove_broker?brokerid=1234&dryrun=false"`
+
+* Note that `User-Task-Id` and is applicable for an entire `URL`, including its parameters.
+Hence, the same endpoint with different parameters would create and use a different `User-Task-Id`.
 
 ## GET REQUESTS
 The GET requests in Kafka Cruise Control REST API are for read only operations, i.e. the operations that do not have any external impacts. The GET requests include the following operations:
