@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDisk
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.async.progress.WaitingForOngoingExecutionToStop;
+import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -261,12 +262,12 @@ public class RunnableUtils {
   }
 
   /**
-   * Compute optimization options, update recently removed brokers (if not dryRun) and return the computed result.
+   * Compute optimization options, update recently removed and demoted brokers (if not dryRun) and return the computed result.
    *
    * @param clusterModel The state of the cluster.
    * @param isTriggeredByGoalViolation True if proposals is triggered by goal violation, false otherwise.
    * @param kafkaCruiseControl The Kafka Cruise Control instance.
-   * @param brokersToDropFromRecentlyRemoved Brokers to drop from recently removed brokers. Modifies the actual values if not dryRun.
+   * @param brokersToDrop Brokers to drop from recently removed and demoted brokers. Modifies the actual values if not dryRun.
    * @param dryRun True if dryrun, false otherwise.
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
@@ -279,7 +280,7 @@ public class RunnableUtils {
   public static OptimizationOptions computeOptimizationOptions(ClusterModel clusterModel,
                                                                boolean isTriggeredByGoalViolation,
                                                                KafkaCruiseControl kafkaCruiseControl,
-                                                               Set<Integer> brokersToDropFromRecentlyRemoved,
+                                                               Set<Integer> brokersToDrop,
                                                                boolean dryRun,
                                                                boolean excludeRecentlyDemotedBrokers,
                                                                boolean excludeRecentlyRemovedBrokers,
@@ -287,15 +288,13 @@ public class RunnableUtils {
                                                                Set<Integer> requestedDestinationBrokerIds,
                                                                boolean onlyMoveImmigrantReplicas) {
 
-    // Update recently removed brokers.
-    Set<Integer> intendedRecentlyRemovedBrokers = maybeDropRecentlyRemovedBrokers(kafkaCruiseControl,
-                                                                                  brokersToDropFromRecentlyRemoved,
-                                                                                  dryRun);
+    // Update recently removed and demoted brokers.
+    ExcludedBrokers excludedBrokers = maybeDropFromRecentBrokers(kafkaCruiseControl, brokersToDrop, dryRun);
 
-    Set<Integer> excludedBrokersForLeadership = excludeRecentlyDemotedBrokers ? kafkaCruiseControl.executorState().recentlyDemotedBrokers()
+    Set<Integer> excludedBrokersForLeadership = excludeRecentlyDemotedBrokers ? excludedBrokers.recentlyDemotedBrokers()
                                                                               : Collections.emptySet();
 
-    Set<Integer> excludedBrokersForReplicaMove = excludeRecentlyRemovedBrokers ? intendedRecentlyRemovedBrokers
+    Set<Integer> excludedBrokersForReplicaMove = excludeRecentlyRemovedBrokers ? excludedBrokers.recentlyRemovedBrokers()
                                                                                : Collections.emptySet();
 
     Set<String> excludedTopics = kafkaCruiseControl.excludedTopics(clusterModel, excludedTopicsPattern);
@@ -306,23 +305,27 @@ public class RunnableUtils {
 
 
   /**
-   * Update recently removed brokers with the given brokers to drop if the given dryrun is false.
+   * Update recently removed and demoted brokers with the given brokers to drop if the given dryrun is false.
    *
    * @param kafkaCruiseControl The Kafka Cruise Control instance.
-   * @param brokersToDropFromRecentlyRemoved Brokers to drop from recently removed brokers (if exist).
+   * @param brokersToDrop Brokers to drop from recently removed and demoted brokers (if exist).
    * @param dryRun True if dryrun, false otherwise.
-   * @return Brokers intended to be in recently removed brokers.
+   * @return Brokers that are intended to be excluded from relevant replica and/or leadership transfer operations.
    */
-  private static Set<Integer> maybeDropRecentlyRemovedBrokers(KafkaCruiseControl kafkaCruiseControl,
-                                                              Set<Integer> brokersToDropFromRecentlyRemoved,
-                                                              boolean dryRun) {
+  private static ExcludedBrokers maybeDropFromRecentBrokers(KafkaCruiseControl kafkaCruiseControl,
+                                                            Set<Integer> brokersToDrop,
+                                                            boolean dryRun) {
+    ExecutorState executorState = kafkaCruiseControl.executorState();
     if (!dryRun) {
-      kafkaCruiseControl.dropRecentBrokers(brokersToDropFromRecentlyRemoved, true);
-      return kafkaCruiseControl.executorState().recentlyRemovedBrokers();
+      kafkaCruiseControl.dropRecentBrokers(brokersToDrop, true);
+      kafkaCruiseControl.dropRecentBrokers(brokersToDrop, false);
+      return new ExcludedBrokers(executorState.recentlyRemovedBrokers(), executorState.recentlyDemotedBrokers());
     } else {
-      Set<Integer> recentlyRemoved = new HashSet<>(kafkaCruiseControl.executorState().recentlyRemovedBrokers());
-      recentlyRemoved.removeAll(brokersToDropFromRecentlyRemoved);
-      return recentlyRemoved;
+      Set<Integer> recentlyRemoved = new HashSet<>(executorState.recentlyRemovedBrokers());
+      recentlyRemoved.removeAll(brokersToDrop);
+      Set<Integer> recentlyDemoted = new HashSet<>(executorState.recentlyDemotedBrokers());
+      recentlyDemoted.removeAll(brokersToDrop);
+      return new ExcludedBrokers(recentlyRemoved, recentlyDemoted);
     }
   }
 
@@ -341,5 +344,30 @@ public class RunnableUtils {
       throw new IllegalStateException("Cluster has no offline replica on brokers " + clusterModel.brokers() + " to fix.");
     }
     // Has offline replica(s) on a broken disk.
+  }
+
+  /**
+   * A helper class to keep recently removed and demoted brokers that are intended to be excluded from relevant replica
+   * and/or leadership transfer operations.
+   */
+  public static class ExcludedBrokers {
+    private final Set<Integer> _recentlyRemovedBrokers;
+    private final Set<Integer> _recentlyDemotedBrokers;
+
+    ExcludedBrokers(Set<Integer> recentlyRemovedBrokers, Set<Integer> recentlyDemotedBrokers) {
+      if (recentlyRemovedBrokers == null || recentlyDemotedBrokers == null) {
+        throw new IllegalArgumentException("Attempt to set a null value for excluded brokers.");
+      }
+      _recentlyRemovedBrokers = recentlyRemovedBrokers;
+      _recentlyDemotedBrokers = recentlyDemotedBrokers;
+    }
+
+    public Set<Integer> recentlyRemovedBrokers() {
+      return _recentlyRemovedBrokers;
+    }
+
+    public Set<Integer> recentlyDemotedBrokers() {
+      return _recentlyDemotedBrokers;
+    }
   }
 }
