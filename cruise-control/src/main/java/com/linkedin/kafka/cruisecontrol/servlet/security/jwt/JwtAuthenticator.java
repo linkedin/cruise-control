@@ -29,14 +29,14 @@ import java.util.function.Function;
  * <p>The {@link JwtAuthenticator} adds SSO capabilities to Cruise Control. The expected token is a Json Web Token (JWT).
  * This class should be used with {@link JwtLoginService} as the token check is carried out by that one. This class
  * handles redirects for unauthenticated requests and CORS preflight requests.</p>
- * <p>The workflow can be described with the following diagram:
+ * The workflow can be described with the following diagram:
  * <pre>
- *       Client -----1., 4.----> Cruise Control
+ *       Client -----1., 4.----&gt; Cruise Control
  *        |  ^                        |
  *        |  |________2.______________|
  *        |
  *        |
- *        |------3.------------> Authentication
+ *        |------3.------------&gt; Authentication
  *                                 provider
  * </pre>
  * <ol>
@@ -48,7 +48,6 @@ import java.util.function.Function;
  * <li>The client can present the JWT cookie to Cruise Control. Cruise Control will validate the cookie with the
  *    {@link JwtLoginService} by checking its signature, audience and expiration.
  * </ol>
- * </p>
  */
 public class JwtAuthenticator extends LoginAuthenticator {
 
