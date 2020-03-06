@@ -6,10 +6,12 @@ package com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.async.progress.WaitingForOngoingExecutionToStop;
+import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -260,6 +262,74 @@ public class RunnableUtils {
   }
 
   /**
+   * Compute optimization options, update recently removed and demoted brokers (if not dryRun) and return the computed result.
+   *
+   * @param clusterModel The state of the cluster.
+   * @param isTriggeredByGoalViolation True if proposals is triggered by goal violation, false otherwise.
+   * @param kafkaCruiseControl The Kafka Cruise Control instance.
+   * @param brokersToDrop Brokers to drop from recently removed and demoted brokers. Modifies the actual values if not dryRun.
+   * @param dryRun True if dryrun, false otherwise.
+   * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
+   * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
+   * @param excludedTopicsPattern The topics that should be excluded from the optimization action.
+   * @param requestedDestinationBrokerIds Explicitly requested destination broker Ids to limit the replica movement to
+   *                                      these brokers (if empty, no explicit filter is enforced -- cannot be null).
+   * @param onlyMoveImmigrantReplicas True to move only immigrant replicas, false otherwise.
+   * @return Computed optimization options.
+   */
+  public static OptimizationOptions computeOptimizationOptions(ClusterModel clusterModel,
+                                                               boolean isTriggeredByGoalViolation,
+                                                               KafkaCruiseControl kafkaCruiseControl,
+                                                               Set<Integer> brokersToDrop,
+                                                               boolean dryRun,
+                                                               boolean excludeRecentlyDemotedBrokers,
+                                                               boolean excludeRecentlyRemovedBrokers,
+                                                               Pattern excludedTopicsPattern,
+                                                               Set<Integer> requestedDestinationBrokerIds,
+                                                               boolean onlyMoveImmigrantReplicas) {
+
+    // Update recently removed and demoted brokers.
+    ExcludedBrokers excludedBrokers = maybeDropFromRecentBrokers(kafkaCruiseControl, brokersToDrop, dryRun);
+
+    Set<Integer> excludedBrokersForLeadership = excludeRecentlyDemotedBrokers ? excludedBrokers.recentlyDemotedBrokers()
+                                                                              : Collections.emptySet();
+
+    Set<Integer> excludedBrokersForReplicaMove = excludeRecentlyRemovedBrokers ? excludedBrokers.recentlyRemovedBrokers()
+                                                                               : Collections.emptySet();
+
+    Set<String> excludedTopics = kafkaCruiseControl.excludedTopics(clusterModel, excludedTopicsPattern);
+    LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
+    return new OptimizationOptions(excludedTopics, excludedBrokersForLeadership, excludedBrokersForReplicaMove,
+                                   isTriggeredByGoalViolation, requestedDestinationBrokerIds, onlyMoveImmigrantReplicas);
+  }
+
+
+  /**
+   * Update recently removed and demoted brokers with the given brokers to drop if the given dryrun is false.
+   *
+   * @param kafkaCruiseControl The Kafka Cruise Control instance.
+   * @param brokersToDrop Brokers to drop from recently removed and demoted brokers (if exist).
+   * @param dryRun True if dryrun, false otherwise.
+   * @return Brokers that are intended to be excluded from relevant replica and/or leadership transfer operations.
+   */
+  private static ExcludedBrokers maybeDropFromRecentBrokers(KafkaCruiseControl kafkaCruiseControl,
+                                                            Set<Integer> brokersToDrop,
+                                                            boolean dryRun) {
+    ExecutorState executorState = kafkaCruiseControl.executorState();
+    if (!dryRun) {
+      kafkaCruiseControl.dropRecentBrokers(brokersToDrop, true);
+      kafkaCruiseControl.dropRecentBrokers(brokersToDrop, false);
+      return new ExcludedBrokers(executorState.recentlyRemovedBrokers(), executorState.recentlyDemotedBrokers());
+    } else {
+      Set<Integer> recentlyRemoved = new HashSet<>(executorState.recentlyRemovedBrokers());
+      recentlyRemoved.removeAll(brokersToDrop);
+      Set<Integer> recentlyDemoted = new HashSet<>(executorState.recentlyDemotedBrokers());
+      recentlyDemoted.removeAll(brokersToDrop);
+      return new ExcludedBrokers(recentlyRemoved, recentlyDemoted);
+    }
+  }
+
+  /**
    * Sanity check to ensure that the given cluster model contains brokers with offline replicas.
    * @param clusterModel Cluster model for which the existence of an offline replica will be verified.
    */
@@ -274,5 +344,30 @@ public class RunnableUtils {
       throw new IllegalStateException("Cluster has no offline replica on brokers " + clusterModel.brokers() + " to fix.");
     }
     // Has offline replica(s) on a broken disk.
+  }
+
+  /**
+   * A helper class to keep recently removed and demoted brokers that are intended to be excluded from relevant replica
+   * and/or leadership transfer operations.
+   */
+  public static class ExcludedBrokers {
+    private final Set<Integer> _recentlyRemovedBrokers;
+    private final Set<Integer> _recentlyDemotedBrokers;
+
+    ExcludedBrokers(Set<Integer> recentlyRemovedBrokers, Set<Integer> recentlyDemotedBrokers) {
+      if (recentlyRemovedBrokers == null || recentlyDemotedBrokers == null) {
+        throw new IllegalArgumentException("Attempt to set a null value for excluded brokers.");
+      }
+      _recentlyRemovedBrokers = recentlyRemovedBrokers;
+      _recentlyDemotedBrokers = recentlyDemotedBrokers;
+    }
+
+    public Set<Integer> recentlyRemovedBrokers() {
+      return _recentlyRemovedBrokers;
+    }
+
+    public Set<Integer> recentlyDemotedBrokers() {
+      return _recentlyDemotedBrokers;
+    }
   }
 }

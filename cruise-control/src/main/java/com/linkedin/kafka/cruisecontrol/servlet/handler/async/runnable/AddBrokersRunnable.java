@@ -9,7 +9,6 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
-import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -18,9 +17,8 @@ import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.computeOptimizationOptions;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.isKafkaAssignerMode;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.sanityCheckBrokersHavingOfflineReplicasOnBadDisks;
 
@@ -29,7 +27,6 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
  * The async runnable for broker addition.
  */
 public class AddBrokersRunnable extends GoalBasedOperationRunnable {
-  private static final Logger LOG = LoggerFactory.getLogger(AddBrokersRunnable.class);
   protected final Set<Integer> _brokerIds;
   protected final boolean _throttleAddedBrokers;
   protected final Integer _concurrentInterBrokerPartitionMovements;
@@ -71,21 +68,17 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
     if (!clusterModel.isClusterAlive()) {
       throw new IllegalArgumentException("All brokers are dead in the cluster.");
     }
-    ExecutorState executorState = _kafkaCruiseControl.executorState();
-    Set<Integer> excludedBrokersForLeadership = _excludeRecentlyDemotedBrokers ? executorState.recentlyDemotedBrokers()
-                                                                               : Collections.emptySet();
 
-    Set<Integer> excludedBrokersForReplicaMove = _excludeRecentlyRemovedBrokers ? executorState.recentlyRemovedBrokers()
-                                                                                : Collections.emptySet();
-
-    Set<String> excludedTopics = _kafkaCruiseControl.excludedTopics(clusterModel, _excludedTopics);
-    LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
-    OptimizationOptions optimizationOptions = new OptimizationOptions(excludedTopics,
-                                                                      excludedBrokersForLeadership,
-                                                                      excludedBrokersForReplicaMove,
-                                                                      false,
-                                                                      Collections.emptySet(),
-                                                                      false);
+    OptimizationOptions optimizationOptions = computeOptimizationOptions(clusterModel,
+                                                                         false,
+                                                                         _kafkaCruiseControl,
+                                                                         _brokerIds,
+                                                                         _dryRun,
+                                                                         _excludeRecentlyDemotedBrokers,
+                                                                         _excludeRecentlyRemovedBrokers,
+                                                                         _excludedTopics,
+                                                                         Collections.emptySet(),
+                                                                         false);
 
     OptimizerResult result = _kafkaCruiseControl.optimizations(clusterModel, _goalsByPriority, _operationProgress, null, optimizationOptions);
     if (!_dryRun) {

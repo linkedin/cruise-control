@@ -321,8 +321,12 @@ public class AnomalyDetectorTest {
       ClusterModel singleBrokerWithBadDisk = singleBrokerWithBadDisk();
       EasyMock.expect(mockKafkaCruiseControl.clusterModel(EasyMock.anyObject(), EasyMock.eq(true), EasyMock.anyObject()))
               .andReturn(singleBrokerWithBadDisk);
+      EasyMock.expect(mockKafkaCruiseControl.dropRecentBrokers(EasyMock.eq(Collections.emptySet()),
+                                                               EasyMock.eq(true))).andReturn(false);
+      EasyMock.expect(mockKafkaCruiseControl.dropRecentBrokers(EasyMock.eq(Collections.emptySet()),
+                                                               EasyMock.eq(false))).andReturn(false);
       ExecutorState executorState = EasyMock.mock(ExecutorState.class);
-      EasyMock.expect(mockKafkaCruiseControl.executorState()).andReturn(executorState);
+      EasyMock.expect(mockKafkaCruiseControl.executorState()).andReturn(executorState).once();
       EasyMock.expect(executorState.recentlyDemotedBrokers()).andReturn(Collections.emptySet());
       EasyMock.expect(executorState.recentlyRemovedBrokers()).andReturn(Collections.emptySet());
       EasyMock.replay(executorState);
@@ -355,8 +359,12 @@ public class AnomalyDetectorTest {
       EasyMock.expect(mockKafkaCruiseControl.kafkaCluster()).andReturn(Cluster.empty());
       EasyMock.expect(mockKafkaCruiseControl.acquireForModelGeneration(EasyMock.anyObject())).andReturn(null);
       mockKafkaCruiseControl.sanityCheckBrokerPresence(EasyMock.anyObject());
+      EasyMock.expect(mockKafkaCruiseControl.dropRecentBrokers(EasyMock.eq(Collections.emptySet()),
+                                                               EasyMock.eq(true))).andReturn(false);
+      EasyMock.expect(mockKafkaCruiseControl.dropRecentBrokers(EasyMock.eq(Collections.emptySet()),
+                                                               EasyMock.eq(false))).andReturn(false);
       ExecutorState executorState = EasyMock.mock(ExecutorState.class);
-      EasyMock.expect(mockKafkaCruiseControl.executorState()).andReturn(executorState);
+      EasyMock.expect(mockKafkaCruiseControl.executorState()).andReturn(executorState).once();
       EasyMock.expect(executorState.recentlyDemotedBrokers()).andReturn(Collections.emptySet());
       EasyMock.expect(executorState.recentlyRemovedBrokers()).andReturn(Collections.emptySet());
       EasyMock.replay(executorState);
@@ -383,8 +391,12 @@ public class AnomalyDetectorTest {
       EasyMock.expect(mockKafkaCruiseControl.clusterModel(EasyMock.anyObject(), EasyMock.eq(true), EasyMock.anyObject())).andReturn(clusterModel);
       EasyMock.expect(mockKafkaCruiseControl.kafkaCluster()).andReturn(generateClusterFromClusterModel(clusterModel));
       EasyMock.expect(mockKafkaCruiseControl.acquireForModelGeneration(EasyMock.anyObject())).andReturn(null);
+      EasyMock.expect(mockKafkaCruiseControl.dropRecentBrokers(EasyMock.eq(Collections.emptySet()),
+                                                               EasyMock.eq(true))).andReturn(false);
+      EasyMock.expect(mockKafkaCruiseControl.dropRecentBrokers(EasyMock.eq(Collections.emptySet()),
+                                                               EasyMock.eq(false))).andReturn(false);
       ExecutorState executorState = EasyMock.mock(ExecutorState.class);
-      EasyMock.expect(mockKafkaCruiseControl.executorState()).andReturn(executorState);
+      EasyMock.expect(mockKafkaCruiseControl.executorState()).andReturn(executorState).once();
       EasyMock.expect(executorState.recentlyDemotedBrokers()).andReturn(Collections.emptySet());
       EasyMock.expect(executorState.recentlyRemovedBrokers()).andReturn(Collections.emptySet());
       EasyMock.replay(executorState);

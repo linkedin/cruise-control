@@ -9,23 +9,20 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
-import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.FixOfflineReplicasParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_CONCURRENT_MOVEMENTS;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.computeOptimizationOptions;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.sanityCheckOfflineReplicaPresence;
 
 
@@ -33,7 +30,6 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
  * The async runnable for fixing offline replicas -- i.e. move offline replicas to alive brokers/disks.
  */
 public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
-  private static final Logger LOG = LoggerFactory.getLogger(FixOfflineReplicasRunnable.class);
   protected final Integer _concurrentInterBrokerPartitionMovements;
   protected final Integer _concurrentLeaderMovements;
   protected final Long _executionProgressCheckIntervalMs;
@@ -94,21 +90,17 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
     if (!clusterModel.isClusterAlive()) {
       throw new IllegalArgumentException("All brokers are dead in the cluster.");
     }
-    ExecutorState executorState = _kafkaCruiseControl.executorState();
-    Set<Integer> excludedBrokersForLeadership = _excludeRecentlyDemotedBrokers ? executorState.recentlyDemotedBrokers()
-                                                                               : Collections.emptySet();
 
-    Set<Integer> excludedBrokersForReplicaMove = _excludeRecentlyRemovedBrokers ? executorState.recentlyRemovedBrokers()
-                                                                                : Collections.emptySet();
-
-    Set<String> excludedTopics = _kafkaCruiseControl.excludedTopics(clusterModel, _excludedTopics);
-    LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
-    OptimizationOptions optimizationOptions = new OptimizationOptions(excludedTopics,
-                                                                      excludedBrokersForLeadership,
-                                                                      excludedBrokersForReplicaMove,
-                                                                      false,
-                                                                      Collections.emptySet(),
-                                                                      false);
+    OptimizationOptions optimizationOptions = computeOptimizationOptions(clusterModel,
+                                                                         false,
+                                                                         _kafkaCruiseControl,
+                                                                         Collections.emptySet(),
+                                                                         _dryRun,
+                                                                         _excludeRecentlyDemotedBrokers,
+                                                                         _excludeRecentlyRemovedBrokers,
+                                                                         _excludedTopics,
+                                                                         Collections.emptySet(),
+                                                                         false);
 
     OptimizerResult result = _kafkaCruiseControl.optimizations(clusterModel, _goalsByPriority, _operationProgress, null, optimizationOptions);
     if (!_dryRun) {

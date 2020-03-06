@@ -9,19 +9,16 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
-import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ProposalsParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.computeOptimizationOptions;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.sanityCheckBrokersHavingOfflineReplicasOnBadDisks;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL;
 
@@ -30,7 +27,6 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  * The async runnable for getting proposals.
  */
 public class ProposalsRunnable extends GoalBasedOperationRunnable {
-  private static final Logger LOG = LoggerFactory.getLogger(ProposalsRunnable.class);
   protected final boolean _ignoreProposalCache;
   protected final Set<Integer> _destinationBrokerIds;
   protected final boolean _isRebalanceDiskMode;
@@ -95,21 +91,17 @@ public class ProposalsRunnable extends GoalBasedOperationRunnable {
     if (!_destinationBrokerIds.isEmpty()) {
       _kafkaCruiseControl.sanityCheckBrokerPresence(_destinationBrokerIds);
     }
-    ExecutorState executorState = _kafkaCruiseControl.executorState();
-    Set<Integer> excludedBrokersForLeadership = _excludeRecentlyDemotedBrokers ? executorState.recentlyDemotedBrokers()
-                                                                               : Collections.emptySet();
 
-    Set<Integer> excludedBrokersForReplicaMove = _excludeRecentlyRemovedBrokers ? executorState.recentlyRemovedBrokers()
-                                                                                : Collections.emptySet();
-
-    Set<String> excludedTopics = _kafkaCruiseControl.excludedTopics(clusterModel, _excludedTopics);
-    LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
-    OptimizationOptions optimizationOptions = new OptimizationOptions(excludedTopics,
-                                                                      excludedBrokersForLeadership,
-                                                                      excludedBrokersForReplicaMove,
-                                                                      _isTriggeredByGoalViolation,
-                                                                      _destinationBrokerIds,
-                                                                      false);
+    OptimizationOptions optimizationOptions = computeOptimizationOptions(clusterModel,
+                                                                         _isTriggeredByGoalViolation,
+                                                                         _kafkaCruiseControl,
+                                                                         _destinationBrokerIds,
+                                                                         _dryRun,
+                                                                         _excludeRecentlyDemotedBrokers,
+                                                                         _excludeRecentlyRemovedBrokers,
+                                                                         _excludedTopics,
+                                                                         _destinationBrokerIds,
+                                                                         false);
 
     return _kafkaCruiseControl.optimizations(clusterModel, _goalsByPriority, _operationProgress, null, optimizationOptions);
   }
