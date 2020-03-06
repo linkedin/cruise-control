@@ -289,12 +289,12 @@ public class RunnableUtils {
                                                                boolean onlyMoveImmigrantReplicas) {
 
     // Update recently removed and demoted brokers.
-    ExcludedBrokers excludedBrokers = maybeDropFromRecentBrokers(kafkaCruiseControl, brokersToDrop, dryRun);
+    RecentBrokers recentBrokers = maybeDropFromRecentBrokers(kafkaCruiseControl, brokersToDrop, dryRun);
 
-    Set<Integer> excludedBrokersForLeadership = excludeRecentlyDemotedBrokers ? excludedBrokers.recentlyDemotedBrokers()
+    Set<Integer> excludedBrokersForLeadership = excludeRecentlyDemotedBrokers ? recentBrokers.recentlyDemotedBrokers()
                                                                               : Collections.emptySet();
 
-    Set<Integer> excludedBrokersForReplicaMove = excludeRecentlyRemovedBrokers ? excludedBrokers.recentlyRemovedBrokers()
+    Set<Integer> excludedBrokersForReplicaMove = excludeRecentlyRemovedBrokers ? recentBrokers.recentlyRemovedBrokers()
                                                                                : Collections.emptySet();
 
     Set<String> excludedTopics = kafkaCruiseControl.excludedTopics(clusterModel, excludedTopicsPattern);
@@ -310,22 +310,22 @@ public class RunnableUtils {
    * @param kafkaCruiseControl The Kafka Cruise Control instance.
    * @param brokersToDrop Brokers to drop from recently removed and demoted brokers (if exist).
    * @param dryRun True if dryrun, false otherwise.
-   * @return Brokers that are intended to be excluded from relevant replica and/or leadership transfer operations.
+   * @return Recent brokers that are intended to be excluded from relevant replica and/or leadership transfer operations.
    */
-  private static ExcludedBrokers maybeDropFromRecentBrokers(KafkaCruiseControl kafkaCruiseControl,
-                                                            Set<Integer> brokersToDrop,
-                                                            boolean dryRun) {
+  private static RecentBrokers maybeDropFromRecentBrokers(KafkaCruiseControl kafkaCruiseControl,
+                                                          Set<Integer> brokersToDrop,
+                                                          boolean dryRun) {
     ExecutorState executorState = kafkaCruiseControl.executorState();
     if (!dryRun) {
       kafkaCruiseControl.dropRecentBrokers(brokersToDrop, true);
       kafkaCruiseControl.dropRecentBrokers(brokersToDrop, false);
-      return new ExcludedBrokers(executorState.recentlyRemovedBrokers(), executorState.recentlyDemotedBrokers());
+      return new RecentBrokers(executorState.recentlyRemovedBrokers(), executorState.recentlyDemotedBrokers());
     } else {
       Set<Integer> recentlyRemoved = new HashSet<>(executorState.recentlyRemovedBrokers());
       recentlyRemoved.removeAll(brokersToDrop);
       Set<Integer> recentlyDemoted = new HashSet<>(executorState.recentlyDemotedBrokers());
       recentlyDemoted.removeAll(brokersToDrop);
-      return new ExcludedBrokers(recentlyRemoved, recentlyDemoted);
+      return new RecentBrokers(recentlyRemoved, recentlyDemoted);
     }
   }
 
@@ -350,13 +350,13 @@ public class RunnableUtils {
    * A helper class to keep recently removed and demoted brokers that are intended to be excluded from relevant replica
    * and/or leadership transfer operations.
    */
-  public static class ExcludedBrokers {
+  public static class RecentBrokers {
     private final Set<Integer> _recentlyRemovedBrokers;
     private final Set<Integer> _recentlyDemotedBrokers;
 
-    ExcludedBrokers(Set<Integer> recentlyRemovedBrokers, Set<Integer> recentlyDemotedBrokers) {
+    public RecentBrokers(Set<Integer> recentlyRemovedBrokers, Set<Integer> recentlyDemotedBrokers) {
       if (recentlyRemovedBrokers == null || recentlyDemotedBrokers == null) {
-        throw new IllegalArgumentException("Attempt to set a null value for excluded brokers.");
+        throw new IllegalArgumentException("Attempt to set a null value for recent brokers.");
       }
       _recentlyRemovedBrokers = recentlyRemovedBrokers;
       _recentlyDemotedBrokers = recentlyDemotedBrokers;
