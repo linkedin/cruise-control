@@ -6,10 +6,12 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.google.gson.Gson;
 import com.linkedin.cruisecontrol.detector.AnomalyType;
+import com.linkedin.cruisecontrol.servlet.EndPoint;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.IntraBrokerDiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.IntraBrokerDiskUsageDistributionGoal;
-import com.linkedin.cruisecontrol.servlet.EndPoint;
+import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
@@ -20,8 +22,9 @@ import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
-import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
-import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
@@ -40,12 +43,13 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.currentUtcDate;
 import static com.linkedin.kafka.cruisecontrol.executor.Executor.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
-import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.*;
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.ADD_BROKER;
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.DEMOTE_BROKER;
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.FIX_OFFLINE_REPLICAS;
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.REVIEW;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.GET_METHOD;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.REQUEST_URI;
@@ -127,6 +131,7 @@ public class ParameterUtils {
   public static final long DEFAULT_START_TIME_FOR_CLUSTER_MODEL = -1L;
   public static final String TOPIC_BY_REPLICATION_FACTOR = "topic_by_replication_factor";
   public static final String NO_REASON_PROVIDED = "No reason provided";
+  public static final String DO_AS = "doAs";
 
   public static final String STOP_PROPOSAL_PARAMETER_OBJECT_CONFIG = "stop.proposal.parameter.object";
   public static final String BOOTSTRAP_PARAMETER_OBJECT_CONFIG = "bootstrap.parameter.object";
