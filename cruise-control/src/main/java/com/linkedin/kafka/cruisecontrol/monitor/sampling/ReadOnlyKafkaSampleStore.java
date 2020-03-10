@@ -25,7 +25,7 @@ public class ReadOnlyKafkaSampleStore extends KafkaSampleStore {
     _brokerMetricSampleStoreTopic = KafkaCruiseControlUtils.getRequiredConfig(config, BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG);
     String sampleStoreTopicReplicationFactorString = (String) config.get(SAMPLE_STORE_TOPIC_REPLICATION_FACTOR_CONFIG);
     _sampleStoreTopicReplicationFactor = sampleStoreTopicReplicationFactorString == null || sampleStoreTopicReplicationFactorString.isEmpty()
-        ? null : Integer.parseInt(sampleStoreTopicReplicationFactorString);
+        ? null : Short.parseShort(sampleStoreTopicReplicationFactorString);
     String numProcessingThreadsString = (String) config.get(NUM_SAMPLE_LOADING_THREADS_CONFIG);
     int numProcessingThreads = numProcessingThreadsString == null || numProcessingThreadsString.isEmpty()
         ? DEFAULT_NUM_SAMPLE_LOADING_THREADS : Integer.parseInt(numProcessingThreadsString);

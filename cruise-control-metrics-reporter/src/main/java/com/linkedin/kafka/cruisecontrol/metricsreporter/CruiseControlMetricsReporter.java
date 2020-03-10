@@ -182,15 +182,12 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     try {
       CreateTopicsResult createTopicsResult = _adminClient.createTopics(Collections.singletonList(_metricsTopic));
       createTopicsResult.values().get(_metricsTopic.name()).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-      LOG.info("Cruise Control metrics topic {} is created.", _cruiseControlMetricsTopic);
-    } catch (ExecutionException e) {
+      LOG.info("Cruise Control metrics topic {} is created.", _metricsTopic.name());
+    } catch (InterruptedException | ExecutionException | TimeoutException e) {
       if (e.getCause() instanceof TopicExistsException) {
         throw new TopicExistsException(e.getMessage());
-      } else {
-        LOG.warn("Unable to create Cruise Control metrics topic {}.", _cruiseControlMetricsTopic, e);
       }
-    } catch (InterruptedException | TimeoutException e) {
-      LOG.warn("Unable to create Cruise Control metrics topic {}.", _cruiseControlMetricsTopic, e);
+      LOG.warn("Unable to create Cruise Control metrics topic {}.", _metricsTopic.name(), e);
     }
   }
 
@@ -220,18 +217,19 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   }
 
   protected void maybeIncreaseTopicPartitionCount() {
+    String cruiseControlMetricsTopic = _metricsTopic.name();
     try {
       // Retrieve topic partition count to check and update.
       TopicDescription topicDescription =
-          _adminClient.describeTopics(Collections.singletonList(_cruiseControlMetricsTopic)).values()
-                      .get(_cruiseControlMetricsTopic).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+          _adminClient.describeTopics(Collections.singletonList(cruiseControlMetricsTopic)).values()
+                      .get(cruiseControlMetricsTopic).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
       if (topicDescription.partitions().size() < _metricsTopic.numPartitions()) {
-        _adminClient.createPartitions(Collections.singletonMap(_cruiseControlMetricsTopic,
+        _adminClient.createPartitions(Collections.singletonMap(cruiseControlMetricsTopic,
                                                                NewPartitions.increaseTo(_metricsTopic.numPartitions())));
       }
     } catch (InterruptedException | ExecutionException | TimeoutException e) {
-      LOG.warn("Unable to increase Cruise Cruise Control metrics topic {} partition number to {}",
-               _cruiseControlMetricsTopic, _metricsTopic.replicationFactor(), e);
+      LOG.warn("Unable to increase Cruise Control metrics topic {} partition number to {}.",
+               cruiseControlMetricsTopic, _metricsTopic.replicationFactor(), e);
     }
   }
 

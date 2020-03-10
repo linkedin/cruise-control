@@ -33,7 +33,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
-import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.KafkaFuture;
@@ -44,12 +43,10 @@ import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.requests.DescribeLogDirsResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.collection.JavaConversions;
 
 import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.model.Disk.State.DEAD;
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.CPU_USAGE;
-import static java.lang.Thread.sleep;
 
 
 /**
@@ -192,49 +189,6 @@ public class MonitorUtils {
       totalNumPartitions += cluster.partitionCountForTopic(topic);
     }
     return totalNumPartitions;
-  }
-
-  /**
-   * Check whether the topic has partitions undergoing partition reassignment and wait for the reassignments to finish.
-   *
-   * @param kafkaZkClient the KafkaZkClient class used to check ongoing partition reassignments.
-   * @return Whether there are no ongoing partition reassignments.
-   */
-  public static boolean ensureTopicNotUnderPartitionReassignment(KafkaZkClient kafkaZkClient, String topic) {
-    int attempt = 0;
-    while (JavaConversions.asJavaCollection(kafkaZkClient.getPartitionReassignment().keys()).stream()
-                          .anyMatch(tp -> tp.topic().equals(topic))) {
-      try {
-        sleep(1000 << attempt);
-      } catch (InterruptedException e) {
-        // Let it go.
-      }
-      if (++attempt == 10) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  /**
-   * Check whether there are ongoing partition reassignments and wait for the reassignments to finish.
-   *
-   * @param kafkaZkClient the KafkaZkClient class used to check ongoing partition reassignments.
-   * @return Whether there are no ongoing partition reassignments.
-   */
-  public static boolean ensureNoPartitionUnderPartitionReassignment(KafkaZkClient kafkaZkClient) {
-    int attempt = 0;
-    while (kafkaZkClient.getPartitionReassignment().size() > 0) {
-      try {
-        sleep(1000 << attempt);
-      } catch (InterruptedException e) {
-        // Let it go.
-      }
-      if (++attempt == 10) {
-        return false;
-      }
-    }
-    return true;
   }
 
   /**
