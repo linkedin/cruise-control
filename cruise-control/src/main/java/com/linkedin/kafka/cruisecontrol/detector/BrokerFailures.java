@@ -28,6 +28,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyTyp
 public class BrokerFailures extends KafkaAnomaly {
   protected Map<Integer, Long> _failedBrokers;
   protected RemoveBrokersRunnable _removeBrokersRunnable;
+  protected boolean _fixable;
 
   /**
    * An anomaly to indicate broker failure(s).
@@ -43,11 +44,19 @@ public class BrokerFailures extends KafkaAnomaly {
     return _failedBrokers;
   }
 
+  /**
+   * Whether detected broker failures are fixable or not.
+   * @return True is detected broker failures are fixable.
+   */
+  public boolean fixable() {
+    return _fixable;
+  }
+
   @Override
   public boolean fix() throws KafkaCruiseControlException {
     boolean hasProposalsToFix = false;
     // Fix the cluster by removing the failed brokers (mode: non-Kafka_assigner).
-    if (_removeBrokersRunnable != null) {
+    if (_removeBrokersRunnable != null && _fixable) {
       _optimizationResult = new OptimizationResult(_removeBrokersRunnable.computeResult(), null);
       hasProposalsToFix = hasProposalsToFix();
       // Ensure that only the relevant response is cached to avoid memory pressure.
@@ -85,6 +94,7 @@ public class BrokerFailures extends KafkaAnomaly {
     if (_failedBrokers != null && _failedBrokers.isEmpty()) {
       throw new IllegalArgumentException("Missing broker ids for failed brokers anomaly.");
     }
+    _fixable = (Boolean) configs.get(BrokerFailureDetector.BROKER_FAILURES_FIXABLE_CONFIG);
     _optimizationResult = null;
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
     boolean allowCapacityEstimation = config.getBoolean(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);

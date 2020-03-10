@@ -44,8 +44,12 @@ import static java.util.stream.Collectors.toSet;
 public class BrokerFailureDetector {
   private static final Logger LOG = LoggerFactory.getLogger(BrokerFailureDetector.class);
   public static final String FAILED_BROKERS_OBJECT_CONFIG = "failed.brokers.object";
+  public static final String BROKER_FAILURES_FIXABLE_CONFIG = "broker.failures.fixable.object";
   private static final String ZK_BROKER_FAILURE_METRIC_GROUP = "CruiseControlAnomaly";
   private static final String ZK_BROKER_FAILURE_METRIC_TYPE = "BrokerFailure";
+  // TODO: make the threshold configurable
+  private static final int FIXABLE_BROKER_FAILURE_UPPER_BOUNDARY = 5;
+  private static final double FIXABLE_BROKER_FAILURE_PERCENTAGE_UPPER_BOUNDARY = 0.2;
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final String _failedBrokersZkPath;
   private final ZkClient _zkClient;
@@ -177,12 +181,22 @@ public class BrokerFailureDetector {
     }
   }
 
+  private boolean tooManyFailedBrokers(int deadBrokerCount, int aliveBrokerCount) {
+    return deadBrokerCount > FIXABLE_BROKER_FAILURE_UPPER_BOUNDARY ||
+           (double) deadBrokerCount / (deadBrokerCount + aliveBrokerCount) > FIXABLE_BROKER_FAILURE_PERCENTAGE_UPPER_BOUNDARY;
+  }
+
   private void reportBrokerFailures() {
     if (!_failedBrokers.isEmpty()) {
-      Map<String, Object> parameterConfigOverrides = new HashMap<>(3);
+      Map<String, Object> parameterConfigOverrides = new HashMap<>(4);
       parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl);
-      parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, failedBrokers());
+      Map<Integer, Long> failedBrokers = failedBrokers();
+      parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, failedBrokers);
       parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
+      // IF there are too many broker fails at the same time, mark the anomaly as unfixable.
+      // Such extreme scenario needs human intervention.
+      parameterConfigOverrides.put(BROKER_FAILURES_FIXABLE_CONFIG,
+                                   !tooManyFailedBrokers(failedBrokers.size(), aliveBrokers().size()));
 
       BrokerFailures brokerFailures = _kafkaCruiseControl.config().getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
                                                                                          BrokerFailures.class,
