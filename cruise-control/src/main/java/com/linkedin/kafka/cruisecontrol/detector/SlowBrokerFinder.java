@@ -156,7 +156,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
       double latestTotalBytesIn = aggregatedMetricValues.valuesFor(LEADER_BYTES_IN_ID).latest() +
                                   aggregatedMetricValues.valuesFor(REPLICATION_BYTES_IN_RATE_ID).latest();
       // Ignore brokers which currently serve negligible traffic.
-      if (latestTotalBytesIn > _bytesInRateDetectionThreshold && latestLogFlushTime > 0) {
+      if (latestTotalBytesIn >= _bytesInRateDetectionThreshold && latestLogFlushTime > 0) {
         currentValueByBroker.put(entity, latestLogFlushTime / latestTotalBytesIn);
         aggregatedMetricValues = metricsHistoryByBroker.get(entity).metricValues();
         double[] historicalBytesIn = aggregatedMetricValues.valuesFor(LEADER_BYTES_IN_ID).doubleArray();
@@ -165,7 +165,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
         List<Double> historicalValue = new ArrayList<>(historicalBytesIn.length);
         for (int i = 0; i < historicalBytesIn.length; i++) {
           double totalBytesIn = historicalBytesIn[i] + historicalReplicationBytesIn[i];
-          if (totalBytesIn > _bytesInRateDetectionThreshold) {
+          if (totalBytesIn >= _bytesInRateDetectionThreshold) {
             historicalValue.add(historicalLogFlushTime[i] / totalBytesIn);
           }
         }
@@ -192,7 +192,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
                                                 Set<BrokerEntity> detectedMetricAnomalies) {
     for (Map.Entry<BrokerEntity, Double> entry : currentValue.entrySet()) {
       BrokerEntity entity = entry.getKey();
-      if (isDataSufficient(historicalValue.size(), _metricHistoryPercentile, _metricHistoryPercentile)) {
+      if (isDataSufficient(historicalValue.get(entity).size(), _metricHistoryPercentile, _metricHistoryPercentile)) {
         double [] data = historicalValue.get(entity).stream().mapToDouble(i -> i).toArray();
         _percentile.setData(data);
         if (currentValue.get(entity) > _percentile.evaluate(_metricHistoryPercentile) * _metricHistoryMargin) {
@@ -336,7 +336,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
         throw new IllegalArgumentException(String.format("%s config of slow broker finder should not be set to negative.",
                                                          SLOW_BROKERS_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG));
       }
-    } catch (NumberFormatException e) {
+    } catch (NumberFormatException | NullPointerException e) {
       _bytesInRateDetectionThreshold = DEFAULT_SLOW_BROKERS_BYTES_IN_RATE_DETECTION_THRESHOLD;
     }
     try {
@@ -345,7 +345,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
         throw new IllegalArgumentException(String.format("%s config of slow broker finder should be set in range [0.0, 100.0].",
                                                          SLOW_BROKERS_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG));
       }
-    } catch (NumberFormatException e) {
+    } catch (NumberFormatException | NullPointerException e) {
       _metricHistoryPercentile = DEFAULT_SLOW_BROKERS_METRIC_HISTORY_PERCENTILE_THRESHOLD;
     }
     try {
@@ -354,7 +354,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
         throw new IllegalArgumentException(String.format("%s config of slow broker finder should not be less than 1.0.",
                                                          SLOW_BROKERS_METRIC_HISTORY_MARGIN_CONFIG));
       }
-    } catch (NumberFormatException e) {
+    } catch (NumberFormatException | NullPointerException e) {
       _metricHistoryMargin = DEFAULT_SLOW_BROKERS_METRIC_HISTORY_MARGIN;
     }
     try {
@@ -363,7 +363,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
         throw new IllegalArgumentException(String.format("%s config of slow broker finder should be set in range [0.0, 100.0].",
                                                          SLOW_BROKERS_PEER_METRIC_PERCENTILE_THRESHOLD_CONFIG));
       }
-    } catch (NumberFormatException e) {
+    } catch (NumberFormatException | NullPointerException e) {
       _peerMetricPercentile = DEFAULT_SLOW_BROKERS_PEER_METRIC_PERCENTILE_THRESHOLD;
     }
     try {
@@ -372,17 +372,17 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
         throw new IllegalArgumentException(String.format("%s config of slow broker finder should not be less than 1.0",
                                                          SLOW_BROKERS_PEER_METRIC_MARGIN_CONFIG));
       }
-    } catch (NumberFormatException e) {
+    } catch (NumberFormatException | NullPointerException e) {
       _peerMetricMargin = DEFAULT_SLOW_BROKERS_PEER_METRIC_MARGIN;
     }
     try {
       _slowBrokersDemotionScore = Integer.parseUnsignedInt((String) originalConfig.get(SLOW_BROKERS_DEMOTION_SCORE_CONFIG));
-    } catch (NumberFormatException e) {
+    } catch (NumberFormatException | NullPointerException e) {
       _slowBrokersDemotionScore = DEFAULT_SLOW_BROKERS_DEMOTION_SCORE;
     }
     try {
       _slowBrokersDecommissionScore = Integer.parseUnsignedInt((String) originalConfig.get(SLOW_BROKERS_DECOMMISSION_SCORE_CONFIG));
-    } catch (NumberFormatException e) {
+    } catch (NumberFormatException | NullPointerException e) {
       _slowBrokersDecommissionScore = DEFAULT_SLOW_BROKERS_DECOMMISSION_SCORE;
     }
     try {
@@ -391,7 +391,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
         throw new IllegalArgumentException(String.format("%s config of slow broker finder should be set in range [0.0, 1.0].",
                                                          SlOW_BROKERS_SELF_HEALING_UNFIXABLE_RATIO_CONFIG));
       }
-    } catch (NumberFormatException e) {
+    } catch (NumberFormatException | NullPointerException e) {
       _selfHealingUnfixableRatio = DEFAULT_SlOW_BROKERS_SELF_HEALING_UNFIXABLE_RATIO;
     }
   }

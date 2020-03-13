@@ -39,17 +39,17 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANO
  * The class will check whether there are topics having partition(s) with replication factor different than the desired value.
  * Required configurations for this class.
  * <ul>
- *   <li>{@link #SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG}: The config for the target replication factor of topics.
+ *   <li>{@link #SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG}: The config for the target replication factor of topics.</li>
  *   <li>{@link #TOPIC_EXCLUDED_FROM_REPLICATION_FACTOR_CHECK}: The config to specify topics excluded from the anomaly checking.
  *   The value is treated as a regular expression, default value is set to
- *   {@link #DEFAULT_TOPIC_EXCLUDED_FROM_REPLICATION_FACTOR_CHECK}.
+ *   {@link #DEFAULT_TOPIC_EXCLUDED_FROM_REPLICATION_FACTOR_CHECK}.</li>
  *   <li>{@link #TOPIC_REPLICATION_FACTOR_ANOMALY_CLASS_CONFIG}: The config for the topic anomaly class name,
- *   default value is set to {@link #DEFAULT_TOPIC_REPLICATION_FACTOR_ANOMALY_CLASS}.
+ *   default value is set to {@link #DEFAULT_TOPIC_REPLICATION_FACTOR_ANOMALY_CLASS}.</li>
  *   <li>{@link #TOPIC_REPLICATION_FACTOR_MARGIN_CONFIG}: The config for the topic replication factor margin over minISR, i.e.
  *   a topic is taken as unfixable if the target replication factor is less than its configured minISR value plus this margin.
- *   Default value is set to {@link #DEFAULT_TOPIC_REPLICATION_FACTOR_MARGIN}.
+ *   Default value is set to {@link #DEFAULT_TOPIC_REPLICATION_FACTOR_MARGIN}.</li>
  *   <li>{@link #TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS_CONFIG}: The config for TTL time in millisecond of cached topic minISR
- *   records, default value is set to {@link #DEFAULT_TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS}.
+ *   records, default value is set to {@link #DEFAULT_TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS}.</li>
  * </ul>
  */
 public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
@@ -211,7 +211,7 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
         throw new IllegalArgumentException(String.format("%s config of replication factor anomaly finder should not be set to negative,"
             + " provided %d.", TOPIC_REPLICATION_FACTOR_MARGIN_CONFIG, _topicReplicationFactorMargin));
       }
-    } catch (NumberFormatException e) {
+    } catch (NumberFormatException | NullPointerException e) {
       _topicReplicationFactorMargin = DEFAULT_TOPIC_REPLICATION_FACTOR_MARGIN;
     }
     try {
@@ -220,7 +220,7 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
         throw new IllegalArgumentException(String.format("%s config of replication factor anomaly finder should be set to positive,"
             + " provided %d.", TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS_CONFIG, _topicMinISRRecordRetentionTimeMs));
       }
-    } catch (NumberFormatException e) {
+    } catch (NumberFormatException | NullPointerException e) {
       _topicMinISRRecordRetentionTimeMs = DEFAULT_TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS;
     }
 
