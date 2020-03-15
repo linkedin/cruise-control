@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.linkedin.cruisecontrol.common.config.ConfigException;
 import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomaly;
 import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyFinder;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
@@ -61,10 +62,10 @@ import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.ME
  *   <li> For any broker not in the scoring system, once there is metric anomaly detected on it, the broker is added to the system
  *        with the initial "slowness score" of one. </li>
  *   <li> For any broker in the scoring system, if there is metric anomaly detected on it, its "slowness score" increases
- *        by 1. Once the score exceeds {@link #_slowBrokersDemotionScore}, finder begins to report the broker as slow broker
- *        with broker demotion as self-healing proposal; once the score reaches {@link #_slowBrokersDecommissionScore},
+ *        by 1. Once the score exceeds {@link #_slowBrokerDemotionScore}, finder begins to report the broker as slow broker
+ *        with broker demotion as self-healing proposal; once the score reaches {@link #_slowBrokerDecommissionScore},
  *        finder begin to report the broker as slow broker with broker removal as self-healing proposal (if
- *        {@link #SELF_HEALING_SLOW_BROKERS_REMOVAL_ENABLED_CONFIG is configed to be true}).</li>
+ *        {@link #SELF_HEALING_SLOW_BROKER_REMOVAL_ENABLED_CONFIG is configed to be true}).</li>
  *   <li> For any broker in the scoring system, if there is no metric anomaly detected on it, its "slowness score" decreases by 1.
  *        Once "slowness score" reaches zero, the broker is dropped from scoring system.</li>
  * </ul>
@@ -73,50 +74,50 @@ import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.ME
  * anomaly as unfixable. Because this often indicates some serious issue in the cluster and probably requires administrator's
  * intervention to decide the right remediation strategy.
  *
- * Required configurations for this class.
+ * Related configurations for this class.
  * <ul>
- *   <li>{@link #SLOW_BROKERS_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG}: the bytes in rate threshold to determine whether to include broker
- *   in slow broker detection. If the broker only serves negligible traffic, its derived metric wil be abnormally high since
- *   bytes in rate is used as divisor in metric calculation. Default value is set to
- *   {@link #DEFAULT_SLOW_BROKERS_BYTES_IN_RATE_DETECTION_THRESHOLD}.</li>
- *   <li>{@link #SLOW_BROKERS_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG}: the percentile threshold used to compare latest metric value against
- *   historical value in slow broker detection. Default value is set to {@link #DEFAULT_SLOW_BROKERS_METRIC_HISTORY_PERCENTILE_THRESHOLD}.</li>
- *   <li>{@link #SLOW_BROKERS_METRIC_HISTORY_MARGIN_CONFIG}: the margin used to compare latest metric value against historical value in
- *   slow broker detection. Default value is set to {@link #DEFAULT_SLOW_BROKERS_METRIC_HISTORY_MARGIN}.</li>
- *   <li>{@link #SLOW_BROKERS_PEER_METRIC_PERCENTILE_THRESHOLD_CONFIG}: the percentile threshold used to compare last metric value against
- *   peers' latest value in slow broker detection. Default value is set to {@link #DEFAULT_SLOW_BROKERS_PEER_METRIC_PERCENTILE_THRESHOLD}.</li>
- *   <li>{@link #SLOW_BROKERS_PEER_METRIC_MARGIN_CONFIG}: the margin used to compare last metric value against peers' latest value
- *   in slow broker detection. Default value is set to {@link #DEFAULT_SLOW_BROKERS_PEER_METRIC_MARGIN}.</li>
- *   <li>{@link #SLOW_BROKERS_DEMOTION_SCORE_CONFIG}: the score threshold to trigger a demotion for slow broker. Default value is set to
- *   {@link #DEFAULT_SLOW_BROKERS_DEMOTION_SCORE}.</li>
- *   <li>{@link #SLOW_BROKERS_DECOMMISSION_SCORE_CONFIG}: the score threshold to trigger a removal for slow broker. Default value is set to
- *   {@link #DEFAULT_SLOW_BROKERS_DECOMMISSION_SCORE}.</li>
- *   <li>{@link #SlOW_BROKERS_SELF_HEALING_UNFIXABLE_RATIO_CONFIG}: the maximum ratio of slow brokers in the cluster to trigger self-healing
- *   operation. Default value is set to {@link #DEFAULT_SlOW_BROKERS_SELF_HEALING_UNFIXABLE_RATIO}.</li>
+ *   <li>{@link #SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG}: the bytes in rate threshold in unit of bytes per second to
+ *   determine whether to include broker in slow broker detection. If the broker only serves negligible traffic, its derived metric
+ *   wil be abnormally high since bytes in rate is used as divisor in metric calculation. Default value is set to
+ *   {@link #DEFAULT_SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD}.</li>
+ *   <li>{@link #SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG}: the percentile threshold used to compare latest metric value against
+ *   historical value in slow broker detection. Default value is set to {@link #DEFAULT_SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD}.</li>
+ *   <li>{@link #SLOW_BROKER_METRIC_HISTORY_MARGIN_CONFIG}: the margin used to compare latest metric value against historical value in
+ *   slow broker detection. Default value is set to {@link #DEFAULT_SLOW_BROKER_METRIC_HISTORY_MARGIN}.</li>
+ *   <li>{@link #SLOW_BROKER_PEER_METRIC_PERCENTILE_THRESHOLD_CONFIG}: the percentile threshold used to compare last metric value against
+ *   peers' latest value in slow broker detection. Default value is set to {@link #DEFAULT_SLOW_BROKER_PEER_METRIC_PERCENTILE_THRESHOLD}.</li>
+ *   <li>{@link #SLOW_BROKER_PEER_METRIC_MARGIN_CONFIG}: the margin used to compare last metric value against peers' latest value
+ *   in slow broker detection. Default value is set to {@link #DEFAULT_SLOW_BROKER_PEER_METRIC_MARGIN}.</li>
+ *   <li>{@link #SLOW_BROKER_DEMOTION_SCORE_CONFIG}: the score threshold to trigger a demotion for slow broker. Default value is set to
+ *   {@link #DEFAULT_SLOW_BROKER_DEMOTION_SCORE}.</li>
+ *   <li>{@link #SLOW_BROKER_DECOMMISSION_SCORE_CONFIG}: the score threshold to trigger a removal for slow broker. Default value is set to
+ *   {@link #DEFAULT_SLOW_BROKER_DECOMMISSION_SCORE}.</li>
+ *   <li>{@link #SLOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO_CONFIG}: the maximum ratio of slow broker in the cluster to trigger self-healing
+ *   operation. Default value is set to {@link #DEFAULT_SlOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO}.</li>
  * </ul>
  */
 public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   private static final Logger LOG = LoggerFactory.getLogger(SlowBrokerFinder.class);
   // The config to enable finder reporting slow broker anomaly with broker removal as self-healing proposal.
-  public static final String SELF_HEALING_SLOW_BROKERS_REMOVAL_ENABLED_CONFIG = "self.healing.slow.brokers.removal.enabled";
+  public static final String SELF_HEALING_SLOW_BROKER_REMOVAL_ENABLED_CONFIG = "self.healing.slow.broker.removal.enabled";
   // The config finder uses to indicate anomaly to perform broker demotion or broker removal for self-healing.
-  public static final String REMOVE_SLOW_BROKERS_CONFIG = "remove.slow.brokers";
-  public static final String SLOW_BROKERS_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG = "slow.brokers.bytes.in.rate.detection.threshold";
-  public static final double DEFAULT_SLOW_BROKERS_BYTES_IN_RATE_DETECTION_THRESHOLD = 1024.0 * 1024.0;
-  public static final String SLOW_BROKERS_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG = "slow.brokers.metric.history.percentile.threshold";
-  public static final double DEFAULT_SLOW_BROKERS_METRIC_HISTORY_PERCENTILE_THRESHOLD = 90.0;
-  public static final String SLOW_BROKERS_METRIC_HISTORY_MARGIN_CONFIG = "slow.brokers.metric.history.margin";
-  public static final double DEFAULT_SLOW_BROKERS_METRIC_HISTORY_MARGIN = 3.0;
-  public static final String SLOW_BROKERS_PEER_METRIC_PERCENTILE_THRESHOLD_CONFIG = "slow.brokers.peer.metric.percentile.threshold";
-  public static final double DEFAULT_SLOW_BROKERS_PEER_METRIC_PERCENTILE_THRESHOLD = 50.0;
-  public static final String SLOW_BROKERS_PEER_METRIC_MARGIN_CONFIG = "slow.brokers.peer.metric.margin";
-  public static final double DEFAULT_SLOW_BROKERS_PEER_METRIC_MARGIN = 10.0;
-  public static final String SLOW_BROKERS_DEMOTION_SCORE_CONFIG = "slow.brokers.demotion.score";
-  public static final int DEFAULT_SLOW_BROKERS_DEMOTION_SCORE = 5;
-  public static final String SLOW_BROKERS_DECOMMISSION_SCORE_CONFIG = "slow.brokers.decommission.score";
-  public static final int DEFAULT_SLOW_BROKERS_DECOMMISSION_SCORE = 50;
-  public static final String SlOW_BROKERS_SELF_HEALING_UNFIXABLE_RATIO_CONFIG = "slow.brokers.self.healing.unfixable.ratio";
-  private static final double DEFAULT_SlOW_BROKERS_SELF_HEALING_UNFIXABLE_RATIO = 0.1;
+  public static final String REMOVE_SLOW_BROKER_CONFIG = "remove.slow.broker";
+  public static final String SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG = "slow.broker.bytes.in.rate.detection.threshold";
+  public static final double DEFAULT_SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD = 1024.0 * 1024.0;
+  public static final String SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG = "slow.broker.metric.history.percentile.threshold";
+  public static final double DEFAULT_SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD = 90.0;
+  public static final String SLOW_BROKER_METRIC_HISTORY_MARGIN_CONFIG = "slow.broker.metric.history.margin";
+  public static final double DEFAULT_SLOW_BROKER_METRIC_HISTORY_MARGIN = 3.0;
+  public static final String SLOW_BROKER_PEER_METRIC_PERCENTILE_THRESHOLD_CONFIG = "slow.broker.peer.metric.percentile.threshold";
+  public static final double DEFAULT_SLOW_BROKER_PEER_METRIC_PERCENTILE_THRESHOLD = 50.0;
+  public static final String SLOW_BROKER_PEER_METRIC_MARGIN_CONFIG = "slow.broker.peer.metric.margin";
+  public static final double DEFAULT_SLOW_BROKER_PEER_METRIC_MARGIN = 10.0;
+  public static final String SLOW_BROKER_DEMOTION_SCORE_CONFIG = "slow.broker.demotion.score";
+  public static final int DEFAULT_SLOW_BROKER_DEMOTION_SCORE = 5;
+  public static final String SLOW_BROKER_DECOMMISSION_SCORE_CONFIG = "slow.broker.decommission.score";
+  public static final int DEFAULT_SLOW_BROKER_DECOMMISSION_SCORE = 50;
+  public static final String SLOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO_CONFIG = "slow.broker.self.healing.unfixable.ratio";
+  private static final double DEFAULT_SlOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO = 0.1;
   private static final short BROKER_LOG_FLUSH_TIME_MS_999TH_ID =
       KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.BROKER_LOG_FLUSH_TIME_MS_999TH.name()).id();
   private static final short LEADER_BYTES_IN_ID =
@@ -133,8 +134,8 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   private double _metricHistoryMargin;
   private double _peerMetricPercentile;
   private double _peerMetricMargin;
-  private int _slowBrokersDemotionScore;
-  private int _slowBrokersDecommissionScore;
+  private int _slowBrokerDemotionScore;
+  private int _slowBrokerDecommissionScore;
   private double _selfHealingUnfixableRatio;
 
   public SlowBrokerFinder() {
@@ -224,7 +225,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl);
     parameterConfigOverrides.put(METRIC_ANOMALY_DESCRIPTION_OBJECT_CONFIG, description);
     parameterConfigOverrides.put(METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG, detectedBrokers);
-    parameterConfigOverrides.put(REMOVE_SLOW_BROKERS_CONFIG, removeSlowBroker);
+    parameterConfigOverrides.put(REMOVE_SLOW_BROKER_CONFIG, removeSlowBroker);
     parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
     parameterConfigOverrides.put(METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG, fixable);
     return _kafkaCruiseControl.config().getConfiguredInstance(AnomalyDetectorConfig.METRIC_ANOMALY_CLASS_CONFIG,
@@ -263,7 +264,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
       // Update slow broker detection time and slowness score.
       Long currentTimeMs = _kafkaCruiseControl.timeMs();
       _detectedSlowBrokers.putIfAbsent(broker, currentTimeMs);
-      _brokerSlownessScore.compute(broker, (k, v) -> (v == null) ? 1 : Math.min(v + 1, _slowBrokersDecommissionScore));
+      _brokerSlownessScore.compute(broker, (k, v) -> (v == null) ? 1 : Math.min(v + 1, _slowBrokerDecommissionScore));
     }
     // For brokers which are previously detected as slow brokers, decrease their slowness score if their metrics has
     // recovered back to normal range.
@@ -295,9 +296,9 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     for (BrokerEntity broker : detectedMetricAnomalies) {
       // Report anomaly if slowness score reaches threshold for broker decommission/demotion.
       int slownessScore = _brokerSlownessScore.get(broker);
-      if (slownessScore == _slowBrokersDecommissionScore) {
+      if (slownessScore == _slowBrokerDecommissionScore) {
         brokersToRemove.put(broker, _detectedSlowBrokers.get(broker));
-      } else if (slownessScore >= _slowBrokersDemotionScore) {
+      } else if (slownessScore >= _slowBrokerDemotionScore) {
         brokersToDemote.put(broker, _detectedSlowBrokers.get(broker));
       }
     }
@@ -329,70 +330,126 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     }
     // Config for slow broker removal.
     Map<String, Object> originalConfig = _kafkaCruiseControl.config().originals();
-    _slowBrokerRemovalEnabled = Boolean.parseBoolean((String) originalConfig.get(SELF_HEALING_SLOW_BROKERS_REMOVAL_ENABLED_CONFIG));
-    try {
-      _bytesInRateDetectionThreshold = Double.parseDouble((String) originalConfig.get(SLOW_BROKERS_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG));
-      if (_bytesInRateDetectionThreshold < 0) {
-        throw new IllegalArgumentException(String.format("%s config of slow broker finder should not be set to negative.",
-                                                         SLOW_BROKERS_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG));
+    _slowBrokerRemovalEnabled = Boolean.parseBoolean((String) originalConfig.get(SELF_HEALING_SLOW_BROKER_REMOVAL_ENABLED_CONFIG));
+
+    String bytesInRateDetectionThreshold = (String) originalConfig.get(SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG);
+    if (bytesInRateDetectionThreshold == null) {
+      _bytesInRateDetectionThreshold = DEFAULT_SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD;
+    } else {
+      try {
+        _bytesInRateDetectionThreshold = Double.parseDouble(bytesInRateDetectionThreshold);
+        if (_bytesInRateDetectionThreshold < 0) {
+          throw new ConfigException(String.format("%s config of slow broker finder should not be set to negative, provided: %f.",
+                                                  SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG, _bytesInRateDetectionThreshold));
+        }
+      } catch (NumberFormatException e) {
+        throw new ConfigException(String.format("%s config of slow broker finder is invalid, provided: %s.",
+                                                SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG, bytesInRateDetectionThreshold));
       }
-    } catch (NumberFormatException | NullPointerException e) {
-      _bytesInRateDetectionThreshold = DEFAULT_SLOW_BROKERS_BYTES_IN_RATE_DETECTION_THRESHOLD;
     }
-    try {
-      _metricHistoryPercentile = Double.parseDouble((String) originalConfig.get(SLOW_BROKERS_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG));
-      if (_metricHistoryPercentile < 0.0 || _metricHistoryPercentile > 100.0) {
-        throw new IllegalArgumentException(String.format("%s config of slow broker finder should be set in range [0.0, 100.0].",
-                                                         SLOW_BROKERS_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG));
+
+    String metricHistoryPercentile = (String) originalConfig.get(SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG);
+    if (metricHistoryPercentile == null) {
+      _metricHistoryPercentile = DEFAULT_SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD;
+    } else {
+      try {
+        _metricHistoryPercentile = Double.parseDouble(metricHistoryPercentile);
+        if (_metricHistoryPercentile < 0.0 || _metricHistoryPercentile > 100.0) {
+          throw new ConfigException(String.format("%s config of slow broker finder should be set in range [0.0, 100.0], provided: %f.",
+                                                  SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG, _metricHistoryPercentile));
+        }
+      } catch (NumberFormatException e) {
+        throw new ConfigException(String.format("%s config of slow broker finder is invalid, provided: %s.",
+                                                SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG, metricHistoryPercentile));
       }
-    } catch (NumberFormatException | NullPointerException e) {
-      _metricHistoryPercentile = DEFAULT_SLOW_BROKERS_METRIC_HISTORY_PERCENTILE_THRESHOLD;
     }
-    try {
-      _metricHistoryMargin = Double.parseDouble((String) originalConfig.get(SLOW_BROKERS_METRIC_HISTORY_MARGIN_CONFIG));
-      if (_metricHistoryMargin < 1.0) {
-        throw new IllegalArgumentException(String.format("%s config of slow broker finder should not be less than 1.0.",
-                                                         SLOW_BROKERS_METRIC_HISTORY_MARGIN_CONFIG));
+
+    String metricHistoryMargin = (String) originalConfig.get(SLOW_BROKER_METRIC_HISTORY_MARGIN_CONFIG);
+    if (metricHistoryMargin == null) {
+      _metricHistoryMargin = DEFAULT_SLOW_BROKER_METRIC_HISTORY_MARGIN;
+    } else {
+      try {
+        _metricHistoryMargin = Double.parseDouble(metricHistoryMargin);
+        if (_metricHistoryMargin < 1.0) {
+          throw new ConfigException(String.format("%s config of slow broker finder should not be less than 1.0, provided: %f.",
+                                                  SLOW_BROKER_METRIC_HISTORY_MARGIN_CONFIG, _metricHistoryMargin));
+        }
+      } catch (NumberFormatException e) {
+        throw new ConfigException(String.format("%s config of slow broker finder is invalid, provided: %s.",
+                                                SLOW_BROKER_METRIC_HISTORY_MARGIN_CONFIG, metricHistoryMargin));
       }
-    } catch (NumberFormatException | NullPointerException e) {
-      _metricHistoryMargin = DEFAULT_SLOW_BROKERS_METRIC_HISTORY_MARGIN;
     }
-    try {
-      _peerMetricPercentile = Double.parseDouble((String) originalConfig.get(SLOW_BROKERS_PEER_METRIC_PERCENTILE_THRESHOLD_CONFIG));
-      if (_peerMetricPercentile < 0.0 || _peerMetricPercentile > 100.0) {
-        throw new IllegalArgumentException(String.format("%s config of slow broker finder should be set in range [0.0, 100.0].",
-                                                         SLOW_BROKERS_PEER_METRIC_PERCENTILE_THRESHOLD_CONFIG));
+
+    String peerMetricPercentile = (String) originalConfig.get(SLOW_BROKER_PEER_METRIC_PERCENTILE_THRESHOLD_CONFIG);
+    if (peerMetricPercentile == null) {
+      _peerMetricPercentile = DEFAULT_SLOW_BROKER_PEER_METRIC_PERCENTILE_THRESHOLD;
+    } else {
+      try {
+        _peerMetricPercentile = Double.parseDouble(peerMetricPercentile);
+        if (_peerMetricPercentile < 0.0 || _peerMetricPercentile > 100.0) {
+          throw new ConfigException(String.format("%s config of slow broker finder should be set in range [0.0, 100.0], provided: %f.",
+                                                  SLOW_BROKER_PEER_METRIC_PERCENTILE_THRESHOLD_CONFIG, _peerMetricPercentile));
+        }
+      } catch (NumberFormatException e) {
+        throw new ConfigException(String.format("%s config of slow broker finder should is invalid, provided: %s.",
+                                                SLOW_BROKER_PEER_METRIC_PERCENTILE_THRESHOLD_CONFIG, peerMetricPercentile));
       }
-    } catch (NumberFormatException | NullPointerException e) {
-      _peerMetricPercentile = DEFAULT_SLOW_BROKERS_PEER_METRIC_PERCENTILE_THRESHOLD;
     }
-    try {
-      _peerMetricMargin = Double.parseDouble((String) originalConfig.get(SLOW_BROKERS_PEER_METRIC_MARGIN_CONFIG));
-      if (_peerMetricMargin < 1.0) {
-        throw new IllegalArgumentException(String.format("%s config of slow broker finder should not be less than 1.0",
-                                                         SLOW_BROKERS_PEER_METRIC_MARGIN_CONFIG));
+
+    String peerMetricMargin = (String) originalConfig.get(SLOW_BROKER_PEER_METRIC_MARGIN_CONFIG);
+    if (peerMetricMargin == null) {
+      _peerMetricMargin = DEFAULT_SLOW_BROKER_PEER_METRIC_MARGIN;
+    } else {
+      try {
+        _peerMetricMargin = Double.parseDouble(peerMetricMargin);
+        if (_peerMetricMargin < 1.0) {
+          throw new ConfigException(String.format("%s config of slow broker finder should not be less than 1.0, provided: %f.",
+                                                  SLOW_BROKER_PEER_METRIC_MARGIN_CONFIG, _peerMetricPercentile));
+        }
+      } catch (NumberFormatException e) {
+        throw new ConfigException(String.format("%s config of slow broker finder is invalid, provided: %s.",
+                                                SLOW_BROKER_PEER_METRIC_MARGIN_CONFIG, peerMetricPercentile));
       }
-    } catch (NumberFormatException | NullPointerException e) {
-      _peerMetricMargin = DEFAULT_SLOW_BROKERS_PEER_METRIC_MARGIN;
     }
-    try {
-      _slowBrokersDemotionScore = Integer.parseUnsignedInt((String) originalConfig.get(SLOW_BROKERS_DEMOTION_SCORE_CONFIG));
-    } catch (NumberFormatException | NullPointerException e) {
-      _slowBrokersDemotionScore = DEFAULT_SLOW_BROKERS_DEMOTION_SCORE;
-    }
-    try {
-      _slowBrokersDecommissionScore = Integer.parseUnsignedInt((String) originalConfig.get(SLOW_BROKERS_DECOMMISSION_SCORE_CONFIG));
-    } catch (NumberFormatException | NullPointerException e) {
-      _slowBrokersDecommissionScore = DEFAULT_SLOW_BROKERS_DECOMMISSION_SCORE;
-    }
-    try {
-      _selfHealingUnfixableRatio = Double.parseDouble((String) originalConfig.get(SlOW_BROKERS_SELF_HEALING_UNFIXABLE_RATIO_CONFIG));
-      if (_selfHealingUnfixableRatio < 0.0 || _selfHealingUnfixableRatio > 1.0) {
-        throw new IllegalArgumentException(String.format("%s config of slow broker finder should be set in range [0.0, 1.0].",
-                                                         SlOW_BROKERS_SELF_HEALING_UNFIXABLE_RATIO_CONFIG));
+
+    String slowBrokerDemotionScore = (String) originalConfig.get(SLOW_BROKER_DEMOTION_SCORE_CONFIG);
+    if (slowBrokerDemotionScore == null) {
+      _slowBrokerDemotionScore = DEFAULT_SLOW_BROKER_DEMOTION_SCORE;
+    } else {
+      try {
+        _slowBrokerDemotionScore = Integer.parseUnsignedInt(slowBrokerDemotionScore);
+      } catch (NumberFormatException e) {
+        throw new ConfigException(String.format("%s config of slow broker finder is invalid, provided: %s.",
+                                                SLOW_BROKER_DEMOTION_SCORE_CONFIG, slowBrokerDemotionScore));
       }
-    } catch (NumberFormatException | NullPointerException e) {
-      _selfHealingUnfixableRatio = DEFAULT_SlOW_BROKERS_SELF_HEALING_UNFIXABLE_RATIO;
+    }
+
+    String slowBrokerDecommissionScore = (String) originalConfig.get(SLOW_BROKER_DECOMMISSION_SCORE_CONFIG);
+    if (slowBrokerDecommissionScore == null) {
+      _slowBrokerDecommissionScore = DEFAULT_SLOW_BROKER_DECOMMISSION_SCORE;
+    } else {
+      try {
+        _slowBrokerDecommissionScore = Integer.parseUnsignedInt(slowBrokerDecommissionScore);
+      } catch (NumberFormatException e) {
+        throw new ConfigException(String.format("%s config of slow broker finder is invalid, provided: %s.",
+                                                SLOW_BROKER_DECOMMISSION_SCORE_CONFIG, slowBrokerDecommissionScore));
+      }
+  }
+
+    String selfHealingUnfixableRatio = (String) originalConfig.get(SLOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO_CONFIG);
+    if (selfHealingUnfixableRatio == null) {
+      _selfHealingUnfixableRatio = DEFAULT_SlOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO;
+    } else {
+      try {
+        _selfHealingUnfixableRatio = Double.parseDouble(selfHealingUnfixableRatio);
+        if (_selfHealingUnfixableRatio < 0.0 || _selfHealingUnfixableRatio > 1.0) {
+          throw new ConfigException(String.format("%s config of slow broker finder should be set in range [0.0, 1.0], provided: %f.",
+                                                  SLOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO_CONFIG, _selfHealingUnfixableRatio));
+        }
+      } catch (NumberFormatException e) {
+        throw new ConfigException(String.format("%s config of slow broker finder is invalid, provided: %s.",
+                                                SLOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO_CONFIG, selfHealingUnfixableRatio));
+      }
     }
   }
 }

@@ -69,9 +69,9 @@ public class SlowBrokers extends KafkaMetricAnomaly {
     super.configure(configs);
     KafkaCruiseControl kafkaCruiseControl = extractKafkaCruiseControlObjectFromConfig(configs, KafkaAnomalyType.METRIC_ANOMALY);
     if (_fixable) {
-      Boolean removeSlowBroker = (Boolean) configs.get(SlowBrokerFinder.REMOVE_SLOW_BROKERS_CONFIG);
+      Boolean removeSlowBroker = (Boolean) configs.get(SlowBrokerFinder.REMOVE_SLOW_BROKER_CONFIG);
       if (removeSlowBroker == null) {
-        throw new IllegalArgumentException(String.format("Missing %s for slow broker anomaly.", SlowBrokerFinder.REMOVE_SLOW_BROKERS_CONFIG));
+        throw new IllegalArgumentException(String.format("Missing %s for slow broker anomaly.", SlowBrokerFinder.REMOVE_SLOW_BROKER_CONFIG));
       }
       KafkaCruiseControlConfig config = kafkaCruiseControl.config();
       boolean allowCapacityEstimation = config.getBoolean(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);

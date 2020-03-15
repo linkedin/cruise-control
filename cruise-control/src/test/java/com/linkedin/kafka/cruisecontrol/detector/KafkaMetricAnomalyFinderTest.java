@@ -72,7 +72,6 @@ public class KafkaMetricAnomalyFinderTest {
     assertTrue(anomalies.isEmpty());
   }
 
-  @SuppressWarnings("unchecked")
   private MetricAnomalyFinder<BrokerEntity> createKafkaMetricAnomalyFinder() {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(AnomalyDetectorConfig.METRIC_ANOMALY_FINDER_CLASSES_CONFIG, KafkaMetricAnomalyFinder.class.getName());

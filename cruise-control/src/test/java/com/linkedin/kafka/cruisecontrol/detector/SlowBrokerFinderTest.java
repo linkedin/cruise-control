@@ -29,6 +29,9 @@ public class SlowBrokerFinderTest {
   private final static double SMALL_BYTES_IN_RATE = 1024.0;
   private final static double NORMAL_LOG_FLUSH_TIME_MS = 100.0;
 
+  /**
+   * Test slow broker finder can detect the abnormal metric rise of single broker.
+   */
   @Test
   public void testDetectingSlowBrokerFromHistory() {
     SlowBrokerFinder slowBrokerFinder = createSlowBrokerFinder();
@@ -44,6 +47,9 @@ public class SlowBrokerFinderTest {
     assertEquals(ANOMALY_DETECTION_TIME_MS, (long) anomaly.entities().get(BROKER_ENTITIES.get(0)));
   }
 
+  /**
+   * Test slow broker finder can detect broker with abnormally high metric in the cluster.
+   */
   @Test
   public void testDetectingSlowBrokerFromPeer() {
     SlowBrokerFinder slowBrokerFinder = createSlowBrokerFinder();
@@ -66,6 +72,9 @@ public class SlowBrokerFinderTest {
     assertEquals(ANOMALY_DETECTION_TIME_MS, (long) anomaly.entities().get(BROKER_ENTITIES.get(0)));
   }
 
+  /**
+   * Test slow broker finder skips broker with negligible traffic during detection.
+   */
   @Test
   public void testExcludingSmallTrafficBroker() {
     SlowBrokerFinder slowBrokerFinder = createSlowBrokerFinder();
@@ -85,6 +94,9 @@ public class SlowBrokerFinderTest {
     assertTrue(anomalies.isEmpty());
   }
 
+  /**
+   * Test slow broker finder skips broker without enough metric history during detection.
+   */
   @Test
   public void testInsufficientData() {
     SlowBrokerFinder slowBrokerFinder = createSlowBrokerFinder();
@@ -98,19 +110,18 @@ public class SlowBrokerFinderTest {
   }
 
   private Map<Short, Double> populateMetricValues(double leaderBytesInRate, double replicationBytesInRate, double logFlushTimeMs) {
-    Map<Short, Double> res = new HashMap<>(3);
-    res.put(KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.BROKER_LOG_FLUSH_TIME_MS_999TH.name()).id(), logFlushTimeMs);
-    res.put(KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.LEADER_BYTES_IN.name()).id(), leaderBytesInRate);
-    res.put(KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.REPLICATION_BYTES_IN_RATE.name()).id(), replicationBytesInRate);
-    return res;
+    Map<Short, Double> metricValueById = new HashMap<>(3);
+    metricValueById.put(KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.BROKER_LOG_FLUSH_TIME_MS_999TH.name()).id(), logFlushTimeMs);
+    metricValueById.put(KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.LEADER_BYTES_IN.name()).id(), leaderBytesInRate);
+    metricValueById.put(KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.REPLICATION_BYTES_IN_RATE.name()).id(), replicationBytesInRate);
+    return metricValueById;
   }
 
-  @SuppressWarnings("unchecked")
   private SlowBrokerFinder createSlowBrokerFinder() {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(AnomalyDetectorConfig.METRIC_ANOMALY_FINDER_CLASSES_CONFIG, SlowBrokerFinder.class.getName());
     props.setProperty(AnomalyDetectorConfig.METRIC_ANOMALY_CLASS_CONFIG, SlowBrokers.class.getName());
-    props.setProperty(SlowBrokerFinder.SLOW_BROKERS_DEMOTION_SCORE_CONFIG, "0");
+    props.setProperty(SlowBrokerFinder.SLOW_BROKER_DEMOTION_SCORE_CONFIG, "0");
     return (SlowBrokerFinder) createMetricAnomalyFinder(props);
   }
 }
