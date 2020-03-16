@@ -129,6 +129,24 @@ public class AnomalyDetectorConfig {
       + "persist the broker failure time in case Cruise Control failed and restarted when some brokers are down.";
 
   /**
+   * <code>fixable.failed.broker.count.threshold</code>
+   */
+  public static final String FIXABLE_FAILED_BROKER_COUNT_THRESHOLD_CONFIG = "fixable.failed.broker.count.threshold";
+  public static final String FIXABLE_FAILED_BROKER_COUNT_THRESHOLD_DOC = "The upper boundary of concurrently failed broker "
+      + "count that are taken as fixable. If too many brokers are failing at the same time, it is often due to something more "
+      + "fundamental going wrong and removing replicas off failed brokers cannot alleviate the situation.";
+  public static final short DEFAULT_FIXABLE_FAILED_BROKER_COUNT_THRESHOLD = 10;
+
+  /**
+   * <code>fixable.failed.broker.percentage.threshold</code>
+   */
+  public static final String FIXABLE_FAILED_BROKER_PERCENTAGE_THRESHOLD_CONFIG = "fixable.failed.broker.percentage.threshold";
+  public static final String FIXABLE_FAILED_BROKER_PERCENTAGE_THRESHOLD_DOC = "The upper boundary of concurrently failed broker "
+      + "percentage that are taken as fixable. If large portion of brokers are failing at the same time, it is often due to something "
+      + "more fundamental going wrong and removing replicas off failed brokers cannot alleviate the situation.";
+  public static final double DEFAULT_FIXABLE_FAILED_BROKER_PERCENTAGE_THRESHOLD = 0.4;
+
+  /**
    * <code>anomaly.detection.interval.ms</code>
    */
   public static final String ANOMALY_DETECTION_INTERVAL_MS_CONFIG = "anomaly.detection.interval.ms";
@@ -264,6 +282,16 @@ public class AnomalyDetectorConfig {
                             DEFAULT_FAILED_BROKERS_ZK_PATH,
                             ConfigDef.Importance.LOW,
                             FAILED_BROKERS_ZK_PATH_DOC)
+                    .define(FIXABLE_FAILED_BROKER_COUNT_THRESHOLD_CONFIG,
+                            ConfigDef.Type.SHORT,
+                            DEFAULT_FIXABLE_FAILED_BROKER_COUNT_THRESHOLD,
+                            ConfigDef.Importance.LOW,
+                            FIXABLE_FAILED_BROKER_COUNT_THRESHOLD_DOC)
+                    .define(FIXABLE_FAILED_BROKER_PERCENTAGE_THRESHOLD_CONFIG,
+                            ConfigDef.Type.DOUBLE,
+                            DEFAULT_FIXABLE_FAILED_BROKER_PERCENTAGE_THRESHOLD,
+                            ConfigDef.Importance.LOW,
+                            FIXABLE_FAILED_BROKER_PERCENTAGE_THRESHOLD_DOC)
                     .define(ANOMALY_DETECTION_INTERVAL_MS_CONFIG,
                             ConfigDef.Type.LONG,
                             DEFAULT_ANOMALY_DETECTION_INTERVAL_MS,
