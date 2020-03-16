@@ -48,7 +48,7 @@ public class SlowBrokerFinderTest {
   }
 
   /**
-   * Test slow broker finder can detect broker with abnormally high metric in the cluster.
+   * Test slow broker finder can detect broker which has consistently abnormally high metric in the cluster.
    */
   @Test
   public void testDetectingSlowBrokerFromPeer() {

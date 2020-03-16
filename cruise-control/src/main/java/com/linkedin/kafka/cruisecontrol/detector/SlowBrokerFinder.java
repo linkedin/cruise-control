@@ -93,7 +93,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.ME
  *   <li>{@link #SLOW_BROKER_DECOMMISSION_SCORE_CONFIG}: the score threshold to trigger a removal for slow broker. Default value is set to
  *   {@link #DEFAULT_SLOW_BROKER_DECOMMISSION_SCORE}.</li>
  *   <li>{@link #SLOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO_CONFIG}: the maximum ratio of slow broker in the cluster to trigger self-healing
- *   operation. Default value is set to {@link #DEFAULT_SlOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO}.</li>
+ *   operation. Default value is set to {@link #DEFAULT_SLOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO}.</li>
  * </ul>
  */
 public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
@@ -117,7 +117,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   public static final String SLOW_BROKER_DECOMMISSION_SCORE_CONFIG = "slow.broker.decommission.score";
   public static final int DEFAULT_SLOW_BROKER_DECOMMISSION_SCORE = 50;
   public static final String SLOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO_CONFIG = "slow.broker.self.healing.unfixable.ratio";
-  private static final double DEFAULT_SlOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO = 0.1;
+  private static final double DEFAULT_SLOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO = 0.1;
   private static final short BROKER_LOG_FLUSH_TIME_MS_999TH_ID =
       KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.BROKER_LOG_FLUSH_TIME_MS_999TH.name()).id();
   private static final short LEADER_BYTES_IN_ID =
@@ -343,8 +343,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
                                                   SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG, _bytesInRateDetectionThreshold));
         }
       } catch (NumberFormatException e) {
-        throw new ConfigException(String.format("%s config of slow broker finder is invalid, provided: %s.",
-                                                SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG, bytesInRateDetectionThreshold));
+        throw new ConfigException(SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG, bytesInRateDetectionThreshold, e.getMessage());
       }
     }
 
@@ -359,8 +358,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
                                                   SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG, _metricHistoryPercentile));
         }
       } catch (NumberFormatException e) {
-        throw new ConfigException(String.format("%s config of slow broker finder is invalid, provided: %s.",
-                                                SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG, metricHistoryPercentile));
+        throw new ConfigException(SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG, metricHistoryPercentile, e.getMessage());
       }
     }
 
@@ -375,8 +373,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
                                                   SLOW_BROKER_METRIC_HISTORY_MARGIN_CONFIG, _metricHistoryMargin));
         }
       } catch (NumberFormatException e) {
-        throw new ConfigException(String.format("%s config of slow broker finder is invalid, provided: %s.",
-                                                SLOW_BROKER_METRIC_HISTORY_MARGIN_CONFIG, metricHistoryMargin));
+        throw new ConfigException(SLOW_BROKER_METRIC_HISTORY_MARGIN_CONFIG, metricHistoryMargin, e.getMessage());
       }
     }
 
@@ -391,8 +388,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
                                                   SLOW_BROKER_PEER_METRIC_PERCENTILE_THRESHOLD_CONFIG, _peerMetricPercentile));
         }
       } catch (NumberFormatException e) {
-        throw new ConfigException(String.format("%s config of slow broker finder should is invalid, provided: %s.",
-                                                SLOW_BROKER_PEER_METRIC_PERCENTILE_THRESHOLD_CONFIG, peerMetricPercentile));
+        throw new ConfigException(SLOW_BROKER_PEER_METRIC_PERCENTILE_THRESHOLD_CONFIG, peerMetricPercentile, e.getMessage());
       }
     }
 
@@ -407,8 +403,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
                                                   SLOW_BROKER_PEER_METRIC_MARGIN_CONFIG, _peerMetricPercentile));
         }
       } catch (NumberFormatException e) {
-        throw new ConfigException(String.format("%s config of slow broker finder is invalid, provided: %s.",
-                                                SLOW_BROKER_PEER_METRIC_MARGIN_CONFIG, peerMetricPercentile));
+        throw new ConfigException(SLOW_BROKER_PEER_METRIC_MARGIN_CONFIG, peerMetricPercentile, e.getMessage());
       }
     }
 
@@ -419,8 +414,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
       try {
         _slowBrokerDemotionScore = Integer.parseUnsignedInt(slowBrokerDemotionScore);
       } catch (NumberFormatException e) {
-        throw new ConfigException(String.format("%s config of slow broker finder is invalid, provided: %s.",
-                                                SLOW_BROKER_DEMOTION_SCORE_CONFIG, slowBrokerDemotionScore));
+        throw new ConfigException(SLOW_BROKER_DEMOTION_SCORE_CONFIG, slowBrokerDemotionScore, e.getMessage());
       }
     }
 
@@ -431,14 +425,13 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
       try {
         _slowBrokerDecommissionScore = Integer.parseUnsignedInt(slowBrokerDecommissionScore);
       } catch (NumberFormatException e) {
-        throw new ConfigException(String.format("%s config of slow broker finder is invalid, provided: %s.",
-                                                SLOW_BROKER_DECOMMISSION_SCORE_CONFIG, slowBrokerDecommissionScore));
+        throw new ConfigException(SLOW_BROKER_DECOMMISSION_SCORE_CONFIG, slowBrokerDecommissionScore, e.getMessage());
       }
   }
 
     String selfHealingUnfixableRatio = (String) originalConfig.get(SLOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO_CONFIG);
     if (selfHealingUnfixableRatio == null) {
-      _selfHealingUnfixableRatio = DEFAULT_SlOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO;
+      _selfHealingUnfixableRatio = DEFAULT_SLOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO;
     } else {
       try {
         _selfHealingUnfixableRatio = Double.parseDouble(selfHealingUnfixableRatio);
@@ -447,8 +440,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
                                                   SLOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO_CONFIG, _selfHealingUnfixableRatio));
         }
       } catch (NumberFormatException e) {
-        throw new ConfigException(String.format("%s config of slow broker finder is invalid, provided: %s.",
-                                                SLOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO_CONFIG, selfHealingUnfixableRatio));
+        throw new ConfigException(SLOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO_CONFIG, selfHealingUnfixableRatio, e.getMessage());
       }
     }
   }
