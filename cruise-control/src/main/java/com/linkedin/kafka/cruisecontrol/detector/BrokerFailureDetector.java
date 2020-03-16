@@ -54,7 +54,7 @@ public class BrokerFailureDetector {
   private final KafkaZkClient _kafkaZkClient;
   private final Map<Integer, Long> _failedBrokers;
   private final Queue<Anomaly> _anomalies;
-  private final int _fixableFailedBrokerCountThreshold;
+  private final short _fixableFailedBrokerCountThreshold;
   private final double _fixableFailedBrokerPercentageThreshold;
 
   public BrokerFailureDetector(Queue<Anomaly> anomalies,
@@ -71,7 +71,7 @@ public class BrokerFailureDetector {
     _failedBrokersZkPath = config.getString(AnomalyDetectorConfig.FAILED_BROKERS_ZK_PATH_CONFIG);
     _anomalies = anomalies;
     _kafkaCruiseControl = kafkaCruiseControl;
-    _fixableFailedBrokerCountThreshold = config.getInt(AnomalyDetectorConfig.FIXABLE_FAILED_BROKER_COUNT_THRESHOLD_CONFIG);
+    _fixableFailedBrokerCountThreshold = config.getShort(AnomalyDetectorConfig.FIXABLE_FAILED_BROKER_COUNT_THRESHOLD_CONFIG);
     _fixableFailedBrokerPercentageThreshold = config.getDouble(AnomalyDetectorConfig.FIXABLE_FAILED_BROKER_PERCENTAGE_THRESHOLD_CONFIG);
   }
 

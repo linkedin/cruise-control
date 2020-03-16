@@ -135,7 +135,7 @@ public class AnomalyDetectorConfig {
   public static final String FIXABLE_FAILED_BROKER_COUNT_THRESHOLD_DOC = "The upper boundary of concurrently failed broker "
       + "count that are taken as fixable. If too many brokers are failing at the same time, it is often due to something more "
       + "fundamental going wrong and removing replicas off failed brokers cannot alleviate the situation.";
-  public static final int DEFAULT_FIXABLE_FAILED_BROKER_COUNT_THRESHOLD = 5;
+  public static final short DEFAULT_FIXABLE_FAILED_BROKER_COUNT_THRESHOLD = 10;
 
   /**
    * <code>fixable.failed.broker.percentage.threshold</code>
@@ -283,7 +283,7 @@ public class AnomalyDetectorConfig {
                             ConfigDef.Importance.LOW,
                             FAILED_BROKERS_ZK_PATH_DOC)
                     .define(FIXABLE_FAILED_BROKER_COUNT_THRESHOLD_CONFIG,
-                            ConfigDef.Type.INT,
+                            ConfigDef.Type.SHORT,
                             DEFAULT_FIXABLE_FAILED_BROKER_COUNT_THRESHOLD,
                             ConfigDef.Importance.LOW,
                             FIXABLE_FAILED_BROKER_COUNT_THRESHOLD_DOC)
