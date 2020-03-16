@@ -4,6 +4,7 @@ from cruisecontrolclient.client.CCParameter.Parameter import AbstractParameter
 
 set_of_choices = {'true', 'false'}
 
+
 class AbstractBooleanParameter(AbstractParameter):
     def __init__(self, value: Union[bool, str]):
         AbstractParameter.__init__(self, value)
@@ -141,6 +142,17 @@ class SkipURPDemotionParameter(AbstractBooleanParameter):
     description = 'Whether to operate on partitions which are currently under-replicated'
     argparse_properties = {
         'args': ('--skip-urp-demotion',),
+        # There is no sensible default here; allow for ternary state
+        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL', type=str.lower)
+    }
+
+
+class StopOngoingExecutionParameter(AbstractBooleanParameter):
+    """stop_ongoing_execution=[true/false]"""
+    name = 'stop_ongoing_execution'
+    description = "Whether to stop the ongoing execution (if any) and start executing the given request"
+    argparse_properties = {
+        'args': ('--stop-ongoing-execution',),
         # There is no sensible default here; allow for ternary state
         'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL', type=str.lower)
     }

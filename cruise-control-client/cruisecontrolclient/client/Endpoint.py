@@ -175,6 +175,7 @@ class AddBrokerEndpoint(AbstractEndpoint):
         CCParameter.ReviewIDParameter,
         CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.SkipHardGoalCheckParameter,
+        CCParameter.StopOngoingExecutionParameter,
         CCParameter.ThrottleRemovedBrokerParameter,
         CCParameter.UseReadyDefaultGoalsParameter,
         CCParameter.VerboseParameter
@@ -244,6 +245,7 @@ class DemoteBrokerEndpoint(AbstractEndpoint):
         CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.ReviewIDParameter,
         CCParameter.SkipURPDemotionParameter,
+        CCParameter.StopOngoingExecutionParameter,
         CCParameter.VerboseParameter
     )
     argparse_properties = {
@@ -276,6 +278,7 @@ class FixOfflineReplicasEndpoint(AbstractEndpoint):
         CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.ReviewIDParameter,
         CCParameter.SkipHardGoalCheckParameter,
+        CCParameter.StopOngoingExecutionParameter,
         CCParameter.UseReadyDefaultGoalsParameter,
         CCParameter.VerboseParameter
     )
@@ -402,6 +405,7 @@ class RebalanceEndpoint(AbstractEndpoint):
         CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.ReviewIDParameter,
         CCParameter.SkipHardGoalCheckParameter,
+        CCParameter.StopOngoingExecutionParameter,
         CCParameter.UseReadyDefaultGoalsParameter,
         CCParameter.VerboseParameter
     )
@@ -435,6 +439,7 @@ class RemoveBrokerEndpoint(AbstractEndpoint):
         CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.ReviewIDParameter,
         CCParameter.SkipHardGoalCheckParameter,
+        CCParameter.StopOngoingExecutionParameter,
         CCParameter.ThrottleRemovedBrokerParameter,
         CCParameter.UseReadyDefaultGoalsParameter,
         CCParameter.VerboseParameter
@@ -555,6 +560,7 @@ class TopicConfigurationEndpoint(AbstractEndpoint):
         CCParameter.ReviewIDParameter,
         CCParameter.SkipHardGoalCheckParameter,
         CCParameter.SkipRackAwarenessCheckParameter,
+        CCParameter.StopOngoingExecutionParameter,
         CCParameter.TopicParameter,
         CCParameter.VerboseParameter
     )
