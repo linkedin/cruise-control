@@ -30,6 +30,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ano
 import static org.easymock.EasyMock.anyLong;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE;
 
 
@@ -74,6 +75,7 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
       BrokerFailures brokerFailures = (BrokerFailures) anomaly;
       assertEquals("The failed broker should be 0 and time should be 100L", Collections.singletonMap(brokerId, 100L),
                    brokerFailures.failedBrokers());
+      assertFalse(brokerFailures.fixable());
 
       // Ensure that broker failure is detected as long as the broker is down.
       detector.detectBrokerFailures(false);

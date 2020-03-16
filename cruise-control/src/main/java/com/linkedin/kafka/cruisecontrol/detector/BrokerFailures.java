@@ -46,6 +46,8 @@ public class BrokerFailures extends KafkaAnomaly {
 
   /**
    * Whether detected broker failures are fixable or not.
+   * If there are too many broker fails at the same time, the anomaly is taken as unfixable and needs human intervention.
+   *
    * @return True is detected broker failures are fixable.
    */
   public boolean fixable() {
@@ -77,11 +79,14 @@ public class BrokerFailures extends KafkaAnomaly {
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder().append("{\n");
+    StringBuilder sb = new StringBuilder().append("{");
+    sb.append(_fixable ? "Fixable " : " Unfixable ");
+    sb.append("broker failures detected: {");
     _failedBrokers.forEach((key, value) -> {
-      sb.append("\tBroker ").append(key).append(" failed at ").append(toDateString(value)).append("\n");
+      sb.append("Broker ").append(key).append(" failed at ").append(toDateString(value)).append(",\t");
     });
-    sb.append("}");
+    sb.setLength(sb.length() - 2);
+    sb.append("}}");
     return sb.toString();
   }
 

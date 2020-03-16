@@ -44,18 +44,18 @@ import static java.util.stream.Collectors.toSet;
 public class BrokerFailureDetector {
   private static final Logger LOG = LoggerFactory.getLogger(BrokerFailureDetector.class);
   public static final String FAILED_BROKERS_OBJECT_CONFIG = "failed.brokers.object";
+  // Config to indicate whether detected broker failures are fixable or not.
   public static final String BROKER_FAILURES_FIXABLE_CONFIG = "broker.failures.fixable.object";
   private static final String ZK_BROKER_FAILURE_METRIC_GROUP = "CruiseControlAnomaly";
   private static final String ZK_BROKER_FAILURE_METRIC_TYPE = "BrokerFailure";
-  // TODO: make the threshold configurable
-  private static final int FIXABLE_BROKER_FAILURE_UPPER_BOUNDARY = 5;
-  private static final double FIXABLE_BROKER_FAILURE_PERCENTAGE_UPPER_BOUNDARY = 0.2;
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final String _failedBrokersZkPath;
   private final ZkClient _zkClient;
   private final KafkaZkClient _kafkaZkClient;
   private final Map<Integer, Long> _failedBrokers;
   private final Queue<Anomaly> _anomalies;
+  private final int _fixableFailedBrokerCountThreshold;
+  private final double _fixableFailedBrokerPercentageThreshold;
 
   public BrokerFailureDetector(Queue<Anomaly> anomalies,
                                KafkaCruiseControl kafkaCruiseControl) {
@@ -71,6 +71,8 @@ public class BrokerFailureDetector {
     _failedBrokersZkPath = config.getString(AnomalyDetectorConfig.FAILED_BROKERS_ZK_PATH_CONFIG);
     _anomalies = anomalies;
     _kafkaCruiseControl = kafkaCruiseControl;
+    _fixableFailedBrokerCountThreshold = config.getInt(AnomalyDetectorConfig.FIXABLE_FAILED_BROKER_COUNT_THRESHOLD_CONFIG);
+    _fixableFailedBrokerPercentageThreshold = config.getDouble(AnomalyDetectorConfig.FIXABLE_FAILED_BROKER_PERCENTAGE_THRESHOLD_CONFIG);
   }
 
   void startDetection() {
@@ -181,9 +183,9 @@ public class BrokerFailureDetector {
     }
   }
 
-  private boolean tooManyFailedBrokers(int deadBrokerCount, int aliveBrokerCount) {
-    return deadBrokerCount > FIXABLE_BROKER_FAILURE_UPPER_BOUNDARY ||
-           (double) deadBrokerCount / (deadBrokerCount + aliveBrokerCount) > FIXABLE_BROKER_FAILURE_PERCENTAGE_UPPER_BOUNDARY;
+  private boolean tooManyFailedBrokers(int failedBrokerCount, int aliveBrokerCount) {
+    return failedBrokerCount > _fixableFailedBrokerCountThreshold ||
+           (double) failedBrokerCount / (failedBrokerCount + aliveBrokerCount) > _fixableFailedBrokerPercentageThreshold;
   }
 
   private void reportBrokerFailures() {
@@ -193,8 +195,6 @@ public class BrokerFailureDetector {
       Map<Integer, Long> failedBrokers = failedBrokers();
       parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, failedBrokers);
       parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
-      // IF there are too many broker fails at the same time, mark the anomaly as unfixable.
-      // Such extreme scenario needs human intervention.
       parameterConfigOverrides.put(BROKER_FAILURES_FIXABLE_CONFIG,
                                    !tooManyFailedBrokers(failedBrokers.size(), aliveBrokers().size()));
 
