@@ -43,7 +43,7 @@ class EnableSelfHealingForParameter(AbstractSetOfChoicesParameter):
 
 class ResourceParameter(AbstractSetOfChoicesParameter):
     """resource=[RESOURCE]"""
-    lowercase_set_of_choices = {"cpu", "networkinbound", "networkoutbound", "disk"}
+    lowercase_set_of_choices = {"cpu", "nw_in", "nw_out", "disk"}
     name = 'resource'
     description = "The host and broker-level resource by which to sort the cruise-control response"
     argparse_properties = {

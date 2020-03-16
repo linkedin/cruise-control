@@ -27,6 +27,7 @@ import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.BrokerFailureDetector.BROKER_FAILURES_FIXABLE_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.BrokerFailureDetector.FAILED_BROKERS_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.DiskFailureDetector.FAILED_DISKS_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG;
@@ -63,10 +64,11 @@ public class SelfHealingNotifierTest {
     Map<Integer, Long> failedBrokers = new HashMap<>();
     failedBrokers.put(1, failureTime1);
     failedBrokers.put(2, failureTime2);
-    Map<String, Object> parameterConfigOverrides = new HashMap<>(3);
+    Map<String, Object> parameterConfigOverrides = new HashMap<>(4);
     parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
     parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, failedBrokers);
     parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, failureTime1);
+    parameterConfigOverrides.put(BROKER_FAILURES_FIXABLE_CONFIG, true);
 
     AnomalyNotificationResult result = anomalyNotifier.onBrokerFailure(
         kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
@@ -160,9 +162,10 @@ public class SelfHealingNotifierTest {
 
     mockTime.sleep(SelfHealingNotifier.DEFAULT_AUTO_FIX_THRESHOLD_MS + failureTime1);
     anomalyNotifier.resetAlert(KafkaAnomalyType.BROKER_FAILURE);
-    Map<String, Object> parameterConfigOverrides = new HashMap<>(8);
+    Map<String, Object> parameterConfigOverrides = new HashMap<>(9);
     parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
     parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, failedBrokers);
+    parameterConfigOverrides.put(BROKER_FAILURES_FIXABLE_CONFIG, true);
     parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, anomalyDetectionTime);
     parameterConfigOverrides.put(METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG, false);
     parameterConfigOverrides.put(METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG,

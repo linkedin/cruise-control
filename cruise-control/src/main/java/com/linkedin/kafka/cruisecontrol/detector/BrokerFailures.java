@@ -28,6 +28,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyTyp
 public class BrokerFailures extends KafkaAnomaly {
   protected Map<Integer, Long> _failedBrokers;
   protected RemoveBrokersRunnable _removeBrokersRunnable;
+  protected boolean _fixable;
 
   /**
    * An anomaly to indicate broker failure(s).
@@ -43,11 +44,21 @@ public class BrokerFailures extends KafkaAnomaly {
     return _failedBrokers;
   }
 
+  /**
+   * Whether detected broker failures are fixable or not.
+   * If there are too many broker failures at the same time, the anomaly is taken as unfixable and needs human intervention.
+   *
+   * @return True is detected broker failures are fixable.
+   */
+  public boolean fixable() {
+    return _fixable;
+  }
+
   @Override
   public boolean fix() throws KafkaCruiseControlException {
     boolean hasProposalsToFix = false;
     // Fix the cluster by removing the failed brokers (mode: non-Kafka_assigner).
-    if (_removeBrokersRunnable != null) {
+    if (_removeBrokersRunnable != null && _fixable) {
       _optimizationResult = new OptimizationResult(_removeBrokersRunnable.computeResult(), null);
       hasProposalsToFix = hasProposalsToFix();
       // Ensure that only the relevant response is cached to avoid memory pressure.
@@ -68,11 +79,14 @@ public class BrokerFailures extends KafkaAnomaly {
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder().append("{\n");
+    StringBuilder sb = new StringBuilder().append("{");
+    sb.append(_fixable ? "Fixable " : " Unfixable ");
+    sb.append("broker failures detected: {");
     _failedBrokers.forEach((key, value) -> {
-      sb.append("\tBroker ").append(key).append(" failed at ").append(toDateString(value)).append("\n");
+      sb.append("Broker ").append(key).append(" failed at ").append(toDateString(value)).append(",\t");
     });
-    sb.append("}");
+    sb.setLength(sb.length() - 2);
+    sb.append("}}");
     return sb.toString();
   }
 
@@ -85,6 +99,7 @@ public class BrokerFailures extends KafkaAnomaly {
     if (_failedBrokers != null && _failedBrokers.isEmpty()) {
       throw new IllegalArgumentException("Missing broker ids for failed brokers anomaly.");
     }
+    _fixable = (Boolean) configs.get(BrokerFailureDetector.BROKER_FAILURES_FIXABLE_CONFIG);
     _optimizationResult = null;
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
     boolean allowCapacityEstimation = config.getBoolean(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
