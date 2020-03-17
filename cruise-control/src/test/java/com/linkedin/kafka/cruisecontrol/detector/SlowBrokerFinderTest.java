@@ -109,6 +109,21 @@ public class SlowBrokerFinderTest {
     assertTrue(anomalies.isEmpty());
   }
 
+  /**
+   * Test slow broker finder does not report false positive anomaly due to broker traffic fluctuation.
+   */
+  @Test
+  public void testNoFalsePositiveDetection() {
+    SlowBrokerFinder slowBrokerFinder = createSlowBrokerFinder();
+    Map<BrokerEntity, ValuesAndExtrapolations> history =
+        createHistory(populateMetricValues(NORMAL_BYTES_IN_RATE * 10, NORMAL_BYTES_IN_RATE * 10, NORMAL_LOG_FLUSH_TIME_MS),
+                                           10, BROKER_ENTITIES.get(0));
+    Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics =
+        createCurrentMetrics(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE, NORMAL_LOG_FLUSH_TIME_MS), 11, BROKER_ENTITIES.get(0));
+    Collection<MetricAnomaly<BrokerEntity>> anomalies = slowBrokerFinder.metricAnomalies(history, currentMetrics);
+    assertTrue(anomalies.isEmpty());
+  }
+
   private Map<Short, Double> populateMetricValues(double leaderBytesInRate, double replicationBytesInRate, double logFlushTimeMs) {
     Map<Short, Double> metricValueById = new HashMap<>(3);
     metricValueById.put(KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.BROKER_LOG_FLUSH_TIME_MS_999TH.name()).id(), logFlushTimeMs);

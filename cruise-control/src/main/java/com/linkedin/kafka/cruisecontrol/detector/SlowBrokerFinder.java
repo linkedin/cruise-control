@@ -37,9 +37,9 @@ import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.ME
 /**
  * This class will check whether there is broker performance degradation (i.e. slow broker) from collected broker metrics.
  *
- * Slow brokers are identified by calculating a derived broker metric
- * {@code BROKER_LOG_FLUSH_TIME_MS_999TH / (LEADER_BYTES_IN + REPLICATION_BYTES_IN_RATE) for each broker and then
- * checking in two ways.
+ * Slow brokers are identified by checking two metrics for each broker. One is the raw metric {@code BROKER_LOG_FLUSH_TIME_MS_999TH}
+ * and the other one is the derived metric {@code BROKER_LOG_FLUSH_TIME_MS_999TH / (LEADER_BYTES_IN + REPLICATION_BYTES_IN_RATE).
+ * For each metric, the detection is performed in two ways.
  * <ul>
  *   <li>Comparing the latest metric value against broker's own history. If the latest value is larger than
  *       {@link #_metricHistoryMargin} * ({@link #_metricHistoryPercentile} of historical values), it is
@@ -49,7 +49,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.ME
  *       of all metric values), it is considered to be abnormally high.</li>
  * </ul>
  *
- * If certain broker's metric value is abnormally high, the broker is marked as a slow broker suspect by the finder.
+ * If for both metric, certain broker's values are abnormally high, the broker is marked as a slow broker suspect by the finder.
  * Then if this suspect broker's derived metric anomaly persists for some time, it is confirmed to be a slow broker and
  * the finder will report {@link SlowBrokers}} anomaly with broker demotion as self-healing proposal. If the metric
  * anomaly still persists for an extended time, the finder will eventually report {@link SlowBrokers}} anomaly with broker
@@ -146,33 +146,26 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
 
   private Set<BrokerEntity> detectMetricAnomalies(Map<BrokerEntity, ValuesAndExtrapolations> metricsHistoryByBroker,
                                                   Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker) {
-    // Preprocess raw metrics to get the derived metrics for each broker.
-    Map<BrokerEntity, List<Double>> historicalValueByBroker = new HashMap<>();
-    Map<BrokerEntity, Double> currentValueByBroker = new HashMap<>();
+    // Preprocess raw metrics to get the metrics of interest for each broker.
+    Map<BrokerEntity, List<Double>> historicalLogFlushTimeMetricValues = new HashMap<>();
+    Map<BrokerEntity, Double> currentLogFlushTimeMetricValues = new HashMap<>();
+    Map<BrokerEntity, List<Double>> historicalPerByteLogFlushTimeMetricValues = new HashMap<>();
+    Map<BrokerEntity, Double> currentPerByteLogFlushTimeMetricValues = new HashMap<>();
     Set<Integer> skippedBrokers = new HashSet<>();
-    for (Map.Entry<BrokerEntity, ValuesAndExtrapolations> entry : currentMetricsByBroker.entrySet()) {
-      BrokerEntity entity = entry.getKey();
-      AggregatedMetricValues aggregatedMetricValues = entry.getValue().metricValues();
-      double latestLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH_ID).latest();
-      double latestTotalBytesIn = aggregatedMetricValues.valuesFor(LEADER_BYTES_IN_ID).latest() +
-                                  aggregatedMetricValues.valuesFor(REPLICATION_BYTES_IN_RATE_ID).latest();
-      // Ignore brokers which currently serve negligible traffic.
-      if (latestTotalBytesIn >= _bytesInRateDetectionThreshold && latestLogFlushTime > 0) {
-        currentValueByBroker.put(entity, latestLogFlushTime / latestTotalBytesIn);
-        aggregatedMetricValues = metricsHistoryByBroker.get(entity).metricValues();
-        double[] historicalBytesIn = aggregatedMetricValues.valuesFor(LEADER_BYTES_IN_ID).doubleArray();
-        double[] historicalReplicationBytesIn = aggregatedMetricValues.valuesFor(REPLICATION_BYTES_IN_RATE_ID).doubleArray();
-        double[] historicalLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH_ID).doubleArray();
-        List<Double> historicalValue = new ArrayList<>(historicalBytesIn.length);
-        for (int i = 0; i < historicalBytesIn.length; i++) {
-          double totalBytesIn = historicalBytesIn[i] + historicalReplicationBytesIn[i];
-          if (totalBytesIn >= _bytesInRateDetectionThreshold) {
-            historicalValue.add(historicalLogFlushTime[i] / totalBytesIn);
-          }
-        }
-        historicalValueByBroker.put(entity, historicalValue);
+    for (BrokerEntity broker : currentMetricsByBroker.keySet()) {
+      if (!brokerHasNegligibleTraffic(broker, currentMetricsByBroker)) {
+        collectLogFlushTimeMetric(broker,
+                                  metricsHistoryByBroker,
+                                  currentMetricsByBroker,
+                                  historicalLogFlushTimeMetricValues,
+                                  currentLogFlushTimeMetricValues);
+        collectPerByteLogFlushTimeMetric(broker,
+                                         metricsHistoryByBroker,
+                                         currentMetricsByBroker,
+                                         historicalPerByteLogFlushTimeMetricValues,
+                                         currentPerByteLogFlushTimeMetricValues);
       } else {
-        skippedBrokers.add(entity.brokerId());
+        skippedBrokers.add(broker.brokerId());
       }
     }
 
@@ -180,10 +173,74 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
       LOG.info("Skip broker slowness checking for brokers {} because they serve negligible traffic.", skippedBrokers);
     }
 
+    Set<BrokerEntity> detectMetricAnomalies = getMetricAnomalies(historicalLogFlushTimeMetricValues, currentLogFlushTimeMetricValues);
+    detectMetricAnomalies.retainAll(getMetricAnomalies(historicalPerByteLogFlushTimeMetricValues, currentPerByteLogFlushTimeMetricValues));
+    return detectMetricAnomalies;
+  }
+
+  /**
+   * Whether broker is currently serving negligible traffic or not.
+   * @param broker The broker to check.
+   * @param currentMetricsByBroker The subject broker's latest metrics.
+   * @return True if broker's current traffic is negligible.
+   */
+  private boolean brokerHasNegligibleTraffic(BrokerEntity broker,
+                                             Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker) {
+    AggregatedMetricValues aggregatedMetricValues = currentMetricsByBroker.get(broker).metricValues();
+    double latestTotalBytesIn = aggregatedMetricValues.valuesFor(LEADER_BYTES_IN_ID).latest() +
+                                aggregatedMetricValues.valuesFor(REPLICATION_BYTES_IN_RATE_ID).latest();
+    return latestTotalBytesIn < _bytesInRateDetectionThreshold;
+  }
+
+  private void collectLogFlushTimeMetric(BrokerEntity broker,
+                                         Map<BrokerEntity, ValuesAndExtrapolations> metricsHistoryByBroker,
+                                         Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker,
+                                         Map<BrokerEntity, List<Double>> historicalLogFlushTimeMetricValues,
+                                         Map<BrokerEntity, Double> currentLogFlushTimeMetricValues) {
+    AggregatedMetricValues aggregatedMetricValues = currentMetricsByBroker.get(broker).metricValues();
+    double latestLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH_ID).latest();
+    currentLogFlushTimeMetricValues.put(broker, latestLogFlushTime);
+    aggregatedMetricValues = metricsHistoryByBroker.get(broker).metricValues();
+    double[] historicalLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH_ID).doubleArray();
+    List<Double> historicalValue = new ArrayList<>(historicalLogFlushTime.length);
+    for (int i = 0; i < historicalLogFlushTime.length; i++) {
+      if (historicalLogFlushTime[i] > 0) {
+        historicalValue.add(historicalLogFlushTime[i]);
+      }
+    }
+    historicalLogFlushTimeMetricValues.put(broker, historicalValue);
+  }
+
+  private void collectPerByteLogFlushTimeMetric(BrokerEntity broker,
+                                                Map<BrokerEntity, ValuesAndExtrapolations> metricsHistoryByBroker,
+                                                Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker,
+                                                Map<BrokerEntity, List<Double>> historicalPerByteLogFlushTimeMetricValues,
+                                                Map<BrokerEntity, Double> currentPerByteLogFlushTimeMetricValues) {
+    AggregatedMetricValues aggregatedMetricValues = currentMetricsByBroker.get(broker).metricValues();
+    double latestLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH_ID).latest();
+    double latestTotalBytesIn = aggregatedMetricValues.valuesFor(LEADER_BYTES_IN_ID).latest() +
+                                aggregatedMetricValues.valuesFor(REPLICATION_BYTES_IN_RATE_ID).latest();
+    currentPerByteLogFlushTimeMetricValues.put(broker, latestLogFlushTime / latestTotalBytesIn);
+    aggregatedMetricValues = metricsHistoryByBroker.get(broker).metricValues();
+    double[] historicalBytesIn = aggregatedMetricValues.valuesFor(LEADER_BYTES_IN_ID).doubleArray();
+    double[] historicalReplicationBytesIn = aggregatedMetricValues.valuesFor(REPLICATION_BYTES_IN_RATE_ID).doubleArray();
+    double[] historicalLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH_ID).doubleArray();
+    List<Double> historicalValue = new ArrayList<>(historicalBytesIn.length);
+    for (int i = 0; i < historicalBytesIn.length; i++) {
+      double totalBytesIn = historicalBytesIn[i] + historicalReplicationBytesIn[i];
+      if (totalBytesIn >= _bytesInRateDetectionThreshold) {
+        historicalValue.add(historicalLogFlushTime[i] / totalBytesIn);
+      }
+    }
+    historicalPerByteLogFlushTimeMetricValues.put(broker, historicalValue);
+  }
+
+  private Set<BrokerEntity> getMetricAnomalies(Map<BrokerEntity, List<Double>> historicalValueByBroker,
+                                               Map<BrokerEntity, Double> currentValueByBroker) {
     Set<BrokerEntity> detectedMetricAnomalies = new HashSet<>();
-    // Detect metric anomalies by comparing each broker's current derived metric value against historical value.
+    // Detect metric anomalies by comparing each broker's current metric value against historical value.
     detectMetricAnomaliesFromHistory(historicalValueByBroker, currentValueByBroker, detectedMetricAnomalies);
-    // Detect metric anomalies by comparing each broker's derived metric value against its peers' value.
+    // Detect metric anomalies by comparing each broker's metric value against its peers' value.
     detectMetricAnomaliesFromPeers(currentValueByBroker, detectedMetricAnomalies);
     return detectedMetricAnomalies;
   }
