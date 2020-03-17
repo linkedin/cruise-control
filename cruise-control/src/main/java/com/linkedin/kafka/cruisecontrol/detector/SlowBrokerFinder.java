@@ -204,7 +204,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     double[] historicalLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH_ID).doubleArray();
     List<Double> historicalValue = new ArrayList<>(historicalLogFlushTime.length);
     for (int i = 0; i < historicalLogFlushTime.length; i++) {
-      if (historicalLogFlushTime[i] > 0) {
+      if (historicalLogFlushTime[i] > 5.0) {
         historicalValue.add(historicalLogFlushTime[i]);
       }
     }
