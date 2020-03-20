@@ -367,13 +367,22 @@ public class GoalOptimizer implements Runnable {
 
     Set<String> excludedTopics = excludedTopics(clusterModel, null);
     LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
-    OptimizationOptions optimizationOptions = new OptimizationOptions(excludedTopics,
-                                                                      Collections.emptySet(),
-                                                                      Collections.emptySet(),
-                                                                      false,
-                                                                      Collections.emptySet(),
-                                                                      false);
+    OptimizationOptions optimizationOptions = defaultOptimizationOptions(excludedTopics);
     return optimizations(clusterModel, goalsByPriority, operationProgress, null, optimizationOptions);
+  }
+
+  /**
+   * Return a default {@link OptimizationOptions} object for proposal calculation.
+   * @param excludedTopics The topics to be excluded replica movement.
+   * @return An {@link OptimizationOptions} object.
+   */
+  public OptimizationOptions defaultOptimizationOptions(Set<String> excludedTopics) {
+    return new OptimizationOptions(excludedTopics,
+                                   Collections.emptySet(),
+                                   Collections.emptySet(),
+                                   false,
+                                   Collections.emptySet(),
+                                   false);
   }
 
   /**

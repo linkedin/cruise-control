@@ -91,7 +91,7 @@ public class GoalViolationDetector implements Runnable {
    *
    * @return True to skip goal violation detection based on the current state, false otherwise.
    */
-  private boolean shouldSkipGoalViolationDetection() {
+  protected boolean shouldSkipGoalViolationDetection() {
     if (_kafkaCruiseControl.loadMonitor().clusterModelGeneration().equals(_lastCheckedModelGeneration)) {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Skipping goal violation detection because the model generation hasn't changed. Current model generation {}",
@@ -185,7 +185,7 @@ public class GoalViolationDetector implements Runnable {
    * @param clusterModel The state of the cluster.
    * @return True to skip goal violation detection due to offline replicas in the cluster model.
    */
-  private boolean skipDueToOfflineReplicas(ClusterModel clusterModel) {
+  protected boolean skipDueToOfflineReplicas(ClusterModel clusterModel) {
     if (!clusterModel.deadBrokers().isEmpty()) {
       LOG.info("Skipping goal violation detection due to dead brokers {}, which are reported by broker failure "
                + "detector, and fixed if its self healing configuration is enabled.", clusterModel.deadBrokers());
@@ -201,25 +201,25 @@ public class GoalViolationDetector implements Runnable {
     return false;
   }
 
-  private void setBalancednessWithOfflineReplicas() {
+  protected void setBalancednessWithOfflineReplicas() {
     _balancednessScore = 0.0;
   }
 
-  private void refreshBalancednessScore(Map<Boolean, List<String>> violatedGoalsByFixability) {
+  protected void refreshBalancednessScore(Map<Boolean, List<String>> violatedGoalsByFixability) {
     _balancednessScore = MAX_BALANCEDNESS_SCORE;
     for (List<String> violatedGoals : violatedGoalsByFixability.values()) {
       violatedGoals.forEach(violatedGoal -> _balancednessScore -= _balancednessCostByGoal.get(violatedGoal));
     }
   }
 
-  private Set<String> excludedTopics(ClusterModel clusterModel) {
+  protected Set<String> excludedTopics(ClusterModel clusterModel) {
     return clusterModel.topics()
         .stream()
         .filter(topic -> _excludedTopics.matcher(topic).matches())
         .collect(Collectors.toSet());
   }
 
-  private boolean optimizeForGoal(ClusterModel clusterModel,
+  protected boolean optimizeForGoal(ClusterModel clusterModel,
                                   Goal goal,
                                   GoalViolations goalViolations,
                                   Set<Integer> excludedBrokersForLeadership,
@@ -232,10 +232,8 @@ public class GoalViolationDetector implements Runnable {
     Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = clusterModel.getReplicaDistribution();
     Map<TopicPartition, ReplicaPlacementInfo> initLeaderDistribution = clusterModel.getLeaderDistribution();
     try {
-      goal.optimize(clusterModel, new HashSet<>(), new OptimizationOptions(excludedTopics(clusterModel),
-                                                                           excludedBrokersForLeadership,
-                                                                           excludedBrokersForReplicaMove,
-                                                                           true));
+      goal.optimize(clusterModel, new HashSet<>(),
+          optimizationOptionsForDetection(excludedTopics(clusterModel), excludedBrokersForLeadership, excludedBrokersForReplicaMove));
     } catch (OptimizationFailureException ofe) {
       // An OptimizationFailureException indicates (1) a hard goal violation that cannot be fixed typically due to
       // lack of physical hardware (e.g. insufficient number of racks to satisfy rack awareness, insufficient number
@@ -254,5 +252,14 @@ public class GoalViolationDetector implements Runnable {
       // The goal is already satisfied.
       return false;
     }
+  }
+
+  protected OptimizationOptions optimizationOptionsForDetection(Set<String> excludedTopics,
+                                                                Set<Integer> excludedBrokersForLeadership,
+                                                                Set<Integer> excludedBrokersForReplicaMove) {
+    return new OptimizationOptions(excludedTopics,
+                                   excludedBrokersForLeadership,
+                                   excludedBrokersForReplicaMove,
+                                   true);
   }
 }
