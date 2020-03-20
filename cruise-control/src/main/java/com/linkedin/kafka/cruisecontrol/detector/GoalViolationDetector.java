@@ -232,8 +232,9 @@ public class GoalViolationDetector implements Runnable {
     Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = clusterModel.getReplicaDistribution();
     Map<TopicPartition, ReplicaPlacementInfo> initLeaderDistribution = clusterModel.getLeaderDistribution();
     try {
-      goal.optimize(clusterModel, new HashSet<>(),
-          optimizationOptionsForDetection(excludedTopics(clusterModel), excludedBrokersForLeadership, excludedBrokersForReplicaMove));
+      goal.optimize(clusterModel, new HashSet<>(), optimizationOptionsForDetection(excludedTopics(clusterModel),
+                                                                                   excludedBrokersForLeadership,
+                                                                                   excludedBrokersForReplicaMove));
     } catch (OptimizationFailureException ofe) {
       // An OptimizationFailureException indicates (1) a hard goal violation that cannot be fixed typically due to
       // lack of physical hardware (e.g. insufficient number of racks to satisfy rack awareness, insufficient number
@@ -254,9 +255,9 @@ public class GoalViolationDetector implements Runnable {
     }
   }
 
-  protected OptimizationOptions optimizationOptionsForDetection(Set<String> excludedTopics,
-                                                                Set<Integer> excludedBrokersForLeadership,
-                                                                Set<Integer> excludedBrokersForReplicaMove) {
+  static protected OptimizationOptions optimizationOptionsForDetection(Set<String> excludedTopics,
+                                                                       Set<Integer> excludedBrokersForLeadership,
+                                                                       Set<Integer> excludedBrokersForReplicaMove) {
     return new OptimizationOptions(excludedTopics,
                                    excludedBrokersForLeadership,
                                    excludedBrokersForReplicaMove,

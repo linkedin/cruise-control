@@ -374,9 +374,9 @@ public class GoalOptimizer implements Runnable {
   /**
    * Return a default {@link OptimizationOptions} object for proposal calculation.
    * @param excludedTopics The topics to be excluded replica movement.
-   * @return An {@link OptimizationOptions} object.
+   * @return An object of {@link OptimizationOptions} for proposal calculation.
    */
-  public OptimizationOptions defaultOptimizationOptions(Set<String> excludedTopics) {
+  static public OptimizationOptions defaultOptimizationOptions(Set<String> excludedTopics) {
     return new OptimizationOptions(excludedTopics,
                                    Collections.emptySet(),
                                    Collections.emptySet(),
