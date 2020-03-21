@@ -255,7 +255,7 @@ public class GoalViolationDetector implements Runnable {
     }
   }
 
-  static protected OptimizationOptions optimizationOptionsForDetection(Set<String> excludedTopics,
+  protected static OptimizationOptions optimizationOptionsForDetection(Set<String> excludedTopics,
                                                                        Set<Integer> excludedBrokersForLeadership,
                                                                        Set<Integer> excludedBrokersForReplicaMove) {
     return new OptimizationOptions(excludedTopics,
