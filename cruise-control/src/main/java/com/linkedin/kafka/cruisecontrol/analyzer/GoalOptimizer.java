@@ -49,6 +49,7 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.balancednessCostByGoal;
 import static com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.BOOTSTRAPPING;
 import static com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.LOADING;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG;
 
 
 /**
@@ -79,6 +80,7 @@ public class GoalOptimizer implements Runnable {
   private volatile boolean _hasOngoingExplicitPrecomputation;
   private final double _priorityWeight;
   private final double _strictnessWeight;
+  private final OptimizationOptionsGenerator _optimizationOptionsGenerator;
 
   /**
    * Constructor for Goal Optimizer takes the goals as input. The order of the list determines the priority of goals
@@ -119,6 +121,10 @@ public class GoalOptimizer implements Runnable {
     _priorityWeight = config.getDouble(AnalyzerConfig.GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG);
     _strictnessWeight = config.getDouble(AnalyzerConfig.GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_CONFIG);
     _allowCapacityEstimationOnProposalPrecompute = config.getBoolean(AnalyzerConfig.ALLOW_CAPACITY_ESTIMATION_ON_PROPOSAL_PRECOMPUTE_CONFIG);
+    Map<String, Object> overrideConfigs = Collections.singletonMap(KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG, config);
+    _optimizationOptionsGenerator = config.getConfiguredInstance(AnalyzerConfig.OPTIMIZATION_OPTIONS_GENERATOR_CLASS_CONFIG,
+                                                                 OptimizationOptionsGenerator.class,
+                                                                 overrideConfigs);
   }
 
   @Override
@@ -367,22 +373,9 @@ public class GoalOptimizer implements Runnable {
 
     Set<String> excludedTopics = excludedTopics(clusterModel, null);
     LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
-    OptimizationOptions optimizationOptions = defaultOptimizationOptions(excludedTopics);
+    OptimizationOptions optimizationOptions =
+        _optimizationOptionsGenerator.optimizationOptionsForCachedProposalCalculation(clusterModel, excludedTopics);
     return optimizations(clusterModel, goalsByPriority, operationProgress, null, optimizationOptions);
-  }
-
-  /**
-   * Return a default {@link OptimizationOptions} object for proposal calculation.
-   * @param excludedTopics The topics to be excluded replica movement.
-   * @return An object of {@link OptimizationOptions} for proposal calculation.
-   */
-  public static OptimizationOptions defaultOptimizationOptions(Set<String> excludedTopics) {
-    return new OptimizationOptions(excludedTopics,
-                                   Collections.emptySet(),
-                                   Collections.emptySet(),
-                                   false,
-                                   Collections.emptySet(),
-                                   false);
   }
 
   /**

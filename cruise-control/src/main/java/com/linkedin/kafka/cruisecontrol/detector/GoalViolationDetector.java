@@ -7,7 +7,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.exception.NotEnoughValidWindowsException;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptionsGenerator;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
@@ -39,6 +39,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.MAX_BALAN
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.shouldSkipAnomalyDetection;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG;
 
 
 /**
@@ -57,6 +58,7 @@ public class GoalViolationDetector implements Runnable {
   private final boolean _excludeRecentlyRemovedBrokers;
   private final Map<String, Double> _balancednessCostByGoal;
   private volatile double _balancednessScore;
+  private final OptimizationOptionsGenerator _optimizationOptionsGenerator;
 
   public GoalViolationDetector(Queue<Anomaly> anomalies,
                                KafkaCruiseControl kafkaCruiseControl) {
@@ -73,6 +75,10 @@ public class GoalViolationDetector implements Runnable {
                                                      config.getDouble(AnalyzerConfig.GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG),
                                                      config.getDouble(AnalyzerConfig.GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_CONFIG));
     _balancednessScore = MAX_BALANCEDNESS_SCORE;
+    Map<String, Object> overrideConfigs = Collections.singletonMap(KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG, config);
+    _optimizationOptionsGenerator = config.getConfiguredInstance(AnalyzerConfig.OPTIMIZATION_OPTIONS_GENERATOR_CLASS_CONFIG,
+                                                                 OptimizationOptionsGenerator.class,
+                                                                 overrideConfigs);
   }
 
   /**
@@ -232,9 +238,12 @@ public class GoalViolationDetector implements Runnable {
     Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = clusterModel.getReplicaDistribution();
     Map<TopicPartition, ReplicaPlacementInfo> initLeaderDistribution = clusterModel.getLeaderDistribution();
     try {
-      goal.optimize(clusterModel, new HashSet<>(), optimizationOptionsForDetection(excludedTopics(clusterModel),
-                                                                                   excludedBrokersForLeadership,
-                                                                                   excludedBrokersForReplicaMove));
+      goal.optimize(clusterModel,
+                    new HashSet<>(),
+                    _optimizationOptionsGenerator.optimizationOptionsForGoalViolationDetection(clusterModel,
+                                                                                               excludedTopics(clusterModel),
+                                                                                               excludedBrokersForLeadership,
+                                                                                               excludedBrokersForReplicaMove));
     } catch (OptimizationFailureException ofe) {
       // An OptimizationFailureException indicates (1) a hard goal violation that cannot be fixed typically due to
       // lack of physical hardware (e.g. insufficient number of racks to satisfy rack awareness, insufficient number
@@ -253,14 +262,5 @@ public class GoalViolationDetector implements Runnable {
       // The goal is already satisfied.
       return false;
     }
-  }
-
-  protected static OptimizationOptions optimizationOptionsForDetection(Set<String> excludedTopics,
-                                                                       Set<Integer> excludedBrokersForLeadership,
-                                                                       Set<Integer> excludedBrokersForReplicaMove) {
-    return new OptimizationOptions(excludedTopics,
-                                   excludedBrokersForLeadership,
-                                   excludedBrokersForReplicaMove,
-                                   true);
   }
 }
