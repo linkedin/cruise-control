@@ -103,8 +103,8 @@ public class KafkaCruiseControlApp {
     if (webserverSslEnable != null && webserverSslEnable) {
       SslContextFactory sslServerContextFactory = new SslContextFactory.Server();
       sslServerContextFactory.setKeyStorePath(_config.getString(WebServerConfig.WEBSERVER_SSL_KEYSTORE_LOCATION_CONFIG));
-      sslServerContextFactory.setKeyStorePassword(_config.getString(WebServerConfig.WEBSERVER_SSL_KEYSTORE_PASSWORD_CONFIG));
-      sslServerContextFactory.setKeyManagerPassword(_config.getString(WebServerConfig.WEBSERVER_SSL_KEY_PASSWORD_CONFIG));
+      sslServerContextFactory.setKeyStorePassword(_config.getPassword(WebServerConfig.WEBSERVER_SSL_KEYSTORE_PASSWORD_CONFIG).value());
+      sslServerContextFactory.setKeyManagerPassword(_config.getPassword(WebServerConfig.WEBSERVER_SSL_KEY_PASSWORD_CONFIG).value());
       sslServerContextFactory.setProtocol(_config.getString(WebServerConfig.WEBSERVER_SSL_PROTOCOL_CONFIG));
       String keyStoreType = _config.getString(WebServerConfig.WEBSERVER_SSL_KEYSTORE_TYPE_CONFIG);
       if (keyStoreType != null) {
