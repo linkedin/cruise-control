@@ -5,34 +5,24 @@
 package com.linkedin.kafka.cruisecontrol;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
+import com.linkedin.kafka.cruisecontrol.config.EnvConfigProvider;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.DescribeLogDirsResult;
-import java.util.TimeZone;
-import java.util.stream.Collectors;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigException;
-import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.config.SaslConfigs;
+import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.message.MetadataResponseData;
 import org.apache.kafka.common.record.RecordBatch;
 import org.apache.kafka.common.requests.AbstractResponse;
@@ -40,6 +30,22 @@ import org.apache.kafka.common.requests.MetadataResponse;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.SystemTime;
 import scala.Option;
+
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.TimeZone;
+import java.util.stream.Collectors;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_HARD_GOAL_CHECK_PARAM;
 
@@ -540,5 +546,21 @@ public class KafkaCruiseControlUtils {
     }
 
     return balancednessCostByGoal;
+  }
+
+  /**
+   * Reads the configuration file, parses and validates the configs.
+   * @param propertiesFile is the file containing the Cruise Control configuration.
+   * @return a parsed {@link KafkaCruiseControlConfig}
+   * @throws IOException if the configuration file can't be read.
+   */
+  public static KafkaCruiseControlConfig readConfig(String propertiesFile) throws IOException {
+    Properties props = new Properties();
+    try (InputStream propStream = new FileInputStream(propertiesFile)) {
+      props.put("config.providers", "env");
+      props.put("config.providers.env.class", EnvConfigProvider.class.getName());
+      props.load(propStream);
+    }
+    return new KafkaCruiseControlConfig(props);
   }
 }
