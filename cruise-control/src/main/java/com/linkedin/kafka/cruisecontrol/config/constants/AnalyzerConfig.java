@@ -4,6 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.config.constants;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.DefaultOptimizationOptionsGenerator;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptionsGenerator;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
@@ -203,6 +205,14 @@ public class AnalyzerConfig {
   public static final int DEFAULT_NUM_PROPOSAL_PRECOMPUTE_THREADS = 1;
   public static final String NUM_PROPOSAL_PRECOMPUTE_THREADS_DOC = "The number of thread used to precompute the "
       + "optimization proposal candidates. The more threads are used, the more memory and CPU resource will be used.";
+
+  /**
+   * <code>optimization.options.generator.class</code>
+   */
+  public static final String OPTIMIZATION_OPTIONS_GENERATOR_CLASS_CONFIG = "optimization.options.generator.class";
+  public static final String DEFAULT_OPTIMIZATION_OPTIONS_GENERATOR_CLASS = DefaultOptimizationOptionsGenerator.class.getName();
+  public static final String OPTIMIZATION_OPTIONS_GENERATOR_CLASS_DOC = String.format("The class implementing %s interface and "
+      + "is used to generate optimization options for proposal calculations.", OptimizationOptionsGenerator.class.getName());
 
   /**
    * <code>goals</code>
@@ -481,6 +491,11 @@ public class AnalyzerConfig {
                             DEFAULT_GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER,
                             atLeast(1),
                             ConfigDef.Importance.MEDIUM,
-                            GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_DOC);
+                            GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_DOC)
+                    .define(OPTIMIZATION_OPTIONS_GENERATOR_CLASS_CONFIG,
+                            ConfigDef.Type.CLASS,
+                            DEFAULT_OPTIMIZATION_OPTIONS_GENERATOR_CLASS,
+                            ConfigDef.Importance.LOW,
+                            OPTIMIZATION_OPTIONS_GENERATOR_CLASS_DOC);
   }
 }
