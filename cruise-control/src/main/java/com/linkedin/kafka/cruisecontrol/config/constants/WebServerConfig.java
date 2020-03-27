@@ -397,7 +397,7 @@ public class WebServerConfig {
                             ConfigDef.Importance.MEDIUM,
                             WEBSERVER_SSL_KEYSTORE_LOCATION_DOC)
                     .define(WEBSERVER_SSL_KEYSTORE_PASSWORD_CONFIG,
-                            ConfigDef.Type.STRING,
+                            ConfigDef.Type.PASSWORD,
                             DEFAULT_WEBSERVER_SSL_KEYSTORE_PASSWORD,
                             ConfigDef.Importance.MEDIUM,
                             WEBSERVER_SSL_KEYSTORE_PASSWORD_DOC)
@@ -407,7 +407,7 @@ public class WebServerConfig {
                             ConfigDef.Importance.MEDIUM,
                             WEBSERVER_SSL_KEYSTORE_TYPE_DOC)
                     .define(WEBSERVER_SSL_KEY_PASSWORD_CONFIG,
-                            ConfigDef.Type.STRING,
+                            ConfigDef.Type.PASSWORD,
                             DEFAULT_WEBSERVER_SSL_KEY_PASSWORD,
                             ConfigDef.Importance.MEDIUM,
                             WEBSERVER_SSL_KEY_PASSWORD_DOC)
