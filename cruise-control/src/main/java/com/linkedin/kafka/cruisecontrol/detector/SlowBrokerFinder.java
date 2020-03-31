@@ -76,7 +76,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.ME
  *
  * Related configurations for this class.
  * <ul>
- *   <li>{@link #SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG}: the bytes in rate threshold in unit of bytes per second to
+ *   <li>{@link #SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG}: the bytes in rate threshold in unit of kilobytes per second to
  *   determine whether to include broker in slow broker detection. If the broker only serves negligible traffic, its derived metric
  *   wil be abnormally high since bytes in rate is used as divisor in metric calculation. Default value is set to
  *   {@link #DEFAULT_SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD}.</li>
@@ -103,7 +103,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   // The config finder uses to indicate anomaly to perform broker demotion or broker removal for self-healing.
   public static final String REMOVE_SLOW_BROKER_CONFIG = "remove.slow.broker";
   public static final String SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG = "slow.broker.bytes.in.rate.detection.threshold";
-  public static final double DEFAULT_SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD = 1024.0 * 1024.0;
+  public static final double DEFAULT_SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD = 1024.0;
   public static final String SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG = "slow.broker.metric.history.percentile.threshold";
   public static final double DEFAULT_SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD = 90.0;
   public static final String SLOW_BROKER_METRIC_HISTORY_MARGIN_CONFIG = "slow.broker.metric.history.margin";
@@ -189,6 +189,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     AggregatedMetricValues aggregatedMetricValues = currentMetricsByBroker.get(broker).metricValues();
     double latestTotalBytesIn = aggregatedMetricValues.valuesFor(LEADER_BYTES_IN_ID).latest() +
                                 aggregatedMetricValues.valuesFor(REPLICATION_BYTES_IN_RATE_ID).latest();
+    LOG.debug("Broker {}'s total bytes in rate is {} KB/s.", broker.brokerId(), latestTotalBytesIn);
     return latestTotalBytesIn < _bytesInRateDetectionThreshold;
   }
 
