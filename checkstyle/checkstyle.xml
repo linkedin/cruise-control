@@ -119,6 +119,10 @@ LinkedIn Java style.
             <property name="tokens" value="METHOD_DEF,ANNOTATION_FIELD_DEF"/>
             <property name="ignoreMethodNamesRegex" value="^test.*$"/>
         </module>
+
+        <module name="NonEmptyAtclauseDescription">
+            <property name="javadocTokens" value="PARAM_LITERAL,RETURN_LITERAL,DEPRECATED_LITERAL"/>
+        </module>
         <!-- NAMING CONVENTIONS -->
 
         <!-- Generic parameters for a class must be uppercase letters (e.g. <T>, <OLD>) -->

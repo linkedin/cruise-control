@@ -55,6 +55,7 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
 
   /**
    * Package private for unit test.
+   * @param balancingConstraint Balancing constraint.
    */
   public LeaderReplicaDistributionGoal(BalancingConstraint balancingConstraint) {
     this();
