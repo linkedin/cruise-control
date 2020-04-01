@@ -217,14 +217,20 @@ public class KafkaCruiseControl {
     if (dryRun) {
       return;
     }
-    if (_executor.hasOngoingExecution() && !stopOngoingExecution) {
-      throw new IllegalStateException(String.format("Cannot start a new execution while there is an ongoing execution. "
-                                                    + "Please use %s=true to stop ongoing execution and start a new one.",
-                                                    STOP_ONGOING_EXECUTION_PARAM));
-    } else if (_executor.hasOngoingPartitionReassignments()) {
-      throw new IllegalStateException("Cannot execute new proposals while there are ongoing partition reassignments.");
-    } else if (_executor.hasOngoingLeaderElection()) {
-      throw new IllegalStateException("Cannot execute new proposals while there are ongoing leadership reassignments.");
+    if (_executor.hasOngoingExecution()) {
+      if (!stopOngoingExecution) {
+        throw new IllegalStateException(String.format("Cannot start a new execution while there is an ongoing execution. "
+                                                      + "Please use %s=true to stop ongoing execution and start a new one.",
+                                                      STOP_ONGOING_EXECUTION_PARAM));
+      }
+    } else {
+      if (_executor.hasOngoingPartitionReassignments()) {
+        throw new IllegalStateException("Cannot execute new proposals while there are ongoing partition reassignments initiated by "
+                                        + "external agent.");
+      } else if (_executor.hasOngoingLeaderElection()) {
+        throw new IllegalStateException("Cannot execute new proposals while there are ongoing leadership reassignments initiated by "
+                                        + "external agent.");
+      }
     }
   }
 
