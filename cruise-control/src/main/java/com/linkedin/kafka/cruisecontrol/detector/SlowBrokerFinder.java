@@ -201,15 +201,20 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     AggregatedMetricValues aggregatedMetricValues = currentMetricsByBroker.get(broker).metricValues();
     double latestLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH_ID).latest();
     currentLogFlushTimeMetricValues.put(broker, latestLogFlushTime);
-    aggregatedMetricValues = metricsHistoryByBroker.get(broker).metricValues();
-    double[] historicalLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH_ID).doubleArray();
-    List<Double> historicalValue = new ArrayList<>(historicalLogFlushTime.length);
-    for (int i = 0; i < historicalLogFlushTime.length; i++) {
-      if (historicalLogFlushTime[i] > 5.0) {
-        historicalValue.add(historicalLogFlushTime[i]);
+    if (metricsHistoryByBroker.get(broker) != null) {
+      aggregatedMetricValues = metricsHistoryByBroker.get(broker).metricValues();
+      double[] historicalLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH_ID).doubleArray();
+      List<Double> historicalValue = new ArrayList<>(historicalLogFlushTime.length);
+      for (int i = 0; i < historicalLogFlushTime.length; i++) {
+        if (historicalLogFlushTime[i] > 5.0) {
+          historicalValue.add(historicalLogFlushTime[i]);
+        }
       }
+      historicalLogFlushTimeMetricValues.put(broker, historicalValue);
+    } else {
+      LOG.debug("Metric history for broker {} is missing. This may be due to a newly joined broker or Cruise Control "
+                + "cold start.", broker.brokerId());
     }
-    historicalLogFlushTimeMetricValues.put(broker, historicalValue);
   }
 
   private void collectPerByteLogFlushTimeMetric(BrokerEntity broker,
@@ -222,18 +227,23 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     double latestTotalBytesIn = aggregatedMetricValues.valuesFor(LEADER_BYTES_IN_ID).latest() +
                                 aggregatedMetricValues.valuesFor(REPLICATION_BYTES_IN_RATE_ID).latest();
     currentPerByteLogFlushTimeMetricValues.put(broker, latestLogFlushTime / latestTotalBytesIn);
-    aggregatedMetricValues = metricsHistoryByBroker.get(broker).metricValues();
-    double[] historicalBytesIn = aggregatedMetricValues.valuesFor(LEADER_BYTES_IN_ID).doubleArray();
-    double[] historicalReplicationBytesIn = aggregatedMetricValues.valuesFor(REPLICATION_BYTES_IN_RATE_ID).doubleArray();
-    double[] historicalLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH_ID).doubleArray();
-    List<Double> historicalValue = new ArrayList<>(historicalBytesIn.length);
-    for (int i = 0; i < historicalBytesIn.length; i++) {
-      double totalBytesIn = historicalBytesIn[i] + historicalReplicationBytesIn[i];
-      if (totalBytesIn >= _bytesInRateDetectionThreshold) {
-        historicalValue.add(historicalLogFlushTime[i] / totalBytesIn);
+    if (metricsHistoryByBroker.get(broker) != null) {
+      aggregatedMetricValues = metricsHistoryByBroker.get(broker).metricValues();
+      double[] historicalBytesIn = aggregatedMetricValues.valuesFor(LEADER_BYTES_IN_ID).doubleArray();
+      double[] historicalReplicationBytesIn = aggregatedMetricValues.valuesFor(REPLICATION_BYTES_IN_RATE_ID).doubleArray();
+      double[] historicalLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH_ID).doubleArray();
+      List<Double> historicalValue = new ArrayList<>(historicalBytesIn.length);
+      for (int i = 0; i < historicalBytesIn.length; i++) {
+        double totalBytesIn = historicalBytesIn[i] + historicalReplicationBytesIn[i];
+        if (totalBytesIn >= _bytesInRateDetectionThreshold) {
+          historicalValue.add(historicalLogFlushTime[i] / totalBytesIn);
+        }
       }
+      historicalPerByteLogFlushTimeMetricValues.put(broker, historicalValue);
+    } else {
+      LOG.debug("Metric history for broker {} is missing. This may be due to a newly joined broker or Cruise Control "
+                + "cold start.", broker.brokerId());
     }
-    historicalPerByteLogFlushTimeMetricValues.put(broker, historicalValue);
   }
 
   private Set<BrokerEntity> getMetricAnomalies(Map<BrokerEntity, List<Double>> historicalValueByBroker,
@@ -251,7 +261,8 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
                                                 Set<BrokerEntity> detectedMetricAnomalies) {
     for (Map.Entry<BrokerEntity, Double> entry : currentValue.entrySet()) {
       BrokerEntity entity = entry.getKey();
-      if (isDataSufficient(historicalValue.get(entity).size(), _metricHistoryPercentile, _metricHistoryPercentile)) {
+      if (historicalValue.get(entity) != null &&
+          isDataSufficient(historicalValue.get(entity).size(), _metricHistoryPercentile, _metricHistoryPercentile)) {
         double [] data = historicalValue.get(entity).stream().mapToDouble(i -> i).toArray();
         _percentile.setData(data);
         if (currentValue.get(entity) > _percentile.evaluate(_metricHistoryPercentile) * _metricHistoryMargin) {
