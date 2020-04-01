@@ -415,8 +415,8 @@ public class SamplingUtils {
       Set<AlterConfigOp> alterConfigOps = new HashSet<>(desiredConfig.size());
       maybeUpdateConfig(alterConfigOps, desiredConfig, topicConfig);
       if (!alterConfigOps.isEmpty()) {
-        AlterConfigsResult
-            alterConfigsResult = adminClient.incrementalAlterConfigs(Collections.singletonMap(topicResource, alterConfigOps));
+        AlterConfigsResult alterConfigsResult
+            = adminClient.incrementalAlterConfigs(Collections.singletonMap(topicResource, alterConfigOps));
         try {
           alterConfigsResult.values().get(topicResource).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
@@ -458,10 +458,9 @@ public class SamplingUtils {
         createPartitionsResult.values().get(topicName).get(CLIENT_REQUEST_TIMEOUT_MS,
                                                            TimeUnit.MILLISECONDS);
       } catch (InterruptedException | ExecutionException | TimeoutException e) {
-        if (e.getCause() instanceof ReassignmentInProgressException) {
-          LOG.warn("Partition count increase for topic {} failed due to ongoing reassignment.", topicName, e);
-          return false;
-        }
+        LOG.warn("Partition count increase to {} for topic {} failed{}.", topicToAddPartitions.numPartitions(), topicName,
+                 (e.getCause() instanceof ReassignmentInProgressException) ? " due to ongoing reassignment" : "", e);
+        return false;
       }
     }
 

@@ -175,15 +175,14 @@ public class KafkaSampleStore implements SampleStore {
    * @param adminClient The adminClient to send describeCluster request.
    * @return Desired replication factor of sample store topics, or {@link null} if failed to resolve replication factor.
    */
-  protected Short sampleStoreTopicReplicationFactor(Map<String, ?> config, AdminClient adminClient) {
+  protected short sampleStoreTopicReplicationFactor(Map<String, ?> config, AdminClient adminClient) {
     if (_sampleStoreTopicReplicationFactor == null) {
       short numberOfBrokersInCluster;
       try {
         numberOfBrokersInCluster = (short) adminClient.describeCluster().nodes().get(CLIENT_REQUEST_TIMEOUT_MS,
                                                                                      TimeUnit.MILLISECONDS).size();
       } catch (InterruptedException | ExecutionException | TimeoutException e) {
-        LOG.warn("Auto creation of sample store topics failed due to failure to describe cluster.", e);
-        return null;
+        throw new IllegalStateException("Auto creation of sample store topics failed due to failure to describe cluster.", e);
       }
       if (numberOfBrokersInCluster <= 1) {
         throw new IllegalStateException(String.format("Kafka cluster has less than 2 brokers (brokers in cluster=%d, zookeeper.connect=%s)",
@@ -213,7 +212,7 @@ public class KafkaSampleStore implements SampleStore {
       if (e.getCause() instanceof TopicExistsException) {
         return false;
       }
-      LOG.warn("Unable to create topic {}.", topicToBeCreated.name(), e);
+      throw new IllegalStateException(String.format("Unable to create topic %s.", topicToBeCreated.name()), e);
     }
     return true;
   }

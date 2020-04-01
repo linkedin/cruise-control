@@ -43,6 +43,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.errors.InterruptException;
+import org.apache.kafka.common.errors.ReassignmentInProgressException;
 import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.metrics.KafkaMetric;
 import org.apache.kafka.common.metrics.MetricsReporter;
@@ -228,8 +229,8 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
                                                                NewPartitions.increaseTo(_metricsTopic.numPartitions())));
       }
     } catch (InterruptedException | ExecutionException | TimeoutException e) {
-      LOG.warn("Unable to increase Cruise Control metrics topic {} partition number to {}.",
-               cruiseControlMetricsTopic, _metricsTopic.replicationFactor(), e);
+      LOG.warn("Partition count increase to {} for topic {} failed{}.", _metricsTopic.numPartitions(), cruiseControlMetricsTopic,
+               (e.getCause() instanceof ReassignmentInProgressException) ? " due to ongoing reassignment" : "", e);
     }
   }
 
