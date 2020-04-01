@@ -225,10 +225,11 @@ public class KafkaCruiseControl {
       }
     } else {
       if (_executor.hasOngoingPartitionReassignments()) {
-        throw new IllegalStateException("Cannot execute new proposals while there are ongoing partition reassignments.");
-      }
-      if (_executor.hasOngoingLeaderElection()) {
-        throw new IllegalStateException("Cannot execute new proposals while there are ongoing leadership reassignments.");
+        throw new IllegalStateException("Cannot execute new proposals while there are ongoing partition reassignments initiated by "
+                                        + "external agent.");
+      } else if (_executor.hasOngoingLeaderElection()) {
+        throw new IllegalStateException("Cannot execute new proposals while there are ongoing leadership reassignments initiated by "
+                                        + "external agent.");
       }
     }
   }
