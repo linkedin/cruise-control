@@ -173,7 +173,7 @@ public class KafkaSampleStore implements SampleStore {
    *
    * @param config The configurations for Cruise Control.
    * @param adminClient The adminClient to send describeCluster request.
-   * @return Desired replication factor of sample store topics, or {@link null} if failed to resolve replication factor.
+   * @return Desired replication factor of sample store topics, or {@code null} if failed to resolve replication factor.
    */
   protected short sampleStoreTopicReplicationFactor(Map<String, ?> config, AdminClient adminClient) {
     if (_sampleStoreTopicReplicationFactor == null) {

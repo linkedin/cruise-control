@@ -122,6 +122,7 @@ public class ClusterPartitionState {
    * Get the effective config value of {@link #MIN_INSYNC_REPLICAS} for the given topic.
    *
    * @param topic Topic for which the {@link #MIN_INSYNC_REPLICAS} is queried
+   * @return the effective config value of {@link #MIN_INSYNC_REPLICAS} for the given topic.
    */
   protected int minInsyncReplicas(String topic) {
     Properties topicLevelConfig = _allTopicConfigs.get(topic);

@@ -35,7 +35,7 @@ public class Utils {
    * Look up the class by name and instantiate it.
    * @param klass class name
    * @param base super class of the class to be instantiated
-   * @param <T>
+   * @param <T> The instance type.
    * @return The new instance
    */
   public static <T> T newInstance(String klass, Class<T> base) throws ClassNotFoundException, CruiseControlException {

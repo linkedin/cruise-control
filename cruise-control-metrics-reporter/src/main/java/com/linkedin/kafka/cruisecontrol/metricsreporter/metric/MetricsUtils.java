@@ -94,6 +94,11 @@ public class MetricsUtils {
   }
 
   /**
+   * Create a Cruise Control Metric.
+   *
+   * @param kafkaMetric Kafka metric name.
+   * @param now The current time in milliseconds.
+   * @param brokerId Broker Id.
    * @return KafkaMetric converted as a CruiseControlMetric.
    */
   public static CruiseControlMetric toCruiseControlMetric(KafkaMetric kafkaMetric, long now, int brokerId) {
@@ -113,7 +118,13 @@ public class MetricsUtils {
   }
 
   /**
-   * @return A Yammer metric coverted as a CruiseControlMetric.
+   * Create a Cruise Control Metric.
+   *
+   * @param now The current time in milliseconds.
+   * @param brokerId Broker Id.
+   * @param metricName Yammer metric name.
+   * @param value Metric value
+   * @return A Yammer metric converted as a CruiseControlMetric.
    */
   public static CruiseControlMetric toCruiseControlMetric(long now,
                                                           int brokerId,
@@ -122,9 +133,14 @@ public class MetricsUtils {
     return toCruiseControlMetric(now, brokerId, metricName, value, null);
   }
 
-
-
   /**
+   * Create a Cruise Control Metric.
+   *
+   * @param now The current time in milliseconds.
+   * @param brokerId Broker Id.
+   * @param metricName Yammer metric name.
+   * @param value Metric value
+   * @param attribute Metric attribute.
    * @return A Yammer metric converted as a CruiseControlMetric.
    */
   public static CruiseControlMetric toCruiseControlMetric(long now,
@@ -142,6 +158,10 @@ public class MetricsUtils {
   }
 
   /**
+   * Get the "recent CPU usage" for the JVM process.
+   *
+   * @param now The current time in milliseconds.
+   * @param brokerId Broker Id.
    * @return the "recent CPU usage" for the JVM process as a double in [0.0,1.0].
    */
   public static BrokerMetric getCpuMetric(long now, int brokerId) {
@@ -153,6 +173,9 @@ public class MetricsUtils {
   }
 
   /**
+   * Check whether the kafkaMetric is an interested metric.
+   *
+   * @param metricName Kafka metric name.
    * @return True if a kafkaMetric is an interested metric, false otherwise.
    */
   public static boolean isInterested(org.apache.kafka.common.MetricName metricName) {
@@ -163,6 +186,9 @@ public class MetricsUtils {
   }
 
   /**
+   * Check whether the yammer metric name is an interested metric.
+   *
+   * @param metricName Yammer metric name.
    * @return True if the yammer metric name is an interested metric, false otherwise.
    */
   public static boolean isInterested(com.yammer.metrics.core.MetricName metricName) {
