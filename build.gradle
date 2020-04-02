@@ -221,6 +221,7 @@ project(':cruise-control') {
     compile 'org.eclipse.jetty:jetty-server:9.4.26.v20200117'
     compile 'io.dropwizard.metrics:metrics-core:3.2.6'
     compile 'com.nimbusds:nimbus-jose-jwt:8.5'
+    compile 'com.101tec:zkclient:0.11'
     compile group: 'io.swagger.parser.v3', name: 'swagger-parser', version: '2.0.18'
     compile group: 'io.github.classgraph', name: 'classgraph', version: '4.8.65'
 
