@@ -31,7 +31,11 @@ public class UserStoreAuthorizationService extends AbstractLifeCycle implements 
 
   @Override
   public UserIdentity getUserIdentity(HttpServletRequest request, String name) {
-    return _userStore.getUserIdentity(name);
+    int hostSeparator = name.indexOf('/');
+    String shortName = hostSeparator > 0 ? name.substring(0, hostSeparator) : name;
+    int realmSeparator = shortName.indexOf('@');
+    shortName = realmSeparator > 0 ? shortName.substring(0, realmSeparator) : shortName;
+    return _userStore.getUserIdentity(shortName);
   }
 
   @Override

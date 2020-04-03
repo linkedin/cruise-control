@@ -58,6 +58,46 @@ jwt.auth.certificate.location=/tmp/knox-1.3.0/data/security/keystores/gateway-id
 with the admin/admin-password username/password pair). It should redirect to the CC page. It is important to use the same
 hostname (i.e. `localhost`) with CC otherwise Knox rejects the request.
 
+### SPNEGO Authentication
+
+For services using Cruise Control it is often easy to authenticate via SPNEGO as these programmatic users often use
+kerberos for authentication.
+Use the following configuration to set up SPNEGO authentication:
+```
+webserver.security.enable=true
+webserver.security.provider=com.linkedin.kafka.cruisecontrol.servlet.security.spnego.SpnegoSecurityProvider
+webserver.auth.credentials.file=/my/secure/location/to/roles.credentials
+spnego.principal=HTTP/myhost@MYREALM
+spnego.keytab.file=/my/path/to/my.keytab
+```
+In this configuration it is required to provide a credentials file which contains the kerberos shortname part of the principal
+("shortname/host@REALM") of the allowed services and its privileges in the format of Jetty's HashLoginService's properties
+file, the principal of Cruise Control and a keytab file which contains the keys of this principal.
+
+### Trusted Proxy Authentiation
+
+This is an addition on top of the SPNEGO authentication. In some cases Cruise Control can sit behind an authentication
+proxy such as Apache Knox. The goal of this proxy is to centralize access to the system by providing a unified
+interface for that. This service then accesses Cruise Control via SPNEGO authentication and forwards the real end-user's
+principal in the `doAs` HTTP parameter. For instance such a request will look like this:
+```
+http://localhost:9090/kafkacruisecontrol/state?doAs=bob
+```
+In this case Cruise Control will have to authenticate first the service that connects to it, decide if it's a trusted
+service, then it has to act on behalf of the forwarded user, so the request will have the same privileges as the user
+would have.
+Configuring this authentication method is very similar to SPNEGO:
+```
+webserver.security.enable=true
+webserver.security.provider=com.linkedin.kafka.cruisecontrol.servlet.security.spnego.SpnegoSecurityProvider
+webserver.auth.credentials.file=/my/secure/location/to/roles.credentials
+spnego.principal=HTTP/myhost@MYREALM
+spnego.keytab.file=/my/path/to/my.keytab
+trusted.proxy.services=service1,service2
+```
+The difference in this case is that the `webserver.auth.credentials.file` config stores the end-user credentials and
+not the trusted proxy credentials. These are listed in the `trusted.proxy.services` config.
+
 ## HTTPS
 
 HTTPS can be configured with the following configs:
