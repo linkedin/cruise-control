@@ -89,7 +89,7 @@ would have.
 Configuring this authentication method is very similar to SPNEGO:
 ```
 webserver.security.enable=true
-webserver.security.provider=com.linkedin.kafka.cruisecontrol.servlet.security.spnego.SpnegoSecurityProvider
+webserver.security.provider=com.linkedin.kafka.cruisecontrol.servlet.security.trustedproxy.TrustedProxySecurityProvider
 webserver.auth.credentials.file=/my/secure/location/to/roles.credentials
 spnego.principal=HTTP/myhost@MYREALM
 spnego.keytab.file=/my/path/to/my.keytab
