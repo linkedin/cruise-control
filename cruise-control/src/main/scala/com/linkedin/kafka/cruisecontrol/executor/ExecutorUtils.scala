@@ -7,8 +7,9 @@ package com.linkedin.kafka.cruisecontrol.executor
 import java.util
 import java.util.Properties
 
-import kafka.admin.PreferredReplicaLeaderElectionCommand
-import kafka.zk.{AdminZkClient, KafkaZkClient, ZkVersion}
+import kafka.admin.{PreferredReplicaLeaderElectionCommand, ReassignPartitionsCommand}
+import kafka.common.AdminCommandFailedException
+import kafka.zk.{AdminZkClient, KafkaZkClient}
 import org.apache.kafka.common.TopicPartition
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -25,7 +26,7 @@ object ExecutorUtils {
    * Add a list of replica reassignment tasks to execute. Replica reassignment indicates tasks that (1) relocate a replica
    * within the cluster, (2) introduce a new replica to the cluster (3) remove an existing replica from the cluster.
    *
-   * @param kafkaZkClient the KafkaZkClient class to use for partition reassignment.
+   * @param kafkaZkClient     the KafkaZkClient class to use for partition reassignment.
    * @param reassignmentTasks Replica reassignment tasks to be executed.
    */
   def executeReplicaReassignmentTasks(kafkaZkClient: KafkaZkClient,
@@ -86,9 +87,15 @@ object ExecutorUtils {
           newReplicaAssignment += (tp -> replicasToWrite)
       })
 
-      // We do not use the ReassignPartitionsCommand here because we want to have incremental partition movement.
-      if (newReplicaAssignment.nonEmpty)
-        kafkaZkClient.setOrCreatePartitionReassignment(newReplicaAssignment, ZkVersion.MatchAnyVersion)
+      if (newReplicaAssignment.nonEmpty) {
+        val reassignPartitionsCommand = new ReassignPartitionsCommand(zkClient = kafkaZkClient, adminClientOpt = None,
+          proposedPartitionAssignment = newReplicaAssignment, adminZkClient = new AdminZkClient(kafkaZkClient))
+        try {
+          reassignPartitionsCommand.reassignPartitions()
+        } catch {
+          case _: AdminCommandFailedException =>
+        }
+      }
     }
   }
 
