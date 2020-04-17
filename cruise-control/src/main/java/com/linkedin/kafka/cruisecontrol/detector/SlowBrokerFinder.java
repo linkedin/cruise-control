@@ -111,7 +111,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   public static final String SLOW_BROKER_PEER_METRIC_PERCENTILE_THRESHOLD_CONFIG = "slow.broker.peer.metric.percentile.threshold";
   public static final double DEFAULT_SLOW_BROKER_PEER_METRIC_PERCENTILE_THRESHOLD = 50.0;
   public static final String SLOW_BROKER_PEER_METRIC_MARGIN_CONFIG = "slow.broker.peer.metric.margin";
-  public static final double DEFAULT_SLOW_BROKER_PEER_METRIC_MARGIN = 10.0;
+  public static final double DEFAULT_SLOW_BROKER_PEER_METRIC_MARGIN = 3.0;
   public static final String SLOW_BROKER_DEMOTION_SCORE_CONFIG = "slow.broker.demotion.score";
   public static final int DEFAULT_SLOW_BROKER_DEMOTION_SCORE = 5;
   public static final String SLOW_BROKER_DECOMMISSION_SCORE_CONFIG = "slow.broker.decommission.score";
