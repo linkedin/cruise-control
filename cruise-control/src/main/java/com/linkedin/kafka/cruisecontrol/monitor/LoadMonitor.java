@@ -15,6 +15,7 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapola
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
+import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -30,6 +31,7 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggreg
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrapolation;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
+import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerCapacityStats;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -609,6 +611,29 @@ public class LoadMonitor {
     _numPartitionsWithExtrapolations = numPartitionsWithExtrapolations.get();
     int totalNumPartitions = MonitorUtils.totalNumPartitions(kafkaCluster);
     return totalNumPartitions > 0 ? metricSampleAggregationResult.completeness().validEntityRatio() : 0.0;
+  }
+
+  /**
+   * Return the broker stats related to capacity information
+   */
+  public BrokerCapacityStats brokerCapacityStats(KafkaCruiseControlConfig config) {
+    MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
+    List<Node> clusterNodes = new ArrayList<>(clusterAndGeneration.cluster().nodes());
+    BrokerCapacityStats brokerCapacityStats = new BrokerCapacityStats(config);
+    for (Node node : clusterNodes) {
+      String rack = getRackHandleNull(node);
+      BrokerCapacityInfo brokerCapacityInfo = _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id());
+      Map<Resource, Double> capacities = brokerCapacityInfo.capacity();
+      brokerCapacityStats.addSingleBrokerCapacityStats(node.host(), 
+                                                       node.id(),
+                                                       brokerCapacityInfo.isEstimated(),
+                                                       capacities.get(Resource.DISK),
+                                                       capacities.get(Resource.CPU),
+                                                       capacities.get(Resource.NW_IN),
+                                                       capacities.get(Resource.NW_OUT));
+    }
+    return brokerCapacityStats;
+    
   }
 
   /**

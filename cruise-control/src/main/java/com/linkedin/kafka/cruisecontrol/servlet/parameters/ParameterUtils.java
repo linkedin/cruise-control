@@ -111,6 +111,7 @@ public class ParameterUtils {
   public static final String REPLICATION_FACTOR_PARAM = "replication_factor";
   public static final String SKIP_RACK_AWARENESS_CHECK_PARAM = "skip_rack_awareness_check";
   public static final String FETCH_COMPLETED_TASK_PARAM = "fetch_completed_task";
+  public static final String CAPACITY_ONLY_PARAM = "capacity_only";
   private static final int MAX_REASON_LENGTH = 50;
   public static final long DEFAULT_START_TIME_FOR_CLUSTER_MODEL = -1L;
   public static final String TOPIC_BY_REPLICATION_FACTOR = "topic_by_replication_factor";
@@ -308,6 +309,10 @@ public class ParameterUtils {
   static boolean throttleAddedOrRemovedBrokers(HttpServletRequest request, EndPoint endPoint) {
     return endPoint == ADD_BROKER ? getBooleanParam(request, THROTTLE_ADDED_BROKER_PARAM, true)
                                   : getBooleanParam(request, THROTTLE_REMOVED_BROKER_PARAM, true);
+  }
+
+  static boolean capacityOnly(HttpServletRequest request) {
+    return getBooleanParam(request, CAPACITY_ONLY_PARAM, false);
   }
 
   static Long time(HttpServletRequest request) {

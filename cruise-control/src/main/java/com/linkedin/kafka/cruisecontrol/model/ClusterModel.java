@@ -13,6 +13,8 @@ import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
+import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerUtilizationStats;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
@@ -1136,28 +1138,28 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Get broker return the broker stats.
+   * Return the broker stats related to resource utilization
    */
   public BrokerStats brokerStats(KafkaCruiseControlConfig config) {
-    BrokerStats brokerStats = new BrokerStats(config);
+    BrokerUtilizationStats brokerUtilizationStats = new BrokerUtilizationStats(config);
     brokers().forEach(broker -> {
       double leaderBytesInRate = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN);
       double cpuUsagePercent = UNIT_INTERVAL_TO_PERCENTAGE * broker.load().expectedUtilizationFor(Resource.CPU)
                                / broker.capacityFor(Resource.CPU);
-      brokerStats.addSingleBrokerStats(broker.host().name(),
-                                       broker.id(),
-                                       broker.state(),
-                                       broker.replicas().isEmpty() ? 0 : broker.load().expectedUtilizationFor(Resource.DISK),
-                                       cpuUsagePercent,
-                                       leaderBytesInRate,
-                                       broker.load().expectedUtilizationFor(Resource.NW_IN) - leaderBytesInRate,
-                                       broker.load().expectedUtilizationFor(Resource.NW_OUT),
-                                       potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT),
-                                       broker.replicas().size(), broker.leaderReplicas().size(),
-                                       _capacityEstimationInfoByBrokerId.get(broker.id()) != null,
-                                        broker.capacityFor(Resource.DISK));
+      brokerUtilizationStats.addSingleBrokerUtilizationStats(broker.host().name(),
+                                                             broker.id(),
+                                                             broker.state(),
+                                                             broker.replicas().isEmpty() ? 0 : broker.load().expectedUtilizationFor(Resource.DISK),
+                                                             cpuUsagePercent,
+                                                             leaderBytesInRate,
+                                                             broker.load().expectedUtilizationFor(Resource.NW_IN) - leaderBytesInRate,
+                                                             broker.load().expectedUtilizationFor(Resource.NW_OUT),
+                                                             potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT),
+                                                             broker.replicas().size(), broker.leaderReplicas().size(),
+                                                             _capacityEstimationInfoByBrokerId.get(broker.id()) != null,
+                                                             broker.capacityFor(Resource.DISK));
     });
-    return brokerStats;
+    return brokerUtilizationStats;
   }
 
   /**

@@ -1180,4 +1180,13 @@ public class KafkaCruiseControl {
       throw new IllegalArgumentException(String.format("Broker %s does not exist.", invalidBrokerIds));
     }
   }
+
+  /**
+   * Return the capacity stats of brokers and hosts
+   * @param config the configuration of Cruise Control.
+   * @return capacity stats of the brokers and hosts
+   */
+  public BrokerStats brokerCapacityStats(KafkaCruiseControlConfig config) {
+    return _loadMonitor.brokerCapacityStats(config);
+  }
 }
