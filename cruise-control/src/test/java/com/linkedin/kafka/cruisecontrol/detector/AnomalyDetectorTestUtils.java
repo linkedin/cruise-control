@@ -42,7 +42,8 @@ public class AnomalyDetectorTestUtils {
   /**
    * Create history load for broker.
    * @param metricValueById A set of metrics with corresponding load value.
-   * @param metricVarianceById A set of metrics with corresponding load variance.
+   * @param metricVarianceById A set of metrics with corresponding load variance. The variance here refers to the maximal
+   *                           fluctuation of metric metric value.
    * @param numWindows  Number of windows to populate.
    * @param broker The subject broker.
    * @return The load for the broker.
@@ -51,12 +52,13 @@ public class AnomalyDetectorTestUtils {
                                                                          Map<Short, Double> metricVarianceById,
                                                                          int numWindows,
                                                                          BrokerEntity broker) {
-    Random random = new Random();
+    Random random = new Random(0);
     Map<Short, MetricValues> valuesByMetricId = new HashMap<>();
     for (Map.Entry<Short, Double> entry : metricValueById.entrySet()) {
       MetricValues historicalMetricValues = new MetricValues(numWindows);
       double[] values = new double[numWindows];
       for (int i = 0; i < numWindows; i++) {
+        // Add a uniformly-distributed variance to metric value.
         values[i] = entry.getValue() + (random.nextInt(201) - 100) * metricVarianceById.get(entry.getKey()) / 100;
       }
       historicalMetricValues.add(values);

@@ -26,10 +26,15 @@ import static org.junit.Assert.assertEquals;
 
 public class SlowBrokerFinderTest {
   private final static double NORMAL_BYTES_IN_RATE = 4096;
-  private final static double BYTE_IN_RATE_VARIANCE_PERCENTILE = 0.1;
+  // The maximal ratio of fluctuation value to metric value for byte in rate metrics.
+  private final static double BYTE_IN_RATE_VARIANCE_RATIO = 0.1;
   private final static double NORMAL_LOG_FLUSH_TIME_MS = 100.0;
-  private final static double LOG_FLUSH_TIME_MS_VARIANCE_PERCENTILE = 0.25;
+  // The maximal ratio of fluctuation value to metric value for log flush time metric.
+  private final static double LOG_FLUSH_TIME_MS_VARIANCE_RATIO = 0.25;
   private final static double SMALL_BYTES_IN_RATE = 1024;
+  private final static int METRIC_HISTORY_WINDOW_SIZE = 10;
+  private final static int CURRENT_METRIC_WINDOW = 11;
+  private final static int METRIC_ANOMALY_MULTIPLIER = 4;
 
   /**
    * Test slow broker finder can detect the abnormal metric rise of single broker.
@@ -40,13 +45,14 @@ public class SlowBrokerFinderTest {
     SlowBrokerFinder slowBrokerFinder = createSlowBrokerFinder();
     Map<BrokerEntity, ValuesAndExtrapolations> history =
         createHistory(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE, NORMAL_LOG_FLUSH_TIME_MS),
-                      populateMetricValues(NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_PERCENTILE,
-                                           NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_PERCENTILE,
-                                           NORMAL_LOG_FLUSH_TIME_MS * LOG_FLUSH_TIME_MS_VARIANCE_PERCENTILE),
-                      10, BROKER_ENTITIES.get(0));
+                      populateMetricValues(NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_RATIO,
+                                           NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_RATIO,
+                                           NORMAL_LOG_FLUSH_TIME_MS * LOG_FLUSH_TIME_MS_VARIANCE_RATIO),
+                      METRIC_HISTORY_WINDOW_SIZE, BROKER_ENTITIES.get(0));
     Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics =
-        createCurrentMetrics(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE, NORMAL_LOG_FLUSH_TIME_MS * 4),
-                             11, BROKER_ENTITIES.get(0));
+        createCurrentMetrics(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE,
+                                     NORMAL_LOG_FLUSH_TIME_MS * METRIC_ANOMALY_MULTIPLIER),
+                             CURRENT_METRIC_WINDOW, BROKER_ENTITIES.get(0));
     Collection<MetricAnomaly<BrokerEntity>> anomalies = slowBrokerFinder.metricAnomalies(history, currentMetrics);
     assertTrue("There should be exactly a single slow broker", anomalies.size() == 1);
     MetricAnomaly<BrokerEntity> anomaly = anomalies.iterator().next();
@@ -63,21 +69,23 @@ public class SlowBrokerFinderTest {
     SlowBrokerFinder slowBrokerFinder = createSlowBrokerFinder();
     Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = new HashMap<>(BROKER_ENTITIES.size());
     Map<BrokerEntity, ValuesAndExtrapolations> history = new HashMap<>(BROKER_ENTITIES.size());
-    currentMetrics.putAll(createCurrentMetrics(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE, NORMAL_LOG_FLUSH_TIME_MS * 4),
-                                               11, BROKER_ENTITIES.get(0)));
-    history.putAll(createHistory(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE, NORMAL_LOG_FLUSH_TIME_MS * 4),
-                                 populateMetricValues(NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_PERCENTILE,
-                                                      NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_PERCENTILE,
-                                                      NORMAL_LOG_FLUSH_TIME_MS * LOG_FLUSH_TIME_MS_VARIANCE_PERCENTILE),
-                                 10, BROKER_ENTITIES.get(0)));
+    currentMetrics.putAll(createCurrentMetrics(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE,
+                                                       NORMAL_LOG_FLUSH_TIME_MS * METRIC_ANOMALY_MULTIPLIER),
+                                               CURRENT_METRIC_WINDOW, BROKER_ENTITIES.get(0)));
+    history.putAll(createHistory(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE,
+                                         NORMAL_LOG_FLUSH_TIME_MS * METRIC_ANOMALY_MULTIPLIER),
+                                 populateMetricValues(NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_RATIO,
+                                                      NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_RATIO,
+                                                      NORMAL_LOG_FLUSH_TIME_MS * LOG_FLUSH_TIME_MS_VARIANCE_RATIO),
+                                 METRIC_HISTORY_WINDOW_SIZE, BROKER_ENTITIES.get(0)));
     for (int i = 1; i < BROKER_ENTITIES.size(); i++) {
       currentMetrics.putAll(createCurrentMetrics(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE, NORMAL_LOG_FLUSH_TIME_MS),
-                            11, BROKER_ENTITIES.get(i)));
+                            CURRENT_METRIC_WINDOW, BROKER_ENTITIES.get(i)));
       history.putAll(createHistory(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE, NORMAL_LOG_FLUSH_TIME_MS),
-                                   populateMetricValues(NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_PERCENTILE,
-                                                        NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_PERCENTILE,
-                                                        NORMAL_LOG_FLUSH_TIME_MS * LOG_FLUSH_TIME_MS_VARIANCE_PERCENTILE),
-                                   10, BROKER_ENTITIES.get(i)));
+                                   populateMetricValues(NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_RATIO,
+                                                        NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_RATIO,
+                                                        NORMAL_LOG_FLUSH_TIME_MS * LOG_FLUSH_TIME_MS_VARIANCE_RATIO),
+                                   METRIC_HISTORY_WINDOW_SIZE, BROKER_ENTITIES.get(i)));
     }
     Collection<MetricAnomaly<BrokerEntity>> anomalies = slowBrokerFinder.metricAnomalies(history, currentMetrics);
     assertTrue("There should be exactly a single slow broker", anomalies.size() == 1);
@@ -95,20 +103,20 @@ public class SlowBrokerFinderTest {
     Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = new HashMap<>(BROKER_ENTITIES.size());
     Map<BrokerEntity, ValuesAndExtrapolations> history = new HashMap<>(BROKER_ENTITIES.size());
     currentMetrics.putAll(createCurrentMetrics(populateMetricValues(SMALL_BYTES_IN_RATE, SMALL_BYTES_IN_RATE, NORMAL_LOG_FLUSH_TIME_MS),
-                          11, BROKER_ENTITIES.get(0)));
+                          CURRENT_METRIC_WINDOW, BROKER_ENTITIES.get(0)));
     history.putAll(createHistory(populateMetricValues(SMALL_BYTES_IN_RATE, SMALL_BYTES_IN_RATE, NORMAL_LOG_FLUSH_TIME_MS),
-                                 populateMetricValues(SMALL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_PERCENTILE,
-                                                      SMALL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_PERCENTILE,
-                                                      NORMAL_LOG_FLUSH_TIME_MS * LOG_FLUSH_TIME_MS_VARIANCE_PERCENTILE),
-                                 10, BROKER_ENTITIES.get(0)));
+                                 populateMetricValues(SMALL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_RATIO,
+                                                      SMALL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_RATIO,
+                                                      NORMAL_LOG_FLUSH_TIME_MS * LOG_FLUSH_TIME_MS_VARIANCE_RATIO),
+                                 METRIC_HISTORY_WINDOW_SIZE, BROKER_ENTITIES.get(0)));
     for (int i = 1; i < BROKER_ENTITIES.size(); i++) {
       currentMetrics.putAll(createCurrentMetrics(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE, NORMAL_LOG_FLUSH_TIME_MS),
-                            11, BROKER_ENTITIES.get(i)));
+                            CURRENT_METRIC_WINDOW, BROKER_ENTITIES.get(i)));
       history.putAll(createHistory(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE, NORMAL_LOG_FLUSH_TIME_MS),
-                                   populateMetricValues(NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_PERCENTILE,
-                                                        NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_PERCENTILE,
-                                                        NORMAL_LOG_FLUSH_TIME_MS * LOG_FLUSH_TIME_MS_VARIANCE_PERCENTILE),
-                                   10, BROKER_ENTITIES.get(0)));
+                                   populateMetricValues(NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_RATIO,
+                                                        NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_RATIO,
+                                                        NORMAL_LOG_FLUSH_TIME_MS * LOG_FLUSH_TIME_MS_VARIANCE_RATIO),
+                                   METRIC_HISTORY_WINDOW_SIZE, BROKER_ENTITIES.get(0)));
     }
     Collection<MetricAnomaly<BrokerEntity>> anomalies = slowBrokerFinder.metricAnomalies(history, currentMetrics);
     assertTrue(anomalies.isEmpty());
@@ -122,13 +130,14 @@ public class SlowBrokerFinderTest {
     SlowBrokerFinder slowBrokerFinder = createSlowBrokerFinder();
     Map<BrokerEntity, ValuesAndExtrapolations> history =
         createHistory(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE, NORMAL_LOG_FLUSH_TIME_MS),
-                      populateMetricValues(NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_PERCENTILE,
-                                           NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_PERCENTILE,
-                                           NORMAL_LOG_FLUSH_TIME_MS * LOG_FLUSH_TIME_MS_VARIANCE_PERCENTILE),
-                      5, BROKER_ENTITIES.get(0));
+                      populateMetricValues(NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_RATIO,
+                                           NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_RATIO,
+                                           NORMAL_LOG_FLUSH_TIME_MS * LOG_FLUSH_TIME_MS_VARIANCE_RATIO),
+                      METRIC_HISTORY_WINDOW_SIZE / 2, BROKER_ENTITIES.get(0));
     Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics =
-        createCurrentMetrics(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE, NORMAL_LOG_FLUSH_TIME_MS * 10),
-                             6, BROKER_ENTITIES.get(0));
+        createCurrentMetrics(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE,
+                                     NORMAL_LOG_FLUSH_TIME_MS * METRIC_ANOMALY_MULTIPLIER),
+                             METRIC_HISTORY_WINDOW_SIZE / 2 + 1, BROKER_ENTITIES.get(0));
     Collection<MetricAnomaly<BrokerEntity>> anomalies = slowBrokerFinder.metricAnomalies(history, currentMetrics);
     assertTrue(anomalies.isEmpty());
   }
@@ -141,12 +150,13 @@ public class SlowBrokerFinderTest {
     SlowBrokerFinder slowBrokerFinder = createSlowBrokerFinder();
     Map<BrokerEntity, ValuesAndExtrapolations> history =
         createHistory(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE, NORMAL_LOG_FLUSH_TIME_MS),
-                      populateMetricValues(NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_PERCENTILE,
-                                           NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_PERCENTILE,
-                                           NORMAL_LOG_FLUSH_TIME_MS * LOG_FLUSH_TIME_MS_VARIANCE_PERCENTILE),
-                      10, BROKER_ENTITIES.get(0));
+                      populateMetricValues(NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_RATIO,
+                                           NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_RATIO,
+                                           NORMAL_LOG_FLUSH_TIME_MS * LOG_FLUSH_TIME_MS_VARIANCE_RATIO),
+                      METRIC_HISTORY_WINDOW_SIZE, BROKER_ENTITIES.get(0));
     Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics =
-        createCurrentMetrics(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE, NORMAL_LOG_FLUSH_TIME_MS), 11, BROKER_ENTITIES.get(0));
+        createCurrentMetrics(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE, NORMAL_LOG_FLUSH_TIME_MS),
+                             CURRENT_METRIC_WINDOW, BROKER_ENTITIES.get(0));
     Collection<MetricAnomaly<BrokerEntity>> anomalies = slowBrokerFinder.metricAnomalies(history, currentMetrics);
     assertTrue(anomalies.isEmpty());
   }
