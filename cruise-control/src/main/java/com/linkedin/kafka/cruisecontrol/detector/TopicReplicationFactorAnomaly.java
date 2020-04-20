@@ -93,7 +93,8 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
       .append(" : {fixable : [");
     StringJoiner joiner = new StringJoiner(",");
     _topicsWithBadReplicationFactorByFixability.getOrDefault(true, Collections.emptySet()).forEach(joiner::add);
-    sb.append(joiner.toString());
+    sb.append(joiner.toString())
+      .append("], unfixable : [");
     joiner = new StringJoiner(",");
     _topicsWithBadReplicationFactorByFixability.getOrDefault(false, Collections.emptySet()).forEach(joiner::add);
     sb.append(joiner.toString());
