@@ -13,12 +13,12 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Random;
 import org.easymock.EasyMock;
 
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
@@ -42,16 +42,25 @@ public class AnomalyDetectorTestUtils {
   /**
    * Create history load for broker.
    * @param metricValueById A set of metrics with corresponding load value.
+   * @param metricFluctuationById A set of metrics with corresponding fluctuation. The fluctuation here refers to the maximal
+   *                              fluctuation of metric value.
    * @param numWindows  Number of windows to populate.
    * @param broker The subject broker.
    * @return The load for the broker.
    */
-  public static Map<BrokerEntity, ValuesAndExtrapolations> createHistory(Map<Short, Double> metricValueById, int numWindows, BrokerEntity broker) {
+  public static Map<BrokerEntity, ValuesAndExtrapolations> createHistory(Map<Short, Double> metricValueById,
+                                                                         Map<Short, Double> metricFluctuationById,
+                                                                         int numWindows,
+                                                                         BrokerEntity broker) {
+    Random random = new Random(0);
     Map<Short, MetricValues> valuesByMetricId = new HashMap<>();
     for (Map.Entry<Short, Double> entry : metricValueById.entrySet()) {
       MetricValues historicalMetricValues = new MetricValues(numWindows);
       double[] values = new double[numWindows];
-      Arrays.fill(values, entry.getValue());
+      for (int i = 0; i < numWindows; i++) {
+        // Add a uniformly-distributed fluctuation to metric value.
+        values[i] = entry.getValue() + (random.nextInt(201) - 100) * metricFluctuationById.get(entry.getKey()) / 100;
+      }
       historicalMetricValues.add(values);
       valuesByMetricId.put(entry.getKey(), historicalMetricValues);
     }

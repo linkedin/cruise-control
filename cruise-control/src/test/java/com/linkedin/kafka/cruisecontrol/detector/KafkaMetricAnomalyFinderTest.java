@@ -51,7 +51,7 @@ public class KafkaMetricAnomalyFinderTest {
   public void testMetricAnomalies() {
     MetricAnomalyFinder<BrokerEntity> anomalyFinder = createKafkaMetricAnomalyFinder();
     Map<BrokerEntity, ValuesAndExtrapolations> history =
-        createHistory(Collections.singletonMap(METRIC_ID, 20.0), 20, BROKER_ENTITIES.get(0));
+        createHistory(Collections.singletonMap(METRIC_ID, 20.0), Collections.singletonMap(METRIC_ID, 1.0), 20, BROKER_ENTITIES.get(0));
     Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics =
         createCurrentMetrics(Collections.singletonMap(METRIC_ID, 40.0), 21, BROKER_ENTITIES.get(0));
     Collection<MetricAnomaly<BrokerEntity>> anomalies = anomalyFinder.metricAnomalies(history, currentMetrics);
@@ -65,7 +65,7 @@ public class KafkaMetricAnomalyFinderTest {
   public void testInsufficientData() {
     MetricAnomalyFinder<BrokerEntity> anomalyFinder = createKafkaMetricAnomalyFinder();
     Map<BrokerEntity, ValuesAndExtrapolations> history =
-        createHistory(Collections.singletonMap(METRIC_ID, 20.0), 19, BROKER_ENTITIES.get(0));
+        createHistory(Collections.singletonMap(METRIC_ID, 20.0), Collections.singletonMap(METRIC_ID, 1.0), 19, BROKER_ENTITIES.get(0));
     Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics =
         createCurrentMetrics(Collections.singletonMap(METRIC_ID, 20.0), 20, BROKER_ENTITIES.get(0));
     Collection<MetricAnomaly<BrokerEntity>> anomalies = anomalyFinder.metricAnomalies(history, currentMetrics);
