@@ -90,11 +90,11 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
     StringBuilder sb = new StringBuilder();
     sb.append("{Detected following topics which have at least one partition with replication factor other than ")
       .append(_targetReplicationFactor)
-      .append(" : {fixable : [");
+      .append(": {fixable: [");
     StringJoiner joiner = new StringJoiner(",");
     _topicsWithBadReplicationFactorByFixability.getOrDefault(true, Collections.emptySet()).forEach(joiner::add);
     sb.append(joiner.toString())
-      .append("], unfixable : [");
+      .append("], unfixable: [");
     joiner = new StringJoiner(",");
     _topicsWithBadReplicationFactorByFixability.getOrDefault(false, Collections.emptySet()).forEach(joiner::add);
     sb.append(joiner.toString());
