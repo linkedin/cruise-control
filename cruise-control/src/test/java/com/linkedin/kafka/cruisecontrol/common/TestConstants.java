@@ -8,6 +8,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomaly.TopicReplicationFactorAnomalyEntry;
+
 
 public class TestConstants {
   public static final String TOPIC0 = "topic0";
@@ -95,4 +97,8 @@ public class TestConstants {
   // Broker capacity config file for test.
   public static final String JBOD_BROKER_CAPACITY_CONFIG_FILE = "testCapacityConfigJBOD.json";
   public static final String DEFAULT_BROKER_CAPACITY_CONFIG_FILE = "DefaultCapacityConfig.json";
+
+  // Topic replication factor anomaly test.
+  public static final TopicReplicationFactorAnomalyEntry TOPIC_REPLICATION_FACTOR_ANOMALY_ENTRY =
+      new TopicReplicationFactorAnomalyEntry(TOPIC0, 8, 8, (short) 2, (short) 1);
 }

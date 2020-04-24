@@ -8,7 +8,8 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.UpdateTopicConfigurationRunnable;
-import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.StringJoiner;
@@ -21,18 +22,16 @@ import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorC
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getSelfHealingGoalNames;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyUtils.buildTopicRegex;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyUtils.extractKafkaCruiseControlObjectFromConfig;
-import static com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder.SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder.TOPICS_WITH_BAD_REPLICATION_FACTOR_BY_FIXABILITY_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder.TOPICS_WITH_BAD_REPLICATION_FACTOR_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.TOPIC_ANOMALY;
 
 
 /**
- * Topics which contain at least one partition with replication factor not equal to the config value of
- * {@link com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder#SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG}
+ * Topics which have at least one partition detected to violate replication factor requirement. For more detail about detection
+ * process and criteria , check {@link com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder}.
  */
 public class TopicReplicationFactorAnomaly extends TopicAnomaly {
-  protected Short _targetReplicationFactor;
-  protected Map<Boolean, Set<String>> _topicsWithBadReplicationFactorByFixability;
+  protected Set<TopicReplicationFactorAnomalyEntry> _topicsWithBadReplicationFactor;
   protected UpdateTopicConfigurationRunnable _updateTopicConfigurationRunnable;
 
   @Override
@@ -53,31 +52,34 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
     super.configure(configs);
     KafkaCruiseControl kafkaCruiseControl = extractKafkaCruiseControlObjectFromConfig(configs, KafkaAnomalyType.TOPIC_ANOMALY);
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
-    _topicsWithBadReplicationFactorByFixability = (Map<Boolean, Set<String>>) configs.get(TOPICS_WITH_BAD_REPLICATION_FACTOR_BY_FIXABILITY_CONFIG);
-    if (_topicsWithBadReplicationFactorByFixability == null || _topicsWithBadReplicationFactorByFixability.isEmpty()) {
+    _topicsWithBadReplicationFactor = (Set<TopicReplicationFactorAnomalyEntry>) configs.get(TOPICS_WITH_BAD_REPLICATION_FACTOR_CONFIG);
+    if (_topicsWithBadReplicationFactor == null || _topicsWithBadReplicationFactor.isEmpty()) {
       throw new IllegalArgumentException(String.format("Missing %s for topic replication factor anomaly.",
-                                                       TOPICS_WITH_BAD_REPLICATION_FACTOR_BY_FIXABILITY_CONFIG));
-    }
-    _targetReplicationFactor = (Short) configs.get(SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG);
-    if (_targetReplicationFactor == null) {
-      throw new IllegalArgumentException(String.format("Missing %s for topic replication factor anomaly.",
-                                                       SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG));
+                                                       TOPICS_WITH_BAD_REPLICATION_FACTOR_CONFIG));
     }
     boolean allowCapacityEstimation = config.getBoolean(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
     boolean excludeRecentlyDemotedBrokers = config.getBoolean(SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
     boolean excludeRecentlyRemovedBrokers = config.getBoolean(SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
-    if (_topicsWithBadReplicationFactorByFixability.get(true) != null && !_topicsWithBadReplicationFactorByFixability.get(true).isEmpty()) {
-      Pattern topicRegex = buildTopicRegex(_topicsWithBadReplicationFactorByFixability.get(true));
-      _updateTopicConfigurationRunnable = new UpdateTopicConfigurationRunnable(kafkaCruiseControl,
-                                                                               Collections.singletonMap(_targetReplicationFactor,
-                                                                                                        topicRegex),
-                                                                               getSelfHealingGoalNames(config),
-                                                                               allowCapacityEstimation,
-                                                                               excludeRecentlyDemotedBrokers,
-                                                                               excludeRecentlyRemovedBrokers,
-                                                                               _anomalyId.toString(),
-                                                                               reasonSupplier());
+    Map<Short, Pattern> topicPatternByReplicationFactor = populateTopicPatternByReplicationFactor(_topicsWithBadReplicationFactor);
+    _updateTopicConfigurationRunnable = new UpdateTopicConfigurationRunnable(kafkaCruiseControl,
+                                                                             topicPatternByReplicationFactor,
+                                                                             getSelfHealingGoalNames(config),
+                                                                             allowCapacityEstimation,
+                                                                             excludeRecentlyDemotedBrokers,
+                                                                             excludeRecentlyRemovedBrokers,
+                                                                             _anomalyId.toString(),
+                                                                             reasonSupplier());
+  }
+
+  protected Map<Short, Pattern> populateTopicPatternByReplicationFactor(Set<TopicReplicationFactorAnomalyEntry> topicsWithBadReplicationFactor) {
+    Map<Short, Set<String>> topicsByReplicationFactor = new HashMap<>();
+    for (TopicReplicationFactorAnomalyEntry entry : topicsWithBadReplicationFactor) {
+      topicsByReplicationFactor.putIfAbsent(entry.getTargetReplicationFactor(), new HashSet<>());
+      topicsByReplicationFactor.get(entry.getTargetReplicationFactor()).add(entry.getTopicName());
     }
+    Map<Short, Pattern> topicPatternByReplicationFactor = new HashMap<>(topicsByReplicationFactor.size());
+    topicsByReplicationFactor.forEach((k, v) -> topicPatternByReplicationFactor.put(k, buildTopicRegex(v)));
+    return topicPatternByReplicationFactor;
   }
 
   @Override
@@ -88,17 +90,42 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append("{Detected following topics which have at least one partition with replication factor other than ")
-      .append(_targetReplicationFactor)
-      .append(": {fixable: [");
-    StringJoiner joiner = new StringJoiner(",");
-    _topicsWithBadReplicationFactorByFixability.getOrDefault(true, Collections.emptySet()).forEach(joiner::add);
+    sb.append("{Detected following topics having replication factor violations: [{");
+    StringJoiner joiner = new StringJoiner("}, {");
+    _topicsWithBadReplicationFactor.forEach(e -> joiner.add(e.toString()));
     sb.append(joiner.toString())
-      .append("], unfixable: [");
-    joiner = new StringJoiner(",");
-    _topicsWithBadReplicationFactorByFixability.getOrDefault(false, Collections.emptySet()).forEach(joiner::add);
-    sb.append(joiner.toString());
-    sb.append("]}}");
+      .append("}]}");
     return sb.toString();
+  }
+
+  public static class TopicReplicationFactorAnomalyEntry {
+    private final String _topicName;
+    private final int _partitionCount;
+    private final int _violatedPartitionCount;
+    private final short _targetReplicationFactor;
+    private final short _minIsrConfig;
+
+    public TopicReplicationFactorAnomalyEntry(String topicName, int partitionCount, int violatedPartitionCount,
+                                              short targetReplicationFactor, short minIsrConfig) {
+      _topicName = topicName;
+      _partitionCount = partitionCount;
+      _violatedPartitionCount = violatedPartitionCount;
+      _targetReplicationFactor = targetReplicationFactor;
+      _minIsrConfig = minIsrConfig;
+    }
+
+    public String getTopicName() {
+      return _topicName;
+    }
+
+    public short getTargetReplicationFactor() {
+      return _targetReplicationFactor;
+    }
+
+    @Override
+    public String toString() {
+      return String.format("Topic: %s, total partition count %d, violated partition count %d, target replication factor %d, minISR: %d",
+                           _topicName, _partitionCount, _violatedPartitionCount, _targetReplicationFactor, _minIsrConfig);
+    }
   }
 }
