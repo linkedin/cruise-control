@@ -64,7 +64,7 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
   public static final String DEFAULT_TOPIC_EXCLUDED_FROM_REPLICATION_FACTOR_CHECK = "";
   public static final String TOPIC_REPLICATION_FACTOR_ANOMALY_CLASS_CONFIG = "topic.replication.topic.anomaly.class";
   public static final Class<?> DEFAULT_TOPIC_REPLICATION_FACTOR_ANOMALY_CLASS = TopicReplicationFactorAnomaly.class;
-  public static final String TOPICS_WITH_BAD_REPLICATION_FACTOR_CONFIG = "topics.with.bad.replication.factor";
+  public static final String BAD_TOPICS_BY_REPLICATION_FACTOR_CONFIG = "bad.topics.by.replication.factor";
   public static final String TOPIC_REPLICATION_FACTOR_MARGIN_CONFIG = "topic.replication.factor.margin";
   public static final short DEFAULT_TOPIC_REPLICATION_FACTOR_MARGIN = 1;
   public static final String TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS_CONFIG = "topic.min.isr.record.retention.time.ms";
@@ -121,9 +121,9 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
     refreshTopicMinISRCache();
     if (!topicsToCheck.isEmpty()) {
       maybeRetrieveAndCacheTopicMinISR(topicsToCheck);
-      Set<TopicReplicationFactorAnomalyEntry> topicsWithBadReplicationFactor = populateTopicsWithBadReplicationFactor(topicsToCheck, cluster);
-      if (!topicsWithBadReplicationFactor.isEmpty()) {
-        return Collections.singleton(createTopicReplicationFactorAnomaly(topicsWithBadReplicationFactor, _targetReplicationFactor));
+      Map<Short, Set<TopicReplicationFactorAnomalyEntry>> badTopicsByReplicationFactor = populateBadTopicsByReplicationFactor(topicsToCheck, cluster);
+      if (!badTopicsByReplicationFactor.isEmpty()) {
+        return Collections.singleton(createTopicReplicationFactorAnomaly(badTopicsByReplicationFactor, _targetReplicationFactor));
       }
     }
     return Collections.emptySet();
@@ -158,10 +158,10 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
    * and topic's minISR plus value of {@link #TOPIC_REPLICATION_FACTOR_MARGIN_CONFIG}.
    *
    * @param topicsToCheck Set of topics to check.
-   * @return Set of detected topic replication factor anomaly entries.
+   * @return Map of detected topic replication factor anomaly entries by target replication factor.
    */
-  private Set<TopicReplicationFactorAnomalyEntry> populateTopicsWithBadReplicationFactor(Set<String> topicsToCheck, Cluster cluster) {
-    Set<TopicReplicationFactorAnomalyEntry> topicsWithBadReplicationFactor = new HashSet<>(topicsToCheck.size());
+  private Map<Short, Set<TopicReplicationFactorAnomalyEntry>> populateBadTopicsByReplicationFactor(Set<String> topicsToCheck, Cluster cluster) {
+    Map<Short, Set<TopicReplicationFactorAnomalyEntry>> topicsByReplicationFactor = new HashMap<>();
     for (String topic : topicsToCheck) {
       if (_cachedTopicMinISR.containsKey(topic)) {
         short topicMinISR = _cachedTopicMinISR.get(topic).minISR();
@@ -173,15 +173,13 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
           }
         }
         if (violatedPartitionCount > 0) {
-          topicsWithBadReplicationFactor.add(new TopicReplicationFactorAnomalyEntry(topic,
-                                                                                    cluster.partitionCountForTopic(topic),
-                                                                                    violatedPartitionCount,
-                                                                                    targetReplicationFactor,
-                                                                                    topicMinISR));
+          topicsByReplicationFactor.putIfAbsent(targetReplicationFactor, new HashSet<>());
+          topicsByReplicationFactor.get(targetReplicationFactor).add(
+              new TopicReplicationFactorAnomalyEntry(topic, (double) violatedPartitionCount /  cluster.partitionCountForTopic(topic)));
         }
       }
     }
-    return topicsWithBadReplicationFactor;
+    return topicsByReplicationFactor;
   }
 
   /**
@@ -200,11 +198,11 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
     }
   }
 
-  private TopicAnomaly createTopicReplicationFactorAnomaly(Set<TopicReplicationFactorAnomalyEntry> topicsWithBadReplicationFactor,
+  private TopicAnomaly createTopicReplicationFactorAnomaly(Map<Short, Set<TopicReplicationFactorAnomalyEntry>> badTopicsByReplicationFactor,
                                                            short targetReplicationFactor) {
     Map<String, Object> configs = new HashMap<>(4);
     configs.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl);
-    configs.put(TOPICS_WITH_BAD_REPLICATION_FACTOR_CONFIG, topicsWithBadReplicationFactor);
+    configs.put(BAD_TOPICS_BY_REPLICATION_FACTOR_CONFIG, badTopicsByReplicationFactor);
     configs.put(SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG, targetReplicationFactor);
     configs.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
     return getConfiguredInstance(_topicReplicationTopicAnomalyClass, TopicAnomaly.class, configs);

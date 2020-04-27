@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.T1;
 import static com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomaly.TopicReplicationFactorAnomalyEntry;
 
 
@@ -100,5 +101,5 @@ public class TestConstants {
 
   // Topic replication factor anomaly test.
   public static final TopicReplicationFactorAnomalyEntry TOPIC_REPLICATION_FACTOR_ANOMALY_ENTRY =
-      new TopicReplicationFactorAnomalyEntry(TOPIC0, 8, 8, (short) 2, (short) 1);
+      new TopicReplicationFactorAnomalyEntry(T1, 0.5);
 }
