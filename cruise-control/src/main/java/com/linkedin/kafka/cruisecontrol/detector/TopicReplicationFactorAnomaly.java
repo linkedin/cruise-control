@@ -27,7 +27,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyTyp
 
 /**
  * Topics which have at least one partition detected to violate replication factor requirement. For more detail about detection
- * process and criteria , check {@link com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder}.
+ * process and criteria, check {@link com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder}.
  */
 public class TopicReplicationFactorAnomaly extends TopicAnomaly {
   protected Map<Short, Set<TopicReplicationFactorAnomalyEntry>> _badTopicsByReplicationFactor;
