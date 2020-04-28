@@ -7,7 +7,7 @@ LoadEndpoint:
         in: query
         description: Start time of the cluster load. Default is time of earliest valid window.
         schema:
-          type: long
+          type: integer
           default: -1
           format: int64
           minimum: -1
@@ -15,14 +15,14 @@ LoadEndpoint:
         in: query
         description: End time of the cluster load. Default is current system time.
         schema:
-          type: long
+          type: integer
           format: int64
           minimum: 0
       - name: time
         in: query
         description: End time of the clutser load. Default is current system time, mutually exclusive with end parameter.
         schema:
-          type: long
+          type: integer
           format: int64
           minimum: 0
       - name: allow_capacity_estimation

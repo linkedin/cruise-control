@@ -7,9 +7,10 @@ DemoteBrokerEndpoint:
         in: query
         description: List of target broker ids.
         schema:
-          type: set
+          type: array
           items:
-            type: int32
+            type: integer
+            format: int32
         required: true
       - name: dryrun
         in: query
@@ -21,7 +22,8 @@ DemoteBrokerEndpoint:
         in: query
         description: The upper bound of ongoing leadership movements.
         schema:
-          type: int32
+          type: integer
+          format: int32
           default: 1000
           minimum: 1
       - name: allow_capacity_estimation
@@ -45,7 +47,7 @@ DemoteBrokerEndpoint:
       - name: exclude_follower_demotion
         in: query
         description: Whether to operate on partitions which only have follower replicas on the specified broker(s).
-        schma:
+        schema:
           type: boolean
           default: true
       - name: verbose
@@ -73,11 +75,9 @@ DemoteBrokerEndpoint:
         in: query
         description: List of broker id and logdir pair to be demoted in the cluster.
         schema:
-          type: map
-          key:
-            type: int32
-          items:
-            type: set
+          type: object
+          additionalProperties:
+            type: array
             items:
               type: string
         # default is an empty map
