@@ -55,7 +55,7 @@ FixOfflineReplicasEndpoint:
         schema:
           type: string # topics regex
           default: null
-        exmaple: "__CruiseControl.%2A"
+        example: "__CruiseControl.%2A"
       - name: use_ready_default_goals
         in: query
         description: Whether to only use ready goals to generate proposal.

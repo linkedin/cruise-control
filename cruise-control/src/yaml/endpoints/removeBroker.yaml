@@ -7,7 +7,7 @@ RemoveBrokerEndpoint:
         in: query
         description: List of target broker ids.
         schema:
-          type: set
+          type: array
           items:
             type: integer
         required: true
@@ -116,9 +116,8 @@ RemoveBrokerEndpoint:
         in: query
         description: Comma-separated and/or space-separated list of broker IDs.
         schema:
-          type: set
+          type: array
           items:
-            items:
             type: integer
           # default is a empty set if no values are provided
       - name: execution_progress_check_interval_ms

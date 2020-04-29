@@ -120,7 +120,7 @@ RebalanceEndpoint:
           type: array
           items:
             type: string
-          exmaples: [1,2,3]
+          example: [1,2,3]
       - name: kafka_assigner
         in: query
         description: Whether to use Kafka assigner mode to general proposal.
