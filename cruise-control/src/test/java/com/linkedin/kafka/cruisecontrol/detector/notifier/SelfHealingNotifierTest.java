@@ -25,6 +25,7 @@ import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
 import org.junit.Test;
 
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC_REPLICATION_FACTOR_ANOMALY_ENTRY;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.BrokerFailureDetector.BROKER_FAILURES_FIXABLE_CONFIG;
@@ -33,7 +34,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.DiskFailureDetector.FAIL
 import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder.SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder.TOPICS_WITH_BAD_REPLICATION_FACTOR_BY_FIXABILITY_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder.BAD_TOPICS_BY_REPLICATION_FACTOR_CONFIG;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -173,8 +174,9 @@ public class SelfHealingNotifierTest {
     parameterConfigOverrides.put(FAILED_DISKS_OBJECT_CONFIG,
                                  Collections.singletonMap(1, Collections.singletonMap(BAD_LOGDIR, failureTime1)));
     parameterConfigOverrides.put(SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG, SELF_HEALING_TARGET_REPLICATION_FACTOR);
-    parameterConfigOverrides.put(TOPICS_WITH_BAD_REPLICATION_FACTOR_BY_FIXABILITY_CONFIG,
-                                 Collections.singletonMap(true, Collections.singleton(BAD_TOPIC)));
+    parameterConfigOverrides.put(BAD_TOPICS_BY_REPLICATION_FACTOR_CONFIG,
+                                 Collections.singletonMap(SELF_HEALING_TARGET_REPLICATION_FACTOR,
+                                                          Collections.singleton(TOPIC_REPLICATION_FACTOR_ANOMALY_ENTRY)));
     AnomalyNotificationResult result = anomalyNotifier.onBrokerFailure(
         kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
                                                        BrokerFailures.class,
