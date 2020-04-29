@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
@@ -318,6 +317,13 @@ public class ExecutionTaskPlanner {
                                                                 Set<TopicPartition> inProgressPartitions) {
     LOG.trace("Getting inter-broker replica movement tasks for brokers with concurrency {}", readyBrokers);
     List<ExecutionTask> executableReplicaMovements = new ArrayList<>();
+
+    // Kafka doesn't allow new replica movements if there is an ongoing rebalance
+    if (!inProgressPartitions.isEmpty()) {
+      LOG.info("Skipping getting replica movement tasks. {} in progress yet.", inProgressPartitions.size());
+      return executableReplicaMovements;
+    }
+
     /**
      * The algorithm avoids unfair situation where the available movement slots of a broker is completely taken
      * by another broker. It checks the proposals in a round-robin manner that makes sure each ready broker gets
@@ -346,8 +352,7 @@ public class ExecutionTaskPlanner {
             int sourceBroker = task.proposal().oldLeader().brokerId();
             Set<Integer> destinationBrokers = task.proposal().replicasToAdd().stream().mapToInt(ReplicaPlacementInfo::brokerId)
                                                   .boxed().collect(Collectors.toSet());
-            if (brokerInvolved.contains(sourceBroker)
-                || KafkaCruiseControlUtils.containsAny(brokerInvolved, destinationBrokers)) {
+            if (brokerInvolved.contains(sourceBroker)) {
               continue;
             }
             TopicPartition tp = task.proposal().topicPartition();

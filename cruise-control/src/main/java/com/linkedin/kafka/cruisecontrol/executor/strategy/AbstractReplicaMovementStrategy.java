@@ -25,12 +25,6 @@ public abstract class AbstractReplicaMovementStrategy implements ReplicaMovement
   public ReplicaMovementStrategy chain(ReplicaMovementStrategy strategy) {
     AbstractReplicaMovementStrategy current = this;
     return new AbstractReplicaMovementStrategy() {
-
-      @Override
-      public ReplicaMovementStrategy chain(ReplicaMovementStrategy strategy) {
-        return current.chain(strategy);
-      }
-
       @Override
       public Comparator<ExecutionTask> taskComparator(Cluster cluster) {
         Comparator<ExecutionTask> comparator1 = current.taskComparator(cluster);

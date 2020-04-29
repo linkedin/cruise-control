@@ -615,7 +615,7 @@ public class ParameterUtils {
    */
   static ReplicaMovementStrategy getReplicaMovementStrategy(HttpServletRequest request, KafkaCruiseControlConfig config)
       throws UnsupportedEncodingException {
-    if (!getDryRun(request)) {
+    if (getDryRun(request)) {
       return null;
     }
     List<String> strategies = getListParam(request, REPLICA_MOVEMENT_STRATEGIES_PARAM);
