@@ -62,7 +62,7 @@ public class ExecutionTaskPlannerTest {
       new ExecutionProposal(new TopicPartition(TOPIC1, 3), 0, _r3, Arrays.asList(_r3, _r2), Arrays.asList(_r2, _r3));
 
   private final ExecutionProposal _partitionMovement1 =
-      new ExecutionProposal(new TopicPartition(TOPIC2, 0), 4, _r0, Arrays.asList(_r0, _r2), Arrays.asList(_r2, _r1));
+      new ExecutionProposal(new TopicPartition(TOPIC2, 0), 1, _r0, Arrays.asList(_r0, _r2), Arrays.asList(_r2, _r1));
   private final ExecutionProposal _partitionMovement2 =
       new ExecutionProposal(new TopicPartition(TOPIC2, 1), 3, _r1, Arrays.asList(_r1, _r3), Arrays.asList(_r3, _r2));
   private final ExecutionProposal _partitionMovement3 =
