@@ -30,7 +30,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyTyp
  * process and criteria, check {@link com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder}.
  */
 public class TopicReplicationFactorAnomaly extends TopicAnomaly {
-  // Bad topic here refers to the topic having at least one partition which violates replication factor requirements
+  // Bad topic here refers to the topic having at least one partition, which violates replication factor requirements.
   protected Map<Short, Set<TopicReplicationFactorAnomalyEntry>> _badTopicsByReplicationFactor;
   protected UpdateTopicConfigurationRunnable _updateTopicConfigurationRunnable;
 
