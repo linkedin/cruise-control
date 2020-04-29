@@ -40,8 +40,8 @@ import static com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAn
  * The class will check whether there are topics having partition(s) with replication factor different than the desired value
  * which is configured by {@link #SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG}.
  * Note for topics having special minISR config, if its minISR plus value of {@link #TOPIC_REPLICATION_FACTOR_MARGIN_CONFIG}
- * is larger than the value of {@link #SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG} and its replication factor equals
- * to the former, the topic will not be taken as an anomaly.
+ * is larger than the value of {@link #SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG} and equals to its replication
+ * factor, the topic will not be taken as an anomaly.
  * Required configurations for this class.
  * <ul>
  *   <li>{@link #SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG}: The config for the target replication factor of topics.</li>
@@ -154,7 +154,7 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
 
   /**
    * Scan through topics to check whether the topic having partition(s) with bad replication factor. For each topic, the
-   * target replication factor to check against is the maximal of value of {@link #SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG}
+   * target replication factor to check against is the maximum value of {@link #SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG}
    * and topic's minISR plus value of {@link #TOPIC_REPLICATION_FACTOR_MARGIN_CONFIG}.
    *
    * @param topicsToCheck Set of topics to check.
@@ -167,8 +167,8 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
         short topicMinISR = _cachedTopicMinISR.get(topic).minISR();
         short targetReplicationFactor = (short) Math.max(_targetReplicationFactor, topicMinISR + _topicReplicationFactorMargin);
         int violatedPartitionCount = 0;
-        for (PartitionInfo pinfo : cluster.partitionsForTopic(topic)) {
-          if (pinfo.replicas().length != targetReplicationFactor) {
+        for (PartitionInfo partitionInfo : cluster.partitionsForTopic(topic)) {
+          if (partitionInfo.replicas().length != targetReplicationFactor) {
             violatedPartitionCount++;
           }
         }

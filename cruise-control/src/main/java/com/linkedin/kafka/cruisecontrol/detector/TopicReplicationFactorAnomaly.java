@@ -26,10 +26,11 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyTyp
 
 
 /**
- * Topics which have at least one partition detected to violate replication factor requirement. For more detail about detection
+ * Topics, which have at least one partition that violates replication factor requirements. For more detail about detection
  * process and criteria, check {@link com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder}.
  */
 public class TopicReplicationFactorAnomaly extends TopicAnomaly {
+  // Bad topic here refers to the topic having partition(s) with bad replication factor.
   protected Map<Short, Set<TopicReplicationFactorAnomalyEntry>> _badTopicsByReplicationFactor;
   protected UpdateTopicConfigurationRunnable _updateTopicConfigurationRunnable;
 
@@ -59,7 +60,7 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
     boolean allowCapacityEstimation = config.getBoolean(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
     boolean excludeRecentlyDemotedBrokers = config.getBoolean(SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
     boolean excludeRecentlyRemovedBrokers = config.getBoolean(SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
-    Map<Short, Pattern> topicPatternByReplicationFactor = populateTopicPatternByReplicationFactor(_badTopicsByReplicationFactor);
+    Map<Short, Pattern> topicPatternByReplicationFactor = populateTopicPatternByReplicationFactor();
     _updateTopicConfigurationRunnable = new UpdateTopicConfigurationRunnable(kafkaCruiseControl,
                                                                              topicPatternByReplicationFactor,
                                                                              getSelfHealingGoalNames(config),
@@ -70,12 +71,11 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
                                                                              reasonSupplier());
   }
 
-  protected Map<Short, Pattern> populateTopicPatternByReplicationFactor(
-      Map<Short, Set<TopicReplicationFactorAnomalyEntry>> badTopicsByReplicationFactor) {
-    Map<Short, Pattern> topicPatternByReplicationFactor = new HashMap<>(badTopicsByReplicationFactor.size());
-    for (Map.Entry<Short, Set<TopicReplicationFactorAnomalyEntry>> entry : badTopicsByReplicationFactor.entrySet()) {
+  protected Map<Short, Pattern> populateTopicPatternByReplicationFactor() {
+    Map<Short, Pattern> topicPatternByReplicationFactor = new HashMap<>(_badTopicsByReplicationFactor.size());
+    for (Map.Entry<Short, Set<TopicReplicationFactorAnomalyEntry>> entry : _badTopicsByReplicationFactor.entrySet()) {
       Set<String> topics = new HashSet<>(entry.getValue().size());
-      entry.getValue().forEach(anomaly -> topics.add(anomaly.getTopicName()));
+      entry.getValue().forEach(anomaly -> topics.add(anomaly.topicName()));
       topicPatternByReplicationFactor.put(entry.getKey(), buildTopicRegex(topics));
     }
     return topicPatternByReplicationFactor;
@@ -89,9 +89,9 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append("{Detected following topics having replication factor violations: [");
+    sb.append("{Topics with replication factor violations: [");
     _badTopicsByReplicationFactor.forEach(
-        (key, value) -> sb.append(String.format("{target replication factor %d, topics violated %s}, ", key, value)));
+        (key, value) -> sb.append(String.format("{With desired RF %d: %s}, ", key, value)));
     sb.setLength(sb.length() - 2);
     sb.append("]}");
     return sb.toString();
@@ -106,17 +106,17 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
       _violationRatio = violationRatio;
     }
 
-    public String getTopicName() {
+    public String topicName() {
       return _topicName;
     }
 
-    public double getViolationRatio() {
+    public double violationRatio() {
       return _violationRatio;
     }
 
     @Override
     public String toString() {
-      return String.format("{Topic: %s, violation ratio %f%%}", _topicName, _violationRatio * 100.0);
+      return String.format("{%s(%.2f)}", _topicName, _violationRatio * 100.0);
     }
   }
 }

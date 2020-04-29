@@ -41,20 +41,26 @@ public class TopicReplicationFactorAnomalyFinderTest {
 
   @Test
   public void testAnomalyDetection() throws InterruptedException, ExecutionException, TimeoutException {
-    TopicReplicationFactorAnomalyFinder anomalyFinder = new TopicReplicationFactorAnomalyFinder(mockKafkaCruiseControl(),
+    KafkaCruiseControl mockKafkaCruiseControl = mockKafkaCruiseControl();
+    AdminClient mockAdminClient = mockAdminClient((short) 1);
+    TopicReplicationFactorAnomalyFinder anomalyFinder = new TopicReplicationFactorAnomalyFinder(mockKafkaCruiseControl,
                                                                                                 TARGET_TOPIC_REPLICATION_FACTOR,
-                                                                                                mockAdminClient((short) 1));
+                                                                                                mockAdminClient);
     Set<TopicAnomaly> topicAnomalies = anomalyFinder.topicAnomalies();
     assertEquals(1, topicAnomalies.size());
+    EasyMock.verify(mockKafkaCruiseControl, mockAdminClient);
   }
 
   @Test
   public void testSkipTopicWithLargeMinISR() throws InterruptedException, ExecutionException, TimeoutException {
-    TopicReplicationFactorAnomalyFinder anomalyFinder = new TopicReplicationFactorAnomalyFinder(mockKafkaCruiseControl(),
+    KafkaCruiseControl mockKafkaCruiseControl = mockKafkaCruiseControl();
+    AdminClient mockAdminClient = mockAdminClient((short) 2);
+    TopicReplicationFactorAnomalyFinder anomalyFinder = new TopicReplicationFactorAnomalyFinder(mockKafkaCruiseControl,
                                                                                                 TARGET_TOPIC_REPLICATION_FACTOR,
-                                                                                                mockAdminClient((short) 2));
+                                                                                                mockAdminClient);
     Set<TopicAnomaly> topicAnomalies = anomalyFinder.topicAnomalies();
     assertTrue(topicAnomalies.isEmpty());
+    EasyMock.verify(mockKafkaCruiseControl, mockAdminClient);
   }
 
   private AdminClient mockAdminClient(short expectedMinISR) throws InterruptedException, ExecutionException, TimeoutException {
@@ -77,7 +83,7 @@ public class TopicReplicationFactorAnomalyFinderTest {
     KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
     Cluster cluster = generateCluster();
     EasyMock.expect(mockKafkaCruiseControl.kafkaCluster()).andReturn(cluster).anyTimes();
-    EasyMock.expect(mockKafkaCruiseControl.timeMs()).andReturn(System.currentTimeMillis());
+    EasyMock.expect(mockKafkaCruiseControl.timeMs()).andReturn(System.currentTimeMillis()).anyTimes();
     Properties properties = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(properties);
     EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(config).anyTimes();
