@@ -196,7 +196,10 @@ public class ExecutionTaskPlanner {
       _interPartMoveTaskByBrokerId = _defaultReplicaMovementTaskStrategy.applyStrategy(_remainingInterBrokerReplicaMovements,
                                                                                        cluster);
     } else {
-      _interPartMoveTaskByBrokerId = replicaMovementStrategy.applyStrategy(_remainingInterBrokerReplicaMovements, cluster);
+      // Chain the generated composite strategy with BaseReplicaMovementStrategy in the end to ensure the returned
+      // strategy can always determine the order of two tasks.
+      _interPartMoveTaskByBrokerId = replicaMovementStrategy.chain(new BaseReplicaMovementStrategy())
+              .applyStrategy(_remainingInterBrokerReplicaMovements, cluster);
     }
   }
 
