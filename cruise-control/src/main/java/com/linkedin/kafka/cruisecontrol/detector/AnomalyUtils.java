@@ -77,12 +77,12 @@ public class AnomalyUtils {
                                       int defaultValue,
                                       Predicate<Integer> illegalValueCheck) {
     String valueString = (String) config.get(key);
-    if(valueString == null) {
+    if (valueString == null) {
       return defaultValue;
     }
     try {
       Integer value = Integer.parseInt(valueString);
-      if(illegalValueCheck.test(value)) {
+      if (illegalValueCheck.test(value)) {
         throw new ConfigException(key, value);
       }
       return value;
@@ -104,12 +104,12 @@ public class AnomalyUtils {
                                          double defaultValue,
                                          Predicate<Double> illegalValueCheck) {
     String valueString = (String) config.get(key);
-    if(valueString == null) {
+    if (valueString == null) {
       return defaultValue;
     }
     try {
       Double value = Double.parseDouble(valueString);
-      if(illegalValueCheck.test(value)) {
+      if (illegalValueCheck.test(value)) {
         throw new ConfigException(key, value);
       }
       return value;

@@ -461,7 +461,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     _slowBrokerDecommissionScore = parseAndGetConfig(originalConfig,
                                                      SLOW_BROKER_DECOMMISSION_SCORE_CONFIG,
                                                      DEFAULT_SLOW_BROKER_DECOMMISSION_SCORE,
-                                                     (Predicate<Integer>)val -> (val < 0));
+                                                     (Predicate<Integer>) val -> (val < 0));
 
     _selfHealingUnfixableRatio = parseAndGetConfig(originalConfig,
                                                    SLOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO_CONFIG,
