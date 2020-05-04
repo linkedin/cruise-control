@@ -16,9 +16,10 @@ public class SingleHostStats extends BasicStats {
 
   SingleHostStats(String host, double diskUtil, double cpuUtil, double leaderBytesInRate,
                   double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
-                  int numReplicas, int numLeaders, double capacity) {
+                  int numReplicas, int numLeaders, double capacity,  double networkInCapacity,
+                  double networkOutCapacity, int numCore) {
     super(diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
-          potentialBytesOutRate, numReplicas, numLeaders, capacity);
+          potentialBytesOutRate, numReplicas, numLeaders, capacity, networkInCapacity, networkOutCapacity, numCore);
     _host = host;
   }
 

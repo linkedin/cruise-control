@@ -31,6 +31,10 @@ SingleBrokerStats:
     - PnwOutRate
     - Replicas
     - Leaders
+    - DiskCapacityMB
+    - NetworkInCapacity
+    - NetworkOutCapacity
+    - NumCore
   properties:
     Host:
       type: string
@@ -76,6 +80,18 @@ SingleBrokerStats:
       type: object
       additionalProperties:
         $ref: '#/DiskStats'
+    DiskCapacityMB:
+      type: number
+      format: double
+    NetworkInCapacity:
+      type: number
+      format: double
+    NetworkOutCapacity:
+      type: number
+      format: double
+    NumCore:
+      type: number
+      format: int32
 
 DiskStats:
   type: object
@@ -120,6 +136,10 @@ SingleHostStats:
     - PnwOutRate
     - Replicas
     - Leaders
+    - DiskCapacityMB
+    - NetworkInCapacity
+    - NetworkOutCapacity
+    - NumCore
   properties:
     Host:
       type: string
@@ -149,4 +169,16 @@ SingleHostStats:
       format: int32
     Leaders:
       type: integer
+      format: int32
+    DiskCapacityMB:
+      type: number
+      format: double
+    NetworkInCapacity:
+      type: number
+      format: double
+    NetworkOutCapacity:
+      type: number
+      format: double
+    NumCore:
+      type: number
       format: int32

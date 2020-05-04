@@ -68,15 +68,20 @@ public class BrokerStats extends AbstractCruiseControlResponse {
    * @param isEstimated True if the broker capacity is estimated, false otherwise.
    * @param diskCapacity The disk capacity of broker.
    * @param diskStatsByLogdir Disk stats by logdir.
+   * @param networkInCapacity The network input capacity of broker.
+   * @param networkOutCapacity The network output capacity of broker.
+   * @param numCore The number of CPU core of broker.
    */
   public void addSingleBrokerStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
                                    double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
                                    int numReplicas, int numLeaders, boolean isEstimated, double diskCapacity,
-                                   Map<String, DiskStats> diskStatsByLogdir) {
+                                   Map<String, DiskStats> diskStatsByLogdir,  double networkInCapacity,
+                                   double networkOutCapacity, int numCore) {
 
     SingleBrokerStats singleBrokerStats =
         new SingleBrokerStats(host, id, state, diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
-                              potentialBytesOutRate, numReplicas, numLeaders, isEstimated, diskCapacity, diskStatsByLogdir);
+                              potentialBytesOutRate, numReplicas, numLeaders, isEstimated, diskCapacity, diskStatsByLogdir,
+                              networkInCapacity, networkOutCapacity, numCore);
     _brokerStats.add(singleBrokerStats);
     _hostFieldLength = Math.max(_hostFieldLength, host.length());
     // Calculate field length to print logdir name in plaintext response, a padding of 10 is added for this field.
@@ -84,7 +89,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
     _logdirFieldLength = Math.max(_logdirFieldLength,
                                   diskStatsByLogdir.keySet().stream().mapToInt(String::length).max().orElse(-10) + 10);
     _hostStats.computeIfAbsent(host, h -> new SingleHostStats(host, 0.0, 0.0, 0.0, 0.0,
-                                                              0.0, 0.0, 0, 0, 0.0))
+                                                              0.0, 0.0, 0, 0, 0.0, 0.0, 0.0, 0))
               .addBasicStats(singleBrokerStats);
     _isBrokerStatsEstimated = _isBrokerStatsEstimated || isEstimated;
   }
@@ -152,20 +157,25 @@ public class BrokerStats extends AbstractCruiseControlResponse {
     boolean hasDiskInfo = !_brokerStats.get(0).diskStatsByLogdir().isEmpty();
 
     // put broker stats.
-    sb.append(String.format("%n%n%" + _hostFieldLength + "s%15s%" + _logdirFieldLength + "s%26s%15s%25s%25s%20s%20s%20s%n",
-                            "HOST", "BROKER", hasDiskInfo ? "LOGDIR" : "", "DISK(MB)/_(%)_", "CPU(%)", "LEADER_NW_IN(KB/s)",
-                            "FOLLOWER_NW_IN(KB/s)", "NW_OUT(KB/s)", "PNW_OUT(KB/s)", "LEADERS/REPLICAS"));
+    sb.append(String.format("%n%n%" + _hostFieldLength + "s%15s%" + _logdirFieldLength + "s%20s%26s%20s%15s%25s%25s%25s%25s%20s%20s%20s%n",
+                            "HOST", "BROKER", hasDiskInfo ? "LOGDIR" : "", "DISK_CAP(MB)", "DISK(MB)/_(%)_", "CORE_NUM", "CPU(%)",
+                            "NW_IN_CAP(KB/s)", "LEADER_NW_IN(KB/s)", "FOLLOWER_NW_IN(KB/s)", "NW_OUT_CAP(KB/s)", "NW_OUT(KB/s)",
+                            "PNW_OUT(KB/s)", "LEADERS/REPLICAS"));
     for (SingleBrokerStats stats : _brokerStats) {
       sb.append(String.format("%" + _hostFieldLength + "s,%14d,%" + _logdirFieldLength
-                              + "s%19.3f/%05.2f,%14.3f,%24.3f,%24.3f,%19.3f,%19.3f,%14d/%d%n",
+                              + "s%19.3f,%19.3f/%05.2f,%19d,%14.3f,%24.3f,%24.3f,%24.3f,%24.3f,%19.3f,%19.3f,%14d/%d%n",
                               stats.host(),
                               stats.id(),
                               "",
+                              stats.diskCapacity(),
                               stats.diskUtil(),
                               stats.diskUtilPct(),
+                              stats.numCore(),
                               stats.cpuUtil(),
+                              stats.networkInCapacity(),
                               stats.leaderBytesInRate(),
                               stats.followerBytesInRate(),
+                              stats.networkOutCapacity(),
                               stats.bytesOutRate(),
                               stats.potentialBytesOutRate(),
                               stats.numLeaders(),

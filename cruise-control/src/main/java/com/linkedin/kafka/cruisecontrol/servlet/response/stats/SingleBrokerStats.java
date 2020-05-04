@@ -29,9 +29,10 @@ public class SingleBrokerStats extends BasicStats {
 
   SingleBrokerStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
                     double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate, int numReplicas,
-                    int numLeaders, boolean isEstimated, double diskCapacity, Map<String, DiskStats> diskStatsByLogdir) {
+                    int numLeaders, boolean isEstimated, double diskCapacity, Map<String, DiskStats> diskStatsByLogdir,
+                    double networkInCapacity, double networkOutCapacity, int numCore) {
     super(diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
-          potentialBytesOutRate, numReplicas, numLeaders, diskCapacity);
+          potentialBytesOutRate, numReplicas, numLeaders, diskCapacity, networkInCapacity, networkOutCapacity, numCore);
     _host = host;
     _id = id;
     _state = state;
