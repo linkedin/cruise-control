@@ -161,6 +161,36 @@ public class SlowBrokerFinderTest {
     assertTrue(anomalies.isEmpty());
   }
 
+  /**
+   * Test slow broker finder does not report false positive anomaly when the broker's absolute log flush time is small.
+   */
+  @Test
+  public void testNoFalsePositiveDetection2() {
+    SlowBrokerFinder slowBrokerFinder = createSlowBrokerFinder();
+    Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = new HashMap<>(BROKER_ENTITIES.size());
+    Map<BrokerEntity, ValuesAndExtrapolations> history = new HashMap<>(BROKER_ENTITIES.size());
+    currentMetrics.putAll(createCurrentMetrics(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE,
+                                                                    NORMAL_LOG_FLUSH_TIME_MS / 10 * METRIC_ANOMALY_MULTIPLIER),
+                                               CURRENT_METRIC_WINDOW, BROKER_ENTITIES.get(0)));
+    history.putAll(createHistory(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE,
+                                                      NORMAL_LOG_FLUSH_TIME_MS / 10 * METRIC_ANOMALY_MULTIPLIER),
+                                                      populateMetricValues(NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_RATIO,
+                                                                           NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_RATIO,
+                                                                           NORMAL_LOG_FLUSH_TIME_MS / 10 * LOG_FLUSH_TIME_MS_VARIANCE_RATIO),
+                                                      METRIC_HISTORY_WINDOW_SIZE, BROKER_ENTITIES.get(0)));
+    for (int i = 1; i < BROKER_ENTITIES.size(); i++) {
+      currentMetrics.putAll(createCurrentMetrics(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE, NORMAL_LOG_FLUSH_TIME_MS / 10),
+                                                 CURRENT_METRIC_WINDOW, BROKER_ENTITIES.get(i)));
+      history.putAll(createHistory(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE, NORMAL_LOG_FLUSH_TIME_MS / 10),
+                                   populateMetricValues(NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_RATIO,
+                                                        NORMAL_BYTES_IN_RATE * BYTE_IN_RATE_VARIANCE_RATIO,
+                                                        NORMAL_LOG_FLUSH_TIME_MS / 10 * LOG_FLUSH_TIME_MS_VARIANCE_RATIO),
+                                   METRIC_HISTORY_WINDOW_SIZE, BROKER_ENTITIES.get(i)));
+    }
+    Collection<MetricAnomaly<BrokerEntity>> anomalies = slowBrokerFinder.metricAnomalies(history, currentMetrics);
+    assertEquals(0, anomalies.size());
+  }
+
   private Map<Short, Double> populateMetricValues(double leaderBytesInRate, double replicationBytesInRate, double logFlushTimeMs) {
     Map<Short, Double> metricValueById = new HashMap<>(3);
     metricValueById.put(KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.BROKER_LOG_FLUSH_TIME_MS_999TH.name()).id(), logFlushTimeMs);

@@ -39,17 +39,21 @@ import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.ME
  *
  * Slow brokers are identified by checking two metrics for each broker. One is the raw metric {@code BROKER_LOG_FLUSH_TIME_MS_999TH}
  * and the other one is the derived metric {@code BROKER_LOG_FLUSH_TIME_MS_999TH / (LEADER_BYTES_IN + REPLICATION_BYTES_IN_RATE).
- * For each metric, the detection is performed in two ways.
+ * The detection is performed in three ways.
  * <ul>
- *   <li>Comparing the latest metric value against broker's own history. If the latest value is larger than
- *       {@link #_metricHistoryMargin} * ({@link #_metricHistoryPercentile} of historical values), it is
- *       considered to be abnormally high.</li>
- *   <li>Comparing the latest metric value against the latest metric value of all active brokers in cluster (i.e. brokers
- *       which serve non-negligible traffic). If the value is larger than {@link #_peerMetricMargin} * ({@link #_peerMetricPercentile}
- *       of all metric values), it is considered to be abnormally high.</li>
+ *   <li>For both metrics, comparing the latest metric value against broker's own history. If the latest value is larger than
+ *       {@link #_metricHistoryMargin} * ({@link #_metricHistoryPercentile} of historical values), it is considered to be
+ *       abnormally high.</li>
+ *   <li>For both metrics, comparing the latest metric value against the latest metric value of all active brokers in cluster
+ *       (i.e. brokers which serve non-negligible traffic). If the value is larger than
+ *       {@link #_peerMetricMargin} * ({@link #_peerMetricPercentile} of all metric values), it is considered to be abnormally high.</li>
+ *   <li>For {@code BROKER_LOG_FLUSH_TIME_MS_999TH} metric, comparing the broker's latest metric value against the pre-defined threshold
+ *       configured by {@link #SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG}. If the value is larger than the threshold, it is
+ *       considered to be abnormally high.
+ *   </li>
  * </ul>
  *
- * If for both metric, certain broker's values are abnormally high, the broker is marked as a slow broker suspect by the finder.
+ * If for both metrics, certain broker's values are abnormally high, the broker is marked as a slow broker suspect by the finder.
  * Then if this suspect broker's derived metric anomaly persists for some time, it is confirmed to be a slow broker and
  * the finder will report {@link SlowBrokers}} anomaly with broker demotion as self-healing proposal. If the metric
  * anomaly still persists for an extended time, the finder will eventually report {@link SlowBrokers}} anomaly with broker
@@ -80,6 +84,9 @@ import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.ME
  *   determine whether to include broker in slow broker detection. If the broker only serves negligible traffic, its derived metric
  *   wil be abnormally high since bytes in rate is used as divisor in metric calculation. Default value is set to
  *   {@link #DEFAULT_SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD}.</li>
+ *   <li>{@link #SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG}: the time threshold in unit of millisecond to determine whether the broker's
+ *   {@code BROKER_LOG_FLUSH_TIME_MS_999TH} metric value is abnormally high. Default value is set to
+ *   {@link #DEFAULT_SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG}.</li>
  *   <li>{@link #SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG}: the percentile threshold used to compare latest metric value against
  *   historical value in slow broker detection. Default value is set to {@link #DEFAULT_SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD}.</li>
  *   <li>{@link #SLOW_BROKER_METRIC_HISTORY_MARGIN_CONFIG}: the margin used to compare latest metric value against historical value in
@@ -104,6 +111,8 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   public static final String REMOVE_SLOW_BROKER_CONFIG = "remove.slow.broker";
   public static final String SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG = "slow.broker.bytes.in.rate.detection.threshold";
   public static final double DEFAULT_SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD = 1024.0;
+  public static final String SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG = "slow.broker.log.flush.time.threshold.ms";
+  public static final double DEFAULT_SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG = 300.0;
   public static final String SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG = "slow.broker.metric.history.percentile.threshold";
   public static final double DEFAULT_SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD = 90.0;
   public static final String SLOW_BROKER_METRIC_HISTORY_MARGIN_CONFIG = "slow.broker.metric.history.margin";
@@ -130,6 +139,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   private final Map<BrokerEntity, Long> _detectedSlowBrokers;
   private final Percentile _percentile;
   private double _bytesInRateDetectionThreshold;
+  private double _logFlushTimeThresholdMs;
   private double _metricHistoryPercentile;
   private double _metricHistoryMargin;
   private double _peerMetricPercentile;
@@ -174,6 +184,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     }
 
     Set<BrokerEntity> detectMetricAnomalies = getMetricAnomalies(historicalLogFlushTimeMetricValues, currentLogFlushTimeMetricValues);
+    detectMetricAnomalies.retainAll(detectMetricAnomaliesFromThreshold(currentLogFlushTimeMetricValues, _logFlushTimeThresholdMs));
     detectMetricAnomalies.retainAll(getMetricAnomalies(historicalPerByteLogFlushTimeMetricValues, currentPerByteLogFlushTimeMetricValues));
     return detectMetricAnomalies;
   }
@@ -284,6 +295,16 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
         }
       }
     }
+  }
+
+  private Set<BrokerEntity> detectMetricAnomaliesFromThreshold(Map<BrokerEntity, Double> currentValue, double threshold) {
+    Set<BrokerEntity> detectedMetricAnomalies = new HashSet<>();
+    for (Map.Entry<BrokerEntity, Double> entry : currentValue.entrySet()) {
+      if (currentValue.get(entry.getKey()) > threshold) {
+        detectedMetricAnomalies.add(entry.getKey());
+      }
+    }
+    return detectedMetricAnomalies;
   }
 
   private SlowBrokers createSlowBrokersAnomaly(Map<BrokerEntity, Long> detectedBrokers,
@@ -413,6 +434,21 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
         }
       } catch (NumberFormatException e) {
         throw new ConfigException(SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG, bytesInRateDetectionThreshold, e.getMessage());
+      }
+    }
+
+    String logFlushTimeThresholdMs = (String) originalConfig.get(SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG);
+    if (bytesInRateDetectionThreshold == null) {
+      _logFlushTimeThresholdMs = DEFAULT_SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG;
+    } else {
+      try {
+        _logFlushTimeThresholdMs = Double.parseDouble(logFlushTimeThresholdMs);
+        if (_logFlushTimeThresholdMs < 0) {
+          throw new ConfigException(String.format("%s config of slow broker finder should not be set to negative, provided: %f.",
+                                                  SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG, _logFlushTimeThresholdMs));
+        }
+      } catch (NumberFormatException e) {
+        throw new ConfigException(SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG, logFlushTimeThresholdMs, e.getMessage());
       }
     }
 
