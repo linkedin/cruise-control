@@ -146,7 +146,7 @@ public class SlowBrokerFinderTest {
    * Test slow broker finder does not report false positive anomaly due to broker traffic fluctuation.
    */
   @Test
-  public void testNoFalsePositiveDetection() {
+  public void testNoFalsePositiveDetectionDueToTrafficFluctuation() {
     SlowBrokerFinder slowBrokerFinder = createSlowBrokerFinder();
     Map<BrokerEntity, ValuesAndExtrapolations> history =
         createHistory(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE, NORMAL_LOG_FLUSH_TIME_MS),
@@ -165,7 +165,7 @@ public class SlowBrokerFinderTest {
    * Test slow broker finder does not report false positive anomaly when the broker's absolute log flush time is small.
    */
   @Test
-  public void testNoFalsePositiveDetection2() {
+  public void testNoFalsePositiveDetectionOnSmallLogFlushTime() {
     SlowBrokerFinder slowBrokerFinder = createSlowBrokerFinder();
     Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = new HashMap<>(BROKER_ENTITIES.size());
     Map<BrokerEntity, ValuesAndExtrapolations> history = new HashMap<>(BROKER_ENTITIES.size());
