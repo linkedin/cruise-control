@@ -231,7 +231,7 @@ Supported parameters are:
 
 User can use `user_task_ids`/`client_ids`/`endpoints`/`types` make Cruise Control only return requests they are interested. By default all the requests get returned.
 
-If `fetch_completed_task` is set to `true`, the original response of each requests will be returned.
+If `fetch_completed_task` is set to `true`, the original response of each request will be returned. In the case where a task completed with errors the response will be `CompletedWithError`.
 
 ## POST Requests
 The post requests of Kafka Cruise Control REST API are operations that will have impact on the Kafka cluster. The post operations include:
