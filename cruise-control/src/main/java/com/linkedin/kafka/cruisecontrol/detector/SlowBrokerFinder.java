@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
-import com.linkedin.cruisecontrol.common.config.ConfigException;
 import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomaly;
 import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyFinder;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
@@ -21,12 +20,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyFinderUtils.isDataSufficient;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyUtils.parseAndGetConfig;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_DESCRIPTION_OBJECT_CONFIG;
@@ -39,17 +40,21 @@ import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.ME
  *
  * Slow brokers are identified by checking two metrics for each broker. One is the raw metric {@code BROKER_LOG_FLUSH_TIME_MS_999TH}
  * and the other one is the derived metric {@code BROKER_LOG_FLUSH_TIME_MS_999TH / (LEADER_BYTES_IN + REPLICATION_BYTES_IN_RATE).
- * For each metric, the detection is performed in two ways.
+ * The detection is performed in three ways.
  * <ul>
- *   <li>Comparing the latest metric value against broker's own history. If the latest value is larger than
- *       {@link #_metricHistoryMargin} * ({@link #_metricHistoryPercentile} of historical values), it is
- *       considered to be abnormally high.</li>
- *   <li>Comparing the latest metric value against the latest metric value of all active brokers in cluster (i.e. brokers
- *       which serve non-negligible traffic). If the value is larger than {@link #_peerMetricMargin} * ({@link #_peerMetricPercentile}
- *       of all metric values), it is considered to be abnormally high.</li>
+ *   <li>For both metrics, comparing the latest metric value against broker's own history. If the latest value is larger than
+ *       {@link #_metricHistoryMargin} * ({@link #_metricHistoryPercentile} of historical values), it is considered to be
+ *       abnormally high.</li>
+ *   <li>For both metrics, comparing the latest metric value against the latest metric value of all active brokers in cluster
+ *       (i.e. brokers which serve non-negligible traffic). If the value is larger than
+ *       {@link #_peerMetricMargin} * ({@link #_peerMetricPercentile} of all metric values), it is considered to be abnormally high.</li>
+ *   <li>For {@code BROKER_LOG_FLUSH_TIME_MS_999TH} metric, comparing the broker's latest metric value against the pre-defined threshold
+ *       configured by {@link #SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG}. If the value is larger than the threshold, it is
+ *       considered to be abnormally high.
+ *   </li>
  * </ul>
  *
- * If for both metric, certain broker's values are abnormally high, the broker is marked as a slow broker suspect by the finder.
+ * If for both metrics, certain broker's values are abnormally high, the broker is marked as a slow broker suspect by the finder.
  * Then if this suspect broker's derived metric anomaly persists for some time, it is confirmed to be a slow broker and
  * the finder will report {@link SlowBrokers}} anomaly with broker demotion as self-healing proposal. If the metric
  * anomaly still persists for an extended time, the finder will eventually report {@link SlowBrokers}} anomaly with broker
@@ -80,6 +85,9 @@ import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.ME
  *   determine whether to include broker in slow broker detection. If the broker only serves negligible traffic, its derived metric
  *   wil be abnormally high since bytes in rate is used as divisor in metric calculation. Default value is set to
  *   {@link #DEFAULT_SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD}.</li>
+ *   <li>{@link #SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG}: the time threshold in unit of millisecond to determine whether the broker's
+ *   {@code BROKER_LOG_FLUSH_TIME_MS_999TH} metric value is abnormally high. Default value is set to
+ *   {@link #DEFAULT_SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG}.</li>
  *   <li>{@link #SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG}: the percentile threshold used to compare latest metric value against
  *   historical value in slow broker detection. Default value is set to {@link #DEFAULT_SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD}.</li>
  *   <li>{@link #SLOW_BROKER_METRIC_HISTORY_MARGIN_CONFIG}: the margin used to compare latest metric value against historical value in
@@ -104,6 +112,8 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   public static final String REMOVE_SLOW_BROKER_CONFIG = "remove.slow.broker";
   public static final String SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG = "slow.broker.bytes.in.rate.detection.threshold";
   public static final double DEFAULT_SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD = 1024.0;
+  public static final String SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG = "slow.broker.log.flush.time.threshold.ms";
+  public static final double DEFAULT_SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG = 150.0;
   public static final String SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG = "slow.broker.metric.history.percentile.threshold";
   public static final double DEFAULT_SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD = 90.0;
   public static final String SLOW_BROKER_METRIC_HISTORY_MARGIN_CONFIG = "slow.broker.metric.history.margin";
@@ -130,6 +140,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   private final Map<BrokerEntity, Long> _detectedSlowBrokers;
   private final Percentile _percentile;
   private double _bytesInRateDetectionThreshold;
+  private double _logFlushTimeThresholdMs;
   private double _metricHistoryPercentile;
   private double _metricHistoryMargin;
   private double _peerMetricPercentile;
@@ -173,9 +184,10 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
       LOG.info("Skip broker slowness checking for brokers {} because they serve negligible traffic.", skippedBrokers);
     }
 
-    Set<BrokerEntity> detectMetricAnomalies = getMetricAnomalies(historicalLogFlushTimeMetricValues, currentLogFlushTimeMetricValues);
-    detectMetricAnomalies.retainAll(getMetricAnomalies(historicalPerByteLogFlushTimeMetricValues, currentPerByteLogFlushTimeMetricValues));
-    return detectMetricAnomalies;
+    Set<BrokerEntity> detectedMetricAnomalies = getMetricAnomalies(historicalLogFlushTimeMetricValues, currentLogFlushTimeMetricValues);
+    detectedMetricAnomalies.retainAll(getMetricAnomalies(historicalPerByteLogFlushTimeMetricValues, currentPerByteLogFlushTimeMetricValues));
+    detectedMetricAnomalies.retainAll(getLogFlushTimeMetricAnomaliesFromValue(currentLogFlushTimeMetricValues));
+    return detectedMetricAnomalies;
   }
 
   /**
@@ -284,6 +296,16 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
         }
       }
     }
+  }
+
+  private Set<BrokerEntity> getLogFlushTimeMetricAnomaliesFromValue(Map<BrokerEntity, Double> currentValue) {
+    Set<BrokerEntity> detectedMetricAnomalies = new HashSet<>();
+    for (Map.Entry<BrokerEntity, Double> entry : currentValue.entrySet()) {
+      if (currentValue.get(entry.getKey()) > _logFlushTimeThresholdMs) {
+        detectedMetricAnomalies.add(entry.getKey());
+      }
+    }
+    return detectedMetricAnomalies;
   }
 
   private SlowBrokers createSlowBrokersAnomaly(Map<BrokerEntity, Long> detectedBrokers,
@@ -401,116 +423,49 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     Map<String, Object> originalConfig = _kafkaCruiseControl.config().originals();
     _slowBrokerRemovalEnabled = Boolean.parseBoolean((String) originalConfig.get(SELF_HEALING_SLOW_BROKER_REMOVAL_ENABLED_CONFIG));
 
-    String bytesInRateDetectionThreshold = (String) originalConfig.get(SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG);
-    if (bytesInRateDetectionThreshold == null) {
-      _bytesInRateDetectionThreshold = DEFAULT_SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD;
-    } else {
-      try {
-        _bytesInRateDetectionThreshold = Double.parseDouble(bytesInRateDetectionThreshold);
-        if (_bytesInRateDetectionThreshold < 0) {
-          throw new ConfigException(String.format("%s config of slow broker finder should not be set to negative, provided: %f.",
-                                                  SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG, _bytesInRateDetectionThreshold));
-        }
-      } catch (NumberFormatException e) {
-        throw new ConfigException(SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG, bytesInRateDetectionThreshold, e.getMessage());
-      }
-    }
+    _bytesInRateDetectionThreshold = parseAndGetConfig(originalConfig,
+                                                       SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG,
+                                                       DEFAULT_SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD,
+                                                       val -> (val < 0.0));
 
-    String metricHistoryPercentile = (String) originalConfig.get(SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG);
-    if (metricHistoryPercentile == null) {
-      _metricHistoryPercentile = DEFAULT_SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD;
-    } else {
-      try {
-        _metricHistoryPercentile = Double.parseDouble(metricHistoryPercentile);
-        if (_metricHistoryPercentile < 0.0 || _metricHistoryPercentile > 100.0) {
-          throw new ConfigException(String.format("%s config of slow broker finder should be set in range [0.0, 100.0], provided: %f.",
-                                                  SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG, _metricHistoryPercentile));
-        }
-      } catch (NumberFormatException e) {
-        throw new ConfigException(SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG, metricHistoryPercentile, e.getMessage());
-      }
-    }
+    _logFlushTimeThresholdMs = parseAndGetConfig(originalConfig,
+                                                SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG,
+                                                DEFAULT_SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG,
+                                                val -> (val < 0.0));
 
-    String metricHistoryMargin = (String) originalConfig.get(SLOW_BROKER_METRIC_HISTORY_MARGIN_CONFIG);
-    if (metricHistoryMargin == null) {
-      _metricHistoryMargin = DEFAULT_SLOW_BROKER_METRIC_HISTORY_MARGIN;
-    } else {
-      try {
-        _metricHistoryMargin = Double.parseDouble(metricHistoryMargin);
-        if (_metricHistoryMargin < 1.0) {
-          throw new ConfigException(String.format("%s config of slow broker finder should not be less than 1.0, provided: %f.",
-                                                  SLOW_BROKER_METRIC_HISTORY_MARGIN_CONFIG, _metricHistoryMargin));
-        }
-      } catch (NumberFormatException e) {
-        throw new ConfigException(SLOW_BROKER_METRIC_HISTORY_MARGIN_CONFIG, metricHistoryMargin, e.getMessage());
-      }
-    }
+    _metricHistoryPercentile = parseAndGetConfig(originalConfig,
+                                                 SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG,
+                                                 DEFAULT_SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD,
+                                                 val -> (val < 0.0 || val > 100.0));
 
-    String peerMetricPercentile = (String) originalConfig.get(SLOW_BROKER_PEER_METRIC_PERCENTILE_THRESHOLD_CONFIG);
-    if (peerMetricPercentile == null) {
-      _peerMetricPercentile = DEFAULT_SLOW_BROKER_PEER_METRIC_PERCENTILE_THRESHOLD;
-    } else {
-      try {
-        _peerMetricPercentile = Double.parseDouble(peerMetricPercentile);
-        if (_peerMetricPercentile < 0.0 || _peerMetricPercentile > 100.0) {
-          throw new ConfigException(String.format("%s config of slow broker finder should be set in range [0.0, 100.0], provided: %f.",
-                                                  SLOW_BROKER_PEER_METRIC_PERCENTILE_THRESHOLD_CONFIG, _peerMetricPercentile));
-        }
-      } catch (NumberFormatException e) {
-        throw new ConfigException(SLOW_BROKER_PEER_METRIC_PERCENTILE_THRESHOLD_CONFIG, peerMetricPercentile, e.getMessage());
-      }
-    }
+    _metricHistoryMargin = parseAndGetConfig(originalConfig,
+                                             SLOW_BROKER_METRIC_HISTORY_MARGIN_CONFIG,
+                                             DEFAULT_SLOW_BROKER_METRIC_HISTORY_MARGIN,
+                                             val -> (val < 1.0));
 
-    String peerMetricMargin = (String) originalConfig.get(SLOW_BROKER_PEER_METRIC_MARGIN_CONFIG);
-    if (peerMetricMargin == null) {
-      _peerMetricMargin = DEFAULT_SLOW_BROKER_PEER_METRIC_MARGIN;
-    } else {
-      try {
-        _peerMetricMargin = Double.parseDouble(peerMetricMargin);
-        if (_peerMetricMargin < 1.0) {
-          throw new ConfigException(String.format("%s config of slow broker finder should not be less than 1.0, provided: %f.",
-                                                  SLOW_BROKER_PEER_METRIC_MARGIN_CONFIG, _peerMetricPercentile));
-        }
-      } catch (NumberFormatException e) {
-        throw new ConfigException(SLOW_BROKER_PEER_METRIC_MARGIN_CONFIG, peerMetricPercentile, e.getMessage());
-      }
-    }
+    _peerMetricPercentile = parseAndGetConfig(originalConfig,
+                                              SLOW_BROKER_PEER_METRIC_PERCENTILE_THRESHOLD_CONFIG,
+                                              DEFAULT_SLOW_BROKER_PEER_METRIC_PERCENTILE_THRESHOLD,
+                                              val -> (val < 0.0 || val > 100.0));
 
-    String slowBrokerDemotionScore = (String) originalConfig.get(SLOW_BROKER_DEMOTION_SCORE_CONFIG);
-    if (slowBrokerDemotionScore == null) {
-      _slowBrokerDemotionScore = DEFAULT_SLOW_BROKER_DEMOTION_SCORE;
-    } else {
-      try {
-        _slowBrokerDemotionScore = Integer.parseUnsignedInt(slowBrokerDemotionScore);
-      } catch (NumberFormatException e) {
-        throw new ConfigException(SLOW_BROKER_DEMOTION_SCORE_CONFIG, slowBrokerDemotionScore, e.getMessage());
-      }
-    }
+    _peerMetricMargin = parseAndGetConfig(originalConfig,
+                                          SLOW_BROKER_PEER_METRIC_MARGIN_CONFIG,
+                                          DEFAULT_SLOW_BROKER_PEER_METRIC_MARGIN,
+                                          val -> (val < 1.0));
 
-    String slowBrokerDecommissionScore = (String) originalConfig.get(SLOW_BROKER_DECOMMISSION_SCORE_CONFIG);
-    if (slowBrokerDecommissionScore == null) {
-      _slowBrokerDecommissionScore = DEFAULT_SLOW_BROKER_DECOMMISSION_SCORE;
-    } else {
-      try {
-        _slowBrokerDecommissionScore = Integer.parseUnsignedInt(slowBrokerDecommissionScore);
-      } catch (NumberFormatException e) {
-        throw new ConfigException(SLOW_BROKER_DECOMMISSION_SCORE_CONFIG, slowBrokerDecommissionScore, e.getMessage());
-      }
-  }
+    _slowBrokerDemotionScore = parseAndGetConfig(originalConfig,
+                                                 SLOW_BROKER_DEMOTION_SCORE_CONFIG,
+                                                 DEFAULT_SLOW_BROKER_DEMOTION_SCORE,
+                                                 (Predicate<Integer>) val -> (val < 0));
 
-    String selfHealingUnfixableRatio = (String) originalConfig.get(SLOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO_CONFIG);
-    if (selfHealingUnfixableRatio == null) {
-      _selfHealingUnfixableRatio = DEFAULT_SLOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO;
-    } else {
-      try {
-        _selfHealingUnfixableRatio = Double.parseDouble(selfHealingUnfixableRatio);
-        if (_selfHealingUnfixableRatio < 0.0 || _selfHealingUnfixableRatio > 1.0) {
-          throw new ConfigException(String.format("%s config of slow broker finder should be set in range [0.0, 1.0], provided: %f.",
-                                                  SLOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO_CONFIG, _selfHealingUnfixableRatio));
-        }
-      } catch (NumberFormatException e) {
-        throw new ConfigException(SLOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO_CONFIG, selfHealingUnfixableRatio, e.getMessage());
-      }
-    }
+    _slowBrokerDecommissionScore = parseAndGetConfig(originalConfig,
+                                                     SLOW_BROKER_DECOMMISSION_SCORE_CONFIG,
+                                                     DEFAULT_SLOW_BROKER_DECOMMISSION_SCORE,
+                                                     (Predicate<Integer>) val -> (val < 0));
+
+    _selfHealingUnfixableRatio = parseAndGetConfig(originalConfig,
+                                                   SLOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO_CONFIG,
+                                                   DEFAULT_SLOW_BROKER_SELF_HEALING_UNFIXABLE_RATIO,
+                                                   val -> (val < 0.0 || val > 1.0));
   }
 }
