@@ -81,6 +81,18 @@ class ExcludeRecentlyRemovedBrokersParameter(AbstractBooleanParameter):
     }
 
 
+class ForceStopParameter(AbstractBooleanParameter):
+    """force_stop=[true/false]"""
+    name = 'force_stop'
+    description = 'Whether to make cruise-control trigger a ' \
+                  'kafka controller switch to clear ongoing partition movements'
+    argparse_properties = {
+        'args': ('--force-stop', '--force_stop'),
+        # Presume that the lack of --force-stop affirmatively means no force stop
+        'kwargs': dict(help=description, action='store_true')
+    }
+
+
 class IgnoreProposalCacheParameter(AbstractBooleanParameter):
     """ignore_proposal_cache=[true/false]"""
     name = 'ignore_proposal_cache'
