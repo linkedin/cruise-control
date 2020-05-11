@@ -531,6 +531,7 @@ class StopProposalExecutionEndpoint(AbstractEndpoint):
     http_method = "POST"
     can_execute_proposal = False
     available_Parameters = (
+        CCParameter.ForceStopParameter,
         CCParameter.JSONParameter,
         CCParameter.ReviewIDParameter,
     )
