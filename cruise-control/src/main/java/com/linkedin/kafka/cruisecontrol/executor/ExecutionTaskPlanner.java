@@ -318,12 +318,6 @@ public class ExecutionTaskPlanner {
     LOG.trace("Getting inter-broker replica movement tasks for brokers with concurrency {}", readyBrokers);
     List<ExecutionTask> executableReplicaMovements = new ArrayList<>();
 
-    // Kafka doesn't allow new replica movements if there is an ongoing rebalance
-    if (!inProgressPartitions.isEmpty()) {
-      LOG.info("Skipping getting replica movement tasks. {} in progress yet.", inProgressPartitions.size());
-      return executableReplicaMovements;
-    }
-
     /**
      * The algorithm avoids unfair situation where the available movement slots of a broker is completely taken
      * by another broker. It checks the proposals in a round-robin manner that makes sure each ready broker gets
