@@ -196,7 +196,10 @@ public class ExecutionTaskPlanner {
       _interPartMoveTaskByBrokerId = _defaultReplicaMovementTaskStrategy.applyStrategy(_remainingInterBrokerReplicaMovements,
                                                                                        cluster);
     } else {
-      _interPartMoveTaskByBrokerId = replicaMovementStrategy.applyStrategy(_remainingInterBrokerReplicaMovements, cluster);
+      // Chain the generated composite strategy with BaseReplicaMovementStrategy in the end to ensure the returned
+      // strategy can always determine the order of two tasks.
+      _interPartMoveTaskByBrokerId = replicaMovementStrategy.chain(new BaseReplicaMovementStrategy())
+              .applyStrategy(_remainingInterBrokerReplicaMovements, cluster);
     }
   }
 
@@ -315,6 +318,7 @@ public class ExecutionTaskPlanner {
                                                                 Set<TopicPartition> inProgressPartitions) {
     LOG.trace("Getting inter-broker replica movement tasks for brokers with concurrency {}", readyBrokers);
     List<ExecutionTask> executableReplicaMovements = new ArrayList<>();
+
     /**
      * The algorithm avoids unfair situation where the available movement slots of a broker is completely taken
      * by another broker. It checks the proposals in a round-robin manner that makes sure each ready broker gets
@@ -344,7 +348,7 @@ public class ExecutionTaskPlanner {
             Set<Integer> destinationBrokers = task.proposal().replicasToAdd().stream().mapToInt(ReplicaPlacementInfo::brokerId)
                                                   .boxed().collect(Collectors.toSet());
             if (brokerInvolved.contains(sourceBroker)
-                || KafkaCruiseControlUtils.containsAny(brokerInvolved, destinationBrokers)) {
+                    || KafkaCruiseControlUtils.containsAny(brokerInvolved, destinationBrokers)) {
               continue;
             }
             TopicPartition tp = task.proposal().topicPartition();
