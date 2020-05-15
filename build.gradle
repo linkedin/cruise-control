@@ -233,6 +233,8 @@ project(':cruise-control') {
     testCompile "org.apache.kafka:kafka-clients:$kafkaVersion:test"
     testCompile 'commons-io:commons-io:2.6'
     testCompile 'org.bouncycastle:bcpkix-jdk15on:1.64'
+    testCompile 'org.apache.kerby:kerb-simplekdc:2.0.0'
+
   }
 
   publishing {

@@ -44,6 +44,8 @@ import java.util.Map;
 import java.util.Objects;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.STATE;
+import static com.linkedin.kafka.cruisecontrol.servlet.security.SecurityTestUtils.AUTH_CREDENTIALS_FILE;
+import static com.linkedin.kafka.cruisecontrol.servlet.security.SecurityTestUtils.BASIC_AUTH_CREDENTIALS_FILE;
 import static org.junit.Assert.assertEquals;
 
 public class JwtSecurityProviderIntegrationTest extends CruiseControlIntegrationTestHarness {
@@ -67,7 +69,7 @@ public class JwtSecurityProviderIntegrationTest extends CruiseControlIntegration
     TestAuthenticatorHandler() {
       _loginService = new HashLoginService();
       _loginService.setConfig(
-          Objects.requireNonNull(this.getClass().getClassLoader().getResource("basic-auth.credentials")).getPath());
+          Objects.requireNonNull(this.getClass().getClassLoader().getResource(BASIC_AUTH_CREDENTIALS_FILE)).getPath());
     }
 
     @Override
@@ -137,7 +139,7 @@ public class JwtSecurityProviderIntegrationTest extends CruiseControlIntegration
             "&" + TEST_PASSWORD_KEY + "=" + TEST_PASSWORD +
             "&origin=" + JwtAuthenticator.REDIRECT_URL);
     securityConfigs.put(WebServerConfig.WEBSERVER_AUTH_CREDENTIALS_FILE_CONFIG,
-        Objects.requireNonNull(this.getClass().getClassLoader().getResource("jwt-auth.credentials")).getPath());
+        Objects.requireNonNull(this.getClass().getClassLoader().getResource(AUTH_CREDENTIALS_FILE)).getPath());
     securityConfigs.put(WebServerConfig.JWT_COOKIE_NAME_CONFIG, JWT_TOKEN_COOKIE_NAME);
     securityConfigs.put(WebServerConfig.JWT_AUTH_CERTIFICATE_LOCATION_CONFIG, _publicKeyFile.getAbsolutePath());
 

@@ -119,6 +119,11 @@ DemoteBrokerEndpoint:
         schema:
           type: boolean
           default: false
+      - name: doAs
+        in: query
+        description: The user specified by a trusted proxy in that authentication model.
+        schema:
+          type: string
     responses:
       '200':
         description: Successful demote brokers response.

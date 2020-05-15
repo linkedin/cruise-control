@@ -263,6 +263,41 @@ public class WebServerConfig {
       "which means all audiences are accepted.";
 
   /**
+   * <code>spnego.keytab.file</code>
+   */
+  public static final String SPNEGO_KEYTAB_FILE_CONFIG = "spnego.keytab.file";
+  public static final String DEFAULT_SPNEGO_KEYTAB_FILE = null;
+  private static final String SPNEGO_KEYTAB_FILE_DOC = "Specifies the path to the keytab which contains the spnego " +
+      "principal that is used for SPNEGO based authentication methods.";
+
+  /**
+   * <code>spnego.principal</code>
+   */
+  public static final String SPNEGO_PRINCIPAL_CONFIG = "spnego.principal";
+  public static final String DEFAULT_SPNEGO_PRINCIPAL = null;
+  private static final String SPNEGO_PRINCIPAL_DOC = "Specifies the spnego service principal that is used by Cruise Control " +
+      "to authenticate clients. This principal is stored in spnego.keytab.file. This must be a fully qualified principal " +
+      "in the service/host@REALM format (service is usually HTTP).";
+
+  /**
+   * <code>trusted.proxy.services</code>
+   */
+  public static final String TRUSTED_PROXY_SERVICES_CONFIG = "trusted.proxy.services";
+  public static final String DEFAULT_TRUSTED_PROXY_SERVICES = null;
+  private static final String TRUSTED_PROXY_SERVICES_DOC = "A list of trusted proxies who can delegate user commands " +
+      "with the doAs query parameter.";
+
+  /**
+   * <code>trusted.proxy.services.ip.regex</code>
+   */
+  public static final String TRUSTED_PROXY_SERVICES_IP_REGEX_CONFIG = "trusted.proxy.services.ip.regex";
+  public static final String DEFAULT_TRUSTED_PROXY_SERVICES_IP_REGEX = null;
+  private static final String TRUSTED_PROXY_SERVICES_IP_REGEX_DOC = "A Java regular expression that defines the whitelist of " +
+      "IP addresses of the trusted proxy services. If a request arrives from these addresses authenticated as one of the specified " +
+      "trusted.proxy.services then the operation will be delegated as the user in the doAs parameter. This is an optional " +
+      "parameter. Not specifying this means that the IP of the trusted proxy won't be validated.";
+
+  /**
    * Define configs for Web Server.
    *
    * @param configDef Config definition.
@@ -435,6 +470,26 @@ public class WebServerConfig {
                             ConfigDef.Type.LIST,
                             DEFAULT_JWT_EXPECTED_AUDIENCES,
                             ConfigDef.Importance.MEDIUM,
-                            JWT_EXPECTED_AUDIENCES_DOC);
+                            JWT_EXPECTED_AUDIENCES_DOC)
+                    .define(SPNEGO_KEYTAB_FILE_CONFIG,
+                            ConfigDef.Type.STRING,
+                            DEFAULT_SPNEGO_KEYTAB_FILE,
+                            ConfigDef.Importance.MEDIUM,
+                            SPNEGO_KEYTAB_FILE_DOC)
+                    .define(SPNEGO_PRINCIPAL_CONFIG,
+                            ConfigDef.Type.STRING,
+                            DEFAULT_SPNEGO_PRINCIPAL,
+                            ConfigDef.Importance.MEDIUM,
+                            SPNEGO_PRINCIPAL_DOC)
+                    .define(TRUSTED_PROXY_SERVICES_CONFIG,
+                            ConfigDef.Type.LIST,
+                            DEFAULT_TRUSTED_PROXY_SERVICES,
+                            ConfigDef.Importance.MEDIUM,
+                            TRUSTED_PROXY_SERVICES_DOC)
+                    .define(TRUSTED_PROXY_SERVICES_IP_REGEX_CONFIG,
+                            ConfigDef.Type.STRING,
+                            DEFAULT_TRUSTED_PROXY_SERVICES_IP_REGEX,
+                            ConfigDef.Importance.MEDIUM,
+                            TRUSTED_PROXY_SERVICES_IP_REGEX_DOC);
   }
 }
