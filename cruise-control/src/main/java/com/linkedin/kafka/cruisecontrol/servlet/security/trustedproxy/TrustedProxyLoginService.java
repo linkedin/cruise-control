@@ -35,28 +35,31 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 public class TrustedProxyLoginService extends ContainerLifeCycle implements LoginService {
 
   private static final Logger LOG = LoggerFactory.getLogger(TrustedProxyLoginService.class);
-  private final AuthorizationService _trustedUserAuthorizer;
+  public static final boolean READ_ONLY_SUBJECT = true;
+  // authorizes the end user that is passed in via the doAs header
+  private final AuthorizationService _endUserAuthorizer;
   // use encapsulation instead of inheritance as it's easier to test
   private final ConfigurableSpnegoLoginService _delegateSpnegoLoginService;
 
   /**
    * Creates a new instance based on the kerberos realm, the list of trusted proxies, their allowed IP pattern and the
    * {@link AuthorizationService} that stores the end users.
-   * @param realm
-   * @param userAuthorizer
-   * @param trustedProxies
-   * @param trustedProxyIpPattern
+   * @param realm is the kerberos realm of the spnego service principal that is used by Cruise Control
+   * @param userAuthorizer authorizes the user that is passed in via the doAs header
+   * @param trustedProxies is a list of kerberos service shortnames that identifies the trusted proxies
+   * @param trustedProxyIpPattern is a Java regex pattern that defines which IP addresses can be accepted by
+   *                              Cruise Control as trusted proxies
    */
   public TrustedProxyLoginService(String realm, AuthorizationService userAuthorizer, List<String> trustedProxies, String trustedProxyIpPattern) {
     _delegateSpnegoLoginService = new SpnegoLoginServiceWithAuthServiceLifecycle(
         realm, new TrustedProxyAuthorizationService(trustedProxies, trustedProxyIpPattern));
-    _trustedUserAuthorizer = userAuthorizer;
+    _endUserAuthorizer = userAuthorizer;
   }
 
   // visible for testing
-  TrustedProxyLoginService(ConfigurableSpnegoLoginService delegateSpnegoLoginService, AuthorizationService trustedProxyAuthorizer) {
+  TrustedProxyLoginService(ConfigurableSpnegoLoginService delegateSpnegoLoginService, AuthorizationService userAuthorizer) {
     _delegateSpnegoLoginService = delegateSpnegoLoginService;
-    _trustedUserAuthorizer = trustedProxyAuthorizer;
+    _endUserAuthorizer = userAuthorizer;
   }
 
   // ------- ConfigurableSpnegoLoginService methods -------
@@ -91,11 +94,11 @@ public class TrustedProxyLoginService extends ContainerLifeCycle implements Logi
     LOG.info("Authorizing proxy user {} from {} service", doAsUser, servicePrincipal.getName());
     UserIdentity doAsIdentity = null;
     if (doAsUser != null && !doAsUser.isEmpty()) {
-      doAsIdentity = _trustedUserAuthorizer.getUserIdentity((HttpServletRequest) request, doAsUser);
+      doAsIdentity = _endUserAuthorizer.getUserIdentity((HttpServletRequest) request, doAsUser);
     }
 
     Principal principal = new TrustedProxyPrincipal(doAsUser, servicePrincipal);
-    Subject subject = new Subject(true, Collections.singleton(principal), Collections.emptySet(), Collections.emptySet());
+    Subject subject = new Subject(READ_ONLY_SUBJECT, Collections.singleton(principal), Collections.emptySet(), Collections.emptySet());
 
     if (!serviceIdentity.isEstablished()) {
       LOG.info("Service user {} isn't authorized as a trusted proxy", servicePrincipal.getName());
@@ -133,8 +136,8 @@ public class TrustedProxyLoginService extends ContainerLifeCycle implements Logi
 
   @Override
   protected void doStart() throws Exception {
-    if (_trustedUserAuthorizer instanceof LifeCycle) {
-      ((LifeCycle) _trustedUserAuthorizer).start();
+    if (_endUserAuthorizer instanceof LifeCycle) {
+      ((LifeCycle) _endUserAuthorizer).start();
     }
     _delegateSpnegoLoginService.start();
     super.doStart();
@@ -144,8 +147,8 @@ public class TrustedProxyLoginService extends ContainerLifeCycle implements Logi
   protected void doStop() throws Exception {
     super.doStop();
     _delegateSpnegoLoginService.stop();
-    if (_trustedUserAuthorizer instanceof LifeCycle) {
-      ((LifeCycle) _trustedUserAuthorizer).stop();
+    if (_endUserAuthorizer instanceof LifeCycle) {
+      ((LifeCycle) _endUserAuthorizer).stop();
     }
   }
 }

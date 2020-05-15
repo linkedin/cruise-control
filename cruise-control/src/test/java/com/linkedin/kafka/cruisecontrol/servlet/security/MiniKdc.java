@@ -23,6 +23,8 @@ import java.util.UUID;
 public class MiniKdc {
 
   private static final String TEMP_DIR_PROPERTY_KEY = "java.io.tmpdir";
+  public static final String KEYTAB_FILE_EXTENSION = ".keytab";
+  public static final String KERBY_SERVER_TEST_HARNESS_DIR_PREFIX = "kerby-server-test-harness-";
 
   private final SimpleKdcServer _kerbyServer;
   private final File _keytab;
@@ -33,7 +35,7 @@ public class MiniKdc {
     _kerbyServer = new SimpleKdcServer();
     _realm = realm;
     _principals = principals;
-    _keytab = Paths.get(System.getProperty(TEMP_DIR_PROPERTY_KEY), UUID.randomUUID().toString() + ".keytab").toFile();
+    _keytab = Paths.get(System.getProperty(TEMP_DIR_PROPERTY_KEY), UUID.randomUUID().toString() + KEYTAB_FILE_EXTENSION).toFile();
   }
 
   public File keytab() {
@@ -41,12 +43,12 @@ public class MiniKdc {
   }
 
   /**
-   * Initializes ans tarts the KDC.
+   * Initializes and starts the KDC.
    * @throws KrbException
    * @throws IOException
    */
   public void start() throws KrbException, IOException {
-    _kerbyServer.setWorkDir(Files.createTempDirectory("kerby-server-test-harness-").toFile());
+    _kerbyServer.setWorkDir(Files.createTempDirectory(KERBY_SERVER_TEST_HARNESS_DIR_PREFIX).toFile());
     _kerbyServer.setKdcRealm(_realm);
     _kerbyServer.setAllowUdp(false);
     _kerbyServer.init();

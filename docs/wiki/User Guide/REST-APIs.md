@@ -55,7 +55,8 @@ Supported parameters are:
 | substates     | list    | list of components to return their state, available components are `analyzer`, `monitor`, `executor` and `anomaly_detector`     | all the components      |   yes | 
 | json     | boolean    | return in JSON format or not      | false      |   yes | 
 | verbose     | boolean    | return detailed state information      | false      |   yes | 
-| super_verbose     | boolean    | return more detailed state information      | false      |   yes | 
+| super_verbose     | boolean    | return more detailed state information      | false      |   yes |
+| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes | 
 
 The returned state contains the following information:
 * **Monitor State**:
@@ -106,7 +107,8 @@ Supported parameters are:
 | allow_capacity_estimation     | boolean    | whether allow broker capacity to be estimated from other broker in the cluster    | true      |   yes | 
 | populate_disk_info     | boolean    | whether show the load of each disk of broker    | false     |   yes | 
 | json     | boolean    | return in JSON format or not      | false      |   yes | 
-| verbose     | boolean    | return detailed state information      | false      |   yes | 
+| verbose     | boolean    | return detailed state information      | false      |   yes |
+| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes | 
 
 If the number of workload snapshots for the given timestamp is not sufficient to generate a good load model, an exception will be returned.
 
@@ -139,6 +141,7 @@ Supported parameters are:
 | partition     | integer/range    | partition number(e.g. 10) range(e.g. 1-10) to filter partition load to report     | null|   yes |
 | min_valid_partition_ratio     | double    | minimal valid partition ratio requirement for cluster model    | null  | yes |
 | brokerid     | int    | broker id to to filter partition load to report     | null|   yes |
+| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes |
 
 The returned result would be a partition list sorted by the utilization of the specified resource in the time range specified by `start` and `end`. The resource can be `CPU`, `NW_IN`, `NW_OUT` and `DISK`. By default the `start` is the earliest monitored time, the `end` is current wall clock time, `resource` is `DISK`, and `entries` is the all partitions in the cluster.
 
@@ -159,7 +162,8 @@ Supported parameters are:
 |-------------|------------|----------------------|----------|---------|
 | topic     | regex    | regular expression to filter partition state to report based on partition's topic    | null|   yes | 
 | json     | boolean    | return in JSON format or not      | false      |   yes | 
-| verbose     | boolean    | return detailed state information      | false      |   yes | 
+| verbose     | boolean    | return detailed state information      | false      |   yes |
+| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes | 
 
 The returned result contains the following information
 * For each broker
@@ -190,7 +194,8 @@ Supported parameters are:
 | destination_broker_ids     | boolean    |  specify brokers to move replicas to   | null|   yes |
 | rebalance_disk     | boolean    |  whether to balance load between brokers or between disks within broker   | false|   yes |
 | json     | boolean    | return in JSON format or not      | false      |   yes | 
-| verbose     | boolean    | return detailed state information      | false      |   yes | 
+| verbose     | boolean    | return detailed state information      | false      |   yes |
+| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes | 
 
 Proposal can be generated based on **valid_window** or **valid_partitions**.
 
@@ -228,6 +233,7 @@ Supported parameters are:
 | types     | string    | comma separated HTTP request types to filter the task results Cruise Control report    | all request types|   yes | 
 | json     | boolean    | return in JSON format or not      | false      |   yes | 
 | fetch_completed_task     | boolean    | whether return the original request's final response     | false      |   yes |
+| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes |
 
 User can use `user_task_ids`/`client_ids`/`endpoints`/`types` make Cruise Control only return requests they are interested. By default all the requests get returned.
 
@@ -277,7 +283,8 @@ Supported parameters are:
 | rebalance_disk     | boolean    |  whether balance load between disks within each broker or between brokers in cluster  | false|   yes |
 | json     | boolean    | return in JSON format or not      | false      |   yes | 
 | verbose     | boolean    | return detailed state information      | false      |   yes | 
-| reason     | string    | reason for the request     | "No reason provided"      |   yes | 
+| reason     | string    | reason for the request     | "No reason provided"      |   yes |
+| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes | 
 
 Similar to the [GET interface for getting proposals](https://github.com/linkedin/cruise-control/wiki/REST-APIs/_edit#get-optimization-proposals), the rebalance can also be based on available valid windows or available valid partitions.
 
@@ -315,7 +322,8 @@ Supported parameters are:
 | throttle_added_broker     | boolean    | whether throttle replica movement to new broker or not   | false|   yes |
 | json     | boolean    | return in JSON format or not      | false      |   yes | 
 | verbose     | boolean    | return detailed state information      | false      |   yes | 
-| reason     | string    | reason for the request     | "No reason provided"      |   yes | 
+| reason     | string    | reason for the request     | "No reason provided"      |   yes |
+| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes | 
 
 
 When adding new brokers to a Kafka cluster, Cruise Control makes sure that the **replicas will only be moved from the existing brokers to the provided new broker**, but not moved among existing brokers. 
@@ -350,7 +358,8 @@ Supported parameters are:
 | destination_broker_ids     | list    |  specify brokers to move replicas to   | null|   yes |
 | json     | boolean    | return in JSON format or not      | false      |   yes | 
 | verbose     | boolean    | return detailed state information      | false      |   yes |  
-| reason     | string    | reason for the request     | "No reason provided"      |   yes | 
+| reason     | string    | reason for the request     | "No reason provided"      |   yes |
+| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes | 
 
 Similar to adding brokers to a cluster, removing brokers from a cluster will **only move partitions from the brokers to be removed to the other existing brokers**. There won't be partition movements among remaining brokers. And user can specify the destination broker for these replica movement via `destination_broker_ids` parameter.
 
@@ -384,7 +393,8 @@ Supported parameters are:
 | replication_throttle     | long    | upper bound on the bandwidth used to move replicas   | null|   yes |
 | json     | boolean    | return in JSON format or not      | false      |   yes | 
 | verbose     | boolean    | return detailed state information      | false      |   yes |  
-| reason     | string    | reason for the request     | "No reason provided"      |   yes | 
+| reason     | string    | reason for the request     | "No reason provided"      |   yes |
+| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes | 
 
 Likewise, users can throttle partition movement, the throttling can be set in the same way as [`rebalance` request](#trigger-a-workload-balance).
 
@@ -415,7 +425,8 @@ Supported parameters are:
 | replication_throttle     | long    | upper bound on the bandwidth used to move replicas   | null|   yes |
 | json     | boolean    | return in JSON format or not      | false      |   yes | 
 | verbose     | boolean    | return detailed state information      | false      |   yes | 
-| reason     | string    | reason for the request     | "No reason provided"      |   yes | 
+| reason     | string    | reason for the request     | "No reason provided"      |   yes |
+| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes | 
 
 Demoting a broker/disk is consist of tow steps.
   * Make all the replicas on given broker/disk the least preferred replicas for leadership election
@@ -434,6 +445,7 @@ Supported parameters are:
 | PARAMETER   | TYPE       | DESCPRIPTION | DEFAULT  | OPTIONAL|
 |-------------|------------|----------------------|----------|---------|
 | json     | boolean    | return in JSON format or not      | false      |   yes |
+| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes |
 
 Note that **Cruise Control does not wait for the ongoing batch to finish when it stops execution**, i.e. the in-progress batch may still be running after Cruise Control stops the execution.
 
@@ -448,6 +460,7 @@ Supported parameters are:
 |-------------|------------|----------------------|----------|---------|
 | reason     | string    | reason to pause sampling      | empty string      |   yes |
 | json     | boolean    | return in JSON format or not      | false      |   yes |
+| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes |
 
 The reason to pause sampling will be recorded and shows up in `state` endpoint(under `LoadMonitor` sub state).
 
@@ -460,6 +473,7 @@ The following POST request will let Kafka Cruise Control resume a paused metrics
 |-------------|------------|----------------------|----------|---------|
 | reason     | string    | reason to resume sampling      | empty string      |   yes |
 | json     | boolean    | return in JSON format or not      | false      |   yes |
+| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes |
 
 The reason to resume sampling will be recorded and shows up in `state` endpoint(under `LoadMonitor` sub state).
 
@@ -489,7 +503,8 @@ Supported parameters are:
 | replication_throttle     | long    | upper bound on the bandwidth used to move replicas   | null|   yes |
 | json     | boolean    | return in JSON format or not      | false      |   yes | 
 | verbose     | boolean    | return detailed state information      | false      |   yes | 
-| reason     | string    | reason for the request     | "No reason provided"      |   yes | 
+| reason     | string    | reason for the request     | "No reason provided"      |   yes |
+| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes | 
 
 Changing topic's replication factor will not move any existing replicas. `goals` are used to determine which replica to be deleted(to decrease topic's replication factor) and which broker to assign new replica (to increase topic's replication factor).
 
@@ -512,6 +527,7 @@ Supported parameters are:
 | concurrent_leader_movements     | integer    | upper bound of ongoing leadership movements |    N/A | yes|
 | drop_recently_removed_brokers     | list    | list of id of recently removed brokers to be dropped  |   N/A | yes|
 | drop_recently_demoted_brokers     | list    | list of id of recently demoted brokers to be dropped  |   N/A | yes|
+| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes |
 
 To Enable/disable self-healing, send POST request like:
 

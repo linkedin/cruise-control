@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.STATE;
+import static com.linkedin.kafka.cruisecontrol.servlet.security.SecurityTestUtils.AUTH_CREDENTIALS_FILE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
@@ -53,7 +54,7 @@ public class SpnegoSecurityProviderIntegrationTest extends CruiseControlIntegrat
     configs.put(WebServerConfig.WEBSERVER_SECURITY_ENABLE_CONFIG, true);
     configs.put(WebServerConfig.WEBSERVER_SECURITY_PROVIDER_CONFIG, SpnegoSecurityProvider.class);
     configs.put(WebServerConfig.WEBSERVER_AUTH_CREDENTIALS_FILE_CONFIG,
-        Objects.requireNonNull(this.getClass().getClassLoader().getResource("auth.credentials")).getPath());
+        Objects.requireNonNull(this.getClass().getClassLoader().getResource(AUTH_CREDENTIALS_FILE)).getPath());
     configs.put(WebServerConfig.SPNEGO_PRINCIPAL_CONFIG, SPNEGO_SERVICE_PRINCIPAL + "@" + REALM);
     configs.put(WebServerConfig.SPNEGO_KEYTAB_FILE_CONFIG, _miniKdc.keytab().getAbsolutePath());
 

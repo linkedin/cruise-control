@@ -24,6 +24,7 @@ import java.util.Objects;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.STATE;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.STOP_PROPOSAL_EXECUTION;
+import static com.linkedin.kafka.cruisecontrol.servlet.security.SecurityTestUtils.BASIC_AUTH_CREDENTIALS_FILE;
 import static org.junit.Assert.assertEquals;
 
 public class BasicAuthenticationIntegrationTest extends CruiseControlIntegrationTestHarness {
@@ -46,7 +47,7 @@ public class BasicAuthenticationIntegrationTest extends CruiseControlIntegration
     Map<String, Object> configs = new HashMap<>();
     configs.put(WebServerConfig.WEBSERVER_SECURITY_ENABLE_CONFIG, true);
     configs.put(WebServerConfig.WEBSERVER_AUTH_CREDENTIALS_FILE_CONFIG,
-        Objects.requireNonNull(this.getClass().getClassLoader().getResource("basic-auth.credentials")).getPath());
+        Objects.requireNonNull(this.getClass().getClassLoader().getResource(BASIC_AUTH_CREDENTIALS_FILE)).getPath());
     return configs;
   }
 
