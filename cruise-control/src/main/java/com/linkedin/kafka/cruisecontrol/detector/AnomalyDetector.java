@@ -311,6 +311,7 @@ public class AnomalyDetector {
    * @param anomalyId Unique id of anomaly which triggered self-healing operation.
    */
   public void markSelfHealingFinished(String anomalyId) {
+    LOG.debug("Self healing with id {} has finished.", anomalyId);
     _anomalyDetectorState.markSelfHealingFinished(anomalyId);
   }
 

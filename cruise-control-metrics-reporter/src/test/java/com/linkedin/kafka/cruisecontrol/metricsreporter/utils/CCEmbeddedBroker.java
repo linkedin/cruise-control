@@ -99,6 +99,10 @@ public class CCEmbeddedBroker implements AutoCloseable {
     _kafkaServer.awaitShutdown();
   }
 
+  public KafkaServer kafkaServer() {
+    return _kafkaServer;
+  }
+
   @Override
   public void close() {
     CCKafkaTestUtils.quietly(this::shutdown);

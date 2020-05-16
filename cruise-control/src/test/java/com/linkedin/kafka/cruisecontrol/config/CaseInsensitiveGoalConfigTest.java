@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.config;
 
+import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
@@ -48,37 +49,8 @@ public class CaseInsensitiveGoalConfigTest {
     // Test: With case insensitive goal names (No exception)
     Properties caseInsensitiveGoalProps = new Properties();
     caseInsensitiveGoalProps.putAll(sharedProps);
-    caseInsensitiveGoalProps.setProperty(AnalyzerConfig.GOALS_CONFIG,
-        "com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal,"
-            + "com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal,"
-            + "com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal,"
-            + "com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal,"
-            + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal,"
-            + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal,"
-            + "com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal,"
-            + "com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal,"
-            + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal,"
-            + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal,"
-            + "com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal,"
-            + "com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal,"
-            + "com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal,"
-            + "com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal");
-    caseInsensitiveGoalProps.setProperty(
-        AnalyzerConfig.DEFAULT_GOALS_CONFIG,
-        "com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal");
+    caseInsensitiveGoalProps.setProperty(AnalyzerConfig.GOALS_CONFIG, TestConstants.GOALS_VALUES);
+    caseInsensitiveGoalProps.setProperty(AnalyzerConfig.DEFAULT_GOALS_CONFIG, TestConstants.DEFAULT_GOALS_VALUES);
 
     Object[] withCaseInsensitiveGoalParams = {caseInsensitiveGoalProps, null};
     params.add(withCaseInsensitiveGoalParams);
