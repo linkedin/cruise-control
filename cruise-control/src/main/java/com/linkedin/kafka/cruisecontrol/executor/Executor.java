@@ -581,20 +581,29 @@ public class Executor {
       hasOngoingPartitionReassignments = hasOngoingPartitionReassignments();
     } catch (TimeoutException | InterruptedException | ExecutionException e) {
       // This may indicate transient (e.g. network) issues.
-      throw new IllegalStateException("Failed to retrieve whether the Kafka cluster has an already ongoing partition reassignment.", e);
+      throw new IllegalStateException("Failed to retrieve if there are already ongoing partition reassignments.", e);
     }
     // Note that in case there is an ongoing partition reassignment, we do not unpause metric sampling.
     if (hasOngoingPartitionReassignments) {
       processOngoingMovementSanityCheckFailure();
       throw new OngoingExecutionException("There are ongoing inter-broker partition movements.");
-    } else if (isOngoingIntraBrokerReplicaMovement(_metadataClient.cluster().nodes().stream().mapToInt(Node::id).boxed()
-                                                                  .collect(Collectors.toSet()),
-                                                   _adminClient, _config)) {
-      processOngoingMovementSanityCheckFailure();
-      throw new OngoingExecutionException("There are ongoing intra-broker partition movements.");
-    } else if (hasOngoingLeaderElection()) {
-      processOngoingMovementSanityCheckFailure();
-      throw new OngoingExecutionException("There are ongoing leadership movements.");
+    } else {
+      boolean hasOngoingIntraBrokerReplicaMovement;
+      try {
+        hasOngoingIntraBrokerReplicaMovement =
+            hasOngoingIntraBrokerReplicaMovement(_metadataClient.cluster().nodes().stream().mapToInt(Node::id).boxed()
+                                                                .collect(Collectors.toSet()), _adminClient, _config);
+      } catch (TimeoutException | InterruptedException | ExecutionException e) {
+        // This may indicate transient (e.g. network) issues.
+        throw new IllegalStateException("Failed to retrieve if there are already ongoing intra-broker replica reassignments.", e);
+      }
+      if (hasOngoingIntraBrokerReplicaMovement) {
+        processOngoingMovementSanityCheckFailure();
+        throw new OngoingExecutionException("There are ongoing intra-broker partition movements.");
+      } else if (hasOngoingLeaderElection()) {
+        processOngoingMovementSanityCheckFailure();
+        throw new OngoingExecutionException("There are ongoing leadership movements.");
+      }
     }
   }
 
@@ -1165,7 +1174,10 @@ public class Executor {
     }
 
     /**
-     * This method periodically checks ZooKeeper to see if (1) partition or (2) leadership reassignment has finished or not.
+     * Periodically checks the metadata to see if (1) partition or (2) leadership reassignment has finished or not.
+     * @param result the result of a request to alter partition reassignments, or {@code null} to skip checking if
+     *               inter-broker replica action has already failed due to dead new replica. Ignored for other task types.
+     * @return Finished tasks.
      */
     private List<ExecutionTask> waitForExecutionTaskToFinish(AlterPartitionReassignmentsResult result)
         throws InterruptedException, ExecutionException, TimeoutException {
@@ -1233,7 +1245,7 @@ public class Executor {
         updateOngoingExecutionState();
       } while (!inExecutionTasks().isEmpty() && finishedTasks.isEmpty());
 
-      LOG.info("Completed tasks: {}.{}{}{}", finishedTasks,
+      LOG.info("Finished tasks: {}.{}{}{}", finishedTasks,
                forceStoppedTaskIds.isEmpty() ? "" : String.format(". [Force-stopped: %s]", forceStoppedTaskIds),
                deletedTaskIds.isEmpty() ? "" : String.format(". [Deleted: %s]", deletedTaskIds),
                deadOrAbortingTaskIds.isEmpty() ? "" : String.format(". [Dead/aborting: %s]", deadOrAbortingTaskIds));
@@ -1354,19 +1366,20 @@ public class Executor {
      *
      * Ideally, the task should be marked as:
      * 1. ABORTING: when the execution is stopped by the users.
-     * 2. ABORTING: When the destination broker&disk is dead so the task cannot make progress, but the source broker&disk
-     *              is still alive.
-     * 3. DEAD: when any replica in the new replica list is dead. Or when a leader action times out.
+     * 2. DEAD: when any replica in the new replica list is dead. Or when a leader action times out.
      *
-     * Currently KafkaController does not support updates on the partitions that is being reassigned. (KAFKA-6304)
-     * Therefore once a proposals is written to ZK, we cannot revoke it. So the actual behavior we are using is to
-     * set the task state to:
+     * Support for stopping ongoing executions with rollback if the execution is stopped by users is
+     * pending https://github.com/linkedin/cruise-control/issues/1195.
+     *
+     * The current actual behavior sets the task state to:
      * 1. IN_PROGRESS: when the execution is stopped by the users. i.e. do nothing but let the task finish normally.
      * 2. DEAD: when the destination broker&disk is dead. i.e. do not block on the execution.
      *
      * @param cluster the kafka cluster
      * @param logdirInfoByTask  disk information for ongoing intra-broker replica movement tasks
      * @param task the task to check
+     * @param result the result of a request to alter partition reassignments, or {@code null} to skip checking if
+     *               inter-broker replica action has already failed due to dead new replica. Ignored for other task types.
      * @return True if the task is marked as dead or aborting, false otherwise.
      */
     private boolean maybeMarkTaskAsDeadOrAborting(Cluster cluster,
@@ -1419,11 +1432,13 @@ public class Executor {
 
     private boolean verifyFutureError(Future<?> future, Class<? extends Throwable> exceptionClass) {
       try {
-        future.get();
+        // TODO: Make this configurable.
+        future.get(5000L, TimeUnit.MILLISECONDS);
       } catch (ExecutionException ee) {
         return exceptionClass == ee.getCause().getClass();
-      } catch (InterruptedException e) {
-        // let it go
+      } catch (TimeoutException | InterruptedException e) {
+        // This may indicate transient (e.g. network) issues.
+        LOG.warn("Failed to verify future error {}.", exceptionClass, e);
       }
       return false;
     }

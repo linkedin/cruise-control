@@ -104,21 +104,18 @@ public class ExecutorAdminUtils {
    * @param config The config object that holds all the Cruise Control related configs
    * @return True if there is ongoing intra-broker replica movement.
    */
-  static boolean isOngoingIntraBrokerReplicaMovement(Collection<Integer> brokersToCheck, AdminClient adminClient,
-                                                     KafkaCruiseControlConfig config) {
+  static boolean hasOngoingIntraBrokerReplicaMovement(Collection<Integer> brokersToCheck, AdminClient adminClient,
+                                                      KafkaCruiseControlConfig config)
+      throws InterruptedException, ExecutionException, TimeoutException {
     Map<Integer, KafkaFuture<Map<String, LogDirInfo>>> logDirsByBrokerId = adminClient.describeLogDirs(brokersToCheck).values();
     for (Map.Entry<Integer, KafkaFuture<Map<String, LogDirInfo>>> entry : logDirsByBrokerId.entrySet()) {
-      try {
-        Map<String, LogDirInfo> logInfos = entry.getValue().get(config.getLong(LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG), TimeUnit.MILLISECONDS);
-        for (LogDirInfo info : logInfos.values()) {
-          if (info.error == Errors.NONE) {
-            if (info.replicaInfos.values().stream().anyMatch(i -> i.isFuture)) {
-              return true;
-            }
+      Map<String, LogDirInfo> logInfos = entry.getValue().get(config.getLong(LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG), TimeUnit.MILLISECONDS);
+      for (LogDirInfo info : logInfos.values()) {
+        if (info.error == Errors.NONE) {
+          if (info.replicaInfos.values().stream().anyMatch(i -> i.isFuture)) {
+            return true;
           }
         }
-      } catch (InterruptedException | TimeoutException | ExecutionException e) {
-        //Let it go.
       }
     }
     return false;

@@ -27,6 +27,7 @@ object ExecutorUtils {
    *
    * @param kafkaZkClient the KafkaZkClient class to use for partition reassignment.
    * @param tasksToExecute Replica reassignment tasks to be executed.
+   * @deprecated Use com.linkedin.kafka.cruisecontrol.executor.ExecutionUtils#submitReplicaReassignmentTasks() instead.
    */
   def executeReplicaReassignmentTasks(kafkaZkClient: KafkaZkClient,
                                       tasksToExecute: java.util.List[ExecutionTask]) {
@@ -100,6 +101,13 @@ object ExecutorUtils {
     preferredReplicaElectionCommand.moveLeaderToPreferredReplica()
   }
 
+  /**
+   * Retrieve the set of partitions that are currently being reassigned.
+   *
+   * @param kafkaZkClient the KafkaZkClient class to use for getting partition reassignment.
+   * @return Set of partitions with ongoing reassignments.
+   * @deprecated Use [[com.linkedin.kafka.cruisecontrol.executor.ExecutionUtils]]#partitionsBeingReassigned instead.
+   */
   def partitionsBeingReassigned(kafkaZkClient: KafkaZkClient): util.Set[TopicPartition] = {
     setAsJavaSet(kafkaZkClient.getPartitionReassignment.keys.toSet)
   }
