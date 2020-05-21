@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
@@ -106,14 +107,29 @@ public class KafkaCruiseControl {
 
     // Instantiate the components.
     _anomalyDetector = new AnomalyDetector(this, _time, dropwizardMetricRegistry);
-    long demotionHistoryRetentionTimeMs = config.getLong(ExecutorConfig.DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG);
-    long removalHistoryRetentionTimeMs = config.getLong(ExecutorConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG);
-    _executor = new Executor(config, _time, dropwizardMetricRegistry, demotionHistoryRetentionTimeMs,
-                             removalHistoryRetentionTimeMs, _anomalyDetector);
+    _executor = new Executor(config, _time, dropwizardMetricRegistry, _anomalyDetector);
     _loadMonitor = new LoadMonitor(config, _time, _executor, dropwizardMetricRegistry, KafkaMetricDef.commonMetricDef());
-    _goalOptimizerExecutor =
-        Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("GoalOptimizerExecutor", true, null));
+    _goalOptimizerExecutor = Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("GoalOptimizerExecutor", true, null));
     _goalOptimizer = new GoalOptimizer(config, _loadMonitor, _time, dropwizardMetricRegistry, _executor);
+  }
+
+  /**
+   * Package private constructor for unit tests w/o static state initialization.
+   */
+  KafkaCruiseControl(KafkaCruiseControlConfig config,
+                     Time time,
+                     AnomalyDetector anomalyDetector,
+                     Executor executor,
+                     LoadMonitor loadMonitor,
+                     ExecutorService goalOptimizerExecutor,
+                     GoalOptimizer goalOptimizer) {
+    _config = config;
+    _time = time;
+    _anomalyDetector = anomalyDetector;
+    _executor = executor;
+    _loadMonitor = loadMonitor;
+    _goalOptimizerExecutor = goalOptimizerExecutor;
+    _goalOptimizer = goalOptimizer;
   }
 
   /**
@@ -122,6 +138,7 @@ public class KafkaCruiseControl {
   public LoadMonitor loadMonitor() {
     return _loadMonitor;
   }
+
   /**
    * Refresh the cluster metadata and get the corresponding cluster and generation information.
    *
@@ -217,14 +234,22 @@ public class KafkaCruiseControl {
     if (dryRun) {
       return;
     }
-    if (_executor.hasOngoingExecution()) {
+    if (hasOngoingExecution()) {
       if (!stopOngoingExecution) {
         throw new IllegalStateException(String.format("Cannot start a new execution while there is an ongoing execution. "
                                                       + "Please use %s=true to stop ongoing execution and start a new one.",
                                                       STOP_ONGOING_EXECUTION_PARAM));
       }
     } else {
-      if (_executor.hasOngoingPartitionReassignments()) {
+      boolean hasOngoingPartitionReassignments;
+      try {
+        hasOngoingPartitionReassignments = _executor.hasOngoingPartitionReassignments();
+      } catch (TimeoutException | InterruptedException | ExecutionException e) {
+        // This may indicate transient (e.g. network) issues.
+        throw new IllegalStateException("Cannot execute new proposals due to failure to retrieve whether the Kafka cluster has "
+                                        + "an already ongoing partition reassignment.", e);
+      }
+      if (hasOngoingPartitionReassignments) {
         throw new IllegalStateException("Cannot execute new proposals while there are ongoing partition reassignments initiated by "
                                         + "external agent.");
       } else if (_executor.hasOngoingLeaderElection()) {
@@ -486,7 +511,7 @@ public class KafkaCruiseControl {
         || requirementsForCache.minRequiredNumWindows() > requirements.minRequiredNumWindows()
         || (requirementsForCache.includeAllTopics() && !requirements.includeAllTopics());
 
-    return _executor.hasOngoingExecution() || ignoreProposalCache || (goals != null && !goals.isEmpty())
+    return hasOngoingExecution() || ignoreProposalCache || (goals != null && !goals.isEmpty())
            || hasWeakerRequirement || excludedTopics != null || excludeBrokers || isTriggeredByGoalViolation
            || !requestedDestinationBrokerIds.isEmpty() || isRebalanceDiskMode
            || partitionWithOfflineReplicas(kafkaCluster()) != null;

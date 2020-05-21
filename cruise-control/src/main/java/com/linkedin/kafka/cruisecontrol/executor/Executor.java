@@ -25,10 +25,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -37,11 +40,13 @@ import kafka.zk.KafkaZkClient;
 import kafka.zk.ZkVersion;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AlterPartitionReassignmentsResult;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.internals.ClusterResourceListeners;
+import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.utils.LogContext;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
@@ -142,11 +147,9 @@ public class Executor {
   public Executor(KafkaCruiseControlConfig config,
                   Time time,
                   MetricRegistry dropwizardMetricRegistry,
-                  long demotionHistoryRetentionTimeMs,
-                  long removalHistoryRetentionTimeMs,
                   AnomalyDetector anomalyDetector) {
-    this(config, time, dropwizardMetricRegistry, null, demotionHistoryRetentionTimeMs, removalHistoryRetentionTimeMs,
-         null, null, anomalyDetector);
+    this(config, time, dropwizardMetricRegistry, null, config.getLong(ExecutorConfig.DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG),
+         config.getLong(ExecutorConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG), null, null, anomalyDetector);
   }
 
   /**
@@ -573,18 +576,34 @@ public class Executor {
    * Sanity check whether there are ongoing (1) inter-broker or intra-broker replica movements or (2) leadership movements.
    */
   private void sanityCheckOngoingMovement() throws OngoingExecutionException {
+    boolean hasOngoingPartitionReassignments;
+    try {
+      hasOngoingPartitionReassignments = hasOngoingPartitionReassignments();
+    } catch (TimeoutException | InterruptedException | ExecutionException e) {
+      // This may indicate transient (e.g. network) issues.
+      throw new IllegalStateException("Failed to retrieve if there are already ongoing partition reassignments.", e);
+    }
     // Note that in case there is an ongoing partition reassignment, we do not unpause metric sampling.
-    if (hasOngoingPartitionReassignments()) {
+    if (hasOngoingPartitionReassignments) {
       processOngoingMovementSanityCheckFailure();
       throw new OngoingExecutionException("There are ongoing inter-broker partition movements.");
-    } else if (isOngoingIntraBrokerReplicaMovement(_metadataClient.cluster().nodes().stream().mapToInt(Node::id).boxed()
-                                                                  .collect(Collectors.toSet()),
-                                                   _adminClient, _config)) {
-      processOngoingMovementSanityCheckFailure();
-      throw new OngoingExecutionException("There are ongoing intra-broker partition movements.");
-    } else if (hasOngoingLeaderElection()) {
-      processOngoingMovementSanityCheckFailure();
-      throw new OngoingExecutionException("There are ongoing leadership movements.");
+    } else {
+      boolean hasOngoingIntraBrokerReplicaMovement;
+      try {
+        hasOngoingIntraBrokerReplicaMovement =
+            hasOngoingIntraBrokerReplicaMovement(_metadataClient.cluster().nodes().stream().mapToInt(Node::id).boxed()
+                                                                .collect(Collectors.toSet()), _adminClient, _config);
+      } catch (TimeoutException | InterruptedException | ExecutionException e) {
+        // This may indicate transient (e.g. network) issues.
+        throw new IllegalStateException("Failed to retrieve if there are already ongoing intra-broker replica reassignments.", e);
+      }
+      if (hasOngoingIntraBrokerReplicaMovement) {
+        processOngoingMovementSanityCheckFailure();
+        throw new OngoingExecutionException("There are ongoing intra-broker partition movements.");
+      } else if (hasOngoingLeaderElection()) {
+        processOngoingMovementSanityCheckFailure();
+        throw new OngoingExecutionException("There are ongoing leadership movements.");
+      }
     }
   }
 
@@ -667,16 +686,16 @@ public class Executor {
   }
 
   /**
-   * Check whether there is an ongoing partition reassignment.
-   * This method directly checks the existence of zNode in /admin/reassign_partitions.
-   * Note this method returning false does not guarantee that there is no ongoing execution because when there is an ongoing
-   * execution inside Cruise Control, partition reassignment task batches are writen to zookeeper periodically, there will be
-   * small intervals that /admin/partition_reassignment does not exist.
+   * Check whether there is an ongoing partition reassignment on Kafka cluster.
    *
-   * @return True if there is an ongoing partition reassignment.
+   * Note that a {@code false} response does not guarantee lack of an ongoing execution because when there is an ongoing
+   * execution inside Cruise Control, partition reassignment task batches are sent to Kafka periodically. So, there will
+   * be intervals without partition reassignments.
+   *
+   * @return True if there is an ongoing partition reassignment on Kafka cluster.
    */
-  public boolean hasOngoingPartitionReassignments() {
-    return !ExecutorUtils.partitionsBeingReassigned(_kafkaZkClient).isEmpty();
+  public boolean hasOngoingPartitionReassignments() throws InterruptedException, ExecutionException, TimeoutException {
+    return !ExecutionUtils.partitionsBeingReassigned(_adminClient).isEmpty();
   }
 
   /**
@@ -698,11 +717,11 @@ public class Executor {
   private class ProposalExecutionRunnable implements Runnable {
     private final LoadMonitor _loadMonitor;
     private ExecutorState.State _state;
-    private Set<Integer> _recentlyDemotedBrokers;
-    private Set<Integer> _recentlyRemovedBrokers;
+    private final Set<Integer> _recentlyDemotedBrokers;
+    private final Set<Integer> _recentlyRemovedBrokers;
     private final Long _replicationThrottle;
     private Throwable _executionException;
-    private boolean _isTriggeredByUserRequest;
+    private final boolean _isTriggeredByUserRequest;
     private long _lastSlowTaskReportingTimeMs;
 
     ProposalExecutionRunnable(LoadMonitor loadMonitor,
@@ -970,7 +989,7 @@ public class Executor {
       }
     }
 
-    private void interBrokerMoveReplicas() {
+    private void interBrokerMoveReplicas() throws InterruptedException, ExecutionException, TimeoutException {
       ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(_kafkaZkClient, _replicationThrottle);
       int numTotalPartitionMovements = _executionTaskManager.numRemainingInterBrokerPartitionMovements();
       long totalDataToMoveInMB = _executionTaskManager.remainingInterBrokerDataToMoveInMB();
@@ -983,15 +1002,15 @@ public class Executor {
         List<ExecutionTask> tasksToExecute = _executionTaskManager.getInterBrokerReplicaMovementTasks();
         LOG.info("Executor will execute {} task(s)", tasksToExecute.size());
 
+        AlterPartitionReassignmentsResult result = null;
         if (!tasksToExecute.isEmpty()) {
-          throttleHelper.setThrottles(
-              tasksToExecute.stream().map(ExecutionTask::proposal).collect(Collectors.toList()));
+          throttleHelper.setThrottles(tasksToExecute.stream().map(ExecutionTask::proposal).collect(Collectors.toList()));
           // Execute the tasks.
           _executionTaskManager.markTasksInProgress(tasksToExecute);
-          ExecutorUtils.executeReplicaReassignmentTasks(_kafkaZkClient, tasksToExecute);
+          result = ExecutionUtils.submitReplicaReassignmentTasks(_adminClient, tasksToExecute);
         }
         // Wait indefinitely for partition movements to finish.
-        List<ExecutionTask> completedTasks = waitForExecutionTaskToFinish();
+        List<ExecutionTask> completedTasks = waitForExecutionTaskToFinish(result);
         partitionsToMove = _executionTaskManager.numRemainingInterBrokerPartitionMovements();
         int numFinishedPartitionMovements = _executionTaskManager.numFinishedInterBrokerPartitionMovements();
         long finishedDataMovementInMB = _executionTaskManager.finishedInterBrokerDataMovementInMB();
@@ -1009,7 +1028,7 @@ public class Executor {
       while (!inExecutionTasks.isEmpty()) {
         LOG.info("Waiting for {} tasks moving {} MB to finish.", inExecutionTasks.size(),
                  _executionTaskManager.inExecutionInterBrokerDataToMoveInMB());
-        List<ExecutionTask> completedRemainingTasks = waitForExecutionTaskToFinish();
+        List<ExecutionTask> completedRemainingTasks = waitForExecutionTaskToFinish(null);
         inExecutionTasks = inExecutionTasks();
         throttleHelper.clearThrottles(completedRemainingTasks, new ArrayList<>(inExecutionTasks));
       }
@@ -1033,7 +1052,7 @@ public class Executor {
       }
     }
 
-    private void intraBrokerMoveReplicas() {
+    private void intraBrokerMoveReplicas() throws InterruptedException, ExecutionException, TimeoutException {
       int numTotalPartitionMovements = _executionTaskManager.numRemainingIntraBrokerPartitionMovements();
       long totalDataToMoveInMB = _executionTaskManager.remainingIntraBrokerDataToMoveInMB();
       LOG.info("Starting {} intra-broker partition movements.", numTotalPartitionMovements);
@@ -1051,7 +1070,7 @@ public class Executor {
           executeIntraBrokerReplicaMovements(tasksToExecute, _adminClient, _executionTaskManager, _config);
         }
         // Wait indefinitely for partition movements to finish.
-        waitForExecutionTaskToFinish();
+        waitForExecutionTaskToFinish(null);
         partitionsToMove = _executionTaskManager.numRemainingIntraBrokerPartitionMovements();
         int numFinishedPartitionMovements = _executionTaskManager.numFinishedIntraBrokerPartitionMovements();
         long finishedDataToMoveInMB = _executionTaskManager.finishedIntraBrokerDataToMoveInMB();
@@ -1066,7 +1085,7 @@ public class Executor {
       while (!inExecutionTasks.isEmpty()) {
         LOG.info("Waiting for {} tasks moving {} MB to finish", inExecutionTasks.size(),
                  _executionTaskManager.inExecutionIntraBrokerDataMovementInMB());
-        waitForExecutionTaskToFinish();
+        waitForExecutionTaskToFinish(null);
         inExecutionTasks = inExecutionTasks();
       }
       if (inExecutionTasks().isEmpty()) {
@@ -1088,7 +1107,7 @@ public class Executor {
       }
     }
 
-    private void moveLeaderships() {
+    private void moveLeaderships() throws InterruptedException, ExecutionException, TimeoutException {
       int numTotalLeadershipMovements = _executionTaskManager.numRemainingLeadershipMovements();
       LOG.info("Starting {} leadership movements.", numTotalLeadershipMovements);
       int numFinishedLeadershipMovements = 0;
@@ -1114,7 +1133,7 @@ public class Executor {
       }
     }
 
-    private int moveLeadershipInBatch() {
+    private int moveLeadershipInBatch() throws InterruptedException, ExecutionException, TimeoutException {
       List<ExecutionTask> leadershipMovementTasks = _executionTaskManager.getLeadershipMovementTasks();
       int numLeadershipToMove = leadershipMovementTasks.size();
       LOG.debug("Executing {} leadership movements in a batch.", numLeadershipToMove);
@@ -1136,7 +1155,7 @@ public class Executor {
         ExecutorUtils.executePreferredLeaderElection(_kafkaZkClient, leadershipMovementTasks);
         LOG.trace("Waiting for leadership movement batch to finish.");
         while (!inExecutionTasks().isEmpty() && _stopSignal.get() == NO_STOP_EXECUTION) {
-          waitForExecutionTaskToFinish();
+          waitForExecutionTaskToFinish(null);
         }
       }
       return numLeadershipToMove;
@@ -1155,9 +1174,13 @@ public class Executor {
     }
 
     /**
-     * This method periodically checks ZooKeeper to see if (1) partition or (2) leadership reassignment has finished or not.
+     * Periodically checks the metadata to see if (1) partition or (2) leadership reassignment has finished or not.
+     * @param result the result of a request to alter partition reassignments, or {@code null} to skip checking if
+     *               inter-broker replica action has already failed due to dead new replica. Ignored for other task types.
+     * @return Finished tasks.
      */
-    private List<ExecutionTask> waitForExecutionTaskToFinish() {
+    private List<ExecutionTask> waitForExecutionTaskToFinish(AlterPartitionReassignmentsResult result)
+        throws InterruptedException, ExecutionException, TimeoutException {
       List<ExecutionTask> finishedTasks = new ArrayList<>();
       Set<Long> forceStoppedTaskIds = new HashSet<>();
       Set<Long> deletedTaskIds = new HashSet<>();
@@ -1179,7 +1202,7 @@ public class Executor {
         if (LOG.isDebugEnabled()) {
           LOG.debug("Tasks in execution: {}", inExecutionTasks());
         }
-        Set<ExecutionTask> deadOrAbortingNonLeadershipTasks = new HashSet<>();
+        List<ExecutionTask> deadOrAbortingInterBrokerReplicaActions = new ArrayList<>();
         List<ExecutionTask> slowTasksToReport = new ArrayList<>();
         boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > SLOW_TASK_ALERTING_BACKOFF_TIME_MS;
         for (ExecutionTask task : inExecutionTasks()) {
@@ -1204,11 +1227,11 @@ public class Executor {
             if (shouldReportSlowTasks) {
               task.maybeReportExecutionTooSlow(_time.milliseconds(), slowTasksToReport);
             }
-            if (maybeMarkTaskAsDeadOrAborting(cluster, logDirInfoByTask, task)) {
+            if (maybeMarkTaskAsDeadOrAborting(cluster, logDirInfoByTask, task, result)) {
               deadOrAbortingTaskIds.add(task.executionId());
-              // Only add the dead or aborted tasks to execute if it is not a leadership movement.
-              if (task.type() != LEADER_ACTION) {
-                deadOrAbortingNonLeadershipTasks.add(task);
+              // Only add the dead or aborted tasks to execute if it is an inter-broker replica action.
+              if (task.type() == INTER_BROKER_REPLICA_ACTION) {
+                deadOrAbortingInterBrokerReplicaActions.add(task);
               }
               // A dead or aborted task is considered as finished.
               if (task.state() == DEAD || task.state() == ABORTED) {
@@ -1217,45 +1240,43 @@ public class Executor {
             }
           }
         }
-        handleDeadOrAbortingTasks(deadOrAbortingNonLeadershipTasks, slowTasksToReport);
+        sendSlowExecutionAlert(slowTasksToReport);
+        handleDeadOrAbortingReplicaActions(deadOrAbortingInterBrokerReplicaActions);
         updateOngoingExecutionState();
       } while (!inExecutionTasks().isEmpty() && finishedTasks.isEmpty());
 
-      LOG.info("Completed tasks: {}.{}{}{}", finishedTasks,
-               forceStoppedTaskIds.isEmpty() ? "" : String.format("%n[Force-stopped: %s]", forceStoppedTaskIds),
-               deletedTaskIds.isEmpty() ? "" : String.format("%n[Deleted: %s]", deletedTaskIds),
-               deadOrAbortingTaskIds.isEmpty() ? "" : String.format("%n[Dead/aborting: %s]", deadOrAbortingTaskIds));
+      LOG.info("Finished tasks: {}.{}{}{}", finishedTasks,
+               forceStoppedTaskIds.isEmpty() ? "" : String.format(". [Force-stopped: %s]", forceStoppedTaskIds),
+               deletedTaskIds.isEmpty() ? "" : String.format(". [Deleted: %s]", deletedTaskIds),
+               deadOrAbortingTaskIds.isEmpty() ? "" : String.format(". [Dead/aborting: %s]", deadOrAbortingTaskIds));
 
       return finishedTasks;
     }
 
-    private void handleDeadOrAbortingTasks(Set<ExecutionTask> deadOrAbortingNonLeadershipTasks,
-                                           List<ExecutionTask> slowTasksToReport) {
-      if (!slowTasksToReport.isEmpty()) {
-        sendSlowExecutionAlert(slowTasksToReport);
-      }
-
-      if (!deadOrAbortingNonLeadershipTasks.isEmpty()) {
-        // TODO: Rollback tasks when KIP-455 is available.
-        // ExecutorAdminUtils.executeReplicaReassignmentTasks(_kafkaZkClient, deadOrAbortingTasks);
+    private void handleDeadOrAbortingReplicaActions(List<ExecutionTask> deadOrAbortingInterBrokerReplicaActions)
+        throws InterruptedException, ExecutionException, TimeoutException {
+      if (!deadOrAbortingInterBrokerReplicaActions.isEmpty()) {
+        ExecutionUtils.submitReplicaReassignmentTasks(_adminClient, deadOrAbortingInterBrokerReplicaActions);
         if (_stopSignal.get() == NO_STOP_EXECUTION) {
           // If there is task aborted or dead, we stop the execution.
           LOG.info("Stop the ongoing execution due to {} dead or aborting tasks: {}.",
-                   deadOrAbortingNonLeadershipTasks.size(), deadOrAbortingNonLeadershipTasks);
+                   deadOrAbortingInterBrokerReplicaActions.size(), deadOrAbortingInterBrokerReplicaActions);
           stopExecution(false);
         }
       }
     }
 
     private void sendSlowExecutionAlert(List<ExecutionTask> slowTasksToReport) {
-      StringBuilder sb = new StringBuilder();
-      sb.append("Slow tasks are detected:\n");
-      for (ExecutionTask task: slowTasksToReport) {
-        sb.append(String.format("\tID: %s\tstart_time:%s\tdetail:%s%n", task.executionId(),
-                                toDateString(task.startTimeMs(), DATE_FORMAT, TIME_ZONE), task));
+      if (!slowTasksToReport.isEmpty()) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Slow tasks are detected:\n");
+        for (ExecutionTask task: slowTasksToReport) {
+          sb.append(String.format("\tID: %s\tstart_time:%s\tdetail:%s%n", task.executionId(),
+                                  toDateString(task.startTimeMs(), DATE_FORMAT, TIME_ZONE), task));
+        }
+        _executorNotifier.sendAlert(sb.toString());
+        _lastSlowTaskReportingTimeMs = _time.milliseconds();
       }
-      _executorNotifier.sendAlert(sb.toString());
-      _lastSlowTaskReportingTimeMs = _time.milliseconds();
     }
 
     /**
@@ -1345,24 +1366,26 @@ public class Executor {
      *
      * Ideally, the task should be marked as:
      * 1. ABORTING: when the execution is stopped by the users.
-     * 2. ABORTING: When the destination broker&disk is dead so the task cannot make progress, but the source broker&disk
-     *              is still alive.
-     * 3. DEAD: when any replica in the new replica list is dead. Or when a leader action times out.
+     * 2. DEAD: when any replica in the new replica list is dead. Or when a leader action times out.
      *
-     * Currently KafkaController does not support updates on the partitions that is being reassigned. (KAFKA-6304)
-     * Therefore once a proposals is written to ZK, we cannot revoke it. So the actual behavior we are using is to
-     * set the task state to:
+     * Support for stopping ongoing executions with rollback if the execution is stopped by users is
+     * pending https://github.com/linkedin/cruise-control/issues/1195.
+     *
+     * The current actual behavior sets the task state to:
      * 1. IN_PROGRESS: when the execution is stopped by the users. i.e. do nothing but let the task finish normally.
      * 2. DEAD: when the destination broker&disk is dead. i.e. do not block on the execution.
      *
      * @param cluster the kafka cluster
      * @param logdirInfoByTask  disk information for ongoing intra-broker replica movement tasks
      * @param task the task to check
+     * @param result the result of a request to alter partition reassignments, or {@code null} to skip checking if
+     *               inter-broker replica action has already failed due to dead new replica. Ignored for other task types.
      * @return True if the task is marked as dead or aborting, false otherwise.
      */
     private boolean maybeMarkTaskAsDeadOrAborting(Cluster cluster,
                                                   Map<ExecutionTask, ReplicaLogDirInfo> logdirInfoByTask,
-                                                  ExecutionTask task) {
+                                                  ExecutionTask task,
+                                                  AlterPartitionReassignmentsResult result) {
       // Only check tasks with IN_PROGRESS or ABORTING state.
       if (task.state() == IN_PROGRESS || task.state() == ABORTING) {
         switch (task.type()) {
@@ -1380,9 +1403,13 @@ public class Executor {
 
           case INTER_BROKER_REPLICA_ACTION:
             for (ReplicaPlacementInfo broker : task.proposal().newReplicas()) {
-              if (cluster.nodeById(broker.brokerId()) == null) {
+              boolean requestFailedDueToDeadBroker =
+                  (result != null && verifyFutureError(result.values().get(task.proposal().topicPartition()),
+                                                       Errors.INVALID_REPLICA_ASSIGNMENT.exception().getClass()));
+              if (requestFailedDueToDeadBroker || cluster.nodeById(broker.brokerId()) == null) {
                 _executionTaskManager.markTaskDead(task);
-                LOG.warn("Killing execution for task {} because the new replica {} is down.", task, broker);
+                LOG.warn("Killing execution for task {} because the new replica {} {} down.", task, broker,
+                         requestFailedDueToDeadBroker ? "was" : "is");
                 return true;
               }
             }
@@ -1399,6 +1426,19 @@ public class Executor {
           default:
             throw new IllegalStateException("Unknown task type " + task.type());
         }
+      }
+      return false;
+    }
+
+    private boolean verifyFutureError(Future<?> future, Class<? extends Throwable> exceptionClass) {
+      try {
+        // TODO: Make this configurable.
+        future.get(5000L, TimeUnit.MILLISECONDS);
+      } catch (ExecutionException ee) {
+        return exceptionClass == ee.getCause().getClass();
+      } catch (TimeoutException | InterruptedException e) {
+        // This may indicate transient (e.g. network) issues.
+        LOG.warn("Failed to verify future error {}.", exceptionClass, e);
       }
       return false;
     }
@@ -1424,22 +1464,31 @@ public class Executor {
     }
 
     /**
-     * Due to the race condition between the controller and Cruise Control, some of the submitted tasks may be
-     * deleted by controller without being executed. We will resubmit those tasks in that case.
+     * TODO: Verify whether this function is needed on Kafka 2.4+.
      */
-    private void maybeReexecuteTasks() {
+    private boolean maybeReexecuteInterBrokerReplicaActions() throws InterruptedException, ExecutionException, TimeoutException {
       List<ExecutionTask> interBrokerReplicaActionsToReexecute =
           new ArrayList<>(_executionTaskManager.inExecutionTasks(Collections.singleton(INTER_BROKER_REPLICA_ACTION)));
-      if (!isSubset(ExecutorUtils.partitionsBeingReassigned(_kafkaZkClient), interBrokerReplicaActionsToReexecute)) {
-        LOG.info("Reexecuting tasks {}", interBrokerReplicaActionsToReexecute);
-        ExecutorUtils.executeReplicaReassignmentTasks(_kafkaZkClient, interBrokerReplicaActionsToReexecute);
+      boolean shouldReexecute = false;
+      try {
+        shouldReexecute = !isSubset(ExecutionUtils.partitionsBeingReassigned(_adminClient), interBrokerReplicaActionsToReexecute);
+      } catch (TimeoutException | InterruptedException | ExecutionException e) {
+        // This may indicate transient (e.g. network) issues.
+        LOG.warn("Failed to retrieve partitions being reassigned. Skipping reexecution check for inter-broker replica actions.", e);
       }
+      if (shouldReexecute) {
+        LOG.info("Reexecuting tasks {}", interBrokerReplicaActionsToReexecute);
+        ExecutionUtils.submitReplicaReassignmentTasks(_adminClient, interBrokerReplicaActionsToReexecute);
+      }
+      return !interBrokerReplicaActionsToReexecute.isEmpty();
+    }
 
+    private boolean maybeReexecuteIntraBrokerReplicaActions() {
       List<ExecutionTask> intraBrokerReplicaActionsToReexecute =
           new ArrayList<>(_executionTaskManager.inExecutionTasks(Collections.singleton(INTRA_BROKER_REPLICA_ACTION)));
       getLogdirInfoForExecutionTask(intraBrokerReplicaActionsToReexecute, _adminClient, _config).forEach((k, v) -> {
         String targetLogdir = k.proposal().replicasToMoveBetweenDisksByBroker().get(k.brokerId()).logdir();
-        // If task is completed or in-progess, do not reexecute the task.
+        // If task is completed or in-progress, do not reexecute the task.
         if (targetLogdir.equals(v.getCurrentReplicaLogDir()) || targetLogdir.equals(v.getFutureReplicaLogDir())) {
           intraBrokerReplicaActionsToReexecute.remove(k);
         }
@@ -1448,11 +1497,19 @@ public class Executor {
         LOG.info("Reexecuting tasks {}", intraBrokerReplicaActionsToReexecute);
         executeIntraBrokerReplicaMovements(intraBrokerReplicaActionsToReexecute, _adminClient, _executionTaskManager, _config);
       }
+      return !intraBrokerReplicaActionsToReexecute.isEmpty();
+    }
+
+    /**
+     * Due to the race condition between the controller and Cruise Control, some of the submitted tasks may be
+     * deleted by controller without being executed. We will resubmit those tasks in that case.
+     */
+    private void maybeReexecuteTasks() throws InterruptedException, ExecutionException, TimeoutException {
+      boolean hasOngoingInterBrokerReplicaActions = maybeReexecuteInterBrokerReplicaActions();
+      boolean hasOngoingIntraBrokerReplicaActions = maybeReexecuteIntraBrokerReplicaActions();
 
       // Only reexecute leader actions if there is no replica actions running.
-      if (interBrokerReplicaActionsToReexecute.isEmpty() &&
-          intraBrokerReplicaActionsToReexecute.isEmpty() &&
-          !hasOngoingLeaderElection()) {
+      if (!hasOngoingInterBrokerReplicaActions && !hasOngoingIntraBrokerReplicaActions && !hasOngoingLeaderElection()) {
         List<ExecutionTask> leaderActionsToReexecute = new ArrayList<>(_executionTaskManager.inExecutionTasks(Collections.singleton(LEADER_ACTION)));
         if (!leaderActionsToReexecute.isEmpty()) {
           LOG.info("Reexecuting tasks {}", leaderActionsToReexecute);
