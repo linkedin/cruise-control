@@ -11,7 +11,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.*;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVAL_TO_PERCENTAGE;
 
 
 @JsonResponseClass
