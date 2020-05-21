@@ -106,13 +106,9 @@ public class KafkaCruiseControl {
 
     // Instantiate the components.
     _anomalyDetector = new AnomalyDetector(this, _time, dropwizardMetricRegistry);
-    long demotionHistoryRetentionTimeMs = config.getLong(ExecutorConfig.DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG);
-    long removalHistoryRetentionTimeMs = config.getLong(ExecutorConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG);
-    _executor = new Executor(config, _time, dropwizardMetricRegistry, demotionHistoryRetentionTimeMs,
-                             removalHistoryRetentionTimeMs, _anomalyDetector);
+    _executor = new Executor(config, _time, dropwizardMetricRegistry, _anomalyDetector);
     _loadMonitor = new LoadMonitor(config, _time, _executor, dropwizardMetricRegistry, KafkaMetricDef.commonMetricDef());
-    _goalOptimizerExecutor =
-        Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("GoalOptimizerExecutor", true, null));
+    _goalOptimizerExecutor = Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("GoalOptimizerExecutor", true, null));
     _goalOptimizer = new GoalOptimizer(config, _loadMonitor, _time, dropwizardMetricRegistry, _executor);
   }
 
@@ -122,6 +118,7 @@ public class KafkaCruiseControl {
   public LoadMonitor loadMonitor() {
     return _loadMonitor;
   }
+
   /**
    * Refresh the cluster metadata and get the corresponding cluster and generation information.
    *

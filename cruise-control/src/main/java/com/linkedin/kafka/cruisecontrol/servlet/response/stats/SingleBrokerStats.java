@@ -18,6 +18,8 @@ public class SingleBrokerStats extends BasicStats {
   @JsonResponseField
   protected static final String BROKER = "Broker";
   @JsonResponseField
+  protected static final String RACK = "Rack";
+  @JsonResponseField
   protected static final String BROKER_STATE = "BrokerState";
   @JsonResponseField(required = false)
   protected static final String DISK_STATE = "DiskState";
@@ -26,18 +28,16 @@ public class SingleBrokerStats extends BasicStats {
   protected final Broker.State _state;
   protected final boolean _isEstimated;
   protected final Map<String, DiskStats> _diskStatsByLogdir;
+  protected final String _rack;
 
-  SingleBrokerStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
-                    double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate, int numReplicas,
-                    int numLeaders, boolean isEstimated, double diskCapacity, Map<String, DiskStats> diskStatsByLogdir,
-                    double networkInCapacity, double networkOutCapacity, int numCore) {
-    super(diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
-          potentialBytesOutRate, numReplicas, numLeaders, diskCapacity, networkInCapacity, networkOutCapacity, numCore);
-    _host = host;
-    _id = id;
-    _state = state;
+  SingleBrokerStats(Broker broker, double potentialBytesOutRate, boolean isEstimated) {
+    super(broker, potentialBytesOutRate);
+    _host = broker.host().name();
+    _id = broker.id();
+    _state = broker.state();
     _isEstimated = isEstimated;
-    _diskStatsByLogdir = diskStatsByLogdir;
+    _diskStatsByLogdir = broker.diskStats();
+    _rack = broker.rack().id();
   }
 
   public String host() {
@@ -50,6 +50,10 @@ public class SingleBrokerStats extends BasicStats {
 
   public int id() {
     return _id;
+  }
+
+  public String rack() {
+    return _rack;
   }
 
   /**
@@ -83,6 +87,7 @@ public class SingleBrokerStats extends BasicStats {
       _diskStatsByLogdir.forEach((k, v) -> diskStates.put(k, v.getJSONStructure()));
       entry.put(DISK_STATE, diskStates);
     }
+    entry.put(RACK, _rack);
     return entry;
   }
 }

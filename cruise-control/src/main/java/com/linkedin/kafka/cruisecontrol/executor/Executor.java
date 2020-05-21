@@ -142,11 +142,9 @@ public class Executor {
   public Executor(KafkaCruiseControlConfig config,
                   Time time,
                   MetricRegistry dropwizardMetricRegistry,
-                  long demotionHistoryRetentionTimeMs,
-                  long removalHistoryRetentionTimeMs,
                   AnomalyDetector anomalyDetector) {
-    this(config, time, dropwizardMetricRegistry, null, demotionHistoryRetentionTimeMs, removalHistoryRetentionTimeMs,
-         null, null, anomalyDetector);
+    this(config, time, dropwizardMetricRegistry, null, config.getLong(ExecutorConfig.DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG),
+         config.getLong(ExecutorConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG), null, null, anomalyDetector);
   }
 
   /**
@@ -698,11 +696,11 @@ public class Executor {
   private class ProposalExecutionRunnable implements Runnable {
     private final LoadMonitor _loadMonitor;
     private ExecutorState.State _state;
-    private Set<Integer> _recentlyDemotedBrokers;
-    private Set<Integer> _recentlyRemovedBrokers;
+    private final Set<Integer> _recentlyDemotedBrokers;
+    private final Set<Integer> _recentlyRemovedBrokers;
     private final Long _replicationThrottle;
     private Throwable _executionException;
-    private boolean _isTriggeredByUserRequest;
+    private final boolean _isTriggeredByUserRequest;
     private long _lastSlowTaskReportingTimeMs;
 
     ProposalExecutionRunnable(LoadMonitor loadMonitor,

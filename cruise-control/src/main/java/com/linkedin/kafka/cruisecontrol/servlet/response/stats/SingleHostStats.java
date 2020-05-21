@@ -12,15 +12,15 @@ import java.util.Map;
 public class SingleHostStats extends BasicStats {
   @JsonResponseField
   protected static final String HOST = "Host";
-  private String _host;
+  @JsonResponseField
+  protected static final String RACK = "Rack";
+  private final String _host;
+  private final String _rack;
 
-  SingleHostStats(String host, double diskUtil, double cpuUtil, double leaderBytesInRate,
-                  double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
-                  int numReplicas, int numLeaders, double capacity,  double networkInCapacity,
-                  double networkOutCapacity, int numCore) {
-    super(diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
-          potentialBytesOutRate, numReplicas, numLeaders, capacity, networkInCapacity, networkOutCapacity, numCore);
+  SingleHostStats(String host, String rack) {
+    super();
     _host = host;
+    _rack = rack;
   }
 
   /**
@@ -31,6 +31,7 @@ public class SingleHostStats extends BasicStats {
   public Map<String, Object> getJSONStructure() {
     Map<String, Object> hostEntry = super.getJSONStructure();
     hostEntry.put(HOST, _host);
+    hostEntry.put(RACK, _rack);
     return hostEntry;
   }
 }
