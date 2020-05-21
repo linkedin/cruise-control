@@ -56,7 +56,7 @@ import static org.junit.Assert.assertTrue;
 
 
 /**
- * Unit test for testing with different clusters properties and fixed goals.
+ * Unit test for testing with different cluster properties and fixed goals.
  */
 public class RandomClusterTest {
   private static final Logger LOG = LoggerFactory.getLogger(RandomClusterTest.class);
@@ -102,9 +102,9 @@ public class RandomClusterTest {
 
     Map<ClusterProperty, Number> modifiedProperties;
     // Test: Increase Broker Count
-    for (int i = 1; i <= 6; i++) {
+    for (int i = 1; i <= 2; i++) {
       modifiedProperties = new HashMap<>();
-      modifiedProperties.put(ClusterProperty.NUM_BROKERS, 20 + i * 20);
+      modifiedProperties.put(ClusterProperty.NUM_BROKERS, 20 + i * 60);
       p.add(params(modifiedProperties, goalNameByPriority, distribution, balancingConstraint, verifications));
       p.add(params(modifiedProperties, kafkaAssignerGoals, distribution, balancingConstraint, kafkaAssignerVerifications));
     }
@@ -114,25 +114,25 @@ public class RandomClusterTest {
     balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     balancingConstraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
-    for (int i = 7; i <= 12; i++) {
+    for (int i = 3; i <= 5; i++) {
       modifiedProperties = new HashMap<>();
-      modifiedProperties.put(ClusterProperty.NUM_REPLICAS, 50001 + (i - 7) * 5001);
+      modifiedProperties.put(ClusterProperty.NUM_REPLICAS, 50001 + i * 5001);
       p.add(params(modifiedProperties, goalNameByPriority, distribution, balancingConstraint, verifications));
       p.add(params(modifiedProperties, kafkaAssignerGoals, distribution, balancingConstraint, kafkaAssignerVerifications));
     }
     // Test: Increase Topic Count
-    for (int i = 13; i <= 18; i++) {
+    for (int i = 6; i <= 7; i++) {
       modifiedProperties = new HashMap<>();
-      modifiedProperties.put(ClusterProperty.NUM_TOPICS, 3000 + (i - 13) * 1000);
+      modifiedProperties.put(ClusterProperty.NUM_TOPICS, 3000 + (i - 2) * 1000);
       p.add(params(modifiedProperties, goalNameByPriority, distribution, balancingConstraint, verifications));
       p.add(params(modifiedProperties, kafkaAssignerGoals, distribution, balancingConstraint, kafkaAssignerVerifications));
     }
     // Test: Increase Replication Count
-    for (int i = 19; i <= 24; i++) {
+    for (int i = 8; i <= 9; i++) {
       modifiedProperties = new HashMap<>();
-      modifiedProperties.put(ClusterProperty.NUM_REPLICAS, 50000 - (50000 % (i - 16)));
-      modifiedProperties.put(ClusterProperty.MIN_REPLICATION, (i - 16));
-      modifiedProperties.put(ClusterProperty.MAX_REPLICATION, (i - 16));
+      modifiedProperties.put(ClusterProperty.NUM_REPLICAS, 50000 - (50000 % (i - 4)));
+      modifiedProperties.put(ClusterProperty.MIN_REPLICATION, (i - 4));
+      modifiedProperties.put(ClusterProperty.MAX_REPLICATION, (i - 4));
       p.add(params(modifiedProperties, goalNameByPriority, distribution, balancingConstraint, verifications));
       p.add(params(modifiedProperties, kafkaAssignerGoals, distribution, balancingConstraint, kafkaAssignerVerifications));
     }
@@ -148,11 +148,11 @@ public class RandomClusterTest {
     return new Object[]{modifiedProperties, goalNameByPriority, replicaDistribution, balancingConstraint, verifications};
   }
 
-  private Map<ClusterProperty, Number> _modifiedProperties;
-  private List<String> _goalNameByPriority;
-  private TestConstants.Distribution _replicaDistribution;
-  private BalancingConstraint _balancingConstraint;
-  private List<OptimizationVerifier.Verification> _verifications;
+  private final Map<ClusterProperty, Number> _modifiedProperties;
+  private final List<String> _goalNameByPriority;
+  private final TestConstants.Distribution _replicaDistribution;
+  private final BalancingConstraint _balancingConstraint;
+  private final List<OptimizationVerifier.Verification> _verifications;
 
   /**
    * Constructor of Random Cluster Test.
