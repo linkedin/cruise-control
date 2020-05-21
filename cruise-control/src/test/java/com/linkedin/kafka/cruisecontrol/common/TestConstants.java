@@ -12,7 +12,7 @@ import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.T1;
 import static com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomaly.TopicReplicationFactorAnomalyEntry;
 
 
-public class TestConstants {
+public final class TestConstants {
   public static final String TOPIC0 = "topic0";
   public static final String TOPIC1 = "topic1";
   public static final String TOPIC2 = "topic2";
@@ -48,6 +48,44 @@ public class TestConstants {
 
   }
 
+  public static final String GOALS_VALUES;
+  static {
+    GOALS_VALUES = "com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal,"
+                   + "com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal,"
+                   + "com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal,"
+                   + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal,"
+                   + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal,"
+                   + "com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal,"
+                   + "com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal,"
+                   + "com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal,"
+                   + "com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal,"
+                   + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal,"
+                   + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal,"
+                   + "com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal,"
+                   + "com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal,"
+                   + "com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderReplicaDistributionGoal,"
+                   + "com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal";
+  }
+
+  public static final String DEFAULT_GOALS_VALUES;
+  static {
+    DEFAULT_GOALS_VALUES = "com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal,"
+                           + "com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal,"
+                           + "com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal,"
+                           + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal,"
+                           + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal,"
+                           + "com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal,"
+                           + "com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal,"
+                           + "com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal,"
+                           + "com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal,"
+                           + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal,"
+                           + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal,"
+                           + "com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal,"
+                           + "com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal,"
+                           + "com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderReplicaDistributionGoal,"
+                           + "com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal";
+  }
+
   public enum Distribution {
     UNIFORM, LINEAR, EXPONENTIAL
   }
@@ -72,7 +110,6 @@ public class TestConstants {
     properties.put(ClusterProperty.MEAN_NW_OUT, 100.0);
     properties.put(ClusterProperty.POPULATE_REPLICA_PLACEMENT_INFO, 0);
     BASE_PROPERTIES = Collections.unmodifiableMap(properties);
-
   }
 
   // Broker and disk capacity (homogeneous cluster is assumed).
@@ -98,6 +135,7 @@ public class TestConstants {
   // Broker capacity config file for test.
   public static final String JBOD_BROKER_CAPACITY_CONFIG_FILE = "testCapacityConfigJBOD.json";
   public static final String DEFAULT_BROKER_CAPACITY_CONFIG_FILE = "DefaultCapacityConfig.json";
+  public static final String DEFAULT_CLUSTER_CONFIGS_FILE = "DefaultClusterConfigs.json";
 
   // Topic replication factor anomaly test.
   public static final TopicReplicationFactorAnomalyEntry TOPIC_REPLICATION_FACTOR_ANOMALY_ENTRY =
