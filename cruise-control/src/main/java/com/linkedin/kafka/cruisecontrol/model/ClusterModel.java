@@ -38,7 +38,6 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.EMPTY_BROKER_CAPACITY;
-import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVAL_TO_PERCENTAGE;
 
 /**
  * A class that holds the information of the cluster, including topology, liveness and load for racks, brokers and
@@ -62,14 +61,14 @@ public class ClusterModel implements Serializable {
   private final SortedSet<Broker> _brokers;
   private final double _monitoredPartitionsRatio;
   private final double[] _clusterCapacity;
-  private Load _load;
+  private final Load _load;
   // An integer to keep track of the maximum replication factor that a partition was ever created with.
   private int _maxReplicationFactor;
   // The replication factor that each topic in the cluster created with ().
-  private Map<String, Integer> _replicationFactorByTopic;
-  private Map<Integer, Load> _potentialLeadershipLoadByBrokerId;
+  private final Map<String, Integer> _replicationFactorByTopic;
+  private final Map<Integer, Load> _potentialLeadershipLoadByBrokerId;
   private int _unknownHostId;
-  private Map<Integer, String> _capacityEstimationInfoByBrokerId;
+  private final Map<Integer, String> _capacityEstimationInfoByBrokerId;
 
   /**
    * Constructor for the cluster class. It creates data structures to hold a list of racks, a map for partitions by
@@ -1236,25 +1235,9 @@ public class ClusterModel implements Serializable {
   public BrokerStats brokerStats(KafkaCruiseControlConfig config) {
     BrokerStats brokerStats = new BrokerStats(config);
     brokers().forEach(broker -> {
-      double leaderBytesInRate = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN);
-      double cpuUsagePercent = UNIT_INTERVAL_TO_PERCENTAGE * broker.load().expectedUtilizationFor(Resource.CPU)
-                               / broker.capacityFor(Resource.CPU);
-      brokerStats.addSingleBrokerStats(broker.host().name(),
-                                       broker.id(),
-                                       broker.state(),
-                                       broker.replicas().isEmpty() ? 0 : broker.load().expectedUtilizationFor(Resource.DISK),
-                                       cpuUsagePercent,
-                                       leaderBytesInRate,
-                                       broker.load().expectedUtilizationFor(Resource.NW_IN) - leaderBytesInRate,
-                                       broker.load().expectedUtilizationFor(Resource.NW_OUT),
+      brokerStats.addSingleBrokerStats(broker,
                                        potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT),
-                                       broker.replicas().size(), broker.leaderReplicas().size(),
-                                       _capacityEstimationInfoByBrokerId.get(broker.id()) != null,
-                                       broker.capacityFor(Resource.DISK),
-                                       broker.diskStats(),
-                                       broker.capacityFor(Resource.NW_IN),
-                                       broker.capacityFor(Resource.NW_OUT),
-                                       (int) broker.capacityFor(Resource.CPU) / 100);
+                                       _capacityEstimationInfoByBrokerId.get(broker.id()) != null);
     });
     return brokerStats;
   }

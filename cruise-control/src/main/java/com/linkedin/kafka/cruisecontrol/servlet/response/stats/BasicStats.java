@@ -4,10 +4,15 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.response.stats;
 
+import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import java.util.HashMap;
 import java.util.Map;
+
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.*;
+
 
 @JsonResponseClass
 public class BasicStats {
@@ -50,21 +55,34 @@ public class BasicStats {
   protected double _networkOutCapacity;
   protected int _numCore;
 
-  BasicStats(double diskUtil, double cpuUtil, double leaderBytesInRate, double followerBytesInRate, double bytesOutRate,
-             double potentialBytesOutRate, int numReplicas, int numLeaders, double diskCapacity, double networkInCapacity,
-             double networkOutCapacity, int numCore) {
-    _diskUtil = Math.max(diskUtil, 0.0);
-    _cpuUtil = Math.max(cpuUtil, 0.0);
-    _leaderBytesInRate = Math.max(leaderBytesInRate, 0.0);
-    _followerBytesInRate = Math.max(followerBytesInRate, 0.0);
-    _bytesOutRate = Math.max(bytesOutRate, 0.0);
+  public BasicStats() {
+    _diskUtil = 0.0;
+    _cpuUtil = 0.0;
+    _leaderBytesInRate = 0.0;
+    _followerBytesInRate = 0.0;
+    _bytesOutRate = 0.0;
+    _potentialBytesOutRate = 0.0;
+    _numReplicas = 0;
+    _numLeaders = 0;
+    _diskCapacity = 0.0;
+    _networkInCapacity = 0.0;
+    _networkOutCapacity = 0.0;
+    _numCore = 0;
+  }
+
+  BasicStats(Broker broker, double potentialBytesOutRate) {
+    _diskUtil = Math.max(broker.replicas().isEmpty() ? 0 : broker.load().expectedUtilizationFor(Resource.DISK), 0.0);
+    _cpuUtil = Math.max(UNIT_INTERVAL_TO_PERCENTAGE * broker.load().expectedUtilizationFor(Resource.CPU) / broker.capacityFor(Resource.CPU), 0.0);
+    _leaderBytesInRate = Math.max(broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN), 0.0);
+    _followerBytesInRate = Math.max(broker.load().expectedUtilizationFor(Resource.NW_IN) - _leaderBytesInRate, 0.0);
+    _bytesOutRate = Math.max(broker.load().expectedUtilizationFor(Resource.NW_OUT), 0.0);
     _potentialBytesOutRate = Math.max(potentialBytesOutRate, 0.0);
-    _numReplicas = numReplicas < 1 ? 0 : numReplicas;
-    _numLeaders =  numLeaders < 1 ? 0 : numLeaders;
-    _diskCapacity = Math.max(diskCapacity, 0.0);
-    _networkInCapacity = Math.max(networkInCapacity, 0.0);
-    _networkOutCapacity = Math.max(networkOutCapacity, 0.0);
-    _numCore = Math.max(numCore, 0);
+    _numReplicas = broker.replicas().size();
+    _numLeaders =  broker.leaderReplicas().size();
+    _diskCapacity = Math.max(broker.capacityFor(Resource.DISK), 0.0);
+    _networkInCapacity = Math.max(broker.capacityFor(Resource.NW_IN), 0.0);
+    _networkOutCapacity = Math.max(broker.capacityFor(Resource.NW_OUT), 0.0);
+    _numCore = Math.max((int) broker.capacityFor(Resource.CPU) / 100, 0);
   }
 
   double diskUtil() {

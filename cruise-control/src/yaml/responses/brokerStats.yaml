@@ -21,6 +21,7 @@ SingleBrokerStats:
   required:
     - Host
     - Broker
+    - Rack
     - BrokerState
     - DiskMB
     - DiskPct
@@ -41,6 +42,8 @@ SingleBrokerStats:
     Broker:
       type: integer
       format: int32
+    Rack:
+      type: string
     BrokerState:
       type: string
       enum:
@@ -127,6 +130,7 @@ SingleHostStats:
   type: object
   required:
     - Host
+    - Rack
     - DiskMB
     - DiskPct
     - CpuPct
@@ -142,6 +146,8 @@ SingleHostStats:
     - NumCore
   properties:
     Host:
+      type: string
+    Rack:
       type: string
     DiskMB:
       type: number
