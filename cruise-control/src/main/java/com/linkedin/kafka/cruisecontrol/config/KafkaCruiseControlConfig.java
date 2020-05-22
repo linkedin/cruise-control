@@ -17,6 +17,7 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsRepo
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -106,19 +107,21 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   /**
    * Sanity check for
    * <ul>
-   *   <li>{@link AnalyzerConfig#GOALS_CONFIG} and {@link AnalyzerConfig#INTRA_BROKER_GOALS_CONFIG} are non-empty.</li>
+   *   <li>{@link AnalyzerConfig#GOALS_CONFIG} and {@link AnalyzerConfig#INTRA_BROKER_GOALS_CONFIG} are non-empty and disjoint.</li>
    *   <li>Case insensitive goal names.</li>
    *   <li>{@link AnalyzerConfig#DEFAULT_GOALS_CONFIG} is non-empty.</li>
-   *   <li>{@link AnomalyDetectorConfig#SELF_HEALING_GOALS_CONFIG} is a sublist of {@link AnalyzerConfig#GOALS_CONFIG}.</li>
+   *   <li>{@link AnalyzerConfig#DEFAULT_GOALS_CONFIG} is a subset of {@link AnalyzerConfig#GOALS_CONFIG}.</li>
+   *   <li>{@link AnalyzerConfig#HARD_GOALS_CONFIG} is a subset of {@link AnalyzerConfig#DEFAULT_GOALS_CONFIG}.</li>
+   *   <li>{@link AnomalyDetectorConfig#SELF_HEALING_GOALS_CONFIG} is a subset of {@link AnalyzerConfig#DEFAULT_GOALS_CONFIG}.</li>
    *   <li>{@link AnomalyDetectorConfig#ANOMALY_DETECTION_GOALS_CONFIG} is a sublist of
    *   (1) {@link AnomalyDetectorConfig#SELF_HEALING_GOALS_CONFIG} if it is not empty,
    *   (2) {@link AnalyzerConfig#DEFAULT_GOALS_CONFIG} otherwise.</li>
    * </ul>
    */
   private void sanityCheckGoalNames() {
-    List<String> goalNames = getList(AnalyzerConfig.GOALS_CONFIG);
-    // Ensure that goals are non-empty.
-    if (goalNames.isEmpty()) {
+    List<String> interBrokerGoalNames = getList(AnalyzerConfig.GOALS_CONFIG);
+    // Ensure that inter-broker goals are non-empty.
+    if (interBrokerGoalNames.isEmpty()) {
       throw new ConfigException("Attempt to configure goals configuration with an empty list of goals.");
     }
 
@@ -128,8 +131,16 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       throw new ConfigException("Attempt to configure intra-broker goals configuration with an empty list of goals.");
     }
 
+    // Ensure that inter- and intra-broker goals are disjoint.
+    Set<String> commonGoals = new HashSet<>(interBrokerGoalNames);
+    commonGoals.retainAll(intraBrokerGoalNames);
+    if (!commonGoals.isEmpty()) {
+      throw new ConfigException(String.format("Attempt to configure inter-broker (%s) and intra-broker (%s) goals with"
+                                              + " common goals (%s).", interBrokerGoalNames, intraBrokerGoalNames, commonGoals));
+    }
+
     Set<String> caseInsensitiveGoalNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    for (String goalName: goalNames) {
+    for (String goalName: interBrokerGoalNames) {
       if (!caseInsensitiveGoalNames.add(goalName.replaceAll(".*\\.", ""))) {
         throw new ConfigException("Attempt to configure goals with case sensitive names.");
       }
@@ -146,7 +157,24 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       throw new ConfigException("Attempt to configure default goals configuration with an empty list of goals.");
     }
 
-    // Ensure that goals used for self-healing are supported goals.
+    // Ensure that default goals are supported inter-broker goals.
+    if (defaultGoalNames.stream().anyMatch(g -> !interBrokerGoalNames.contains(g))) {
+      throw new ConfigException(String.format("Attempt to configure default goals with unsupported goals (%s:%s and %s:%s).",
+                                              AnalyzerConfig.DEFAULT_GOALS_CONFIG, defaultGoalNames,
+                                              AnalyzerConfig.GOALS_CONFIG, interBrokerGoalNames));
+    }
+
+
+    // Ensure that hard goals are contained in default goals.
+    List<String> hardGoalNames = getList(AnalyzerConfig.HARD_GOALS_CONFIG);
+    if (hardGoalNames.stream().anyMatch(g -> !defaultGoalNames.contains(g))) {
+      throw new ConfigException(String.format("Attempt to configure hard goals with unsupported goals (%s:%s and %s:%s).",
+                                              AnalyzerConfig.HARD_GOALS_CONFIG, hardGoalNames,
+                                              AnalyzerConfig.DEFAULT_GOALS_CONFIG, defaultGoalNames));
+    }
+
+
+    // Ensure that goals used for self-healing are contained in default goals.
     List<String> selfHealingGoalNames = getList(AnomalyDetectorConfig.SELF_HEALING_GOALS_CONFIG);
     if (selfHealingGoalNames.stream().anyMatch(g -> !defaultGoalNames.contains(g))) {
       throw new ConfigException(String.format("Attempt to configure self healing goals with unsupported goals (%s:%s and %s:%s).",

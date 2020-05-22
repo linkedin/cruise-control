@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaTopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
@@ -17,6 +18,7 @@ import com.linkedin.kafka.cruisecontrol.config.constants.UserTaskManagerConfig;
 import com.linkedin.kafka.cruisecontrol.detector.NoopTopicAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
@@ -40,17 +42,21 @@ public class KafkaCruiseControlUnitTestUtils {
    */
   public static Properties getKafkaCruiseControlProperties() {
     Properties props = new Properties();
-    String capacityConfigFile =
-        KafkaCruiseControlUnitTestUtils.class.getClassLoader().getResource("DefaultCapacityConfig.json").getFile();
-    String clusterConfigsFile =
-        KafkaCruiseControlUnitTestUtils.class.getClassLoader().getResource("DefaultClusterConfigs.json").getFile();
+    String capacityConfigFile = Objects.requireNonNull(KafkaCruiseControlUnitTestUtils.class.getClassLoader().getResource(
+        TestConstants.DEFAULT_BROKER_CAPACITY_CONFIG_FILE)).getFile();
+    String clusterConfigsFile = Objects.requireNonNull(KafkaCruiseControlUnitTestUtils.class.getClassLoader().getResource(
+        TestConstants.DEFAULT_CLUSTER_CONFIGS_FILE)).getFile();
     props.setProperty(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, "localhost:2121");
     props.setProperty(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, "aaa");
     props.setProperty(MonitorConfig.METRIC_SAMPLER_CLASS_CONFIG, NoopSampler.class.getName());
     props.setProperty(BrokerCapacityConfigFileResolver.CAPACITY_CONFIG_FILE, capacityConfigFile);
     props.setProperty(KafkaTopicConfigProvider.CLUSTER_CONFIGS_FILE, clusterConfigsFile);
-    props.setProperty(MonitorConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG, "2");
-    props.setProperty(MonitorConfig.MIN_SAMPLES_PER_BROKER_METRICS_WINDOW_CONFIG, "2");
+    props.setProperty(MonitorConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG,
+                      Integer.toString(MonitorConfig.DEFAULT_MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW));
+    props.setProperty(MonitorConfig.MIN_SAMPLES_PER_BROKER_METRICS_WINDOW_CONFIG,
+                      Integer.toString(MonitorConfig.DEFAULT_MIN_SAMPLES_PER_BROKER_METRICS_WINDOW));
+    props.setProperty(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG,
+                      Long.toString(ExecutorConfig.DEFAULT_EXECUTION_PROGRESS_CHECK_INTERVAL_MS));
     props.setProperty(UserTaskManagerConfig.COMPLETED_USER_TASK_RETENTION_TIME_MS_CONFIG, Long.toString(TimeUnit.HOURS.toMillis(6)));
     props.setProperty(ExecutorConfig.DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG, Long.toString(TimeUnit.HOURS.toMillis(24)));
     props.setProperty(ExecutorConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG, Long.toString(TimeUnit.HOURS.toMillis(12)));
@@ -63,22 +69,7 @@ public class KafkaCruiseControlUnitTestUtils {
                       Boolean.toString(AnomalyDetectorConfig.DEFAULT_SELF_HEALING_EXCLUDE_RECENT_BROKERS_CONFIG));
     props.setProperty(AnomalyDetectorConfig.TOPIC_ANOMALY_FINDER_CLASSES_CONFIG, NoopTopicAnomalyFinder.class.getName());
     props.setProperty(AnomalyDetectorConfig.SELF_HEALING_GOALS_CONFIG, "");
-    props.setProperty(
-        AnalyzerConfig.DEFAULT_GOALS_CONFIG,
-        "com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal,"
-        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal");
+    props.setProperty(AnalyzerConfig.DEFAULT_GOALS_CONFIG, TestConstants.DEFAULT_GOALS_VALUES);
 
     return props;
   }
