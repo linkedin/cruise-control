@@ -236,8 +236,8 @@ public class AnalyzerConfig {
                                                                   .add(KafkaAssignerDiskUsageDistributionGoal.class.getName())
                                                                   .add(KafkaAssignerEvenRackAwareGoal.class.getName())
                                                                   .add(PreferredLeaderElectionGoal.class.getName()).toString();
-  public static final String GOALS_DOC = "A list of case insensitive goals in the order of priority. The high "
-      + "priority goals will be executed first.";
+  public static final String GOALS_DOC = "A set of case insensitive inter-broker goals. Inter-broker goals facilitate in "
+      + " distributing the load across brokers.";
 
   /**
    * <code>intra.broker.goals</code>
@@ -259,8 +259,8 @@ public class AnalyzerConfig {
                                                                        .add(NetworkInboundCapacityGoal.class.getName())
                                                                        .add(NetworkOutboundCapacityGoal.class.getName())
                                                                        .add(CpuCapacityGoal.class.getName()).toString();
-  public static final String HARD_GOALS_DOC = "A list of case insensitive hard goals. Hard goals will be enforced to execute "
-      + "if Cruise Control runs in non-kafka-assigner mode and skip_hard_goal_check parameter is not set in request.";
+  public static final String HARD_GOALS_DOC = "A list of case insensitive, inter-broker hard goals. Hard goals will be enforced "
+      + "to execute if Cruise Control runs in non-kafka-assigner mode and skip_hard_goal_check parameter is not set in request.";
 
   /**
    * <code>default.goals</code>
@@ -281,8 +281,8 @@ public class AnalyzerConfig {
                                                                           .add(TopicReplicaDistributionGoal.class.getName())
                                                                           .add(LeaderReplicaDistributionGoal.class.getName())
                                                                           .add(LeaderBytesInDistributionGoal.class.getName()).toString();
-  public static final String DEFAULT_GOALS_DOC = "The list of goals that will be used by default if no goal list "
-      + "is provided. This list of goal will also be used for proposal pre-computation";
+  public static final String DEFAULT_GOALS_DOC = "The list of inter-broker goals that will be used by default if no goal list "
+      + "is provided. This list of goals will also be used for proposal pre-computation.";
 
   /**
    * <code>goal.balancedness.priority.weight</code>
