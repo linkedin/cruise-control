@@ -172,8 +172,13 @@ The anomaly notifier allows users to be notified when an anomaly is detected. An
  * Goal violation
  * Metric anomaly
  * Disk failure (not available in `kafka_0_11_and_1_0` branch)
+ * Slow brokers (not available in `kafka_0_11_and_1_0` branch)
+ * Topic replication factor anomaly (not available in `kafka_0_11_and_1_0` branch)
+ * Topic partition size anomaly (not available in `kafka_0_11_and_1_0` branch)
  
-In addition to anomaly notifications users can specify actions to be taken in response to an anomaly. The following actions are supported:
- * **fix** - fix the problem right away
- * **check** - check the situation again after a given delay
- * **ignore** - ignore the anomaly
+In addition to anomaly notifications, users can enable actions to be taken in response to an anomaly by turning self-healing
+on for the relevant anomaly detectors. Multiple anomaly detectors work in harmony using distinct mitigation mechanisms.
+Their actions broadly fall into the following categories:
+ * **fix** - fix the problem right away (e.g. start a rebalance, fix offline replicas)
+ * **check** - check the situation again after a configurable delay (e.g. adopt a grace period before fixing broker failures)
+ * **ignore** - ignore the anomaly (e.g. self-healing is disabled)

@@ -21,22 +21,14 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANO
 import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_DESCRIPTION_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MAX;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MEAN;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MAX;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MEAN;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_LOG_FLUSH_TIME_MS_MAX;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_LOG_FLUSH_TIME_MS_MEAN;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_PRODUCE_LOCAL_TIME_MS_MAX;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_PRODUCE_LOCAL_TIME_MS_MEAN;
-/*import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_50TH;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_50TH;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_999TH;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_50TH;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_999TH;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_LOG_FLUSH_TIME_MS_50TH;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_LOG_FLUSH_TIME_MS_999TH;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_PRODUCE_LOCAL_TIME_MS_50TH;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_PRODUCE_LOCAL_TIME_MS_999TH;*/
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_PRODUCE_LOCAL_TIME_MS_999TH;
 
 
 /**
@@ -44,22 +36,14 @@ import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricT
  */
 public class KafkaMetricAnomalyFinder extends PercentileMetricAnomalyFinder<BrokerEntity> {
   private static final String DEFAULT_METRICS =
-/*      new StringJoiner(",").add(BROKER_PRODUCE_LOCAL_TIME_MS_50TH.toString())
+      new StringJoiner(",").add(BROKER_PRODUCE_LOCAL_TIME_MS_50TH.toString())
                            .add(BROKER_PRODUCE_LOCAL_TIME_MS_999TH.toString())
                            .add(BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_50TH.toString())
                            .add(BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_999TH.toString())
                            .add(BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_50TH.toString())
                            .add(BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_999TH.toString())
                            .add(BROKER_LOG_FLUSH_TIME_MS_50TH.toString())
-                           .add(BROKER_LOG_FLUSH_TIME_MS_999TH.toString()).toString();*/
-      new StringJoiner(",").add(BROKER_PRODUCE_LOCAL_TIME_MS_MAX.toString())
-                           .add(BROKER_PRODUCE_LOCAL_TIME_MS_MEAN.toString())
-                           .add(BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MAX.toString())
-                           .add(BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MEAN.toString())
-                           .add(BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MAX.toString())
-                           .add(BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MEAN.toString())
-                           .add(BROKER_LOG_FLUSH_TIME_MS_MAX.toString())
-                           .add(BROKER_LOG_FLUSH_TIME_MS_MEAN.toString()).toString();
+                           .add(BROKER_LOG_FLUSH_TIME_MS_999TH.toString()).toString();
   private KafkaCruiseControl _kafkaCruiseControl;
 
   @Override
