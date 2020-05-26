@@ -1431,6 +1431,9 @@ public class Executor {
     }
 
     private boolean verifyFutureError(Future<?> future, Class<? extends Throwable> exceptionClass) {
+      if (future == null) {
+        return false;
+      }
       try {
         // TODO: Make this configurable.
         future.get(5000L, TimeUnit.MILLISECONDS);
