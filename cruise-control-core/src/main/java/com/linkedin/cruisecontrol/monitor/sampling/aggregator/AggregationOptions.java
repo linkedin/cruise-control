@@ -32,8 +32,8 @@ public class AggregationOptions<G, E extends Entity<G>> {
    * @param minValidEntityGroupRatio The minimum required percentage of the valid entity groups out of all the interested
    *                               entities groups (the groups of interested entities).
    * @param minValidWindows The minimum required number of valid windows required in the result. A valid window
-   *                        is a window within which both <tt>Min Valid Entity Ratio</tt> and
-   *                        <tt>Min Valid Entity Group Ratio</tt> are met.
+   *                        is a window within which both {@code Min Valid Entity Ratio} and
+   *                        {@code Min Valid Entity Group Ratio} are met.
    * @param maxAllowedExtrapolationsPerEntity the maximum allowed {@link Extrapolation}s per entity in the aggregation.
    * @param interestedEntities All the entities to include in this aggregation. Sometimes not all the entities are
    *                           interested. This option allows users to aggregate only part of the entities.

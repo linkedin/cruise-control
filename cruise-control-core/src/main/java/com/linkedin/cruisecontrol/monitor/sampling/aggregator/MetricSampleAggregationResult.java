@@ -63,10 +63,10 @@ public class MetricSampleAggregationResult<G, E extends Entity<G>> extends LongG
    * </p>
    * <p>
    *   If the {@link AggregationOptions} specifies aggregation granularity to be
-   *   {@link AggregationOptions.Granularity#ENTITY_GROUP} and an <tt>entity</tt> belongs to a group which has
-   *   other invalid entities. In this case, <tt>entity</tt> itself is still a valid entity therefore it will
+   *   {@link AggregationOptions.Granularity#ENTITY_GROUP} and an {@code entity} belongs to a group which has
+   *   other invalid entities. In this case, {@code entity} itself is still a valid entity therefore it will
    *   not be in the set returned by this method. But since the entity group does not meet the completeness
-   *   requirement, the entire entity group is not considered as <i>"covered"</i>. So <tt>entity</tt> will not
+   *   requirement, the entire entity group is not considered as <i>"covered"</i>. So {@code entity} will not
    *   be included in the {@link MetricSampleCompleteness#validEntities()} either.
    * </p>
    *
