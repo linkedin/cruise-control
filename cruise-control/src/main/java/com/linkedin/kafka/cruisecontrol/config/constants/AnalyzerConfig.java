@@ -109,7 +109,7 @@ public class AnalyzerConfig {
    * <code>cpu.capacity.threshold</code>
    */
   public static final String CPU_CAPACITY_THRESHOLD_CONFIG = "cpu.capacity.threshold";
-  public static final double DEFAULT_CPU_CAPACITY_THRESHOLD = 0.8;
+  public static final double DEFAULT_CPU_CAPACITY_THRESHOLD = 0.7;
   public static final String CPU_CAPACITY_THRESHOLD_DOC = "The maximum percentage of the total broker.cpu.capacity that is "
       + "allowed to be used on a broker. The analyzer will enforce a hard goal that the cpu utilization "
       + "of a broker cannot be higher than (broker.cpu.capacity * cpu.capacity.threshold).";
