@@ -59,6 +59,7 @@ public class GoalViolationDetector implements Runnable {
   private final Map<String, Double> _balancednessCostByGoal;
   private volatile double _balancednessScore;
   private final OptimizationOptionsGenerator _optimizationOptionsGenerator;
+  protected static final double BALANCEDNESS_SCORE_WITH_OFFLINE_REPLICAS = -1.0;
 
   public GoalViolationDetector(Queue<Anomaly> anomalies,
                                KafkaCruiseControl kafkaCruiseControl) {
@@ -208,7 +209,7 @@ public class GoalViolationDetector implements Runnable {
   }
 
   protected void setBalancednessWithOfflineReplicas() {
-    _balancednessScore = 0.0;
+    _balancednessScore = BALANCEDNESS_SCORE_WITH_OFFLINE_REPLICAS;
   }
 
   protected void refreshBalancednessScore(Map<Boolean, List<String>> violatedGoalsByFixability) {
