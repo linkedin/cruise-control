@@ -157,7 +157,7 @@ public class RawMetricValues extends WindowIndexedArrays {
 
   /**
    * Check whether this raw metric value is valid or not. The raw metric value is valid if:
-   * 1. All the stable windows are <tt>valid</tt> (See {@link MetricSampleAggregator}, AND
+   * 1. All the stable windows are {@code valid} (See {@link MetricSampleAggregator}, AND
    * 2. The number of windows with extrapolation is less than the given maxAllowedWindowsWithExtrapolation.
    *
    * @param maxAllowedWindowsWithExtrapolation the maximum number of allowed windows with extrapolation.
