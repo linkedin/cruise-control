@@ -31,13 +31,13 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.*;
  *                  |          v
  *                  |-------------------&gt; DEAD
  *
- * A newly created task is in <tt>PENDING</tt> state.
- * A <tt>PENDING</tt> task becomes <tt>IN_PROGRESS</tt> when it is drained from the {@link ExecutionTaskPlanner}
- * An <tt>IN_PROGRESS</tt> task becomes <tt>COMPLETED</tt> if the execution is done without error.
- * An <tt>IN_PROGRESS</tt> task becomes <tt>ABORTING</tt> if an error is encountered and the rollback is possible.
- * An <tt>IN_PROGRESS</tt> task becomes <tt>DEAD</tt> if an error is encountered and the rollback is not possible.
- * An <tt>ABORTING</tt> task becomes <tt>ABORTED</tt> if the rollback of the original task is successfully done.
- * An <tt>ABORTING</tt> task becomes <tt>DEAD</tt> if the rollback of the original task encountered an error.
+ * A newly created task is in {@code PENDING} state.
+ * A {@code PENDING} task becomes {@code IN_PROGRESS} when it is drained from the {@link ExecutionTaskPlanner}
+ * An {@code IN_PROGRESS} task becomes {@code COMPLETED} if the execution is done without error.
+ * An {@code IN_PROGRESS} task becomes {@code ABORTING} if an error is encountered and the rollback is possible.
+ * An {@code IN_PROGRESS} task becomes {@code DEAD} if an error is encountered and the rollback is not possible.
+ * An {@code ABORTING} task becomes {@code ABORTED} if the rollback of the original task is successfully done.
+ * An {@code ABORTING} task becomes {@code DEAD} if the rollback of the original task encountered an error.
  * </pre>
  */
 @JsonResponseClass

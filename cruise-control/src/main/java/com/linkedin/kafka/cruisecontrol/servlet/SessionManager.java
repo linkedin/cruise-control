@@ -153,7 +153,7 @@ public class SessionManager {
    * Get the {@link OperationFuture} for the request.
    * @param request the request to get the operation future.
    * @param <T> the returned future type.
-   * @return The operation future for the request if it exists, otherwise <tt>null</tt> is returned.
+   * @return The operation future for the request if it exists, otherwise {@code null} is returned.
    */
   @SuppressWarnings("unchecked")
   synchronized <T> T getFuture(HttpServletRequest request) {

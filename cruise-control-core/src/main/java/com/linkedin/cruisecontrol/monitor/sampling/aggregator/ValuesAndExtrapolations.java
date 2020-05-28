@@ -53,7 +53,7 @@ public class ValuesAndExtrapolations {
   }
 
   /**
-   * Get the window list for the metric values. The time window of metric value at <tt>index</tt> is the time window
+   * Get the window list for the metric values. The time window of metric value at {@code index} is the time window
    * at the same index of the array returned by this this method.
    *
    * @return The window time list associated with the metric values array in the {@link AggregatedMetricValues} returned

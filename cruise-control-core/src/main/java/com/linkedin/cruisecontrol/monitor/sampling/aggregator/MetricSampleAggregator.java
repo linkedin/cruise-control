@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
  *   From per entity's perspective, each entity would have sufficient metrics from all the windows when everything
  *   works fine. However, it is also possible that some metrics may be missing from the MetricSampleAggregator
  *   in one or more windows. If that happens, some {@link Extrapolation} will be used to fill in the missing data.
- *   If none of the {@link Extrapolation} works. We claim the entity is <tt>invalid</tt> in this window. With above,
+ *   If none of the {@link Extrapolation} works. We claim the entity is {@code invalid} in this window. With above,
  *   a given entity may have the following three states in any given window from the {@link MetricSampleAggregator}'s
  *   perspective:
  *   <ul>
@@ -68,7 +68,7 @@ import org.slf4j.LoggerFactory;
  *   </ul>
  *
  * <p>
- *   From per window's perspective, for each window, there is a given set of <tt>valid</tt> entities and entity
+ *   From per window's perspective, for each window, there is a given set of {@code valid} entities and entity
  *   groups as described above. The validity of a window depends on the requirements specified in the
  *   {@link AggregationOptions} during the aggregation. More specifically whether the entity coverage (valid entity
  *   ratio) and entity group coverage (valid entity group ratio) meet the requirements.

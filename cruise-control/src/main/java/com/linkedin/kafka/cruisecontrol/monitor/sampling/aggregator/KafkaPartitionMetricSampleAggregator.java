@@ -261,7 +261,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
    *
    * @param sample the sample to do the sanity check.
    * @param leaderValidation whether do the leader validation or not.
-   * @return <tt>true</tt> if the sample is valid.
+   * @return {@code true} if the sample is valid.
    */
   private boolean isValidSample(PartitionMetricSample sample, boolean leaderValidation) {
     boolean validLeader = true;

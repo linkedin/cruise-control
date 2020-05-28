@@ -233,11 +233,11 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
    * Swap replica between two brokers. The method should achieve the result that the overall usage of the two
    * brokers are improved. More specifically, the following result is reduced.
    * <pre>
-   * (<tt>UsageOfBroker1</tt> - <tt>MeanUsage</tt>) + (<tt>UsageOfBroker2</tt> - <tt>MeanUsage</tt>)
+   * ({@code UsageOfBroker1} - {@code MeanUsage}) + ({@code UsageOfBroker2} - {@code MeanUsage})
    * </pre>
    *
    * @param toSwap the broker that needs to swap a replica with the other broker.
-   * @param toSwapWith the broker that provides a replica to swap with the broker <tt>toSwap</tt>
+   * @param toSwapWith the broker that provides a replica to swap with the broker {@code toSwap}
    * @param meanDiskUsage the average usage of the cluster.
    * @param clusterModel the cluster model.
    * @param excludedTopics the topics to exclude from swapping.
