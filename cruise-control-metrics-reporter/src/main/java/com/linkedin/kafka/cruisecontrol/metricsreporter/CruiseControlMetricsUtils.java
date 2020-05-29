@@ -15,11 +15,15 @@ import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import java.util.Properties;
+import java.util.function.Supplier;
 
 public class CruiseControlMetricsUtils {
 
   public static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = 10000L;
   public static final long CLIENT_REQUEST_TIMEOUT_MS = 10000L;
+
+  private static final long DEFAULT_RETRY_BACKOFF_SCALE_MS = 5000L;
+  private static final int DEFAULT_RETRY_BACKOFF_BASE = 2;
 
   private CruiseControlMetricsUtils() {
 
@@ -129,5 +133,40 @@ public class CruiseControlMetricsUtils {
         configsToAlter.add(new AlterConfigOp(new ConfigEntry(configName, targetConfigValue), AlterConfigOp.OpType.SET));
       }
     }
+  }
+
+  /**
+   * Retries the {@code Supplier<Boolean>} function while it returns {@code true} and for the specified max number of attempts.
+   * The delay between each attempt is computed as: delay = scaleMs * base ^ attempt
+   * @param function the code to call and retry if needed
+   * @param scaleMs the scale for computing the delay
+   * @param base the base for computing the delay
+   * @param maxAttempts the max number of attempts on calling the function
+   */
+  public static void retry(Supplier<Boolean> function, long scaleMs, int base, int maxAttempts) {
+    int attempts = 0;
+    boolean retry;
+    do {
+      retry = function.get();
+      if (retry) {
+        try {
+          if (++attempts == maxAttempts)
+            break;
+          Thread.sleep(scaleMs * (long) Math.pow(base, attempts));
+        } catch (InterruptedException e) {
+
+        }
+      }
+    } while (retry);
+  }
+
+  /**
+   * Retries the {@code Supplier<Boolean>} function while it returns {@code true} and for the specified max number of attempts.
+   * It uses {@code DEFAULT_RETRY_BACKOFF_SCALE_MS} and {@code DEFAULT_RETRY_BACKOFF_BASE} for scale and base to compute the delay.
+   * @param function the code to call and retry if needed
+   * @param maxAttempts the max number of attempts on calling the function
+   */
+  public static void retry(Supplier<Boolean> function, int maxAttempts) {
+    retry(function, DEFAULT_RETRY_BACKOFF_SCALE_MS, DEFAULT_RETRY_BACKOFF_BASE, maxAttempts);
   }
 }

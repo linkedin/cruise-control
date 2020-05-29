@@ -7,6 +7,8 @@ package com.linkedin.kafka.cruisecontrol.metricsreporter;
 import java.io.File;
 import java.io.IOException;
 import java.util.Properties;
+
+import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaTestUtils;
 import kafka.server.KafkaConfig;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -33,7 +35,7 @@ public class CruiseControlMetricsReporterSslTest extends CruiseControlMetricsRep
   @Override
   public Properties overridingProps() {
     Properties props = new Properties();
-    int port = findLocalPort();
+    int port = CCKafkaTestUtils.findLocalPort();
     // We need to convert all the properties to the Cruise Control properties.
     setSecurityConfigs(props, "producer");
     for (String configName : ProducerConfig.configNames()) {
