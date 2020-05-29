@@ -21,6 +21,9 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
+
+import static org.junit.Assert.fail;
 
 
 /**
@@ -87,6 +90,29 @@ public class KafkaCruiseControlUnitTestUtils {
     setValueForResource(aggregateMetricValues, Resource.NW_OUT, networkOutBoundUsage);
     setValueForResource(aggregateMetricValues, Resource.DISK, diskUsage);
     return aggregateMetricValues;
+  }
+
+  /**
+   * Wait until the given condition is {@code true} or throw an exception if the given wait time elapses.
+   *
+   * @param condition The condition to check
+   * @param errorMessage Error message.
+   * @param waitTimeMs The maximum time to wait in milliseconds.
+   * @param pauseMs The delay between condition checks in milliseconds.
+   */
+  public static void waitUntilTrue(Supplier<Boolean> condition, String errorMessage, long waitTimeMs, long pauseMs) {
+    long startTime = System.currentTimeMillis();
+    long pausePeriodMs = Math.min(waitTimeMs, pauseMs);
+    while (!condition.get()) {
+      if (System.currentTimeMillis() > startTime + waitTimeMs) {
+        fail(errorMessage);
+      }
+      try {
+        Thread.sleep(pausePeriodMs);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
   }
 
   /**

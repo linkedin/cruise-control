@@ -14,13 +14,12 @@ import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.OngoingExecutionException;
-import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaIntegrationTestHarness;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaClientsIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
-import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,12 +30,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
@@ -51,6 +54,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.waitUntilTrue;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.DEFAULT_BROKER_CAPACITY_CONFIG_FILE;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
@@ -59,10 +63,12 @@ import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC3;
 import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.isA;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
-public class ExecutorTest extends CCKafkaIntegrationTestHarness {
+
+public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   private static final int PARTITION = 0;
   private static final TopicPartition TP0 = new TopicPartition(TOPIC0, PARTITION);
   private static final TopicPartition TP1 = new TopicPartition(TOPIC1, PARTITION);
@@ -71,6 +77,12 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
   private static final String RANDOM_UUID = "random_uuid";
   private static final long REMOVAL_HISTORY_RETENTION_TIME_MS = 43200000L;
   private static final long DEMOTION_HISTORY_RETENTION_TIME_MS = 86400000L;
+  private static final long PRODUCE_SIZE_IN_BYTES = 10000L;
+  private static final long EXECUTION_DEADLINE_MS = 30000L;
+  private static final long EXECUTION_SHORT_CHECK_MS = 10L;
+  private static final long EXECUTION_REGULAR_CHECK_MS = 100L;
+  private static final Random RANDOM = new Random(0xDEADBEEF);
+  private static final int MOCK_BROKER_ID_TO_DROP = 1;
 
   @Override
   public int clusterSize() {
@@ -88,62 +100,103 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
   }
 
   @Test
-  public void testBalanceMovement() throws InterruptedException, OngoingExecutionException {
+  public void testReplicaReassignment() throws InterruptedException, OngoingExecutionException {
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
                                                                               "ExecutorTestMetricGroup",
-                                                                              "BasicBalanceMovement",
+                                                                              "ReplicaReassignment",
                                                                               false);
     try {
       List<ExecutionProposal> proposalsToExecute = new ArrayList<>();
       List<ExecutionProposal> proposalsToCheck = new ArrayList<>();
-      populateProposals(proposalsToExecute, proposalsToCheck);
-      executeAndVerifyProposals(kafkaZkClient, proposalsToExecute, proposalsToCheck);
+      populateProposals(proposalsToExecute, proposalsToCheck, 0);
+      executeAndVerifyProposals(kafkaZkClient, proposalsToExecute, proposalsToCheck, false, null, false);
     } finally {
       KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
     }
   }
 
   @Test
-  public void testBrokerDiesWhenMovePartitions() throws Exception {
+  public void testReplicaReassignmentProgressWithThrottle() throws InterruptedException, OngoingExecutionException {
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
                                                                               "ExecutorTestMetricGroup",
-                                                                              "BrokerDiesWhenMovePartitions",
+                                                                              "ReplicaReassignmentProgressWithThrottle",
                                                                               false);
     try {
-      Map<String, TopicDescription> topicDescriptions = createTopics();
+      List<ExecutionProposal> proposalsToExecute = new ArrayList<>();
+      List<ExecutionProposal> proposalsToCheck = new ArrayList<>();
+      populateProposals(proposalsToExecute, proposalsToCheck, PRODUCE_SIZE_IN_BYTES);
+      // Throttle rate is set to the half of the produce size.
+      executeAndVerifyProposals(kafkaZkClient, proposalsToExecute, proposalsToCheck, false, PRODUCE_SIZE_IN_BYTES / 2, true);
+    } finally {
+      KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
+    }
+  }
+
+  @Test
+  public void testBrokerDiesBeforeMovingPartition() throws Exception {
+    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
+                                                                              "ExecutorTestMetricGroup",
+                                                                              "BrokerDiesBeforeMovingPartition",
+                                                                              false);
+    try {
+      Map<String, TopicDescription> topicDescriptions = createTopics((int) PRODUCE_SIZE_IN_BYTES);
+      // initialLeader0 will be alive after killing a broker in cluster.
       int initialLeader0 = topicDescriptions.get(TOPIC0).partitions().get(0).leader().id();
       int initialLeader1 = topicDescriptions.get(TOPIC1).partitions().get(0).leader().id();
-
+      // Kill broker before starting the reassignment.
       _brokers.get(initialLeader0 == 0 ? 1 : 0).shutdown();
       ExecutionProposal proposal0 =
-          new ExecutionProposal(TP0, 0, new ReplicaPlacementInfo(initialLeader0),
+          new ExecutionProposal(TP0, PRODUCE_SIZE_IN_BYTES, new ReplicaPlacementInfo(initialLeader0),
                                 Collections.singletonList(new ReplicaPlacementInfo(initialLeader0)),
-                                Collections.singletonList(initialLeader0 == 0 ? new ReplicaPlacementInfo(1) :
-                                                                                new ReplicaPlacementInfo(0)));
+                                Collections.singletonList(new ReplicaPlacementInfo(initialLeader0 == 0 ? 1 : 0)));
       ExecutionProposal proposal1 =
           new ExecutionProposal(TP1, 0, new ReplicaPlacementInfo(initialLeader1),
                                 Arrays.asList(new ReplicaPlacementInfo(initialLeader1),
-                                              initialLeader1 == 0 ? new ReplicaPlacementInfo(1) :
-                                                                    new ReplicaPlacementInfo(0)),
-                                Arrays.asList(initialLeader1 == 0 ? new ReplicaPlacementInfo(1) :
-                                                                    new ReplicaPlacementInfo(0),
+                                              new ReplicaPlacementInfo(initialLeader1 == 0 ? 1 : 0)),
+                                Arrays.asList(new ReplicaPlacementInfo(initialLeader1 == 0 ? 1 : 0),
                                               new ReplicaPlacementInfo(initialLeader1)));
 
       Collection<ExecutionProposal> proposalsToExecute = Arrays.asList(proposal0, proposal1);
-      executeAndVerifyProposals(kafkaZkClient, proposalsToExecute, Collections.emptyList());
+      executeAndVerifyProposals(kafkaZkClient, proposalsToExecute, Collections.emptyList(), true, null, false);
 
       // We are not doing the rollback.
       assertEquals(Collections.singletonList(initialLeader0 == 0 ? 1 : 0),
                    ExecutorUtils.newAssignmentForPartition(kafkaZkClient, TP0));
-      assertEquals(initialLeader0, kafkaZkClient.getLeaderForPartition(new TopicPartition(TOPIC1, PARTITION)).get());
+      // The leadership should be on the alive broker.
+      assertEquals(initialLeader0, kafkaZkClient.getLeaderForPartition(TP0).get());
+      assertEquals(initialLeader0, kafkaZkClient.getLeaderForPartition(TP1).get());
+
     } finally {
       KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
     }
   }
 
   @Test
+  public void testExecutionKnobs() {
+    KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
+    Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class), DEMOTION_HISTORY_RETENTION_TIME_MS,
+                                     REMOVAL_HISTORY_RETENTION_TIME_MS, null, null, null);
+
+    // Verify correctness of set/get requested execution progress check interval.
+    long defaultExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
+    assertEquals(defaultExecutionProgressCheckIntervalMs, executor.executionProgressCheckIntervalMs());
+    executor.setRequestedExecutionProgressCheckIntervalMs(Executor.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS);
+    assertEquals(Executor.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS, executor.executionProgressCheckIntervalMs());
+    assertThrows(IllegalArgumentException.class,
+                 () -> executor.setRequestedExecutionProgressCheckIntervalMs(Executor.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS - 1));
+
+    // Verify correctness of add/drop recently removed/demoted brokers.
+    assertFalse(executor.dropRecentlyRemovedBrokers(Collections.emptySet()));
+    assertFalse(executor.dropRecentlyDemotedBrokers(Collections.emptySet()));
+    executor.addRecentlyRemovedBrokers(Collections.singleton(MOCK_BROKER_ID_TO_DROP));
+    executor.addRecentlyDemotedBrokers(Collections.singleton(MOCK_BROKER_ID_TO_DROP));
+    assertTrue(executor.dropRecentlyRemovedBrokers(Collections.singleton(MOCK_BROKER_ID_TO_DROP)));
+    assertTrue(executor.dropRecentlyDemotedBrokers(Collections.singleton(MOCK_BROKER_ID_TO_DROP)));
+  }
+
+  @Test
   public void testTimeoutAndForceExecutionStop() throws InterruptedException, OngoingExecutionException {
-    createTopics();
+    createTopics(0);
     // The proposal tries to move the leader. We fake the replica list to be unchanged so there is no replica
     // movement, but only leader movement.
     ExecutionProposal proposal =
@@ -153,7 +206,7 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
 
     KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
     Time time = new MockTime();
-    MetadataClient mockMetadataClient = EasyMock.createMock(MetadataClient.class);
+    MetadataClient mockMetadataClient = EasyMock.mock(MetadataClient.class);
     // Fake the metadata to never change so the leader movement will timeout.
     Node node0 = new Node(0, "host0", 100);
     Node node1 = new Node(1, "host1", 100);
@@ -166,21 +219,17 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     MetadataClient.ClusterAndGeneration clusterAndGeneration = new MetadataClient.ClusterAndGeneration(cluster, 0);
     EasyMock.expect(mockMetadataClient.refreshMetadata()).andReturn(clusterAndGeneration).anyTimes();
     EasyMock.expect(mockMetadataClient.cluster()).andReturn(clusterAndGeneration.cluster()).anyTimes();
-    EasyMock.replay(mockMetadataClient);
-    LoadMonitor mockLoadMonitor = EasyMock.mock(LoadMonitor.class);
-    EasyMock.expect(mockLoadMonitor.taskRunnerState())
-            .andReturn(LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING)
-            .anyTimes();
-    mockLoadMonitor.pauseMetricSampling(isA(String.class));
-    expectLastCall().anyTimes();
-    mockLoadMonitor.resumeMetricSampling(isA(String.class));
-    expectLastCall().anyTimes();
-    EasyMock.replay(mockLoadMonitor);
+    LoadMonitor mockLoadMonitor = getMockLoadMonitor();
+    AnomalyDetector mockAnomalyDetector = getMockAnomalyDetector(RANDOM_UUID);
+    UserTaskManager.UserTaskInfo mockUserTaskInfo = getMockUserTaskInfo();
+    // This tests runs two consecutive executions. First one completes w/o error, but the second one with error.
+    UserTaskManager mockUserTaskManager = getMockUserTaskManager(RANDOM_UUID, mockUserTaskInfo, Arrays.asList(false, true));
+    EasyMock.replay(mockMetadataClient, mockLoadMonitor, mockAnomalyDetector, mockUserTaskInfo, mockUserTaskManager);
 
     Collection<ExecutionProposal> proposalsToExecute = Collections.singletonList(proposal);
     Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient, DEMOTION_HISTORY_RETENTION_TIME_MS,
-                                     REMOVAL_HISTORY_RETENTION_TIME_MS, null, getMockUserTaskManager(RANDOM_UUID),
-                                     getMockAnomalyDetector(RANDOM_UUID));
+                                     REMOVAL_HISTORY_RETENTION_TIME_MS, null, mockUserTaskManager,
+                                     mockAnomalyDetector);
     executor.setExecutionMode(false);
     executor.executeProposals(proposalsToExecute,
                               Collections.emptySet(),
@@ -194,15 +243,17 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
                               null,
                               true,
                               RANDOM_UUID,
-                              () -> "");
-    // Wait until the execution to start so the task timestamp is set to time.milliseconds.
-    while (executor.state().state() != ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS) {
-      Thread.sleep(10);
-    }
-    // Sleep over 180000 (the hard coded timeout) with some margin for inter-thread synchronization.
-    time.sleep(200000);
+                              ExecutorTest.class::getSimpleName);
+    waitUntilTrue(() -> (executor.state().state() == ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS && !executor.inExecutionTasks().isEmpty()),
+                  "Leader movement task did not start within the time limit",
+                  EXECUTION_DEADLINE_MS, EXECUTION_SHORT_CHECK_MS);
+
+    // Sleep over ExecutorConfig#DEFAULT_LEADER_MOVEMENT_TIMEOUT_MS with some margin for inter-thread synchronization.
+    time.sleep(ExecutorConfig.DEFAULT_LEADER_MOVEMENT_TIMEOUT_MS + 1L);
     // The execution should finish.
-    waitUntilExecutionFinishes(executor);
+    waitUntilTrue(() -> (!executor.hasOngoingExecution() && executor.state().state() == ExecutorState.State.NO_TASK_IN_PROGRESS),
+                  "Proposal execution did not finish within the time limit",
+                  EXECUTION_DEADLINE_MS, EXECUTION_REGULAR_CHECK_MS);
 
     // The proposal tries to move replicas.
     proposal = new ExecutionProposal(TP1, 0, new ReplicaPlacementInfo(1),
@@ -221,58 +272,68 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
                               null,
                               true,
                               RANDOM_UUID,
-                              () -> "");
-    // Wait until the inter-broker replica movement task hang.
-    while (executor.state().state() != ExecutorState.State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS) {
-      Thread.sleep(10);
-    }
+                              ExecutorTest.class::getSimpleName);
+    waitUntilTrue(() -> (executor.state().state() == ExecutorState.State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS),
+                  "Inter-broker replica movement task did not start within the time limit",
+                  EXECUTION_DEADLINE_MS, EXECUTION_SHORT_CHECK_MS);
     // Force execution to stop.
     executor.userTriggeredStopExecution(true);
     // The execution should finish.
-    waitUntilExecutionFinishes(executor);
+    waitUntilTrue(() -> (!executor.hasOngoingExecution() && executor.state().state() == ExecutorState.State.NO_TASK_IN_PROGRESS),
+                  "Proposal execution did not finish within the time limit",
+                  EXECUTION_DEADLINE_MS, EXECUTION_REGULAR_CHECK_MS);
+    EasyMock.verify(mockMetadataClient, mockLoadMonitor, mockAnomalyDetector, mockUserTaskInfo, mockUserTaskManager);
   }
 
+  /**
+   * Proposal#1: [TPO] move from original broker to the other one -- e.g. 0 -> 1
+   * Proposal#2: [TP1] change order and leader -- e.g. [0, 1] -> [1, 0]
+   */
   private void populateProposals(List<ExecutionProposal> proposalToExecute,
-                                 List<ExecutionProposal> proposalToVerify) throws InterruptedException {
-    Map<String, TopicDescription> topicDescriptions = createTopics();
+                                 List<ExecutionProposal> proposalToVerify,
+                                 long topicSize) throws InterruptedException {
+    Map<String, TopicDescription> topicDescriptions = createTopics((int) topicSize);
     int initialLeader0 = topicDescriptions.get(TOPIC0).partitions().get(0).leader().id();
     int initialLeader1 = topicDescriptions.get(TOPIC1).partitions().get(0).leader().id();
     // Valid proposals
     ExecutionProposal proposal0 =
-        new ExecutionProposal(TP0, 0, new ReplicaPlacementInfo(initialLeader0),
+        new ExecutionProposal(TP0, topicSize, new ReplicaPlacementInfo(initialLeader0),
                               Collections.singletonList(new ReplicaPlacementInfo(initialLeader0)),
-                              Collections.singletonList(initialLeader0 == 0 ? new ReplicaPlacementInfo(1) :
-                                                                              new ReplicaPlacementInfo(0)));
+                              Collections.singletonList(new ReplicaPlacementInfo(initialLeader0 == 0 ? 1 : 0)));
     ExecutionProposal proposal1 =
         new ExecutionProposal(TP1, 0, new ReplicaPlacementInfo(initialLeader1),
                               Arrays.asList(new ReplicaPlacementInfo(initialLeader1),
-                                            initialLeader1 == 0 ? new ReplicaPlacementInfo(1) :
-                                                                  new ReplicaPlacementInfo(0)),
-                              Arrays.asList(initialLeader1 == 0 ? new ReplicaPlacementInfo(1) :
-                                                                  new ReplicaPlacementInfo(0),
-                              new ReplicaPlacementInfo(initialLeader1)));
+                                            new ReplicaPlacementInfo(initialLeader1 == 0 ? 1 : 0)),
+                              Arrays.asList(new ReplicaPlacementInfo(initialLeader1 == 0 ? 1 : 0),
+                                            new ReplicaPlacementInfo(initialLeader1)));
     // Invalid proposals, the targeting topics of these proposals does not exist.
     ExecutionProposal proposal2 =
         new ExecutionProposal(TP2, 0, new ReplicaPlacementInfo(initialLeader0),
                               Collections.singletonList(new ReplicaPlacementInfo(initialLeader0)),
-                              Collections.singletonList(initialLeader0 == 0 ? new ReplicaPlacementInfo(1) :
-                                                                              new ReplicaPlacementInfo(0)));
+                              Collections.singletonList(new ReplicaPlacementInfo(initialLeader0 == 0 ? 1 : 0)));
     ExecutionProposal proposal3 =
         new ExecutionProposal(TP3, 0, new ReplicaPlacementInfo(initialLeader1),
                               Arrays.asList(new ReplicaPlacementInfo(initialLeader1),
-                                            initialLeader1 == 0 ? new ReplicaPlacementInfo(1) :
-                                                                  new ReplicaPlacementInfo(0)),
-                              Arrays.asList(initialLeader1 == 0 ? new ReplicaPlacementInfo(1) :
-                                                                  new ReplicaPlacementInfo(0),
-                              new ReplicaPlacementInfo(initialLeader1)));
+                                            new ReplicaPlacementInfo(initialLeader1 == 0 ? 1 : 0)),
+                              Arrays.asList(new ReplicaPlacementInfo(initialLeader1 == 0 ? 1 : 0),
+                                            new ReplicaPlacementInfo(initialLeader1)));
 
     proposalToExecute.addAll(Arrays.asList(proposal0, proposal1, proposal2, proposal3));
     proposalToVerify.addAll(Arrays.asList(proposal0, proposal1));
   }
 
-  private Map<String, TopicDescription> createTopics() throws InterruptedException {
+  /**
+   * Creates {@link com.linkedin.kafka.cruisecontrol.common.TestConstants#TOPIC0 topic0} with replication factor 1 and
+   * {@link com.linkedin.kafka.cruisecontrol.common.TestConstants#TOPIC1 topic1} with replication factor 2. Waits until
+   * both brokers in the mock cluster receive the metadata about created topics.
+   *
+   * @param produceSizeInBytes Size of random data in bytes to produce to
+   * {@link com.linkedin.kafka.cruisecontrol.common.TestConstants#TOPIC0 topic0}.
+   * @return A map from topic names to their description.
+   */
+  private Map<String, TopicDescription> createTopics(int produceSizeInBytes) throws InterruptedException {
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-                              AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
+        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
     try {
       adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC0, 1, (short) 1),
                                              new NewTopic(TOPIC1, 1, (short) 2)));
@@ -287,9 +348,9 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     Map<String, TopicDescription> topicDescriptions1 = null;
     do {
       AdminClient adminClient0 = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-                                 AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
+          AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
       AdminClient adminClient1 = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-                                 AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(1).plaintextAddr()));
+          AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(1).plaintextAddr()));
       try {
         topicDescriptions0 = adminClient0.describeTopics(Arrays.asList(TOPIC0, TOPIC1)).all().get();
         topicDescriptions1 = adminClient1.describeTopics(Arrays.asList(TOPIC0, TOPIC1)).all().get();
@@ -305,55 +366,42 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
         KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient1);
       }
     } while (topicDescriptions0 == null || topicDescriptions0.size() < 2
-        || topicDescriptions1 == null || topicDescriptions1.size() < 2);
+             || topicDescriptions1 == null || topicDescriptions1.size() < 2);
 
+    produceRandomDataToTopic(TOPIC0, produceSizeInBytes);
     return topicDescriptions0;
   }
 
-  private UserTaskManager getMockUserTaskManager(String uuid) {
+  private void produceRandomDataToTopic(String topic, int produceSize) {
+    if (produceSize > 0) {
+      Properties props = new Properties();
+      props.setProperty(ProducerConfig.ACKS_CONFIG, "-1");
+      try (Producer<String, String> producer = createProducer(props)) {
+        byte[] randomRecords = new byte[produceSize];
+        RANDOM.nextBytes(randomRecords);
+        producer.send(new ProducerRecord<>(topic, Arrays.toString(randomRecords)));
+      }
+    }
+  }
+
+  private static UserTaskManager getMockUserTaskManager(String uuid,
+                                                        UserTaskManager.UserTaskInfo userTaskInfo,
+                                                        List<Boolean> completeWithError) {
     UserTaskManager mockUserTaskManager = EasyMock.mock(UserTaskManager.class);
-    mockUserTaskManager.markTaskExecutionFinished(uuid, false);
-    EasyMock.expect(mockUserTaskManager.markTaskExecutionBegan(uuid)).andReturn(null).anyTimes();
-    EasyMock.replay(mockUserTaskManager);
+    // Handle the case that the execution started, but did not finish.
+    if (completeWithError.isEmpty()) {
+      EasyMock.expect(mockUserTaskManager.markTaskExecutionBegan(uuid)).andReturn(userTaskInfo).once();
+    } else {
+      // Return as many times as the executions to ensure that the same test can run multiple executions.
+      for (boolean completeStatus : completeWithError) {
+        EasyMock.expect(mockUserTaskManager.markTaskExecutionBegan(uuid)).andReturn(userTaskInfo).once();
+        mockUserTaskManager.markTaskExecutionFinished(uuid, completeStatus);
+      }
+    }
     return mockUserTaskManager;
   }
 
-  private AnomalyDetector getMockAnomalyDetector(String anomalyId) {
-    AnomalyDetector mockAnomalyDetector = EasyMock.mock(AnomalyDetector.class);
-    mockAnomalyDetector.maybeClearOngoingAnomalyDetectionTimeMs();
-    expectLastCall().anyTimes();
-    mockAnomalyDetector.resetHasUnfixableGoals();
-    expectLastCall().anyTimes();
-    mockAnomalyDetector.markSelfHealingFinished(anomalyId);
-    expectLastCall().anyTimes();
-    EasyMock.replay(mockAnomalyDetector);
-    return mockAnomalyDetector;
-  }
-
-  private void executeAndVerifyProposals(KafkaZkClient kafkaZkClient,
-                                         Collection<ExecutionProposal> proposalsToExecute,
-                                         Collection<ExecutionProposal> proposalsToCheck)
-      throws OngoingExecutionException {
-    KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
-    UserTaskManager.UserTaskInfo mockUserTaskInfo = EasyMock.mock(UserTaskManager.UserTaskInfo.class);
-    UserTaskManager mockUserTaskManager = EasyMock.mock(UserTaskManager.class);
-    ExecutorNotifier mockExecutorNotifier = EasyMock.mock(ExecutorNotifier.class);
-    Capture<String> captureNotification = Capture.newInstance(CaptureType.FIRST);
-
-    EasyMock.expect(mockUserTaskInfo.endPoint()).andReturn(CruiseControlEndPoint.REBALANCE).once();
-    EasyMock.expect(mockUserTaskManager.markTaskExecutionBegan(RANDOM_UUID)).andReturn(null).once();
-    mockUserTaskManager.markTaskExecutionFinished(RANDOM_UUID, false);
-    mockExecutorNotifier.sendNotification(EasyMock.capture(captureNotification));
-    mockExecutorNotifier.sendAlert(EasyMock.capture(captureNotification));
-
-    EasyMock.replay(mockUserTaskInfo);
-    EasyMock.replay(mockUserTaskManager);
-    EasyMock.replay(mockExecutorNotifier);
-
-    Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), null, DEMOTION_HISTORY_RETENTION_TIME_MS,
-                                     REMOVAL_HISTORY_RETENTION_TIME_MS, mockExecutorNotifier, mockUserTaskManager,
-                                     getMockAnomalyDetector(RANDOM_UUID));
-    executor.setExecutionMode(false);
+  private static LoadMonitor getMockLoadMonitor() {
     LoadMonitor mockLoadMonitor = EasyMock.mock(LoadMonitor.class);
     EasyMock.expect(mockLoadMonitor.taskRunnerState())
             .andReturn(LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING)
@@ -362,23 +410,76 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     expectLastCall().anyTimes();
     mockLoadMonitor.resumeMetricSampling(isA(String.class));
     expectLastCall().anyTimes();
-    EasyMock.replay(mockLoadMonitor);
+    return mockLoadMonitor;
+  }
+
+  private static AnomalyDetector getMockAnomalyDetector(String anomalyId) {
+    AnomalyDetector mockAnomalyDetector = EasyMock.mock(AnomalyDetector.class);
+    mockAnomalyDetector.maybeClearOngoingAnomalyDetectionTimeMs();
+    expectLastCall().anyTimes();
+    mockAnomalyDetector.resetHasUnfixableGoals();
+    expectLastCall().anyTimes();
+    mockAnomalyDetector.markSelfHealingFinished(anomalyId);
+    expectLastCall().anyTimes();
+    return mockAnomalyDetector;
+  }
+
+  private static UserTaskManager.UserTaskInfo getMockUserTaskInfo() {
+    UserTaskManager.UserTaskInfo mockUserTaskInfo = EasyMock.mock(UserTaskManager.UserTaskInfo.class);
+    // Run it any times to enable consecutive executions in tests.
+    EasyMock.expect(mockUserTaskInfo.requestUrl()).andReturn("mock-request").anyTimes();
+    return mockUserTaskInfo;
+  }
+
+  private void executeAndVerifyProposals(KafkaZkClient kafkaZkClient,
+                                         Collection<ExecutionProposal> proposalsToExecute,
+                                         Collection<ExecutionProposal> proposalsToCheck,
+                                         boolean completeWithError,
+                                         Long replicationThrottle,
+                                         boolean verifyProgress)
+      throws OngoingExecutionException {
+    KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
+    UserTaskManager.UserTaskInfo mockUserTaskInfo = getMockUserTaskInfo();
+    UserTaskManager mockUserTaskManager = getMockUserTaskManager(RANDOM_UUID, mockUserTaskInfo,
+                                                                 Collections.singletonList(completeWithError));
+    ExecutorNotifier mockExecutorNotifier = EasyMock.mock(ExecutorNotifier.class);
+    LoadMonitor mockLoadMonitor = getMockLoadMonitor();
+    Capture<String> captureMessage = Capture.newInstance(CaptureType.FIRST);
+    AnomalyDetector mockAnomalyDetector = getMockAnomalyDetector(RANDOM_UUID);
+
+    if (completeWithError) {
+      mockExecutorNotifier.sendAlert(EasyMock.capture(captureMessage));
+    } else {
+      mockExecutorNotifier.sendNotification(EasyMock.capture(captureMessage));
+    }
+
+    EasyMock.replay(mockUserTaskInfo, mockUserTaskManager, mockExecutorNotifier, mockLoadMonitor, mockAnomalyDetector);
+    Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), null, DEMOTION_HISTORY_RETENTION_TIME_MS,
+                                     REMOVAL_HISTORY_RETENTION_TIME_MS, mockExecutorNotifier, mockUserTaskManager,
+                                     mockAnomalyDetector);
+    executor.setExecutionMode(false);
+    Map<TopicPartition, Integer> replicationFactors = new HashMap<>(proposalsToCheck.size());
+    for (ExecutionProposal proposal : proposalsToCheck) {
+      TopicPartition tp = new TopicPartition(proposal.topic(), proposal.partitionId());
+      replicationFactors.put(tp, proposal.oldReplicas().size());
+    }
 
     executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, mockLoadMonitor, null,
                               null, null, null,
-                              null, null, true, RANDOM_UUID, () -> "");
+                              null, replicationThrottle, true, RANDOM_UUID, ExecutorTest.class::getSimpleName);
 
-    Map<TopicPartition, Integer> replicationFactors = new HashMap<>();
-    for (ExecutionProposal proposal : proposalsToCheck) {
-      TopicPartition tp = new TopicPartition(proposal.topic(), proposal.partitionId());
-      int replicationFactor = kafkaZkClient.getReplicasForPartition(tp).size();
-      replicationFactors.put(tp, replicationFactor);
+    if (verifyProgress) {
+      waitUntilTrue(() -> ExecutorUtils.partitionsBeingReassigned(kafkaZkClient).contains(TP0),
+                    "Failed to verify the start of a partition reassignment",
+                    EXECUTION_DEADLINE_MS, EXECUTION_SHORT_CHECK_MS);
     }
 
-    waitUntilExecutionFinishes(executor);
+    waitUntilTrue(() -> (!executor.hasOngoingExecution() && executor.state().state() == ExecutorState.State.NO_TASK_IN_PROGRESS),
+                  "Proposal execution did not finish within the time limit",
+                  EXECUTION_DEADLINE_MS, EXECUTION_REGULAR_CHECK_MS);
 
     // Check notification is sent after execution has finished.
-    String notification = captureNotification.getValue();
+    String notification = captureMessage.getValue();
     assertTrue(notification.contains(RANDOM_UUID));
 
     for (ExecutionProposal proposal : proposalsToCheck) {
@@ -397,21 +498,7 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
                    proposal.newLeader().brokerId(), kafkaZkClient.getLeaderForPartition(tp).get());
 
     }
-  }
-
-  private void waitUntilExecutionFinishes(Executor executor) {
-    long now = System.currentTimeMillis();
-    while ((executor.hasOngoingExecution() || executor.state().state() != ExecutorState.State.NO_TASK_IN_PROGRESS)
-        && System.currentTimeMillis() < now + 30000) {
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-    if (executor.state().state() != ExecutorState.State.NO_TASK_IN_PROGRESS) {
-      fail("The execution did not finish in 30 seconds.");
-    }
+    EasyMock.verify(mockUserTaskInfo, mockUserTaskManager, mockExecutorNotifier, mockLoadMonitor, mockAnomalyDetector);
   }
 
   private Properties getExecutorProperties() {
@@ -423,7 +510,7 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     props.setProperty(MonitorConfig.METRIC_SAMPLER_CLASS_CONFIG, NoopSampler.class.getName());
     props.setProperty(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, zookeeper().connectionString());
     props.setProperty(ExecutorConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG, "10");
-    props.setProperty(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG, "1000");
+    props.setProperty(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG, "400");
     props.setProperty(AnalyzerConfig.DEFAULT_GOALS_CONFIG, TestConstants.DEFAULT_GOALS_VALUES);
     return props;
   }
