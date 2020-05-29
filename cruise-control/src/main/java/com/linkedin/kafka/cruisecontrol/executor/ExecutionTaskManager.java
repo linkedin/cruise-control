@@ -260,27 +260,24 @@ public class ExecutionTaskManager {
    * Mark the given tasks as in progress. Tasks are executed homogeneously -- all tasks have the same balancing action.
    */
   public synchronized void markTasksInProgress(List<ExecutionTask> tasks) {
-    if (!tasks.isEmpty()) {
-      for (ExecutionTask task : tasks) {
-        _executionTaskTracker.markTaskState(task, State.IN_PROGRESS);
-        switch (task.type()) {
-          case INTER_BROKER_REPLICA_ACTION:
-            _inProgressPartitionsForInterBrokerMovement.add(task.proposal().topicPartition());
-            int oldLeader = task.proposal().oldLeader().brokerId();
-            _inProgressInterBrokerReplicaMovementsByBrokerId.put(oldLeader,
-                                                                 _inProgressInterBrokerReplicaMovementsByBrokerId.get(oldLeader) + 1);
-            task.proposal()
-                .replicasToAdd()
-                .forEach(r -> _inProgressInterBrokerReplicaMovementsByBrokerId.put(r.brokerId(),
-                              _inProgressInterBrokerReplicaMovementsByBrokerId.get(r.brokerId()) + 1));
-            break;
-          case INTRA_BROKER_REPLICA_ACTION:
-            _inProgressIntraBrokerReplicaMovementsByBrokerId.put(task.brokerId(),
-                                                                 _inProgressIntraBrokerReplicaMovementsByBrokerId.get(task.brokerId()) + 1);
-            break;
-          default:
-            break;
-        }
+    for (ExecutionTask task : tasks) {
+      _executionTaskTracker.markTaskState(task, State.IN_PROGRESS);
+      switch (task.type()) {
+        case INTER_BROKER_REPLICA_ACTION:
+          _inProgressPartitionsForInterBrokerMovement.add(task.proposal().topicPartition());
+          int oldLeader = task.proposal().oldLeader().brokerId();
+          _inProgressInterBrokerReplicaMovementsByBrokerId.put(oldLeader,
+                                                               _inProgressInterBrokerReplicaMovementsByBrokerId.get(oldLeader) + 1);
+          task.proposal().replicasToAdd().forEach(
+              r -> _inProgressInterBrokerReplicaMovementsByBrokerId.put(r.brokerId(),
+                                                                        _inProgressInterBrokerReplicaMovementsByBrokerId.get(r.brokerId()) + 1));
+          break;
+        case INTRA_BROKER_REPLICA_ACTION:
+          _inProgressIntraBrokerReplicaMovementsByBrokerId.put(task.brokerId(),
+                                                               _inProgressIntraBrokerReplicaMovementsByBrokerId.get(task.brokerId()) + 1);
+          break;
+        default:
+          break;
       }
     }
   }

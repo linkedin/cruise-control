@@ -246,12 +246,12 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                               true,
                               RANDOM_UUID,
                               ExecutorTest.class::getSimpleName);
-    waitUntilTrue(() -> (executor.state().state() == ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS),
+    waitUntilTrue(() -> (executor.state().state() == ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS && !executor.inExecutionTasks().isEmpty()),
                   "Leader movement task did not start within the time limit",
                   EXECUTION_DEADLINE_MS, EXECUTION_SHORT_CHECK_MS);
 
-    // Sleep over 180000 (the hard coded timeout) with some margin for inter-thread synchronization.
-    time.sleep(200000);
+    // Sleep over ExecutorConfig#DEFAULT_LEADER_MOVEMENT_TIMEOUT_MS with some margin for inter-thread synchronization.
+    time.sleep(ExecutorConfig.DEFAULT_LEADER_MOVEMENT_TIMEOUT_MS + 1L);
     // The execution should finish.
     waitUntilTrue(() -> (!executor.hasOngoingExecution() && executor.state().state() == ExecutorState.State.NO_TASK_IN_PROGRESS),
                   "Proposal execution did not finish within the time limit",
