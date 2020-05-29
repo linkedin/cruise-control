@@ -26,16 +26,16 @@ object ExecutorUtils {
    * within the cluster, (2) introduce a new replica to the cluster (3) remove an existing replica from the cluster.
    *
    * @param kafkaZkClient the KafkaZkClient class to use for partition reassignment.
-   * @param reassignmentTasks Replica reassignment tasks to be executed.
+   * @param tasksToExecute Replica reassignment tasks to be executed.
    */
   def executeReplicaReassignmentTasks(kafkaZkClient: KafkaZkClient,
-                                      reassignmentTasks: java.util.List[ExecutionTask]) {
-    if (reassignmentTasks != null && !reassignmentTasks.isEmpty) {
+                                      tasksToExecute: java.util.List[ExecutionTask]) {
+    if (tasksToExecute != null && !tasksToExecute.isEmpty) {
       val inProgressReplicaReassignment = kafkaZkClient.getPartitionReassignment
       // Add the partition being assigned to the newReplicaAssignment because we are going to add the new
       // reassignment together.
       val newReplicaAssignment = scala.collection.mutable.Map(inProgressReplicaReassignment.toSeq: _*)
-      reassignmentTasks.foreach({ task =>
+      tasksToExecute.foreach({ task =>
         val tp = task.proposal.topicPartition()
         val oldReplicas = asScalaBuffer(task.proposal.oldReplicas()).map(_.brokerId.toInt)
         val newReplicas = asScalaBuffer(task.proposal().newReplicas()).map(_.brokerId.toInt)
@@ -100,6 +100,12 @@ object ExecutorUtils {
     preferredReplicaElectionCommand.moveLeaderToPreferredReplica()
   }
 
+  /**
+   * Retrieve the set of partitions that are currently being reassigned.
+   *
+   * @param kafkaZkClient the KafkaZkClient class to use for getting partition reassignment.
+   * @return Set of partitions with ongoing reassignments.
+   */
   def partitionsBeingReassigned(kafkaZkClient: KafkaZkClient): util.Set[TopicPartition] = {
     setAsJavaSet(kafkaZkClient.getPartitionReassignment.keys.toSet)
   }

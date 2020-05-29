@@ -113,6 +113,25 @@ public class KafkaCruiseControl {
   }
 
   /**
+   * Package private constructor for unit tests w/o static state initialization.
+   */
+  KafkaCruiseControl(KafkaCruiseControlConfig config,
+                     Time time,
+                     AnomalyDetector anomalyDetector,
+                     Executor executor,
+                     LoadMonitor loadMonitor,
+                     ExecutorService goalOptimizerExecutor,
+                     GoalOptimizer goalOptimizer) {
+    _config = config;
+    _time = time;
+    _anomalyDetector = anomalyDetector;
+    _executor = executor;
+    _loadMonitor = loadMonitor;
+    _goalOptimizerExecutor = goalOptimizerExecutor;
+    _goalOptimizer = goalOptimizer;
+  }
+
+  /**
    * @return The load monitor.
    */
   public LoadMonitor loadMonitor() {
@@ -214,7 +233,7 @@ public class KafkaCruiseControl {
     if (dryRun) {
       return;
     }
-    if (_executor.hasOngoingExecution()) {
+    if (hasOngoingExecution()) {
       if (!stopOngoingExecution) {
         throw new IllegalStateException(String.format("Cannot start a new execution while there is an ongoing execution. "
                                                       + "Please use %s=true to stop ongoing execution and start a new one.",
@@ -483,7 +502,7 @@ public class KafkaCruiseControl {
         || requirementsForCache.minRequiredNumWindows() > requirements.minRequiredNumWindows()
         || (requirementsForCache.includeAllTopics() && !requirements.includeAllTopics());
 
-    return _executor.hasOngoingExecution() || ignoreProposalCache || (goals != null && !goals.isEmpty())
+    return hasOngoingExecution() || ignoreProposalCache || (goals != null && !goals.isEmpty())
            || hasWeakerRequirement || excludedTopics != null || excludeBrokers || isTriggeredByGoalViolation
            || !requestedDestinationBrokerIds.isEmpty() || isRebalanceDiskMode
            || partitionWithOfflineReplicas(kafkaCluster()) != null;
