@@ -4,16 +4,21 @@ jobs:
 
   build:
     environment:
-      _JAVA_OPTIONS: "-Xms512m -Xmx512m"
+      _JAVA_OPTIONS: "-Xms512m -Xmx1g"
     working_directory: ~/workspace
     docker:
-      - image: circleci/openjdk:8-jdk
+      - image: circleci/openjdk:11-jdk
     steps:
       - checkout
       - restore_cache:
           key: dependency-cache-{{ checksum "build.gradle" }}
       - run:
-          command: ./gradlew --no-daemon -PmaxParallelForks=1 clean javadoc build
+          command: ./gradlew --no-daemon clean javadoc
+      - run:
+          # run static analysis tasks standalone to avoid OOME in CircleCI
+          command: ./gradlew --max-workers=1 --no-daemon analyze
+      - run:
+          command: ./gradlew --no-daemon -PmaxParallelForks=1 build
       - save_cache:
           key: dependency-cache-{{ checksum "build.gradle" }}
           paths:
@@ -32,7 +37,7 @@ jobs:
   publish:
     working_directory: ~/workspace
     docker:
-      - image: circleci/openjdk:8-jdk
+      - image: circleci/openjdk:11-jdk
     steps:
       - checkout
       - restore_cache:

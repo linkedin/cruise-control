@@ -11,6 +11,7 @@ import org.eclipse.jetty.security.SpnegoUserPrincipal;
 import org.eclipse.jetty.security.UserStore;
 import org.eclipse.jetty.security.authentication.AuthorizationService;
 import org.eclipse.jetty.server.UserIdentity;
+import org.eclipse.jetty.util.security.Credential;
 import org.junit.Test;
 
 import javax.security.auth.Subject;
@@ -34,13 +35,19 @@ public class TrustedProxyLoginServiceTest {
   public static final String TEST_SERVICE_USER = "testServiceUser";
   public static final String ENCODED_TOKEN = "encoded_token";
   public static final String TEST_USER = "testUser";
+  private static final Credential NO_CREDENTIAL = new Credential() {
+    @Override
+    public boolean check(Object credentials) {
+      return false;
+    }
+  };
 
   private static class TestAuthorizer implements AuthorizationService {
 
     private final UserStore _adminUserStore = new UserStore();
 
     TestAuthorizer(String testUser) {
-      _adminUserStore.addUser(testUser, null, new String[] { DefaultRoleSecurityProvider.ADMIN });
+      _adminUserStore.addUser(testUser, NO_CREDENTIAL, new String[] { DefaultRoleSecurityProvider.ADMIN });
     }
 
     @Override

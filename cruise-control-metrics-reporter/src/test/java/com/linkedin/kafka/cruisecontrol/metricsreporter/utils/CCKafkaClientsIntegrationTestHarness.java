@@ -24,6 +24,7 @@ public abstract class CCKafkaClientsIntegrationTestHarness extends CCKafkaIntegr
     super.setUp();
   }
 
+  @javax.annotation.Nonnull
   protected Producer<String, String> createProducer(Properties overrides) {
     Properties props = getProducerProperties(overrides);
     return new KafkaProducer<>(props);

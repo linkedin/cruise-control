@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -74,7 +75,7 @@ public class AnomalyDetector {
   private final List<String> _selfHealingGoals;
   private final ExecutorService _anomalyLoggerExecutor;
   private volatile Anomaly _anomalyInProgress;
-  private volatile long _numCheckedWithDelay;
+  private AtomicLong _numCheckedWithDelay;
   private final Object _shutdownLock;
 
   public AnomalyDetector(KafkaCruiseControl kafkaCruiseControl,
@@ -118,7 +119,7 @@ public class AnomalyDetector {
     _anomalyLoggerExecutor =
         Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("AnomalyLogger", true, null));
     _anomalyInProgress = null;
-    _numCheckedWithDelay = 0L;
+    _numCheckedWithDelay = new AtomicLong();
     _shutdownLock = new Object();
     // Register gauge sensors.
     registerGaugeSensors(dropwizardMetricRegistry);
@@ -162,7 +163,7 @@ public class AnomalyDetector {
     _anomalyLoggerExecutor =
         Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("AnomalyLogger", true, null));
     _anomalyInProgress = null;
-    _numCheckedWithDelay = 0L;
+    _numCheckedWithDelay = new AtomicLong();
     _shutdownLock = new Object();
     // Add anomaly detector state
     _anomalyDetectorState = new AnomalyDetectorState(new SystemTime(), new HashMap<>(KafkaAnomalyType.cachedValues().size()), 10, null);
@@ -302,7 +303,7 @@ public class AnomalyDetector {
    * @return Number of anomalies checked with delay.
    */
   public long numCheckedWithDelay() {
-    return _numCheckedWithDelay;
+    return _numCheckedWithDelay.get();
   }
 
   /**
@@ -458,7 +459,7 @@ public class AnomalyDetector {
             LOG.debug("Skip delayed checking anomaly {}, because anomaly detector is shutting down.", _anomalyInProgress);
           } else {
             LOG.debug("Scheduling broker failure detection with delay of {} ms", delayMs);
-            _numCheckedWithDelay++;
+            _numCheckedWithDelay.incrementAndGet();
             _detectorScheduler.schedule(() -> _brokerFailureDetector.detectBrokerFailures(false), delayMs, TimeUnit.MILLISECONDS);
             _anomalyDetectorState.onAnomalyHandle(_anomalyInProgress, AnomalyState.Status.CHECK_WITH_DELAY);
           }

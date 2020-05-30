@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreAuthorizationS
 import com.nimbusds.jwt.SignedJWT;
 import org.eclipse.jetty.security.UserStore;
 import org.eclipse.jetty.server.UserIdentity;
+import org.eclipse.jetty.util.security.Credential;
 import org.junit.Test;
 
 import javax.servlet.http.HttpServletRequest;
@@ -30,11 +31,17 @@ import static org.junit.Assert.assertTrue;
 public class JwtLoginServiceTest {
 
   private static final String TEST_USER = "testUser";
+  private static final Credential NO_CREDENTIAL = new Credential() {
+    @Override
+    public boolean check(Object credentials) {
+      return false;
+    }
+  };
 
   @Test
   public void testValidateTokenSuccessfully() throws Exception {
     UserStore testUserStore = new UserStore();
-    testUserStore.addUser(TEST_USER, null, new String[] {"USER"});
+    testUserStore.addUser(TEST_USER, NO_CREDENTIAL, new String[] {"USER"});
     TokenGenerator.TokenAndKeys tokenAndKeys = TokenGenerator.generateToken(TEST_USER);
     JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), null);
 
@@ -52,7 +59,7 @@ public class JwtLoginServiceTest {
   @Test
   public void testFailSignatureValidation() throws Exception {
     UserStore testUserStore = new UserStore();
-    testUserStore.addUser(TEST_USER, null, new String[] {"USER"});
+    testUserStore.addUser(TEST_USER, NO_CREDENTIAL, new String[] {"USER"});
     TokenGenerator.TokenAndKeys tokenAndKeys = TokenGenerator.generateToken(TEST_USER);
     TokenGenerator.TokenAndKeys tokenAndKeys2 = TokenGenerator.generateToken(TEST_USER); // this will be signed with a different key
     JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys2.publicKey(), null);
@@ -67,7 +74,7 @@ public class JwtLoginServiceTest {
   @Test
   public void testFailAudienceValidation() throws Exception {
     UserStore testUserStore = new UserStore();
-    testUserStore.addUser(TEST_USER, null, new String[] {"USER"});
+    testUserStore.addUser(TEST_USER, NO_CREDENTIAL, new String[] {"USER"});
     TokenGenerator.TokenAndKeys tokenAndKeys = TokenGenerator.generateToken(TEST_USER, Arrays.asList("A", "B"));
     JwtLoginService loginService = new JwtLoginService(
         new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), Arrays.asList("C", "D"));
@@ -82,7 +89,7 @@ public class JwtLoginServiceTest {
   @Test
   public void testFailExpirationValidation() throws Exception {
     UserStore testUserStore = new UserStore();
-    testUserStore.addUser(TEST_USER, null, new String[] {"USER"});
+    testUserStore.addUser(TEST_USER, NO_CREDENTIAL, new String[] {"USER"});
     TokenGenerator.TokenAndKeys tokenAndKeys = TokenGenerator.generateToken(TEST_USER, 1L);
     JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), null);
 
@@ -96,7 +103,7 @@ public class JwtLoginServiceTest {
   @Test
   public void testRevalidateTokenPasses() throws Exception {
     UserStore testUserStore = new UserStore();
-    testUserStore.addUser(TEST_USER, null, new String[] {"USER"});
+    testUserStore.addUser(TEST_USER, NO_CREDENTIAL, new String[] {"USER"});
     TokenGenerator.TokenAndKeys tokenAndKeys = TokenGenerator.generateToken(TEST_USER);
     JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), null);
 
@@ -115,7 +122,7 @@ public class JwtLoginServiceTest {
   @Test
   public void testRevalidateTokenFails() throws Exception {
     UserStore testUserStore = new UserStore();
-    testUserStore.addUser(TEST_USER, null, new String[] {"USER"});
+    testUserStore.addUser(TEST_USER, NO_CREDENTIAL, new String[] {"USER"});
     Instant now = Instant.now();
     TokenGenerator.TokenAndKeys tokenAndKeys = TokenGenerator.generateToken(TEST_USER, now.plusSeconds(10).toEpochMilli());
     Clock fixedClock = Clock.fixed(now, ZoneOffset.UTC);

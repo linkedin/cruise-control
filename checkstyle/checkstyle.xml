@@ -11,7 +11,7 @@ LinkedIn Java style.
 -->
 <module name="Checker">
     <module name="SuppressionFilter">
-        <property name="file" value="checkstyle/suppressions.xml"/>
+        <property name="file" value="${config_loc}/suppressions.xml"/>
     </module>
 
     <!-- header -->
@@ -22,7 +22,6 @@ LinkedIn Java style.
     <property name="severity" value="${checkstyle.severity}" default="error"/>
 
     <module name="TreeWalker">
-        <module name="FileContentsHolder"/>
 
         <!-- ANNOTATIONS -->
 

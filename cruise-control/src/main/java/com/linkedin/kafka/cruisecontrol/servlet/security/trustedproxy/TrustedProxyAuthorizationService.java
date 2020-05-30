@@ -9,6 +9,7 @@ import org.eclipse.jetty.security.UserStore;
 import org.eclipse.jetty.security.authentication.AuthorizationService;
 import org.eclipse.jetty.server.UserIdentity;
 import org.eclipse.jetty.util.component.AbstractLifeCycle;
+import org.eclipse.jetty.util.security.Credential;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -20,12 +21,18 @@ import java.util.regex.Pattern;
  */
 public class TrustedProxyAuthorizationService extends AbstractLifeCycle implements AuthorizationService {
 
+  private static final Credential NO_CREDENTIAL = new Credential() {
+    @Override
+    public boolean check(Object credentials) {
+      return false;
+    }
+  };
   private final UserStore _adminUserStore;
   private final Pattern _trustedProxyIpPattern;
 
   TrustedProxyAuthorizationService(List<String> userNames, String trustedProxyIpPattern) {
     _adminUserStore = new UserStore();
-    userNames.forEach(u -> _adminUserStore.addUser(u, null, new String[] { DefaultRoleSecurityProvider.ADMIN }));
+    userNames.forEach(u -> _adminUserStore.addUser(u, NO_CREDENTIAL, new String[] { DefaultRoleSecurityProvider.ADMIN }));
     if (trustedProxyIpPattern != null) {
       _trustedProxyIpPattern = Pattern.compile(trustedProxyIpPattern);
     } else {

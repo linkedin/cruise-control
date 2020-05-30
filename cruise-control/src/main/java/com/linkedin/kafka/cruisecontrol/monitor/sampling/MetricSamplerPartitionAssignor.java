@@ -17,13 +17,14 @@ import java.util.Set;
 public interface MetricSamplerPartitionAssignor extends CruiseControlConfigurable {
 
   /**
-   * @deprecated Please use {@link #assignPartitions(Cluster)}.
+   * Please use {@link #assignPartitions(Cluster)}.
    * Assign the partitions in the cluster to the metric fetchers.
    *
    * @param cluster        The Kafka cluster.
    * @param numFetchers    The number of metric fetchers.
    * @return A List of partition assignment for each of the fetchers.
    */
+  @Deprecated
   List<Set<TopicPartition>> assignPartitions(Cluster cluster, int numFetchers);
 
   /**

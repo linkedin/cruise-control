@@ -14,6 +14,7 @@ import org.eclipse.jetty.security.UserAuthentication;
 import org.eclipse.jetty.security.UserStore;
 import org.eclipse.jetty.server.Authentication;
 import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.util.security.Credential;
 import org.junit.Test;
 
 import javax.servlet.http.Cookie;
@@ -43,6 +44,12 @@ public class JwtAuthenticatorTest {
   private static final String CRUISE_CONTROL_ENDPOINT = "http://cruisecontrol.mycompany.com/state";
   private static final String USER_ROLE = "USER";
   private static final String BASIC_SCHEME = "Basic";
+  private static final Credential NO_CREDENTIAL = new Credential() {
+    @Override
+    public boolean check(Object credentials) {
+      return false;
+    }
+  };
 
   @Test
   public void testParseTokenFromAuthHeader() {
@@ -112,7 +119,7 @@ public class JwtAuthenticatorTest {
   @Test
   public void testSuccessfulLogin() throws Exception {
     UserStore testUserStore = new UserStore();
-    testUserStore.addUser(TEST_USER, null, new String[] {USER_ROLE});
+    testUserStore.addUser(TEST_USER, NO_CREDENTIAL, new String[]{USER_ROLE});
     TokenGenerator.TokenAndKeys tokenAndKeys = TokenGenerator.generateToken(TEST_USER);
     JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), null);
 
@@ -147,7 +154,7 @@ public class JwtAuthenticatorTest {
   @Test
   public void testFailedLoginWithUserNotFound() throws Exception {
     UserStore testUserStore = new UserStore();
-    testUserStore.addUser(TEST_USER_2, null, new String[] {USER_ROLE});
+    testUserStore.addUser(TEST_USER_2, NO_CREDENTIAL, new String[] {USER_ROLE});
     TokenGenerator.TokenAndKeys tokenAndKeys = TokenGenerator.generateToken(TEST_USER);
     JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), null);
 
@@ -181,7 +188,7 @@ public class JwtAuthenticatorTest {
   @Test
   public void testFailedLoginWithInvalidToken() throws Exception {
     UserStore testUserStore = new UserStore();
-    testUserStore.addUser(TEST_USER_2, null, new String[] {USER_ROLE});
+    testUserStore.addUser(TEST_USER_2, NO_CREDENTIAL, new String[] {USER_ROLE});
     TokenGenerator.TokenAndKeys tokenAndKeys = TokenGenerator.generateToken(TEST_USER);
     TokenGenerator.TokenAndKeys tokenAndKeys2 = TokenGenerator.generateToken(TEST_USER);
     JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), null);
