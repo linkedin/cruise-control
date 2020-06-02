@@ -44,24 +44,24 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
   public static final String METRIC_REPORTER_SAMPLER_BOOTSTRAP_SERVERS = "metric.reporter.sampler.bootstrap.servers";
   public static final String METRIC_REPORTER_TOPIC = "metric.reporter.topic";
   public static final String METRIC_REPORTER_SAMPLER_GROUP_ID = "metric.reporter.sampler.group.id";
-  private static final Duration METRIC_REPORTER_CONSUMER_POLL_TIMEOUT = Duration.ofMillis(5000L);
+  public static final Duration METRIC_REPORTER_CONSUMER_POLL_TIMEOUT = Duration.ofMillis(5000L);
   // Default configs
-  private static final String DEFAULT_METRIC_REPORTER_SAMPLER_GROUP_ID = "CruiseControlMetricsReporterSampler";
-  private static final long DEFAULT_RECONNECT_BACKOFF_MS = 50L;
-  private static final long ACCEPTABLE_NETWORK_DELAY_MS = 100L;
-  private CruiseControlMetricsProcessor _metricsProcessor;
+  public static final String DEFAULT_METRIC_REPORTER_SAMPLER_GROUP_ID = "CruiseControlMetricsReporterSampler";
+  public static final long DEFAULT_RECONNECT_BACKOFF_MS = 50L;
+  public static final long ACCEPTABLE_NETWORK_DELAY_MS = 100L;
+  protected CruiseControlMetricsProcessor _metricsProcessor;
   // static random token to avoid group conflict.
-  private static final Random RANDOM = new Random();
+  protected static final Random RANDOM = new Random();
 
-  private Consumer<String, CruiseControlMetric> _metricConsumer;
-  private String _metricReporterTopic;
-  private Set<TopicPartition> _currentPartitionAssignment;
+  protected Consumer<String, CruiseControlMetric> _metricConsumer;
+  protected String _metricReporterTopic;
+  protected Set<TopicPartition> _currentPartitionAssignment;
   // Due to delay introduced by KafkaProducer and network, the metric record's event time is smaller than append
   // time at broker side, sampler should take this delay into consideration when collecting metric records into samples.
   // _acceptableMetricRecordProduceDelayMs is a conservative estimate of this delay, if one record's event time not earlier
   // than starting_time_of_sampling_period minus _acceptableMetricRecordProduceDelayMs, it is included in the sample;
   // otherwise it is discarded.
-  private long _acceptableMetricRecordProduceDelayMs;
+  protected long _acceptableMetricRecordProduceDelayMs;
 
   @Override
   public Samples getSamples(Cluster cluster,
@@ -145,7 +145,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
    * @param endOffsets the log end for each partition.
    * @return True if the consumption is done, false otherwise.
    */
-  private boolean consumptionDone(Map<TopicPartition, Long> endOffsets) {
+  protected boolean consumptionDone(Map<TopicPartition, Long> endOffsets) {
     Set<TopicPartition> partitionsNotPaused = new HashSet<>(_metricConsumer.assignment());
     partitionsNotPaused.removeAll(_metricConsumer.paused());
     for (TopicPartition tp : partitionsNotPaused) {
@@ -162,7 +162,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
    *
    * @return True if the set of partitions currently assigned to this consumer is empty, false otherwise.
    */
-  private boolean refreshPartitionAssignment() {
+  protected boolean refreshPartitionAssignment() {
     List<PartitionInfo> remotePartitionInfo = _metricConsumer.partitionsFor(_metricReporterTopic);
     if (remotePartitionInfo == null) {
       LOG.error("_metricConsumer returned null for _metricReporterTopic {}", _metricReporterTopic);
