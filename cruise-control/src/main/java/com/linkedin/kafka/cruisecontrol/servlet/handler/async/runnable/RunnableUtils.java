@@ -64,8 +64,8 @@ public class RunnableUtils {
 
   /**
    * Populate cluster rack information for topics to change replication factor. In the process this method also conducts a sanity
-   * check to ensure that there are enough racks in the cluster to allocate new replicas to racks which do not host replica
-   * of the same partition.
+   * check to ensure that there are enough brokers and racks in the cluster to allocate new replicas to racks which do not host
+   * replica of the same partition.
    *
    * @param topicsByReplicationFactor Topics to change replication factor by target replication factor.
    * @param cluster Current cluster state.
@@ -93,7 +93,11 @@ public class RunnableUtils {
     }
 
     topicsByReplicationFactor.forEach((replicationFactor, topics) -> {
-      if (replicationFactor > brokersByRack.size()) {
+      if (replicationFactor > rackByBroker.size()) {
+        throw new RuntimeException(String.format("Unable to change replication factor (RF) of topics %s to %d since there are only %d "
+                                                 + "alive brokers in the cluster. Requested RF cannot be more than number of alive brokers.",
+                                                 topics, replicationFactor, rackByBroker.size()));
+      } else if (replicationFactor > brokersByRack.size()) {
         if (skipTopicRackAwarenessCheck) {
           LOG.info("Target replication factor for topics {} is {}, which is larger than number of racks in cluster. Rack-awareness "
                    + "property will be violated to add new replicas.", topics, replicationFactor);

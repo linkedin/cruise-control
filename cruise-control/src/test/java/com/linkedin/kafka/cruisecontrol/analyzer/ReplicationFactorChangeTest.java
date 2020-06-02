@@ -61,8 +61,8 @@ import static org.junit.Assert.fail;
  */
 @RunWith(Parameterized.class)
 public class ReplicationFactorChangeTest {
-  private static short SMALL_REPLICATION_FACTOR = 1;
-  private static short LARGE_REPLICATION_FACTOR = 3;
+  private static final short SMALL_REPLICATION_FACTOR = 1;
+  private static final short LARGE_REPLICATION_FACTOR = 3;
   @Rule
   public ExpectedException _expected = ExpectedException.none();
 
