@@ -5,10 +5,10 @@
 package com.linkedin.kafka.cruisecontrol.servlet.security.spnego;
 
 import com.linkedin.kafka.cruisecontrol.servlet.security.DefaultRoleSecurityProvider;
+import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreAuthorizationService;
 import org.eclipse.jetty.security.UserStore;
 import org.eclipse.jetty.server.UserIdentity;
-import org.eclipse.jetty.util.security.Credential;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -17,17 +17,11 @@ import static org.junit.Assert.assertNotNull;
 public class SpnegoUserStoreAuthorizationServiceTest {
 
   private static final String TEST_USER = "testUser";
-  private static final Credential NO_CREDENTIAL = new Credential() {
-    @Override
-    public boolean check(Object credentials) {
-      return false;
-    }
-  };
 
   @Test
   public void testPrincipalNames() {
     UserStore users = new UserStore();
-    users.addUser(TEST_USER, NO_CREDENTIAL, new String[] { DefaultRoleSecurityProvider.ADMIN });
+    users.addUser(TEST_USER, SecurityUtils.NO_CREDENTIAL, new String[] { DefaultRoleSecurityProvider.ADMIN });
     UserStoreAuthorizationService usas = new SpnegoUserStoreAuthorizationService(users);
 
     UserIdentity result = usas.getUserIdentity(null, TEST_USER + "/host@REALM");
