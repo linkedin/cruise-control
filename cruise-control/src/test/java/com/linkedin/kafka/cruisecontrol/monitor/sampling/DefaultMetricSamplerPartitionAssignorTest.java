@@ -31,6 +31,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.META
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.METADATA_EXPIRY_MS;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.NODE_0;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.nodes;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.nodeIds;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -76,9 +77,11 @@ public class DefaultMetricSamplerPartitionAssignorTest {
     for (Map.Entry<String, Set<PartitionInfo>> entry : topicToTopicPartitions.entrySet()) {
       List<MetadataResponse.PartitionMetadata> partitionMetadata = new ArrayList<>(entry.getValue().size());
       for (PartitionInfo tp : entry.getValue()) {
-        partitionMetadata.add(new MetadataResponse.PartitionMetadata(Errors.NONE, tp.partition(), NODE_0,
+        partitionMetadata.add(new MetadataResponse.PartitionMetadata(Errors.NONE,
+                                                                     new TopicPartition(
+                                                                             tp.topic(), tp.partition()), Optional.of(NODE_0.id()),
                                                                      Optional.of(RecordBatch.NO_PARTITION_LEADER_EPOCH),
-                                                                     Arrays.asList(nodes()), Arrays.asList(nodes()),
+                                                                     nodeIds(), nodeIds(),
                                                                      Collections.emptyList()));
       }
       topicMetadata.add(new MetadataResponse.TopicMetadata(Errors.NONE, entry.getKey(), false, partitionMetadata));
@@ -88,7 +91,7 @@ public class DefaultMetricSamplerPartitionAssignorTest {
                                                                                         cluster.clusterResource().clusterId(),
                                                                                         MetadataResponse.NO_CONTROLLER_ID,
                                                                                         topicMetadata);
-    metadata.update(KafkaCruiseControlUtils.REQUEST_VERSION_UPDATE, metadataResponse, 0);
+    metadata.update(KafkaCruiseControlUtils.REQUEST_VERSION_UPDATE, metadataResponse, false, 0);
 
 
     MetricSamplerPartitionAssignor assignor = new DefaultMetricSamplerPartitionAssignor();
