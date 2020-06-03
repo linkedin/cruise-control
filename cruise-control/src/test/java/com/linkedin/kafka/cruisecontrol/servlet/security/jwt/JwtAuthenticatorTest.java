@@ -3,6 +3,7 @@
  */
 package com.linkedin.kafka.cruisecontrol.servlet.security.jwt;
 
+import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreAuthorizationService;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.http.HttpMethod;
@@ -112,7 +113,7 @@ public class JwtAuthenticatorTest {
   @Test
   public void testSuccessfulLogin() throws Exception {
     UserStore testUserStore = new UserStore();
-    testUserStore.addUser(TEST_USER, null, new String[] {USER_ROLE});
+    testUserStore.addUser(TEST_USER, SecurityUtils.NO_CREDENTIAL, new String[]{USER_ROLE});
     TokenGenerator.TokenAndKeys tokenAndKeys = TokenGenerator.generateToken(TEST_USER);
     JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), null);
 
@@ -147,7 +148,7 @@ public class JwtAuthenticatorTest {
   @Test
   public void testFailedLoginWithUserNotFound() throws Exception {
     UserStore testUserStore = new UserStore();
-    testUserStore.addUser(TEST_USER_2, null, new String[] {USER_ROLE});
+    testUserStore.addUser(TEST_USER_2, SecurityUtils.NO_CREDENTIAL, new String[] {USER_ROLE});
     TokenGenerator.TokenAndKeys tokenAndKeys = TokenGenerator.generateToken(TEST_USER);
     JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), null);
 
@@ -181,7 +182,7 @@ public class JwtAuthenticatorTest {
   @Test
   public void testFailedLoginWithInvalidToken() throws Exception {
     UserStore testUserStore = new UserStore();
-    testUserStore.addUser(TEST_USER_2, null, new String[] {USER_ROLE});
+    testUserStore.addUser(TEST_USER_2, SecurityUtils.NO_CREDENTIAL, new String[] {USER_ROLE});
     TokenGenerator.TokenAndKeys tokenAndKeys = TokenGenerator.generateToken(TEST_USER);
     TokenGenerator.TokenAndKeys tokenAndKeys2 = TokenGenerator.generateToken(TEST_USER);
     JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), null);

@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet.security.trustedproxy;
 
 import com.linkedin.kafka.cruisecontrol.servlet.security.DefaultRoleSecurityProvider;
+import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityUtils;
 import org.eclipse.jetty.security.UserStore;
 import org.eclipse.jetty.security.authentication.AuthorizationService;
 import org.eclipse.jetty.server.UserIdentity;
@@ -25,7 +26,7 @@ public class TrustedProxyAuthorizationService extends AbstractLifeCycle implemen
 
   TrustedProxyAuthorizationService(List<String> userNames, String trustedProxyIpPattern) {
     _adminUserStore = new UserStore();
-    userNames.forEach(u -> _adminUserStore.addUser(u, null, new String[] { DefaultRoleSecurityProvider.ADMIN }));
+    userNames.forEach(u -> _adminUserStore.addUser(u, SecurityUtils.NO_CREDENTIAL, new String[] { DefaultRoleSecurityProvider.ADMIN }));
     if (trustedProxyIpPattern != null) {
       _trustedProxyIpPattern = Pattern.compile(trustedProxyIpPattern);
     } else {

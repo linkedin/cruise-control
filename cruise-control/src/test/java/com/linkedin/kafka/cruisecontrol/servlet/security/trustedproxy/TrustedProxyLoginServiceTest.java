@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet.security.trustedproxy;
 
 import com.linkedin.kafka.cruisecontrol.servlet.security.DefaultRoleSecurityProvider;
+import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityUtils;
 import org.eclipse.jetty.security.ConfigurableSpnegoLoginService;
 import org.eclipse.jetty.security.SpnegoUserIdentity;
 import org.eclipse.jetty.security.SpnegoUserPrincipal;
@@ -40,7 +41,7 @@ public class TrustedProxyLoginServiceTest {
     private final UserStore _adminUserStore = new UserStore();
 
     TestAuthorizer(String testUser) {
-      _adminUserStore.addUser(testUser, null, new String[] { DefaultRoleSecurityProvider.ADMIN });
+      _adminUserStore.addUser(testUser, SecurityUtils.NO_CREDENTIAL, new String[] { DefaultRoleSecurityProvider.ADMIN });
     }
 
     @Override

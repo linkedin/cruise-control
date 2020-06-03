@@ -8,6 +8,7 @@ plugins {
   id "idea"
   id "jacoco" // Java Code Coverage plugin
   id "com.github.ben-manes.versions" version "0.28.0"
+  id "com.github.spotbugs" version "4.2.4" apply false
 }
 
 group = 'com.linkedin.cruisecontrol'
@@ -76,7 +77,7 @@ subprojects {
 
   apply plugin: 'java'
   apply plugin: 'checkstyle'
-  apply plugin: 'findbugs'
+  apply plugin: "com.github.spotbugs"
   apply plugin: 'jacoco'
 
   task sourcesJar(type: Jar, dependsOn: classes) {
@@ -91,25 +92,38 @@ subprojects {
 
   //code quality and inspections
   checkstyle {
-    toolVersion = '8.1'
+    project.ext.checkstyleVersion = '8.20'
     ignoreFailures = false
-    configFile = rootProject.file('checkstyle/checkstyle.xml')
+    configDir = file("$rootDir/checkstyle")
   }
 
-  findbugs {
-    toolVersion = "3.0.1"
+  spotbugs {
+    toolVersion = '4.0.3'
     excludeFilter = file("$rootDir/gradle/findbugs-exclude.xml")
     ignoreFailures = false
+    jvmArgs = [ '-Xms512m' ]
+    maxHeapSize = '768m'
+    showProgress = true
   }
-
-  test.dependsOn('checkstyleMain', 'checkstyleTest', 'findbugsMain', 'findbugsTest')
-
-  tasks.withType(FindBugs) {
+  spotbugsMain {
     reports {
-      xml.enabled (project.hasProperty('xmlFindBugsReport'))
-      html.enabled (!project.hasProperty('xmlFindBugsReport'))
+      xml.enabled = (project.hasProperty('xmlFindBugsReport'))
+      html.enabled = (!project.hasProperty('xmlFindBugsReport'))
     }
   }
+  spotbugsTest {
+    reports {
+      xml.enabled = (project.hasProperty('xmlFindBugsReport'))
+      html.enabled = (!project.hasProperty('xmlFindBugsReport'))
+    }
+  }
+  // aggregated task for checkstyle and spotbugs static analyzers
+  task('analyze') {
+    dependsOn('checkstyleMain', 'checkstyleTest', 'spotbugsMain', 'spotbugsTest')
+    doLast {}
+  }
+
+  test.dependsOn('checkstyleMain', 'checkstyleTest', 'spotbugsMain', 'spotbugsTest')
 
   jar {
     from "$rootDir/LICENSE"
@@ -140,8 +154,8 @@ project(':cruise-control-core') {
     compile "org.slf4j:slf4j-api:1.7.30"
     compile 'junit:junit:4.13'
     compile 'org.apache.commons:commons-math3:3.6.1'
-    compile 'org.eclipse.jetty:jetty-servlet:9.4.26.v20200117'
-
+    compile 'org.eclipse.jetty:jetty-servlet:9.4.29.v20200521'
+    implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'
     testOutput sourceSets.test.output
   }
 
@@ -220,7 +234,7 @@ project(':cruise-control') {
     compile 'org.apache.commons:commons-math3:3.6.1'
     compile 'org.apache.httpcomponents:httpclient:4.5.11'
     compile 'com.google.code.gson:gson:2.8.6'
-    compile 'org.eclipse.jetty:jetty-server:9.4.26.v20200117'
+    compile 'org.eclipse.jetty:jetty-server:9.4.29.v20200521'
     compile 'io.dropwizard.metrics:metrics-core:3.2.6'
     compile 'com.nimbusds:nimbus-jose-jwt:8.5'
     compile 'com.101tec:zkclient:0.11'
@@ -236,6 +250,8 @@ project(':cruise-control') {
     testCompile 'commons-io:commons-io:2.6'
     testCompile 'org.bouncycastle:bcpkix-jdk15on:1.64'
     testCompile 'org.apache.kerby:kerb-simplekdc:2.0.0'
+
+    implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'
 
   }
 
@@ -341,6 +357,8 @@ project(':cruise-control-metrics-reporter') {
     testCompile "org.apache.kafka:kafka-clients:$kafkaVersion"
     testCompile 'commons-io:commons-io:2.6'
     testOutput sourceSets.test.output
+
+    implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'
   }
 
   publishing {
