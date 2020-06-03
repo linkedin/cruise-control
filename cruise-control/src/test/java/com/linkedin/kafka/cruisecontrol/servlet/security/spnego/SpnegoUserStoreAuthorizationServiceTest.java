@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet.security.spnego;
 
 import com.linkedin.kafka.cruisecontrol.servlet.security.DefaultRoleSecurityProvider;
+import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreAuthorizationService;
 import org.eclipse.jetty.security.UserStore;
 import org.eclipse.jetty.server.UserIdentity;
@@ -20,7 +21,7 @@ public class SpnegoUserStoreAuthorizationServiceTest {
   @Test
   public void testPrincipalNames() {
     UserStore users = new UserStore();
-    users.addUser(TEST_USER, null, new String[] { DefaultRoleSecurityProvider.ADMIN });
+    users.addUser(TEST_USER, SecurityUtils.NO_CREDENTIAL, new String[] { DefaultRoleSecurityProvider.ADMIN });
     UserStoreAuthorizationService usas = new SpnegoUserStoreAuthorizationService(users);
 
     UserIdentity result = usas.getUserIdentity(null, TEST_USER + "/host@REALM");

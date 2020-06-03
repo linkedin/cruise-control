@@ -24,6 +24,7 @@ public interface MetricSamplerPartitionAssignor extends CruiseControlConfigurabl
    * @param numFetchers    The number of metric fetchers.
    * @return A List of partition assignment for each of the fetchers.
    */
+  @Deprecated
   List<Set<TopicPartition>> assignPartitions(Cluster cluster, int numFetchers);
 
   /**
