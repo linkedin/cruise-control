@@ -29,6 +29,7 @@ import static org.junit.Assert.assertEquals;
 
 public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClientsIntegrationTestHarness {
     protected static final String TOPIC = "CruiseControlMetricsReporterTest";
+    protected static final String TEST_TOPIC = "TestTopic";
 
     @Before
     public void setUp() {
@@ -38,7 +39,7 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         Properties adminProps = new Properties();
         adminProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
         AdminClient adminClient = AdminClient.create(adminProps);
-        NewTopic testTopic = new NewTopic("TestTopic", 1, (short) 1);
+        NewTopic testTopic = new NewTopic(TEST_TOPIC, 1, (short) 1);
         CreateTopicsResult createTopicsResult = adminClient.createTopics(Collections.singleton(testTopic));
 
         AtomicInteger adminFailed = new AtomicInteger(0);
@@ -55,7 +56,7 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         AtomicInteger producerFailed = new AtomicInteger(0);
         try (Producer<String, String> producer = createProducer(producerProps)) {
             for (int i = 0; i < 10; i++) {
-                producer.send(new ProducerRecord<>("TestTopic", Integer.toString(i)),
+                producer.send(new ProducerRecord<>(TEST_TOPIC, Integer.toString(i)),
                         (m, e) -> {
                             if (e != null) {
                                 producerFailed.incrementAndGet();
@@ -83,7 +84,7 @@ public class CruiseControlMetricsReporterAutoCreateTopicTest extends CCKafkaClie
         props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG, TOPIC);
         // configure metrics topic auto-creation by the metrics reporter
         props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_CONFIG, "true");
-        props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_TIMEOUT_CONFIG, "5000");
+        props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_TIMEOUT_MS_CONFIG, "5000");
         props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_RETRIES_CONFIG, "1");
         props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS_CONFIG, "1");
         props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_CONFIG, "1");

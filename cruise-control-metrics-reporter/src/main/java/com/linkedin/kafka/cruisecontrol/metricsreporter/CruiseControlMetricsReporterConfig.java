@@ -27,8 +27,8 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   public static final String CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_CONFIG = "cruise.control.metrics.topic.auto.create";
   private static final String CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_DOC = "Cruise Control metrics reporter will enforce " +
       " the creation of the topic at launch";
-  public static final String CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_TIMEOUT_CONFIG = "cruise.control.metrics.topic.auto.create.timeout";
-  private static final String CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_TIMEOUT_DOC = "Timeout on the Cruise Control metrics topic creation";
+  public static final String CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_TIMEOUT_MS_CONFIG = "cruise.control.metrics.topic.auto.create.timeout.ms";
+  private static final String CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_TIMEOUT_MS_DOC = "Timeout on the Cruise Control metrics topic creation";
   public static final String CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_RETRIES_CONFIG = "cruise.control.metrics.topic.auto.create.retries";
   private static final String CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_RETRIES_DOC = "Number of retries of the" +
       " Cruise Control metrics reporter for the topic creation";
@@ -91,11 +91,11 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
                 DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE,
                 ConfigDef.Importance.LOW,
                 CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_DOC)
-        .define(CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_TIMEOUT_CONFIG,
+        .define(CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_TIMEOUT_MS_CONFIG,
                 ConfigDef.Type.LONG,
                 DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_TIMEOUT_MS,
                 ConfigDef.Importance.LOW,
-                CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_TIMEOUT_DOC)
+                CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_TIMEOUT_MS_DOC)
         .define(CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_RETRIES_CONFIG,
                 ConfigDef.Type.INT,
                 DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_RETRIES,

@@ -144,20 +144,26 @@ public class CruiseControlMetricsUtils {
    * @param maxAttempts the max number of attempts on calling the function
    */
   public static void retry(Supplier<Boolean> function, long scaleMs, int base, int maxAttempts) {
-    int attempts = 0;
-    boolean retry;
-    do {
-      retry = function.get();
-      if (retry) {
-        try {
-          if (++attempts == maxAttempts)
-            break;
-          Thread.sleep(scaleMs * (long) Math.pow(base, attempts));
-        } catch (InterruptedException e) {
+    if (maxAttempts > 0) {
+      int attempts = 0;
+      long timeToSleep = scaleMs;
+      boolean retry;
+      do {
+        retry = function.get();
+        if (retry) {
+          try {
+            if (++attempts == maxAttempts)
+              break;
+            timeToSleep *= base;
+            Thread.sleep(timeToSleep);
+          } catch (InterruptedException e) {
 
+          }
         }
-      }
-    } while (retry);
+      } while (retry);
+    } else {
+      throw new ConfigException("Max attempts on metrics topic creation has to be greater than zero.");
+    }
   }
 
   /**
