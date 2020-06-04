@@ -8,8 +8,6 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetr
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCEmbeddedBroker;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaClientsIntegrationTestHarness;
-import java.io.IOException;
-import java.net.ServerSocket;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
@@ -19,6 +17,8 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaTestUtils;
 import kafka.server.KafkaConfig;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -80,7 +80,7 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
   @Override
   public Properties overridingProps() {
     Properties props = new Properties();
-    int port = findLocalPort();
+    int port = CCKafkaTestUtils.findLocalPort();
     props.setProperty(CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG, CruiseControlMetricsReporter.class.getName());
     props.setProperty(KafkaConfig.ListenersProp(), "PLAINTEXT://127.0.0.1:" + port);
     props.setProperty(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG),
@@ -201,24 +201,5 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     // Check whether the topic config is updated
     topicDescription = adminClient.describeTopics(Collections.singleton(TOPIC)).values().get(TOPIC).get();
     assertEquals(2, topicDescription.partitions().size());
-  }
-
-  protected int findLocalPort() {
-    int port = -1;
-    while (port < 0) {
-      try {
-        ServerSocket socket = new ServerSocket(0);
-        socket.setReuseAddress(true);
-        port = socket.getLocalPort();
-        try {
-          socket.close();
-        } catch (IOException e) {
-          // Ignore IOException on close()
-        }
-      } catch (IOException ie) {
-        // let it go.
-      }
-    }
-    return port;
   }
 }

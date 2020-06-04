@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.metricsreporter.utils;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -159,6 +160,29 @@ public class CCKafkaTestUtils {
       stringBuiler.append(chars[Math.abs(random.nextInt()) % 16]);
     }
     return stringBuiler.toString();
+  }
+
+  /**
+   * Find a local port.
+   * @return A local port to use.
+   */
+  public static int findLocalPort() {
+    int port = -1;
+    while (port < 0) {
+      try {
+        ServerSocket socket = new ServerSocket(0);
+        socket.setReuseAddress(true);
+        port = socket.getLocalPort();
+        try {
+          socket.close();
+        } catch (IOException e) {
+          // Ignore IOException on close()
+        }
+      } catch (IOException ie) {
+        // let it go.
+      }
+    }
+    return port;
   }
 
   @FunctionalInterface
