@@ -69,6 +69,8 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   private volatile boolean _shutdown = false;
   private NewTopic _metricsTopic;
   private AdminClient _adminClient;
+  private long _metricsTopicAutoCreateTimeoutMs;
+  private int _metricsTopicAutoCreateRetries;
   protected static final String CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY = "delete";
   protected static final Duration PRODUCER_CLOSE_TIMEOUT = Duration.ofSeconds(5);
 
@@ -152,6 +154,10 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
         _metricsTopic = createMetricsTopicFromReporterConfig(reporterConfig);
         Properties adminClientConfigs = CruiseControlMetricsUtils.addSslConfigs(producerProps, reporterConfig);
         _adminClient = CruiseControlMetricsUtils.createAdminClient(adminClientConfigs);
+        _metricsTopicAutoCreateTimeoutMs = reporterConfig.getLong(
+            CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_TIMEOUT_MS_CONFIG);
+        _metricsTopicAutoCreateRetries = reporterConfig.getInt(
+            CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_RETRIES_CONFIG);
       } catch (CruiseControlMetricsReporterException e) {
         LOG.warn("Cruise Control metrics topic auto creation was disabled", e);
       }
@@ -180,16 +186,20 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   }
 
   protected void createCruiseControlMetricsTopic() throws TopicExistsException {
-    try {
-      CreateTopicsResult createTopicsResult = _adminClient.createTopics(Collections.singletonList(_metricsTopic));
-      createTopicsResult.values().get(_metricsTopic.name()).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-      LOG.info("Cruise Control metrics topic {} is created.", _metricsTopic.name());
-    } catch (InterruptedException | ExecutionException | TimeoutException e) {
-      if (e.getCause() instanceof TopicExistsException) {
-        throw (TopicExistsException) e.getCause();
+    CruiseControlMetricsUtils.retry(() -> {
+      try {
+        CreateTopicsResult createTopicsResult = _adminClient.createTopics(Collections.singletonList(_metricsTopic));
+        createTopicsResult.values().get(_metricsTopic.name()).get(_metricsTopicAutoCreateTimeoutMs, TimeUnit.MILLISECONDS);
+        LOG.info("Cruise Control metrics topic {} is created.", _metricsTopic.name());
+        return false;
+      } catch (InterruptedException | ExecutionException | TimeoutException e) {
+        if (e.getCause() instanceof TopicExistsException) {
+          throw (TopicExistsException) e.getCause();
+        }
+        LOG.warn("Unable to create Cruise Control metrics topic {}.", _metricsTopic.name(), e);
+        return true;
       }
-      LOG.warn("Unable to create Cruise Control metrics topic {}.", _metricsTopic.name(), e);
-    }
+    }, _metricsTopicAutoCreateRetries);
   }
 
   protected void maybeUpdateCruiseControlMetricsTopic() {
