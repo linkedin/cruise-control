@@ -15,7 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.shouldSkipAnomalyDetection;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getAnomalyDetectionStatus;
 
 /**
  * This class will be scheduled to periodically check if {@link TopicAnomalyFinder} identifies a topic anomaly.
@@ -41,7 +41,7 @@ public class TopicAnomalyDetector implements Runnable {
   @Override
   public void run() {
     try {
-      if (shouldSkipAnomalyDetection(_kafkaCruiseControl, true)) {
+      if (getAnomalyDetectionStatus(_kafkaCruiseControl, true) != AnomalyDetectionStatus.READY) {
         return;
       }
       for (TopicAnomalyFinder topicAnomalyFinder : _topicAnomalyFinders) {

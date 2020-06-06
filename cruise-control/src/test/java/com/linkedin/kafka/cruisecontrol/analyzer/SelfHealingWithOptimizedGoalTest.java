@@ -44,7 +44,7 @@ import static org.junit.Assert.assertTrue;
 @RunWith(Parameterized.class)
 public class SelfHealingWithOptimizedGoalTest {
   private final BalancingConstraint _balancingConstraint;
-  private final ClusterModel _cluster;
+  private final ClusterModel _clusterModel;
   private final List<String> _goalNameByPriority;
   private final List<OptimizationVerifier.Verification> _verifications;
 
@@ -52,16 +52,16 @@ public class SelfHealingWithOptimizedGoalTest {
    * Constructor for self-healing test.
    *
    * @param balancingConstraint Balancing constraint.
-   * @param cluster             The state of the cluster.
-   * @param goalNameByPriority  Name of goals by the order of execution priority.
+   * @param clusterModel The state of the cluster.
+   * @param goalNameByPriority Name of goals by the order of execution priority.
    * @param verifications The verifications to make.
    */
   public SelfHealingWithOptimizedGoalTest(BalancingConstraint balancingConstraint,
-                                          ClusterModel cluster,
+                                          ClusterModel clusterModel,
                                           List<String> goalNameByPriority,
                                           List<OptimizationVerifier.Verification> verifications) {
     _balancingConstraint = balancingConstraint;
-    _cluster = cluster;
+    _clusterModel = clusterModel;
     _goalNameByPriority = goalNameByPriority;
     _verifications = verifications;
   }
@@ -109,16 +109,16 @@ public class SelfHealingWithOptimizedGoalTest {
   }
 
   private static Object[] params(BalancingConstraint balancingConstraint,
-      ClusterModel cluster,
-      List<String> goalNameByPriority,
-      List<OptimizationVerifier.Verification> verifications) {
-    return new Object[]{balancingConstraint, cluster, goalNameByPriority, verifications};
+                                 ClusterModel clusterModel,
+                                 List<String> goalNameByPriority,
+                                 List<OptimizationVerifier.Verification> verifications) {
+    return new Object[]{balancingConstraint, clusterModel, goalNameByPriority, verifications};
   }
 
   @Test
   public void test() throws Exception {
     assertTrue("Self-healing test failed to improve the existing state.",
-               OptimizationVerifier.executeGoalsFor(_balancingConstraint, _cluster, _goalNameByPriority, Collections.emptySet(),
+               OptimizationVerifier.executeGoalsFor(_balancingConstraint, _clusterModel, _goalNameByPriority, Collections.emptySet(),
                                                     _verifications, true));
   }
 }

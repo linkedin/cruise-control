@@ -45,37 +45,35 @@ public class AnomalyDetectorUtils {
   }
 
   /**
-   * Skip anomaly detection if any of the following is true:
-   * <ul>
-   *  <li>Load monitor is not ready.</li>
-   *  <li>There is an ongoing execution.</li>
-   *  <li> (optional) There is any offline replica in the cluster.</li>
-   * </ul>
+   * Retrieve the {@link AnomalyDetectionStatus anomaly detection status}, indicating whether an anomaly detector is
+   * ready to check for an anomaly.
    *
-   * @return True to skip anomaly detection, false otherwise.
+   * <li>See {@link AnomalyDetectionStatus} for details.</li>
+   *
+   * @return The {@link AnomalyDetectionStatus anomaly detection status}, indicating whether the anomaly detector is ready.
    */
-  static boolean shouldSkipAnomalyDetection(KafkaCruiseControl kafkaCruiseControl, boolean checkOfflineReplica) {
+  static AnomalyDetectionStatus getAnomalyDetectionStatus(KafkaCruiseControl kafkaCruiseControl, boolean checkOfflineReplica) {
     if (checkOfflineReplica) {
       Set<Integer> brokersWithOfflineReplicas = kafkaCruiseControl.loadMonitor().brokersWithOfflineReplicas(MAX_METADATA_WAIT_MS);
       if (!brokersWithOfflineReplicas.isEmpty()) {
         LOG.info("Skipping anomaly detection because there are dead brokers/disks in the cluster, flawed brokers: {}",
                  brokersWithOfflineReplicas);
-        return true;
+        return AnomalyDetectionStatus.SKIP_HAS_OFFLINE_REPLICAS;
       }
     }
     LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = kafkaCruiseControl.getLoadMonitorTaskRunnerState();
     if (!AnomalyUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
       LOG.info("Skipping anomaly detection because load monitor is in {} state.", loadMonitorTaskRunnerState);
-      return true;
+      return AnomalyDetectionStatus.SKIP_LOAD_MONITOR_NOT_READY;
     }
 
     ExecutorState.State executionState = kafkaCruiseControl.executionState();
     if (executionState != ExecutorState.State.NO_TASK_IN_PROGRESS) {
       LOG.info("Skipping anomaly detection because the executor is in {} state.", executionState);
-      return true;
+      return AnomalyDetectionStatus.SKIP_EXECUTOR_NOT_READY;
     }
 
-    return false;
+    return AnomalyDetectionStatus.READY;
   }
 
   /**
