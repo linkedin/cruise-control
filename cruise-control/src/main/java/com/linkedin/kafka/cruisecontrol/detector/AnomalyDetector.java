@@ -75,7 +75,7 @@ public class AnomalyDetector {
   private final List<String> _selfHealingGoals;
   private final ExecutorService _anomalyLoggerExecutor;
   private volatile Anomaly _anomalyInProgress;
-  private AtomicLong _numCheckedWithDelay;
+  private final AtomicLong _numCheckedWithDelay;
   private final Object _shutdownLock;
 
   public AnomalyDetector(KafkaCruiseControl kafkaCruiseControl,

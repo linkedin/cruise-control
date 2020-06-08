@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.balancednessCostByGoal;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.MAX_BALANCEDNESS_SCORE;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.shouldSkipAnomalyDetection;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getAnomalyDetectionStatus;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG;
 
@@ -90,28 +90,38 @@ public class GoalViolationDetector implements Runnable {
   }
 
   /**
-   * Skip goal violation detection if any of the following is true:
+   * Retrieve the {@link AnomalyDetectionStatus anomaly detection status}, indicating whether the goal violation detector
+   * is ready to check for an anomaly.
+   *
    * <ul>
-   * <li>Cluster model generation has not changed since the last goal violation check.</li>
-   * <li>{@link AnomalyDetectorUtils#shouldSkipAnomalyDetection(KafkaCruiseControl, boolean)} returns true.
+   *   <li>Skips detection if cluster model generation has not changed since the last goal violation check.</li>
+   *   <li>In case the cluster has offline replicas, this function skips goal violation check and calls
+   *   {@link #setBalancednessWithOfflineReplicas}.</li>
+   *   <li>See {@link AnomalyDetectionStatus} for details.</li>
    * </ul>
    *
-   * @return True to skip goal violation detection based on the current state, false otherwise.
+   * @return The {@link AnomalyDetectionStatus anomaly detection status}, indicating whether the anomaly detector is ready.
    */
-  protected boolean shouldSkipGoalViolationDetection() {
+  protected AnomalyDetectionStatus getGoalViolationDetectionStatus() {
     if (_kafkaCruiseControl.loadMonitor().clusterModelGeneration().equals(_lastCheckedModelGeneration)) {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Skipping goal violation detection because the model generation hasn't changed. Current model generation {}",
                   _kafkaCruiseControl.loadMonitor().clusterModelGeneration());
       }
-      return true;
+      return AnomalyDetectionStatus.SKIP_MODEL_GENERATION_NOT_CHANGED;
     }
-    return shouldSkipAnomalyDetection(_kafkaCruiseControl, true);
+
+    AnomalyDetectionStatus detectionStatus = getAnomalyDetectionStatus(_kafkaCruiseControl, true);
+    if (detectionStatus == AnomalyDetectionStatus.SKIP_HAS_OFFLINE_REPLICAS) {
+      setBalancednessWithOfflineReplicas();
+    }
+
+    return detectionStatus;
   }
 
   @Override
   public void run() {
-    if (shouldSkipGoalViolationDetection()) {
+    if (getGoalViolationDetectionStatus() != AnomalyDetectionStatus.READY) {
       return;
     }
 

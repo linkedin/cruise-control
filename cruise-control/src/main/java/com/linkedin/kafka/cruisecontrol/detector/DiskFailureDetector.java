@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.DISK_FAILURES_CLASS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
-import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.shouldSkipAnomalyDetection;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getAnomalyDetectionStatus;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 
@@ -52,39 +52,43 @@ public class DiskFailureDetector implements Runnable {
   }
 
   /**
-   * Skip disk failure detection if any of the following is true:
+   * Retrieve the {@link AnomalyDetectionStatus anomaly detection status}, indicating whether the disk failure detector
+   * is ready to check for an anomaly.
+   *
+   * Skip disk failure detection if any of the following is satisfied:
    * <ul>
-   * <li>Cluster model generation has not changed since the last disk failure check.</li>
-   * <li>There are dead brokers in the cluster, {@link BrokerFailureDetector} should take care of the anomaly.</li>
-   * <li>{@link AnomalyDetectorUtils#shouldSkipAnomalyDetection(KafkaCruiseControl, boolean)} returns true.
+   *   <li>Cluster model generation has not changed since the last disk failure check.</li>
+   *   <li>There are dead brokers in the cluster, {@link BrokerFailureDetector} should take care of the anomaly.</li>
+   *   <li>{@link AnomalyDetectorUtils#getAnomalyDetectionStatus(KafkaCruiseControl, boolean)} is not {@link AnomalyDetectionStatus#READY}.
+   *   <li>See {@link AnomalyDetectionStatus} for details.</li>
    * </ul>
    *
-   * @return True to skip disk failure detection based on the current state, false otherwise.
+   * @return The {@link AnomalyDetectionStatus anomaly detection status}, indicating whether the anomaly detector is ready.
    */
-  private boolean shouldSkipDiskFailureDetection() {
+  private AnomalyDetectionStatus getDiskFailureDetectionStatus() {
     int currentClusterGeneration = _kafkaCruiseControl.loadMonitor().clusterModelGeneration().clusterGeneration();
     if (currentClusterGeneration == _lastCheckedClusterGeneration) {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Skipping disk failure detection because the model generation hasn't changed. Current model generation {}",
                   _kafkaCruiseControl.loadMonitor().clusterModelGeneration());
       }
-      return true;
+      return AnomalyDetectionStatus.SKIP_MODEL_GENERATION_NOT_CHANGED;
     }
     _lastCheckedClusterGeneration = currentClusterGeneration;
 
     Set<Integer> deadBrokers = _kafkaCruiseControl.loadMonitor().deadBrokersWithReplicas(MAX_METADATA_WAIT_MS);
     if (!deadBrokers.isEmpty()) {
       LOG.debug("Skipping disk failure detection because there are dead broker in the cluster, dead broker: {}", deadBrokers);
-      return true;
+      return AnomalyDetectionStatus.SKIP_HAS_DEAD_BROKERS;
     }
 
-    return shouldSkipAnomalyDetection(_kafkaCruiseControl, false);
+    return getAnomalyDetectionStatus(_kafkaCruiseControl, false);
   }
 
   @Override
   public void run() {
     try {
-      if (shouldSkipDiskFailureDetection()) {
+      if (getDiskFailureDetectionStatus() != AnomalyDetectionStatus.READY) {
         return;
       }
       Map<Integer, Map<String, Long>> failedDisksByBroker = new HashMap<>();
