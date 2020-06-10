@@ -1,1 +1,1 @@
-Addresses the issue #<Replace-Me-With-The-Issue-Number-Addressed-By-This-PR>.
+This PR resolves #<Replace-Me-With-The-Issue-Number-Addressed-By-This-PR>.
