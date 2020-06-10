@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.executor.strategy.PrioritizeLargeReplica
 import com.linkedin.kafka.cruisecontrol.executor.strategy.PrioritizeSmallReplicaMovementStrategy;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
+import kafka.server.KafkaConfig;
 import org.apache.kafka.common.config.ConfigDef;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
@@ -29,8 +30,8 @@ public class ExecutorConfig {
   /**
    * <code>zookeeper.connect</code>
    */
-  public static final String ZOOKEEPER_CONNECT_CONFIG = "zookeeper.connect";
-  public static final String ZOOKEEPER_CONNECT_DOC = "The ZooKeeper path used by the Kafka cluster.";
+  public static final String ZOOKEEPER_CONNECT_CONFIG = KafkaConfig.ZkConnectProp();
+  public static final String ZOOKEEPER_CONNECT_DOC = KafkaConfig.ZkConnectDoc();
 
   /**
    * <code>zookeeper.security.enabled</code>
