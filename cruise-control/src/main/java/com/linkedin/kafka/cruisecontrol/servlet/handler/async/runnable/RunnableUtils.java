@@ -36,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.NO_TASK_IN_PROGRESS;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.getRackHandleNull;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.STOP_PROPOSAL_EXECUTION;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.FORCE_STOP_PARAM;
 
@@ -85,8 +86,7 @@ public class RunnableUtils {
       if (excludedBrokersForReplicaMove.contains(node.id())) {
         continue;
       }
-      // If the rack is not specified, we use the broker id info as rack info.
-      String rack = node.rack() == null || node.rack().isEmpty() ? String.valueOf(node.id()) : node.rack();
+      String rack = getRackHandleNull(node);
       brokersByRack.putIfAbsent(rack, new ArrayList<>());
       brokersByRack.get(rack).add(node.id());
       rackByBroker.put(node.id(), rack);
