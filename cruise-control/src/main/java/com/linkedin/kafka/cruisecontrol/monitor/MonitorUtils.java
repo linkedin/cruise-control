@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.monitor;
 
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
-import com.linkedin.cruisecontrol.monitor.sampling.aggregator.Extrapolation;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
@@ -18,15 +17,11 @@ import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ModelUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionEntity;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrapolation;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -325,24 +320,6 @@ public class MonitorUtils {
         clusterModel.setBrokerState(brokerId, Broker.State.BAD_DISKS);
       }
     }
-  }
-
-  /**
-   * @param valuesExtrapolations The aggregated metric values for windows and the extrapolation information by partitions.
-   * @return Sample extrapolations by partitions.
-   */
-  static Map<TopicPartition, List<SampleExtrapolation>> partitionExtrapolations(Map<PartitionEntity, ValuesAndExtrapolations> valuesExtrapolations) {
-    Map<TopicPartition, List<SampleExtrapolation>> sampleExtrapolations = new HashMap<>();
-    for (Map.Entry<PartitionEntity, ValuesAndExtrapolations> entry : valuesExtrapolations.entrySet()) {
-      TopicPartition tp = entry.getKey().tp();
-      Map<Integer, Extrapolation> extrapolations = entry.getValue().extrapolations();
-      if (!extrapolations.isEmpty()) {
-        List<SampleExtrapolation> extrapolationForPartition = sampleExtrapolations.computeIfAbsent(tp, p -> new ArrayList<>());
-        extrapolations.forEach((t, extrapolation) -> extrapolationForPartition.add(new SampleExtrapolation(t, extrapolation)));
-      }
-    }
-
-    return sampleExtrapolations;
   }
 
   /**

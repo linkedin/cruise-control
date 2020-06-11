@@ -199,8 +199,9 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
       long fromWindowIndex = Math.max(windowIndex(from), _oldestWindowIndex);
       long toWindowIndex = Math.min(windowIndex(to), _currentWindowIndex - 1);
       if (fromWindowIndex > _currentWindowIndex || toWindowIndex < _oldestWindowIndex) {
-        throw new NotEnoughValidWindowsException(String.format("There is no window available in range [%d, %d]",
-                                                               from, to));
+        throw new NotEnoughValidWindowsException(String.format("There is no window available in range [%d, %d] (index [%d, %d])."
+                                                               + " Window index (current: %d, oldest: %d).", from, to,
+                                                               fromWindowIndex, toWindowIndex, _currentWindowIndex, _oldestWindowIndex));
       }
 
       // Get and verify the completeness.

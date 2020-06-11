@@ -329,6 +329,12 @@ public class MonitorConfig {
       + "class name. The broker capacity configuration resolver is responsible for getting the broker capacity. The "
       + "default implementation is a file based solution.";
 
+  /**
+   * <code>monitor.state.update.interval.ms</code>
+   */
+  public static final String MONITOR_STATE_UPDATE_INTERVAL_MS_CONFIG = "monitor.state.update.interval.ms";
+  public static final long DEFAULT_MONITOR_STATE_UPDATE_INTERVAL_MS = 30000L;
+  public static final String MONITOR_STATE_UPDATE_INTERVAL_MS_DOC = "The load monitor interval to refresh the monitor state.";
 
   /**
    * Define configs for Monitor.
@@ -542,6 +548,11 @@ public class MonitorConfig {
                             ConfigDef.Type.CLASS,
                             DEFAULT_BROKER_CAPACITY_CONFIG_RESOLVER_CLASS,
                             ConfigDef.Importance.MEDIUM,
-                            BROKER_CAPACITY_CONFIG_RESOLVER_CLASS_DOC);
+                            BROKER_CAPACITY_CONFIG_RESOLVER_CLASS_DOC)
+                    .define(MONITOR_STATE_UPDATE_INTERVAL_MS_CONFIG,
+                            ConfigDef.Type.LONG,
+                            DEFAULT_MONITOR_STATE_UPDATE_INTERVAL_MS,
+                            ConfigDef.Importance.LOW,
+                            MONITOR_STATE_UPDATE_INTERVAL_MS_DOC);
   }
 }
