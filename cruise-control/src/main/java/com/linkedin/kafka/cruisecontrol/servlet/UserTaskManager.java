@@ -770,7 +770,7 @@ public class UserTaskManager implements Closeable {
           if (_state == TaskState.COMPLETED_WITH_ERROR) {
             // If the state is completed with error and fetch completed task is true then just return "CompletedWithError"
             // as the "originalResponse".
-            jsonObjectMap.put(ORIGINAL_RESPONSE, TaskState.COMPLETED_WITH_ERROR);
+            jsonObjectMap.put(ORIGINAL_RESPONSE, TaskState.COMPLETED_WITH_ERROR.toString());
           } else {
             throw new IllegalStateException("Error happened in fetching response for task " + _userTaskId.toString(), e);
           }

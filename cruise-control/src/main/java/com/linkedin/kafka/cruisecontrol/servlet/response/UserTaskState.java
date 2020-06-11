@@ -169,7 +169,12 @@ public class UserTaskState extends AbstractCruiseControlResponse {
       CruiseControlResponse response = userTaskInfo.futures().get(userTaskInfo.futures().size() - 1).get();
       return response.cachedResponse();
     } catch (InterruptedException | ExecutionException e) {
-      throw new IllegalStateException("Error happened in fetching response for task " + userTaskInfo.userTaskId().toString(), e);
+      if (userTaskInfo.state().equals(UserTaskManager.TaskState.COMPLETED_WITH_ERROR)) {
+        // TODO: Ideally this should return a meaningful description of the server-side error
+        return UserTaskManager.TaskState.COMPLETED_WITH_ERROR.toString();
+      } else {
+        throw new IllegalStateException("Error happened in fetching response for task " + userTaskInfo.userTaskId().toString(), e);
+      }
     }
   }
 
