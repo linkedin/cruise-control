@@ -44,7 +44,7 @@ public class GetStateRunnable extends OperationRunnable {
     }
 
     return new CruiseControlState(substates.contains(EXECUTOR) ? _kafkaCruiseControl.executorState() : null,
-                                  substates.contains(MONITOR) ? _kafkaCruiseControl.monitorState(_future.operationProgress(), cluster) : null,
+                                  substates.contains(MONITOR) ? _kafkaCruiseControl.monitorState(cluster) : null,
                                   substates.contains(ANALYZER) ? _kafkaCruiseControl.analyzerState(cluster) : null,
                                   substates.contains(ANOMALY_DETECTOR) ? _kafkaCruiseControl.anomalyDetectorState() : null,
                                   _kafkaCruiseControl.config());

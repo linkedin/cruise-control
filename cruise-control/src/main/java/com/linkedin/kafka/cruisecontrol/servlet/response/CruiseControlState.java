@@ -11,7 +11,6 @@ import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorState;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionTask;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitorState;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrapolation;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlStateParameters;
 import java.util.Arrays;
@@ -22,7 +21,6 @@ import java.util.Map;
 import com.google.gson.Gson;
 import java.util.Set;
 import java.util.StringJoiner;
-import org.apache.kafka.common.TopicPartition;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
@@ -166,20 +164,15 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
     }
   }
 
+  /**
+   * Super verbose response is used only for debugging and development purposes.
+   * It is not exposed in JSON response, and would be dropped in a future release.
+   *
+   * @param sb String builder to append super verbose response.
+   */
   protected void writeSuperVerbose(StringBuilder sb) {
-    if (_monitorState != null) {
-      sb.append(String.format("%n%nExtrapolated metric samples:%n"));
-      Map<TopicPartition, List<SampleExtrapolation>> sampleFlaws = _monitorState.sampleExtrapolations();
-      if (sampleFlaws != null && !sampleFlaws.isEmpty()) {
-        for (Map.Entry<TopicPartition, List<SampleExtrapolation>> entry : sampleFlaws.entrySet()) {
-          sb.append(String.format("%n%s: %s", entry.getKey(), entry.getValue()));
-        }
-      } else {
-        sb.append("None");
-      }
-      if (_monitorState.detailTrainingProgress() != null) {
-        sb.append(String.format("%n%nLinear Regression Model State:%n%s", _monitorState.detailTrainingProgress()));
-      }
+    if (_monitorState != null && _monitorState.detailTrainingProgress() != null) {
+      sb.append(String.format("%n%nLinear Regression Model State:%n%s", _monitorState.detailTrainingProgress()));
     }
   }
 

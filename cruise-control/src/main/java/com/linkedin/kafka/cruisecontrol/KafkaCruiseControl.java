@@ -715,12 +715,11 @@ public class KafkaCruiseControl {
   /**
    * Get the state of the load monitor.
    *
-   * @param operationProgress The progress for the job.
    * @param cluster Kafka cluster.
    * @return The state of the load monitor.
    */
-  public LoadMonitorState monitorState(OperationProgress operationProgress, Cluster cluster) {
-    return _loadMonitor.state(operationProgress, cluster);
+  public LoadMonitorState monitorState(Cluster cluster) {
+    return _loadMonitor.state(cluster);
   }
 
   /**

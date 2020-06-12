@@ -238,13 +238,13 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
     return allPartitions;
   }
 
-  private SortedSet<Long> windowIndicesToWindows(SortedSet<Long> original, long windowMs) {
+  private static SortedSet<Long> windowIndicesToWindows(SortedSet<Long> original, long windowMs) {
     SortedSet<Long> result = new TreeSet<>(Collections.reverseOrder());
     original.forEach(idx -> result.add(idx * windowMs));
     return result;
   }
 
-  private <T> SortedMap<Long, T> windowIndicesToWindows(SortedMap<Long, T> original, long windowMs) {
+  private static <T> SortedMap<Long, T> windowIndicesToWindows(SortedMap<Long, T> original, long windowMs) {
     SortedMap<Long, T> result = new TreeMap<>(Collections.reverseOrder());
     original.forEach((key, value) -> result.put(key * windowMs, value));
     return result;

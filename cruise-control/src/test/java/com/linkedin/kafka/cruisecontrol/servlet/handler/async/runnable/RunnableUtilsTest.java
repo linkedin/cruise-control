@@ -43,7 +43,6 @@ public class RunnableUtilsTest {
     assertThrows(RuntimeException.class, () -> populateRackInfoForReplicationFactorChange(Collections.singletonMap((short) (NODES.length + 1),
                                                                                                                    Collections.singleton(TOPIC)),
                                                                                           CLUSTER,
-                                                                                          Collections.emptySet(),
                                                                                           false,
                                                                                           brokersByRack,
                                                                                           rackByBroker));
@@ -52,7 +51,6 @@ public class RunnableUtilsTest {
     assertThrows(RuntimeException.class, () -> populateRackInfoForReplicationFactorChange(Collections.singletonMap((short) NODES.length,
                                                                                                                    Collections.singleton(TOPIC)),
                                                                                           CLUSTER,
-                                                                                          Collections.emptySet(),
                                                                                           false,
                                                                                           brokersByRack,
                                                                                           rackByBroker));
@@ -61,7 +59,6 @@ public class RunnableUtilsTest {
     // rack-awareness check is skipped.
     populateRackInfoForReplicationFactorChange(Collections.singletonMap((short) NODES.length, Collections.singleton(TOPIC)),
                                                CLUSTER,
-                                               Collections.emptySet(),
                                                true,
                                                brokersByRack,
                                                rackByBroker);
