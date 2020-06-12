@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DescribeLogDirsResult;
@@ -45,6 +46,7 @@ import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
 import org.junit.Test;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.waitUntilTrue;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.getMetadata;
@@ -81,8 +83,11 @@ public class LoadMonitorTest {
   private static final int MIN_SAMPLES_PER_WINDOW = 4;
   private static final long WINDOW_MS = 1000;
   private static final String DEFAULT_CLEANUP_POLICY = "delete";
-
-  private final Time _time = new MockTime(0);
+  private static final long WAIT_DEADLINE_MS = 30000L;
+  private static final long CHECK_MS = 10L;
+  private static final long MONITOR_STATE_UPDATE_INTERVAL_MS = 100L;
+  private static final long START_TIME_MS = 100L;
+  private Time _time;
 
   @Test
   public void testStateWithOnlyActiveSnapshotWindow() {
@@ -98,7 +103,8 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T1P1, 0, WINDOW_MS, METRIC_DEF);
 
     MetadataClient.ClusterAndGeneration clusterAndGeneration = loadMonitor.refreshClusterAndGeneration();
-    LoadMonitorState state = loadMonitor.state(new OperationProgress(), clusterAndGeneration.cluster());
+    waitForStateUpdate(loadMonitor);
+    LoadMonitorState state = loadMonitor.state(clusterAndGeneration.cluster());
     // The load monitor only has an active window. There is no stable window.
     assertEquals(0, state.numValidPartitions());
     assertEquals(0, state.numValidWindows());
@@ -117,10 +123,11 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(2, 4, aggregator, PE_T0P1, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(2, 4, aggregator, PE_T1P0, 0, WINDOW_MS, METRIC_DEF);
 
+    waitForStateUpdate(loadMonitor);
     MetadataClient.ClusterAndGeneration clusterAndGeneration = loadMonitor.refreshClusterAndGeneration();
-    LoadMonitorState state = loadMonitor.state(new OperationProgress(), clusterAndGeneration.cluster());
-    // The load monitor has 1 stable window with 0.5 of valid partitions ratio.
-    assertEquals(0, state.numValidPartitions());
+    LoadMonitorState state = loadMonitor.state(clusterAndGeneration.cluster());
+    // The load monitor has 1 stable window with 0.5 of valid partitions ratio. Partitions with samples on stable window are valid.
+    assertEquals(3, state.numValidPartitions());
     assertEquals(0, state.numValidWindows());
     assertEquals(1, state.monitoredWindows().size());
     assertEquals(0.5, state.monitoredWindows().get(WINDOW_MS), 0.0);
@@ -128,9 +135,11 @@ public class LoadMonitorTest {
     // Back fill for T1P1
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 1, aggregator, PE_T1P1, 0, WINDOW_MS, METRIC_DEF);
     clusterAndGeneration = loadMonitor.refreshClusterAndGeneration();
-    state = loadMonitor.state(new OperationProgress(), clusterAndGeneration.cluster());
+
+    waitForStateUpdate(loadMonitor);
+    state = loadMonitor.state(clusterAndGeneration.cluster());
     // The load monitor now has one stable window with 1.0 of valid partitions ratio.
-    assertEquals(0, state.numValidPartitions());
+    assertEquals(4, state.numValidPartitions());
     assertEquals(1, state.numValidWindows());
     assertEquals(1, state.monitoredWindows().size());
     assertEquals(1.0, state.monitoredWindows().get(WINDOW_MS), 0.0);
@@ -143,34 +152,34 @@ public class LoadMonitorTest {
     KafkaPartitionMetricSampleAggregator aggregator = context.aggregator();
 
     // populate the metrics aggregator.
-    // four samples for each partition except T1P1. T1P1 has 2 samples in the first window, and 2 samples in the
-    // active window.
+    // four samples for each partition except T1P1. T1P1 has 2 samples in the active window.
     CruiseControlUnitTestUtils.populateSampleAggregator(3, 4, aggregator, PE_T0P0, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(3, 4, aggregator, PE_T0P1, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(3, 4, aggregator, PE_T1P0, 0, WINDOW_MS, METRIC_DEF);
-    CruiseControlUnitTestUtils.populateSampleAggregator(1, 2, aggregator, PE_T1P1, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 2, aggregator, PE_T1P1, 2, WINDOW_MS, METRIC_DEF);
 
     MetadataClient.ClusterAndGeneration clusterAndGeneration = loadMonitor.refreshClusterAndGeneration();
-    LoadMonitorState state = loadMonitor.state(new OperationProgress(), clusterAndGeneration.cluster());
-    // Both partitions for topic 0 should be valid.
+    waitForStateUpdate(loadMonitor);
+    LoadMonitorState state = loadMonitor.state(clusterAndGeneration.cluster());
+    // Partitions with samples on stable window are valid.
     assertEquals(3, state.numValidPartitions());
-    // Both topic should be valid in the first window.
-    assertEquals(1, state.numValidWindows());
+    // Only TOPIC0 is valid in both stable windows. Hence, this makes both windows invalid.
+    assertEquals(0, state.numValidWindows());
     // There should be 2 monitored windows.
     assertEquals(2, state.monitoredWindows().size());
-    // Both topic should be valid in the first window.
-    assertEquals(1.0, state.monitoredWindows().get(WINDOW_MS), 0.0);
-    // Only topic 2 is valid in the second window.
+    // In both windows, 50% of topics is valid -- i.e. TOPIC0 is valid, but not TOPIC1.
+    assertEquals(0.5, state.monitoredWindows().get(WINDOW_MS), 0.0);
     assertEquals(0.5, state.monitoredWindows().get(WINDOW_MS * 2), 0.0);
 
-    // Back fill 3 samples for T1P1 in the second window.
+    // Back fill 3 samples for T1P1 in the second window, and 2 samples in the first window.
+    CruiseControlUnitTestUtils.populateSampleAggregator(1, 2, aggregator, PE_T1P1, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 3, aggregator, PE_T1P1, 1, WINDOW_MS, METRIC_DEF);
     clusterAndGeneration = loadMonitor.refreshClusterAndGeneration();
-    state = loadMonitor.state(new OperationProgress(), clusterAndGeneration.cluster());
+    waitForStateUpdate(loadMonitor);
+    state = loadMonitor.state(clusterAndGeneration.cluster());
     // All the partitions should be valid now.
     assertEquals(4, state.numValidPartitions());
-    // All the windows should be valid now.
+    // All the windows should be valid now, because window 0 and 1 have been back filled for PE_T1P1.
     assertEquals(2, state.numValidWindows());
     // There should be two monitored windows.
     assertEquals(2, state.monitoredWindows().size());
@@ -547,12 +556,14 @@ public class LoadMonitorTest {
     props.put(CleanupPolicyProp(), DEFAULT_CLEANUP_POLICY);
     props.put(MonitorConfig.SAMPLE_STORE_CLASS_CONFIG, NoopSampleStore.class.getName());
     props.put(ExecutorConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG, "false");
+    props.put(MonitorConfig.MONITOR_STATE_UPDATE_INTERVAL_MS_CONFIG, MONITOR_STATE_UPDATE_INTERVAL_MS);
     if (isClusterJBOD) {
       String capacityConfigFileJBOD =
           KafkaCruiseControlUnitTestUtils.class.getClassLoader().getResource("testCapacityConfigJBOD.json").getFile();
       props.setProperty(BrokerCapacityConfigFileResolver.CAPACITY_CONFIG_FILE, capacityConfigFileJBOD);
     }
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(props);
+    _time = new MockTime(0, START_TIME_MS, TimeUnit.NANOSECONDS.convert(START_TIME_MS, TimeUnit.MILLISECONDS));
     LoadMonitor loadMonitor = new LoadMonitor(config, mockMetadataClient, mockAdminClient, _time, mockExecutor, new MetricRegistry(), METRIC_DEF);
 
     KafkaPartitionMetricSampleAggregator aggregator = loadMonitor.partitionSampleAggregator();
@@ -560,16 +571,16 @@ public class LoadMonitorTest {
     ModelParameters.init(config);
     loadMonitor.startUp();
     MetadataClient.ClusterAndGeneration clusterAndGeneration = loadMonitor.refreshClusterAndGeneration();
-    while (loadMonitor.state(new OperationProgress(),
-                             clusterAndGeneration.cluster()).state() != LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING) {
-      try {
-        Thread.sleep(1);
-      } catch (InterruptedException e) {
-        // let it go.
-      }
-    }
+    waitUntilTrue(() -> (loadMonitor.state(clusterAndGeneration.cluster()).state() == LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING),
+                  "Load monitor state did not begin running.", WAIT_DEADLINE_MS, CHECK_MS);
 
     return new TestContext(loadMonitor, aggregator, config, metadata);
+  }
+
+  private void waitForStateUpdate(LoadMonitor loadMonitor) {
+    _time.sleep(MONITOR_STATE_UPDATE_INTERVAL_MS + 1L);
+    waitUntilTrue(() -> (loadMonitor.lastUpdateMs() == _time.milliseconds()),
+                  "Load monitor state did not get updated within the time limit", WAIT_DEADLINE_MS, CHECK_MS);
   }
 
   private DescribeLogDirsResult getDescribeLogDirsResult() {

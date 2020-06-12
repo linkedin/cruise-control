@@ -190,7 +190,7 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
                                                                          _excludedTopics,
                                                                          Collections.emptySet(),
                                                                          true);
-    populateRackInfoForReplicationFactorChange(_topicsToChangeByReplicationFactor, _cluster, optimizationOptions.excludedBrokersForReplicaMove(),
+    populateRackInfoForReplicationFactorChange(_topicsToChangeByReplicationFactor, _cluster,
                                                _skipRackAwarenessCheck, brokersByRack, rackByBroker);
     Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = clusterModel.getReplicaDistribution();
     // First try to add and remove replicas to achieve the replication factor for topics of interest.

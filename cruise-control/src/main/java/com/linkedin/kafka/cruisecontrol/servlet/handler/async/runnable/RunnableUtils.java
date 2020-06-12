@@ -70,22 +70,16 @@ public class RunnableUtils {
    *
    * @param topicsByReplicationFactor Topics to change replication factor by target replication factor.
    * @param cluster Current cluster state.
-   * @param excludedBrokersForReplicaMove Set of brokers which do not host new replicas.
    * @param skipTopicRackAwarenessCheck Whether to skip the rack awareness sanity check or not.
    * @param brokersByRack Mapping from rack to broker.
    * @param rackByBroker Mapping from broker to rack.
    */
   public static void populateRackInfoForReplicationFactorChange(Map<Short, Set<String>> topicsByReplicationFactor,
                                                                 Cluster cluster,
-                                                                Set<Integer> excludedBrokersForReplicaMove,
                                                                 boolean skipTopicRackAwarenessCheck,
                                                                 Map<String, List<Integer>> brokersByRack,
                                                                 Map<Integer, String> rackByBroker) {
     for (Node node : cluster.nodes()) {
-      // New follower replica is not assigned to brokers excluded for replica movement.
-      if (excludedBrokersForReplicaMove.contains(node.id())) {
-        continue;
-      }
       String rack = getRackHandleNull(node);
       brokersByRack.putIfAbsent(rack, new ArrayList<>());
       brokersByRack.get(rack).add(node.id());
