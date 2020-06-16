@@ -50,7 +50,7 @@ public class MonitorUnitTestUtils {
    * @return The clone of the nodes in the {@link #getCluster(Collection)} and {@link #getMetadata(Collection)}.
    */
   public static List<Integer> nodeIds() {
-    return Arrays.asList(NODES.clone()).stream().map(n -> n.id()).collect(Collectors.toList());
+    return Arrays.stream(NODES).map(Node::id).collect(Collectors.toList());
   }
 
   /**

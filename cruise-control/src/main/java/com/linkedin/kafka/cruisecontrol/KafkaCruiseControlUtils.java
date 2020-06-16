@@ -432,7 +432,7 @@ public class KafkaCruiseControlUtils {
           new MetadataResponseData.MetadataResponsePartition()
               .setErrorCode(partitionMetadata.error.code())
               .setPartitionIndex(partitionMetadata.partition())
-              .setLeaderId(partitionMetadata.leaderId.orElse(-1))
+              .setLeaderId(partitionMetadata.leaderId.orElse(MetadataResponse.NO_LEADER_ID))
               .setLeaderEpoch(partitionMetadata.leaderEpoch.orElse(RecordBatch.NO_PARTITION_LEADER_EPOCH))
               .setReplicaNodes(partitionMetadata.replicaIds)
               .setIsrNodes(partitionMetadata.inSyncReplicaIds)

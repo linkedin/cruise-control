@@ -137,7 +137,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
                                                          TOPIC0 + "1",
                                                          false,
                                                          Collections.singletonList(new MetadataResponse.PartitionMetadata(
-                                                             Errors.NONE, TP, Optional.of(NODE_0.id()),
+                                                             Errors.NONE, tp1, Optional.of(NODE_0.id()),
                                                              Optional.of(RecordBatch.NO_PARTITION_LEADER_EPOCH),
                                                              nodeIds(), nodeIds(),
                                                              Collections.emptyList()))));
