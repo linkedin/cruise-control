@@ -445,6 +445,63 @@ public class LoadMonitor {
   }
 
   /**
+   * Get cluster capacity, and skip populating cluster load. Enables quick retrieval of capacity without the load.
+   * @return Cluster capacity without cluster load.
+   */
+  public ClusterModel clusterCapacity() throws TimeoutException, BrokerCapacityResolutionException {
+    MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
+    Cluster cluster = clusterAndGeneration.cluster();
+
+    // Create an empty cluster model first.
+    ModelGeneration modelGeneration = new ModelGeneration(clusterAndGeneration.generation(), -1L);
+    ClusterModel clusterModel = new ClusterModel(modelGeneration, 0.0);
+
+    populateClusterCapacity(false, false, clusterModel, cluster);
+    // Set the state of bad brokers in clusterModel based on the Kafka cluster state.
+    setBadBrokerState(clusterModel, cluster);
+    return clusterModel;
+  }
+
+  private void populateClusterCapacity(boolean populateReplicaPlacementInfo,
+                                       boolean allowCapacityEstimation,
+                                       ClusterModel clusterModel,
+                                       Cluster cluster)
+      throws TimeoutException, BrokerCapacityResolutionException {
+    // Create the racks and brokers.
+    // If broker capacity is allowed to estimate broker capacity, shuffle nodes before getting their capacity from the
+    // capacity resolver. This is good for the capacity resolver to estimate the capacity of the nodes, for which the
+    // capacity retrieval has failed.
+    // The use case for this estimation is that if the capacity of one of the nodes is not available (e.g. due to some
+    // 3rd party service issue), the capacity resolver may want to use the capacity of a peer node as the capacity for
+    // that node.
+    // To this end, Cruise Control handles the case that the first node is problematic so the capacity resolver does
+    // not have the chance to get the capacity for the other nodes.
+    // Shuffling the node order helps, as the problematic node is unlikely to always be the first node in the list.
+    List<Node> shuffledNodes = allowCapacityEstimation ? new ArrayList<>(cluster.nodes()) : cluster.nodes();
+    if (allowCapacityEstimation) {
+      Collections.shuffle(shuffledNodes);
+    }
+    for (Node node : shuffledNodes) {
+      // If the rack is not specified, we use the host info as rack info.
+      String rack = getRackHandleNull(node);
+      clusterModel.createRack(rack);
+      BrokerCapacityInfo brokerCapacity;
+      try {
+        brokerCapacity = _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id(), BROKER_CAPACITY_FETCH_TIMEOUT_MS,
+                                                                         allowCapacityEstimation);
+        LOG.debug("Get capacity info for broker {}: total capacity {}, capacity by logdir {}.", node.id(),
+                  brokerCapacity.capacity().get(Resource.DISK), brokerCapacity.diskCapacityByLogDir());
+      } catch (TimeoutException | BrokerCapacityResolutionException e) {
+        String errorMessage = String.format("Unable to retrieve capacity for broker %d. This may be caused by churn in "
+                                            + "the cluster, please retry.", node.id());
+        LOG.warn(errorMessage, e);
+        throw e;
+      }
+      clusterModel.createBroker(rack, node.host(), node.id(), brokerCapacity, populateReplicaPlacementInfo);
+    }
+  }
+
+  /**
    * Get the cluster load model for a time range.
    *
    * @param from start of the time window
@@ -485,38 +542,7 @@ public class LoadMonitor {
 
     final Timer.Context ctx = _clusterModelCreationTimer.time();
     try {
-      // Create the racks and brokers.
-      // If broker capacity is allowed to estimate broker capacity, shuffle nodes before getting their capacity from the
-      // capacity resolver. This is good for the capacity resolver to estimate the capacity of the nodes, for which the
-      // capacity retrieval has failed.
-      // The use case for this estimation is that if the capacity of one of the nodes is not available (e.g. due to some
-      // 3rd party service issue), the capacity resolver may want to use the capacity of a peer node as the capacity for
-      // that node.
-      // To this end, Cruise Control handles the case that the first node is problematic so the capacity resolver does
-      // not have the chance to get the capacity for the other nodes.
-      // Shuffling the node order helps, as the problematic node is unlikely to always be the first node in the list.
-      List<Node> shuffledNodes = allowCapacityEstimation ? new ArrayList<>(cluster.nodes()) : cluster.nodes();
-      if (allowCapacityEstimation) {
-        Collections.shuffle(shuffledNodes);
-      }
-      for (Node node : shuffledNodes) {
-        // If the rack is not specified, we use the host info as rack info.
-        String rack = getRackHandleNull(node);
-        clusterModel.createRack(rack);
-        BrokerCapacityInfo brokerCapacity;
-        try {
-          brokerCapacity = _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id(), BROKER_CAPACITY_FETCH_TIMEOUT_MS,
-                                                                           allowCapacityEstimation);
-          LOG.debug("Get capacity info for broker {}: total capacity {}, capacity by logdir {}.", node.id(),
-                    brokerCapacity.capacity().get(Resource.DISK), brokerCapacity.diskCapacityByLogDir());
-        } catch (TimeoutException | BrokerCapacityResolutionException e) {
-          String errorMessage = String.format("Unable to retrieve capacity for broker %d. This may be caused by churn in "
-                                              + "the cluster, please retry.", node.id());
-          LOG.warn(errorMessage, e);
-          throw e;
-        }
-        clusterModel.createBroker(rack, node.host(), node.id(), brokerCapacity, populateReplicaPlacementInfo);
-      }
+      populateClusterCapacity(populateReplicaPlacementInfo, allowCapacityEstimation, clusterModel, cluster);
 
       // Populate replica placement information for the cluster model if requested.
       Map<TopicPartition, Map<Integer, String>> replicaPlacementInfo = null;
