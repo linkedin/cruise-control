@@ -121,6 +121,7 @@ public class ParameterUtils {
   public static final String DISCARD_PARAM = "discard";
   public static final String REBALANCE_DISK_MODE_PARAM = "rebalance_disk";
   public static final String POPULATE_DISK_INFO_PARAM = "populate_disk_info";
+  public static final String CAPACITY_ONLY_PARAM = "capacity_only";
   public static final String BROKER_ID_AND_LOGDIRS_PARAM = "brokerid_and_logdirs";
   public static final String REPLICATION_FACTOR_PARAM = "replication_factor";
   public static final String SKIP_RACK_AWARENESS_CHECK_PARAM = "skip_rack_awareness_check";
@@ -288,11 +289,15 @@ public class ParameterUtils {
     return excludeBrokers;
   }
 
-  private static boolean getBooleanExcludeGiven(HttpServletRequest request, String getParameter, String excludeParameter) {
+  private static boolean getBooleanExcludeGiven(HttpServletRequest request, String getParameter, Set<String> excludeParameters) {
     boolean booleanParam = getBooleanParam(request, getParameter, false);
-    if (booleanParam && caseSensitiveParameterName(request.getParameterMap(), excludeParameter) != null) {
-      throw new UserRequestException("Cannot set " + getParameter + " parameter to true when explicitly specifying "
-                                     + excludeParameter + " in the request.");
+    if (booleanParam) {
+      for (String excludeParameter : excludeParameters) {
+        if (caseSensitiveParameterName(request.getParameterMap(), excludeParameter) != null) {
+          throw new UserRequestException("Cannot set " + getParameter + " parameter to true when explicitly specifying "
+                                         + excludeParameter + " in the request.");
+        }
+      }
     }
     return booleanParam;
   }
@@ -343,12 +348,18 @@ public class ParameterUtils {
     return getBooleanParam(request, POPULATE_DISK_INFO_PARAM, false);
   }
 
+  static boolean capacityOnly(HttpServletRequest request) {
+    Set<String> excludeParameters = Collections.unmodifiableSet(
+        new HashSet<>(Arrays.asList(TIME_PARAM, END_MS_PARAM, START_MS_PARAM, ALLOW_CAPACITY_ESTIMATION_PARAM, POPULATE_DISK_INFO_PARAM)));
+    return getBooleanExcludeGiven(request, CAPACITY_ONLY_PARAM, excludeParameters);
+  }
+
   static boolean ignoreProposalCache(HttpServletRequest request) {
-    return getBooleanExcludeGiven(request, IGNORE_PROPOSAL_CACHE_PARAM, GOALS_PARAM);
+    return getBooleanExcludeGiven(request, IGNORE_PROPOSAL_CACHE_PARAM, Collections.singleton(GOALS_PARAM));
   }
 
   static boolean useReadyDefaultGoals(HttpServletRequest request) {
-    return getBooleanExcludeGiven(request, USE_READY_DEFAULT_GOALS_PARAM, GOALS_PARAM);
+    return getBooleanExcludeGiven(request, USE_READY_DEFAULT_GOALS_PARAM, Collections.singleton(GOALS_PARAM));
   }
 
   static boolean getDryRun(HttpServletRequest request) {
@@ -469,10 +480,10 @@ public class ParameterUtils {
     if (parameterString == null) {
       return null;
     } else {
-      Double minValidPartitionRatio = Double.parseDouble(request.getParameter(parameterString));
+      double minValidPartitionRatio = Double.parseDouble(request.getParameter(parameterString));
       if (minValidPartitionRatio > 1.0 || minValidPartitionRatio < 0.0) {
         throw new UserRequestException("The requested minimum partition ratio must be in range [0.0, 1.0] (Requested: "
-                                       + minValidPartitionRatio.toString() + ").");
+                                       + minValidPartitionRatio + ").");
       }
       return minValidPartitionRatio;
     }

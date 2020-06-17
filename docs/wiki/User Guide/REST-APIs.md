@@ -99,16 +99,17 @@ Once Cruise Control Load Monitor shows it is in the `RUNNING` state, Users can u
 
 Supported parameters are:
 
-| PARAMETER   | TYPE       | DESCPRIPTION | DEFAULT  | OPTIONAL|
-|-------------|------------|----------------------|----------|---------|
-| start     | long    | start time of the cluster load     | time of earliest valid window|   yes |
-| end     | long    | end time of the cluster load     | current system time|   yes |
-| time     | long    | end time of the cluster load     | current system time|   yes | 
-| allow_capacity_estimation     | boolean    | whether allow broker capacity to be estimated from other broker in the cluster    | true      |   yes | 
-| populate_disk_info     | boolean    | whether show the load of each disk of broker    | false     |   yes | 
-| json     | boolean    | return in JSON format or not      | false      |   yes | 
-| verbose     | boolean    | return detailed state information      | false      |   yes |
-| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes | 
+| PARAMETER                 | TYPE      | DESCPRIPTION                                                                      | DEFAULT                       | OPTIONAL  |
+|---------------------------|-----------|-----------------------------------------------------------------------------------|-------------------------------|-----------|
+| start                     | long      | start time of the cluster load                                                    | time of earliest valid window | yes       |
+| end                       | long      | end time of the cluster load                                                      | current system time           | yes       |
+| time                      | long      | end time of the cluster load                                                      | current system time           | yes       | 
+| allow_capacity_estimation | boolean   | whether allow broker capacity to be estimated from other broker in the cluster    | true                          | yes       | 
+| populate_disk_info        | boolean   | whether show the load of each disk of broker                                      | false                         | yes       | 
+| capacity_only             | boolean   | whether show only the cluster capacity or the utilization, as well.               | false                         | yes       |
+| json                      | boolean   | return in JSON format or not                                                      | false                         | yes       | 
+| verbose                   | boolean   | return detailed state information                                                 | false                         | yes       |
+| doAs                      | string    | propagated user by the trusted proxy service                                      | null                          | yes       | 
 
 If the number of workload snapshots for the given timestamp is not sufficient to generate a good load model, an exception will be returned.
 

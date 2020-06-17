@@ -153,9 +153,9 @@ public class ClusterModel implements Serializable {
       TopicPartition tp = entry.getKey();
       Partition partition = entry.getValue();
       List<ReplicaPlacementInfo> replicaPlacementInfos = partition.replicas().stream()
-                                                         .map(r -> r.disk() == null ? new ReplicaPlacementInfo(r.broker().id()) :
-                                                                                      new ReplicaPlacementInfo(r.broker().id(), r.disk().logDir()))
-                                                         .collect(Collectors.toList());
+                                                                  .map(r -> r.disk() == null ? new ReplicaPlacementInfo(r.broker().id()) :
+                                                                            new ReplicaPlacementInfo(r.broker().id(), r.disk().logDir()))
+                                                                  .collect(Collectors.toList());
       // Add distribution of replicas in the partition.
       replicaDistribution.put(tp, replicaPlacementInfos);
     }
@@ -1278,14 +1278,14 @@ public class ClusterModel implements Serializable {
             break;
           case FOLLOWER_NW_IN:
             utilization[derivedResource.ordinal()][brokerIndex] =
-              broker.load().expectedUtilizationFor(derivedResource.derivedFrom()) - leaderBytesInRate;
+                broker.load().expectedUtilizationFor(derivedResource.derivedFrom()) - leaderBytesInRate;
             break;
           case LEADER_NW_IN:
             utilization[derivedResource.ordinal()][brokerIndex] = leaderBytesInRate;
             break;
           case PWN_NW_OUT:
             utilization[derivedResource.ordinal()][brokerIndex] =
-              potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT);
+                potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT);
             break;
           case REPLICAS:
             utilization[derivedResource.ordinal()][brokerIndex] = broker.replicas().size();
