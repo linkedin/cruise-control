@@ -13,7 +13,10 @@ import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.io.Serializable;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -28,6 +31,7 @@ import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
@@ -149,9 +153,9 @@ public class ClusterModel implements Serializable {
       TopicPartition tp = entry.getKey();
       Partition partition = entry.getValue();
       List<ReplicaPlacementInfo> replicaPlacementInfos = partition.replicas().stream()
-                                                         .map(r -> r.disk() == null ? new ReplicaPlacementInfo(r.broker().id()) :
-                                                                                      new ReplicaPlacementInfo(r.broker().id(), r.disk().logDir()))
-                                                         .collect(Collectors.toList());
+                                                                  .map(r -> r.disk() == null ? new ReplicaPlacementInfo(r.broker().id()) :
+                                                                            new ReplicaPlacementInfo(r.broker().id(), r.disk().logDir()))
+                                                                  .collect(Collectors.toList());
       // Add distribution of replicas in the partition.
       replicaDistribution.put(tp, replicaPlacementInfos);
     }
@@ -1239,6 +1243,23 @@ public class ClusterModel implements Serializable {
   }
 
   /**
+   * The variance of the derived resources.
+   * @return A non-null array where the ith index is the variance of RawAndDerivedResource.ordinal().
+   */
+  public double[] variance() {
+    RawAndDerivedResource[] resources = RawAndDerivedResource.values();
+    double[][] utilization = utilizationMatrix();
+
+    double[] variance = new double[resources.length];
+
+    for (int resourceIndex = 0; resourceIndex < resources.length; resourceIndex++) {
+      Variance varianceCalculator = new Variance();
+      variance[resourceIndex] = varianceCalculator.evaluate(utilization[resourceIndex]);
+    }
+    return variance;
+  }
+
+  /**
    *
    * @return A RawAndDerivedResource x nBroker matrix of derived resource utilization.
    */
@@ -1257,14 +1278,14 @@ public class ClusterModel implements Serializable {
             break;
           case FOLLOWER_NW_IN:
             utilization[derivedResource.ordinal()][brokerIndex] =
-              broker.load().expectedUtilizationFor(derivedResource.derivedFrom()) - leaderBytesInRate;
+                broker.load().expectedUtilizationFor(derivedResource.derivedFrom()) - leaderBytesInRate;
             break;
           case LEADER_NW_IN:
             utilization[derivedResource.ordinal()][brokerIndex] = leaderBytesInRate;
             break;
           case PWN_NW_OUT:
             utilization[derivedResource.ordinal()][brokerIndex] =
-              potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT);
+                potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT);
             break;
           case REPLICAS:
             utilization[derivedResource.ordinal()][brokerIndex] = broker.replicas().size();
@@ -1276,6 +1297,20 @@ public class ClusterModel implements Serializable {
       brokerIndex++;
     }
     return utilization;
+  }
+
+  /**
+   * Write to the given output stream.
+   *
+   * @param out Output stream.
+   */
+  public void writeTo(OutputStream out) throws IOException {
+    String cluster = String.format("<Cluster maxPartitionReplicationFactor=\"%d\">%n", _maxReplicationFactor);
+    out.write(cluster.getBytes(StandardCharsets.UTF_8));
+    for (Rack rack : _racksById.values()) {
+      rack.writeTo(out);
+    }
+    out.write("</Cluster>".getBytes(StandardCharsets.UTF_8));
   }
 
   @Override
