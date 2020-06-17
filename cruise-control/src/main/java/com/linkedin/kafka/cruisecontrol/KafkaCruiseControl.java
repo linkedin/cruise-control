@@ -318,6 +318,14 @@ public class KafkaCruiseControl {
   }
 
   /**
+   * Get cluster capacity, and skip populating cluster load. Enables quick retrieval of capacity without the load.
+   * @return Cluster capacity without cluster load.
+   */
+  public ClusterModel clusterCapacity() throws TimeoutException, BrokerCapacityResolutionException {
+    return _loadMonitor.clusterCapacity();
+  }
+
+  /**
    * Bootstrap the load monitor for a given period.
    *
    * @param startMs the starting time of the bootstrap period, or null if no time period will be used.

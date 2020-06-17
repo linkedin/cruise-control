@@ -26,6 +26,7 @@ public class LoadRunnable extends OperationRunnable {
   protected final ModelCompletenessRequirements _modelCompletenessRequirements;
   protected final boolean _allowCapacityEstimation;
   protected final boolean _populateDiskInfo;
+  protected final boolean _capacityOnly;
 
   /**
    * Constructor to be used for creating a runnable for partition load.
@@ -41,6 +42,7 @@ public class LoadRunnable extends OperationRunnable {
     _modelCompletenessRequirements = new ModelCompletenessRequirements(1, minValidPartitionRatio, true);
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
     _populateDiskInfo = false;
+    _capacityOnly = false;
   }
 
   public LoadRunnable(KafkaCruiseControl kafkaCruiseControl, OperationFuture future, ClusterLoadParameters parameters) {
@@ -50,6 +52,7 @@ public class LoadRunnable extends OperationRunnable {
     _modelCompletenessRequirements = parameters.requirements();
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
     _populateDiskInfo = parameters.populateDiskInfo();
+    _capacityOnly = parameters.capacityOnly();
   }
 
   @Override
@@ -92,13 +95,13 @@ public class LoadRunnable extends OperationRunnable {
   protected ClusterModel clusterModel(long start, ModelCompletenessRequirements requirements) throws KafkaCruiseControlException {
     OperationProgress operationProgress = _future.operationProgress();
     try (AutoCloseable ignored = _kafkaCruiseControl.acquireForModelGeneration(operationProgress)) {
-      ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(start,
-                                                                   _end,
-                                                                   requirements,
-                                                                   _populateDiskInfo,
-                                                                   _allowCapacityEstimation,
-                                                                   operationProgress);
-      return clusterModel;
+      return _capacityOnly ? _kafkaCruiseControl.clusterCapacity()
+                           : _kafkaCruiseControl.clusterModel(start,
+                                                              _end,
+                                                              requirements,
+                                                              _populateDiskInfo,
+                                                              _allowCapacityEstimation,
+                                                              operationProgress);
     } catch (KafkaCruiseControlException kcce) {
       throw kcce;
     } catch (Exception e) {
