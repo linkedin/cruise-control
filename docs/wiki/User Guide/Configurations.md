@@ -283,5 +283,11 @@ with a non-default capacity. See:
 
 Besides the above configurations, CruiseControlMetricsReporter takes all the configurations for vanilla KafkaProducer with a prefix of "cruise.control.metrics.reporter."
 
+##Resolving environment variables as config values
+It is often required to resolve an environment variable as a config value. Such case is when a password is set by the environment to avoid putting them into config files.
+
+For instance the following config will resolve the `SSL_KEYSTORE_PASSWORD` environment variable and set its value as the actual value of the `webserver.ssl.keystore.password` config:
+
+`webserver.ssl.keystore.password=${env:SSL_KEYSTORE_PASSWORD}`
 
 
