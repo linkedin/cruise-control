@@ -33,7 +33,7 @@ public class EnvConfigProvider implements ConfigProvider {
 
   @Override
   public void close() {
-    // nop
+    _preConfiguredEnvironmentVariables.clear();
   }
 
   @Override

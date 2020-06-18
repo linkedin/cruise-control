@@ -20,6 +20,7 @@ import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.config.SslConfigs;
@@ -69,6 +70,8 @@ public class KafkaCruiseControlUtils {
   public static final String OPERATION_LOGGER = "operationLogger";
   // This will make MetaData.update() trigger a real metadata fetch.
   public static final int REQUEST_VERSION_UPDATE = -1;
+  public static final String ENV_CONFIG_PROVIDER_NAME = "env";
+  public static final String ENV_CONFIG_PROVIDER_CLASS_CONFIG = ".env.class";
 
   private KafkaCruiseControlUtils() {
 
@@ -549,7 +552,8 @@ public class KafkaCruiseControlUtils {
   }
 
   /**
-   * Reads the configuration file, parses and validates the configs.
+   * Reads the configuration file, parses and validates the configs. Enables the configs to be passed
+   * in from environment variables.
    * @param propertiesFile is the file containing the Cruise Control configuration.
    * @return a parsed {@link KafkaCruiseControlConfig}
    * @throws IOException if the configuration file can't be read.
@@ -557,8 +561,8 @@ public class KafkaCruiseControlUtils {
   public static KafkaCruiseControlConfig readConfig(String propertiesFile) throws IOException {
     Properties props = new Properties();
     try (InputStream propStream = new FileInputStream(propertiesFile)) {
-      props.put("config.providers", "env");
-      props.put("config.providers.env.class", EnvConfigProvider.class.getName());
+      props.put(AbstractConfig.CONFIG_PROVIDERS_CONFIG, ENV_CONFIG_PROVIDER_NAME);
+      props.put(AbstractConfig.CONFIG_PROVIDERS_CONFIG + ENV_CONFIG_PROVIDER_CLASS_CONFIG, EnvConfigProvider.class.getName());
       props.load(propStream);
     }
     return new KafkaCruiseControlConfig(props);

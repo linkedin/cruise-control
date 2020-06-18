@@ -18,11 +18,12 @@ public class EnvConfigProviderTest {
 
   public static final String TEST_PASSWORD = "testPassword123";
   public static final String NOT_SUBSTITUTED_CONFIG = "${env:SSL_KEY_PASSWORD}";
+  public static final String ENV_CONFIG_PROVIDER_TEST_PROPERTIES = "envConfigProviderTest.properties";
 
   @Test
   public void testEnvConfigProvider() throws IOException {
     KafkaCruiseControlConfig configs = KafkaCruiseControlUtils.readConfig(
-        Objects.requireNonNull(this.getClass().getClassLoader().getResource("envConfigProviderTest.properties")).getPath());
+        Objects.requireNonNull(this.getClass().getClassLoader().getResource(ENV_CONFIG_PROVIDER_TEST_PROPERTIES)).getPath());
 
     // Test password substitution
     Password actualSslKeystorePassword = configs.getPassword(WebServerConfig.WEBSERVER_SSL_KEYSTORE_PASSWORD_CONFIG);
