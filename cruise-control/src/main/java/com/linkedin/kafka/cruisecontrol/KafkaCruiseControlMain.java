@@ -7,10 +7,7 @@ package com.linkedin.kafka.cruisecontrol;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Properties;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.readConfig;
 
 /**
  * The main class to run Kafka Cruise Control.
@@ -35,14 +32,6 @@ public class KafkaCruiseControlMain {
     KafkaCruiseControlApp app = new KafkaCruiseControlApp(config, port, hostname);
     app.registerShutdownHook();
     app.start();
-  }
-
-  private static KafkaCruiseControlConfig readConfig(String propertiesFile) throws IOException {
-    Properties props = new Properties();
-    try (InputStream propStream = new FileInputStream(propertiesFile)) {
-      props.load(propStream);
-    }
-    return new KafkaCruiseControlConfig(props);
   }
 
   private static Integer parsePort(String[] args, KafkaCruiseControlConfig config) {
