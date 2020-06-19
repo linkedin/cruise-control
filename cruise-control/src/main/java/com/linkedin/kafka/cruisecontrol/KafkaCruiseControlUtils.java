@@ -56,8 +56,8 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  */
 public class KafkaCruiseControlUtils {
   public static final double MAX_BALANCEDNESS_SCORE = 100.0;
-  public static final int ZK_SESSION_TIMEOUT = 30000;
-  public static final int ZK_CONNECTION_TIMEOUT = 30000;
+  public static final int ZK_SESSION_TIMEOUT = 60000;
+  public static final int ZK_CONNECTION_TIMEOUT = 60000;
   public static final long KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS = 10000;
   public static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = 10000;
   public static final String DATE_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
