@@ -50,6 +50,7 @@
       <Bug pattern="EC_NULL_ARG"/>
       <Bug pattern="NP_ALWAYS_NULL"/>
       <Bug pattern="MS_CANNOT_BE_FINAL"/>
+      <Bug pattern="MS_PKGPROTECT"/>
     </Or>
   </Match>
 

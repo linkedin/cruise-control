@@ -21,6 +21,7 @@ import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.metrics.Metrics;
 import org.apache.kafka.common.network.ChannelBuilder;
 import org.apache.kafka.common.requests.MetadataResponse;
+import org.apache.kafka.common.utils.LogContext;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 public class MetadataClient {
   private static final Logger LOG = LoggerFactory.getLogger(MetadataClient.class);
+  private static final LogContext LOG_CONTEXT = new LogContext();
   private static final int DEFAULT_MAX_IN_FLIGHT_REQUEST = 1;
   private final AtomicInteger _metadataGeneration;
   private final Metadata _metadata;
@@ -53,8 +55,8 @@ public class MetadataClient {
                                                                                         MetadataResponse.NO_CONTROLLER_ID,
                                                                                         Collections.emptyList());
 
-    _metadata.update(KafkaCruiseControlUtils.REQUEST_VERSION_UPDATE, metadataResponse, time.milliseconds());
-    ChannelBuilder channelBuilder = ClientUtils.createChannelBuilder(config, time);
+    _metadata.update(KafkaCruiseControlUtils.REQUEST_VERSION_UPDATE, metadataResponse, false, time.milliseconds());
+    ChannelBuilder channelBuilder = ClientUtils.createChannelBuilder(config, time, LOG_CONTEXT);
     NetworkClientProvider provider = config.getConfiguredInstance(MonitorConfig.NETWORK_CLIENT_PROVIDER_CLASS_CONFIG,
                                                                   NetworkClientProvider.class);
 

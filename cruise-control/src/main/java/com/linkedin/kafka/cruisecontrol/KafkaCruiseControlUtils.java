@@ -301,7 +301,7 @@ public class KafkaCruiseControlUtils {
   public static KafkaZkClient createKafkaZkClient(String connectString, String metricGroup, String metricType, boolean zkSecurityEnabled) {
     String zooKeeperClientName = String.format("%s-%s", metricGroup, metricType);
     return KafkaZkClient.apply(connectString, zkSecurityEnabled, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
-                               new SystemTime(), metricGroup, metricType, Option.apply(zooKeeperClientName));
+                               new SystemTime(), metricGroup, metricType, Option.apply(zooKeeperClientName), Option.empty());
   }
 
   /**
@@ -439,13 +439,13 @@ public class KafkaCruiseControlUtils {
     for (MetadataResponse.PartitionMetadata partitionMetadata : topicMetadata.partitionMetadata()) {
       metadataResponseTopic.partitions().add(
           new MetadataResponseData.MetadataResponsePartition()
-              .setErrorCode(partitionMetadata.error().code())
+              .setErrorCode(partitionMetadata.error.code())
               .setPartitionIndex(partitionMetadata.partition())
-              .setLeaderId(partitionMetadata.leader() == null ? -1 : partitionMetadata.leader().id())
-              .setLeaderEpoch(partitionMetadata.leaderEpoch().orElse(RecordBatch.NO_PARTITION_LEADER_EPOCH))
-              .setReplicaNodes(partitionMetadata.replicas().stream().map(Node::id).collect(Collectors.toList()))
-              .setIsrNodes(partitionMetadata.isr().stream().map(Node::id).collect(Collectors.toList()))
-              .setOfflineReplicas(partitionMetadata.offlineReplicas().stream().map(Node::id).collect(Collectors.toList())));
+              .setLeaderId(partitionMetadata.leaderId.orElse(MetadataResponse.NO_LEADER_ID))
+              .setLeaderEpoch(partitionMetadata.leaderEpoch.orElse(RecordBatch.NO_PARTITION_LEADER_EPOCH))
+              .setReplicaNodes(partitionMetadata.replicaIds)
+              .setIsrNodes(partitionMetadata.inSyncReplicaIds)
+              .setOfflineReplicas(partitionMetadata.offlineReplicaIds));
     }
 
     return metadataResponseTopic;
