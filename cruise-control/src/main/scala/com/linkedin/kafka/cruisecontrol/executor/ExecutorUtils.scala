@@ -12,7 +12,7 @@ import kafka.zk.{AdminZkClient, KafkaZkClient, ZkVersion}
 import org.apache.kafka.common.TopicPartition
 import org.slf4j.{Logger, LoggerFactory}
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 /**
  * This class is a Java interface wrapper of open source ReassignPartitionCommand. This class is needed because
@@ -36,7 +36,7 @@ object ExecutorUtils {
       // Add the partition being assigned to the newReplicaAssignment because we are going to add the new
       // reassignment together.
       val newReplicaAssignment = scala.collection.mutable.Map(inProgressReplicaReassignment.toSeq: _*)
-      tasksToExecute.foreach({ task =>
+      tasksToExecute.asScala.foreach({ task =>
         val tp = task.proposal.topicPartition()
         val oldReplicas = asScalaBuffer(task.proposal.oldReplicas()).map(_.brokerId.toInt)
         val newReplicas = asScalaBuffer(task.proposal().newReplicas()).map(_.brokerId.toInt)
@@ -94,7 +94,7 @@ object ExecutorUtils {
   }
 
   def executePreferredLeaderElection(kafkaZkClient: KafkaZkClient, tasks: java.util.List[ExecutionTask]) {
-    val partitionsToExecute = tasks.map(task =>
+    val partitionsToExecute = tasks.asScala.map(task =>
       new TopicPartition(task.proposal.topic, task.proposal.partitionId)).toSet
 
     val preferredReplicaElectionCommand = new PreferredReplicaLeaderElectionCommand(kafkaZkClient, partitionsToExecute)
