@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
-import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaBrokerMetricSampleAggregator;
@@ -31,21 +30,10 @@ import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.es
  */
 class SamplingFetcher extends MetricFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(SamplingFetcher.class);
-  // The metadata of the cluster this metric fetcher is fetching from.
-  private final MetricSampler _metricSampler;
-  private final Cluster _cluster;
   private final KafkaPartitionMetricSampleAggregator _partitionMetricSampleAggregator;
   private final KafkaBrokerMetricSampleAggregator _brokerMetricSampleAggregator;
-  private final SampleStore _sampleStore;
-  private final Set<TopicPartition> _assignedPartitions;
-  private final long _startTimeMs;
-  private final long _endTimeMs;
   private final boolean _leaderValidation;
   private final boolean _useLinearRegressionModel;
-  private final Timer _fetchTimer;
-  private final Meter _fetchFailureRate;
-  private final MetricDef _metricDef;
-  private final long _timeout;
 
   SamplingFetcher(MetricSampler metricSampler,
                   Cluster cluster,
@@ -59,65 +47,17 @@ class SamplingFetcher extends MetricFetcher {
                   boolean useLinearRegressionModel,
                   MetricDef metricDef,
                   Timer fetchTimer,
-                  Meter fetchFailureRate) {
-    _metricSampler = metricSampler;
-    _cluster = cluster;
+                  Meter fetchFailureRate,
+                  MetricSampler.SamplingMode samplingMode) {
+    super(metricSampler, cluster, sampleStore, assignedPartitions, startTimeMs, endTimeMs, metricDef, fetchTimer, fetchFailureRate, samplingMode);
     _partitionMetricSampleAggregator = partitionMetricSampleAggregator;
     _brokerMetricSampleAggregator = brokerMetricSampleAggregator;
-    _sampleStore = sampleStore;
-    _assignedPartitions = assignedPartitions;
-    _metricDef = metricDef;
-    _startTimeMs = startTimeMs;
-    _endTimeMs = endTimeMs;
     _leaderValidation = leaderValidation;
     _useLinearRegressionModel = useLinearRegressionModel;
-    _fetchTimer = fetchTimer;
-    _fetchFailureRate = fetchFailureRate;
-    _timeout = System.currentTimeMillis() + (endTimeMs - startTimeMs) / 2;
   }
 
-  /**
-   * Execute one iteration of metric sampling for all the assigned partitions.
-   */
   @Override
-  protected void fetchMetricsForAssignedPartitions() throws MetricSamplingException {
-    final Timer.Context ctx = _fetchTimer.time();
-
-    try {
-      MetricSampler.Samples samples = fetchSamples();
-      _sampleStore.storeSamples(samples);
-      // TODO: evolve sample store interface to allow independent eviction time for different type of metric samples.
-      // We are not calling sampleStore.evictSamplesBefore() because the broker metric samples and partition metric
-      // samples may have different number of windows so they can not be evicted using the same timestamp.
-    } catch (Exception e) {
-      _fetchFailureRate.mark();
-      throw e;
-    } finally {
-      ctx.stop();
-    }
-  }
-
-  /**
-   * Fetch the partition and broker metric samples.
-   * @return The accepted partition and broker metric samples.
-   * @throws MetricSamplingException
-   */
-  private MetricSampler.Samples fetchSamples() throws MetricSamplingException {
-    MetricSampler.Samples samples =
-        _metricSampler.getSamples(_cluster, _assignedPartitions, _startTimeMs, _endTimeMs,
-                                  MetricSampler.SamplingMode.ALL, _metricDef, _timeout);
-    if (samples == null) {
-      samples = MetricSampler.EMPTY_SAMPLES;
-    }
-    addPartitionSamples(samples.partitionMetricSamples());
-    addBrokerMetricSamples(samples.brokerMetricSamples());
-    // Add the broker metric samples to the observation.
-    ModelParameters.addMetricObservation(samples.brokerMetricSamples());
-
-    return samples;
-  }
-
-  private void addPartitionSamples(Set<PartitionMetricSample> partitionMetricSamples) {
+  protected void usePartitionMetricSamples(Set<PartitionMetricSample> partitionMetricSamples) {
     // Give an initial capacity to avoid resizing.
     Set<TopicPartition> returnedPartitions = new HashSet<>(_assignedPartitions.size());
     // Ignore the null value if the metric sampler did not return a sample
@@ -146,18 +86,19 @@ class SamplingFetcher extends MetricFetcher {
           returnedPartitions.add(tp);
         } else {
           LOG.warn("Collected partition metric sample for partition {} which is not an assigned partition. "
-                       + "The metric sample will be ignored.", tp);
+                   + "The metric sample will be ignored.", tp);
         }
       }
       LOG.info("Collected {}{} partition metric samples for {} partitions. Total partition assigned: {}.",
-                partitionMetricSamples.size(), discarded > 0 ? String.format("(%d discarded)", discarded) : "",
-                returnedPartitions.size(), _assignedPartitions.size());
+               partitionMetricSamples.size(), discarded > 0 ? String.format("(%d discarded)", discarded) : "",
+               returnedPartitions.size(), _assignedPartitions.size());
     } else {
       LOG.warn("Failed to collect partition metric samples for {} assigned partitions", _assignedPartitions.size());
     }
   }
 
-  private void addBrokerMetricSamples(Set<BrokerMetricSample> brokerMetricSamples) {
+  @Override
+  protected void useBrokerMetricSamples(Set<BrokerMetricSample> brokerMetricSamples) {
     Set<Integer> returnedBrokerIds = new HashSet<>();
     if (brokerMetricSamples != null) {
       int discarded = 0;
@@ -176,8 +117,10 @@ class SamplingFetcher extends MetricFetcher {
         returnedBrokerIds.add(brokerMetricSample.brokerId());
       }
       LOG.info("Collected {}{} broker metric samples for {} brokers.",
-                brokerMetricSamples.size(), discarded > 0 ? String.format("(%d discarded)", discarded) : "",
-                returnedBrokerIds.size());
+               brokerMetricSamples.size(), discarded > 0 ? String.format("(%d discarded)", discarded) : "",
+               returnedBrokerIds.size());
+      // Add the broker metric samples to the observation.
+      ModelParameters.addMetricObservation(brokerMetricSamples);
     } else {
       LOG.warn("Failed to collect broker metrics samples.");
     }

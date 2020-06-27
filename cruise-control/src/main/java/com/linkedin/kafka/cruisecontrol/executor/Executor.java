@@ -62,6 +62,8 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.ExecutionTasksSummary;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorAdminUtils.*;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVAL_TO_PERCENTAGE;
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.SamplingMode.ALL;
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.SamplingMode.BROKER_METRICS_ONLY;
 import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.ReplicaLogDirInfo;
 
 /**
@@ -713,6 +715,7 @@ public class Executor {
     private Throwable _executionException;
     private final boolean _isTriggeredByUserRequest;
     private long _lastSlowTaskReportingTimeMs;
+    private static final boolean FORCE_PAUSE_SAMPLING = true;
 
     ProposalExecutionRunnable(LoadMonitor loadMonitor,
                               Collection<Integer> demotedBrokers,
@@ -779,6 +782,32 @@ public class Executor {
     }
 
     /**
+     * Unless the metric sampling is already in the desired mode:
+     * <ul>
+     *   <li>Pause the metric sampling</li>
+     *   <li>Set the metric sampling mode to retrieve desired samples</li>
+     *   <li>Resume the metric sampling</li>
+     * </ul>
+     */
+    private void adjustSamplingModeBeforeExecution() throws InterruptedException {
+      // Pause the partition metric sampling to avoid the loss of accuracy during execution.
+      while (_loadMonitor.samplingMode() != BROKER_METRICS_ONLY) {
+        try {
+          String reasonForPause = String.format("Paused-By-Cruise-Control-Before-Starting-Execution (Date: %s)", currentUtcDate());
+          _loadMonitor.pauseMetricSampling(reasonForPause, FORCE_PAUSE_SAMPLING);
+          // Set the metric sampling mode to retrieve broker samples only.
+          _loadMonitor.setSamplingMode(BROKER_METRICS_ONLY);
+          break;
+        } catch (IllegalStateException e) {
+          Thread.sleep(executionProgressCheckIntervalMs());
+          LOG.debug("Waiting for the load monitor to be ready to adjust sampling mode.", e);
+        }
+      }
+      // Resume the metric sampling.
+      _loadMonitor.resumeMetricSampling(String.format("Resumed-By-Cruise-Control-Before-Starting-Execution (Date: %s)", currentUtcDate()));
+    }
+
+    /**
      * Start the actual execution of the proposals in order:
      * <ol>
      *   <li>Inter-broker move replicas.</li>
@@ -790,16 +819,9 @@ public class Executor {
      */
     private void execute(UserTaskManager.UserTaskInfo userTaskInfo) {
       try {
-        // Pause the metric sampling to avoid the loss of accuracy during execution.
-        while (true) {
-          try {
-            _loadMonitor.pauseMetricSampling(String.format("Paused-By-Cruise-Control-Before-Starting-Execution (Date: %s)", currentUtcDate()));
-            break;
-          } catch (IllegalStateException e) {
-            Thread.sleep(executionProgressCheckIntervalMs());
-            LOG.debug("Waiting for the load monitor to be ready to initialize the execution.", e);
-          }
-        }
+        // Ensure that sampling mode is adjusted properly to avoid the loss of partition metric accuracy
+        // and enable the collection of broker metric samples during an ongoing execution.
+        adjustSamplingModeBeforeExecution();
 
         // 1. Inter-broker move replicas if possible.
         if (_state == STARTING_EXECUTION) {
@@ -915,7 +937,8 @@ public class Executor {
       _hasOngoingExecution = false;
       _stopSignal.set(NO_STOP_EXECUTION);
       _executionStoppedByUser.set(false);
-      _loadMonitor.resumeMetricSampling(String.format("Resumed-By-Cruise-Control-After-Completed-Execution (Date: %s)", currentUtcDate()));
+      // Ensure that sampling mode is adjusted properly to continue collecting partition metrics after execution.
+      _loadMonitor.setSamplingMode(ALL);
     }
 
     private void updateOngoingExecutionState() {

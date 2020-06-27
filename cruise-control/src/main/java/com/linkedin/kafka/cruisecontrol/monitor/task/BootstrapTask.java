@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.monitor.task;
 
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.SampleStore;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 import java.util.List;
@@ -19,6 +20,7 @@ import org.slf4j.LoggerFactory;
  */
 class BootstrapTask implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(BootstrapTask.class);
+  public static final MetricSampler.SamplingMode DEFAULT_SAMPLING_MODE = MetricSampler.SamplingMode.ALL;
   private final Time _time;
   private final long _startMs;
   private final long _endMs;
@@ -236,8 +238,8 @@ class BootstrapTask implements Runnable {
         long samplingPeriodStartMs = nextSamplingPeriodStartMs(now);
         long samplingPeriodEndMs = nextSamplingPeriodEndMs(now);
         boolean hasSamplingError =
-            _metricFetcherManager.fetchPartitionMetricSamples(samplingPeriodStartMs, samplingPeriodEndMs,
-                                                              _samplingIntervalMs, _sampleStore);
+            _metricFetcherManager.fetchMetricSamples(samplingPeriodStartMs, samplingPeriodEndMs, _samplingIntervalMs,
+                                                     _sampleStore, DEFAULT_SAMPLING_MODE);
         if (hasSamplingError) {
           LOG.warn("Bootstrap encountered error when sampling from {} to {}, skipping...", samplingPeriodStartMs,
                    samplingPeriodEndMs);
