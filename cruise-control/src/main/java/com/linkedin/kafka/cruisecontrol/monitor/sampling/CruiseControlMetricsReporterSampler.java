@@ -47,7 +47,6 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
   public static final Duration METRIC_REPORTER_CONSUMER_POLL_TIMEOUT = Duration.ofMillis(5000L);
   // Default configs
   public static final String DEFAULT_METRIC_REPORTER_SAMPLER_GROUP_ID = "CruiseControlMetricsReporterSampler";
-  public static final long DEFAULT_RECONNECT_BACKOFF_MS = 50L;
   public static final long ACCEPTABLE_NETWORK_DELAY_MS = 100L;
   protected CruiseControlMetricsProcessor _metricsProcessor;
   // static random token to avoid group conflict.
@@ -72,7 +71,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
                             MetricDef metricDef,
                             long timeout) throws MetricSamplingException {
     if (refreshPartitionAssignment()) {
-      return new Samples(Collections.emptySet(), Collections.emptySet());
+      return MetricSampler.EMPTY_SAMPLES;
     }
     // Now seek to the startTimeMs.
     Map<TopicPartition, Long> timestampToSeek = new HashMap<>(_currentPartitionAssignment.size());

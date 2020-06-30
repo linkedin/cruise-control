@@ -24,8 +24,8 @@ class TrainingTask implements Runnable {
   private final SampleStore _sampleStore;
   private final long _samplingIntervalMs;
   private final long _configuredSnapshotWindowMs;
-  private long _trainingStartMs;
-  private long _trainingEndMs;
+  private final long _trainingStartMs;
+  private final long _trainingEndMs;
   private long _nextSamplingStartingMs;
   private long _nextSamplingEndMs;
 

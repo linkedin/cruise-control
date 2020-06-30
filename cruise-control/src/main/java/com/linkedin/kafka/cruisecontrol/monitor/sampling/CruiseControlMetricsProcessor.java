@@ -134,12 +134,43 @@ public class CruiseControlMetricsProcessor {
       skippedBroker = addBrokerMetricSamples(cluster, brokerMetricSamples);
     }
 
-    LOG.info("Generated {}{} partition metric samples and {}{} broker metric samples for timestamp {}.", partitionMetricSamples.size(),
-             (skippedPartitionByBroker != null && !skippedPartitionByBroker.isEmpty()) ?
-             String.format("(%s skipped by broker %s)",
-                           skippedPartitionByBroker.values().stream().mapToInt(v -> v).sum(), skippedPartitionByBroker) : "",
-             brokerMetricSamples.size(), skippedBroker > 0 ? "(" + skippedBroker + " skipped)" : "", _maxMetricTimestamp);
+    logProcess(samplingMode, skippedPartitionByBroker, skippedBroker, partitionMetricSamples, brokerMetricSamples);
     return new MetricSampler.Samples(partitionMetricSamples, brokerMetricSamples);
+  }
+
+  private void logProcess(MetricSampler.SamplingMode samplingMode,
+                          Map<Integer, Integer> skippedPartitionByBroker,
+                          int skippedBroker,
+                          Set<PartitionMetricSample> partitionMetricSamples,
+                          Set<BrokerMetricSample> brokerMetricSamples) {
+    switch (samplingMode) {
+      case ALL:
+        LOG.info("Generated {}{} partition metric samples and {}{} broker metric samples for timestamp {}.",
+                 partitionMetricSamples.size(),
+                 !skippedPartitionByBroker.isEmpty() ? String.format("(%s skipped by broker %s)",
+                                                                     skippedPartitionByBroker.values()
+                                                                                             .stream()
+                                                                                             .mapToInt(v -> v)
+                                                                                             .sum(),
+                                                                     skippedPartitionByBroker) : "",
+                 brokerMetricSamples.size(), skippedBroker > 0 ? "(" + skippedBroker + " skipped)" : "", _maxMetricTimestamp);
+        break;
+      case PARTITION_METRICS_ONLY:
+        LOG.info("Generated {}{} partition metric samples for timestamp {}.", partitionMetricSamples.size(),
+                 !skippedPartitionByBroker.isEmpty() ? String.format("(%s skipped by broker %s)",
+                                                                     skippedPartitionByBroker.values()
+                                                                                             .stream()
+                                                                                             .mapToInt(v -> v)
+                                                                                             .sum(),
+                                                                     skippedPartitionByBroker) : "", _maxMetricTimestamp);
+        break;
+      case BROKER_METRICS_ONLY:
+        LOG.info("Generated {}{} broker metric samples for timestamp {}.", brokerMetricSamples.size(),
+                 skippedBroker > 0 ? "(" + skippedBroker + " skipped)" : "", _maxMetricTimestamp);
+        break;
+      default:
+        throw new IllegalStateException("Unknown sampling mode " + samplingMode);
+    }
   }
 
   void clear() {
