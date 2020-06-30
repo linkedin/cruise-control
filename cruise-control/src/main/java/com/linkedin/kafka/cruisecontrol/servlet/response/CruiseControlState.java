@@ -22,12 +22,11 @@ import com.google.gson.Gson;
 import java.util.Set;
 import java.util.StringJoiner;
 
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.IN_PROGRESS_STATES;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State;
-import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.NO_TASK_IN_PROGRESS;
-import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.STARTING_EXECUTION;
 
 @JsonResponseClass
 public class CruiseControlState extends AbstractCruiseControlResponse {
@@ -129,8 +128,8 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
 
   protected void writeVerboseExecutorState(StringBuilder sb) {
     if (_executorState != null) {
-      // There is no execution task summary if executor is in idle state.
-      if (_executorState.state() == NO_TASK_IN_PROGRESS || _executorState.state() == STARTING_EXECUTION) {
+      // There is no execution task summary if no execution is in progress.
+      if (!IN_PROGRESS_STATES.contains(_executorState.state())) {
         return;
       }
       Map<TaskType, Map<State, Set<ExecutionTask>>> taskSnapshot = _executorState.executionTasksSummary().filteredTasksByState();

@@ -5,6 +5,9 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.HashMap;
@@ -125,9 +128,18 @@ public class ExecutorState {
     STOPPING_EXECUTION
   }
 
+  public static final Set<State> IN_PROGRESS_STATES;
+  static {
+    Set<State> inProgressStates = new HashSet<>(4);
+    inProgressStates.addAll(Arrays.asList(State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS,
+                                            State.INTRA_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS,
+                                            State.LEADER_MOVEMENT_TASK_IN_PROGRESS,
+                                            State.STOPPING_EXECUTION));
+    IN_PROGRESS_STATES = Collections.unmodifiableSet(inProgressStates);
+  }
   private final State _state;
   // Execution task statistics to report.
-  private ExecutionTaskTracker.ExecutionTasksSummary _executionTasksSummary;
+  private final ExecutionTaskTracker.ExecutionTasksSummary _executionTasksSummary;
   // Configs to report.
   private final int _maximumConcurrentInterBrokerPartitionMovementsPerBroker;
   private final int _maximumConcurrentIntraBrokerPartitionMovementsPerBroker;
@@ -227,8 +239,8 @@ public class ExecutorState {
                                                   Set<Integer> recentlyDemotedBrokers,
                                                   Set<Integer> recentlyRemovedBrokers,
                                                   boolean isTriggeredByUserRequest) {
-    if (state == State.NO_TASK_IN_PROGRESS || state == State.STARTING_EXECUTION) {
-      throw new IllegalArgumentException(String.format("%s is not an operation-in-progress executor state.", state));
+    if (!IN_PROGRESS_STATES.contains(state)) {
+      throw new IllegalArgumentException(String.format("%s is not an operation-in-progress executor state %s.", state, IN_PROGRESS_STATES));
     }
     return new ExecutorState(state,
                              executionTasksSummary,

@@ -208,6 +208,9 @@ public class Executor {
                                                  : config.getConfiguredInstance(ExecutorConfig.EXECUTOR_NOTIFIER_CLASS_CONFIG,
                                                                                 ExecutorNotifier.class);
     _userTaskManager = userTaskManager;
+    if (anomalyDetector == null) {
+      throw new IllegalStateException("Anomaly detector cannot be null.");
+    }
     _anomalyDetector = anomalyDetector;
     _demotionHistoryRetentionTimeMs = demotionHistoryRetentionTimeMs;
     _removalHistoryRetentionTimeMs = removalHistoryRetentionTimeMs;
@@ -587,6 +590,7 @@ public class Executor {
                                                                 .collect(Collectors.toSet()), _adminClient, _config);
       } catch (TimeoutException | InterruptedException | ExecutionException e) {
         // This may indicate transient (e.g. network) issues.
+        processOngoingMovementSanityCheckFailure();
         throw new IllegalStateException("Failed to retrieve if there are already ongoing intra-broker replica reassignments.", e);
       }
       if (hasOngoingIntraBrokerReplicaMovement) {
@@ -708,7 +712,6 @@ public class Executor {
    */
   private class ProposalExecutionRunnable implements Runnable {
     private final LoadMonitor _loadMonitor;
-    private ExecutorState.State _state;
     private final Set<Integer> _recentlyDemotedBrokers;
     private final Set<Integer> _recentlyRemovedBrokers;
     private final Long _replicationThrottle;
@@ -723,16 +726,18 @@ public class Executor {
                               Long replicationThrottle,
                               boolean isTriggeredByUserRequest) {
       _loadMonitor = loadMonitor;
-      _state = NO_TASK_IN_PROGRESS;
       _executionException = null;
-
-      if (_userTaskManager == null) {
-        throw new IllegalStateException("UserTaskManager is not specified in Executor.");
+      if (isTriggeredByUserRequest && _userTaskManager == null) {
+        _executionTaskManager.clear();
+        _uuid = null;
+        _reasonSupplier = null;
+        _executorState = ExecutorState.noTaskInProgress(recentlyDemotedBrokers(), recentlyRemovedBrokers());
+        _hasOngoingExecution = false;
+        _stopSignal.set(NO_STOP_EXECUTION);
+        _executionStoppedByUser.set(false);
+        LOG.error("Failed to initialize proposal execution.");
+        throw new IllegalStateException("User task manager cannot be null.");
       }
-      if (_anomalyDetector == null) {
-        throw new IllegalStateException("AnomalyDetector is not specified in Executor.");
-      }
-
       if (demotedBrokers != null) {
         // Add/overwrite the latest demotion time of (non-permanent) demoted brokers (if any).
         demotedBrokers.forEach(id -> {
@@ -772,7 +777,6 @@ public class Executor {
       if (_isTriggeredByUserRequest) {
         userTaskInfo = _userTaskManager.markTaskExecutionBegan(_uuid);
       }
-      _state = STARTING_EXECUTION;
       String reason = _reasonSupplier.get();
       _executorState = ExecutorState.executionStarted(_uuid, reason, _recentlyDemotedBrokers, _recentlyRemovedBrokers, _isTriggeredByUserRequest);
       OPERATION_LOG.info("Task [{}] execution starts. The reason of execution is {}.", _uuid, reason);
@@ -824,9 +828,7 @@ public class Executor {
         adjustSamplingModeBeforeExecution();
 
         // 1. Inter-broker move replicas if possible.
-        if (_state == STARTING_EXECUTION) {
-          _state = INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS;
-          // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
+        if (_executorState.state() == STARTING_EXECUTION) {
           _executorState = ExecutorState.operationInProgress(INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS,
                                                              _executionTaskManager.getExecutionTasksSummary(
                                                                  Collections.singleton(INTER_BROKER_REPLICA_ACTION)),
@@ -843,9 +845,7 @@ public class Executor {
         }
 
         // 2. Intra-broker move replicas if possible.
-        if (_state == INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS) {
-          _state = INTRA_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS;
-          // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
+        if (_executorState.state() == INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS) {
           _executorState = ExecutorState.operationInProgress(INTRA_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS,
                                                              _executionTaskManager.getExecutionTasksSummary(
                                                                  Collections.singleton(INTRA_BROKER_REPLICA_ACTION)),
@@ -862,9 +862,7 @@ public class Executor {
         }
 
         // 3. Transfer leadership if possible.
-        if (_state == INTRA_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS) {
-          _state = LEADER_MOVEMENT_TASK_IN_PROGRESS;
-          // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
+        if (_executorState.state() == INTRA_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS) {
           _executorState = ExecutorState.operationInProgress(LEADER_MOVEMENT_TASK_IN_PROGRESS,
                                                              _executionTaskManager.getExecutionTasksSummary(
                                                                  Collections.singleton(LEADER_ACTION)),
@@ -881,7 +879,7 @@ public class Executor {
         }
 
         // 4. Delete tasks from Zookeeper if needed.
-        if (_state == STOPPING_EXECUTION && _stopSignal.get() == FORCE_STOP_EXECUTION) {
+        if (_executorState.state() == STOPPING_EXECUTION && _stopSignal.get() == FORCE_STOP_EXECUTION) {
           deleteZNodesToStopExecution();
         }
       } catch (Throwable t) {
@@ -931,8 +929,6 @@ public class Executor {
       _executionTaskManager.clear();
       _uuid = null;
       _reasonSupplier = null;
-      _state = NO_TASK_IN_PROGRESS;
-      // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
       _executorState = ExecutorState.noTaskInProgress(_recentlyDemotedBrokers, _recentlyRemovedBrokers);
       _hasOngoingExecution = false;
       _stopSignal.set(NO_STOP_EXECUTION);
@@ -943,7 +939,7 @@ public class Executor {
 
     private void updateOngoingExecutionState() {
       if (_stopSignal.get() == NO_STOP_EXECUTION) {
-        switch (_state) {
+        switch (_executorState.state()) {
           case LEADER_MOVEMENT_TASK_IN_PROGRESS:
             _executorState = ExecutorState.operationInProgress(LEADER_MOVEMENT_TASK_IN_PROGRESS,
                                                                _executionTaskManager.getExecutionTasksSummary(
@@ -984,10 +980,9 @@ public class Executor {
                                                                _isTriggeredByUserRequest);
             break;
           default:
-            throw new IllegalStateException("Unexpected ongoing execution state " + _state);
+            throw new IllegalStateException("Unexpected ongoing execution state " + _executorState.state());
         }
       } else {
-        _state = ExecutorState.State.STOPPING_EXECUTION;
         Set<ExecutionTask.TaskType> taskTypesToGetFullList = new HashSet<>(ExecutionTask.TaskType.cachedValues());
         _executorState = ExecutorState.operationInProgress(STOPPING_EXECUTION,
                                                            _executionTaskManager.getExecutionTasksSummary(taskTypesToGetFullList),
