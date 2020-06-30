@@ -29,6 +29,7 @@ import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolutionException;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionEntity;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaBrokerMetricSampleAggregator;
@@ -343,9 +344,11 @@ public class LoadMonitor {
    * RUNNING state.
    *
    * @param reason The reason for pausing metric sampling.
+   * @param forcePauseSampling {@code true} to block metric sampler from starting another
+   * {@link LoadMonitorTaskRunner.LoadMonitorTaskRunnerState#SAMPLING} in case this pause request fails.
    */
-  public void pauseMetricSampling(String reason) {
-    _loadMonitorTaskRunner.pauseSampling(reason);
+  public void pauseMetricSampling(String reason, boolean forcePauseSampling) {
+    _loadMonitorTaskRunner.pauseSampling(reason, forcePauseSampling);
   }
 
   /**
@@ -355,6 +358,21 @@ public class LoadMonitor {
    */
   public void resumeMetricSampling(String reason) {
     _loadMonitorTaskRunner.resumeSampling(reason);
+  }
+
+  /**
+   * @return The current mode of metric sampling.
+   */
+  public MetricSampler.SamplingMode samplingMode() {
+    return _loadMonitorTaskRunner.samplingMode();
+  }
+
+  /**
+   * Set the mode of metric sampling that will take action on the next metric sampling.
+   * @param samplingMode Mode of metric sampling.
+   */
+  public void setSamplingMode(MetricSampler.SamplingMode samplingMode) {
+    _loadMonitorTaskRunner.setSamplingMode(samplingMode);
   }
 
   /**

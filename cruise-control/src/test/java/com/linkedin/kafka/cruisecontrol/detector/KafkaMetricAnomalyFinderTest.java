@@ -15,9 +15,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyFinderConfig.METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG;
 import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyFinderConfig.METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG;
@@ -30,21 +28,17 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorTestUtils
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorTestUtils.createMetricAnomalyFinder;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 
 public class KafkaMetricAnomalyFinderTest {
-  private static short METRIC_ID = 55;
-
-  @Rule
-  public ExpectedException _expected = ExpectedException.none();
+  private static final short METRIC_ID = 55;
 
   @Test
   public void testMetricAnomaliesWithNullArguments() {
     MetricAnomalyFinder<BrokerEntity> anomalyFinder = createKafkaMetricAnomalyFinder();
-
-    _expected.expect(IllegalArgumentException.class);
-    assertTrue("IllegalArgumentException is expected for null history or null current metrics.",
-               anomalyFinder.metricAnomalies(null, null).isEmpty());
+    // IllegalArgumentException is expected for null history or null current metrics.
+    assertThrows(IllegalArgumentException.class, () -> anomalyFinder.metricAnomalies(null, null));
   }
 
   @Test
@@ -55,7 +49,7 @@ public class KafkaMetricAnomalyFinderTest {
     Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics =
         createCurrentMetrics(Collections.singletonMap(METRIC_ID, 40.0), 21, BROKER_ENTITIES.get(0));
     Collection<MetricAnomaly<BrokerEntity>> anomalies = anomalyFinder.metricAnomalies(history, currentMetrics);
-    assertTrue("There should be exactly a single metric anomaly", anomalies.size() == 1);
+    assertEquals("There should be exactly a single metric anomaly", 1, anomalies.size());
     MetricAnomaly<BrokerEntity> anomaly = anomalies.iterator().next();
     assertTrue(anomaly.entities().containsKey(BROKER_ENTITIES.get(0)));
     assertEquals(ANOMALY_DETECTION_TIME_MS, (long) anomaly.entities().get(BROKER_ENTITIES.get(0)));
