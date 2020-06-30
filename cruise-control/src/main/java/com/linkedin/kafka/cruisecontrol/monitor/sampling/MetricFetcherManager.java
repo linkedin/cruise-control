@@ -135,18 +135,19 @@ public class MetricFetcherManager {
   }
 
   /**
-   * Fetch the partition metric samples for a given period.
+   * Fetch the partition and broker metric samples for a given period.
    * @param startMs the starting time of the fetching period.
    * @param endMs the end time of the fetching period.
    * @param timeoutMs the timeout.
-   * @param sampleStore the sample store to save the partition metric samples.
+   * @param sampleStore the sample store to save the broker and partition metric samples.
    * @return True if there was no fetching error, false otherwise.
    */
-  public boolean fetchPartitionMetricSamples(long startMs,
-                                             long endMs,
-                                             long timeoutMs,
-                                             SampleStore sampleStore) {
-    LOG.info("Kicking off partition metric sampling for time range [{}, {}], duration {} ms with timeout {} ms.",
+  public boolean fetchMetricSamples(long startMs,
+                                    long endMs,
+                                    long timeoutMs,
+                                    SampleStore sampleStore,
+                                    MetricSampler.SamplingMode samplingMode) {
+    LOG.info("Kicking off metric sampling for time range [{}, {}], duration {} ms with timeout {} ms.",
              startMs, endMs, endMs - startMs, timeoutMs);
     Set<TopicPartition> partitionAssignment = _partitionAssignor.assignPartitions(_metadataClient.cluster());
     MetricFetcher samplingFetcher = new SamplingFetcher(_metricSampler,
@@ -161,7 +162,8 @@ public class MetricFetcherManager {
                                                         _useLinearRegressionModel,
                                                         _metricDef,
                                                         _samplingFetcherTimer,
-                                                        _samplingFetcherFailureRate);
+                                                        _samplingFetcherFailureRate,
+                                                        samplingMode);
     return fetchSamples(samplingFetcher, timeoutMs);
   }
 
@@ -173,10 +175,7 @@ public class MetricFetcherManager {
    * @param sampleStore the sample store to save the broker metric samples.
    * @return True if there was no fetching error, false otherwise.
    */
-  public boolean fetchBrokerMetricSamples(long startMs,
-                                          long endMs,
-                                          long timeoutMs,
-                                          SampleStore sampleStore) {
+  public boolean fetchBrokerMetricSamples(long startMs, long endMs, long timeoutMs, SampleStore sampleStore) {
     LOG.info("Kicking off broker metric sampling for time range [{}, {}], duration {} ms with timeout {} ms.",
              startMs, endMs, endMs - startMs, timeoutMs);
     Set<TopicPartition> partitionAssignment = _partitionAssignor.assignPartitions(_metadataClient.cluster());

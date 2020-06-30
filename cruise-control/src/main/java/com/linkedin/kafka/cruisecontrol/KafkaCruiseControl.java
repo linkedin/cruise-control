@@ -80,6 +80,7 @@ public class KafkaCruiseControl {
 
   private static final String VERSION;
   private static final String COMMIT_ID;
+  private static final boolean FORCE_PAUSE_SAMPLING = false;
 
   // Referenced similar method to get software version in Kafka code.
   static {
@@ -361,7 +362,7 @@ public class KafkaCruiseControl {
    * @param reason The reason for pausing metric sampling.
    */
   public void pauseMetricSampling(String reason) {
-    _loadMonitor.pauseMetricSampling(reason);
+    _loadMonitor.pauseMetricSampling(reason, FORCE_PAUSE_SAMPLING);
   }
 
   /**

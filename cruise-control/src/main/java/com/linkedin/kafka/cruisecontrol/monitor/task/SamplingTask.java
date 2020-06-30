@@ -54,10 +54,11 @@ class SamplingTask implements Runnable {
           _metadataClient.refreshMetadata();
           samplingPeriodEndMs = _time.milliseconds();
 
-          hasSamplingError = _metricFetcherManager.fetchPartitionMetricSamples(_lastSamplingPeriodEndTimeMs,
-                                                                               samplingPeriodEndMs,
-                                                                               deadline - now,
-                                                                               _sampleStore);
+          hasSamplingError = _metricFetcherManager.fetchMetricSamples(_lastSamplingPeriodEndTimeMs,
+                                                                      samplingPeriodEndMs,
+                                                                      deadline - now,
+                                                                      _sampleStore,
+                                                                      _loadMonitorTaskRunner.samplingMode());
 
           if (!hasSamplingError) {
             _lastSamplingPeriodEndTimeMs = samplingPeriodEndMs;

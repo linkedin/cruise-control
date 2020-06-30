@@ -13,6 +13,7 @@ import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.SampleStore;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaBrokerMetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
@@ -32,7 +33,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunne
  */
 public class LoadMonitorTaskRunner {
   private static final Logger LOG = LoggerFactory.getLogger(LoadMonitorTaskRunner.class);
-
+  public static final MetricSampler.SamplingMode DEFAULT_SAMPLING_MODE = MetricSampler.SamplingMode.ALL;
   private final Time _time;
   private final MetricFetcherManager _metricFetcherManager;
   private final KafkaPartitionMetricSampleAggregator _partitionMetricSampleAggregator;
@@ -46,12 +47,13 @@ public class LoadMonitorTaskRunner {
   private final int _configuredNumWindows;
   private final long _configuredWindowMs;
 
-  private AtomicReference<LoadMonitorTaskRunnerState> _state;
+  private final AtomicReference<LoadMonitorTaskRunnerState> _state;
   private volatile double _bootstrapProgress;
   private volatile boolean _awaitingPauseSampling;
   // The reason for pausing or resuming metric sampling.
   private volatile String _reasonOfLatestPauseOrResume;
   private final Executor _executor;
+  private volatile MetricSampler.SamplingMode _samplingMode;
 
   public enum LoadMonitorTaskRunnerState {
     NOT_STARTED, RUNNING, PAUSED, SAMPLING, BOOTSTRAPPING, TRAINING, LOADING
@@ -126,6 +128,7 @@ public class LoadMonitorTaskRunner {
     _bootstrapProgress = -1.0;
     _awaitingPauseSampling = false;
     _reasonOfLatestPauseOrResume = null;
+    _samplingMode = DEFAULT_SAMPLING_MODE;
   }
 
   /**
@@ -277,14 +280,16 @@ public class LoadMonitorTaskRunner {
    * Note if load monitor is still in loading state, the method will be a noop.
    *
    * @param reason The reason for pausing metric sampling.
+   * @param forcePauseSampling {@code true} to block metric sampler from starting another {@link LoadMonitorTaskRunnerState#SAMPLING}
+   * in case this pause request fails.
    */
-  public synchronized void pauseSampling(String reason) {
+  public synchronized void pauseSampling(String reason, boolean forcePauseSampling) {
     if (_state.get() == LOADING) {
       LOG.info("Skip pause sampling since load monitor is in loading state");
       return;
     }
     if (_state.get() != PAUSED && !_state.compareAndSet(RUNNING, PAUSED)) {
-      _awaitingPauseSampling = true;
+      _awaitingPauseSampling = forcePauseSampling;
       throw new IllegalStateException("Cannot pause the load monitor because it is in " + _state.get() + " state.");
     } else {
       _awaitingPauseSampling = false;
@@ -326,6 +331,21 @@ public class LoadMonitorTaskRunner {
    */
   public boolean awaitingPauseSampling() {
     return _awaitingPauseSampling;
+  }
+
+  /**
+   * Set the mode of metric sampling that will take action on the next metric sampling.
+   * @param samplingMode Mode of metric sampling.
+   */
+  public void setSamplingMode(MetricSampler.SamplingMode samplingMode) {
+    _samplingMode = samplingMode;
+  }
+
+  /**
+   * @return The current mode of metric sampling.
+   */
+  public MetricSampler.SamplingMode samplingMode() {
+    return _samplingMode;
   }
 
   boolean compareAndSetState(LoadMonitorTaskRunnerState expectedState, LoadMonitorTaskRunnerState newState) {
