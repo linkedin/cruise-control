@@ -18,7 +18,6 @@ import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
@@ -36,12 +35,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import kafka.zk.KafkaZkClient;
-import kafka.zk.ZkVersion;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
-import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.internals.ClusterResourceListeners;
 import org.apache.kafka.common.utils.LogContext;
@@ -166,7 +163,7 @@ public class Executor {
            ExecutorNotifier executorNotifier,
            UserTaskManager userTaskManager,
            AnomalyDetector anomalyDetector) {
-      String zkUrl = config.getString(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG);
+    String zkUrl = config.getString(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG);
     _numExecutionStopped = new AtomicInteger(0);
     _numExecutionStoppedByUser = new AtomicInteger(0);
     _executionStoppedByUser = new AtomicBoolean(false);
@@ -181,7 +178,7 @@ public class Executor {
     _time = time;
     boolean zkSecurityEnabled = config.getBoolean(ExecutorConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
     _kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zkUrl, ZK_EXECUTOR_METRIC_GROUP, ZK_EXECUTOR_METRIC_TYPE,
-        zkSecurityEnabled);
+                                                                 zkSecurityEnabled);
     _adminClient = KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
     _executionTaskManager = new ExecutionTaskManager(_adminClient, dropwizardMetricRegistry, time, config);
     _metadataClient = metadataClient != null ? metadataClient
@@ -571,7 +568,7 @@ public class Executor {
       _numExecutionStartedInNonKafkaAssignerMode.incrementAndGet();
     }
     _proposalExecutor.submit(
-            new ProposalExecutionRunnable(loadMonitor, demotedBrokers, removedBrokers, replicationThrottle, isTriggeredByUserRequest));
+        new ProposalExecutionRunnable(loadMonitor, demotedBrokers, removedBrokers, replicationThrottle, isTriggeredByUserRequest));
   }
 
   /**
@@ -880,7 +877,7 @@ public class Executor {
 
         // 4. Delete tasks from Zookeeper if needed.
         if (_executorState.state() == STOPPING_EXECUTION && _stopSignal.get() == FORCE_STOP_EXECUTION) {
-          deleteZNodesToStopExecution();
+          ExecutionUtils.deleteZNodesToStopExecution(_kafkaZkClient);
         }
       } catch (Throwable t) {
         LOG.error("Executor got exception during execution", t);
@@ -1082,11 +1079,11 @@ public class Executor {
         int numFinishedPartitionMovements = _executionTaskManager.numFinishedIntraBrokerPartitionMovements();
         long finishedDataToMoveInMB = _executionTaskManager.finishedIntraBrokerDataToMoveInMB();
         LOG.info("{}/{} ({}%) intra-broker partition movements completed. {}/{} ({}%) MB have been moved.",
-            numFinishedPartitionMovements, numTotalPartitionMovements,
-            String.format("%.2f", numFinishedPartitionMovements * UNIT_INTERVAL_TO_PERCENTAGE / numTotalPartitionMovements),
-            finishedDataToMoveInMB, totalDataToMoveInMB,
-            totalDataToMoveInMB == 0 ? 100 : String.format("%.2f", finishedDataToMoveInMB * UNIT_INTERVAL_TO_PERCENTAGE
-                                                                   / totalDataToMoveInMB));
+                 numFinishedPartitionMovements, numTotalPartitionMovements,
+                 String.format("%.2f", numFinishedPartitionMovements * UNIT_INTERVAL_TO_PERCENTAGE / numTotalPartitionMovements),
+                 finishedDataToMoveInMB, totalDataToMoveInMB,
+                 totalDataToMoveInMB == 0 ? 100 : String.format("%.2f", finishedDataToMoveInMB * UNIT_INTERVAL_TO_PERCENTAGE
+                                                                        / totalDataToMoveInMB));
       }
       Set<ExecutionTask> inExecutionTasks = inExecutionTasks();
       while (!inExecutionTasks.isEmpty()) {
@@ -1168,18 +1165,6 @@ public class Executor {
       return numLeadershipToMove;
     }
 
-    private void deleteZNodesToStopExecution() {
-      // Delete zNode of ongoing replica movement tasks.
-      LOG.info("Deleting zNode for ongoing replica movements {}.", _kafkaZkClient.getPartitionReassignment());
-      _kafkaZkClient.deletePartitionReassignment(ZkVersion.MatchAnyVersion());
-      // delete zNode of ongoing leadership movement tasks.
-      LOG.info("Deleting zNode for ongoing leadership changes {}.", _kafkaZkClient.getPreferredReplicaElection());
-      _kafkaZkClient.deletePreferredReplicaElection(ZkVersion.MatchAnyVersion());
-      // Delete controller zNode to trigger a controller re-election.
-      LOG.info("Deleting controller zNode to re-elect a new controller. Old controller is {}.", _kafkaZkClient.getControllerId());
-      _kafkaZkClient.deleteController(ZkVersion.MatchAnyVersion());
-    }
-
     /**
      * Periodically checks the metadata to see if (1) partition or (2) leadership reassignment has finished or not.
      * @return Finished tasks.
@@ -1223,7 +1208,7 @@ public class Executor {
             deletedTaskIds.add(task.executionId());
             _executionTaskManager.markTaskAborting(task);
             _executionTaskManager.markTaskDone(task);
-          } else if (isTaskDone(cluster, logDirInfoByTask, tp, task)) {
+          } else if (ExecutionUtils.isTaskDone(cluster, logDirInfoByTask, task)) {
             // Check to see if the task is done.
             finishedTasks.add(task);
             _executionTaskManager.markTaskDone(task);
@@ -1280,88 +1265,6 @@ public class Executor {
         }
         _executorNotifier.sendAlert(sb.toString());
         _lastSlowTaskReportingTimeMs = _time.milliseconds();
-      }
-    }
-
-    /**
-     * Check if a task is done.
-     */
-    private boolean isTaskDone(Cluster cluster,
-                               Map<ExecutionTask, ReplicaLogDirInfo> logdirInfoByTask,
-                               TopicPartition  tp,
-                               ExecutionTask task) {
-      switch (task.type()) {
-        case INTER_BROKER_REPLICA_ACTION:
-          return isInterBrokerReplicaActionDone(cluster, tp, task);
-        case INTRA_BROKER_REPLICA_ACTION:
-          return isIntraBrokerReplicaActionDone(logdirInfoByTask, task);
-        case LEADER_ACTION:
-          return isLeadershipMovementDone(cluster, tp, task);
-        default:
-          return true;
-      }
-    }
-
-    /**
-     * For a inter-broker replica movement action, the completion depends on the task state:
-     * IN_PROGRESS: when the current replica list is the same as the new replica list and all replicas are in-sync.
-     * ABORTING: done when the current replica list is the same as the old replica list. Due to race condition,
-     *           we also consider it done if the current replica list is the same as the new replica list and all replicas
-     *           are in-sync.
-     * DEAD: always considered as done because we neither move forward or rollback.
-     *
-     * There should be no other task state seen here.
-     */
-    private boolean isInterBrokerReplicaActionDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
-      PartitionInfo partitionInfo = cluster.partition(tp);
-      switch (task.state()) {
-        case IN_PROGRESS:
-          return task.proposal().isInterBrokerMovementCompleted(partitionInfo);
-        case ABORTING:
-          return task.proposal().isInterBrokerMovementAborted(partitionInfo);
-        case DEAD:
-          return true;
-        default:
-          throw new IllegalStateException("Should never be here. State " + task.state());
-      }
-    }
-
-    /**
-     * Check whether intra-broker replica movement is done by comparing replica's current logdir with the logdir proposed
-     * by task's proposal.
-     */
-    private boolean isIntraBrokerReplicaActionDone(Map<ExecutionTask, ReplicaLogDirInfo> logdirInfoByTask,
-                                                   ExecutionTask task) {
-      if (logdirInfoByTask.containsKey(task)) {
-        return logdirInfoByTask.get(task).getCurrentReplicaLogDir()
-                               .equals(task.proposal().replicasToMoveBetweenDisksByBroker().get(task.brokerId()).logdir());
-      }
-      return false;
-    }
-
-    private boolean isInIsr(Integer leader, Cluster cluster, TopicPartition tp) {
-      return Arrays.stream(cluster.partition(tp).inSyncReplicas()).anyMatch(node -> node.id() == leader);
-    }
-
-    /**
-     * The completeness of leadership movement depends on the task state:
-     * IN_PROGRESS: done when the leader becomes the destination.
-     * ABORTING or DEAD: always considered as done the destination cannot become leader anymore.
-     *
-     * There should be no other task state seen here.
-     */
-    private boolean isLeadershipMovementDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
-      Node leader = cluster.leaderFor(tp);
-      switch (task.state()) {
-        case IN_PROGRESS:
-          return (leader != null && leader.id() == task.proposal().newLeader().brokerId())
-                 || leader == null
-                 || !isInIsr(task.proposal().newLeader().brokerId(), cluster, tp);
-        case ABORTING:
-        case DEAD:
-          return true;
-        default:
-          throw new IllegalStateException("Should never be here.");
       }
     }
 
@@ -1427,30 +1330,10 @@ public class Executor {
       return false;
     }
 
-    /**
-     * Checks whether the topicPartitions of the execution tasks in the given subset is indeed a subset of the given set.
-     *
-     * @param set The original set.
-     * @param subset The subset to validate whether it is indeed a subset of the given set.
-     * @return True if the topicPartitions of the given subset constitute a subset of the given set, false otherwise.
-     */
-    private boolean isSubset(Set<TopicPartition> set, Collection<ExecutionTask> subset) {
-      boolean isSubset = true;
-      for (ExecutionTask executionTask : subset) {
-        TopicPartition tp = executionTask.proposal().topicPartition();
-        if (!set.contains(tp)) {
-          isSubset = false;
-          break;
-        }
-      }
-
-      return isSubset;
-    }
-
     private boolean maybeReexecuteInterBrokerReplicaActions() {
       List<ExecutionTask> interBrokerReplicaActionsToReexecute =
           new ArrayList<>(_executionTaskManager.inExecutionTasks(Collections.singleton(INTER_BROKER_REPLICA_ACTION)));
-      if (!isSubset(ExecutorUtils.partitionsBeingReassigned(_kafkaZkClient), interBrokerReplicaActionsToReexecute)) {
+      if (!ExecutionUtils.isSubset(ExecutorUtils.partitionsBeingReassigned(_kafkaZkClient), interBrokerReplicaActionsToReexecute)) {
         LOG.info("Reexecuting tasks {}", interBrokerReplicaActionsToReexecute);
         ExecutorUtils.executeReplicaReassignmentTasks(_kafkaZkClient, interBrokerReplicaActionsToReexecute);
       }
