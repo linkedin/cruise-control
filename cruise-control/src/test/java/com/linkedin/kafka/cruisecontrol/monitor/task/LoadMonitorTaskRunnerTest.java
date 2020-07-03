@@ -110,7 +110,7 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
                                  metadataClient, METRIC_DEF, TIME, dropwizardMetricRegistry, null, sampler);
     LoadMonitorTaskRunner loadMonitorTaskRunner =
         new LoadMonitorTaskRunner(config, fetcherManager, mockPartitionMetricSampleAggregator,
-                                  mockBrokerMetricSampleAggregator, metadataClient, null, TIME);
+                                  mockBrokerMetricSampleAggregator, metadataClient, TIME);
     while (metadata.fetch().topics().size() < NUM_TOPICS) {
       Thread.sleep(10);
       metadataClient.refreshMetadata();
@@ -159,7 +159,7 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
                                  METRIC_DEF, TIME, dropwizardMetricRegistry, null, sampler);
     LoadMonitorTaskRunner loadMonitorTaskRunner =
         new LoadMonitorTaskRunner(config, fetcherManager, mockMetricSampleAggregator, mockBrokerMetricSampleAggregator,
-                                  metadataClient, null, TIME);
+                                  metadataClient, TIME);
     while (metadata.fetch().topics().size() < 100) {
       metadataClient.refreshMetadata();
     }
@@ -194,7 +194,7 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
   }
 
   // A simple metric sampler that increment the mock time by 1
-  private class MockSampler implements MetricSampler {
+  private static class MockSampler implements MetricSampler {
     private int _exceptionsLeft;
 
     MockSampler(int numExceptions) {
@@ -276,7 +276,7 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
     }
 
     @Override
-    public void waitObject(Object obj, Supplier<Boolean> condition, long timeoutMs) throws InterruptedException {
+    public void waitObject(Object obj, Supplier<Boolean> condition, long timeoutMs) {
       // Noop
     }
   }

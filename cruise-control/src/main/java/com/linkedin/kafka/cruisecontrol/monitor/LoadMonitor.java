@@ -27,7 +27,6 @@ import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolutionException;
-import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
@@ -118,15 +117,10 @@ public class LoadMonitor {
    *
    * @param config The load monitor configuration.
    * @param time   The time object.
-   * @param executor The proposal executor.
    * @param dropwizardMetricRegistry The sensor registry for cruise control
    * @param metricDef The metric definitions.
    */
-  public LoadMonitor(KafkaCruiseControlConfig config,
-                     Time time,
-                     Executor executor,
-                     MetricRegistry dropwizardMetricRegistry,
-                     MetricDef metricDef) {
+  public LoadMonitor(KafkaCruiseControlConfig config, Time time, MetricRegistry dropwizardMetricRegistry, MetricDef metricDef) {
     this(config,
          new MetadataClient(config,
                             new Metadata(METADATA_REFRESH_BACKOFF,
@@ -137,7 +131,6 @@ public class LoadMonitor {
                             time),
          KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config)),
          time,
-         executor,
          dropwizardMetricRegistry,
          metricDef);
   }
@@ -149,7 +142,6 @@ public class LoadMonitor {
               MetadataClient metadataClient,
               AdminClient adminClient,
               Time time,
-              Executor executor,
               MetricRegistry dropwizardMetricRegistry,
               MetricDef metricDef) {
     _config = config;
@@ -177,7 +169,7 @@ public class LoadMonitor {
 
     _loadMonitorTaskRunner =
         new LoadMonitorTaskRunner(config, _partitionMetricSampleAggregator, _brokerMetricSampleAggregator, _metadataClient,
-                                  metricDef, time, dropwizardMetricRegistry, _brokerCapacityConfigResolver, executor);
+                                  metricDef, time, dropwizardMetricRegistry, _brokerCapacityConfigResolver);
     _clusterModelCreationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("LoadMonitor",
                                                                                     "cluster-model-creation-timer"));
     _loadMonitorExecutor = Executors.newScheduledThreadPool(2,
@@ -194,7 +186,6 @@ public class LoadMonitor {
     dropwizardMetricRegistry.register(MetricRegistry.name("LoadMonitor", "num-partitions-with-extrapolations"),
                                       (Gauge<Integer>) this::numPartitionsWithExtrapolations);
   }
-
 
   /**
    * Start the load monitor.
@@ -785,7 +776,7 @@ public class LoadMonitor {
   }
 
   public class AutoCloseableSemaphore implements AutoCloseable {
-    private AtomicBoolean _closed = new AtomicBoolean(false);
+    private final AtomicBoolean _closed = new AtomicBoolean(false);
     @Override
     public void close() {
       if (_closed.compareAndSet(false, true)) {

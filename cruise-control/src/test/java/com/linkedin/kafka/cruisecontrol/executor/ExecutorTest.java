@@ -235,7 +235,6 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient, DEMOTION_HISTORY_RETENTION_TIME_MS,
                                      REMOVAL_HISTORY_RETENTION_TIME_MS, null, mockUserTaskManager,
                                      mockAnomalyDetector);
-    executor.setExecutionMode(false);
     executor.executeProposals(proposalsToExecute,
                               Collections.emptySet(),
                               null,
@@ -248,7 +247,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                               null,
                               true,
                               RANDOM_UUID,
-                              ExecutorTest.class::getSimpleName);
+                              ExecutorTest.class::getSimpleName,
+                              false);
     waitUntilTrue(() -> (executor.state().state() == ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS && !executor.inExecutionTasks().isEmpty()),
                   "Leader movement task did not start within the time limit",
                   EXECUTION_DEADLINE_MS, EXECUTION_SHORT_CHECK_MS);
@@ -277,7 +277,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                               null,
                               true,
                               RANDOM_UUID,
-                              ExecutorTest.class::getSimpleName);
+                              ExecutorTest.class::getSimpleName,
+                              false);
     waitUntilTrue(() -> (executor.state().state() == ExecutorState.State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS),
                   "Inter-broker replica movement task did not start within the time limit",
                   EXECUTION_DEADLINE_MS, EXECUTION_SHORT_CHECK_MS);
@@ -473,7 +474,6 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), null, DEMOTION_HISTORY_RETENTION_TIME_MS,
                                      REMOVAL_HISTORY_RETENTION_TIME_MS, mockExecutorNotifier, mockUserTaskManager,
                                      mockAnomalyDetector);
-    executor.setExecutionMode(false);
     Map<TopicPartition, Integer> replicationFactors = new HashMap<>(proposalsToCheck.size());
     for (ExecutionProposal proposal : proposalsToCheck) {
       TopicPartition tp = new TopicPartition(proposal.topic(), proposal.partitionId());
@@ -481,8 +481,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     }
 
     executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, mockLoadMonitor, null,
-                              null, null, null,
-                              null, replicationThrottle, isTriggeredByUserRequest, RANDOM_UUID, ExecutorTest.class::getSimpleName);
+                              null, null, null, null,
+                              replicationThrottle, isTriggeredByUserRequest, RANDOM_UUID, ExecutorTest.class::getSimpleName, false);
 
     if (verifyProgress) {
       waitUntilTrue(() -> ExecutorUtils.partitionsBeingReassigned(kafkaZkClient).contains(TP0),

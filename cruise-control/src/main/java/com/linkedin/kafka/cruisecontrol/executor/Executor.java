@@ -93,8 +93,6 @@ public class Executor {
   private final AdminClient _adminClient;
   private final double _leaderMovementTimeoutMs;
 
-  private static final long METADATA_REFRESH_BACKOFF = 100L;
-  private static final long METADATA_EXPIRY_MS = Long.MAX_VALUE;
   private static final int NO_STOP_EXECUTION = 0;
   private static final int STOP_EXECUTION = 1;
   private static final int FORCE_STOP_EXECUTION = 2;
@@ -115,15 +113,6 @@ public class Executor {
   private final AtomicInteger _numExecutionStartedInKafkaAssignerMode;
   private final AtomicInteger _numExecutionStartedInNonKafkaAssignerMode;
   private volatile boolean _isKafkaAssignerMode;
-
-  private static final String EXECUTION_STARTED = "execution-started";
-  private static final String KAFKA_ASSIGNER_MODE = "kafka_assigner";
-  private static final String EXECUTION_STOPPED = "execution-stopped";
-
-  private static final String GAUGE_EXECUTION_STOPPED = EXECUTION_STOPPED;
-  private static final String GAUGE_EXECUTION_STOPPED_BY_USER = EXECUTION_STOPPED + "-by-user";
-  private static final String GAUGE_EXECUTION_STARTED_IN_KAFKA_ASSIGNER_MODE = EXECUTION_STARTED + "-" + KAFKA_ASSIGNER_MODE;
-  private static final String GAUGE_EXECUTION_STARTED_IN_NON_KAFKA_ASSIGNER_MODE = EXECUTION_STARTED + "-non-" + KAFKA_ASSIGNER_MODE;
   // TODO: Execution history is currently kept in memory, but ideally we should move it to a persistent store.
   private final long _demotionHistoryRetentionTimeMs;
   private final long _removalHistoryRetentionTimeMs;
@@ -183,8 +172,8 @@ public class Executor {
     _executionTaskManager = new ExecutionTaskManager(_adminClient, dropwizardMetricRegistry, time, config);
     _metadataClient = metadataClient != null ? metadataClient
                                              : new MetadataClient(config,
-                                                                  new Metadata(METADATA_REFRESH_BACKOFF,
-                                                                               METADATA_EXPIRY_MS,
+                                                                  new Metadata(ExecutionUtils.METADATA_REFRESH_BACKOFF,
+                                                                               ExecutionUtils.METADATA_EXPIRY_MS,
                                                                                new LogContext(),
                                                                                new ClusterResourceListeners()),
                                                                   -1L,
@@ -258,13 +247,13 @@ public class Executor {
    */
   private void registerGaugeSensors(MetricRegistry dropwizardMetricRegistry) {
     String metricName = "Executor";
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_EXECUTION_STOPPED),
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, ExecutionUtils.GAUGE_EXECUTION_STOPPED),
                                       (Gauge<Integer>) this::numExecutionStopped);
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_EXECUTION_STOPPED_BY_USER),
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, ExecutionUtils.GAUGE_EXECUTION_STOPPED_BY_USER),
                                       (Gauge<Integer>) this::numExecutionStoppedByUser);
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_EXECUTION_STARTED_IN_KAFKA_ASSIGNER_MODE),
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, ExecutionUtils.GAUGE_EXECUTION_STARTED_IN_KAFKA_ASSIGNER_MODE),
                                       (Gauge<Integer>) this::numExecutionStartedInKafkaAssignerMode);
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_EXECUTION_STARTED_IN_NON_KAFKA_ASSIGNER_MODE),
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, ExecutionUtils.GAUGE_EXECUTION_STARTED_IN_NON_KAFKA_ASSIGNER_MODE),
                                       (Gauge<Integer>) this::numExecutionStartedInNonKafkaAssignerMode);
   }
 
@@ -393,6 +382,7 @@ public class Executor {
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
    * @param reasonSupplier Reason supplier for the execution.
+   * @param isKafkaAssignerMode {@code true} if kafka assigner mode, {@code false} otherwise.
    */
   public synchronized void executeProposals(Collection<ExecutionProposal> proposals,
                                             Set<Integer> unthrottledBrokers,
@@ -406,11 +396,19 @@ public class Executor {
                                             Long replicationThrottle,
                                             boolean isTriggeredByUserRequest,
                                             String uuid,
-                                            Supplier<String> reasonSupplier) throws OngoingExecutionException {
-    initProposalExecution(proposals, unthrottledBrokers, loadMonitor, requestedInterBrokerPartitionMovementConcurrency,
-                          requestedIntraBrokerPartitionMovementConcurrency, requestedLeadershipMovementConcurrency,
-                          requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid, reasonSupplier);
-    startExecution(loadMonitor, null, removedBrokers, replicationThrottle, isTriggeredByUserRequest);
+                                            Supplier<String> reasonSupplier,
+                                            boolean isKafkaAssignerMode) throws OngoingExecutionException {
+    try {
+      setExecutionMode(isKafkaAssignerMode);
+      initProposalExecution(proposals, unthrottledBrokers, loadMonitor, requestedInterBrokerPartitionMovementConcurrency,
+                            requestedIntraBrokerPartitionMovementConcurrency, requestedLeadershipMovementConcurrency,
+                            requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid, reasonSupplier,
+                            isTriggeredByUserRequest);
+      startExecution(loadMonitor, null, removedBrokers, replicationThrottle, isTriggeredByUserRequest);
+    } catch (Exception e) {
+      processExecuteProposalsFailure();
+      throw e;
+    }
   }
 
   private synchronized void initProposalExecution(Collection<ExecutionProposal> proposals,
@@ -422,7 +420,8 @@ public class Executor {
                                                   Long requestedExecutionProgressCheckIntervalMs,
                                                   ReplicaMovementStrategy replicaMovementStrategy,
                                                   String uuid,
-                                                  Supplier<String> reasonSupplier) throws OngoingExecutionException {
+                                                  Supplier<String> reasonSupplier,
+                                                  boolean isTriggeredByUserRequest) throws OngoingExecutionException {
     if (_hasOngoingExecution) {
       throw new OngoingExecutionException("Cannot execute new proposals while there is an ongoing execution.");
     }
@@ -433,6 +432,11 @@ public class Executor {
     if (uuid == null) {
       throw new IllegalStateException("UUID of the execution cannot be null.");
     }
+    if (reasonSupplier == null) {
+      throw new IllegalArgumentException("Reason supplier cannot be null.");
+    }
+    _executorState = ExecutorState.initializeProposalExecution(uuid, reasonSupplier.get(), recentlyDemotedBrokers(),
+                                                               recentlyRemovedBrokers(), isTriggeredByUserRequest);
     _executionTaskManager.setExecutionModeForTaskTracker(_isKafkaAssignerMode);
     _executionTaskManager.addExecutionProposals(proposals, brokersToSkipConcurrencyCheck, _metadataClient.refreshMetadata().cluster(),
                                                 replicaMovementStrategy);
@@ -473,9 +477,16 @@ public class Executor {
                                                   boolean isTriggeredByUserRequest,
                                                   String uuid,
                                                   Supplier<String> reasonSupplier) throws OngoingExecutionException {
-    initProposalExecution(proposals, demotedBrokers, loadMonitor, concurrentSwaps, 0, requestedLeadershipMovementConcurrency,
-                          requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid, reasonSupplier);
-    startExecution(loadMonitor, demotedBrokers, null, replicationThrottle, isTriggeredByUserRequest);
+    try {
+      setExecutionMode(false);
+      initProposalExecution(proposals, demotedBrokers, loadMonitor, concurrentSwaps, 0, requestedLeadershipMovementConcurrency,
+                            requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid, reasonSupplier,
+                            isTriggeredByUserRequest);
+      startExecution(loadMonitor, demotedBrokers, null, replicationThrottle, isTriggeredByUserRequest);
+    } catch (Exception e) {
+      processExecuteProposalsFailure();
+      throw e;
+    }
   }
 
   /**
@@ -511,7 +522,7 @@ public class Executor {
    *
    * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
    */
-  public synchronized void setExecutionMode(boolean isKafkaAssignerMode) {
+  private synchronized void setExecutionMode(boolean isKafkaAssignerMode) {
     _isKafkaAssignerMode = isKafkaAssignerMode;
   }
 
@@ -573,11 +584,10 @@ public class Executor {
 
   /**
    * Sanity check whether there are ongoing (1) inter-broker or intra-broker replica movements or (2) leadership movements.
+   * This check ensures lack of ongoing movements started by external agents -- i.e. not started by this Executor.
    */
   private void sanityCheckOngoingMovement() throws OngoingExecutionException {
-    // Note that in case there is an ongoing partition reassignment, we do not unpause metric sampling.
     if (hasOngoingPartitionReassignments()) {
-      processOngoingMovementSanityCheckFailure();
       throw new OngoingExecutionException("There are ongoing inter-broker partition movements.");
     } else {
       boolean hasOngoingIntraBrokerReplicaMovement;
@@ -587,23 +597,21 @@ public class Executor {
                                                                 .collect(Collectors.toSet()), _adminClient, _config);
       } catch (TimeoutException | InterruptedException | ExecutionException e) {
         // This may indicate transient (e.g. network) issues.
-        processOngoingMovementSanityCheckFailure();
         throw new IllegalStateException("Failed to retrieve if there are already ongoing intra-broker replica reassignments.", e);
       }
       if (hasOngoingIntraBrokerReplicaMovement) {
-        processOngoingMovementSanityCheckFailure();
         throw new OngoingExecutionException("There are ongoing intra-broker partition movements.");
       } else if (hasOngoingLeaderElection()) {
-        processOngoingMovementSanityCheckFailure();
         throw new OngoingExecutionException("There are ongoing leadership movements.");
       }
     }
   }
 
-  private void processOngoingMovementSanityCheckFailure() {
+  private void processExecuteProposalsFailure() {
     _executionTaskManager.clear();
     _uuid = null;
     _reasonSupplier = null;
+    _executorState = ExecutorState.noTaskInProgress(recentlyDemotedBrokers(), recentlyRemovedBrokers());
   }
 
   /**
@@ -725,10 +733,7 @@ public class Executor {
       _loadMonitor = loadMonitor;
       _executionException = null;
       if (isTriggeredByUserRequest && _userTaskManager == null) {
-        _executionTaskManager.clear();
-        _uuid = null;
-        _reasonSupplier = null;
-        _executorState = ExecutorState.noTaskInProgress(recentlyDemotedBrokers(), recentlyRemovedBrokers());
+        processExecuteProposalsFailure();
         _hasOngoingExecution = false;
         _stopSignal.set(NO_STOP_EXECUTION);
         _executionStoppedByUser.set(false);
@@ -775,7 +780,7 @@ public class Executor {
         userTaskInfo = _userTaskManager.markTaskExecutionBegan(_uuid);
       }
       String reason = _reasonSupplier.get();
-      _executorState = ExecutorState.executionStarted(_uuid, reason, _recentlyDemotedBrokers, _recentlyRemovedBrokers, _isTriggeredByUserRequest);
+      _executorState = ExecutorState.executionStarting(_uuid, reason, _recentlyDemotedBrokers, _recentlyRemovedBrokers, _isTriggeredByUserRequest);
       OPERATION_LOG.info("Task [{}] execution starts. The reason of execution is {}.", _uuid, reason);
       _ongoingExecutionIsBeingModified.set(false);
 

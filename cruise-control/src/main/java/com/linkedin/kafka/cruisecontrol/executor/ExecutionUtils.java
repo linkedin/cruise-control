@@ -21,6 +21,16 @@ import org.slf4j.LoggerFactory;
 
 public final class ExecutionUtils {
   private static final Logger LOG = LoggerFactory.getLogger(ExecutionUtils.class);
+  public static final long METADATA_REFRESH_BACKOFF = 100L;
+  public static final long METADATA_EXPIRY_MS = Long.MAX_VALUE;
+  public static final String EXECUTION_STARTED = "execution-started";
+  public static final String KAFKA_ASSIGNER_MODE = "kafka_assigner";
+  public static final String EXECUTION_STOPPED = "execution-stopped";
+  public static final String GAUGE_EXECUTION_STOPPED = EXECUTION_STOPPED;
+  public static final String GAUGE_EXECUTION_STOPPED_BY_USER = EXECUTION_STOPPED + "-by-user";
+  public static final String GAUGE_EXECUTION_STARTED_IN_KAFKA_ASSIGNER_MODE = EXECUTION_STARTED + "-" + KAFKA_ASSIGNER_MODE;
+  public static final String GAUGE_EXECUTION_STARTED_IN_NON_KAFKA_ASSIGNER_MODE = EXECUTION_STARTED + "-non-" + KAFKA_ASSIGNER_MODE;
+
 
   private ExecutionUtils() { }
 

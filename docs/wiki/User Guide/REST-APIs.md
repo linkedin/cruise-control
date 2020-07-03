@@ -72,7 +72,8 @@ The returned state contains the following information:
 	   `INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS` /
 	   `INTRA_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS` /
 	   `LEADER_MOVEMENT_TASK_IN_PROGRESS` /
-	   `STOPPING_EXECUTION`
+	   `STOPPING_EXECUTION` /
+	   `INITIALIZING_PROPOSAL_EXECUTION`
   * Inter-broker replica movement progress (if state is `INTER_BROKER_REPLICA_MOVEMENT_IN_PROGRESS`)
   * Intra-broker replica movement progress (if state is `INTRA_BROKER_REPLICA_MOVEMENT_IN_PROGRESS`)
   * Leadership movement progress (if state is `LEADERSHIP_MOVEMENT`)
