@@ -94,8 +94,7 @@ public class AnomalyDetectorConfig {
    */
   public static final String ANOMALY_NOTIFIER_CLASS_CONFIG = "anomaly.notifier.class";
   public static final String DEFAULT_ANOMALY_NOTIFIER_CLASS = NoopNotifier.class.getName();
-  public static final String ANOMALY_NOTIFIER_CLASS_DOC = "The notifier class to trigger an alert when an "
-      + "anomaly is violated.";
+  public static final String ANOMALY_NOTIFIER_CLASS_DOC = "The notifier class to trigger an alert when an anomaly is violated.";
 
   /**
    * <code>anomaly.detection.goals</code>
