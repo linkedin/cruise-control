@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -43,7 +44,7 @@ import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetr
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.*;
 import static org.junit.Assert.assertEquals;
-
+import java.util.regex.Pattern;
 
 public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationTestHarness {
   protected static final String TOPIC = "CruiseControlMetricsReporterTest";
@@ -201,5 +202,16 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     // Check whether the topic config is updated
     topicDescription = adminClient.describeTopics(Collections.singleton(TOPIC)).values().get(TOPIC).get();
     assertEquals(2, topicDescription.partitions().size());
+  }
+
+  @Test
+  public void testGetKafkaBootstrapServersConfigure() throws ExecutionException, InterruptedException {
+    Map<Object, Object> brokerConfig = buildBrokerConfigs().get(0);
+    HashMap<String, Object> map = new HashMap<>();
+    map.put(KafkaConfig.ListenersProp(), brokerConfig.get(KafkaConfig.ListenersProp()));
+    String bootstrapServers = CruiseControlMetricsReporter.getBootstrapServers(map);
+    String urlParse = "\\[?([0-9a-zA-Z\\-%._:]*)\\]?:(-?[0-9]+)";
+    Pattern compile = Pattern.compile(urlParse);
+    assertEquals(true, compile.matcher(bootstrapServers).matches());
   }
 }

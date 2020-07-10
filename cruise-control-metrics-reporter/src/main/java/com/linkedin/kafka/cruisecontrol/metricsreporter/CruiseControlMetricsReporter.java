@@ -76,6 +76,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   private int _metricsTopicAutoCreateRetries;
   protected static final String CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY = "delete";
   protected static final Duration PRODUCER_CLOSE_TIMEOUT = Duration.ofSeconds(5);
+  protected static final String DEFAULT_BOOTSTRAP_SERVERS_HOST = "localhost:";
   private boolean _kubernetesMode;
 
   @Override
@@ -111,14 +112,29 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     }
   }
 
+  static String getBootstrapServers(Map<String, ?> configs) {
+    String listeners = String.valueOf(configs.get(KafkaConfig.ListenersProp()));
+    if (listeners != null && listeners.length() != 0) {
+      String firstListener = listeners.split("\\s*,\\s*")[0];
+      String[] allListeners = firstListener.split(":");
+      if (allListeners[1].length() == 2) {
+        return DEFAULT_BOOTSTRAP_SERVERS_HOST + allListeners[allListeners.length - 1];
+      } else {
+        return firstListener.substring(firstListener.indexOf(":") + 3, firstListener.lastIndexOf(":")) + ":" + allListeners[allListeners.length - 1];
+      }
+    } else {
+      String port = String.valueOf(configs.get(KafkaConfig.PortProp()));
+      return DEFAULT_BOOTSTRAP_SERVERS_HOST + port;
+    }
+  }
+
   @Override
   public void configure(Map<String, ?> configs) {
     Properties producerProps = CruiseControlMetricsReporterConfig.parseProducerConfigs(configs);
 
     //Add BootstrapServers if not set
     if (!producerProps.containsKey(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG)) {
-      Object port = configs.get("port");
-      String bootstrapServers = "localhost:" + (port == null ? "9092" : String.valueOf(port));
+      String bootstrapServers = getBootstrapServers(configs);
       producerProps.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
       LOG.info("Using default value of {} for {}", bootstrapServers,
                CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
