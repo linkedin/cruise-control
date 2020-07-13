@@ -109,7 +109,7 @@ public class KafkaCruiseControl {
     // Instantiate the components.
     _anomalyDetector = new AnomalyDetector(this, _time, dropwizardMetricRegistry);
     _executor = new Executor(config, _time, dropwizardMetricRegistry, _anomalyDetector);
-    _loadMonitor = new LoadMonitor(config, _time, _executor, dropwizardMetricRegistry, KafkaMetricDef.commonMetricDef());
+    _loadMonitor = new LoadMonitor(config, _time, dropwizardMetricRegistry, KafkaMetricDef.commonMetricDef());
     _goalOptimizerExecutor = Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("GoalOptimizerExecutor", true, null));
     _goalOptimizer = new GoalOptimizer(config, _loadMonitor, _time, dropwizardMetricRegistry, _executor);
   }
@@ -596,12 +596,10 @@ public class KafkaCruiseControl {
                                String uuid,
                                Supplier<String> reasonSupplier) throws OngoingExecutionException {
     if (hasProposalsToExecute(proposals, uuid)) {
-      // Set the execution mode and start execution.
-      _executor.setExecutionMode(isKafkaAssignerMode);
       _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor,
                                  concurrentInterBrokerPartitionMovements, concurrentIntraBrokerPartitionMovements,
                                  concurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy,
-                                 replicationThrottle, isTriggeredByUserRequest, uuid, reasonSupplier);
+                                 replicationThrottle, isTriggeredByUserRequest, uuid, reasonSupplier, isKafkaAssignerMode);
     }
   }
 
@@ -638,12 +636,10 @@ public class KafkaCruiseControl {
                              String uuid,
                              Supplier<String> reasonSupplier) throws OngoingExecutionException {
     if (hasProposalsToExecute(proposals, uuid)) {
-      // Set the execution mode and start execution.
-      _executor.setExecutionMode(isKafkaAssignerMode);
       _executor.executeProposals(proposals, throttleDecommissionedBroker ? Collections.emptySet() : removedBrokers,
                                  removedBrokers, _loadMonitor, concurrentInterBrokerPartitionMovements, 0,
                                  concurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy,
-                                 replicationThrottle, isTriggeredByUserRequest, uuid, reasonSupplier);
+                                 replicationThrottle, isTriggeredByUserRequest, uuid, reasonSupplier, isKafkaAssignerMode);
     }
   }
 
@@ -683,8 +679,6 @@ public class KafkaCruiseControl {
                             : _config.getInt(ExecutorConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
       concurrentSwaps = Math.min(_config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG) / brokerCount, concurrentSwaps);
 
-      // Set the execution mode and start execution.
-      _executor.setExecutionMode(false);
       _executor.executeDemoteProposals(proposals, demotedBrokers, _loadMonitor, concurrentSwaps, concurrentLeaderMovements,
                                        executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle,
                                        isTriggeredByUserRequest, uuid, reasonSupplier);
