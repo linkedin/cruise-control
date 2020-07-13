@@ -11,7 +11,6 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
-import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.SampleStore;
@@ -52,7 +51,6 @@ public class LoadMonitorTaskRunner {
   private volatile boolean _awaitingPauseSampling;
   // The reason for pausing or resuming metric sampling.
   private volatile String _reasonOfLatestPauseOrResume;
-  private final Executor _executor;
   private volatile MetricSampler.SamplingMode _samplingMode;
 
   public enum LoadMonitorTaskRunnerState {
@@ -70,7 +68,6 @@ public class LoadMonitorTaskRunner {
    * @param time The time object.
    * @param dropwizardMetricRegistry The metric registry that holds all the metrics for monitoring Cruise Control.
    * @param brokerCapacityConfigResolver The resolver for retrieving broker capacities.
-   * @param executor The proposal executor.
    */
   public LoadMonitorTaskRunner(KafkaCruiseControlConfig config,
                                KafkaPartitionMetricSampleAggregator partitionMetricSampleAggregator,
@@ -79,15 +76,13 @@ public class LoadMonitorTaskRunner {
                                MetricDef metricDef,
                                Time time,
                                MetricRegistry dropwizardMetricRegistry,
-                               BrokerCapacityConfigResolver brokerCapacityConfigResolver,
-                               Executor executor) {
+                               BrokerCapacityConfigResolver brokerCapacityConfigResolver) {
     this(config,
         new MetricFetcherManager(config, partitionMetricSampleAggregator, brokerMetricSampleAggregator, metadataClient,
                                  metricDef, time, dropwizardMetricRegistry, brokerCapacityConfigResolver),
         partitionMetricSampleAggregator,
         brokerMetricSampleAggregator,
         metadataClient,
-        executor,
         time);
   }
 
@@ -99,7 +94,6 @@ public class LoadMonitorTaskRunner {
    * @param partitionMetricSampleAggregator The {@link KafkaPartitionMetricSampleAggregator} to aggregate partition metrics.
    * @param brokerMetricSampleAggregator The {@link KafkaBrokerMetricSampleAggregator} to aggregate broker metrics.
    * @param metadataClient The metadata of the cluster.
-   * @param executor The proposal executor.
    * @param time The time object.
    */
   LoadMonitorTaskRunner(KafkaCruiseControlConfig config,
@@ -107,10 +101,8 @@ public class LoadMonitorTaskRunner {
                         KafkaPartitionMetricSampleAggregator partitionMetricSampleAggregator,
                         KafkaBrokerMetricSampleAggregator brokerMetricSampleAggregator,
                         MetadataClient metadataClient,
-                        Executor executor,
                         Time time) {
     _time = time;
-    _executor = executor;
     _metricFetcherManager = metricFetcherManager;
     _partitionMetricSampleAggregator = partitionMetricSampleAggregator;
     _brokerMetricSampleAggregator = brokerMetricSampleAggregator;
@@ -201,8 +193,7 @@ public class LoadMonitorTaskRunner {
       _samplingScheduler.submit(new SampleLoadingTask(_sampleStore,
                                                       _partitionMetricSampleAggregator,
                                                       _brokerMetricSampleAggregator,
-                                                      this,
-                                                      _executor));
+                                                      this));
     } else {
       throw new IllegalStateException("Cannot load samples because the load monitor is in "
                                           + _state.get() + " state.");

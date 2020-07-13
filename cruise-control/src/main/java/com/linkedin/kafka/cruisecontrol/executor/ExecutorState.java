@@ -5,6 +5,9 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.HashMap;
@@ -122,12 +125,22 @@ public class ExecutorState {
     INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS,
     INTRA_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS,
     LEADER_MOVEMENT_TASK_IN_PROGRESS,
-    STOPPING_EXECUTION
+    STOPPING_EXECUTION,
+    INITIALIZING_PROPOSAL_EXECUTION
   }
 
+  public static final Set<State> IN_PROGRESS_STATES;
+  static {
+    Set<State> inProgressStates = new HashSet<>(4);
+    inProgressStates.addAll(Arrays.asList(State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS,
+                                          State.INTRA_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS,
+                                          State.LEADER_MOVEMENT_TASK_IN_PROGRESS,
+                                          State.STOPPING_EXECUTION));
+    IN_PROGRESS_STATES = Collections.unmodifiableSet(inProgressStates);
+  }
   private final State _state;
   // Execution task statistics to report.
-  private ExecutionTaskTracker.ExecutionTasksSummary _executionTasksSummary;
+  private final ExecutionTaskTracker.ExecutionTasksSummary _executionTasksSummary;
   // Configs to report.
   private final int _maximumConcurrentInterBrokerPartitionMovementsPerBroker;
   private final int _maximumConcurrentIntraBrokerPartitionMovementsPerBroker;
@@ -185,14 +198,39 @@ public class ExecutorState {
    * @param recentlyDemotedBrokers Recently demoted broker IDs.
    * @param recentlyRemovedBrokers Recently removed broker IDs.
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
-   * @return Executor state when the execution has started.
+   * @return Executor state when the execution is starting.
    */
-  public static ExecutorState executionStarted(String uuid,
-                                               String reason,
-                                               Set<Integer> recentlyDemotedBrokers,
-                                               Set<Integer> recentlyRemovedBrokers,
-                                               boolean isTriggeredByUserRequest) {
+  public static ExecutorState executionStarting(String uuid,
+                                                String reason,
+                                                Set<Integer> recentlyDemotedBrokers,
+                                                Set<Integer> recentlyRemovedBrokers,
+                                                boolean isTriggeredByUserRequest) {
     return new ExecutorState(State.STARTING_EXECUTION,
+                             null,
+                             0,
+                             0,
+                             0,
+                             uuid,
+                             reason,
+                             recentlyDemotedBrokers,
+                             recentlyRemovedBrokers,
+                             isTriggeredByUserRequest);
+  }
+
+  /**
+   * @param uuid UUID of the current execution.
+   * @param reason Reason of the current execution.
+   * @param recentlyDemotedBrokers Recently demoted broker IDs.
+   * @param recentlyRemovedBrokers Recently removed broker IDs.
+   * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
+   * @return Executor state when initializing proposal execution.
+   */
+  public static ExecutorState initializeProposalExecution(String uuid,
+                                                          String reason,
+                                                          Set<Integer> recentlyDemotedBrokers,
+                                                          Set<Integer> recentlyRemovedBrokers,
+                                                          boolean isTriggeredByUserRequest) {
+    return new ExecutorState(State.INITIALIZING_PROPOSAL_EXECUTION,
                              null,
                              0,
                              0,
@@ -227,8 +265,8 @@ public class ExecutorState {
                                                   Set<Integer> recentlyDemotedBrokers,
                                                   Set<Integer> recentlyRemovedBrokers,
                                                   boolean isTriggeredByUserRequest) {
-    if (state == State.NO_TASK_IN_PROGRESS || state == State.STARTING_EXECUTION) {
-      throw new IllegalArgumentException(String.format("%s is not an operation-in-progress executor state.", state));
+    if (!IN_PROGRESS_STATES.contains(state)) {
+      throw new IllegalArgumentException(String.format("%s is not an operation-in-progress executor state %s.", state, IN_PROGRESS_STATES));
     }
     return new ExecutorState(state,
                              executionTasksSummary,
@@ -333,6 +371,7 @@ public class ExecutorState {
       case NO_TASK_IN_PROGRESS:
         break;
       case STARTING_EXECUTION:
+      case INITIALIZING_PROPOSAL_EXECUTION:
         populateUuidFieldInJsonStructure(execState, _uuid);
         execState.put(TRIGGERED_TASK_REASON, _reason);
         break;
@@ -436,6 +475,7 @@ public class ExecutorState {
       case NO_TASK_IN_PROGRESS:
         return String.format("{%s: %s%s%s}", STATE, _state, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case STARTING_EXECUTION:
+      case INITIALIZING_PROPOSAL_EXECUTION:
         return String.format("{%s: %s, %s: %s, %s: %s%s%s}", STATE, _state,
                              _isTriggeredByUserRequest ? TRIGGERED_USER_TASK_ID : TRIGGERED_SELF_HEALING_TASK_ID,
                              _uuid, TRIGGERED_TASK_REASON, _reason, recentlyDemotedBrokers, recentlyRemovedBrokers);
@@ -461,18 +501,18 @@ public class ExecutorState {
                              TRIGGERED_TASK_REASON, _reason, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case INTRA_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS:
         intraBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION);
-        return String.format("{%s: %s, pending/in-progress/aborting/finished/total intra-broker partition movement %d/%d/%d/%d/%d," +
-                " completed/total bytes(MB): %d/%d, maximum concurrent intra-broker partition movements per-broker: %d, %s: %s, %s: %s%s%s}",
-                STATE, _state,
-                intraBrokerPartitionMovementStats.get(PENDING),
-                intraBrokerPartitionMovementStats.get(IN_PROGRESS),
-                intraBrokerPartitionMovementStats.get(ABORTING),
-                numFinishedMovements(INTRA_BROKER_REPLICA_ACTION),
-                numTotalMovements(INTRA_BROKER_REPLICA_ACTION),
-                _executionTasksSummary.finishedIntraBrokerDataMovementInMB(),
-                numTotalIntraBrokerDataToMove(), _maximumConcurrentIntraBrokerPartitionMovementsPerBroker,
-                _isTriggeredByUserRequest ? TRIGGERED_USER_TASK_ID : TRIGGERED_SELF_HEALING_TASK_ID, _uuid,
-                TRIGGERED_TASK_REASON, _reason, recentlyDemotedBrokers, recentlyRemovedBrokers);
+        return String.format("{%s: %s, pending/in-progress/aborting/finished/total intra-broker partition movement %d/%d/%d/%d/%d, completed/total"
+                             + " bytes(MB): %d/%d, maximum concurrent intra-broker partition movements per-broker: %d, %s: %s, %s: %s%s%s}",
+                             STATE, _state,
+                             intraBrokerPartitionMovementStats.get(PENDING),
+                             intraBrokerPartitionMovementStats.get(IN_PROGRESS),
+                             intraBrokerPartitionMovementStats.get(ABORTING),
+                             numFinishedMovements(INTRA_BROKER_REPLICA_ACTION),
+                             numTotalMovements(INTRA_BROKER_REPLICA_ACTION),
+                             _executionTasksSummary.finishedIntraBrokerDataMovementInMB(),
+                             numTotalIntraBrokerDataToMove(), _maximumConcurrentIntraBrokerPartitionMovementsPerBroker,
+                             _isTriggeredByUserRequest ? TRIGGERED_USER_TASK_ID : TRIGGERED_SELF_HEALING_TASK_ID, _uuid,
+                             TRIGGERED_TASK_REASON, _reason, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case STOPPING_EXECUTION:
         interBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTER_BROKER_REPLICA_ACTION);
         intraBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION);
