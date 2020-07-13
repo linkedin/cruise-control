@@ -18,6 +18,7 @@ ExecutorState:
         - INTRA_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS
         - LEADER_MOVEMENT_TASK_IN_PROGRESS
         - STOPPING_EXECUTION
+        - INITIALIZING_PROPOSAL_EXECUTION
     recentlyDemotedBrokers:
       type: array
       items:

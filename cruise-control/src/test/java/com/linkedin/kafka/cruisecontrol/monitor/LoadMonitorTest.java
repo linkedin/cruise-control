@@ -17,7 +17,6 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolutionException;
-import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
@@ -50,7 +49,6 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.w
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.getMetadata;
-import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.noTaskInProgress;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL;
 import static org.apache.kafka.common.KafkaFuture.completedFuture;
 import static org.easymock.EasyMock.*;
@@ -540,13 +538,6 @@ public class LoadMonitorTest {
             .anyTimes();
     EasyMock.replay(mockAdminClient);
 
-    // Create mock executor.
-    Executor mockExecutor = EasyMock.mock(Executor.class);
-    EasyMock.expect(mockExecutor.state())
-            .andReturn(noTaskInProgress(null, null))
-            .anyTimes();
-    EasyMock.replay(mockExecutor);
-
     // Create load monitor.
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.put(MonitorConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG, Integer.toString(numWindowToPreserve));
@@ -564,7 +555,7 @@ public class LoadMonitorTest {
     }
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(props);
     _time = new MockTime(0, START_TIME_MS, TimeUnit.NANOSECONDS.convert(START_TIME_MS, TimeUnit.MILLISECONDS));
-    LoadMonitor loadMonitor = new LoadMonitor(config, mockMetadataClient, mockAdminClient, _time, mockExecutor, new MetricRegistry(), METRIC_DEF);
+    LoadMonitor loadMonitor = new LoadMonitor(config, mockMetadataClient, mockAdminClient, _time, new MetricRegistry(), METRIC_DEF);
 
     KafkaPartitionMetricSampleAggregator aggregator = loadMonitor.partitionSampleAggregator();
 
