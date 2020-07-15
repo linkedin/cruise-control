@@ -32,19 +32,22 @@ import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.L
 public class ClusterBrokerState {
   private static final Logger LOG = LoggerFactory.getLogger(ClusterBrokerState.class);
   @JsonResponseField
-  protected static final String LEADER_COUNT = "LeaderCountByBrokerId";
+  public static final String LEADER_COUNT = "LeaderCountByBrokerId";
   @JsonResponseField
-  protected static final String OUT_OF_SYNC_COUNT = "OutOfSyncCountByBrokerId";
+  public static final String OUT_OF_SYNC_COUNT = "OutOfSyncCountByBrokerId";
   @JsonResponseField
-  protected static final String REPLICA_COUNT = "ReplicaCountByBrokerId";
+  public static final String REPLICA_COUNT = "ReplicaCountByBrokerId";
   @JsonResponseField
-  protected static final String OFFLINE_REPLICA_COUNT = "OfflineReplicaCountByBrokerId";
+  public static final String OFFLINE_REPLICA_COUNT = "OfflineReplicaCountByBrokerId";
   @JsonResponseField
-  protected static final String IS_CONTROLLER = "IsController";
+  public static final String IS_CONTROLLER = "IsController";
   @JsonResponseField
-  protected static final String ONLINE_LOGDIRS = "OnlineLogDirsByBrokerId";
+  public static final String ONLINE_LOGDIRS = "OnlineLogDirsByBrokerId";
   @JsonResponseField
-  protected static final String OFFLINE_LOGDIRS = "OfflineLogDirsByBrokerId";
+  public static final String OFFLINE_LOGDIRS = "OfflineLogDirsByBrokerId";
+  @JsonResponseField
+  public static final String SUMMARY = "Summary";
+  public static final String TIMED_OUT_LOGDIR_FLAG = "timed_out";
   protected final Map<Integer, Integer> _leaderCountByBrokerId;
   protected final Map<Integer, Integer> _outOfSyncCountByBrokerId;
   protected final Map<Integer, Integer> _replicaCountByBrokerId;
@@ -79,8 +82,11 @@ public class ClusterBrokerState {
     populateKafkaBrokerLogDirState(_onlineLogDirsByBrokerId, _offlineLogDirsByBrokerId, _replicaCountByBrokerId.keySet());
   }
 
-  protected Map<String, Object> getJsonStructure() {
-    Map<String, Object> jsonMap = new HashMap<>(7);
+  /**
+   * @return response with JSON structure.
+   */
+  public Map<String, Object> getJsonStructure() {
+    Map<String, Object> jsonMap = new HashMap<>(8);
     jsonMap.put(LEADER_COUNT, _leaderCountByBrokerId);
     jsonMap.put(OUT_OF_SYNC_COUNT, _outOfSyncCountByBrokerId);
     jsonMap.put(REPLICA_COUNT, _replicaCountByBrokerId);
@@ -88,6 +94,7 @@ public class ClusterBrokerState {
     jsonMap.put(IS_CONTROLLER, _isControllerByBrokerId);
     jsonMap.put(ONLINE_LOGDIRS, _onlineLogDirsByBrokerId);
     jsonMap.put(OFFLINE_LOGDIRS, _offlineLogDirsByBrokerId);
+    jsonMap.put(SUMMARY, new ClusterStats(_kafkaCluster.topics().size(), _replicaCountByBrokerId, _leaderCountByBrokerId).getJsonStructure());
     return jsonMap;
   }
 
@@ -172,13 +179,20 @@ public class ClusterBrokerState {
         });
       } catch (TimeoutException te) {
         LOG.error("Getting log dir information for broker {} timed out.", entry.getKey());
-        onlineLogDirsByBrokerId.get(entry.getKey()).add("timed_out");
-        offlineLogDirsByBrokerId.get(entry.getKey()).add("timed_out");
+        onlineLogDirsByBrokerId.get(entry.getKey()).add(TIMED_OUT_LOGDIR_FLAG);
+        offlineLogDirsByBrokerId.get(entry.getKey()).add(TIMED_OUT_LOGDIR_FLAG);
       }
     }
   }
 
-  protected void writeBrokerSummary(StringBuilder sb) {
+  /**
+   * Write broker summary
+   * @param sb String builder to write the response to.
+   */
+  public void writeBrokerSummary(StringBuilder sb) {
+    // Overall Summary / Stats
+    new ClusterStats(_kafkaCluster.topics().size(), _replicaCountByBrokerId, _leaderCountByBrokerId).writeClusterStats(sb);
+    // Broker Summary
     String initMessage = "Brokers:";
     sb.append(String.format("%s%n%20s%20s%20s%20s%20s%20s%n", initMessage, "BROKER", "LEADER(S)", "REPLICAS", "OUT-OF-SYNC",
                             "OFFLINE", "IS_CONTROLLER"));
