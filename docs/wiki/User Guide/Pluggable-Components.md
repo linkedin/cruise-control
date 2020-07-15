@@ -39,7 +39,7 @@ The goals in Kafka Cruise Control are pluggable with different priorities. The d
 
 * **LeaderBytesInDistributionGoal**: Attempt to make the leader bytes in rate on each host to be balanced.
 
-* **TopicReplicaDistributionGoal**: Attempt to make the replicas of the same topic are evenly distributed across the entire cluster.
+* **TopicReplicaDistributionGoal**: Attempt to make the replicas of the same topic evenly distributed across the entire cluster.
 
 * **LeaderReplicaDistributionGoal**: Attempt to make all the brokers in a cluster to have the similar number of leader replicas.
 

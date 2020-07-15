@@ -69,7 +69,7 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
 
   /**
    * The rebalance threshold for this goal is set by
-   * {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG}
+   * {@link com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig#LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG}
    */
   @Override
   double balancePercentage() {
@@ -173,12 +173,17 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
       return true;
     }
     int numLeaderReplicas = broker.leaderReplicas().size();
-    for (Replica replica : new HashSet<>(broker.leaderReplicas())) {
-      Set<Broker> candidateBrokers = clusterModel.partition(replica.topicPartition()).partitionBrokers().stream()
-                                                 .filter(b -> b != broker && !b.replica(replica.topicPartition()).isCurrentOffline())
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
+    for (Replica leader : new HashSet<>(broker.leaderReplicas())) {
+      if (excludedTopics.contains(leader.topicPartition().topic())) {
+        continue;
+      }
+
+      Set<Broker> candidateBrokers = clusterModel.partition(leader.topicPartition()).partitionBrokers().stream()
+                                                 .filter(b -> b != broker && !b.replica(leader.topicPartition()).isCurrentOffline())
                                                  .collect(Collectors.toSet());
       Broker b = maybeApplyBalancingAction(clusterModel,
-                                           replica,
+                                           leader,
                                            candidateBrokers,
                                            ActionType.LEADERSHIP_MOVEMENT,
                                            optimizedGoals,
@@ -204,8 +209,9 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
 
     int numLeaderReplicas = broker.leaderReplicas().size();
     Set<Broker> candidateBrokers =  Collections.singleton(broker);
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     for (Replica replica : broker.replicas()) {
-      if (replica.isLeader() || replica.isCurrentOffline()) {
+      if (replica.isLeader() || replica.isCurrentOffline() || excludedTopics.contains(replica.topicPartition().topic())) {
         continue;
       }
       Broker b = maybeApplyBalancingAction(clusterModel,
