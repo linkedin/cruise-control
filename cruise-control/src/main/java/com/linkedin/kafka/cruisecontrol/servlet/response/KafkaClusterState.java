@@ -22,9 +22,9 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VE
 @JsonResponseClass
 public class KafkaClusterState extends AbstractCruiseControlResponse {
   @JsonResponseField
-  protected static final String KAFKA_BROKER_STATE = "KafkaBrokerState";
+  public static final String KAFKA_BROKER_STATE = "KafkaBrokerState";
   @JsonResponseField
-  protected static final String KAFKA_PARTITION_STATE = "KafkaPartitionState";
+  public static final String KAFKA_PARTITION_STATE = "KafkaPartitionState";
   protected final Map<String, Properties> _allTopicConfigs;
   protected final Properties _clusterConfigs;
   protected final Map<String, Object> _adminClientConfigs;

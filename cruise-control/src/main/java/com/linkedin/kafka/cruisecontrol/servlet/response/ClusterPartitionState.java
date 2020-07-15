@@ -20,17 +20,17 @@ import org.apache.kafka.common.PartitionInfo;
 @JsonResponseClass
 public class ClusterPartitionState {
   @JsonResponseField
-  protected static final String OFFLINE = "offline";
+  public static final String OFFLINE = "offline";
   @JsonResponseField
-  protected static final String WITH_OFFLINE_REPLICAS = "with-offline-replicas";
+  public static final String WITH_OFFLINE_REPLICAS = "with-offline-replicas";
   @JsonResponseField
-  protected static final String URP = "urp";
+  public static final String URP = "urp";
   @JsonResponseField
-  protected static final String UNDER_MIN_ISR = "under-min-isr";
+  public static final String UNDER_MIN_ISR = "under-min-isr";
   @JsonResponseField(required = false)
-  protected static final String OTHER = "other";
-  protected static final String MIN_INSYNC_REPLICAS = "min.insync.replicas";
-  protected static final int DEFAULT_MIN_INSYNC_REPLICAS = 1;
+  public static final String OTHER = "other";
+  public static final String MIN_INSYNC_REPLICAS = "min.insync.replicas";
+  public static final int DEFAULT_MIN_INSYNC_REPLICAS = 1;
 
   protected final Set<PartitionInfo> _underReplicatedPartitions;
   protected final Set<PartitionInfo> _offlinePartitions;
@@ -54,10 +54,13 @@ public class ClusterPartitionState {
     _underMinIsrPartitions = new TreeSet<>(comparator);
     // Gather the partition state.
     populateKafkaPartitionState(_underReplicatedPartitions, _offlinePartitions, _otherPartitions,
-        _partitionsWithOfflineReplicas, _underMinIsrPartitions, verbose, topicPattern);
+                                _partitionsWithOfflineReplicas, _underMinIsrPartitions, verbose, topicPattern);
   }
 
-  protected Map<String, Object> getJsonStructure() {
+  /**
+   * @return response with JSON structure.
+   */
+  public Map<String, Object> getJsonStructure() {
     // Write the partition state.
     Map<String, Object> jsonMap = new HashMap<>();
     jsonMap.put(OFFLINE, getJsonPartitions(_offlinePartitions));
@@ -83,12 +86,12 @@ public class ClusterPartitionState {
    * @param topicPattern regex of topic to filter partition states by, is null if no filter is to be applied
    */
   protected void populateKafkaPartitionState(Set<PartitionInfo> underReplicatedPartitions,
-      Set<PartitionInfo> offlinePartitions,
-      Set<PartitionInfo> otherPartitions,
-      Set<PartitionInfo> partitionsWithOfflineReplicas,
-      Set<PartitionInfo> underMinIsrPartitions,
-      boolean verbose,
-      Pattern topicPattern) {
+                                             Set<PartitionInfo> offlinePartitions,
+                                             Set<PartitionInfo> otherPartitions,
+                                             Set<PartitionInfo> partitionsWithOfflineReplicas,
+                                             Set<PartitionInfo> underMinIsrPartitions,
+                                             boolean verbose,
+                                             Pattern topicPattern) {
     for (String topic : _kafkaCluster.topics()) {
       if (topicPattern == null || topicPattern.matcher(topic).matches()) {
         int minInsyncReplicas = minInsyncReplicas(topic);
@@ -144,13 +147,19 @@ public class ClusterPartitionState {
     return partitionList;
   }
 
-  protected void writePartitionSummary(StringBuilder sb, boolean verbose) {
+
+  /**
+   * Write partition summary
+   * @param sb String builder to write the response to.
+   * @param verbose True if verbose, false otherwise.
+   */
+  public void writePartitionSummary(StringBuilder sb, boolean verbose) {
     int topicNameLength = _kafkaCluster.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
 
     String initMessage = verbose ? "All Partitions in the Cluster (verbose):"
-        : "Under Replicated, Offline, and Under MinIsr Partitions:";
+                                 : "Under Replicated, Offline, and Under MinIsr Partitions:";
     sb.append(String.format("%n%s%n%" + topicNameLength + "s%10s%10s%30s%30s%25s%25s%n", initMessage, "TOPIC",
-        "PARTITION", "LEADER", "REPLICAS", "IN-SYNC", "OUT-OF-SYNC", "OFFLINE"));
+                            "PARTITION", "LEADER", "REPLICAS", "IN-SYNC", "OUT-OF-SYNC", "OFFLINE"));
 
     // Write the cluster state.
     sb.append(String.format("Offline Partitions:%n"));
