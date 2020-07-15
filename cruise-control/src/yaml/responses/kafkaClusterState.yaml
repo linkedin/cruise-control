@@ -23,6 +23,7 @@ ClusterBrokerState:
     - IsController
     - OnlineLogDirsByBrokerId
     - OfflineLogDirsByBrokerId
+    - Summary
   properties:
     LeaderCountByBrokerId:
       type: object
@@ -60,6 +61,57 @@ ClusterBrokerState:
         type: array
         items:
           type: string
+    Summary:
+      $ref: '#/ClusterStats'
+
+ClusterStats:
+  type: object
+  required:
+    - Brokers
+    - Topics
+    - Replicas
+    - Leaders
+    - AvgReplicationFactor
+    - AvgReplicasPerBroker
+    - AvgLeadersPerBroker
+    - MaxReplicasPerBroker
+    - MaxLeadersPerBroker
+    - StdReplicasPerBroker
+    - StdLeadersPerBroker
+  properties:
+    Brokers:
+      type: integer
+      format: int32
+    Topics:
+      type: integer
+      format: int32
+    Replicas:
+      type: integer
+      format: int32
+    Leaders:
+      type: integer
+      format: int32
+    AvgReplicationFactor:
+      type: number
+      format: double
+    AvgReplicasPerBroker:
+      type: number
+      format: double
+    AvgLeadersPerBroker:
+      type: number
+      format: double
+    MaxReplicasPerBroker:
+      type: integer
+      format: int32
+    MaxLeadersPerBroker:
+      type: integer
+      format: int32
+    StdReplicasPerBroker:
+      type: integer
+      format: int32
+    StdLeadersPerBroker:
+      type: integer
+      format: int32
 
 ClusterPartitionState:
   type: object
