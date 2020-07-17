@@ -4,13 +4,15 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.security.custom;
 
-import com.linkedin.kafka.cruisecontrol.analyzer.goals.AbstractGoal;
 import org.apache.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.net.*;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.util.Map;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -20,10 +22,10 @@ public class CustomAuthClient {
 
     private static CustomAuthClient instance;
 
-    private final String url;
-    private final String auth;
-    private final String scope;
-    private final String grantType;
+    private final String _url;
+    private final String _auth;
+    private final String _scope;
+    private final String _grantType;
 
     private static final String USER_NAME_PARAMETER_NAME = "username";
     private static final String PASSWORD_PARAMETER_NAME = "password";
@@ -36,12 +38,16 @@ public class CustomAuthClient {
     private static final String POST = "POST";
 
     private CustomAuthClient(String url, String auth, String scope, String grantType) {
-        this.url = url;
-        this.auth = auth;
-        this.scope = scope;
-        this.grantType = grantType;
+        this._url = url;
+        this._auth = auth;
+        this._scope = scope;
+        this._grantType = grantType;
     }
 
+    /**
+     * CustomAuthClient getInstance(String url, String auth, String scope, String grantType)
+     * @return {@link CustomAuthClient}.
+     */
     public static synchronized CustomAuthClient getInstance(String url, String auth, String scope, String grantType) {
 
         if (instance == null) {
@@ -50,25 +56,29 @@ public class CustomAuthClient {
         return instance;
     }
 
+    /**
+     * boolean verify(String username, String password)
+     * @return true if authenticated.
+     */
     public boolean verify(String username, String password) {
         Map<String, String> formData = Map.of(
                 USER_NAME_PARAMETER_NAME, username,
                 PASSWORD_PARAMETER_NAME, password,
-                GRANT_TYPE_PARAMETER_NAME, grantType,
-                SCOPE_PARAMETER_NAME, scope);
+                GRANT_TYPE_PARAMETER_NAME, _grantType,
+                SCOPE_PARAMETER_NAME, _scope);
 
         try {
             String encodedData = getDataString(formData);
-            URL u = new URL(url);
+            URL u = new URL(_url);
             HttpURLConnection conn = (HttpURLConnection) u.openConnection();
             conn.setDoOutput(true);
-            String basicAuth = "Basic " + auth;
+            String basicAuth = "Basic " + _auth;
             conn.setRequestProperty(AUTHORIZATION_PROPERTY_NAME, basicAuth);
             conn.setRequestMethod(POST);
             conn.setRequestProperty(CONTENT_TYPE_PROPERTY_NAME, "application/x-www-form-urlencoded");
             conn.setRequestProperty(CONTENT_LENGTH_PROPERTY_NAME, String.valueOf(encodedData.length()));
             OutputStream os = conn.getOutputStream();
-            os.write(encodedData.getBytes());
+            os.write(encodedData.getBytes(UTF_8));
 
             if (conn.getResponseCode() == HttpStatus.SC_OK) {
                 return true;
@@ -84,10 +94,11 @@ public class CustomAuthClient {
         StringBuilder result = new StringBuilder();
         boolean first = true;
         for (Map.Entry<String, String> entry : params.entrySet()) {
-            if (first)
+            if (first) {
                 first = false;
-            else
+            } else {
                 result.append("&");
+            }
             result.append(URLEncoder.encode(entry.getKey(), UTF_8));
             result.append("=");
             result.append(URLEncoder.encode(entry.getValue(), UTF_8));

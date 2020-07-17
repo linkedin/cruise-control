@@ -12,23 +12,23 @@ import org.eclipse.jetty.security.LoginService;
 
 public class CustomBasicSecurityProvider extends DefaultRoleSecurityProvider {
 
-    private String authServiceUrl;
-    private String authServiceToken;
-    private String scope;
-    private String grantType;
+    private String _authServiceUrl;
+    private String _authServiceToken;
+    private String _scope;
+    private String _grantType;
 
     @Override
     public void init(KafkaCruiseControlConfig config) {
         super.init(config);
-        this.authServiceUrl = config.getString(WebServerConfig.CUSTOM_AUTHENTICATION_PROVIDER_URL_CONFIG);
-        this.authServiceToken = config.getString(WebServerConfig.CUSTOM_AUTHENTICATION_KEY_CONFIG);
-        this.scope = config.getString(WebServerConfig.CUSTOM_AUTHENTICATION_SCOPE_CONFIG);
-        this.grantType = config.getString(WebServerConfig.CUSTOM_AUTHENTICATION_GRANT_TYPE_CONFIG);
+        this._authServiceUrl = config.getString(WebServerConfig.CUSTOM_AUTHENTICATION_PROVIDER_URL_CONFIG);
+        this._authServiceToken = config.getString(WebServerConfig.CUSTOM_AUTHENTICATION_KEY_CONFIG);
+        this._scope = config.getString(WebServerConfig.CUSTOM_AUTHENTICATION_SCOPE_CONFIG);
+        this._grantType = config.getString(WebServerConfig.CUSTOM_AUTHENTICATION_GRANT_TYPE_CONFIG);
     }
 
     @Override
     public LoginService loginService() {
-        return new CustomBasicLoginService(authServiceUrl, authServiceToken, scope, grantType);
+        return new CustomBasicLoginService(_authServiceUrl, _authServiceToken, _scope, _grantType);
     }
 
     @Override
