@@ -259,8 +259,35 @@ public class WebServerConfig {
   public static final String JWT_EXPECTED_AUDIENCES_CONFIG = "jwt.expected.audiences";
   public static final String DEFAULT_JWT_EXPECTED_AUDIENCES = null;
   private static final String JWT_EXPECTED_AUDIENCES_DOC = "A comma separated list of audiences that Cruise Control accepts. " +
-      "Audience is a way for the issuer to indicate what entities the token is intended for. The default value is null, " +
-      "which means all audiences are accepted.";
+          "Audience is a way for the issuer to indicate what entities the token is intended for. The default value is null, " +
+          "which means all audiences are accepted.";
+  /**
+   * <code>custom.authentication.provider.url</code>
+   */
+  public static final String CUSTOM_AUTHENTICATION_PROVIDER_URL_CONFIG = "custom.authentication.provider.url";
+  public static final String DEFAULT_CUSTOM_AUTHENTICATION_PROVIDER_URL = null;
+  private static final String CUSTOM_AUTHENTICATION_PROVIDER_URL_DOC = "Custom auth service url";
+
+  /**
+   * <code>custom.authentication.key</code>
+   */
+  public static final String CUSTOM_AUTHENTICATION_KEY_CONFIG = "custom.authentication.key";
+  public static final String DEFAULT_CUSTOM_AUTHENTICATION_KEY_URL = null;
+  private static final String CUSTOM_AUTHENTICATION_KEY_DOC = "Custom auth key";
+
+  /**
+   * <code>custom.authentication.scope</code>
+   */
+  public static final String CUSTOM_AUTHENTICATION_SCOPE_CONFIG = "custom.authentication.scope";
+  public static final String DEFAULT_CUSTOM_AUTHENTICATION_SCOPE_URL = null;
+  private static final String CUSTOM_AUTHENTICATION_SCOPE_DOC = "Custom auth scope";
+
+  /**
+   * <code>custom.authentication.grantType</code>
+   */
+  public static final String CUSTOM_AUTHENTICATION_GRANT_TYPE_CONFIG = "custom.authentication.grantType";
+  public static final String DEFAULT_CUSTOM_AUTHENTICATION_GRANT_TYPE_URL = null;
+  private static final String CUSTOM_AUTHENTICATION_GRANT_TYPE_DOC = "Custom auth grant type";
 
   /**
    * <code>spnego.keytab.file</code>
@@ -471,6 +498,26 @@ public class WebServerConfig {
                             DEFAULT_JWT_EXPECTED_AUDIENCES,
                             ConfigDef.Importance.MEDIUM,
                             JWT_EXPECTED_AUDIENCES_DOC)
+                    .define(CUSTOM_AUTHENTICATION_PROVIDER_URL_CONFIG,
+                            ConfigDef.Type.STRING,
+                            DEFAULT_CUSTOM_AUTHENTICATION_PROVIDER_URL,
+                            ConfigDef.Importance.MEDIUM,
+                            CUSTOM_AUTHENTICATION_PROVIDER_URL_DOC)
+                    .define(CUSTOM_AUTHENTICATION_KEY_CONFIG,
+                            ConfigDef.Type.STRING,
+                            DEFAULT_CUSTOM_AUTHENTICATION_KEY_URL,
+                            ConfigDef.Importance.MEDIUM,
+                            CUSTOM_AUTHENTICATION_KEY_DOC)
+                    .define(CUSTOM_AUTHENTICATION_SCOPE_CONFIG,
+                            ConfigDef.Type.STRING,
+                            DEFAULT_CUSTOM_AUTHENTICATION_SCOPE_URL,
+                            ConfigDef.Importance.MEDIUM,
+                            CUSTOM_AUTHENTICATION_SCOPE_DOC)
+                    .define(CUSTOM_AUTHENTICATION_GRANT_TYPE_CONFIG,
+                            ConfigDef.Type.STRING,
+                            DEFAULT_CUSTOM_AUTHENTICATION_GRANT_TYPE_URL,
+                            ConfigDef.Importance.MEDIUM,
+                            CUSTOM_AUTHENTICATION_GRANT_TYPE_DOC)
                     .define(SPNEGO_KEYTAB_FILE_CONFIG,
                             ConfigDef.Type.STRING,
                             DEFAULT_SPNEGO_KEYTAB_FILE,
