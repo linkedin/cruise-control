@@ -73,6 +73,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   private int _metricsTopicAutoCreateRetries;
   protected static final String CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY = "delete";
   protected static final Duration PRODUCER_CLOSE_TIMEOUT = Duration.ofSeconds(5);
+  private boolean _kubernetesMode;
 
   @Override
   public void init(List<KafkaMetric> metrics) {
@@ -148,6 +149,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
 
     _cruiseControlMetricsTopic = reporterConfig.getString(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG);
     _reportingIntervalMs = reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG);
+    _kubernetesMode = reporterConfig.getBoolean(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_KUBERNETES_MODE_CONFIG);
 
     if (reporterConfig.getBoolean(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_CONFIG)) {
       try {
@@ -348,7 +350,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
 
   private void reportCpuUtils(long now) {
     LOG.debug("Reporting CPU util.");
-    sendCruiseControlMetric(MetricsUtils.getCpuMetric(now, _brokerId));
+    sendCruiseControlMetric(MetricsUtils.getCpuMetric(now, _brokerId, _kubernetesMode));
     LOG.debug("Finished reporting CPU util.");
   }
 

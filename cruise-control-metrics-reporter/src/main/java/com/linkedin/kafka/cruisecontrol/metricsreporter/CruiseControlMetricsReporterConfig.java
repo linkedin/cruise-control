@@ -50,6 +50,9 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   public static final String CRUISE_CONTROL_METRICS_REPORTER_BATCH_SIZE_CONFIG = PREFIX + "batch.size";
   private static final String CRUISE_CONTROL_METRICS_REPORTER_BATCH_SIZE_DOC = "The batch.size configuration of KafkaProducer used in Cruise "
       + "Control metrics reporter. Set this config and cruise.control.metrics.reporter.linger.ms to a large number to have better batching.";
+  public static final String CRUISE_CONTROL_METRICS_REPORTER_KUBERNETES_MODE_CONFIG = PREFIX + "kubernetes.mode";
+  public static final String CRUISE_CONTROL_METRICS_REPORTER_KUBERNETES_MODE_DOC = "Cruise Control metrics reporter will report " +
+          " metrics using methods that are aware of container boundaries";
   // Default values
   public static final String DEFAULT_CRUISE_CONTROL_METRICS_TOPIC = "__CruiseControlMetrics";
   public static final Integer DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS = -1;
@@ -63,6 +66,7 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   public static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS = 30 * 1000;
   public static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_MAX_BLOCK_MS = 60 * 1000;
   public static final int DEFAULT_CRUISE_CONTROL_METRICS_BATCH_SIZE = 800 * 1000;
+  public static final boolean DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_KUBERNETES_MODE = false;
 
   public CruiseControlMetricsReporterConfig(Map<?, ?> originals, boolean doLog) {
     super(CONFIG, originals, doLog);
@@ -86,6 +90,11 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
                 DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS,
                 ConfigDef.Importance.HIGH,
                 CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_DOC)
+        .define(CRUISE_CONTROL_METRICS_REPORTER_KUBERNETES_MODE_CONFIG,
+                ConfigDef.Type.BOOLEAN,
+                DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_KUBERNETES_MODE,
+                ConfigDef.Importance.LOW,
+                CRUISE_CONTROL_METRICS_REPORTER_KUBERNETES_MODE_DOC)
         .define(CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_CONFIG,
                 ConfigDef.Type.BOOLEAN,
                 DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE,

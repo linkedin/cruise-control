@@ -13,7 +13,6 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.kafka.common.metrics.KafkaMetric;
 
-
 public class MetricsUtils {
   // Names
   private static final String BYTES_IN_PER_SEC = "BytesInPerSec";
@@ -164,8 +163,14 @@ public class MetricsUtils {
    * @param brokerId Broker Id.
    * @return the "recent CPU usage" for the JVM process as a double in [0.0,1.0].
    */
-  public static BrokerMetric getCpuMetric(long now, int brokerId) {
+  public static BrokerMetric getCpuMetric(long now, int brokerId, boolean kubernetesMode) {
     double cpuUtil = ((com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean()).getProcessCpuLoad();
+
+    // If kubernetesMode is enabled, get CPU usage values with respect to the operating environment instead of node.
+    if (kubernetesMode) {
+      cpuUtil = new ContainerMetricUtils().getContainerProcessCpuLoad(cpuUtil);
+    }
+
     if (cpuUtil < 0) {
       throw new IllegalStateException("Java Virtual Machine recent CPU usage is not available.");
     }
