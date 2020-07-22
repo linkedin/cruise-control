@@ -69,7 +69,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   public void destroy() {
     super.destroy();
     _userTaskManager.close();
-    _purgatory.close();
+    if (_purgatory != null) {
+      _purgatory.close();
+    }
   }
 
   public AsyncKafkaCruiseControl asyncKafkaCruiseControl() {
