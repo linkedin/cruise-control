@@ -5,7 +5,7 @@ ProposalsEndpoint:
     parameters:
       - name: kafka_assigner
         in: query
-        description: Whether use Kafka assigner mode to general proposal.
+        description: Whether to use Kafka assigner mode to generate proposals.
         schema:
           type: boolean
           default: false
@@ -21,19 +21,19 @@ ProposalsEndpoint:
           example: [1,2,3]
       - name: ignore_proposal_cache
         in: query
-        description: Whether ignore the cached proposal or not.
+        description: Whether to ignore the cached proposal or not.
         schema:
           type: boolean
           default: false
       - name: rebalance_disk
         in: query
-        description: Whether balance load between disks within each broker or between brokers in cluster.
+        description: whether to balance load between disks within brokers (requires JBOD Kafka deployment).
         schema:
           type: boolean
           default: false
       - name: data_from
         in: query
-        description: Whether calculating proposal from available valid partitions or valid windows.
+        description: Whether to calculate proposal from available valid partitions or valid windows.
         schema:
           type: string
           enum:
@@ -42,7 +42,7 @@ ProposalsEndpoint:
           default: VALID_WINDOWS
       - name: use_ready_default_goals
         in: query
-        description: Whether only using ready goals to generate proposal.
+        description: Whether to use only ready goals to generate proposals.
         schema:
           type: boolean
           default: false
@@ -69,7 +69,7 @@ ProposalsEndpoint:
           example: ["RackAwareGoal", "ReplicaCapacityGoal", "ReplicaDistributionGoal"]
       - name: allow_capacity_estimation
         in: query
-        description: Whether allow broker capacity to be estimated.
+        description: Whether to allow broker capacity to be estimated.
         schema:
           type: boolean
           default: true
@@ -81,7 +81,7 @@ ProposalsEndpoint:
           default: false
       - name: exclude_recently_demoted_brokers
         in: query
-        description: Whether allow leader replicas to be moved to recently demoted broker.
+        description: Whether to allow leader replicas to be moved to recently demoted brokers.
         schema:
           type: boolean
           default: false
