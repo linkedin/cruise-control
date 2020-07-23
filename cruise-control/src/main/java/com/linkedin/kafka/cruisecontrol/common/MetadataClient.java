@@ -76,6 +76,8 @@ public class MetadataClient {
                                                   true,
                                                   new ApiVersions());
     _metadataTTL = metadataTTL;
+    // Ensure that the initial metadata is valid.
+    doRefreshMetadata(_refreshMetadataTimeout);
   }
 
   /**
@@ -86,6 +88,31 @@ public class MetadataClient {
     return refreshMetadata(_refreshMetadataTimeout);
   }
 
+  private void doRefreshMetadata(long timeout) {
+    int updateVersion = _metadata.requestUpdate();
+    long remaining = timeout;
+    Cluster beforeUpdate = _metadata.fetch();
+    boolean isMetadataUpdated = _metadata.updateVersion() > updateVersion;
+    while (!isMetadataUpdated && remaining > 0) {
+      _metadata.requestUpdate();
+      long start = _time.milliseconds();
+      _networkClient.poll(remaining, start);
+      remaining -= (_time.milliseconds() - start);
+      isMetadataUpdated = _metadata.updateVersion() > updateVersion;
+    }
+    if (isMetadataUpdated) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Updated metadata {}", _metadata.fetch());
+      }
+      if (MonitorUtils.metadataChanged(beforeUpdate, _metadata.fetch())) {
+        _metadataGeneration.incrementAndGet();
+      }
+    } else {
+      LOG.warn("Failed to update metadata in {}ms. Using old metadata with version {} and last successful update {}.",
+               timeout, _metadata.updateVersion(), _metadata.lastSuccessfulUpdate());
+    }
+  }
+
   /**
    * Refresh the metadata. The method is synchronized because the network client is not thread safe.
    * @return A new {@link ClusterAndGeneration} with latest cluster and generation.
@@ -93,28 +120,7 @@ public class MetadataClient {
   public synchronized ClusterAndGeneration refreshMetadata(long timeout) {
     // Do not update metadata if the metadata has just been refreshed.
     if (_time.milliseconds() >= _metadata.lastSuccessfulUpdate() + _metadataTTL) {
-      int updateVersion = _metadata.requestUpdate();
-      long remaining = timeout;
-      Cluster beforeUpdate = _metadata.fetch();
-      boolean isMetadataUpdated = _metadata.updateVersion() > updateVersion;
-      while (!isMetadataUpdated && remaining > 0) {
-        _metadata.requestUpdate();
-        long start = _time.milliseconds();
-        _networkClient.poll(remaining, start);
-        remaining -= (_time.milliseconds() - start);
-        isMetadataUpdated = _metadata.updateVersion() > updateVersion;
-      }
-      if (isMetadataUpdated) {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Updated metadata {}", _metadata.fetch());
-        }
-        if (MonitorUtils.metadataChanged(beforeUpdate, _metadata.fetch())) {
-          _metadataGeneration.incrementAndGet();
-        }
-      } else {
-        LOG.warn("Failed to update metadata in {}ms. Using old metadata with version {} and last successful update {}.",
-                 timeout, _metadata.updateVersion(), _metadata.lastSuccessfulUpdate());
-      }
+      doRefreshMetadata(timeout);
     }
     return new ClusterAndGeneration(_metadata.fetch(), _metadataGeneration.get());
   }
