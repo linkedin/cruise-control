@@ -89,7 +89,7 @@ RebalanceEndpoint:
           default: false
       - name: exclude_recently_demoted_brokers
         in: query
-        description: Whether to allow leader replicas to be moved to recently demoted broker.
+        description: Whether to allow leader replicas to be moved to recently demoted brokers.
         schema:
           type: boolean
           default: false
@@ -123,13 +123,13 @@ RebalanceEndpoint:
           example: [1,2,3]
       - name: kafka_assigner
         in: query
-        description: Whether to use Kafka assigner mode to general proposal.
+        description: Whether to use Kafka assigner mode to generate proposals.
         schema:
           type: boolean
           default: false
       - name: rebalance_disk
         in: query
-        description: Whether to balance load between brokers or between disks within broker.
+        description: Whether to balance load between disks within brokers (requires JBOD Kafka deployment).
         schema:
           type: boolean
           default: false

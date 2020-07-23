@@ -75,7 +75,7 @@ RemoveBrokerEndpoint:
           example: "__CruiseControl.%2A"
       - name: kafka_assigner
         in: query
-        description: Whether to use Kafka assigner mode to general proposal.
+        description: Whether to use Kafka assigner mode to generate proposals.
         schema:
           type: boolean
           default: false
@@ -93,7 +93,7 @@ RemoveBrokerEndpoint:
           default: false
       - name: exclude_recently_demoted_brokers
         in: query
-        description: Whether to allow leader replicas to be moved to recently demoted broker.
+        description: Whether to allow leader replicas to be moved to recently demoted brokers.
         schema:
           type: boolean
           default: false
