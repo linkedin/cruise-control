@@ -50,13 +50,13 @@ User can query the state of Kafka Cruise Control at any time by issuing a HTTP G
 
 Supported parameters are:
 
-| PARAMETER   | TYPE       | DESCPRIPTION | DEFAULT  | OPTIONAL|
-|-------------|------------|----------------------|----------|---------|
-| substates     | list    | list of components to return their state, available components are `analyzer`, `monitor`, `executor` and `anomaly_detector`     | all the components      |   yes | 
-| json     | boolean    | return in JSON format or not      | false      |   yes | 
-| verbose     | boolean    | return detailed state information      | false      |   yes | 
-| super_verbose     | boolean    | return more detailed state information      | false      |   yes |
-| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes | 
+| PARAMETER     | TYPE      | DESCRIPTION                                                                                                                                   | DEFAULT       | OPTIONAL  |
+|---------------|-----------|-----------------------------------------------------------------------------------------------------------------------------------------------|---------------|-----------|
+| substates     | list      | substates for which to retrieve state from cruise-control, available substates are `analyzer`, `monitor`, `executor` and `anomaly_detector`   | all substates | yes       | 
+| json          | boolean   | return in JSON format or not                                                                                                                  | false         | yes       | 
+| verbose       | boolean   | return detailed state information                                                                                                             | false         | yes       | 
+| super_verbose | boolean   | return more detailed state information                                                                                                        | false         | yes       |
+| doAs          | string    | propagated user by the trusted proxy service                                                                                                  | null          | yes       | 
 
 The returned state contains the following information:
 * **Monitor State**:
@@ -101,12 +101,12 @@ Once Cruise Control Load Monitor shows it is in the `RUNNING` state, Users can u
 
 Supported parameters are:
 
-| PARAMETER                 | TYPE      | DESCPRIPTION                                                                      | DEFAULT                       | OPTIONAL  |
+| PARAMETER                 | TYPE      | DESCRIPTION                                                                       | DEFAULT                       | OPTIONAL  |
 |---------------------------|-----------|-----------------------------------------------------------------------------------|-------------------------------|-----------|
 | start                     | long      | start time of the cluster load                                                    | time of earliest valid window | yes       |
 | end                       | long      | end time of the cluster load                                                      | current system time           | yes       |
 | time                      | long      | end time of the cluster load                                                      | current system time           | yes       | 
-| allow_capacity_estimation | boolean   | whether allow broker capacity to be estimated from other broker in the cluster    | true                          | yes       | 
+| allow_capacity_estimation | boolean   | whether to allow broker capacity to be estimated from other broker in the cluster | true                          | yes       | 
 | populate_disk_info        | boolean   | whether show the load of each disk of broker                                      | false                         | yes       | 
 | capacity_only             | boolean   | whether show only the cluster capacity or the utilization, as well.               | false                         | yes       |
 | json                      | boolean   | return in JSON format or not                                                      | false                         | yes       | 
@@ -130,23 +130,23 @@ The following GET request gives the partition load sorted by the utilization of 
 
 Supported parameters are:
 
-| PARAMETER   | TYPE       | DESCPRIPTION | DEFAULT  | OPTIONAL|
-|-------------|------------|----------------------|----------|---------|
-| resource     | string    | resource type to sort partition load, available resource are `DISK`/`CPU`/`NW_IN`/`NW_OUT`    | `DISK`|   yes |
-| start     | long    | start time of the partition load     | time of earliest valid window|   yes |
-| end     | long    | end time of the partition load     | current system time|   yes |
-| entries     | integer    | number of partition load entries to report in response     | `MAX_INT`|   yes |
-| json     | boolean    | return in JSON format or not      | false      |   yes | 
-| allow_capacity_estimation     | boolean    | whether allow broker capacity be estimated   from other broker in the cluster   | true      |   yes |
-| max_load     | boolean    | whether report the max load for partition in windows     | false|   yes |
-| avg_load     | boolean    | whether report the average load for partition in windows     | false|   yes |
-| topic     | regex    | regular expression to filter partition load to report based on partition's topic    | null|   yes |
-| partition     | integer/range    | partition number(e.g. 10) range(e.g. 1-10) to filter partition load to report     | null|   yes |
-| min_valid_partition_ratio     | double    | minimal valid partition ratio requirement for cluster model    | null  | yes |
-| brokerid     | int    | broker id to to filter partition load to report     | null|   yes |
-| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes |
+| PARAMETER                 | TYPE          | DESCRIPTION                                                                                                       | DEFAULT                       | OPTIONAL  |
+|---------------------------|---------------|-------------------------------------------------------------------------------------------------------------------|-------------------------------|-----------|
+| resource                  | string        | resource type to sort partition load, available resources are `DISK`/`CPU`/`NW_IN`/`NW_OUT`                       | `DISK`                        | yes       |
+| start                     | long          | the timestamp in millisecond of the earliest metric sample use to generate load                                   | time of earliest valid window | yes       |
+| end                       | long          | the timestamp in millisecond of the latest metric sample use to generate load                                     | current system time           | yes       |
+| entries                   | integer       | number of partition load entries to report in response                                                            | `MAX_INT`                     | yes       |
+| json                      | boolean       | return in JSON format or not                                                                                      | false                         | yes       | 
+| allow_capacity_estimation | boolean       | whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information  | true                          | yes       |
+| max_load                  | boolean       | whether report the max load for partition in windows                                                              | false                         | yes       |
+| avg_load                  | boolean       | whether report the average load for partition in windows                                                          | false                         | yes       |
+| topic                     | regex         | regular expression to filter partition load to report based on partition's topic                                  | null                          | yes       |
+| partition                 | integer/range | partition number(e.g. 10) range(e.g. 1-10) to filter partition load to report                                     | null                          | yes       |
+| min_valid_partition_ratio | double        | minimal valid partition ratio requirement for cluster model                                                       | null                          | yes       |
+| brokerid                  | int           | broker id to to filter partition load to report                                                                   | null                          | yes       |
+| doAs                      | string        | propagated user by the trusted proxy service                                                                      | null                          | yes       |
 
-The returned result would be a partition list sorted by the utilization of the specified resource in the time range specified by `start` and `end`. The resource can be `CPU`, `NW_IN`, `NW_OUT` and `DISK`. By default the `start` is the earliest monitored time, the `end` is current wall clock time, `resource` is `DISK`, and `entries` is the all partitions in the cluster.
+The returned result would be a partition list sorted by the utilization of the specified resource in the time range specified by `start` and `end`. The resource can be `CPU`, `NW_IN`, `NW_OUT` and `DISK`. By default, the `start` is the earliest monitored time, the `end` is current wall clock time, `resource` is `DISK`, and `entries` is the all partitions in the cluster.
 
 By specifying `topic`,`partition` and/or `brokerid` parameter, client can filter returned partition entries.
 
@@ -161,12 +161,12 @@ The following GET request gives partition healthiness on the cluster:
 
 Supported parameters are:
 
-| PARAMETER   | TYPE       | DESCPRIPTION | DEFAULT  | OPTIONAL|
-|-------------|------------|----------------------|----------|---------|
-| topic     | regex    | regular expression to filter partition state to report based on partition's topic    | null|   yes | 
-| json     | boolean    | return in JSON format or not      | false      |   yes | 
-| verbose     | boolean    | return detailed state information      | false      |   yes |
-| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes | 
+| PARAMETER | TYPE      | DESCRIPTION                                                                       | DEFAULT   | OPTIONAL  |
+|-----------|-----------|-----------------------------------------------------------------------------------|-----------|-----------|
+| topic     | regex     | regular expression to filter partition state to report based on partition's topic | null      | yes       | 
+| json      | boolean   | return in JSON format or not                                                      | false     | yes       | 
+| verbose   | boolean   | return detailed state information                                                 | false     | yes       |
+| doAs      | string    | propagated user by the trusted proxy service                                      | null      | yes       | 
 
 The returned result contains the following information
 * For each broker
@@ -183,22 +183,22 @@ The following GET request returns the optimization proposals generated based on 
 
 Supported parameters are:
 
-| PARAMETER   | TYPE       | DESCPRIPTION | DEFAULT  | OPTIONAL|
-|-------------|------------|----------------------|----------|---------|
-| ignore_proposal_cache     | boolean    | whether ignore the cached proposal or not| false|   yes | 
-| data_from     | string    | whether calculating proposal from available valid partitions or valid windows    | `VALID_WINDOWS`|   yes |
-| goals     | list    |  list of goals used to generate proposal   | all goals|   yes |
-| kafka_assigner     | boolean    |   whether use Kafka assigner mode to general proposal  | false|   yes |
-| allow_capacity_estimation     | boolean    | whether allow broker capacity to be estimated     | true      |   yes |
-| excluded_topics     | regex    |  regular expression to specify topic not to be considered for replica movement   | null|   yes |
-| use_ready_default_goals     | boolean    |  whether only using ready goals to generate proposal   | false|   yes |
-| exclude_recently_demoted_brokers     | boolean    | whether allow leader replicas to be moved to recently demoted broker    | false|   yes |
-| exclude_recently_removed_brokers     | boolean    | whether allow replicas to be moved to recently removed broker  | false|   yes |
-| destination_broker_ids     | boolean    |  specify brokers to move replicas to   | null|   yes |
-| rebalance_disk     | boolean    |  whether to balance load between brokers or between disks within broker   | false|   yes |
-| json     | boolean    | return in JSON format or not      | false      |   yes | 
-| verbose     | boolean    | return detailed state information      | false      |   yes |
-| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes | 
+| PARAMETER                         | TYPE      | DESCRIPTION                                                                           | DEFAULT           | OPTIONAL  |
+|-----------------------------------|-----------|---------------------------------------------------------------------------------------|-------------------|-----------|
+| ignore_proposal_cache             | boolean   | whether to ignore the cached proposal or not                                          | false             | yes       | 
+| data_from                         | string    | whether to calculate proposal from available valid partitions or valid windows        | `VALID_WINDOWS`   | yes       |
+| goals                             | list      | list of goals used to generate proposal                                               | default goals     | yes       |
+| kafka_assigner                    | boolean   | whether to use Kafka assigner mode to generate proposals                              | false             | yes       |
+| allow_capacity_estimation         | boolean   | whether to allow broker capacity to be estimated                                      | true              | yes       |
+| excluded_topics                   | regex     | regular expression to specify topics excluded from replica and leadership movement    | null              | yes       |
+| use_ready_default_goals           | boolean   | whether to use only ready goals to generate proposals                                 | false             | yes       |
+| exclude_recently_demoted_brokers  | boolean   | whether to allow leader replicas to be moved to recently demoted brokers              | false             | yes       |
+| exclude_recently_removed_brokers  | boolean   | whether allow replicas to be moved to recently removed broker                         | false             | yes       |
+| destination_broker_ids            | boolean   | specify brokers to move replicas to                                                   | available brokers | yes       |
+| rebalance_disk                    | boolean   | whether to balance load between disks within brokers (requires JBOD Kafka deployment) | false             | yes       |
+| json                              | boolean   | return in JSON format or not                                                          | false             | yes       | 
+| verbose                           | boolean   | return detailed state information                                                     | false             | yes       |
+| doAs                              | string    | propagated user by the trusted proxy service                                          | null              | yes       | 
 
 Proposal can be generated based on **valid_window** or **valid_partitions**.
 
@@ -227,16 +227,16 @@ The following get request allows user to get a full list of all the active/compl
 
 Supported parameters are:
 
-| PARAMETER   | TYPE       | DESCPRIPTION | DEFAULT  | OPTIONAL|
-|-------------|------------|----------------------|----------|---------|
-| user_task_ids     | list    | comma separated UUIDs to filter the task results Cruise Control report  | all tasks|   yes | 
-| client_ids     | list    | comma separated IP addresses to filter the task results Cruise Control report    | all users|   yes | 
-| entries     | integer    | number of partition load entries to report in response     | `MAX_INT`|   yes |
-| endpoints     | list    | comma separated endpoints to filter the task results Cruise Control report    | all endpoints|   yes | 
-| types     | string    | comma separated HTTP request types to filter the task results Cruise Control report    | all request types|   yes | 
-| json     | boolean    | return in JSON format or not      | false      |   yes | 
-| fetch_completed_task     | boolean    | whether return the original request's final response     | false      |   yes |
-| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes |
+| PARAMETER             | TYPE      | DESCRIPTION                                                                           | DEFAULT           | OPTIONAL  |
+|-----------------------|-----------|---------------------------------------------------------------------------------------|-------------------|-----------|
+| user_task_ids         | list      | comma separated UUIDs to filter the task results Cruise Control report                | all tasks         | yes       | 
+| client_ids            | list      | comma separated IP addresses to filter the task results Cruise Control report         | all users         | yes       | 
+| entries               | integer   | number of partition load entries to report in response                                | `MAX_INT`         | yes       |
+| endpoints             | list      | comma separated endpoints to filter the task results Cruise Control report            | all endpoints     | yes       | 
+| types                 | string    | comma separated HTTP request types to filter the task results Cruise Control report   | all request types | yes       | 
+| json                  | boolean   | return in JSON format or not                                                          | false             | yes       | 
+| fetch_completed_task  | boolean   | whether return the original request's final response                                  | false             | yes       |
+| doAs                  | string    | propagated user by the trusted proxy service                                          | null              | yes       |
 
 User can use `user_task_ids`/`client_ids`/`endpoints`/`types` make Cruise Control only return requests they are interested. By default all the requests get returned.
 
@@ -264,30 +264,30 @@ The following POST request will let Kafka Cruise Control rebalance a Kafka clust
 
 Supported parameters are:
 
-| PARAMETER   | TYPE       | DESCPRIPTION | DEFAULT  | OPTIONAL|
-|-------------|------------|----------------------|----------|---------|
-| dryrun     | boolean    | whether dry-run the request or not| true|   yes | 
-| data_from     | string    | whether generate proposal from available valid partitions or valid windows    | `VALID_WINDOW`|   yes |
-| goals     | list    |  list of goals used to generate proposal   | all goals|   yes |
-| kafka_assigner     | boolean    |   whether use Kafka assigner mode to general proposal  | false|   yes |
-| allow_capacity_estimation     | boolean    | whether allow broker capacity to be estimated     | true      |   yes |
-| concurrent_partition_movements_per_broker     | integer    | upper bound of ongoing replica movements going into/out of each broker     | null      |   yes |
-| concurrent_intra_broker_partition_movements     | integer    | upper bound of ongoing replica movements between disks within each broker     | null      |   yes |
-| concurrent_leader_movements     | integer    | upper bound of ongoing leadership movements     | null      |   yes |
-| skip_hard_goal_check     | boolean    | Whether allow hard goals be skipped in proposal generation     | false      |   yes |
-| excluded_topics     | regex    |  regular expression to specify topic not to be considered for replica movement   | null|   yes |
-| use_ready_default_goals     | boolean    |  whether only use ready goals to generate proposal   | false|   yes |
-| exclude_recently_demoted_brokers     | boolean    | whether allow leader replicas to be moved to recently demoted broker    | false|   yes |
-| exclude_recently_removed_brokers     | boolean    | whether allow replicas to be moved to recently removed broker  | false|   yes |
-| replica_movement_strategies     | string    |  [replica movement strategy](https://github.com/linkedin/cruise-control/wiki/Pluggable-Components#replica-movement-strategy) to use   | null|   yes |
-| ignore_proposal_cache     | boolean    | whether ignore the cached proposal or not| false|   yes | 
-| replication_throttle     | long    | upper bound on the bandwidth used to move replicas (in bytes per second)  | null|   yes |
-| destination_broker_ids     | list    |  specify brokers to move replicas to   | null|   yes |
-| rebalance_disk     | boolean    |  whether balance load between disks within each broker or between brokers in cluster  | false|   yes |
-| json     | boolean    | return in JSON format or not      | false      |   yes | 
-| verbose     | boolean    | return detailed state information      | false      |   yes | 
-| reason     | string    | reason for the request     | "No reason provided"      |   yes |
-| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes | 
+| PARAMETER                                     | TYPE      | DESCRIPTION                                                                                                                           | DEFAULT               | OPTIONAL  |
+|-----------------------------------------------|-----------|---------------------------------------------------------------------------------------------------------------------------------------|-----------------------|-----------|
+| dryrun                                        | boolean   | whether dry-run the request or not                                                                                                    | true                  | yes       | 
+| data_from                                     | string    | whether generate proposal from available valid partitions or valid windows                                                            | `VALID_WINDOW`        | yes       | 
+| goals                                         | list      | list of goals used to generate proposal                                                                                               | default goals         | yes       | 
+| kafka_assigner                                | boolean   | whether to use Kafka assigner mode to generate proposals                                                                              | false                 | yes       | 
+| allow_capacity_estimation                     | boolean   | whether to allow broker capacity to be estimated                                                                                      | true                  | yes       | 
+| concurrent_partition_movements_per_broker     | integer   | upper bound of ongoing replica movements going into/out of each broker                                                                | null                  | yes       | 
+| concurrent_intra_broker_partition_movements   | integer   | upper bound of ongoing replica movements between disks within each broker                                                             | null                  | yes       | 
+| concurrent_leader_movements                   | integer   | upper bound of ongoing leadership movements                                                                                           | null                  | yes       | 
+| skip_hard_goal_check                          | boolean   | Whether allow hard goals be skipped in proposal generation                                                                            | false                 | yes       | 
+| excluded_topics                               | regex     | regular expression to specify topics excluded from replica and leadership movement                                                    | null                  | yes       | 
+| use_ready_default_goals                       | boolean   | whether only use ready goals to generate proposal                                                                                     | false                 | yes       | 
+| exclude_recently_demoted_brokers              | boolean   | whether to allow leader replicas to be moved to recently demoted brokers                                                              | false                 | yes       | 
+| exclude_recently_removed_brokers              | boolean   | whether allow replicas to be moved to recently removed broker                                                                         | false                 | yes       | 
+| replica_movement_strategies                   | string    | [replica movement strategy](https://github.com/linkedin/cruise-control/wiki/Pluggable-Components#replica-movement-strategy) to use    | null                  | yes       | 
+| ignore_proposal_cache                         | boolean   | whether to ignore the cached proposal or not                                                                                          | false                 | yes       | 
+| replication_throttle                          | long      | upper bound on the bandwidth used to move replicas (in bytes per second)                                                              | null                  | yes       | 
+| destination_broker_ids                        | list      | specify brokers to move replicas to                                                                                                   | available brokers     | yes       | 
+| rebalance_disk                                | boolean   | whether to balance load between disks within brokers (requires JBOD Kafka deployment)                                                 | false                 | yes       | 
+| json                                          | boolean   | return in JSON format or not                                                                                                          | false                 | yes       | 
+| verbose                                       | boolean   | return detailed state information                                                                                                     | false                 | yes       | 
+| reason                                        | string    | reason for the request                                                                                                                | "No reason provided"  | yes       | 
+| doAs                                          | string    | propagated user by the trusted proxy service                                                                                          | null                  | yes       | 
 
 Similar to the [GET interface for getting proposals](https://github.com/linkedin/cruise-control/wiki/REST-APIs/_edit#get-optimization-proposals), the rebalance can also be based on available valid windows or available valid partitions.
 
@@ -305,28 +305,28 @@ The following POST request adds the given brokers to the Kafka cluster
 
 Supported parameters are:
 
-| PARAMETER   | TYPE       | DESCPRIPTION | DEFAULT  | OPTIONAL|
-|-------------|------------|----------------------|----------|---------|
-| brokerid     | list    | list of ids of new broker added to the cluster| N/A|   **no** | 
-| dryrun     | boolean    | whether dry-run the request or not| true|   yes | 
-| data_from     | string    | whether generate proposal from available valid partitions or valid windows    | `VALID_WINDOWS`|   yes |
-| goals     | list    |  list of goals used to generate proposal   | all goals|   yes |
-| kafka_assigner     | boolean    |   whether use Kafka assigner mode to general proposal  | false|   yes |
-| allow_capacity_estimation     | boolean    | whether allow broker capacity to be estimated from other broker in the cluster    | true      |   yes |
-| concurrent_partition_movements_per_broker     | integer    | upper bound of ongoing replica movements going into/out of each broker     | null      |   yes |
-| concurrent_leader_movements     | integer    | upper bound of ongoing leadership movements     | null      |   yes |
-| skip_hard_goal_check     | boolean    | whether allow hard goals be skipped in proposal generation     | false      |   yes |
-| excluded_topics     | regex    |  regular expression to specify topic not to be considered for replica movement   | null|   yes |
-| use_ready_default_goals     | boolean    |  whether only use ready goals to generate proposal   | false|   yes |
-| exclude_recently_demoted_brokers     | boolean    | whether allow leader replicas to be moved to recently demoted broker    | false|   yes |
-| exclude_recently_removed_brokers     | boolean    | whether allow replicas to be moved to recently removed broker  | false|   yes |
-| replica_movement_strategies     | string    |  [replica movement strategy](https://github.com/linkedin/cruise-control/wiki/Pluggable-Components#replica-movement-strategy) to use   | null|   yes |
-| replication_throttle     | long    | Upper bound on the bandwidth used to move replicas (in bytes per second)  | null|   yes |
-| throttle_added_broker     | boolean    | whether throttle replica movement to new broker or not   | false|   yes |
-| json     | boolean    | return in JSON format or not      | false      |   yes | 
-| verbose     | boolean    | return detailed state information      | false      |   yes | 
-| reason     | string    | reason for the request     | "No reason provided"      |   yes |
-| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes | 
+| PARAMETER                                 | TYPE      | DESCRIPTION                                                                                                                           | DEFAULT               | OPTIONAL  |
+|-------------------------------------------|-----------|---------------------------------------------------------------------------------------------------------------------------------------|-----------------------|-----------|
+| brokerid                                  | list      | list of ids of new broker added to the cluster                                                                                        | N/A                   | **no**    | 
+| dryrun                                    | boolean   | whether dry-run the request or not                                                                                                    | true                  | yes       | 
+| data_from                                 | string    | whether generate proposal from available valid partitions or valid windows                                                            | `VALID_WINDOWS`       | yes       | 
+| goals                                     | list      | list of goals used to generate proposal                                                                                               | default goals         | yes       | 
+| kafka_assigner                            | boolean   | whether to use Kafka assigner mode to generate proposals                                                                              | false                 | yes       | 
+| allow_capacity_estimation                 | boolean   | whether to allow broker capacity to be estimated from other broker in the cluster                                                     | true                  | yes       | 
+| concurrent_partition_movements_per_broker | integer   | upper bound of ongoing replica movements going into/out of each broker                                                                | null                  | yes       | 
+| concurrent_leader_movements               | integer   | upper bound of ongoing leadership movements                                                                                           | null                  | yes       | 
+| skip_hard_goal_check                      | boolean   | whether allow hard goals be skipped in proposal generation                                                                            | false                 | yes       | 
+| excluded_topics                           | regex     | regular expression to specify topics excluded from replica and leadership movement                                                    | null                  | yes       | 
+| use_ready_default_goals                   | boolean   | whether only use ready goals to generate proposal                                                                                     | false                 | yes       | 
+| exclude_recently_demoted_brokers          | boolean   | whether to allow leader replicas to be moved to recently demoted brokers                                                              | false                 | yes       | 
+| exclude_recently_removed_brokers          | boolean   | whether allow replicas to be moved to recently removed broker                                                                         | false                 | yes       | 
+| replica_movement_strategies               | string    | [replica movement strategy](https://github.com/linkedin/cruise-control/wiki/Pluggable-Components#replica-movement-strategy) to use    | null                  | yes       | 
+| replication_throttle                      | long      | Upper bound on the bandwidth used to move replicas (in bytes per second)                                                              | null                  | yes       | 
+| throttle_added_broker                     | boolean   | whether throttle replica movement to new broker or not                                                                                | false                 | yes       | 
+| json                                      | boolean   | return in JSON format or not                                                                                                          | false                 | yes       | 
+| verbose                                   | boolean   | return detailed state information                                                                                                     | false                 | yes       | 
+| reason                                    | string    | reason for the request                                                                                                                | "No reason provided"  | yes       | 
+| doAs                                      | string    | propagated user by the trusted proxy service                                                                                          | null                  | yes       | 
 
 
 When adding new brokers to a Kafka cluster, Cruise Control makes sure that the **replicas will only be moved from the existing brokers to the provided new broker**, but not moved among existing brokers. 
@@ -340,29 +340,29 @@ The following POST request removes a list of brokers from the Kafka cluster:
 
 Supported parameters are:
 
-| PARAMETER   | TYPE       | DESCPRIPTION | DEFAULT  | OPTIONAL|
-|-------------|------------|----------------------|----------|---------|
-| brokerid     | list    | list of ids of broker to be removed from the cluster| N/A|   **no** | 
-| dryrun     | voolean    | whether dry-run the request or not| true|   yes | 
-| data_from     | string    | specify either generate proposal from available valid partitions or valid windows    | `VALID_WINDOW`|   yes |
-| goals     | list    |  list of goals used to generate proposal   | all goals|   yes |
-| kafka_assigner     | boolean    |   whether use Kafka assigner mode to general proposal  | false|   yes |
-| allow_capacity_estimation     | boolean    | whether allow broker capacity to be estimated from other brokers in the cluster    | true      |   yes |
-| concurrent_partition_movements_per_broker     | integer    | upper bound of ongoing replica movements going into/out of each broker     | null      |   yes |
-| concurrent_leader_movements     | integer    | upper bound of ongoing leadership movements     | null      |   yes |
-| skip_hard_goal_check     | boolean    | whether allow hard goals be skipped in proposal generation     | false      |   yes |
-| excluded_topics     | regex    |  regular expression to specify topic not to be considered for replica movement   | null|   yes |
-| use_ready_default_goals     | boolean    |  whether only use ready goals to generate proposal   | false|   yes |
-| exclude_recently_demoted_brokers     | boolean    | whether allow leader replicas to be moved to recently demoted broker    | false|   yes |
-| exclude_recently_removed_brokers     | boolean    | whether allow replicas to be moved to recently removed broker  | false|   yes |
-| replica_movement_strategies     | string    |  [replica movement strategy](https://github.com/linkedin/cruise-control/wiki/Pluggable-Components#replica-movement-strategy) to use   | null|   yes |
-| replication_throttle     | long    | upper bound on the bandwidth used to move replicas (in bytes per second)  | false|   yes |
-| throttle_removed_broker     | boolean    | whether throttle replica movement out of the removed broker or not   | false|   yes |
-| destination_broker_ids     | list    |  specify brokers to move replicas to   | null|   yes |
-| json     | boolean    | return in JSON format or not      | false      |   yes | 
-| verbose     | boolean    | return detailed state information      | false      |   yes |  
-| reason     | string    | reason for the request     | "No reason provided"      |   yes |
-| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes | 
+| PARAMETER                                 | TYPE      | DESCRIPTION                                                                                                                           | DEFAULT               | OPTIONAL  |
+|-------------------------------------------|-----------|---------------------------------------------------------------------------------------------------------------------------------------|-----------------------|-----------|
+| brokerid                                  | list      | list of ids of broker to be removed from the cluster                                                                                  | N/A                   | **no**    | 
+| dryrun                                    | boolean   | whether dry-run the request or not                                                                                                    | true                  | yes       | 
+| data_from                                 | string    | specify either generate proposal from available valid partitions or valid windows                                                     | `VALID_WINDOW`        | yes       | 
+| goals                                     | list      | list of goals used to generate proposal                                                                                               | default goals         | yes       | 
+| kafka_assigner                            | boolean   | whether to use Kafka assigner mode to generate proposals                                                                              | false                 | yes       | 
+| allow_capacity_estimation                 | boolean   | whether to allow broker capacity to be estimated from other brokers in the cluster                                                    | true                  | yes       | 
+| concurrent_partition_movements_per_broker | integer   | upper bound of ongoing replica movements going into/out of each broker                                                                | null                  | yes       | 
+| concurrent_leader_movements               | integer   | upper bound of ongoing leadership movements                                                                                           | null                  | yes       | 
+| skip_hard_goal_check                      | boolean   | whether allow hard goals be skipped in proposal generation                                                                            | false                 | yes       | 
+| excluded_topics                           | regex     | regular expression to specify topics excluded from replica and leadership movement                                                    | null                  | yes       | 
+| use_ready_default_goals                   | boolean   | whether only use ready goals to generate proposal                                                                                     | false                 | yes       | 
+| exclude_recently_demoted_brokers          | boolean   | whether to allow leader replicas to be moved to recently demoted brokers                                                              | false                 | yes       | 
+| exclude_recently_removed_brokers          | boolean   | whether allow replicas to be moved to recently removed broker                                                                         | false                 | yes       | 
+| replica_movement_strategies               | string    | [replica movement strategy](https://github.com/linkedin/cruise-control/wiki/Pluggable-Components#replica-movement-strategy) to use    | null                  | yes       | 
+| replication_throttle                      | long      | upper bound on the bandwidth used to move replicas (in bytes per second)                                                              | false                 | yes       | 
+| throttle_removed_broker                   | boolean   | whether throttle replica movement out of the removed broker or not                                                                    | false                 | yes       | 
+| destination_broker_ids                    | list      | specify brokers to move replicas to                                                                                                   | available brokers     | yes       | 
+| json                                      | boolean   | return in JSON format or not                                                                                                          | false                 | yes       | 
+| verbose                                   | boolean   | return detailed state information                                                                                                     | false                 | yes       | 
+| reason                                    | string    | reason for the request                                                                                                                | "No reason provided"  | yes       | 
+| doAs                                      | string    | propagated user by the trusted proxy service                                                                                          | null                  | yes       | 
 
 Similar to adding brokers to a cluster, removing brokers from a cluster will **only move partitions from the brokers to be removed to the other existing brokers**. There won't be partition movements among remaining brokers. And user can specify the destination broker for these replica movement via `destination_broker_ids` parameter.
 
@@ -373,31 +373,30 @@ Like adding brokers, users can choose whether to throttle the removed broker dur
 ### Fix offline replicas in Kafka cluster
 The following POST request moves all the offline replicas from dead disks/brokers. **This endpoint is not available in `kafka_0_11_and_1_0` branch.** 
 
-
     POST /kafkacruisecontrol/fix_offline_replicas
 
 Supported parameters are:
 
-| PARAMETER   | TYPE       | DESCPRIPTION | DEFAULT  | OPTIONAL|
-|-------------|------------|----------------------|----------|---------|
-| dryrun     | boolean    | whether dry-run the request or not| true|   yes | 
-| data_from     | string    | whether generate proposal from available valid partitions or valid windows    | `VALID_WINDOW`|   yes |
-| goals     | list    |  list of goals used to generate proposal   | all goals|   yes |
-| kafka_assigner     | boolean    |   whether use Kafka assigner mode to general proposal  | false|   yes |
-| allow_capacity_estimation     | boolean    | whether allow broker capacity to be estimated     | true      |   yes |
-| concurrent_partition_movements_per_broker     | integer    | upper bound of ongoing replica movements going into/out of each broker     | null      |   yes |
-| concurrent_leader_movements     | integer    | upper bound of ongoing leadership movements     | null      |   yes |
-| skip_hard_goal_check     | boolean    | Whether allow hard goals be skipped in proposal generation     | false      |   yes |
-| excluded_topics     | regex    |  regular expression to specify topic not to be considered for replica movement   | null|   yes |
-| use_ready_default_goals     | boolean    |  whether only use ready goals to generate proposal   | false|   yes |
-| exclude_recently_demoted_brokers     | boolean    | whether allow leader replicas to be moved to recently demoted broker    | false|   yes |
-| exclude_recently_removed_brokers     | boolean    | whether allow replicas to be moved to recently removed broker  | false|   yes |
-| replica_movement_strategies     | string    |  [replica movement strategy](https://github.com/linkedin/cruise-control/wiki/Pluggable-Components#replica-movement-strategy) to use   | null|   yes |
-| replication_throttle     | long    | upper bound on the bandwidth used to move replicas (in bytes per second)  | null|   yes |
-| json     | boolean    | return in JSON format or not      | false      |   yes | 
-| verbose     | boolean    | return detailed state information      | false      |   yes |  
-| reason     | string    | reason for the request     | "No reason provided"      |   yes |
-| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes | 
+| PARAMETER                                 | TYPE      | DESCRIPTION                                                                                                                           | DEFAULT               | OPTIONAL  |
+|-------------------------------------------|-----------|---------------------------------------------------------------------------------------------------------------------------------------|-----------------------|-----------|
+| dryrun                                    | boolean   | whether dry-run the request or not                                                                                                    | true                  | yes       |
+| data_from                                 | string    | specify either generate proposal from available valid partitions or valid windows                                                     | `VALID_WINDOW`        | yes       | 
+| goals                                     | list      | list of goals used to generate proposal                                                                                               | default goals         | yes       | 
+| kafka_assigner                            | boolean   | whether to use Kafka assigner mode to generate proposals                                                                              | false                 | yes       | 
+| allow_capacity_estimation                 | boolean   | whether to allow broker capacity to be estimated from other brokers in the cluster                                                    | true                  | yes       |
+| concurrent_partition_movements_per_broker | integer   | upper bound of ongoing replica movements going into/out of each broker                                                                | null                  | yes       | 
+| concurrent_leader_movements               | integer   | upper bound of ongoing leadership movements                                                                                           | null                  | yes       | 
+| skip_hard_goal_check                      | boolean   | Whether allow hard goals be skipped in proposal generation                                                                            | false                 | yes       | 
+| excluded_topics                           | regex     | regular expression to specify topics excluded from replica and leadership movement                                                    | null                  | yes       | 
+| use_ready_default_goals                   | boolean   | whether only use ready goals to generate proposal                                                                                     | false                 | yes       | 
+| exclude_recently_demoted_brokers          | boolean   | whether to allow leader replicas to be moved to recently demoted brokers                                                              | false                 | yes       | 
+| exclude_recently_removed_brokers          | boolean   | whether allow replicas to be moved to recently removed broker                                                                         | false                 | yes       | 
+| replica_movement_strategies               | string    | [replica movement strategy](https://github.com/linkedin/cruise-control/wiki/Pluggable-Components#replica-movement-strategy) to use    | null                  | yes       | 
+| replication_throttle                      | long      | upper bound on the bandwidth used to move replicas (in bytes per second)                                                              | null                  | yes       | 
+| json                                      | boolean   | return in JSON format or not                                                                                                          | false                 | yes       | 
+| verbose                                   | boolean   | return detailed state information                                                                                                     | false                 | yes       | 
+| reason                                    | string    | reason for the request                                                                                                                | "No reason provided"  | yes       | 
+| doAs                                      | string    | propagated user by the trusted proxy service                                                                                          | null                  | yes       | 
 
 Likewise, users can throttle partition movement, the throttling can be set in the same way as [`rebalance` request](#trigger-a-workload-balance).
 
@@ -414,22 +413,22 @@ User can also request to move all the leader replicas away from the a list of di
 
 Supported parameters are:
 
-| PARAMETER   | TYPE       | DESCPRIPTION | DEFAULT  | OPTIONAL|
-|-------------|------------|----------------------|----------|---------|
-| brokerid     | list    | list of ids of broker to be demoted in the cluster|  N/A|   **no if brokerid_and_logdirs is not set** | 
-| brokerid_and_logdirs     | list    | list of broker id and logdir pair to be demoted in the cluster| N/A|   **no if brokerids is not set** |
-| dryrun     | boolean    | whether dry-run the request or not| true|   yes | 
-| allow_capacity_estimation     | boolean    | whether allow broker capacity to be estimated     | true      |   yes |
-| concurrent_leader_movements     | integer    | upper bound of ongoing leadership movements     | null      |   yes |
-| skip_urp_demotion     | boolean    | whether skip demoting leader replicas for under replicated partitions     | false      |   yes |
-| exclude_follower_demotion     | boolean    | whether skip demoting follower replicas on the broker to be demoted     | true      |   yes |
-| exclude_recently_demoted_brokers     | boolean    | whether allow leader replicas to be moved to recently demoted broker    | false|   yes |
-| replica_movement_strategies     | string    |  [replica movement strategy](https://github.com/linkedin/cruise-control/wiki/Pluggable-Components#replica-movement-strategy) to use   | null|   yes |
-| replication_throttle     | long    | upper bound on the bandwidth used to move replicas (in bytes per second)  | null|   yes |
-| json     | boolean    | return in JSON format or not      | false      |   yes | 
-| verbose     | boolean    | return detailed state information      | false      |   yes | 
-| reason     | string    | reason for the request     | "No reason provided"      |   yes |
-| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes | 
+| PARAMETER                         | TYPE      | DESCRIPTION                                                                                                                           | DEFAULT               | OPTIONAL                                  |
+|-----------------------------------|-----------|---------------------------------------------------------------------------------------------------------------------------------------|-----------------------|-------------------------------------------|
+| brokerid                          | list      | list of ids of broker to be demoted in the cluster                                                                                    | N/A                   | **no if brokerid_and_logdirs is not set** | 
+| brokerid_and_logdirs              | list      | list of broker id and logdir pair to be demoted in the cluster                                                                        | N/A                   |   **no if brokerids is not set**          |
+| dryrun                            | boolean   | whether dry-run the request or not                                                                                                    | true                  | yes                                       | 
+| allow_capacity_estimation         | boolean   | whether to allow broker capacity to be estimated                                                                                      | true                  | yes                                       | 
+| concurrent_leader_movements       | integer   | upper bound of ongoing leadership movements                                                                                           | null                  | yes                                       | 
+| skip_urp_demotion                 | boolean   | whether skip demoting leader replicas for under replicated partitions                                                                 | false                 | yes                                       | 
+| exclude_follower_demotion         | boolean   | whether skip demoting follower replicas on the broker to be demoted                                                                   | true                  | yes                                       | 
+| exclude_recently_demoted_brokers  | boolean   | whether to allow leader replicas to be moved to recently demoted brokers                                                              | false                 | yes                                       | 
+| replica_movement_strategies       | string    | [replica movement strategy](https://github.com/linkedin/cruise-control/wiki/Pluggable-Components#replica-movement-strategy) to use    | null                  | yes                                       | 
+| replication_throttle              | long      | upper bound on the bandwidth used to move replicas (in bytes per second)                                                              | null                  | yes                                       | 
+| json                              | boolean   | return in JSON format or not                                                                                                          | false                 | yes                                       | 
+| verbose                           | boolean   | return detailed state information                                                                                                     | false                 | yes                                       | 
+| reason                            | string    | reason for the request                                                                                                                | "No reason provided"  | yes                                       | 
+| doAs                              | string    | propagated user by the trusted proxy service                                                                                          | null                  | yes                                       | 
 
 Demoting a broker/disk is consist of tow steps.
   * Make all the replicas on given broker/disk the least preferred replicas for leadership election
@@ -445,10 +444,10 @@ The following POST request will let Kafka Cruise Control stop an ongoing `rebala
 
 Supported parameters are:
 
-| PARAMETER   | TYPE       | DESCPRIPTION | DEFAULT  | OPTIONAL|
-|-------------|------------|----------------------|----------|---------|
-| json     | boolean    | return in JSON format or not      | false      |   yes |
-| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes |
+| PARAMETER | TYPE      | DESCRIPTION                                   | DEFAULT   | OPTIONAL  |
+|-----------|-----------|-----------------------------------------------|-----------|-----------|
+| json      | boolean   | return in JSON format or not                  | false     | yes       | 
+| doAs      | string    | propagated user by the trusted proxy service  | null      | yes       | 
 
 Note that **Cruise Control does not wait for the ongoing batch to finish when it stops execution**, i.e. the in-progress batch may still be running after Cruise Control stops the execution.
 
@@ -459,11 +458,11 @@ The following POST request will let Kafka Cruise Control pause an ongoing metric
 
 Supported parameters are:
 
-| PARAMETER   | TYPE       | DESCPRIPTION | DEFAULT  | OPTIONAL|
-|-------------|------------|----------------------|----------|---------|
-| reason     | string    | reason to pause sampling      | empty string      |   yes |
-| json     | boolean    | return in JSON format or not      | false      |   yes |
-| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes |
+| PARAMETER | TYPE      | DESCRIPTION                                   | DEFAULT               | OPTIONAL  |
+|-----------|-----------|-----------------------------------------------|-----------------------|-----------|
+| reason    | string    | reason to pause sampling                      | "No reason provided"  | yes       | 
+| json      | boolean   | return in JSON format or not                  | false                 | yes       | 
+| doAs      | string    | propagated user by the trusted proxy service  | null                  | yes       | 
 
 The reason to pause sampling will be recorded and shows up in `state` endpoint(under `LoadMonitor` sub state).
 
@@ -472,11 +471,11 @@ The following POST request will let Kafka Cruise Control resume a paused metrics
 
     POST /kafkacruisecontrol/resume_sampling
 
-| PARAMETER   | TYPE       | DESCPRIPTION | DEFAULT  | OPTIONAL|
-|-------------|------------|----------------------|----------|---------|
-| reason     | string    | reason to resume sampling      | empty string      |   yes |
-| json     | boolean    | return in JSON format or not      | false      |   yes |
-| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes |
+| PARAMETER | TYPE      | DESCRIPTION                                   | DEFAULT               | OPTIONAL  |
+|-----------|-----------|-----------------------------------------------|-----------------------|-----------|
+| reason    | string    | reason to resume sampling                     | "No reason provided"  | yes       | 
+| json      | boolean   | return in JSON format or not                  | false                 | yes       | 
+| doAs      | string    | propagated user by the trusted proxy service  | null                  | yes       | 
 
 The reason to resume sampling will be recorded and shows up in `state` endpoint(under `LoadMonitor` sub state).
 
@@ -489,25 +488,25 @@ The following POST request can change topic's replication factor.
 
 Supported parameters are:
 
-| PARAMETER   | TYPE       | DESCPRIPTION | DEFAULT  | OPTIONAL|
-|-------------|------------|----------------------|----------|---------|
-| dryrun     | boolean    | whether dry-run the request or not| true|   yes |
-| topic     | regex    | regular expression to specify subject topics| N/A|   **no** | 
-| replication_factor     | Integer    | target replication factor| N/A|   **no** | 
-| data_from     | string    | whether generate proposal from available valid partitions or valid windows    | `VALID_WINDOW`|   yes |
-| goals     | list    |  list of goals used to generate proposal   | all goals|   yes |
-| allow_capacity_estimation     | boolean    | whether allow broker capacity to be estimated     | true      |   yes |
-| concurrent_partition_movements_per_broker     | integer    | upper bound of ongoing replica movements going into/out of each broker     | null      |   yes |
-| concurrent_leader_movements     | integer    | upper bound of ongoing leadership movements     | null      |   yes |
-| skip_hard_goal_check     | boolean    | Whether allow hard goals be skipped in proposal generation     | false      |   yes |
-| exclude_recently_demoted_brokers     | Boolean    | Whether allow leader replicas to be moved to recently demoted broker    | false|   yes |
-| exclude_recently_removed_brokers     | Boolean    | Whether allow replicas to be moved to recently removed broker  | false|   yes |
-| replica_movement_strategies     | string    |  [replica movement strategy](https://github.com/linkedin/cruise-control/wiki/Pluggable-Components#replica-movement-strategy) to use   | null|   yes | 
-| replication_throttle     | long    | upper bound on the bandwidth used to move replicas (in bytes per second)  | null|   yes |
-| json     | boolean    | return in JSON format or not      | false      |   yes | 
-| verbose     | boolean    | return detailed state information      | false      |   yes | 
-| reason     | string    | reason for the request     | "No reason provided"      |   yes |
-| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes | 
+| PARAMETER                                 | TYPE      | DESCRIPTION                                                                                                                           | DEFAULT               | OPTIONAL  |
+|-------------------------------------------|-----------|---------------------------------------------------------------------------------------------------------------------------------------|-----------------------|-----------|
+| dryrun                                    | boolean   | whether dry-run the request or not                                                                                                    | true                  | yes       | 
+| topic                                     | regex     | regular expression to specify subject topics                                                                                          | N/A                   | **no**    | 
+| replication_factor                        | Integer   | target replication factor                                                                                                             | N/A                   | **no**    | 
+| data_from                                 | string    | whether generate proposal from available valid partitions or valid windows                                                            | `VALID_WINDOW`        | yes       | 
+| goals                                     | list      | list of goals used to generate proposal                                                                                               | default goals         | yes       | 
+| allow_capacity_estimation                 | boolean   | whether to allow broker capacity to be estimated                                                                                      | true                  | yes       | 
+| concurrent_partition_movements_per_broker | integer   | upper bound of ongoing replica movements going into/out of each broker                                                                | null                  | yes       | 
+| concurrent_leader_movements               | integer   | upper bound of ongoing leadership movements                                                                                           | null                  | yes       | 
+| skip_hard_goal_check                      | boolean   | Whether allow hard goals be skipped in proposal generation                                                                            | false                 | yes       | 
+| exclude_recently_demoted_brokers          | Boolean   | Whether to allow leader replicas to be moved to recently demoted brokers                                                              | false                 | yes       | 
+| exclude_recently_removed_brokers          | Boolean   | Whether allow replicas to be moved to recently removed broker                                                                         | false                 | yes       | 
+| replica_movement_strategies               | string    | [replica movement strategy](https://github.com/linkedin/cruise-control/wiki/Pluggable-Components#replica-movement-strategy) to use    | null                  | yes       | 
+| replication_throttle                      | long      | upper bound on the bandwidth used to move replicas (in bytes per second)                                                              | null                  | yes       | 
+| json                                      | boolean   | return in JSON format or not                                                                                                          | false                 | yes       | 
+| verbose                                   | boolean   | return detailed state information                                                                                                     | false                 | yes       | 
+| reason                                    | string    | reason for the request                                                                                                                | "No reason provided"  | yes       | 
+| doAs                                      | string    | propagated user by the trusted proxy service                                                                                          | null                  | yes       | 
 
 Changing topic's replication factor will not move any existing replicas. `goals` are used to determine which replica to be deleted(to decrease topic's replication factor) and which broker to assign new replica (to increase topic's replication factor).
 
@@ -521,16 +520,16 @@ Some of Cruise Control's configs can be changed dynamically via `admin` endpoint
 
 Supported parameters are:
 
-| PARAMETER   | TYPE       | DESCPRIPTION | DEFAULT  | OPTIONAL|
-|-------------|------------|----------------------|----------|---------|
-| disable_self_healing_for     | list    | list of anomaly types to disable self-healing|   N/A | yes|
-| enable_self_healing_for     | list    | list of anomaly types to enable self-healing|   N/A | yes|
-| concurrent_partition_movements_per_broker     | integer    | upper bound of ongoing replica movements into/out of a broker  |   N/A | yes|
-| concurrent_intra_broker_partition_movements     | integer    | upper bound of ongoing replica movements between disks within a broker  |   N/A | yes|
-| concurrent_leader_movements     | integer    | upper bound of ongoing leadership movements |    N/A | yes|
-| drop_recently_removed_brokers     | list    | list of id of recently removed brokers to be dropped  |   N/A | yes|
-| drop_recently_demoted_brokers     | list    | list of id of recently demoted brokers to be dropped  |   N/A | yes|
-| doAs     | string    | propagated user by the trusted proxy service      | null      |   yes |
+| PARAMETER                                     | TYPE      | DESCRIPTION                                                               | DEFAULT   | OPTIONAL  |
+|-----------------------------------------------|-----------|---------------------------------------------------------------------------|-----------|-----------|
+| disable_self_healing_for                      | list      | list of anomaly types to disable self-healing                             | N/A       | yes       |
+| enable_self_healing_for                       | list      | list of anomaly types to enable self-healing                              | N/A       | yes       |
+| concurrent_partition_movements_per_broker     | integer   | upper bound of ongoing replica movements into/out of a broker             | N/A       | yes       |
+| concurrent_intra_broker_partition_movements   | integer   | upper bound of ongoing replica movements between disks within a broker    | N/A       | yes       |
+| concurrent_leader_movements                   | integer   | upper bound of ongoing leadership movements                               | N/A       | yes       |
+| drop_recently_removed_brokers                 | list      | list of id of recently removed brokers to be dropped                      | N/A       | yes       |
+| drop_recently_demoted_brokers                 | list      | list of id of recently demoted brokers to be dropped                      | N/A       | yes       |
+| doAs                                          | string    | propagated user by the trusted proxy service                              | null      | yes       | 
 
 To Enable/disable self-healing, send POST request like:
 
