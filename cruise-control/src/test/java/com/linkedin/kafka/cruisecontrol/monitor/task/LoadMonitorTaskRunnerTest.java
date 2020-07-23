@@ -50,6 +50,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.META
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.METADATA_REFRESH_BACKOFF;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotNull;
 
 /**
  * The unit test for metric fetcher manager.
@@ -99,6 +100,7 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
                                      new LogContext(),
                                      new ClusterResourceListeners());
     MetadataClient metadataClient = new MetadataClient(config, metadata, -1L, TIME);
+    assertNotNull(metadataClient.metadata().fetch().clusterResource().clusterId());
     MockPartitionMetricSampleAggregator mockPartitionMetricSampleAggregator =
         new MockPartitionMetricSampleAggregator(config, metadata);
     KafkaBrokerMetricSampleAggregator mockBrokerMetricSampleAggregator =
@@ -148,6 +150,7 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
                                      new LogContext(),
                                      new ClusterResourceListeners());
     MetadataClient metadataClient = new MetadataClient(config, metadata, -1L, TIME);
+    assertNotNull(metadataClient.metadata().fetch().clusterResource().clusterId());
     MockPartitionMetricSampleAggregator mockMetricSampleAggregator =
         new MockPartitionMetricSampleAggregator(config, metadata);
     KafkaBrokerMetricSampleAggregator mockBrokerMetricSampleAggregator =
