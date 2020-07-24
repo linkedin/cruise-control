@@ -315,8 +315,7 @@ public class AnomalyDetectorTest {
                                               EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
                                               EasyMock.eq(null),
                                               EasyMock.eq(false),
-                                              EasyMock.anyString(),
-                                              EasyMock.anyObject());
+                                              EasyMock.anyString());
 
       EasyMock.expect(mockAnomalyNotifier.onGoalViolation(EasyMock.isA(GoalViolations.class))).andReturn(AnomalyNotificationResult.fix());
     } else if (anomalyType == KafkaAnomalyType.DISK_FAILURE) {
@@ -350,8 +349,7 @@ public class AnomalyDetectorTest {
                                               EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
                                               EasyMock.eq(null),
                                               EasyMock.eq(false),
-                                              EasyMock.anyString(),
-                                              EasyMock.anyObject());
+                                              EasyMock.anyString());
 
       EasyMock.expect(mockKafkaCruiseControl.acquireForModelGeneration(EasyMock.anyObject())).andReturn(null);
       EasyMock.expect(mockAnomalyNotifier.onDiskFailure(EasyMock.isA(DiskFailures.class))).andReturn(AnomalyNotificationResult.fix());
@@ -385,8 +383,7 @@ public class AnomalyDetectorTest {
                                              EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
                                              EasyMock.eq(null),
                                              EasyMock.eq(false),
-                                             EasyMock.anyString(),
-                                             EasyMock.anyObject());
+                                             EasyMock.anyString());
       EasyMock.expect(mockAnomalyNotifier.onMetricAnomaly(EasyMock.isA(SlowBrokers.class))).andReturn(AnomalyNotificationResult.fix());
     } else if (anomalyType == KafkaAnomalyType.TOPIC_ANOMALY) {
       ClusterModel clusterModel = unbalanced();
@@ -420,8 +417,7 @@ public class AnomalyDetectorTest {
                                               EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
                                               EasyMock.eq(null),
                                               EasyMock.eq(false),
-                                              EasyMock.anyString(),
-                                              EasyMock.anyObject());
+                                              EasyMock.anyString());
       EasyMock.expect(mockAnomalyNotifier.onTopicAnomaly(EasyMock.isA(TopicAnomaly.class))).andReturn(AnomalyNotificationResult.fix());
     }
     EasyMock.expect(mockKafkaCruiseControl.meetCompletenessRequirements(Collections.emptyList())).andReturn(true);
@@ -429,6 +425,10 @@ public class AnomalyDetectorTest {
                                                    EasyMock.eq(0L),
                                                    EasyMock.eq(TimeUnit.MILLISECONDS)))
             .andReturn(null);
+
+    // Set generating proposals for execution.
+    mockKafkaCruiseControl.setGeneratingProposalsForExecution(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.eq(false));
+
     replayCommonMocks(mockAnomalyNotifier, mockBrokerFailureDetector, mockGoalViolationDetector, mockMetricAnomalyDetector,
                       mockDetectorScheduler, mockKafkaCruiseControl);
     expectAndReplayFixMocks(mockOptimizerResult, mockBrokerStats);

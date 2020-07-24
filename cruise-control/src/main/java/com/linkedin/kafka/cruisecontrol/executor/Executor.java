@@ -384,7 +384,6 @@ public class Executor {
    *                            when executing a proposal (if null, no throttling is applied).
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
-   * @param reasonSupplier Reason supplier for the execution.
    * @param isKafkaAssignerMode {@code true} if kafka assigner mode, {@code false} otherwise.
    */
   public synchronized void executeProposals(Collection<ExecutionProposal> proposals,
@@ -399,14 +398,12 @@ public class Executor {
                                             Long replicationThrottle,
                                             boolean isTriggeredByUserRequest,
                                             String uuid,
-                                            Supplier<String> reasonSupplier,
                                             boolean isKafkaAssignerMode) throws OngoingExecutionException {
     try {
       setExecutionMode(isKafkaAssignerMode);
       initProposalExecution(proposals, unthrottledBrokers, loadMonitor, requestedInterBrokerPartitionMovementConcurrency,
                             requestedIntraBrokerPartitionMovementConcurrency, requestedLeadershipMovementConcurrency,
-                            requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid, reasonSupplier,
-                            isTriggeredByUserRequest);
+                            requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid, isTriggeredByUserRequest);
       startExecution(loadMonitor, null, removedBrokers, replicationThrottle, isTriggeredByUserRequest);
     } catch (Exception e) {
       processExecuteProposalsFailure();
@@ -423,7 +420,6 @@ public class Executor {
                                                   Long requestedExecutionProgressCheckIntervalMs,
                                                   ReplicaMovementStrategy replicaMovementStrategy,
                                                   String uuid,
-                                                  Supplier<String> reasonSupplier,
                                                   boolean isTriggeredByUserRequest) throws OngoingExecutionException {
     if (_hasOngoingExecution) {
       throw new OngoingExecutionException("Cannot execute new proposals while there is an ongoing execution.");
@@ -432,13 +428,15 @@ public class Executor {
     if (loadMonitor == null) {
       throw new IllegalArgumentException("Load monitor cannot be null.");
     }
-    if (uuid == null) {
-      throw new IllegalStateException("UUID of the execution cannot be null.");
+    if (_executorState.state() != GENERATING_PROPOSALS_FOR_EXECUTION) {
+      throw new IllegalStateException(String.format("Unexpected executor state %s. Initializing proposal execution requires"
+                                                    + " generating proposals for execution.", _executorState.state()));
     }
-    if (reasonSupplier == null) {
-      throw new IllegalArgumentException("Reason supplier cannot be null.");
+    if (uuid == null || !uuid.equals(_uuid)) {
+      throw new IllegalStateException(String.format("Attempt to initialize proposal execution with a UUID %s that differs from"
+                                                    + " the UUID used for generating proposals for execution %s.", uuid, _uuid));
     }
-    _executorState = ExecutorState.initializeProposalExecution(uuid, reasonSupplier.get(), recentlyDemotedBrokers(),
+    _executorState = ExecutorState.initializeProposalExecution(_uuid, _reasonSupplier.get(), recentlyDemotedBrokers(),
                                                                recentlyRemovedBrokers(), isTriggeredByUserRequest);
     _executionTaskManager.setExecutionModeForTaskTracker(_isKafkaAssignerMode);
     _executionTaskManager.addExecutionProposals(proposals, brokersToSkipConcurrencyCheck, _metadataClient.refreshMetadata().cluster(),
@@ -447,8 +445,6 @@ public class Executor {
     setRequestedIntraBrokerPartitionMovementConcurrency(requestedIntraBrokerPartitionMovementConcurrency);
     setRequestedLeadershipMovementConcurrency(requestedLeadershipMovementConcurrency);
     setRequestedExecutionProgressCheckIntervalMs(requestedExecutionProgressCheckIntervalMs);
-    _uuid = uuid;
-    _reasonSupplier = reasonSupplier;
   }
 
   /**
@@ -467,7 +463,6 @@ public class Executor {
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
-   * @param reasonSupplier Reason supplier for the execution.
    */
   public synchronized void executeDemoteProposals(Collection<ExecutionProposal> proposals,
                                                   Collection<Integer> demotedBrokers,
@@ -478,13 +473,11 @@ public class Executor {
                                                   ReplicaMovementStrategy replicaMovementStrategy,
                                                   Long replicationThrottle,
                                                   boolean isTriggeredByUserRequest,
-                                                  String uuid,
-                                                  Supplier<String> reasonSupplier) throws OngoingExecutionException {
+                                                  String uuid) throws OngoingExecutionException {
     try {
       setExecutionMode(false);
       initProposalExecution(proposals, demotedBrokers, loadMonitor, concurrentSwaps, 0, requestedLeadershipMovementConcurrency,
-                            requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid, reasonSupplier,
-                            isTriggeredByUserRequest);
+                            requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid, isTriggeredByUserRequest);
       startExecution(loadMonitor, demotedBrokers, null, replicationThrottle, isTriggeredByUserRequest);
     } catch (Exception e) {
       processExecuteProposalsFailure();
@@ -623,6 +616,60 @@ public class Executor {
     _uuid = null;
     _reasonSupplier = null;
     _executorState = ExecutorState.noTaskInProgress(recentlyDemotedBrokers(), recentlyRemovedBrokers());
+  }
+
+  /**
+   * Notify the executor on starting to generate proposals for execution with the given uuid and reason supplier.
+   * The executor must be in {@link ExecutorState.State#NO_TASK_IN_PROGRESS} state for this operation to succeed.
+   *
+   * @param uuid UUID of the current execution.
+   * @param reasonSupplier Reason supplier for the execution.
+   * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
+   */
+  public synchronized void setGeneratingProposalsForExecution(String uuid, Supplier<String> reasonSupplier, boolean isTriggeredByUserRequest)
+      throws OngoingExecutionException {
+    ExecutorState.State currentExecutorState = _executorState.state();
+    if (currentExecutorState != NO_TASK_IN_PROGRESS) {
+      throw new OngoingExecutionException(String.format("Cannot generate proposals while the executor is in %s state.", currentExecutorState));
+    }
+    if (uuid == null) {
+      throw new IllegalArgumentException("UUID of the execution cannot be null.");
+    }
+    if (reasonSupplier == null) {
+      throw new IllegalArgumentException("Reason supplier cannot be null.");
+    }
+
+    _uuid = uuid;
+    _reasonSupplier = reasonSupplier;
+    _executorState = ExecutorState.generatingProposalsForExecution(_uuid, _reasonSupplier.get(), recentlyDemotedBrokers(),
+                                                                   recentlyRemovedBrokers(), isTriggeredByUserRequest);
+  }
+
+  /**
+   * Notify the executor on the failure to generate proposals for execution with the given uuid.
+   * The executor may stuck in {@link ExecutorState.State#GENERATING_PROPOSALS_FOR_EXECUTION} state if this call is omitted.
+   *
+   * This is a no-op if called when
+   * <ul>
+   *   <li>Not generating proposals for execution: This is because all other execution failures after generating proposals
+   *   for execution are already handled by the executor.</li>
+   *   <li>Generating proposals with a different UUID: This indicates an error in the caller-side logic, and is not
+   *   supposed to happen because at any given time proposals shall be generated for only one request -- for detecting
+   *   such presumably benign misuse (if any), this case is logged as a warning.</li>
+   * </ul>
+   * @param uuid UUID of the failed proposal generation for execution.
+   */
+  public synchronized void failGeneratingProposalsForExecution(String uuid) {
+    if (_executorState.state() == GENERATING_PROPOSALS_FOR_EXECUTION) {
+      if (uuid != null && uuid.equals(_uuid)) {
+        LOG.info("Failed to generate proposals for execution (UUID: {} reason: {}).", uuid, _reasonSupplier.get());
+        _uuid = null;
+        _reasonSupplier = null;
+        _executorState = ExecutorState.noTaskInProgress(recentlyDemotedBrokers(), recentlyRemovedBrokers());
+      } else {
+        LOG.warn("UUID mismatch in attempt to report failure to generate proposals (received: {} expected: {})", uuid, _uuid);
+      }
+    }
   }
 
   /**
