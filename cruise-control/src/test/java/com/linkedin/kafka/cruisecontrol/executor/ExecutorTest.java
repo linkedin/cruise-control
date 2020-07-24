@@ -77,6 +77,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   private static final TopicPartition TP2 = new TopicPartition(TOPIC2, PARTITION);
   private static final TopicPartition TP3 = new TopicPartition(TOPIC3, PARTITION);
   private static final String RANDOM_UUID = "random_uuid";
+  // A UUID to test the proposal execution to be started with UNKNOWN_UUID, but the executor received RANDOM_UUID.
+  private static final String UNKNOWN_UUID = "unknown_uuid";
   private static final long REMOVAL_HISTORY_RETENTION_TIME_MS = 43200000L;
   private static final long DEMOTION_HISTORY_RETENTION_TIME_MS = 86400000L;
   private static final long PRODUCE_SIZE_IN_BYTES = 10000L;
@@ -235,6 +237,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient, DEMOTION_HISTORY_RETENTION_TIME_MS,
                                      REMOVAL_HISTORY_RETENTION_TIME_MS, null, mockUserTaskManager,
                                      mockAnomalyDetector);
+
+    executor.setGeneratingProposalsForExecution(RANDOM_UUID, ExecutorTest.class::getSimpleName, true);
     executor.executeProposals(proposalsToExecute,
                               Collections.emptySet(),
                               null,
@@ -247,7 +251,6 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                               null,
                               true,
                               RANDOM_UUID,
-                              ExecutorTest.class::getSimpleName,
                               false);
     waitUntilTrue(() -> (executor.state().state() == ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS && !executor.inExecutionTasks().isEmpty()),
                   "Leader movement task did not start within the time limit",
@@ -264,8 +267,28 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     proposal = new ExecutionProposal(TP1, 0, new ReplicaPlacementInfo(1),
                                      Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(1)),
                                      Arrays.asList(new ReplicaPlacementInfo(1), new ReplicaPlacementInfo(0)));
-    proposalsToExecute = Collections.singletonList(proposal);
-    executor.executeProposals(proposalsToExecute,
+    Collection<ExecutionProposal> newProposalsToExecute = Collections.singletonList(proposal);
+
+    // Expect exception in case of UUID mismatch between UNKNOWN_UUID and RANDOM_UUID.
+    executor.setGeneratingProposalsForExecution(UNKNOWN_UUID, ExecutorTest.class::getSimpleName, true);
+    assertThrows(IllegalStateException.class,
+                 () -> executor.executeProposals(newProposalsToExecute,
+                                                 Collections.emptySet(),
+                                                 null,
+                                                 mockLoadMonitor,
+                                                 null,
+                                                 null,
+                                                 null,
+                                                 null,
+                                                 null,
+                                                 null,
+                                                 true,
+                                                 RANDOM_UUID,
+                                                 false));
+
+    // Now successfully start the execution..
+    executor.setGeneratingProposalsForExecution(RANDOM_UUID, ExecutorTest.class::getSimpleName, true);
+    executor.executeProposals(newProposalsToExecute,
                               Collections.emptySet(),
                               null,
                               mockLoadMonitor,
@@ -277,8 +300,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                               null,
                               true,
                               RANDOM_UUID,
-                              ExecutorTest.class::getSimpleName,
                               false);
+
     waitUntilTrue(() -> (executor.state().state() == ExecutorState.State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS),
                   "Inter-broker replica movement task did not start within the time limit",
                   EXECUTION_DEADLINE_MS, EXECUTION_SHORT_CHECK_MS);
@@ -480,9 +503,10 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
       replicationFactors.put(tp, proposal.oldReplicas().size());
     }
 
+    executor.setGeneratingProposalsForExecution(RANDOM_UUID, ExecutorTest.class::getSimpleName, isTriggeredByUserRequest);
     executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, mockLoadMonitor, null,
                               null, null, null, null,
-                              replicationThrottle, isTriggeredByUserRequest, RANDOM_UUID, ExecutorTest.class::getSimpleName, false);
+                              replicationThrottle, isTriggeredByUserRequest, RANDOM_UUID, false);
 
     if (verifyProgress) {
       waitUntilTrue(() -> ExecutorUtils.partitionsBeingReassigned(kafkaZkClient).contains(TP0),

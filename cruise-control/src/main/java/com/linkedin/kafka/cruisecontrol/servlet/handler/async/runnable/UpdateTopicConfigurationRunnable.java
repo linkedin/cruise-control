@@ -68,7 +68,6 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
  * replicas from the partition. Replicas are removed following the reverse order of position in replica list of partition.
  */
 public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable {
-  protected final String _uuid;
   protected final Map<Short, Pattern> _topicPatternByReplicationFactor;
   protected final boolean _skipRackAwarenessCheck;
   protected final Integer _concurrentInterBrokerPartitionMovements;
@@ -76,8 +75,6 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
   protected final Long _executionProgressCheckIntervalMs;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Long _replicationThrottle;
-  protected final String _reason;
-  protected final boolean _isTriggeredByUserRequest;
   protected Cluster _cluster;
   protected Map<Short, Set<String>> _topicsToChangeByReplicationFactor;
 
@@ -87,11 +84,8 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
                                           TopicConfigurationParameters parameters) {
     super(kafkaCruiseControl, future, parameters, parameters.dryRun(), parameters.stopOngoingExecution(),
           parameters.topicReplicationFactorChangeParameters() != null
-          && parameters.topicReplicationFactorChangeParameters().skipHardGoalCheck());
+          && parameters.topicReplicationFactorChangeParameters().skipHardGoalCheck(), uuid, parameters::reason, true);
     // Initialize common parameters
-    _reason = parameters.reason();
-    _uuid = uuid;
-    _isTriggeredByUserRequest = true;
     _cluster = null;
     _topicsToChangeByReplicationFactor = null;
 
@@ -129,11 +123,8 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
                                           String anomalyId,
                                           Supplier<String> reasonSupplier) {
     super(kafkaCruiseControl, new OperationFuture("Topic replication factor anomaly self-healing."), selfHealingGoals,
-          allowCapacityEstimation, excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers);
+          allowCapacityEstimation, excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, anomalyId, reasonSupplier, false);
     // Initialize common parameters
-    _reason = reasonSupplier.get();
-    _uuid = anomalyId;
-    _isTriggeredByUserRequest = false;
     _cluster = null;
 
     // Initialize parameters specific to replication factor changes.
@@ -202,7 +193,7 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
     if (!_dryRun) {
       _kafkaCruiseControl.executeProposals(result.goalProposals(), Collections.emptySet(), false, _concurrentInterBrokerPartitionMovements,
                                            0, _concurrentLeaderMovements, _executionProgressCheckIntervalMs,
-                                           _replicaMovementStrategy, _replicationThrottle, _isTriggeredByUserRequest, _uuid, () -> _reason);
+                                           _replicaMovementStrategy, _replicationThrottle, _isTriggeredByUserRequest, _uuid);
     }
     return result;
   }

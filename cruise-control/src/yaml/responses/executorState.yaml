@@ -19,6 +19,7 @@ ExecutorState:
         - LEADER_MOVEMENT_TASK_IN_PROGRESS
         - STOPPING_EXECUTION
         - INITIALIZING_PROPOSAL_EXECUTION
+        - GENERATING_PROPOSALS_FOR_EXECUTION
     recentlyDemotedBrokers:
       type: array
       items:
