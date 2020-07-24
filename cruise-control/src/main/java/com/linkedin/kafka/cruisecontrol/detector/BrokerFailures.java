@@ -82,10 +82,12 @@ public class BrokerFailures extends KafkaAnomaly {
     StringBuilder sb = new StringBuilder().append("{");
     sb.append(_fixable ? "Fixable " : " Unfixable ");
     sb.append("broker failures detected: {");
-    _failedBrokers.forEach((key, value) -> {
-      sb.append("Broker ").append(key).append(" failed at ").append(toDateString(value)).append(",\t");
-    });
-    sb.setLength(sb.length() - 2);
+    if (_failedBrokers != null) {
+      _failedBrokers.forEach((key, value) -> {
+        sb.append("Broker ").append(key).append(" failed at ").append(toDateString(value)).append(",\t");
+      });
+      sb.setLength(sb.length() - 2);
+    }
     sb.append("}}");
     return sb.toString();
   }
