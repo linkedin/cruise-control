@@ -56,6 +56,7 @@ public class RunnableUtils {
   public static final boolean SELF_HEALING_SKIP_URP_DEMOTION = true;
   public static final boolean SELF_HEALING_EXCLUDE_FOLLOWER_DEMOTION = true;
   public static final boolean SELF_HEALING_SKIP_RACK_AWARENESS_CHECK = false;
+  public static final boolean SELF_HEALING_IS_TRIGGERED_BY_USER_REQUEST = false;
   private static final Set<String> KAFKA_ASSIGNER_GOALS =
       Collections.unmodifiableSet(new HashSet<>(Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
                                                               KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName())));

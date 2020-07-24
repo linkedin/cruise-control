@@ -126,7 +126,8 @@ public class ExecutorState {
     INTRA_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS,
     LEADER_MOVEMENT_TASK_IN_PROGRESS,
     STOPPING_EXECUTION,
-    INITIALIZING_PROPOSAL_EXECUTION
+    INITIALIZING_PROPOSAL_EXECUTION,
+    GENERATING_PROPOSALS_FOR_EXECUTION
   }
 
   public static final Set<State> IN_PROGRESS_STATES;
@@ -231,6 +232,31 @@ public class ExecutorState {
                                                           Set<Integer> recentlyRemovedBrokers,
                                                           boolean isTriggeredByUserRequest) {
     return new ExecutorState(State.INITIALIZING_PROPOSAL_EXECUTION,
+                             null,
+                             0,
+                             0,
+                             0,
+                             uuid,
+                             reason,
+                             recentlyDemotedBrokers,
+                             recentlyRemovedBrokers,
+                             isTriggeredByUserRequest);
+  }
+
+  /**
+   * @param uuid UUID of the current execution.
+   * @param reason Reason of the current execution.
+   * @param recentlyDemotedBrokers Recently demoted broker IDs.
+   * @param recentlyRemovedBrokers Recently removed broker IDs.
+   * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
+   * @return Executor state when generating proposals for execution.
+   */
+  public static ExecutorState generatingProposalsForExecution(String uuid,
+                                                              String reason,
+                                                              Set<Integer> recentlyDemotedBrokers,
+                                                              Set<Integer> recentlyRemovedBrokers,
+                                                              boolean isTriggeredByUserRequest) {
+    return new ExecutorState(State.GENERATING_PROPOSALS_FOR_EXECUTION,
                              null,
                              0,
                              0,
@@ -372,6 +398,7 @@ public class ExecutorState {
         break;
       case STARTING_EXECUTION:
       case INITIALIZING_PROPOSAL_EXECUTION:
+      case GENERATING_PROPOSALS_FOR_EXECUTION:
         populateUuidFieldInJsonStructure(execState, _uuid);
         execState.put(TRIGGERED_TASK_REASON, _reason);
         break;
@@ -476,6 +503,7 @@ public class ExecutorState {
         return String.format("{%s: %s%s%s}", STATE, _state, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case STARTING_EXECUTION:
       case INITIALIZING_PROPOSAL_EXECUTION:
+      case GENERATING_PROPOSALS_FOR_EXECUTION:
         return String.format("{%s: %s, %s: %s, %s: %s%s%s}", STATE, _state,
                              _isTriggeredByUserRequest ? TRIGGERED_USER_TASK_ID : TRIGGERED_SELF_HEALING_TASK_ID,
                              _uuid, TRIGGERED_TASK_REASON, _reason, recentlyDemotedBrokers, recentlyRemovedBrokers);

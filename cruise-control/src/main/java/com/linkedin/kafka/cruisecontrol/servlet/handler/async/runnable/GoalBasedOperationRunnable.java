@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.GoalBasedOptimizationParameters;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPriority;
@@ -41,6 +42,9 @@ public abstract class GoalBasedOperationRunnable extends OperationRunnable {
   protected final boolean _allowCapacityEstimation;
   protected final boolean _excludeRecentlyDemotedBrokers;
   protected final boolean _excludeRecentlyRemovedBrokers;
+  protected final String _uuid;
+  protected final Supplier<String> _reasonSupplier;
+  protected final boolean _isTriggeredByUserRequest;
   protected OperationProgress _operationProgress;
   // Combined completeness requirements to be used after initialization.
   protected ModelCompletenessRequirements _combinedCompletenessRequirements;
@@ -51,11 +55,14 @@ public abstract class GoalBasedOperationRunnable extends OperationRunnable {
                                     GoalBasedOptimizationParameters parameters,
                                     boolean dryRun,
                                     boolean stopOngoingExecution,
-                                    boolean skipHardGoalCheck) {
+                                    boolean skipHardGoalCheck,
+                                    String uuid,
+                                    Supplier<String> reasonSupplier,
+                                    boolean isTriggeredByUserRequest) {
     this(kafkaCruiseControl, future, dryRun, parameters.goals(), stopOngoingExecution,
          parameters.modelCompletenessRequirements(), skipHardGoalCheck, parameters.excludedTopics(),
          parameters.allowCapacityEstimation(), parameters.excludeRecentlyDemotedBrokers(),
-         parameters.excludeRecentlyRemovedBrokers());
+         parameters.excludeRecentlyRemovedBrokers(), uuid, reasonSupplier, isTriggeredByUserRequest);
   }
 
   /**
@@ -66,10 +73,14 @@ public abstract class GoalBasedOperationRunnable extends OperationRunnable {
                                     List<String> goals,
                                     boolean allowCapacityEstimation,
                                     boolean excludeRecentlyDemotedBrokers,
-                                    boolean excludeRecentlyRemovedBrokers) {
+                                    boolean excludeRecentlyRemovedBrokers,
+                                    String uuid,
+                                    Supplier<String> reasonSupplier,
+                                    boolean isTriggeredByUserRequest) {
     this(kafkaCruiseControl, future, SELF_HEALING_DRYRUN, goals, SELF_HEALING_STOP_ONGOING_EXECUTION,
          SELF_HEALING_MODEL_COMPLETENESS_REQUIREMENTS, SELF_HEALING_SKIP_HARD_GOAL_CHECK, SELF_HEALING_EXCLUDED_TOPICS,
-         allowCapacityEstimation, excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers);
+         allowCapacityEstimation, excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, uuid, reasonSupplier,
+         isTriggeredByUserRequest);
   }
 
   public GoalBasedOperationRunnable(KafkaCruiseControl kafkaCruiseControl,
@@ -82,7 +93,10 @@ public abstract class GoalBasedOperationRunnable extends OperationRunnable {
                                     Pattern excludedTopics,
                                     boolean allowCapacityEstimation,
                                     boolean excludeRecentlyDemotedBrokers,
-                                    boolean excludeRecentlyRemovedBrokers) {
+                                    boolean excludeRecentlyRemovedBrokers,
+                                    String uuid,
+                                    Supplier<String> reasonSupplier,
+                                    boolean isTriggeredByUserRequest) {
     super(kafkaCruiseControl, future);
     _goals = goals;
     _modelCompletenessRequirements = modelCompletenessRequirements;
@@ -93,6 +107,9 @@ public abstract class GoalBasedOperationRunnable extends OperationRunnable {
     _allowCapacityEstimation = allowCapacityEstimation;
     _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
     _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
+    _uuid = uuid;
+    _reasonSupplier = reasonSupplier;
+    _isTriggeredByUserRequest = isTriggeredByUserRequest;
     _operationProgress = null;
     _combinedCompletenessRequirements = null;
     _goalsByPriority = null;
@@ -115,6 +132,12 @@ public abstract class GoalBasedOperationRunnable extends OperationRunnable {
     sanityCheckLoadMonitorReadiness(_combinedCompletenessRequirements, _kafkaCruiseControl.getLoadMonitorTaskRunnerState());
   }
 
+  protected void handleFailGeneratingProposalsForExecution() {
+    if (!_dryRun) {
+      _kafkaCruiseControl.failGeneratingProposalsForExecution(_uuid);
+    }
+  }
+
   /**
    * Compute the underlying goal-based optimization and (if requested and applicable) start execution to reach this outcome.
    *
@@ -122,20 +145,34 @@ public abstract class GoalBasedOperationRunnable extends OperationRunnable {
    */
   public OptimizerResult computeResult() throws KafkaCruiseControlException {
     init();
+    if (!_dryRun) {
+      _kafkaCruiseControl.setGeneratingProposalsForExecution(_uuid, _reasonSupplier, _isTriggeredByUserRequest);
+    }
     OptimizerResult result;
     if (shouldWorkWithClusterModel()) {
       try (AutoCloseable ignored = _kafkaCruiseControl.acquireForModelGeneration(_operationProgress)) {
         result = workWithClusterModel();
       } catch (KafkaCruiseControlException kcce) {
+        handleFailGeneratingProposalsForExecution();
         throw kcce;
       } catch (Exception e) {
+        handleFailGeneratingProposalsForExecution();
         throw new KafkaCruiseControlException(e);
       } finally {
         finish();
       }
     } else {
-      result = workWithoutClusterModel();
-      finish();
+      try {
+        result = workWithoutClusterModel();
+      } catch (KafkaCruiseControlException kcce) {
+        handleFailGeneratingProposalsForExecution();
+        throw kcce;
+      } catch (Exception e) {
+        handleFailGeneratingProposalsForExecution();
+        throw new KafkaCruiseControlException(e);
+      } finally {
+        finish();
+      }
     }
     return result;
   }

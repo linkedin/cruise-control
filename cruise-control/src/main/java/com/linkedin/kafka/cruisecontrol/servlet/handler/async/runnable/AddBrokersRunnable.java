@@ -32,16 +32,17 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
   protected final Integer _concurrentInterBrokerPartitionMovements;
   protected final Integer _concurrentLeaderMovements;
   protected final Long _executionProgressCheckIntervalMs;
-  protected final String _uuid;
-  protected final String _reason;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Long _replicationThrottle;
+  // Currently no self-healing action triggers broker addition -- i.e. all are triggered by user requests.
+  protected static final boolean ADD_BROKERS_IS_TRIGGERED_BY_USER_REQUEST = true;
 
   public AddBrokersRunnable(KafkaCruiseControl kafkaCruiseControl,
                             OperationFuture future,
                             AddBrokerParameters parameters,
                             String uuid) {
-    super(kafkaCruiseControl, future, parameters, parameters.dryRun(), parameters.stopOngoingExecution(), parameters.skipHardGoalCheck());
+    super(kafkaCruiseControl, future, parameters, parameters.dryRun(), parameters.stopOngoingExecution(), parameters.skipHardGoalCheck(),
+          uuid, parameters::reason, ADD_BROKERS_IS_TRIGGERED_BY_USER_REQUEST);
     _brokerIds = parameters.brokerIds();
     _throttleAddedBrokers = parameters.throttleAddedBrokers();
     _concurrentInterBrokerPartitionMovements = parameters.concurrentInterBrokerPartitionMovements();
@@ -49,8 +50,6 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
     _executionProgressCheckIntervalMs = parameters.executionProgressCheckIntervalMs();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
     _replicationThrottle = parameters.replicationThrottle();
-    _uuid = uuid;
-    _reason = parameters.reason();
   }
 
   @Override
@@ -92,8 +91,7 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
                                            _replicaMovementStrategy,
                                            _replicationThrottle,
                                            true,
-                                           _uuid,
-                                           () -> _reason);
+                                           _uuid);
     }
     return result;
   }
