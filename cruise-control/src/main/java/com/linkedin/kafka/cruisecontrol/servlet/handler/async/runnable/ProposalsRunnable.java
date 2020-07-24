@@ -16,6 +16,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.computeOptimizationOptions;
@@ -31,12 +32,15 @@ public class ProposalsRunnable extends GoalBasedOperationRunnable {
   protected final Set<Integer> _destinationBrokerIds;
   protected final boolean _isRebalanceDiskMode;
   protected final boolean _isTriggeredByGoalViolation;
-  // This runnable does not start or modify executions, skips hard goal check to evaluate any combination of goals, and
-  // is not triggered by goal violation unless specified otherwise.
+  // This runnable does not start or modify executions. Hence, it ignores execution-related parameters, including hard
+  // goal check (i.e. to evaluate any combination of goals). Unless specified otherwise, it is not triggered by goal violation.
   protected static final boolean PROPOSALS_DRYRUN = true;
   protected static final boolean PROPOSALS_STOP_ONGOING_EXECUTION = false;
   protected static final boolean PROPOSALS_SKIP_HARD_GOAL_CHECK = true;
   protected static final boolean PROPOSALS_IS_TRIGGERED_BY_GOAL_VIOLATION = false;
+  protected static final String PROPOSALS_UUID = null;
+  protected static final Supplier<String> PROPOSALS_REASON_SUPPLIER = null;
+  protected static final boolean PROPOSALS_IS_TRIGGERED_BY_USER_REQUEST = true;
 
   /**
    * Constructor to be used for creating a runnable for rebalance.
@@ -56,7 +60,8 @@ public class ProposalsRunnable extends GoalBasedOperationRunnable {
                            boolean isTriggeredByGoalViolation) {
     super(kafkaCruiseControl, future, PROPOSALS_DRYRUN, goals, PROPOSALS_STOP_ONGOING_EXECUTION,
           modelCompletenessRequirements, skipHardGoalCheck, excludedTopics, allowCapacityEstimation,
-          excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers);
+          excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, PROPOSALS_UUID, PROPOSALS_REASON_SUPPLIER,
+          PROPOSALS_IS_TRIGGERED_BY_USER_REQUEST);
     _ignoreProposalCache = ignoreProposalCache;
     _destinationBrokerIds = destinationBrokerIds;
     _isRebalanceDiskMode = isRebalanceDiskMode;
@@ -64,7 +69,8 @@ public class ProposalsRunnable extends GoalBasedOperationRunnable {
   }
 
   public ProposalsRunnable(KafkaCruiseControl kafkaCruiseControl, OperationFuture future, ProposalsParameters parameters) {
-    super(kafkaCruiseControl, future, parameters, PROPOSALS_DRYRUN, PROPOSALS_STOP_ONGOING_EXECUTION, PROPOSALS_SKIP_HARD_GOAL_CHECK);
+    super(kafkaCruiseControl, future, parameters, PROPOSALS_DRYRUN, PROPOSALS_STOP_ONGOING_EXECUTION, PROPOSALS_SKIP_HARD_GOAL_CHECK,
+          PROPOSALS_UUID, PROPOSALS_REASON_SUPPLIER, PROPOSALS_IS_TRIGGERED_BY_USER_REQUEST);
     _ignoreProposalCache = parameters.ignoreProposalCache();
     _destinationBrokerIds = parameters.destinationBrokerIds();
     _isRebalanceDiskMode = parameters.isRebalanceDiskMode();

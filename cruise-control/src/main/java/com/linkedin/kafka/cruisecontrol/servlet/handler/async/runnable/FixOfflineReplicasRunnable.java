@@ -19,11 +19,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 
 import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
-import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_CONCURRENT_MOVEMENTS;
-import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
-import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.computeOptimizationOptions;
-import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.sanityCheckOfflineReplicaPresence;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.*;
 
 
 /**
@@ -33,11 +29,8 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
   protected final Integer _concurrentInterBrokerPartitionMovements;
   protected final Integer _concurrentLeaderMovements;
   protected final Long _executionProgressCheckIntervalMs;
-  protected final String _uuid;
-  protected final Supplier<String> _reasonSupplier;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Long _replicationThrottle;
-  protected final boolean _isTriggeredByUserRequest;
 
   /**
    * Constructor to be used for creating a runnable for self-healing.
@@ -50,31 +43,25 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
                                     String anomalyId,
                                     Supplier<String> reasonSupplier) {
     super(kafkaCruiseControl, new OperationFuture("Disk Failure Self-Healing"), selfHealingGoals, allowCapacityEstimation,
-          excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers);
+          excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, anomalyId, reasonSupplier, SELF_HEALING_IS_TRIGGERED_BY_USER_REQUEST);
     _concurrentInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _concurrentLeaderMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
-    _uuid = anomalyId;
-    _reasonSupplier = reasonSupplier;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
     _replicationThrottle = kafkaCruiseControl.config().getLong(DEFAULT_REPLICATION_THROTTLE_CONFIG);
-    _isTriggeredByUserRequest = false;
   }
 
   public FixOfflineReplicasRunnable(KafkaCruiseControl kafkaCruiseControl,
                                     OperationFuture future,
                                     FixOfflineReplicasParameters parameters,
                                     String uuid) {
-    super(kafkaCruiseControl, future, parameters, parameters.dryRun(), parameters.stopOngoingExecution(), parameters.skipHardGoalCheck());
+    super(kafkaCruiseControl, future, parameters, parameters.dryRun(), parameters.stopOngoingExecution(), parameters.skipHardGoalCheck(),
+          uuid, parameters::reason, true);
     _concurrentInterBrokerPartitionMovements = parameters.concurrentInterBrokerPartitionMovements();
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
     _executionProgressCheckIntervalMs = parameters.executionProgressCheckIntervalMs();
-    _uuid = uuid;
-    String reason = parameters.reason();
-    _reasonSupplier = () -> reason;
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
     _replicationThrottle = parameters.replicationThrottle();
-    _isTriggeredByUserRequest = true;
   }
 
   @Override
@@ -114,8 +101,7 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
                                            _replicaMovementStrategy,
                                            _replicationThrottle,
                                            _isTriggeredByUserRequest,
-                                           _uuid,
-                                           _reasonSupplier);
+                                           _uuid);
     }
     return result;
   }

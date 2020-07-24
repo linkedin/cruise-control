@@ -39,11 +39,8 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
   protected final Integer _concurrentInterBrokerPartitionMovements;
   protected final Integer _concurrentLeaderMovements;
   protected final Long _executionProgressCheckIntervalMs;
-  protected final String _uuid;
-  protected final Supplier<String> _reasonSupplier;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Long _replicationThrottle;
-  protected final boolean _isTriggeredByUserRequest;
 
   /**
    * Constructor to be used for creating a runnable for self-healing.
@@ -57,7 +54,7 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
                                String anomalyId,
                                Supplier<String> reasonSupplier) {
     super(kafkaCruiseControl, new OperationFuture("Broker Failure Self-Healing"), selfHealingGoals, allowCapacityEstimation,
-          excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers);
+          excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, anomalyId, reasonSupplier, false);
     _removedBrokerIds = removedBrokerIds;
     _throttleRemovedBrokers = false;
     _destinationBrokerIds = SELF_HEALING_DESTINATION_BROKER_IDS;
@@ -66,16 +63,14 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
     _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
     _replicationThrottle = kafkaCruiseControl.config().getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
-    _uuid = anomalyId;
-    _reasonSupplier = reasonSupplier;
-    _isTriggeredByUserRequest = false;
   }
 
   public RemoveBrokersRunnable(KafkaCruiseControl kafkaCruiseControl,
                                OperationFuture future,
                                RemoveBrokerParameters parameters,
                                String uuid) {
-    super(kafkaCruiseControl, future, parameters, parameters.dryRun(), parameters.stopOngoingExecution(), parameters.skipHardGoalCheck());
+    super(kafkaCruiseControl, future, parameters, parameters.dryRun(), parameters.stopOngoingExecution(), parameters.skipHardGoalCheck(),
+          uuid, parameters::reason, true);
     _removedBrokerIds = parameters.brokerIds();
     _throttleRemovedBrokers = parameters.throttleRemovedBrokers();
     _destinationBrokerIds = parameters.destinationBrokerIds();
@@ -84,10 +79,6 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
     _executionProgressCheckIntervalMs = parameters.executionProgressCheckIntervalMs();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
     _replicationThrottle = parameters.replicationThrottle();
-    _uuid = uuid;
-    String reason = parameters.reason();
-    _reasonSupplier = () -> reason;
-    _isTriggeredByUserRequest = true;
   }
 
   @Override
@@ -123,7 +114,7 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
       _kafkaCruiseControl.executeRemoval(result.goalProposals(), _throttleRemovedBrokers, _removedBrokerIds, isKafkaAssignerMode(_goals),
                                          _concurrentInterBrokerPartitionMovements, _concurrentLeaderMovements,
                                          _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle,
-                                         _isTriggeredByUserRequest, _uuid, _reasonSupplier);
+                                         _isTriggeredByUserRequest, _uuid);
     }
 
     return result;
