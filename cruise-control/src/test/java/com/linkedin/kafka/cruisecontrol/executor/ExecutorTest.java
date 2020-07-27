@@ -287,6 +287,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                                                  true,
                                                  RANDOM_UUID,
                                                  false));
+    executor.failGeneratingProposalsForExecution(UNKNOWN_UUID);
 
     // Now successfully start the execution..
     executor.setGeneratingProposalsForExecution(RANDOM_UUID, ExecutorTest.class::getSimpleName, true);
