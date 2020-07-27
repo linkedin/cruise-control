@@ -396,11 +396,12 @@ public class Executor {
                                             boolean isTriggeredByUserRequest,
                                             String uuid,
                                             boolean isKafkaAssignerMode) throws OngoingExecutionException {
+    setExecutionMode(isKafkaAssignerMode);
+    sanityCheckExecuteProposals(loadMonitor, uuid);
     try {
-      setExecutionMode(isKafkaAssignerMode);
-      initProposalExecution(proposals, unthrottledBrokers, loadMonitor, requestedInterBrokerPartitionMovementConcurrency,
+      initProposalExecution(proposals, unthrottledBrokers, requestedInterBrokerPartitionMovementConcurrency,
                             requestedIntraBrokerPartitionMovementConcurrency, requestedLeadershipMovementConcurrency,
-                            requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid, isTriggeredByUserRequest);
+                            requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, isTriggeredByUserRequest);
       startExecution(loadMonitor, null, removedBrokers, replicationThrottle, isTriggeredByUserRequest);
     } catch (Exception e) {
       processExecuteProposalsFailure();
@@ -408,20 +409,10 @@ public class Executor {
     }
   }
 
-  private synchronized void initProposalExecution(Collection<ExecutionProposal> proposals,
-                                                  Collection<Integer> brokersToSkipConcurrencyCheck,
-                                                  LoadMonitor loadMonitor,
-                                                  Integer requestedInterBrokerPartitionMovementConcurrency,
-                                                  Integer requestedIntraBrokerPartitionMovementConcurrency,
-                                                  Integer requestedLeadershipMovementConcurrency,
-                                                  Long requestedExecutionProgressCheckIntervalMs,
-                                                  ReplicaMovementStrategy replicaMovementStrategy,
-                                                  String uuid,
-                                                  boolean isTriggeredByUserRequest) throws OngoingExecutionException {
+  private void sanityCheckExecuteProposals(LoadMonitor loadMonitor, String uuid) throws OngoingExecutionException {
     if (_hasOngoingExecution) {
       throw new OngoingExecutionException("Cannot execute new proposals while there is an ongoing execution.");
     }
-
     if (loadMonitor == null) {
       throw new IllegalArgumentException("Load monitor cannot be null.");
     }
@@ -433,6 +424,16 @@ public class Executor {
       throw new IllegalStateException(String.format("Attempt to initialize proposal execution with a UUID %s that differs from"
                                                     + " the UUID used for generating proposals for execution %s.", uuid, _uuid));
     }
+  }
+
+  private synchronized void initProposalExecution(Collection<ExecutionProposal> proposals,
+                                                  Collection<Integer> brokersToSkipConcurrencyCheck,
+                                                  Integer requestedInterBrokerPartitionMovementConcurrency,
+                                                  Integer requestedIntraBrokerPartitionMovementConcurrency,
+                                                  Integer requestedLeadershipMovementConcurrency,
+                                                  Long requestedExecutionProgressCheckIntervalMs,
+                                                  ReplicaMovementStrategy replicaMovementStrategy,
+                                                  boolean isTriggeredByUserRequest) {
     _executorState = ExecutorState.initializeProposalExecution(_uuid, _reasonSupplier.get(), recentlyDemotedBrokers(),
                                                                recentlyRemovedBrokers(), isTriggeredByUserRequest);
     _executionTaskManager.setExecutionModeForTaskTracker(_isKafkaAssignerMode);
@@ -471,10 +472,11 @@ public class Executor {
                                                   Long replicationThrottle,
                                                   boolean isTriggeredByUserRequest,
                                                   String uuid) throws OngoingExecutionException {
+    setExecutionMode(false);
+    sanityCheckExecuteProposals(loadMonitor, uuid);
     try {
-      setExecutionMode(false);
-      initProposalExecution(proposals, demotedBrokers, loadMonitor, concurrentSwaps, 0, requestedLeadershipMovementConcurrency,
-                            requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, uuid, isTriggeredByUserRequest);
+      initProposalExecution(proposals, demotedBrokers, concurrentSwaps, 0, requestedLeadershipMovementConcurrency,
+                            requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, isTriggeredByUserRequest);
       startExecution(loadMonitor, demotedBrokers, null, replicationThrottle, isTriggeredByUserRequest);
     } catch (Exception e) {
       processExecuteProposalsFailure();
@@ -515,7 +517,7 @@ public class Executor {
    *
    * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
    */
-  private synchronized void setExecutionMode(boolean isKafkaAssignerMode) {
+  private void setExecutionMode(boolean isKafkaAssignerMode) {
     _isKafkaAssignerMode = isKafkaAssignerMode;
   }
 
