@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ * Copyright 2020 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.metricsreporter.metric;
@@ -11,13 +11,34 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 
-public class ContainerMetricUtils {
+public final class ContainerMetricUtils {
+    // Paths used to get cgroup information
+    private static final String QUOTA_PATH = "/sys/fs/cgroup/cpu/cpu.cfs_quota_us";
+    private static final String PERIOD_PATH = "/sys/fs/cgroup/cpu/cpu.cfs_period_us";
+    // Unix command to execute inside a Linux container to get the number of logical processors available to the node
+    private static final String NPROC = "nproc";
+    // A CPU quota value of -1 indicates that the cgroup does not adhere to any CPU time restrictions
+    public static final int NO_CPU_QUOTA = -1;
 
-    public double getCpuPeriod() {
+    private ContainerMetricUtils() { };
+
+    /**
+     * Reads Cgroups CPU period from Cgroups file. Value has a lowerbound of 1 millisecond and  an upperbound of 1 second
+     * according to https://www.kernel.org/doc/Documentation/scheduler/sched-bwc.txt
+     *
+     * @return Cgroups CPU period in microseconds as a double.
+     */
+    private static double getCpuPeriod() {
         return Double.parseDouble(readFile(CgroupFiles.PERIOD_PATH.getValue()));
     }
 
-    public double getCpuQuota() {
+    /**
+     * Reads Cgroups CPU quota from Cgroups file. The value has lowerbound of 1 millisecond
+     * according to https://www.kernel.org/doc/Documentation/scheduler/sched-bwc.txt
+     *
+     * @return Cgroups CPU quota in microseconds as a double.
+     */
+    private static double getCpuQuota() {
         return Double.parseDouble(readFile(CgroupFiles.QUOTA_PATH.getValue()));
     }
 
@@ -32,11 +53,11 @@ public class ContainerMetricUtils {
      *
      * @return Number of logical processors on node
      */
-    public int getAvailableProcessors() {
+    private static int getAvailableProcessors() {
         int proc = 1;
         try {
-            InputStream in = Runtime.getRuntime().exec("nproc").getInputStream();
-            proc = Integer.parseInt(readStringValue(in));
+            InputStream in = Runtime.getRuntime().exec(NPROC).getInputStream();
+            proc = Integer.parseInt(readInputStream(in));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -44,26 +65,35 @@ public class ContainerMetricUtils {
     }
 
     private static String readFile(String path) {
-        String s = null;
         try {
-            s = readStringValue(new FileInputStream(path));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return s;
-    }
-
-    private static String readStringValue(InputStream in) {
-        try {
-            BufferedReader br = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
-            String line;
-            while ((line = br.readLine()) != null) {
-                return line;
-            }
+            return readInputStream(new FileInputStream(path));
         } catch (IOException e) {
             e.printStackTrace();
         }
         return null;
+    }
+
+    private static String readInputStream(InputStream in) {
+        try {
+            BufferedReader br = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
+            String stream = br.readLine();
+            if (stream != null) {
+                return stream;
+            } else {
+                throw new EmptyInputStreamException("Nothing was read from stream " + in);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (EmptyInputStreamException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static class EmptyInputStreamException extends Exception {
+        public EmptyInputStreamException(String message) {
+            super(message);
+        }
     }
 
     /**
@@ -81,18 +111,15 @@ public class ContainerMetricUtils {
      * @return the "recent CPU usage" for a JVM process with respect to operating environment
      *         as a double in [0.0,1.0].
      */
-    public double getContainerProcessCpuLoad(double cpuUtil) {
+    public static double getContainerProcessCpuLoad(double cpuUtil) {
         int logicalProcessorsOfNode = getAvailableProcessors();
         double cpuQuota = getCpuQuota();
-        if (cpuQuota == -1) {
-            /* A CPU quota value of -1 indicates that the cgroup does not adhere to any CPU time restrictions so we
-             * will use the original container agnostic CPU usage value.
-             */
+        if (cpuQuota == NO_CPU_QUOTA) {
             return cpuUtil;
         }
 
         // Get the number of CPUs of a node that can be used by the operating environment
-        double cpuLimit = (cpuQuota / getCpuPeriod());
+        double cpuLimit = cpuQuota / getCpuPeriod();
 
         // Get the minimal number of CPUs needed to achieve the reported CPU utilization
         double cpus = cpuUtil * logicalProcessorsOfNode;
@@ -104,18 +131,17 @@ public class ContainerMetricUtils {
         return cpus / cpuLimit;
     }
 
-    public enum CgroupFiles {
+    private enum CgroupFiles {
+        QUOTA_PATH(ContainerMetricUtils.QUOTA_PATH),
+        PERIOD_PATH(ContainerMetricUtils.PERIOD_PATH);
 
-        QUOTA_PATH("/sys/fs/cgroup/cpu/cpu.cfs_quota_us"),
-        PERIOD_PATH("/sys/fs/cgroup/cpu/cpu.cfs_period_us");
-
-        private String _value;
+        private final String _value;
 
         CgroupFiles(String value) {
             this._value = value;
         }
 
-        public String getValue() {
+        private String getValue() {
             return _value;
         }
     }

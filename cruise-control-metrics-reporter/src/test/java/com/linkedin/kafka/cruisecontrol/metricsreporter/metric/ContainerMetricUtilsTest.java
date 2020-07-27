@@ -1,37 +1,42 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ * Copyright 2020 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.metricsreporter.metric;
 
-import org.easymock.EasyMock;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.powermock.api.easymock.PowerMock;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
-import static org.easymock.EasyMock.partialMockBuilder;
 import static org.junit.Assert.assertEquals;
 
+@RunWith(PowerMockRunner.class)
+@PrepareForTest(ContainerMetricUtils.class)
 public class ContainerMetricUtilsTest {
-
+    
     private static final double DELTA = 0.01;
 
-    private void mockGetContainerProcessCpuLoad(int processors, double cpuQuota, double cpuPeriod, double cpuUtil, double expectedLoad) {
-        ContainerMetricUtils cmu = partialMockBuilder(ContainerMetricUtils.class)
-                .addMockedMethod("getAvailableProcessors")
-                .addMockedMethod("getCpuPeriod")
-                .addMockedMethod("getCpuQuota")
-                .createMock();
+    private void mockGetContainerProcessCpuLoad(int processors, double cpuQuota, double cpuPeriod, double cpuUtil, double expectedLoad)
+            throws Exception {
+        PowerMock.mockStaticPartial(ContainerMetricUtils.class,
+                "getAvailableProcessors",
+                "getCpuPeriod",
+                "getCpuQuota");
 
-        EasyMock.expect(cmu.getAvailableProcessors()).andReturn(processors);
-        EasyMock.expect(cmu.getCpuPeriod()).andReturn(cpuPeriod);
-        EasyMock.expect(cmu.getCpuQuota()).andReturn(cpuQuota);
+        PowerMock.expectPrivate(ContainerMetricUtils.class, "getAvailableProcessors").andReturn(processors);
+        PowerMock.expectPrivate(ContainerMetricUtils.class, "getCpuPeriod").andReturn(cpuPeriod);
+        PowerMock.expectPrivate(ContainerMetricUtils.class, "getCpuQuota").andReturn(cpuQuota);
+        PowerMock.expectPrivate(ContainerMetricUtils.class, "getCpuQuota").andReturn(cpuQuota);
 
-        EasyMock.replay(cmu);
+        PowerMock.replay(ContainerMetricUtils.class);
 
-        assertEquals(expectedLoad, cmu.getContainerProcessCpuLoad(cpuUtil), DELTA);
+        assertEquals(expectedLoad, ContainerMetricUtils.getContainerProcessCpuLoad(cpuUtil), DELTA);
     }
 
     @Test
-    public void testGetContainerProcessCpuLoad() {
+    public void testGetContainerProcessCpuLoad() throws Exception {
         /*
          *  expectedContainerProcessCpuLoad = (cpuUtil * processors) / (cpuQuota / cpuPeriod)
          */
@@ -45,6 +50,6 @@ public class ContainerMetricUtilsTest {
         mockGetContainerProcessCpuLoad(2, 25000.0, 100000.0, 0.125, 1.0);
         mockGetContainerProcessCpuLoad(2, 2500.0, 100000.0, 0.0125, 1.0);
 
-        mockGetContainerProcessCpuLoad(2, -1.0, 100000.0, 0.125, 0.125);
+        mockGetContainerProcessCpuLoad(2, ContainerMetricUtils.NO_CPU_QUOTA, 100000.0, 0.125, 0.125);
     }
 }
