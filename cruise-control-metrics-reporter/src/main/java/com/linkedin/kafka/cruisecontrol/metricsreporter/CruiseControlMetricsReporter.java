@@ -12,6 +12,8 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.TopicMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.YammerMetricProcessor;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Metric;
+
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
@@ -348,7 +350,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     LOG.debug("Finished reporting KafkaMetrics.");
   }
 
-  private void reportCpuUtils(long now) {
+  private void reportCpuUtils(long now) throws IOException {
     LOG.debug("Reporting CPU util.");
     sendCruiseControlMetric(MetricsUtils.getCpuMetric(now, _brokerId, _kubernetesMode));
     LOG.debug("Finished reporting CPU util.");

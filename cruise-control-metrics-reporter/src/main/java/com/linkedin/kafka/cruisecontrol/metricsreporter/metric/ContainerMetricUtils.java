@@ -20,25 +20,25 @@ public final class ContainerMetricUtils {
   // A CPU quota value of -1 indicates that the cgroup does not adhere to any CPU time restrictions
   public static final int NO_CPU_QUOTA = -1;
 
-  private ContainerMetricUtils() { };
+  private ContainerMetricUtils() { }
 
   /**
-   * Reads Cgroups CPU period from Cgroups file. Value has a lowerbound of 1 millisecond and  an upperbound of 1 second
+   * Reads cgroups CPU period from cgroups file. Value has a lowerbound of 1 millisecond and an upperbound of 1 second
    * according to https://www.kernel.org/doc/Documentation/scheduler/sched-bwc.txt
    *
    * @return Cgroups CPU period in microseconds as a double.
    */
-  private static double getCpuPeriod() {
+  private static double getCpuPeriod() throws IOException {
     return Double.parseDouble(readFile(CgroupFiles.PERIOD_PATH.getValue()));
   }
 
   /**
-   * Reads Cgroups CPU quota from Cgroups file. The value has lowerbound of 1 millisecond
+   * Reads cgroups CPU quota from cgroups file. The value has a lowerbound of 1 millisecond
    * according to https://www.kernel.org/doc/Documentation/scheduler/sched-bwc.txt
    *
    * @return Cgroups CPU quota in microseconds as a double.
    */
-  private static double getCpuQuota() {
+  private static double getCpuQuota() throws IOException {
     return Double.parseDouble(readFile(CgroupFiles.QUOTA_PATH.getValue()));
   }
 
@@ -53,46 +53,22 @@ public final class ContainerMetricUtils {
    *
    * @return Number of logical processors on node
    */
-  private static int getAvailableProcessors() {
-    int proc = 1;
-    try {
+  private static int getAvailableProcessors() throws IOException {
       InputStream in = Runtime.getRuntime().exec(NPROC).getInputStream();
-      proc = Integer.parseInt(readInputStream(in));
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-    return proc;
+      return Integer.parseInt(readInputStream(in));
   }
 
-  private static String readFile(String path) {
-    try {
-      return readInputStream(new FileInputStream(path));
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-    return null;
+  private static String readFile(String path) throws IOException {
+    return readInputStream(new FileInputStream(path));
   }
 
-  private static String readInputStream(InputStream in) {
-    try {
-      BufferedReader br = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
-      String stream = br.readLine();
-      if (stream != null) {
-        return stream;
-      } else {
-        throw new EmptyInputStreamException("Nothing was read from stream " + in);
-      }
-    } catch (IOException e) {
-      e.printStackTrace();
-    } catch (EmptyInputStreamException e) {
-      e.printStackTrace();
-    }
-    return null;
-  }
-
-  public static class EmptyInputStreamException extends Exception {
-    public EmptyInputStreamException(String message) {
-      super(message);
+  private static String readInputStream(InputStream in) throws IOException {
+    BufferedReader br = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
+    String stream = br.readLine();
+    if (stream != null) {
+      return stream;
+    } else {
+      throw new IllegalArgumentException("Nothing was read from stream " + in);
     }
   }
 
@@ -111,7 +87,7 @@ public final class ContainerMetricUtils {
    * @return the "recent CPU usage" for a JVM process with respect to operating environment
    * as a double in [0.0,1.0].
    */
-  public static double getContainerProcessCpuLoad(double cpuUtil) {
+  public static double getContainerProcessCpuLoad(double cpuUtil) throws IOException {
     int logicalProcessorsOfNode = getAvailableProcessors();
     double cpuQuota = getCpuQuota();
     if (cpuQuota == NO_CPU_QUOTA) {
