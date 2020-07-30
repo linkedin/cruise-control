@@ -589,6 +589,8 @@ public class KafkaCruiseControl {
                                  concurrentInterBrokerPartitionMovements, concurrentIntraBrokerPartitionMovements,
                                  concurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy,
                                  replicationThrottle, isTriggeredByUserRequest, uuid, isKafkaAssignerMode);
+    } else {
+      failGeneratingProposalsForExecution(uuid);
     }
   }
 
@@ -627,6 +629,8 @@ public class KafkaCruiseControl {
                                  removedBrokers, _loadMonitor, concurrentInterBrokerPartitionMovements, 0,
                                  concurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy,
                                  replicationThrottle, isTriggeredByUserRequest, uuid, isKafkaAssignerMode);
+    } else {
+      failGeneratingProposalsForExecution(uuid);
     }
   }
 
@@ -667,6 +671,8 @@ public class KafkaCruiseControl {
       _executor.executeDemoteProposals(proposals, demotedBrokers, _loadMonitor, concurrentSwaps, concurrentLeaderMovements,
                                        executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle,
                                        isTriggeredByUserRequest, uuid);
+    } else {
+      failGeneratingProposalsForExecution(uuid);
     }
   }
 
