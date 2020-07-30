@@ -309,8 +309,17 @@ public class Executor {
       _loadMonitor = null;
     }
 
-    public void setLoadMonitor(LoadMonitor loadMonitor) {
+    /**
+     * Initialize the inter-broker partition reassignment concurrency adjustment with the load monitor and the initially
+     * requested inter-broker partition reassignment concurrency.
+     *
+     * @param loadMonitor Load monitor.
+     * @param requestedInterBrokerPartitionMovementConcurrency The maximum number of concurrent inter-broker partition movements
+     *                                                         per broker(if null, use num.concurrent.partition.movements.per.broker).
+     */
+    public synchronized void initAdjustment(LoadMonitor loadMonitor, Integer requestedInterBrokerPartitionMovementConcurrency) {
       _loadMonitor = loadMonitor;
+      setRequestedInterBrokerPartitionMovementConcurrency(requestedInterBrokerPartitionMovementConcurrency);
     }
 
     private boolean canRefreshConcurrency() {
@@ -318,7 +327,7 @@ public class Executor {
              && !_isLatestExecutionDemote && _loadMonitor != null;
     }
 
-    private void refreshConcurrency() {
+    private synchronized void refreshConcurrency() {
       if (canRefreshConcurrency()) {
         Integer recommendedConcurrency = ExecutionUtils.recommendedConcurrency(_loadMonitor.currentBrokerMetricValues(),
                                                                                _executionTaskManager.interBrokerPartitionMovementConcurrency(),
@@ -449,12 +458,12 @@ public class Executor {
                                             boolean isKafkaAssignerMode) throws OngoingExecutionException {
     setExecutionMode(isKafkaAssignerMode);
     sanityCheckExecuteProposals(loadMonitor, uuid);
+    _isLatestExecutionDemote = false;
     try {
       initProposalExecution(proposals, unthrottledBrokers, requestedInterBrokerPartitionMovementConcurrency,
                             requestedIntraBrokerPartitionMovementConcurrency, requestedLeadershipMovementConcurrency,
-                            requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, isTriggeredByUserRequest);
+                            requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, isTriggeredByUserRequest, loadMonitor);
       startExecution(loadMonitor, null, removedBrokers, replicationThrottle, isTriggeredByUserRequest);
-      _isLatestExecutionDemote = false;
     } catch (Exception e) {
       processExecuteProposalsFailure();
       throw e;
@@ -485,13 +494,14 @@ public class Executor {
                                                   Integer requestedLeadershipMovementConcurrency,
                                                   Long requestedExecutionProgressCheckIntervalMs,
                                                   ReplicaMovementStrategy replicaMovementStrategy,
-                                                  boolean isTriggeredByUserRequest) {
+                                                  boolean isTriggeredByUserRequest,
+                                                  LoadMonitor loadMonitor) {
     _executorState = ExecutorState.initializeProposalExecution(_uuid, _reasonSupplier.get(), recentlyDemotedBrokers(),
                                                                recentlyRemovedBrokers(), isTriggeredByUserRequest);
     _executionTaskManager.setExecutionModeForTaskTracker(_isKafkaAssignerMode);
     _executionTaskManager.addExecutionProposals(proposals, brokersToSkipConcurrencyCheck, _metadataClient.refreshMetadata().cluster(),
                                                 replicaMovementStrategy);
-    setRequestedInterBrokerPartitionMovementConcurrency(requestedInterBrokerPartitionMovementConcurrency);
+    _concurrencyAdjuster.initAdjustment(loadMonitor, requestedInterBrokerPartitionMovementConcurrency);
     setRequestedIntraBrokerPartitionMovementConcurrency(requestedIntraBrokerPartitionMovementConcurrency);
     setRequestedLeadershipMovementConcurrency(requestedLeadershipMovementConcurrency);
     setRequestedExecutionProgressCheckIntervalMs(requestedExecutionProgressCheckIntervalMs);
@@ -526,11 +536,11 @@ public class Executor {
                                                   String uuid) throws OngoingExecutionException {
     setExecutionMode(false);
     sanityCheckExecuteProposals(loadMonitor, uuid);
+    _isLatestExecutionDemote = true;
     try {
       initProposalExecution(proposals, demotedBrokers, concurrentSwaps, 0, requestedLeadershipMovementConcurrency,
-                            requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, isTriggeredByUserRequest);
+                            requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, isTriggeredByUserRequest, loadMonitor);
       startExecution(loadMonitor, demotedBrokers, null, replicationThrottle, isTriggeredByUserRequest);
-      _isLatestExecutionDemote = true;
     } catch (Exception e) {
       processExecuteProposalsFailure();
       throw e;
@@ -628,7 +638,6 @@ public class Executor {
     }
     _proposalExecutor.submit(
         new ProposalExecutionRunnable(loadMonitor, demotedBrokers, removedBrokers, replicationThrottle, isTriggeredByUserRequest));
-    _concurrencyAdjuster.setLoadMonitor(loadMonitor);
   }
 
   /**

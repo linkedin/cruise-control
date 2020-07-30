@@ -157,6 +157,8 @@ public class ConcurrencyAdjusterTest {
                       Double.toString(MOCK_COMMON_CONCURRENCY_ADJUSTER_LIMIT));
     props.setProperty(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_CONSUMER_FETCH_LOCAL_TIME_MS_CONFIG,
                       Double.toString(MOCK_COMMON_CONCURRENCY_ADJUSTER_LIMIT));
+    props.setProperty(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_CONFIG,
+                      Double.toString(MOCK_COMMON_CONCURRENCY_ADJUSTER_LIMIT));
     return props;
   }
 }

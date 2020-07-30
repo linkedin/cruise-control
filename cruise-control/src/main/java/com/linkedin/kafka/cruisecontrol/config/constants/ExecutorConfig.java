@@ -263,6 +263,15 @@ public class ExecutorConfig {
       + "concurrency adjuster (if enabled) attempts to decrease the number of allowed concurrent inter-broker partition movements.";
 
   /**
+   * <code>concurrency.adjuster.limit.request.queue.size</code>
+   */
+  public static final String CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_CONFIG = "concurrency.adjuster.limit.request.queue.size";
+  public static final double DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE = 1000.0;
+  public static final String CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_DOC = "The limit on the broker metric value of request "
+      + "queue size. If any broker exceeds this limit during an ongoing inter-broker partition reassignment, the concurrency adjuster"
+      + " (if enabled) attempts to decrease the number of allowed concurrent inter-broker partition movements.";
+
+  /**
    * Define configs for Executor.
    *
    * @param configDef Config definition.
@@ -410,6 +419,12 @@ public class ExecutorConfig {
                             DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_CONSUMER_FETCH_LOCAL_TIME_MS,
                             atLeast(10.0),
                             ConfigDef.Importance.MEDIUM,
-                            CONCURRENCY_ADJUSTER_LIMIT_CONSUMER_FETCH_LOCAL_TIME_MS_DOC);
+                            CONCURRENCY_ADJUSTER_LIMIT_CONSUMER_FETCH_LOCAL_TIME_MS_DOC)
+                    .define(CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_CONFIG,
+                            ConfigDef.Type.DOUBLE,
+                            DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE,
+                            atLeast(10.0),
+                            ConfigDef.Importance.MEDIUM,
+                            CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_DOC);
   }
 }
