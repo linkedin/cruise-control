@@ -31,6 +31,7 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
   protected final Long _executionProgressCheckIntervalMs;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Long _replicationThrottle;
+  protected static final boolean SKIP_AUTO_REFRESHING_CONCURRENCY = false;
 
   /**
    * Constructor to be used for creating a runnable for self-healing.
@@ -101,7 +102,8 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
                                            _replicaMovementStrategy,
                                            _replicationThrottle,
                                            _isTriggeredByUserRequest,
-                                           _uuid);
+                                           _uuid,
+                                           SKIP_AUTO_REFRESHING_CONCURRENCY);
     }
     return result;
   }

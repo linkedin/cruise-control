@@ -249,6 +249,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                               null,
                               true,
                               RANDOM_UUID,
+                              false,
                               false);
     waitUntilTrue(() -> (executor.state().state() == ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS && !executor.inExecutionTasks().isEmpty()),
                   "Leader movement task did not start within the time limit",
@@ -282,6 +283,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                                                  null,
                                                  true,
                                                  RANDOM_UUID,
+                                                 false,
                                                  false));
     executor.failGeneratingProposalsForExecution(UNKNOWN_UUID);
 
@@ -299,6 +301,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                               null,
                               true,
                               RANDOM_UUID,
+                              false,
                               false);
 
     waitUntilTrue(() -> (executor.state().state() == ExecutorState.State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS),
@@ -504,7 +507,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     executor.setGeneratingProposalsForExecution(RANDOM_UUID, ExecutorTest.class::getSimpleName, isTriggeredByUserRequest);
     executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, mockLoadMonitor, null,
                               null, null, null, null,
-                              replicationThrottle, isTriggeredByUserRequest, RANDOM_UUID, false);
+                              replicationThrottle, isTriggeredByUserRequest, RANDOM_UUID, false, false);
 
     if (verifyProgress) {
       waitUntilTrue(() -> ExecutorUtils.partitionsBeingReassigned(kafkaZkClient).contains(TP0),

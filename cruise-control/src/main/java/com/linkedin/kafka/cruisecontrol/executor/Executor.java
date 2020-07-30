@@ -111,7 +111,7 @@ public class Executor {
   private final AtomicInteger _numExecutionStartedInKafkaAssignerMode;
   private final AtomicInteger _numExecutionStartedInNonKafkaAssignerMode;
   private volatile boolean _isKafkaAssignerMode;
-  private volatile boolean _isLatestExecutionDemote;
+  private volatile boolean _skipAutoRefreshingConcurrency;
   // TODO: Execution history is currently kept in memory, but ideally we should move it to a persistent store.
   private final long _demotionHistoryRetentionTimeMs;
   private final long _removalHistoryRetentionTimeMs;
@@ -158,7 +158,7 @@ public class Executor {
     _numExecutionStartedInKafkaAssignerMode = new AtomicInteger(0);
     _numExecutionStartedInNonKafkaAssignerMode = new AtomicInteger(0);
     _isKafkaAssignerMode = false;
-    _isLatestExecutionDemote = false;
+    _skipAutoRefreshingConcurrency = false;
     ExecutionUtils.init(config);
     _config = config;
     // Register gauge sensors.
@@ -324,7 +324,7 @@ public class Executor {
 
     private boolean canRefreshConcurrency() {
       return _concurrencyAdjusterEnabled && _executorState.state() == ExecutorState.State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS
-             && !_isLatestExecutionDemote && _loadMonitor != null;
+             && !_skipAutoRefreshingConcurrency && _loadMonitor != null;
     }
 
     private synchronized void refreshConcurrency() {
@@ -442,6 +442,8 @@ public class Executor {
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
    * @param isKafkaAssignerMode {@code true} if kafka assigner mode, {@code false} otherwise.
+   * @param skipAutoRefreshingConcurrency {@code true} to skip auto refreshing concurrency even if the concurrency adjuster
+   *                                                 is enabled, {@code false} otherwise.
    */
   public synchronized void executeProposals(Collection<ExecutionProposal> proposals,
                                             Set<Integer> unthrottledBrokers,
@@ -455,10 +457,11 @@ public class Executor {
                                             Long replicationThrottle,
                                             boolean isTriggeredByUserRequest,
                                             String uuid,
-                                            boolean isKafkaAssignerMode) throws OngoingExecutionException {
+                                            boolean isKafkaAssignerMode,
+                                            boolean skipAutoRefreshingConcurrency) throws OngoingExecutionException {
     setExecutionMode(isKafkaAssignerMode);
     sanityCheckExecuteProposals(loadMonitor, uuid);
-    _isLatestExecutionDemote = false;
+    _skipAutoRefreshingConcurrency = skipAutoRefreshingConcurrency;
     try {
       initProposalExecution(proposals, unthrottledBrokers, requestedInterBrokerPartitionMovementConcurrency,
                             requestedIntraBrokerPartitionMovementConcurrency, requestedLeadershipMovementConcurrency,
@@ -536,7 +539,7 @@ public class Executor {
                                                   String uuid) throws OngoingExecutionException {
     setExecutionMode(false);
     sanityCheckExecuteProposals(loadMonitor, uuid);
-    _isLatestExecutionDemote = true;
+    _skipAutoRefreshingConcurrency = true;
     try {
       initProposalExecution(proposals, demotedBrokers, concurrentSwaps, 0, requestedLeadershipMovementConcurrency,
                             requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, isTriggeredByUserRequest, loadMonitor);

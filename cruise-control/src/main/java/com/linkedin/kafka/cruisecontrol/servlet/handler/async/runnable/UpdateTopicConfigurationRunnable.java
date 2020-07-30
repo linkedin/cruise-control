@@ -77,6 +77,7 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
   protected final Long _replicationThrottle;
   protected Cluster _cluster;
   protected Map<Short, Set<String>> _topicsToChangeByReplicationFactor;
+  protected static final boolean SKIP_AUTO_REFRESHING_CONCURRENCY = true;
 
   public UpdateTopicConfigurationRunnable(KafkaCruiseControl kafkaCruiseControl,
                                           OperationFuture future,
@@ -193,7 +194,8 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
     if (!_dryRun) {
       _kafkaCruiseControl.executeProposals(result.goalProposals(), Collections.emptySet(), false, _concurrentInterBrokerPartitionMovements,
                                            0, _concurrentLeaderMovements, _executionProgressCheckIntervalMs,
-                                           _replicaMovementStrategy, _replicationThrottle, _isTriggeredByUserRequest, _uuid);
+                                           _replicaMovementStrategy, _replicationThrottle, _isTriggeredByUserRequest, _uuid,
+                                           SKIP_AUTO_REFRESHING_CONCURRENCY);
     }
     return result;
   }
