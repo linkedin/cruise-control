@@ -315,7 +315,8 @@ public class AnomalyDetectorTest {
                                               EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
                                               EasyMock.eq(null),
                                               EasyMock.eq(false),
-                                              EasyMock.anyString());
+                                              EasyMock.anyString(),
+                                              EasyMock.eq(false));
 
       EasyMock.expect(mockAnomalyNotifier.onGoalViolation(EasyMock.isA(GoalViolations.class))).andReturn(AnomalyNotificationResult.fix());
     } else if (anomalyType == KafkaAnomalyType.DISK_FAILURE) {
@@ -349,7 +350,8 @@ public class AnomalyDetectorTest {
                                               EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
                                               EasyMock.eq(null),
                                               EasyMock.eq(false),
-                                              EasyMock.anyString());
+                                              EasyMock.anyString(),
+                                              EasyMock.eq(false));
 
       EasyMock.expect(mockKafkaCruiseControl.acquireForModelGeneration(EasyMock.anyObject())).andReturn(null);
       EasyMock.expect(mockAnomalyNotifier.onDiskFailure(EasyMock.isA(DiskFailures.class))).andReturn(AnomalyNotificationResult.fix());
@@ -417,7 +419,8 @@ public class AnomalyDetectorTest {
                                               EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
                                               EasyMock.eq(null),
                                               EasyMock.eq(false),
-                                              EasyMock.anyString());
+                                              EasyMock.anyString(),
+                                              EasyMock.eq(true));
       EasyMock.expect(mockAnomalyNotifier.onTopicAnomaly(EasyMock.isA(TopicAnomaly.class))).andReturn(AnomalyNotificationResult.fix());
     }
     EasyMock.expect(mockKafkaCruiseControl.meetCompletenessRequirements(Collections.emptyList())).andReturn(true);

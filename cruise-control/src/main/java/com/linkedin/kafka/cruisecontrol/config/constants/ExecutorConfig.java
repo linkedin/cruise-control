@@ -198,6 +198,80 @@ public class ExecutorConfig {
       + " removal history of brokers.";
 
   /**
+   * <code>concurrency.adjuster.interval.ms</code>
+   */
+  public static final String CONCURRENCY_ADJUSTER_INTERVAL_MS_CONFIG = "concurrency.adjuster.interval.ms";
+  public static final long DEFAULT_CONCURRENCY_ADJUSTER_INTERVAL_MS = 360000L;
+  public static final String CONCURRENCY_ADJUSTER_INTERVAL_MS_DOC = "The interval of concurrency auto adjustment for"
+      + " inter-broker partition movements.";
+
+  /**
+   * <code>concurrency.adjuster.max.partition.movements.per.broker</code>
+   */
+  public static final String CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_CONFIG =
+      "concurrency.adjuster.max.partition.movements.per.broker";
+  public static final int DEFAULT_CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER = 12;
+  public static final String CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_DOC = "The maximum number of "
+      + "partitions the concurrency auto adjustment will allow the executor to move in or out of a broker at the same time. "
+      + "It enforces a cap on the maximum concurrent inter-broker partition movements to avoid overwhelming the cluster. It "
+      + "must be greater than num.concurrent.partition.movements.per.broker and not more than max.num.cluster.movements.";
+
+  /**
+   * <code>concurrency.adjuster.enabled</code>
+   */
+  public static final String CONCURRENCY_ADJUSTER_ENABLED_CONFIG = "concurrency.adjuster.enabled";
+  public static final boolean DEFAULT_CONCURRENCY_ADJUSTER_ENABLED = false;
+  public static final String CONCURRENCY_ADJUSTER_ENABLED_DOC = "The flag to indicate whether the concurrency of "
+      + "inter-broker partition movements will be auto-adjusted based on dynamically changing broker metrics.";
+
+  /**
+   * <code>concurrency.adjuster.limit.log.flush.time.ms</code>
+   */
+  public static final String CONCURRENCY_ADJUSTER_LIMIT_LOG_FLUSH_TIME_MS_CONFIG = "concurrency.adjuster.limit.log.flush.time.ms";
+  public static final double DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_LOG_FLUSH_TIME_MS = 2000.0;
+  public static final String CONCURRENCY_ADJUSTER_LIMIT_LOG_FLUSH_TIME_MS_DOC = "The limit on the 99.9th percentile broker metric"
+      + " value of log flush time. If any broker exceeds this limit during an ongoing inter-broker partition reassignment, the "
+      + "concurrency adjuster (if enabled) attempts to decrease the number of allowed concurrent inter-broker partition movements.";
+
+  /**
+   * <code>concurrency.adjuster.limit.follower.fetch.local.time.ms</code>
+   */
+  public static final String CONCURRENCY_ADJUSTER_LIMIT_FOLLOWER_FETCH_LOCAL_TIME_MS_CONFIG
+      = "concurrency.adjuster.limit.follower.fetch.local.time.ms";
+  public static final double DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_FOLLOWER_FETCH_LOCAL_TIME_MS = 500.0;
+  public static final String CONCURRENCY_ADJUSTER_LIMIT_FOLLOWER_FETCH_LOCAL_TIME_MS_DOC = "The limit on the 99.9th percentile broker metric"
+      + " value of follower fetch local time. If any broker exceeds this limit during an ongoing inter-broker partition reassignment, the "
+      + "concurrency adjuster (if enabled) attempts to decrease the number of allowed concurrent inter-broker partition movements.";
+
+  /**
+   * <code>concurrency.adjuster.limit.produce.local.time.ms</code>
+   */
+  public static final String CONCURRENCY_ADJUSTER_LIMIT_PRODUCE_LOCAL_TIME_MS_CONFIG = "concurrency.adjuster.limit.produce.local.time.ms";
+  public static final double DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_PRODUCE_LOCAL_TIME_MS = 1000.0;
+  public static final String CONCURRENCY_ADJUSTER_LIMIT_PRODUCE_LOCAL_TIME_MS_DOC = "The limit on the 99.9th percentile broker metric"
+      + " value of produce local time. If any broker exceeds this limit during an ongoing inter-broker partition reassignment, the "
+      + "concurrency adjuster (if enabled) attempts to decrease the number of allowed concurrent inter-broker partition movements.";
+
+  /**
+   * <code>concurrency.adjuster.limit.consumer.fetch.local.time.ms</code>
+   */
+  public static final String CONCURRENCY_ADJUSTER_LIMIT_CONSUMER_FETCH_LOCAL_TIME_MS_CONFIG
+      = "concurrency.adjuster.limit.consumer.fetch.local.time.ms";
+  public static final double DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_CONSUMER_FETCH_LOCAL_TIME_MS = 500.0;
+  public static final String CONCURRENCY_ADJUSTER_LIMIT_CONSUMER_FETCH_LOCAL_TIME_MS_DOC = "The limit on the 99.9th percentile broker metric"
+      + " value of consumer fetch local time. If any broker exceeds this limit during an ongoing inter-broker partition reassignment, the "
+      + "concurrency adjuster (if enabled) attempts to decrease the number of allowed concurrent inter-broker partition movements.";
+
+  /**
+   * <code>concurrency.adjuster.limit.request.queue.size</code>
+   */
+  public static final String CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_CONFIG = "concurrency.adjuster.limit.request.queue.size";
+  public static final double DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE = 1000.0;
+  public static final String CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_DOC = "The limit on the broker metric value of request "
+      + "queue size. If any broker exceeds this limit during an ongoing inter-broker partition reassignment, the concurrency adjuster"
+      + " (if enabled) attempts to decrease the number of allowed concurrent inter-broker partition movements.";
+
+  /**
    * Define configs for Executor.
    *
    * @param configDef Config definition.
@@ -304,6 +378,53 @@ public class ExecutorConfig {
                             DEFAULT_REMOVAL_HISTORY_RETENTION_TIME_MS,
                             atLeast(0),
                             ConfigDef.Importance.MEDIUM,
-                            REMOVAL_HISTORY_RETENTION_TIME_MS_DOC);
+                            REMOVAL_HISTORY_RETENTION_TIME_MS_DOC)
+                    .define(CONCURRENCY_ADJUSTER_INTERVAL_MS_CONFIG,
+                            ConfigDef.Type.LONG,
+                            DEFAULT_CONCURRENCY_ADJUSTER_INTERVAL_MS,
+                            atLeast(0),
+                            ConfigDef.Importance.LOW,
+                            CONCURRENCY_ADJUSTER_INTERVAL_MS_DOC)
+                    .define(CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_CONFIG,
+                            ConfigDef.Type.INT,
+                            DEFAULT_CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER,
+                            atLeast(1),
+                            ConfigDef.Importance.MEDIUM,
+                            CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_DOC)
+                    .define(CONCURRENCY_ADJUSTER_ENABLED_CONFIG,
+                            ConfigDef.Type.BOOLEAN,
+                            DEFAULT_CONCURRENCY_ADJUSTER_ENABLED,
+                            ConfigDef.Importance.HIGH,
+                            CONCURRENCY_ADJUSTER_ENABLED_DOC)
+                    .define(CONCURRENCY_ADJUSTER_LIMIT_LOG_FLUSH_TIME_MS_CONFIG,
+                            ConfigDef.Type.DOUBLE,
+                            DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_LOG_FLUSH_TIME_MS,
+                            atLeast(10.0),
+                            ConfigDef.Importance.MEDIUM,
+                            CONCURRENCY_ADJUSTER_LIMIT_LOG_FLUSH_TIME_MS_DOC)
+                    .define(CONCURRENCY_ADJUSTER_LIMIT_FOLLOWER_FETCH_LOCAL_TIME_MS_CONFIG,
+                            ConfigDef.Type.DOUBLE,
+                            DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_FOLLOWER_FETCH_LOCAL_TIME_MS,
+                            atLeast(10.0),
+                            ConfigDef.Importance.MEDIUM,
+                            CONCURRENCY_ADJUSTER_LIMIT_FOLLOWER_FETCH_LOCAL_TIME_MS_DOC)
+                    .define(CONCURRENCY_ADJUSTER_LIMIT_PRODUCE_LOCAL_TIME_MS_CONFIG,
+                            ConfigDef.Type.DOUBLE,
+                            DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_PRODUCE_LOCAL_TIME_MS,
+                            atLeast(10.0),
+                            ConfigDef.Importance.MEDIUM,
+                            CONCURRENCY_ADJUSTER_LIMIT_PRODUCE_LOCAL_TIME_MS_DOC)
+                    .define(CONCURRENCY_ADJUSTER_LIMIT_CONSUMER_FETCH_LOCAL_TIME_MS_CONFIG,
+                            ConfigDef.Type.DOUBLE,
+                            DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_CONSUMER_FETCH_LOCAL_TIME_MS,
+                            atLeast(10.0),
+                            ConfigDef.Importance.MEDIUM,
+                            CONCURRENCY_ADJUSTER_LIMIT_CONSUMER_FETCH_LOCAL_TIME_MS_DOC)
+                    .define(CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_CONFIG,
+                            ConfigDef.Type.DOUBLE,
+                            DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE,
+                            atLeast(10.0),
+                            ConfigDef.Importance.MEDIUM,
+                            CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_DOC);
   }
 }

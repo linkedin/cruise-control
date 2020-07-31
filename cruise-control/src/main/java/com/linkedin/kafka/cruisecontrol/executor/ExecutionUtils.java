@@ -4,8 +4,15 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import kafka.zk.KafkaZkClient;
@@ -17,6 +24,12 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_LOG_FLUSH_TIME_MS_999TH;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_999TH;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_PRODUCE_LOCAL_TIME_MS_999TH;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_REQUEST_QUEUE_SIZE;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_999TH;
 
 
 public final class ExecutionUtils {
@@ -30,9 +43,120 @@ public final class ExecutionUtils {
   public static final String GAUGE_EXECUTION_STOPPED_BY_USER = EXECUTION_STOPPED + "-by-user";
   public static final String GAUGE_EXECUTION_STARTED_IN_KAFKA_ASSIGNER_MODE = EXECUTION_STARTED + "-" + KAFKA_ASSIGNER_MODE;
   public static final String GAUGE_EXECUTION_STARTED_IN_NON_KAFKA_ASSIGNER_MODE = EXECUTION_STARTED + "-non-" + KAFKA_ASSIGNER_MODE;
+  public static final long EXECUTION_HISTORY_SCANNER_PERIOD_SECONDS = 5;
+  public static final long EXECUTION_HISTORY_SCANNER_INITIAL_DELAY_SECONDS = 0;
+  public static final int ADDITIVE_INCREASE_PARAM = 1;
+  public static final int MULTIPLICATIVE_DECREASE_PARAM = 2;
+  static final Map<String, Double> CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME = new HashMap<>(5);
 
 
   private ExecutionUtils() { }
+
+  /**
+   * Initialize the concurrency adjuster limits.
+   *
+   * @param config The configurations for Cruise Control.
+   */
+  static void init(KafkaCruiseControlConfig config) {
+    CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.put(BROKER_LOG_FLUSH_TIME_MS_999TH.name(),
+                                                  config.getDouble(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_LOG_FLUSH_TIME_MS_CONFIG));
+    CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.put(BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_999TH.name(),
+                                                  config.getDouble(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_FOLLOWER_FETCH_LOCAL_TIME_MS_CONFIG));
+    CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.put(BROKER_PRODUCE_LOCAL_TIME_MS_999TH.name(),
+                                                  config.getDouble(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_PRODUCE_LOCAL_TIME_MS_CONFIG));
+    CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.put(BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_999TH.name(),
+                                                  config.getDouble(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_CONSUMER_FETCH_LOCAL_TIME_MS_CONFIG));
+    CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.put(BROKER_REQUEST_QUEUE_SIZE.name(),
+                                                  config.getDouble(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_CONFIG));
+  }
+
+  private static String toMetricName(Short metricId) {
+    return KafkaMetricDef.brokerMetricDef().metricInfo(metricId).name();
+  }
+
+  /**
+   * Check whether the current metrics are within the limit specified by {@link #CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME}.
+   * Package private for unit tests.
+   *
+   * @param currentMetricsByBroker Current metrics by broker.
+   * @return {@code true} if all brokers are within the limit specified by {@link #CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME},
+   * {@code false} otherwise.
+   */
+  static boolean withinConcurrencyAdjusterLimit(Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker) {
+    boolean withinLimit = true;
+    Set<BrokerEntity> brokersWithNoMetrics = new HashSet<>();
+    Map<String, StringBuilder> overLimitDetailsByMetricName = new HashMap<>(
+        CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.size());
+    for (String metricName : CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.keySet()) {
+      overLimitDetailsByMetricName.put(metricName, new StringBuilder());
+    }
+
+    for (Map.Entry<BrokerEntity, ValuesAndExtrapolations> entry : currentMetricsByBroker.entrySet()) {
+      BrokerEntity broker = entry.getKey();
+      ValuesAndExtrapolations current = entry.getValue();
+      if (current == null) {
+        brokersWithNoMetrics.add(broker);
+        continue;
+      }
+
+      // Check whether the broker is within the acceptable limit for the relevant metrics. If not, collect details.
+      for (Short metricId : current.metricValues().metricIds()) {
+        String metricName = toMetricName(metricId);
+        Double limit = CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.get(metricName);
+        if (limit != null) {
+          double metricValue = current.metricValues().valuesFor(metricId).latest();
+          if (metricValue > limit) {
+            overLimitDetailsByMetricName.get(metricName).append(String.format("%d(%.2f) ", broker.brokerId(), metricValue));
+          }
+        }
+      }
+    }
+
+    for (Map.Entry<String, StringBuilder> entry : overLimitDetailsByMetricName.entrySet()) {
+      StringBuilder brokersWithValues = entry.getValue();
+      if (brokersWithValues.length() > 0) {
+        LOG.info("{} is over the acceptable limit for brokers with values: {}.", entry.getKey(), brokersWithValues);
+        withinLimit = false;
+      }
+    }
+    if (!brokersWithNoMetrics.isEmpty()) {
+      LOG.warn("Assuming {} are over the acceptable limit as no broker metrics exist to verify.", brokersWithNoMetrics);
+      withinLimit = false;
+    }
+
+    return withinLimit;
+  }
+
+  /**
+   * Provide a recommended concurrency for the ongoing inter-broker partition movements using selected current broker
+   * metrics and based on additive-increase/multiplicative-decrease (AIMD) feedback control algorithm.
+   *
+   * @param currentMetricsByBroker Current metrics by broker.
+   * @param currentInterBrokerPartitionMovementConcurrency The effective allowed inter-broker partition movement concurrency per broker.
+   * @param maxPartitionMovementsPerBroker The maximum allowed inter-broker partition movement concurrency per broker.
+   * @return {@code null} to indicate recommendation for no change in allowed inter-broker partition movement concurrency.
+   * Otherwise an integer to indicate the recommended inter-broker partition movement concurrency.
+   */
+  static Integer recommendedConcurrency(Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker,
+                                        int currentInterBrokerPartitionMovementConcurrency,
+                                        int maxPartitionMovementsPerBroker) {
+    boolean withinAdjusterLimit = ExecutionUtils.withinConcurrencyAdjusterLimit(currentMetricsByBroker);
+    Integer recommendedConcurrency = null;
+    if (withinAdjusterLimit) {
+      // Additive-increase inter-broker replica reassignment concurrency (MAX: maxPartitionMovementsPerBroker).
+      if (currentInterBrokerPartitionMovementConcurrency < maxPartitionMovementsPerBroker) {
+        recommendedConcurrency = currentInterBrokerPartitionMovementConcurrency + ADDITIVE_INCREASE_PARAM;
+        LOG.info("Concurrency adjuster recommended an increase in inter-broker partition movement concurrency to {}", recommendedConcurrency);
+      }
+    } else {
+      // Multiplicative-decrease inter-broker replica reassignment concurrency (MIN: 1).
+      if (currentInterBrokerPartitionMovementConcurrency > 1) {
+        recommendedConcurrency = Math.max(1, currentInterBrokerPartitionMovementConcurrency / MULTIPLICATIVE_DECREASE_PARAM);
+        LOG.info("Concurrency adjuster recommended a decrease in inter-broker partition movement concurrency to {}", recommendedConcurrency);
+      }
+    }
+    return recommendedConcurrency;
+  }
 
   /**
    * Checks whether the topicPartitions of the execution tasks in the given subset is indeed a subset of the given set.

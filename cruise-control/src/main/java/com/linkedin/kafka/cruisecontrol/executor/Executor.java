@@ -73,8 +73,6 @@ import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.Replic
 public class Executor {
   private static final Logger LOG = LoggerFactory.getLogger(Executor.class);
   private static final Logger OPERATION_LOG = LoggerFactory.getLogger(OPERATION_LOGGER);
-  private static final long EXECUTION_HISTORY_SCANNER_PERIOD_SECONDS = 5;
-  private static final long EXECUTION_HISTORY_SCANNER_INITIAL_DELAY_SECONDS = 0;
   // TODO: Make this configurable.
   public static final long MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS = 5000L;
   // A special timestamp to indicate that a broker is a permanent part of recently removed or demoted broker set.
@@ -113,6 +111,7 @@ public class Executor {
   private final AtomicInteger _numExecutionStartedInKafkaAssignerMode;
   private final AtomicInteger _numExecutionStartedInNonKafkaAssignerMode;
   private volatile boolean _isKafkaAssignerMode;
+  private volatile boolean _skipAutoRefreshingConcurrency;
   // TODO: Execution history is currently kept in memory, but ideally we should move it to a persistent store.
   private final long _demotionHistoryRetentionTimeMs;
   private final long _removalHistoryRetentionTimeMs;
@@ -121,7 +120,10 @@ public class Executor {
   private final ScheduledExecutorService _executionHistoryScannerExecutor;
   private UserTaskManager _userTaskManager;
   private final AnomalyDetector _anomalyDetector;
-
+  private final ConcurrencyAdjuster _concurrencyAdjuster;
+  private final ScheduledExecutorService _concurrencyAdjusterExecutor;
+  // TODO: Make this dynamically configurable via Admin endpoint; hence, it is not final.
+  private boolean _concurrencyAdjusterEnabled;
   private final KafkaCruiseControlConfig _config;
 
   /**
@@ -133,8 +135,7 @@ public class Executor {
                   Time time,
                   MetricRegistry dropwizardMetricRegistry,
                   AnomalyDetector anomalyDetector) {
-    this(config, time, dropwizardMetricRegistry, null, config.getLong(ExecutorConfig.DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG),
-         config.getLong(ExecutorConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG), null, null, anomalyDetector);
+    this(config, time, dropwizardMetricRegistry, null, null, anomalyDetector);
   }
 
   /**
@@ -147,10 +148,7 @@ public class Executor {
            Time time,
            MetricRegistry dropwizardMetricRegistry,
            MetadataClient metadataClient,
-           long demotionHistoryRetentionTimeMs,
-           long removalHistoryRetentionTimeMs,
            ExecutorNotifier executorNotifier,
-           UserTaskManager userTaskManager,
            AnomalyDetector anomalyDetector) {
     String zkUrl = config.getString(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG);
     _numExecutionStopped = new AtomicInteger(0);
@@ -160,6 +158,8 @@ public class Executor {
     _numExecutionStartedInKafkaAssignerMode = new AtomicInteger(0);
     _numExecutionStartedInNonKafkaAssignerMode = new AtomicInteger(0);
     _isKafkaAssignerMode = false;
+    _skipAutoRefreshingConcurrency = false;
+    ExecutionUtils.init(config);
     _config = config;
     // Register gauge sensors.
     registerGaugeSensors(dropwizardMetricRegistry);
@@ -193,18 +193,25 @@ public class Executor {
     _executorNotifier = executorNotifier != null ? executorNotifier
                                                  : config.getConfiguredInstance(ExecutorConfig.EXECUTOR_NOTIFIER_CLASS_CONFIG,
                                                                                 ExecutorNotifier.class);
-    _userTaskManager = userTaskManager;
+    // Must be set before execution via #setUserTaskManager(UserTaskManager)
+    _userTaskManager = null;
     if (anomalyDetector == null) {
       throw new IllegalStateException("Anomaly detector cannot be null.");
     }
     _anomalyDetector = anomalyDetector;
-    _demotionHistoryRetentionTimeMs = demotionHistoryRetentionTimeMs;
-    _removalHistoryRetentionTimeMs = removalHistoryRetentionTimeMs;
+    _demotionHistoryRetentionTimeMs = config.getLong(ExecutorConfig.DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG);
+    _removalHistoryRetentionTimeMs = config.getLong(ExecutorConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG);
+    _concurrencyAdjusterEnabled = config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_ENABLED_CONFIG);
+    _concurrencyAdjusterExecutor = Executors.newSingleThreadScheduledExecutor(
+        new KafkaCruiseControlThreadFactory(ConcurrencyAdjuster.class.getSimpleName(), true, null));
+    long intervalMs = config.getLong(ExecutorConfig.CONCURRENCY_ADJUSTER_INTERVAL_MS_CONFIG);
+    _concurrencyAdjuster = new ConcurrencyAdjuster();
+    _concurrencyAdjusterExecutor.scheduleAtFixedRate(_concurrencyAdjuster, intervalMs, intervalMs, TimeUnit.MILLISECONDS);
     _executionHistoryScannerExecutor = Executors.newSingleThreadScheduledExecutor(
-        new KafkaCruiseControlThreadFactory("ExecutionHistoryScanner", true, null));
+        new KafkaCruiseControlThreadFactory(ExecutionHistoryScanner.class.getSimpleName(), true, null));
     _executionHistoryScannerExecutor.scheduleAtFixedRate(new ExecutionHistoryScanner(),
-                                                         EXECUTION_HISTORY_SCANNER_INITIAL_DELAY_SECONDS,
-                                                         EXECUTION_HISTORY_SCANNER_PERIOD_SECONDS,
+                                                         ExecutionUtils.EXECUTION_HISTORY_SCANNER_INITIAL_DELAY_SECONDS,
+                                                         ExecutionUtils.EXECUTION_HISTORY_SCANNER_PERIOD_SECONDS,
                                                          TimeUnit.SECONDS);
   }
 
@@ -284,6 +291,59 @@ public class Executor {
         removeExpiredRemovalHistory();
       } catch (Throwable t) {
         LOG.warn("Received exception when trying to expire execution history.", t);
+      }
+    }
+  }
+
+  /**
+   * A runnable class to auto-adjust the allowed inter-broker partition reassignment concurrency for ongoing executions
+   * using selected broker metrics and based on additive-increase/multiplicative-decrease (AIMD) feedback control algorithm.
+   * Skips concurrency adjustment for demote operations.
+   */
+  private class ConcurrencyAdjuster implements Runnable {
+    private final int _maxPartitionMovementsPerBroker;
+    private LoadMonitor _loadMonitor;
+
+    public ConcurrencyAdjuster() {
+      _maxPartitionMovementsPerBroker = _config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_CONFIG);
+      _loadMonitor = null;
+    }
+
+    /**
+     * Initialize the inter-broker partition reassignment concurrency adjustment with the load monitor and the initially
+     * requested inter-broker partition reassignment concurrency.
+     *
+     * @param loadMonitor Load monitor.
+     * @param requestedInterBrokerPartitionMovementConcurrency The maximum number of concurrent inter-broker partition movements
+     *                                                         per broker(if null, use num.concurrent.partition.movements.per.broker).
+     */
+    public synchronized void initAdjustment(LoadMonitor loadMonitor, Integer requestedInterBrokerPartitionMovementConcurrency) {
+      _loadMonitor = loadMonitor;
+      setRequestedInterBrokerPartitionMovementConcurrency(requestedInterBrokerPartitionMovementConcurrency);
+    }
+
+    private boolean canRefreshConcurrency() {
+      return _concurrencyAdjusterEnabled && _executorState.state() == ExecutorState.State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS
+             && !_skipAutoRefreshingConcurrency && _loadMonitor != null;
+    }
+
+    private synchronized void refreshConcurrency() {
+      if (canRefreshConcurrency()) {
+        Integer recommendedConcurrency = ExecutionUtils.recommendedConcurrency(_loadMonitor.currentBrokerMetricValues(),
+                                                                               _executionTaskManager.interBrokerPartitionMovementConcurrency(),
+                                                                               _maxPartitionMovementsPerBroker);
+        if (recommendedConcurrency != null) {
+          setRequestedInterBrokerPartitionMovementConcurrency(recommendedConcurrency);
+        }
+      }
+    }
+
+    @Override
+    public void run() {
+      try {
+        refreshConcurrency();
+      } catch (Throwable t) {
+        LOG.warn("Received exception when trying to adjust inter-broker replica reassignment concurrency.", t);
       }
     }
   }
@@ -382,6 +442,8 @@ public class Executor {
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
    * @param isKafkaAssignerMode {@code true} if kafka assigner mode, {@code false} otherwise.
+   * @param skipAutoRefreshingConcurrency {@code true} to skip auto refreshing concurrency even if the concurrency adjuster
+   *                                                 is enabled, {@code false} otherwise.
    */
   public synchronized void executeProposals(Collection<ExecutionProposal> proposals,
                                             Set<Integer> unthrottledBrokers,
@@ -395,13 +457,15 @@ public class Executor {
                                             Long replicationThrottle,
                                             boolean isTriggeredByUserRequest,
                                             String uuid,
-                                            boolean isKafkaAssignerMode) throws OngoingExecutionException {
+                                            boolean isKafkaAssignerMode,
+                                            boolean skipAutoRefreshingConcurrency) throws OngoingExecutionException {
     setExecutionMode(isKafkaAssignerMode);
     sanityCheckExecuteProposals(loadMonitor, uuid);
+    _skipAutoRefreshingConcurrency = skipAutoRefreshingConcurrency;
     try {
       initProposalExecution(proposals, unthrottledBrokers, requestedInterBrokerPartitionMovementConcurrency,
                             requestedIntraBrokerPartitionMovementConcurrency, requestedLeadershipMovementConcurrency,
-                            requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, isTriggeredByUserRequest);
+                            requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, isTriggeredByUserRequest, loadMonitor);
       startExecution(loadMonitor, null, removedBrokers, replicationThrottle, isTriggeredByUserRequest);
     } catch (Exception e) {
       processExecuteProposalsFailure();
@@ -433,13 +497,14 @@ public class Executor {
                                                   Integer requestedLeadershipMovementConcurrency,
                                                   Long requestedExecutionProgressCheckIntervalMs,
                                                   ReplicaMovementStrategy replicaMovementStrategy,
-                                                  boolean isTriggeredByUserRequest) {
+                                                  boolean isTriggeredByUserRequest,
+                                                  LoadMonitor loadMonitor) {
     _executorState = ExecutorState.initializeProposalExecution(_uuid, _reasonSupplier.get(), recentlyDemotedBrokers(),
                                                                recentlyRemovedBrokers(), isTriggeredByUserRequest);
     _executionTaskManager.setExecutionModeForTaskTracker(_isKafkaAssignerMode);
     _executionTaskManager.addExecutionProposals(proposals, brokersToSkipConcurrencyCheck, _metadataClient.refreshMetadata().cluster(),
                                                 replicaMovementStrategy);
-    setRequestedInterBrokerPartitionMovementConcurrency(requestedInterBrokerPartitionMovementConcurrency);
+    _concurrencyAdjuster.initAdjustment(loadMonitor, requestedInterBrokerPartitionMovementConcurrency);
     setRequestedIntraBrokerPartitionMovementConcurrency(requestedIntraBrokerPartitionMovementConcurrency);
     setRequestedLeadershipMovementConcurrency(requestedLeadershipMovementConcurrency);
     setRequestedExecutionProgressCheckIntervalMs(requestedExecutionProgressCheckIntervalMs);
@@ -474,9 +539,10 @@ public class Executor {
                                                   String uuid) throws OngoingExecutionException {
     setExecutionMode(false);
     sanityCheckExecuteProposals(loadMonitor, uuid);
+    _skipAutoRefreshingConcurrency = true;
     try {
       initProposalExecution(proposals, demotedBrokers, concurrentSwaps, 0, requestedLeadershipMovementConcurrency,
-                            requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, isTriggeredByUserRequest);
+                            requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, isTriggeredByUserRequest, loadMonitor);
       startExecution(loadMonitor, demotedBrokers, null, replicationThrottle, isTriggeredByUserRequest);
     } catch (Exception e) {
       processExecuteProposalsFailure();
@@ -712,6 +778,7 @@ public class Executor {
     KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(_kafkaZkClient);
     KafkaCruiseControlUtils.closeAdminClientWithTimeout(_adminClient);
     _executionHistoryScannerExecutor.shutdownNow();
+    _concurrencyAdjusterExecutor.shutdownNow();
     LOG.info("Executor shutdown completed.");
   }
 

@@ -179,10 +179,9 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   public void testExecutionKnobs() {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
     assertThrows(IllegalStateException.class,
-                 () -> new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class), DEMOTION_HISTORY_RETENTION_TIME_MS,
-                                    REMOVAL_HISTORY_RETENTION_TIME_MS, null, null, null));
-    Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class), DEMOTION_HISTORY_RETENTION_TIME_MS,
-                                     REMOVAL_HISTORY_RETENTION_TIME_MS, null, null, EasyMock.mock(AnomalyDetector.class));
+                 () -> new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class), null, null));
+    Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class),
+                                     null, EasyMock.mock(AnomalyDetector.class));
 
     // Verify correctness of set/get requested execution progress check interval.
     long defaultExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
@@ -234,9 +233,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     EasyMock.replay(mockMetadataClient, mockLoadMonitor, mockAnomalyDetector, mockUserTaskInfo, mockUserTaskManager);
 
     Collection<ExecutionProposal> proposalsToExecute = Collections.singletonList(proposal);
-    Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient, DEMOTION_HISTORY_RETENTION_TIME_MS,
-                                     REMOVAL_HISTORY_RETENTION_TIME_MS, null, mockUserTaskManager,
-                                     mockAnomalyDetector);
+    Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient, null, mockAnomalyDetector);
+    executor.setUserTaskManager(mockUserTaskManager);
 
     executor.setGeneratingProposalsForExecution(RANDOM_UUID, ExecutorTest.class::getSimpleName, true);
     executor.executeProposals(proposalsToExecute,
@@ -251,6 +249,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                               null,
                               true,
                               RANDOM_UUID,
+                              false,
                               false);
     waitUntilTrue(() -> (executor.state().state() == ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS && !executor.inExecutionTasks().isEmpty()),
                   "Leader movement task did not start within the time limit",
@@ -284,6 +283,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                                                  null,
                                                  true,
                                                  RANDOM_UUID,
+                                                 false,
                                                  false));
     executor.failGeneratingProposalsForExecution(UNKNOWN_UUID);
 
@@ -301,6 +301,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                               null,
                               true,
                               RANDOM_UUID,
+                              false,
                               false);
 
     waitUntilTrue(() -> (executor.state().state() == ExecutorState.State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS),
@@ -495,9 +496,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     } else {
       EasyMock.replay(mockUserTaskInfo, mockExecutorNotifier, mockLoadMonitor, mockAnomalyDetector);
     }
-    Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), null, DEMOTION_HISTORY_RETENTION_TIME_MS,
-                                     REMOVAL_HISTORY_RETENTION_TIME_MS, mockExecutorNotifier, mockUserTaskManager,
-                                     mockAnomalyDetector);
+    Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), null, mockExecutorNotifier, mockAnomalyDetector);
+    executor.setUserTaskManager(mockUserTaskManager);
     Map<TopicPartition, Integer> replicationFactors = new HashMap<>(proposalsToCheck.size());
     for (ExecutionProposal proposal : proposalsToCheck) {
       TopicPartition tp = new TopicPartition(proposal.topic(), proposal.partitionId());
@@ -507,7 +507,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     executor.setGeneratingProposalsForExecution(RANDOM_UUID, ExecutorTest.class::getSimpleName, isTriggeredByUserRequest);
     executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, mockLoadMonitor, null,
                               null, null, null, null,
-                              replicationThrottle, isTriggeredByUserRequest, RANDOM_UUID, false);
+                              replicationThrottle, isTriggeredByUserRequest, RANDOM_UUID, false, false);
 
     if (verifyProgress) {
       waitUntilTrue(() -> ExecutorUtils.partitionsBeingReassigned(kafkaZkClient).contains(TP0),
@@ -557,6 +557,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     props.setProperty(ExecutorConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG, "10");
     props.setProperty(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG, "400");
     props.setProperty(AnalyzerConfig.DEFAULT_GOALS_CONFIG, TestConstants.DEFAULT_GOALS_VALUES);
+    props.setProperty(ExecutorConfig.DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG, Long.toString(DEMOTION_HISTORY_RETENTION_TIME_MS));
+    props.setProperty(ExecutorConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG, Long.toString(REMOVAL_HISTORY_RETENTION_TIME_MS));
     return props;
   }
 }

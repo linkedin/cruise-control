@@ -36,6 +36,7 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
   protected final Long _replicationThrottle;
   // Currently no self-healing action triggers broker addition -- i.e. all are triggered by user requests.
   protected static final boolean ADD_BROKERS_IS_TRIGGERED_BY_USER_REQUEST = true;
+  protected static final boolean SKIP_AUTO_REFRESHING_CONCURRENCY = false;
 
   public AddBrokersRunnable(KafkaCruiseControl kafkaCruiseControl,
                             OperationFuture future,
@@ -91,7 +92,8 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
                                            _replicaMovementStrategy,
                                            _replicationThrottle,
                                            true,
-                                           _uuid);
+                                           _uuid,
+                                           SKIP_AUTO_REFRESHING_CONCURRENCY);
     }
     return result;
   }
