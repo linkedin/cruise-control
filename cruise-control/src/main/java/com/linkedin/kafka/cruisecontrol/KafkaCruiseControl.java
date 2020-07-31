@@ -581,6 +581,8 @@ public class KafkaCruiseControl {
    *                            when executing proposals (if null, no throttling is applied).
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
+   * @param skipAutoRefreshingConcurrency {@code true} to skip auto refreshing concurrency even if the concurrency adjuster
+   *                                                 is enabled, {@code false} otherwise.
    */
   public void executeProposals(Set<ExecutionProposal> proposals,
                                Set<Integer> unthrottledBrokers,
@@ -592,12 +594,13 @@ public class KafkaCruiseControl {
                                ReplicaMovementStrategy replicaMovementStrategy,
                                Long replicationThrottle,
                                boolean isTriggeredByUserRequest,
-                               String uuid) throws OngoingExecutionException {
+                               String uuid,
+                               boolean skipAutoRefreshingConcurrency) throws OngoingExecutionException {
     if (hasProposalsToExecute(proposals, uuid)) {
       _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor,
                                  concurrentInterBrokerPartitionMovements, concurrentIntraBrokerPartitionMovements,
                                  concurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy,
-                                 replicationThrottle, isTriggeredByUserRequest, uuid, isKafkaAssignerMode);
+                                 replicationThrottle, isTriggeredByUserRequest, uuid, isKafkaAssignerMode, skipAutoRefreshingConcurrency);
     } else {
       failGeneratingProposalsForExecution(uuid);
     }
@@ -637,7 +640,7 @@ public class KafkaCruiseControl {
       _executor.executeProposals(proposals, throttleDecommissionedBroker ? Collections.emptySet() : removedBrokers,
                                  removedBrokers, _loadMonitor, concurrentInterBrokerPartitionMovements, 0,
                                  concurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy,
-                                 replicationThrottle, isTriggeredByUserRequest, uuid, isKafkaAssignerMode);
+                                 replicationThrottle, isTriggeredByUserRequest, uuid, isKafkaAssignerMode, false);
     } else {
       failGeneratingProposalsForExecution(uuid);
     }
