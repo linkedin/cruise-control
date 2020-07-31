@@ -164,8 +164,6 @@ public class Executor {
     _skipAutoRefreshingConcurrency = false;
     ExecutionUtils.init(config);
     _config = config;
-    // Register gauge sensors.
-    registerGaugeSensors(dropwizardMetricRegistry);
 
     _time = time;
     boolean zkSecurityEnabled = config.getBoolean(ExecutorConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
@@ -173,6 +171,8 @@ public class Executor {
                                                                  zkSecurityEnabled);
     _adminClient = KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
     _executionTaskManager = new ExecutionTaskManager(_adminClient, dropwizardMetricRegistry, time, config);
+    // Register gauge sensors.
+    registerGaugeSensors(dropwizardMetricRegistry);
     _metadataClient = metadataClient != null ? metadataClient
                                              : new MetadataClient(config,
                                                                   new Metadata(ExecutionUtils.METADATA_REFRESH_BACKOFF,
@@ -256,15 +256,21 @@ public class Executor {
    * Register gauge sensors.
    */
   private void registerGaugeSensors(MetricRegistry dropwizardMetricRegistry) {
-    String metricName = "Executor";
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, ExecutionUtils.GAUGE_EXECUTION_STOPPED),
+    String name = "Executor";
+    dropwizardMetricRegistry.register(MetricRegistry.name(name, ExecutionUtils.GAUGE_EXECUTION_STOPPED),
                                       (Gauge<Integer>) this::numExecutionStopped);
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, ExecutionUtils.GAUGE_EXECUTION_STOPPED_BY_USER),
+    dropwizardMetricRegistry.register(MetricRegistry.name(name, ExecutionUtils.GAUGE_EXECUTION_STOPPED_BY_USER),
                                       (Gauge<Integer>) this::numExecutionStoppedByUser);
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, ExecutionUtils.GAUGE_EXECUTION_STARTED_IN_KAFKA_ASSIGNER_MODE),
+    dropwizardMetricRegistry.register(MetricRegistry.name(name, ExecutionUtils.GAUGE_EXECUTION_STARTED_IN_KAFKA_ASSIGNER_MODE),
                                       (Gauge<Integer>) this::numExecutionStartedInKafkaAssignerMode);
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, ExecutionUtils.GAUGE_EXECUTION_STARTED_IN_NON_KAFKA_ASSIGNER_MODE),
+    dropwizardMetricRegistry.register(MetricRegistry.name(name, ExecutionUtils.GAUGE_EXECUTION_STARTED_IN_NON_KAFKA_ASSIGNER_MODE),
                                       (Gauge<Integer>) this::numExecutionStartedInNonKafkaAssignerMode);
+    dropwizardMetricRegistry.register(MetricRegistry.name(name, ExecutionUtils.GAUGE_EXECUTION_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER_CAP),
+                                      (Gauge<Integer>) _executionTaskManager::interBrokerPartitionMovementConcurrency);
+    dropwizardMetricRegistry.register(MetricRegistry.name(name, ExecutionUtils.GAUGE_EXECUTION_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER_CAP),
+                                      (Gauge<Integer>) _executionTaskManager::intraBrokerPartitionMovementConcurrency);
+    dropwizardMetricRegistry.register(MetricRegistry.name(name, ExecutionUtils.GAUGE_EXECUTION_LEADERSHIP_MOVEMENTS_GLOBAL_CAP),
+                                      (Gauge<Integer>) _executionTaskManager::leadershipMovementConcurrency);
   }
 
   private void removeExpiredDemotionHistory() {
