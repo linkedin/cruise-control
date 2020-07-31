@@ -199,6 +199,10 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    *     {@link ExecutorConfig#NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG}</li>
    *   <li>{@link ExecutorConfig#MAX_NUM_CLUSTER_MOVEMENTS_CONFIG} >=
    *   {@link ExecutorConfig#NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG}</li>
+   *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_CONFIG} >
+   *     {@link ExecutorConfig#NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG}</li>
+   *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_CONFIG} <=
+   *     {@link ExecutorConfig#MAX_NUM_CLUSTER_MOVEMENTS_CONFIG}</li>
    * </ul>
    */
   private void sanityCheckConcurrency() {
@@ -221,6 +225,20 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     int leadershipMovementConcurrency = getInt(ExecutorConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
     if (leadershipMovementConcurrency > maxClusterPartitionMovementConcurrency) {
       throw new ConfigException("Leadership movement concurrency [" + leadershipMovementConcurrency
+                                + "] cannot be greater than the maximum number of allowed movements in cluster ["
+                                + maxClusterPartitionMovementConcurrency + "].");
+    }
+
+    int concurrencyAdjusterMaxPartitionMovementsPerBroker = getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_CONFIG);
+    if (interBrokerPartitionMovementConcurrency >= concurrencyAdjusterMaxPartitionMovementsPerBroker) {
+      throw new ConfigException("Inter-broker partition movement concurrency [" + interBrokerPartitionMovementConcurrency
+                                + "] must be smaller than the concurrency adjuster maximum partition movements per broker ["
+                                + concurrencyAdjusterMaxPartitionMovementsPerBroker + "].");
+    }
+
+    if (concurrencyAdjusterMaxPartitionMovementsPerBroker > maxClusterPartitionMovementConcurrency) {
+      throw new ConfigException("Maximum partition movements per broker of concurrency adjuster ["
+                                + concurrencyAdjusterMaxPartitionMovementsPerBroker
                                 + "] cannot be greater than the maximum number of allowed movements in cluster ["
                                 + maxClusterPartitionMovementConcurrency + "].");
     }
@@ -252,6 +270,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    *   <li>{@link MonitorConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG} is not longer than
    *   {@link AnomalyDetectorConfig#METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG}
    *   (or #ANOMALY_DETECTION_INTERVAL_MS_CONFIG if #METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG is not specified)</li>
+   *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_INTERVAL_MS_CONFIG} > {@link MonitorConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}</li>
    * </ul>
    *
    * Sampling process involves a potential metadata update if the current metadata is stale. The configuration
@@ -293,7 +312,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                                               MonitorConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG));
     }
 
-    // Ensure that the metrics reporter reports more often that the sample fetcher samples.
+    // Ensure that the metrics reporter reports more often than the sample fetcher samples.
     CruiseControlMetricsReporterConfig reporterConfig = new CruiseControlMetricsReporterConfig(originals, false);
     long reportingIntervalMs = reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG);
     if (reportingIntervalMs > samplingIntervalMs) {
@@ -319,6 +338,17 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                                               AnomalyDetectorConfig.METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG,
                                               AnomalyDetectorConfig.ANOMALY_DETECTION_INTERVAL_MS_CONFIG,
                                               AnomalyDetectorConfig.METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG));
+    }
+
+    // Ensure sample fetcher samples more often than the concurrency adjuster evaluates the latest broker metrics.
+    long concurrencyAdjusterIntervalMs = getLong(ExecutorConfig.CONCURRENCY_ADJUSTER_INTERVAL_MS_CONFIG);
+    if (samplingIntervalMs > concurrencyAdjusterIntervalMs) {
+      throw new ConfigException(String.format("Configured metric sampling interval (%d) exceeds concurrency adjuster interval (%d). "
+                                              + "Decrease the value of %s or increase the value of %s to ensure that concurrency "
+                                              + "adjuster can be properly retrieve and evaluate the latest broker metrics.",
+                                              samplingIntervalMs, concurrencyAdjusterIntervalMs,
+                                              MonitorConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG,
+                                              ExecutorConfig.CONCURRENCY_ADJUSTER_INTERVAL_MS_CONFIG));
     }
   }
 

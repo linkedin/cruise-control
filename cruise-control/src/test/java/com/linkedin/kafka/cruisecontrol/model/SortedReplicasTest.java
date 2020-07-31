@@ -9,8 +9,6 @@ import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import java.util.SortedSet;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
-
-import java.util.Random;
 import java.util.function.Function;
 
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
@@ -22,7 +20,6 @@ import static org.junit.Assert.assertTrue;
  */
 public class SortedReplicasTest {
   private static final String SORT_NAME = "sortName";
-  private static final Random RANDOM = new Random(0xDEADBEEF);
 
   private static final Function<Replica, Boolean> SELECTION_FUNC = Replica::isLeader;
   private static final Function<Replica, Integer> PRIORITY_FUNC = r -> r.topicPartition().partition() % 5;

@@ -39,6 +39,7 @@ public class RebalanceRunnable extends GoalBasedOperationRunnable {
   protected final boolean _ignoreProposalCache;
   protected final Set<Integer> _destinationBrokerIds;
   protected final boolean _isRebalanceDiskMode;
+  protected static final boolean SKIP_AUTO_REFRESHING_CONCURRENCY = false;
 
   /**
    * Constructor to be used for creating a runnable for self-healing.
@@ -114,7 +115,7 @@ public class RebalanceRunnable extends GoalBasedOperationRunnable {
       _kafkaCruiseControl.executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(_goals),
                                            _concurrentInterBrokerPartitionMovements, _concurrentIntraBrokerPartitionMovements,
                                            _concurrentLeaderMovements, _executionProgressCheckIntervalMs, _replicaMovementStrategy,
-                                           _replicationThrottle, _isTriggeredByUserRequest, _uuid);
+                                           _replicationThrottle, _isTriggeredByUserRequest, _uuid, SKIP_AUTO_REFRESHING_CONCURRENCY);
     }
     return result;
   }
