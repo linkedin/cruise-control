@@ -166,7 +166,11 @@ public class MetricsUtils {
    * @return the "recent CPU usage" for the JVM process as a double in [0.0,1.0].
    */
   public static BrokerMetric getCpuMetric(long now, int brokerId, boolean kubernetesMode) throws IOException {
-    double cpuUtil = ((com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean()).getSystemCpuLoad();
+
+    // we openjdk-14 runtime and get the process cpu utilization as system_load/no_of_processors
+    com.sun.management.OperatingSystemMXBean systemMXBean =
+            (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+    double cpuUtil = systemMXBean.getSystemCpuLoad() / systemMXBean.getAvailableProcessors();
 
     if (kubernetesMode) {
       cpuUtil = ContainerMetricUtils.getContainerProcessCpuLoad(cpuUtil);
