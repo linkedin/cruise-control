@@ -22,6 +22,7 @@ import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorState;
 import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolutionException;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.exception.OngoingExecutionException;
+import com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
@@ -374,6 +375,17 @@ public class KafkaCruiseControl {
    */
   public boolean setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled) {
     return _anomalyDetector.setSelfHealingFor(anomalyType, isSelfHealingEnabled);
+  }
+
+  /**
+   * Enable or disable concurrency adjuster for the given concurrency type in the executor.
+   *
+   * @param concurrencyType Type of concurrency for which to enable or disable concurrency adjuster.
+   * @param isConcurrencyAdjusterEnabled {@code true} if concurrency adjuster is enabled for the given type, {@code false} otherwise.
+   * @return {@code true} if concurrency adjuster was enabled before for the given concurrency type, {@code false} otherwise.
+   */
+  public boolean setConcurrencyAdjusterFor(ConcurrencyType concurrencyType, boolean isConcurrencyAdjusterEnabled) {
+    return _executor.setConcurrencyAdjusterFor(concurrencyType, isConcurrencyAdjusterEnabled);
   }
 
   /**

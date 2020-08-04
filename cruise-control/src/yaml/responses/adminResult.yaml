@@ -15,6 +15,14 @@ AdminResult:
       type: string
     dropRecentBrokersRequest:
       type: string
+    concurrencyAdjusterEnabledBefore:
+      type: object
+      additionalProperties:
+        type: boolean
+    concurrencyAdjusterEnabledAfter:
+      type: object
+      additionalProperties:
+        type: boolean
     version:
       type: integer
       format: int32
