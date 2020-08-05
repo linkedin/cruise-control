@@ -818,9 +818,9 @@ Starting long-running poll of http://someCruiseControlAddress:9090/kafkacruiseco
 
 ## `stop`
 ### Stop an ongoing proposal execution
-Note that, until something like [KIP-236](https://cwiki.apache.org/confluence/display/KAFKA/KIP-236%3A+Interruptible+Partition+Reassignment) is implemented in `kafka`, this endpoint is best understood as:
-1. Preventing any *new* partition reassignments from starting, and
-2. Waiting patiently for the ongoing partition reassignments to finish.
+This endpoint:
+1. Prevents any *new* partition reassignments from starting, and
+2. Cancels (reverts) ongoing partition reassignments.
 ```bash
 cccli -a someCruiseControlAddress:9090 stop
 ```
