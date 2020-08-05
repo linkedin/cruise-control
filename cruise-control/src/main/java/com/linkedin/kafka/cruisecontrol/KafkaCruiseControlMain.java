@@ -6,6 +6,8 @@ package com.linkedin.kafka.cruisecontrol;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.readConfig;
 
@@ -13,6 +15,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.readConfi
  * The main class to run Kafka Cruise Control.
  */
 public class KafkaCruiseControlMain {
+  private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlMain.class);
 
   private KafkaCruiseControlMain() { }
 
@@ -26,6 +29,9 @@ public class KafkaCruiseControlMain {
               String.format("USAGE: java %s cruisecontrol.properties [port] [ipaddress|hostname]",
                       KafkaCruiseControlMain.class.getSimpleName()));
     }
+
+    Thread.setDefaultUncaughtExceptionHandler((t, e) -> LOG.error("Uncaught exception on thread {}", t, e));
+
     KafkaCruiseControlConfig config = readConfig(args[0]);
     Integer port = parsePort(args, config);
     String hostname = parseHostname(args, config);
