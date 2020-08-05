@@ -272,6 +272,23 @@ public class ExecutorConfig {
       + " (if enabled) attempts to decrease the number of allowed concurrent inter-broker partition movements.";
 
   /**
+   * <code>list.partition.reassignment.timeout.ms</code>
+   */
+  public static final String LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS_CONFIG = "list.partition.reassignment.timeout.ms";
+  public static final long DEFAULT_LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS = 60000L;
+  public static final String LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS_DOC = "The maximum time to wait for the initial response of "
+      + "an Admin#listPartitionReassignments() request to be available.";
+
+  /**
+   * <code>list.partition.reassignment.max.attempts</code>
+   */
+  public static final String LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS_CONFIG = "list.partition.reassignment.max.attempts";
+  public static final int DEFAULT_LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS = 3;
+  public static final String LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS_DOC = "The maximum number of attempts to get an available"
+      + " response for an Admin#listPartitionReassignments() request in case of a timeout. Each attempt recalculates the allowed"
+      + " timeout using: list-partition-reassignments-timeout-for-the-initial-response * (base-backoff ^ attempt).";
+
+  /**
    * Define configs for Executor.
    *
    * @param configDef Config definition.
@@ -425,6 +442,18 @@ public class ExecutorConfig {
                             DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE,
                             atLeast(10.0),
                             ConfigDef.Importance.MEDIUM,
-                            CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_DOC);
+                            CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_DOC)
+                    .define(LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS_CONFIG,
+                            ConfigDef.Type.LONG,
+                            DEFAULT_LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS,
+                            atLeast(1),
+                            ConfigDef.Importance.LOW,
+                            LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS_DOC)
+                    .define(LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS_CONFIG,
+                            ConfigDef.Type.INT,
+                            DEFAULT_LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS,
+                            atLeast(1),
+                            ConfigDef.Importance.LOW,
+                            LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS_DOC);
   }
 }

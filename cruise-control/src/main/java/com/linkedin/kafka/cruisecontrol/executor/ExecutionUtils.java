@@ -46,8 +46,7 @@ import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricT
 
 public final class ExecutionUtils {
   private static final Logger LOG = LoggerFactory.getLogger(ExecutionUtils.class);
-  // TODO: Make this configurable.
-  public static final long DEFAULT_LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS = 10000L;
+  public static final int DEFAULT_RETRY_BACKOFF_BASE = 2;
   public static final long METADATA_REFRESH_BACKOFF = 100L;
   public static final long METADATA_EXPIRY_MS = Long.MAX_VALUE;
   public static final String EXECUTION_STARTED = "execution-started";
@@ -65,12 +64,14 @@ public final class ExecutionUtils {
   public static final int ADDITIVE_INCREASE_PARAM = 1;
   public static final int MULTIPLICATIVE_DECREASE_PARAM = 2;
   static final Map<String, Double> CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME = new HashMap<>(5);
+  static long LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS;
+  static int LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS;
 
 
   private ExecutionUtils() { }
 
   /**
-   * Initialize the concurrency adjuster limits.
+   * Initialize the concurrency adjuster limits and timeout-related configs for list partition reassignment requests.
    *
    * @param config The configurations for Cruise Control.
    */
@@ -85,6 +86,8 @@ public final class ExecutionUtils {
                                                   config.getDouble(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_CONSUMER_FETCH_LOCAL_TIME_MS_CONFIG));
     CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.put(BROKER_REQUEST_QUEUE_SIZE.name(),
                                                   config.getDouble(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_CONFIG));
+    LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS = config.getLong(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS_CONFIG);
+    LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS = config.getInt(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS_CONFIG);
   }
 
   private static String toMetricName(Short metricId) {
@@ -189,13 +192,34 @@ public final class ExecutionUtils {
   /**
    * Retrieve the map of {@link PartitionReassignment reassignment} by {@link TopicPartition partitions}.
    *
+   * If the response times out, this method retries up to {@link #LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS} times.
+   * The maximum time to wait for the admin client response is computed as:
+   * {@link #LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS} * ({@link #DEFAULT_RETRY_BACKOFF_BASE} ^ {@code attempt}).
+   *
    * @param adminClient The adminClient to ask for ongoing partition reassignments.
    * @return The map of {@link PartitionReassignment reassignment} by {@link TopicPartition partitions}.
    */
   public static Map<TopicPartition, PartitionReassignment> ongoingPartitionReassignments(AdminClient adminClient)
       throws InterruptedException, ExecutionException, TimeoutException {
-    ListPartitionReassignmentsResult responseResult = adminClient.listPartitionReassignments();
-    return responseResult.reassignments().get(DEFAULT_LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    Map<TopicPartition, PartitionReassignment> partitionReassignments = null;
+    int attempts = 0;
+    long timeoutMs = LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS;
+    do {
+      ListPartitionReassignmentsResult responseResult = adminClient.listPartitionReassignments();
+      try {
+        // A successful response is expected to be non-null.
+        partitionReassignments = responseResult.reassignments().get(timeoutMs, TimeUnit.MILLISECONDS);
+      } catch (TimeoutException e) {
+        LOG.info("Failed to list partition reassignments in {}ms (attempt={}). Consider increasing the value of {} config.",
+                 timeoutMs, attempts + 1, ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS_CONFIG);
+        if (++attempts == LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS) {
+          throw e;
+        }
+        timeoutMs *= DEFAULT_RETRY_BACKOFF_BASE;
+      }
+    } while (partitionReassignments == null);
+
+    return partitionReassignments;
   }
 
   private static Optional<NewPartitionReassignment> cancelReassignmentValue() {
