@@ -102,6 +102,30 @@ AdminEndpoint:
         description: The user specified by a trusted proxy in that authentication model.
         schema:
           type: string
+      - name: disable_concurrency_adjuster_for
+        in: query
+        description: Disable concurrency adjuster for certain concurrency types.
+        schema:
+          type: array
+          items:
+            type: string
+            enum:
+              - INTER_BROKER_REPLICA
+              - LEADERSHIP
+              - INTRA_BROKER_REPLICA
+          example: ["INTER_BROKER_REPLICA"]
+      - name: enable_concurrency_adjuster_for
+        in: query
+        description: Enable concurrency adjuster for certain concurrency types.
+        schema:
+          type: array
+          items:
+            type: string
+            enum:
+              - INTER_BROKER_REPLICA
+              - LEADERSHIP
+              - INTRA_BROKER_REPLICA
+          example: ["INTER_BROKER_REPLICA"]
     responses:
       '200':
         description: Successful admin response.
