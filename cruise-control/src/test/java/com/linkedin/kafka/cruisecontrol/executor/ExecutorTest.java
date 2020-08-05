@@ -33,7 +33,6 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -90,6 +89,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   private static final long EXECUTION_REGULAR_CHECK_MS = 100L;
   private static final Random RANDOM = new Random(0xDEADBEEF);
   private static final int MOCK_BROKER_ID_TO_DROP = 1;
+  private static final long LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS = 1000L;
+  private static final int LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS = 1;
 
   @Override
   public int clusterSize() {
@@ -411,9 +412,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     try {
       waitUntilTrue(() -> {
                       try {
-                        return (adminClient.listPartitionReassignments(partitions).reassignments()
-                                           .get(1, TimeUnit.SECONDS)
-                                           .keySet().containsAll(partitions));
+                        return ExecutionUtils.partitionsBeingReassigned(adminClient).containsAll(partitions);
                       } catch (TimeoutException | InterruptedException | ExecutionException e) {
                         throw new IllegalStateException("Failed to verify the start of a replica reassignment.");
                       }
@@ -579,6 +578,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     props.setProperty(AnalyzerConfig.DEFAULT_GOALS_CONFIG, TestConstants.DEFAULT_GOALS_VALUES);
     props.setProperty(ExecutorConfig.DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG, Long.toString(DEMOTION_HISTORY_RETENTION_TIME_MS));
     props.setProperty(ExecutorConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG, Long.toString(REMOVAL_HISTORY_RETENTION_TIME_MS));
+    props.setProperty(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS_CONFIG, Long.toString(LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS));
+    props.setProperty(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS_CONFIG, Long.toString(LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS));
     return props;
   }
 }
