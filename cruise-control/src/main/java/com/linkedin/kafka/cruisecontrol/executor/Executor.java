@@ -125,8 +125,7 @@ public class Executor {
   private final AnomalyDetector _anomalyDetector;
   private final ConcurrencyAdjuster _concurrencyAdjuster;
   private final ScheduledExecutorService _concurrencyAdjusterExecutor;
-  // TODO: Make this dynamically configurable via Admin endpoint; hence, it is not final.
-  private boolean _concurrencyAdjusterEnabled;
+  private volatile boolean _concurrencyAdjusterEnabled;
   private final KafkaCruiseControlConfig _config;
 
   /**
@@ -428,6 +427,28 @@ public class Executor {
    */
   public ExecutorState state() {
     return _executorState;
+  }
+
+  /**
+   * Enable or disable concurrency adjuster for the given concurrency type in the executor.
+   *
+   * <ul>
+   *   <li>TODO: Support for concurrency adjusters of {@link ConcurrencyType#LEADERSHIP leadership} and
+   *   {@link ConcurrencyType#INTRA_BROKER_REPLICA intra-broker replica} movements are pending
+   *   <a href="https://github.com/linkedin/cruise-control/issues/1298">#1298</a> and
+   *   <a href="https://github.com/linkedin/cruise-control/issues/1299">#1299</a>.</li>
+   * </ul>
+   * @param concurrencyType Type of concurrency for which to enable or disable concurrency adjuster.
+   * @param isConcurrencyAdjusterEnabled {@code true} if concurrency adjuster is enabled for the given type, {@code false} otherwise.
+   * @return {@code true} if concurrency adjuster was enabled before for the given concurrency type, {@code false} otherwise.
+   */
+  public boolean setConcurrencyAdjusterFor(ConcurrencyType concurrencyType, boolean isConcurrencyAdjusterEnabled) {
+    if (concurrencyType != ConcurrencyType.INTER_BROKER_REPLICA) {
+      throw new IllegalArgumentException(String.format("Concurrency adjuster for %s is not yet supported.", concurrencyType));
+    }
+    boolean oldValue = _concurrencyAdjusterEnabled;
+    _concurrencyAdjusterEnabled = isConcurrencyAdjusterEnabled;
+    return oldValue;
   }
 
   /**
