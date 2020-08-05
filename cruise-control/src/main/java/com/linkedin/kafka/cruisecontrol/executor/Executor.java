@@ -1335,19 +1335,26 @@ public class Executor {
           LOG.debug("Tasks in execution: {}", inExecutionTasks());
         }
         List<ExecutionTask> deadInterBrokerReplicaTasks = new ArrayList<>();
-        List<ExecutionTask> stoppedInterBrokerReplicaTasks = new ArrayList<>();
+        List<ExecutionTask> gracefullyStoppedInterBrokerReplicaTasks = new ArrayList<>();
         List<ExecutionTask> slowTasksToReport = new ArrayList<>();
         boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > SLOW_TASK_ALERTING_BACKOFF_TIME_MS;
         for (ExecutionTask task : inExecutionTasks()) {
           TopicPartition tp = task.proposal().topicPartition();
-          if (_stopSignal.get() != NO_STOP_EXECUTION) {
-            LOG.debug("Task {} is marked as dead to stop the execution.", task);
+          if (_stopSignal.get() == FORCE_STOP_EXECUTION
+              || (_stopSignal.get() == STOP_EXECUTION && task.type() == INTER_BROKER_REPLICA_ACTION)) {
+            // If the execution is (1) force-stopped or (2) gracefully-stopped during an ongoing inter-broker replica reassignment,
+            // then the executor will not just silently wait for the completion of the current in-progress tasks. For the former
+            // case, the executor will mark all in progress tasks as dead, cleanup the relevant reassignment zNodes, and then bounce
+            // the controller (see ExecutionUtils#deleteZNodesToStopExecution). For the latter case, the executor will mark in
+            // progress tasks as dead, and rollback the ongoing reassignment of gracefully stopped inter-broker replica reassignment.
+            LOG.debug("Task {} is marked as dead to {}.", task,
+                      _stopSignal.get() == FORCE_STOP_EXECUTION ? "force-stop the execution with a controller bounce"
+                                                                : "gracefully-stop the execution with a rollback");
             finishedTasks.add(task);
             stoppedTaskIds.add(task.executionId());
             _executionTaskManager.markTaskDead(task);
-            // Only add the dead tasks to execute if it is an inter-broker replica action.
-            if (task.type() == INTER_BROKER_REPLICA_ACTION) {
-              stoppedInterBrokerReplicaTasks.add(task);
+            if (_stopSignal.get() == STOP_EXECUTION) {
+              gracefullyStoppedInterBrokerReplicaTasks.add(task);
             }
           } else if (cluster.partition(tp) == null) {
             // Handle topic deletion during the execution.
@@ -1375,12 +1382,13 @@ public class Executor {
           }
         }
         sendSlowExecutionAlert(slowTasksToReport);
-        handleDeadInterBrokerReplicaTasks(deadInterBrokerReplicaTasks, stoppedInterBrokerReplicaTasks);
+        handleDeadInterBrokerReplicaTasks(deadInterBrokerReplicaTasks, gracefullyStoppedInterBrokerReplicaTasks);
         updateOngoingExecutionState();
       } while (!inExecutionTasks().isEmpty() && finishedTasks.isEmpty());
 
       LOG.info("Finished tasks: {}.{}{}{}", finishedTasks,
-               stoppedTaskIds.isEmpty() ? "" : String.format(". [Stopped: %s]", stoppedTaskIds),
+               stoppedTaskIds.isEmpty() ? "" : String.format(". [%sStopped: %s]", _stopSignal.get() == FORCE_STOP_EXECUTION
+                                                                                  ? "Force-" : "", stoppedTaskIds),
                deletedTaskIds.isEmpty() ? "" : String.format(". [Deleted: %s]", deletedTaskIds),
                deadTaskIds.isEmpty() ? "" : String.format(". [Dead: %s]", deadTaskIds));
 
@@ -1388,8 +1396,8 @@ public class Executor {
     }
 
     /**
-     * Attempts to cancel/rollback the ongoing reassignment of dead/stopped inter-broker replica actions and stops the
-     * execution if not already requested so by the user.
+     * Attempts to cancel/rollback the ongoing reassignment of dead / gracefully stopped inter-broker replica actions
+     * and stops the execution if not already requested so by the user.
      *
      * If all dead tasks are due to stopped inter-broker replica tasks, it waits until the rollback is completed.
      * Otherwise, it will not wait for the actual rollback to complete to avoid being blocked on a potentially stuck
@@ -1397,16 +1405,23 @@ public class Executor {
      * rollback is still in progress on Kafka server-side, the executor will detect the ongoing server-side execution
      * and will not start a new execution (see {@link #sanityCheckOngoingMovement}).
      *
-     * @param deadInterBrokerReplicaTasks Inter-broker replica tasks that are marked as dead due to dead destination brokers.
-     * @param stoppedInterBrokerReplicaTasks Inter-broker replica tasks that are marked as dead due to being stopped by user.
+     * @param deadInterBrokerReplicaTasks Inter-broker replica tasks that are expected to be marked as dead due to dead
+     *                                    destination brokers.
+     * @param gracefullyStoppedInterBrokerReplicaTasks Inter-broker replica tasks that are expected to be marked as dead
+     *                                                due to being gracefully stopped by user.
      */
     private void handleDeadInterBrokerReplicaTasks(List<ExecutionTask> deadInterBrokerReplicaTasks,
-                                                   List<ExecutionTask> stoppedInterBrokerReplicaTasks)
+                                                   List<ExecutionTask> gracefullyStoppedInterBrokerReplicaTasks)
         throws InterruptedException, ExecutionException, TimeoutException {
       List<ExecutionTask> tasksToCancel = new ArrayList<>(deadInterBrokerReplicaTasks);
-      tasksToCancel.addAll(stoppedInterBrokerReplicaTasks);
+      tasksToCancel.addAll(gracefullyStoppedInterBrokerReplicaTasks);
 
       if (!tasksToCancel.isEmpty()) {
+        // Sanity check to ensure that all tasks are marked as dead.
+        tasksToCancel.stream().filter(task -> task.state() != DEAD).forEach(task -> {
+          throw new IllegalArgumentException(String.format("Unexpected state for task %s (expected: %s).", task, DEAD));
+        });
+
         // Cancel/rollback reassignment of dead inter-broker replica tasks.
         ExecutionUtils.submitReplicaReassignmentTasks(_adminClient, tasksToCancel);
         if (_stopSignal.get() == NO_STOP_EXECUTION) {
