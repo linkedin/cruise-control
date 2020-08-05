@@ -7,9 +7,11 @@ package com.linkedin.kafka.cruisecontrol.servlet.handler.sync;
 import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
+import com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AdminParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ChangeExecutionConcurrencyParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.DropRecentBrokersParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.UpdateConcurrencyAdjusterParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.UpdateSelfHealingParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.AdminResult;
 import java.util.HashMap;
@@ -55,11 +57,41 @@ public class AdminRequest extends AbstractSyncRequest {
     // 3. Drop selected recently removed/demoted brokers.
     String dropRecentBrokersRequest = processDropRecentBrokersRequest();
 
+    // 4. Enable/disable the specified concurrency adjusters.
+    Map<ConcurrencyType, Boolean> concurrencyAdjusterBefore = new HashMap<>(ConcurrencyType.cachedValues().size());
+    Map<ConcurrencyType, Boolean> concurrencyAdjusterAfter = new HashMap<>(ConcurrencyType.cachedValues().size());
+    processUpdateConcurrencyAdjusterRequest(concurrencyAdjusterBefore, concurrencyAdjusterAfter);
+
     return new AdminResult(selfHealingBefore,
                            selfHealingAfter,
                            ongoingConcurrencyChangeRequest,
                            dropRecentBrokersRequest,
+                           concurrencyAdjusterBefore,
+                           concurrencyAdjusterAfter,
                            _kafkaCruiseControl.config());
+  }
+
+  protected void processUpdateConcurrencyAdjusterRequest(Map<ConcurrencyType, Boolean> concurrencyAdjusterBefore,
+                                                           Map<ConcurrencyType, Boolean> concurrencyAdjusterAfter) {
+    UpdateConcurrencyAdjusterParameters updateConcurrencyAdjusterParameters = _parameters.updateConcurrencyAdjusterParameters();
+    if (updateConcurrencyAdjusterParameters != null) {
+      Set<ConcurrencyType> disableConcurrencyAdjusterFor = updateConcurrencyAdjusterParameters.disableConcurrencyAdjusterFor();
+      Set<ConcurrencyType> enableConcurrencyAdjusterFor = updateConcurrencyAdjusterParameters.enableConcurrencyAdjusterFor();
+
+      for (ConcurrencyType type : disableConcurrencyAdjusterFor) {
+        concurrencyAdjusterBefore.put(type, _kafkaCruiseControl.setConcurrencyAdjusterFor(type, false));
+        concurrencyAdjusterAfter.put(type, false);
+      }
+
+      for (ConcurrencyType adjusterType : enableConcurrencyAdjusterFor) {
+        concurrencyAdjusterBefore.put(adjusterType, _kafkaCruiseControl.setConcurrencyAdjusterFor(adjusterType, true));
+        concurrencyAdjusterAfter.put(adjusterType, true);
+      }
+
+      if (!disableConcurrencyAdjusterFor.isEmpty() || !enableConcurrencyAdjusterFor.isEmpty()) {
+        LOG.info("Concurrency adjuster state is modified by user (before: {} after: {}).", concurrencyAdjusterBefore, concurrencyAdjusterAfter);
+      }
+    }
   }
 
   protected String processChangeExecutionConcurrencyRequest() {

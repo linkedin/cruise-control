@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEven
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
+import com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
@@ -114,6 +115,8 @@ public class ParameterUtils {
   public static final String EXCLUDE_FOLLOWER_DEMOTION_PARAM = "exclude_follower_demotion";
   public static final String DISABLE_SELF_HEALING_FOR_PARAM = "disable_self_healing_for";
   public static final String ENABLE_SELF_HEALING_FOR_PARAM = "enable_self_healing_for";
+  public static final String DISABLE_CONCURRENCY_ADJUSTER_FOR_PARAM = "disable_concurrency_adjuster_for";
+  public static final String ENABLE_CONCURRENCY_ADJUSTER_FOR_PARAM = "enable_concurrency_adjuster_for";
   public static final String EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM = "exclude_recently_demoted_brokers";
   public static final String EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM = "exclude_recently_removed_brokers";
   public static final String REPLICA_MOVEMENT_STRATEGIES_PARAM = "replica_movement_strategies";
@@ -576,12 +579,8 @@ public class ParameterUtils {
   }
 
   private static Set<AnomalyType> anomalyTypes(HttpServletRequest request, boolean isEnable) throws UnsupportedEncodingException {
-    String parameterString = caseSensitiveParameterName(request.getParameterMap(), isEnable ? ENABLE_SELF_HEALING_FOR_PARAM
-                                                                                            : DISABLE_SELF_HEALING_FOR_PARAM);
-    Set<String> selfHealingForString = parameterString == null
-                                       ? new HashSet<>(0)
-                                       : new HashSet<>(Arrays.asList(urlDecode(request.getParameter(parameterString)).split(",")));
-    selfHealingForString.removeIf(String::isEmpty);
+    Set<String> selfHealingForString = parseParamToStringSet(request, isEnable ? ENABLE_SELF_HEALING_FOR_PARAM
+                                                                               : DISABLE_SELF_HEALING_FOR_PARAM);
 
     Set<AnomalyType> anomalyTypes = new HashSet<>(selfHealingForString.size());
     try {
@@ -596,6 +595,23 @@ public class ParameterUtils {
     return Collections.unmodifiableSet(anomalyTypes);
   }
 
+  private static Set<ConcurrencyType> concurrencyTypes(HttpServletRequest request, boolean isEnable) throws UnsupportedEncodingException {
+    Set<String> concurrencyForStringSet = parseParamToStringSet(request, isEnable ? ENABLE_CONCURRENCY_ADJUSTER_FOR_PARAM
+                                                                                  : DISABLE_CONCURRENCY_ADJUSTER_FOR_PARAM);
+
+    Set<ConcurrencyType> concurrencyTypes = new HashSet<>(concurrencyForStringSet.size());
+    try {
+      for (String concurrencyForString : concurrencyForStringSet) {
+        concurrencyTypes.add(ConcurrencyType.valueOf(concurrencyForString.toUpperCase()));
+      }
+    } catch (IllegalArgumentException iae) {
+      throw new UserRequestException(String.format("Unsupported concurrency types in %s. Supported: %s",
+                                                   concurrencyForStringSet, ConcurrencyType.cachedValues()));
+    }
+
+    return Collections.unmodifiableSet(concurrencyTypes);
+  }
+
   /**
    * Get self healing types for {@link #ENABLE_SELF_HEALING_FOR_PARAM} and {@link #DISABLE_SELF_HEALING_FOR_PARAM}.
    *
@@ -606,18 +622,49 @@ public class ParameterUtils {
     Set<AnomalyType> disableSelfHealingFor = anomalyTypes(request, false);
 
     // Sanity check: Ensure that the same anomaly is not specified in both configs at the same request.
-    Set<AnomalyType> intersection = new HashSet<>(enableSelfHealingFor);
-    intersection.retainAll(disableSelfHealingFor);
-    if (!intersection.isEmpty()) {
-      throw new UserRequestException(String.format("The same anomaly cannot be specified in both disable and"
-                                                   + " enable parameters. Intersection: %s.", intersection));
-    }
+    ensureDisjoint(enableSelfHealingFor, disableSelfHealingFor,
+                   "The same anomaly cannot be specified in both disable and enable parameters");
 
     Map<Boolean, Set<AnomalyType>> selfHealingFor = new HashMap<>(2);
     selfHealingFor.put(true, enableSelfHealingFor);
     selfHealingFor.put(false, disableSelfHealingFor);
 
     return selfHealingFor;
+  }
+
+  /**
+   * Get concurrency adjuster types for {@link #ENABLE_CONCURRENCY_ADJUSTER_FOR_PARAM} and {@link #DISABLE_CONCURRENCY_ADJUSTER_FOR_PARAM}.
+   *
+   * Sanity check ensures that the same concurrency type is not specified in both configs at the same request.
+   */
+  static Map<Boolean, Set<ConcurrencyType>> concurrencyAdjusterFor(HttpServletRequest request) throws UnsupportedEncodingException {
+    Set<ConcurrencyType> enableConcurrencyAdjusterFor = concurrencyTypes(request, true);
+    Set<ConcurrencyType> disableConcurrencyAdjusterFor = concurrencyTypes(request, false);
+
+    // Sanity check: Ensure that the same concurrency type is not specified in both configs at the same request.
+    ensureDisjoint(enableConcurrencyAdjusterFor, disableConcurrencyAdjusterFor,
+                   "The same concurrency type cannot be specified in both disable and enable parameters");
+
+    Map<Boolean, Set<ConcurrencyType>> concurrencyAdjusterFor = new HashMap<>(2);
+    concurrencyAdjusterFor.put(true, enableConcurrencyAdjusterFor);
+    concurrencyAdjusterFor.put(false, disableConcurrencyAdjusterFor);
+
+    return concurrencyAdjusterFor;
+  }
+
+  /**
+   * Compare and ensure two sets are disjoint as part of a user request.
+   * @param set1 The first set to compare.
+   * @param set2 The second set to compare.
+   * @param errorMessage The message to pass to {@link UserRequestException}if two sets are not disjoint.
+   * @param <E> The type of elements maintained by the sets.
+   */
+  static <E> void ensureDisjoint(Set<E> set1, Set<E> set2, String errorMessage) {
+    Set<E> intersection = new HashSet<>(set1);
+    intersection.retainAll(set2);
+    if (!intersection.isEmpty()) {
+      throw new UserRequestException(String.format("%s. Intersection: %s.", errorMessage, intersection));
+    }
   }
 
   static String urlDecode(String s) throws UnsupportedEncodingException {
@@ -866,11 +913,9 @@ public class ParameterUtils {
         throw new UserRequestException("Kafka assigner mode does not support explicitly specifying destination broker ids.");
       }
 
-      Set<Integer> intersection = new HashSet<>(parseParamToIntegerSet(request, BROKER_ID_PARAM));
-      intersection.retainAll(brokerIds);
-      if (!intersection.isEmpty()) {
-        throw new UserRequestException("No overlap is allowed between the specified destination broker ids and broker ids.");
-      }
+      // Sanity check: Ensure that BROKER_ID_PARAM and DESTINATION_BROKER_IDS_PARAM configs share nothing.
+      ensureDisjoint(parseParamToIntegerSet(request, BROKER_ID_PARAM), brokerIds,
+                     "No overlap is allowed between the specified destination broker ids and broker ids");
     }
 
     return brokerIds;
@@ -894,13 +939,10 @@ public class ParameterUtils {
     Set<Integer> approve = review(request, true);
     Set<Integer> discard = review(request, false);
 
-    // Sanity check: Ensure that the same
-    Set<Integer> intersection = new HashSet<>(approve);
-    intersection.retainAll(discard);
-    if (!intersection.isEmpty()) {
-      throw new UserRequestException(String.format("The same request cannot be specified in both approve and"
-                                                   + "discard parameters. Intersection: %s.", intersection));
-    } else if (approve.isEmpty() && discard.isEmpty()) {
+    // Sanity check: Ensure that the same request is not specified in both configs at the same request.
+    ensureDisjoint(approve, discard, "The same request cannot be specified in both approve and discard parameters");
+    // Sanity check: Ensure that at least one approve or discard parameter is specified.
+    if (approve.isEmpty() && discard.isEmpty()) {
       throw new UserRequestException(String.format("%s endpoint requires at least one of '%s' or '%s' parameter.",
                                                    REVIEW, APPROVE_PARAM, DISCARD_PARAM));
     }
