@@ -347,8 +347,7 @@ public class ExecutionTaskPlanner {
             int sourceBroker = task.proposal().oldLeader().brokerId();
             Set<Integer> destinationBrokers = task.proposal().replicasToAdd().stream().mapToInt(ReplicaPlacementInfo::brokerId)
                                                   .boxed().collect(Collectors.toSet());
-            if (brokerInvolved.contains(sourceBroker)
-                    || KafkaCruiseControlUtils.containsAny(brokerInvolved, destinationBrokers)) {
+            if (brokerInvolved.contains(sourceBroker)) {
               continue;
             }
             TopicPartition tp = task.proposal().topicPartition();
