@@ -34,6 +34,8 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.DENOMINATOR_FOR_MIN_VALID_WINDOWS_FOR_SELF_HEALING;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
 
 
 /**
@@ -124,7 +126,9 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
 
   @Override
   public ModelCompletenessRequirements clusterModelCompletenessRequirements() {
-    return new ModelCompletenessRequirements(Math.max(1, _numWindows / 2), _minMonitoredPartitionPercentage, false);
+    return new ModelCompletenessRequirements(Math.max(MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING,
+                                                      _numWindows / DENOMINATOR_FOR_MIN_VALID_WINDOWS_FOR_SELF_HEALING),
+                                             _minMonitoredPartitionPercentage, false);
   }
 
   @Override

@@ -33,7 +33,12 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  * A util class for goals.
  */
 public class GoalUtils {
+  // Intra-broker goals require a minimum number of valid windows to start self-healing. Goals that rely on topology or
+  // just the latest window, require at least MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING valid windows. Whereas, if goals
+  // rely on historical resource utilization, then they require at least Math.max(MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING,
+  // number-of-windows / DENOMINATOR_FOR_MIN_VALID_WINDOWS_FOR_SELF_HEALING) valid windows for starting self-healing.
   public static final int MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING = 1;
+  public static final int DENOMINATOR_FOR_MIN_VALID_WINDOWS_FOR_SELF_HEALING = 14;
   private static final double DEAD_BROKER_UTILIZATION = 1.0;
   private static final double DEAD_DISK_UTILIZATION = 1.0;
 

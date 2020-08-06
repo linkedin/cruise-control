@@ -40,6 +40,8 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.ActionType.INTER_BROKER_
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionType.LEADERSHIP_MOVEMENT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.utilizationPercentage;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.DENOMINATOR_FOR_MIN_VALID_WINDOWS_FOR_SELF_HEALING;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ResourceDistributionGoal.ChangeType.ADD;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ResourceDistributionGoal.ChangeType.REMOVE;
 
@@ -145,7 +147,9 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
 
   @Override
   public ModelCompletenessRequirements clusterModelCompletenessRequirements() {
-    return new ModelCompletenessRequirements(Math.max(1, _numWindows / 2), _minMonitoredPartitionPercentage, false);
+    return new ModelCompletenessRequirements(Math.max(MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING,
+                                                      _numWindows / DENOMINATOR_FOR_MIN_VALID_WINDOWS_FOR_SELF_HEALING),
+                                             _minMonitoredPartitionPercentage, false);
   }
 
   /**
