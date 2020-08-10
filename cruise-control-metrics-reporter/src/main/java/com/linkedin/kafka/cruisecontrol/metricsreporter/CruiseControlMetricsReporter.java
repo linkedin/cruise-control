@@ -26,7 +26,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import com.yammer.metrics.core.MetricsRegistry;
 import kafka.log.LogConfig;
+import kafka.metrics.KafkaYammerMetrics;
 import kafka.server.KafkaConfig;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -332,10 +335,30 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     });
   }
 
+  /**
+   * Starting with Kafka 2.6.0, a new class KafkaYammerMetrics provides the default Metrics Registry. The old default
+   * registry does not work with 2.6+. Therfore if the new class exists, we use it and if it doesn't exist we use the
+   * old one. More details can be found here: https://github.com/apache/kafka/blob/2.6.0/core/src/main/java/kafka/metrics/KafkaYammerMetrics.java
+   *
+   * Once CC supports only 2.6.0 and newer, we can clean this up and use only KafkaYammerMetrics all the time.
+   *
+   * @return  MetricsRegistry with Kafka metrics
+   */
+  private MetricsRegistry metricsRegistry()   {
+    try {
+      Class.forName("kafka.metrics.KafkaYammerMetrics");
+      LOG.info("KafkaYammerMetrics found and will be used.");
+      return KafkaYammerMetrics.defaultRegistry();
+    } catch (ClassNotFoundException e) {
+      LOG.info("KafkaYammerMetrics not found. Metrics will be used.");
+      return Metrics.defaultRegistry();
+    }
+  }
+
   private void reportYammerMetrics(long now) throws Exception {
     LOG.debug("Reporting yammer metrics.");
     YammerMetricProcessor.Context context = new YammerMetricProcessor.Context(this, now, _brokerId, _reportingIntervalMs);
-    for (Map.Entry<com.yammer.metrics.core.MetricName, Metric> entry : Metrics.defaultRegistry().allMetrics().entrySet()) {
+    for (Map.Entry<com.yammer.metrics.core.MetricName, Metric> entry : metricsRegistry().allMetrics().entrySet()) {
       LOG.trace("Processing yammer metric {}, scope = {}", entry.getKey(), entry.getKey().getScope());
       entry.getValue().processWith(_yammerMetricProcessor, entry.getKey(), context);
     }
