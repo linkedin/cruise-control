@@ -1016,6 +1016,7 @@ public class Executor {
         }
 
         // 3. Transfer leadership if possible.
+        boolean forceStoppedLeadershipMoves = false;
         if (_executorState.state() == INTRA_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS) {
           _executorState = ExecutorState.operationInProgress(LEADER_MOVEMENT_TASK_IN_PROGRESS,
                                                              _executionTaskManager.getExecutionTasksSummary(
@@ -1028,13 +1029,13 @@ public class Executor {
                                                              _recentlyDemotedBrokers,
                                                              _recentlyRemovedBrokers,
                                                              _isTriggeredByUserRequest);
-          moveLeaderships();
+          forceStoppedLeadershipMoves = moveLeaderships();
           updateOngoingExecutionState();
         }
 
-        // 4. Delete tasks from Zookeeper if needed.
-        if (_executorState.state() == STOPPING_EXECUTION && _stopSignal.get() == FORCE_STOP_EXECUTION) {
-          ExecutionUtils.deleteZNodesToStopExecution(_kafkaZkClient);
+        // 4. Delete leadership tasks from Zookeeper if needed.
+        if (_executorState.state() == STOPPING_EXECUTION && _stopSignal.get() == FORCE_STOP_EXECUTION && forceStoppedLeadershipMoves) {
+          ExecutionUtils.deleteZNodesToForceStopLeadershipMoves(_kafkaZkClient);
         }
       } catch (Throwable t) {
         LOG.error("Executor got exception during execution", t);
@@ -1260,7 +1261,12 @@ public class Executor {
       }
     }
 
-    private void moveLeaderships() {
+    /**
+     * Executes leadership movement tasks.
+     *
+     * @return {@code true} if the leadership movements have been force stopped, {@code false} otherwise.
+     */
+    private boolean moveLeaderships() {
       int numTotalLeadershipMovements = _executionTaskManager.numRemainingLeadershipMovements();
       LOG.info("Starting {} leadership movements.", numTotalLeadershipMovements);
       int numFinishedLeadershipMovements = 0;
@@ -1284,6 +1290,8 @@ public class Executor {
                  leadershipMovementTasksByState.get(DEAD),
                  leadershipMovementTasksByState.get(COMPLETED));
       }
+
+      return _stopSignal.get() == FORCE_STOP_EXECUTION;
     }
 
     private int moveLeadershipInBatch() {
@@ -1360,26 +1368,20 @@ public class Executor {
       do {
         Cluster cluster = getClusterForExecutionProgressCheck();
         List<ExecutionTask> deadInterBrokerReplicaTasks = new ArrayList<>();
-        List<ExecutionTask> gracefullyStoppedInterBrokerReplicaTasks = new ArrayList<>();
+        List<ExecutionTask> stoppedInterBrokerReplicaTasks = new ArrayList<>();
         List<ExecutionTask> slowTasksToReport = new ArrayList<>();
         boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > SLOW_TASK_ALERTING_BACKOFF_TIME_MS;
         for (ExecutionTask task : inExecutionTasks()) {
           TopicPartition tp = task.proposal().topicPartition();
           if (_stopSignal.get() != NO_STOP_EXECUTION) {
-            // If the execution is (1) force-stopped or (2) gracefully-stopped during an ongoing inter-broker replica reassignment,
-            // then the executor will not just silently wait for the completion of the current in-progress tasks. For the former
-            // case, the executor will mark all in progress tasks as dead, cleanup the relevant reassignment zNodes, and then bounce
-            // the controller (see ExecutionUtils#deleteZNodesToStopExecution). For the latter case, the executor will mark in
+            // If the execution is (1) force- or (2) gracefully-stopped during an ongoing inter-broker replica reassignment, the
+            // executor will not silently wait for the completion of the current in-progress tasks. Instead, it will mark in
             // progress tasks as dead, and rollback the ongoing reassignment of gracefully stopped inter-broker replica reassignment.
-            LOG.debug("Task {} is marked as dead to {}.", task,
-                      _stopSignal.get() == FORCE_STOP_EXECUTION ? "force-stop the execution with a controller bounce"
-                                                                : "gracefully-stop the execution with a rollback");
+            LOG.debug("Task {} is marked as dead to stop the execution with a rollback.", task);
             finishedTasks.add(task);
             stoppedTaskIds.add(task.executionId());
             _executionTaskManager.markTaskDead(task);
-            if (_stopSignal.get() == STOP_EXECUTION) {
-              gracefullyStoppedInterBrokerReplicaTasks.add(task);
-            }
+            stoppedInterBrokerReplicaTasks.add(task);
           } else if (cluster.partition(tp) == null || deletedUponSubmission.contains(tp)) {
             handleProgressWithTopicDeletion(task, finishedTasks, deletedTaskIds);
           } else if (ExecutionUtils.isInterBrokerReplicaActionDone(cluster, task)) {
@@ -1397,7 +1399,7 @@ public class Executor {
           }
         }
         sendSlowExecutionAlert(slowTasksToReport);
-        handleDeadInterBrokerReplicaTasks(deadInterBrokerReplicaTasks, gracefullyStoppedInterBrokerReplicaTasks);
+        handleDeadInterBrokerReplicaTasks(deadInterBrokerReplicaTasks, stoppedInterBrokerReplicaTasks);
         updateOngoingExecutionState();
 
         retry = !inExecutionTasks().isEmpty() && finishedTasks.isEmpty();
@@ -1408,8 +1410,7 @@ public class Executor {
       } while (retry);
 
       LOG.info("Finished tasks: {}.{}{}{}", finishedTasks,
-               stoppedTaskIds.isEmpty() ? "" : String.format(". [%sStopped: %s]", _stopSignal.get() == FORCE_STOP_EXECUTION
-                                                                                  ? "Force-" : "", stoppedTaskIds),
+               stoppedTaskIds.isEmpty() ? "" : String.format(". [Stopped: %s]", stoppedTaskIds),
                deletedTaskIds.isEmpty() ? "" : String.format(". [Deleted: %s]", deletedTaskIds),
                deadTaskIds.isEmpty() ? "" : String.format(". [Dead: %s]", deadTaskIds));
 
@@ -1450,7 +1451,7 @@ public class Executor {
           TopicPartition tp = task.proposal().topicPartition();
           if (_stopSignal.get() == FORCE_STOP_EXECUTION) {
             // If the execution is force-stopped, the executor will mark all in progress tasks as dead, cleanup the
-            // relevant reassignment zNodes, and then bounce the controller (see ExecutionUtils#deleteZNodesToStopExecution).
+            // relevant zNodes, and then bounce the controller (see ExecutionUtils#deleteZNodesToForceStopLeadershipMoves).
             LOG.debug("Task {} is marked as dead to force-stop the execution with a controller bounce.", task);
             finishedTasks.add(task);
             stoppedTaskIds.add(task.executionId());
@@ -1484,7 +1485,6 @@ public class Executor {
      */
     private void waitForIntraBrokerReplicaTasksToFinish() {
       List<ExecutionTask> finishedTasks = new ArrayList<>();
-      Set<Long> stoppedTaskIds = new HashSet<>();
       Set<Long> deletedTaskIds = new HashSet<>();
       Set<Long> deadTaskIds = new HashSet<>();
       do {
@@ -1499,14 +1499,7 @@ public class Executor {
         boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > SLOW_TASK_ALERTING_BACKOFF_TIME_MS;
         for (ExecutionTask task : inExecutionTasks()) {
           TopicPartition tp = task.proposal().topicPartition();
-          if (_stopSignal.get() == FORCE_STOP_EXECUTION) {
-            // If the execution is force-stopped, the executor will mark all in progress tasks as dead, cleanup the
-            // relevant reassignment zNodes, and then bounce the controller (see ExecutionUtils#deleteZNodesToStopExecution).
-            LOG.debug("Task {} is marked as dead to force-stop the execution with a controller bounce.", task);
-            finishedTasks.add(task);
-            stoppedTaskIds.add(task.executionId());
-            _executionTaskManager.markTaskDead(task);
-          } else if (cluster.partition(tp) == null) {
+          if (cluster.partition(tp) == null) {
             handleProgressWithTopicDeletion(task, finishedTasks, deletedTaskIds);
           } else if (ExecutionUtils.isIntraBrokerReplicaActionDone(logDirInfoByTask, task)) {
             handleProgressWithCompletion(task, finishedTasks);
@@ -1524,15 +1517,14 @@ public class Executor {
         updateOngoingExecutionState();
       } while (!inExecutionTasks().isEmpty() && finishedTasks.isEmpty());
 
-      LOG.info("Finished tasks: {}.{}{}{}", finishedTasks,
-               stoppedTaskIds.isEmpty() ? "" : String.format(". [Force-Stopped: %s]", stoppedTaskIds),
+      LOG.info("Finished tasks: {}.{}{}", finishedTasks,
                deletedTaskIds.isEmpty() ? "" : String.format(". [Deleted: %s]", deletedTaskIds),
                deadTaskIds.isEmpty() ? "" : String.format(". [Dead: %s]", deadTaskIds));
     }
 
     /**
-     * Attempts to cancel/rollback the ongoing reassignment of dead / gracefully stopped inter-broker replica actions
-     * and stops the execution if not already requested so by the user.
+     * Attempts to cancel/rollback the ongoing reassignment of dead / stopped inter-broker replica actions and stops the
+     * execution if not already requested so by the user.
      *
      * If all dead tasks are due to stopped inter-broker replica tasks, it waits until the rollback is completed.
      * Otherwise, it will not wait for the actual rollback to complete to avoid being blocked on a potentially stuck
@@ -1542,14 +1534,14 @@ public class Executor {
      *
      * @param deadInterBrokerReplicaTasks Inter-broker replica tasks that are expected to be marked as dead due to dead
      *                                    destination brokers.
-     * @param gracefullyStoppedInterBrokerReplicaTasks Inter-broker replica tasks that are expected to be marked as dead
-     *                                                due to being gracefully stopped by user.
+     * @param stoppedInterBrokerReplicaTasks Inter-broker replica tasks that are expected to be marked as dead due to
+     *                                       being stopped by user.
      */
     private void handleDeadInterBrokerReplicaTasks(List<ExecutionTask> deadInterBrokerReplicaTasks,
-                                                   List<ExecutionTask> gracefullyStoppedInterBrokerReplicaTasks)
+                                                   List<ExecutionTask> stoppedInterBrokerReplicaTasks)
         throws InterruptedException, ExecutionException, TimeoutException {
       List<ExecutionTask> tasksToCancel = new ArrayList<>(deadInterBrokerReplicaTasks);
-      tasksToCancel.addAll(gracefullyStoppedInterBrokerReplicaTasks);
+      tasksToCancel.addAll(stoppedInterBrokerReplicaTasks);
 
       if (!tasksToCancel.isEmpty()) {
         // Sanity check to ensure that all tasks are marked as dead.

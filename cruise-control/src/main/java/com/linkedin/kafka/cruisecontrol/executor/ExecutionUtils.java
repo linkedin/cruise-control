@@ -362,19 +362,16 @@ public final class ExecutionUtils {
   }
 
   /**
-   * Deletes zNodes for ongoing replica and leadership movement tasks. Then deletes controller zNode to trigger a
-   * controller re-election for the cancellation to take effect.
+   * Deletes zNode for ongoing leadership movement tasks. Then deletes controller zNode to trigger a controller
+   * re-election for the cancellation to take effect.
    *
-   * This operation has side-effects that may leave partitions with extra replication factor and changes the controller.
-   * Hence, it will be deprecated in Kafka 2.4+, which introduced PartitionReassignment Kafka API to enable graceful and
-   * instant mechanism to cancel ongoing replica reassignments.
+   * This operation has side-effects -- i.e. changes the controller. Note that, the executor adopted PartitionReassignment
+   * Kafka API for graceful and instant mechanism to cancel ongoing replica reassignments. Hence, no such side-effects
+   * would be incurred to stop ongoing replica reassignments.
    *
    * @param kafkaZkClient KafkaZkClient to use for deleting the relevant zNodes to force stop the execution (if any).
    */
-  public static void deleteZNodesToStopExecution(KafkaZkClient kafkaZkClient) {
-    // Delete zNode of ongoing replica movement tasks.
-    LOG.info("Deleting zNode for ongoing replica movements {}.", kafkaZkClient.getPartitionReassignment());
-    kafkaZkClient.deletePartitionReassignment(ZkVersion.MatchAnyVersion());
+  public static void deleteZNodesToForceStopLeadershipMoves(KafkaZkClient kafkaZkClient) {
     // delete zNode of ongoing leadership movement tasks.
     LOG.info("Deleting zNode for ongoing leadership changes {}.", kafkaZkClient.getPreferredReplicaElection());
     kafkaZkClient.deletePreferredReplicaElection(ZkVersion.MatchAnyVersion());
