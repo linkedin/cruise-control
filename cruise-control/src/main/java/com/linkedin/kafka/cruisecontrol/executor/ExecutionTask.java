@@ -11,11 +11,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
-
-import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.*;
-
 
 /**
  * A class that wraps the execution information of a balancing proposal
@@ -52,25 +50,26 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   private static final String PROPOSAL = "proposal";
   @JsonResponseField
   private static final String BROKER_ID = "brokerId";
-  private static final Map<State, Set<State>> VALID_TRANSFER = new HashMap<>();
+  private static final Map<ExecutionTaskState, Set<ExecutionTaskState>> VALID_TRANSFER = new HashMap<>();
   private final TaskType _type;
   private final long _executionId;
   private final ExecutionProposal _proposal;
   // _brokerId is only relevant for intra-broker replica action, otherwise it will be -1.
   private final int _brokerId;
-  private State _state;
+  private ExecutionTaskState _state;
   private long _startTimeMs;
   private long _endTimeMs;
   private long _alertTimeMs;
   private boolean _slowExecutionReported;
 
   static {
-    VALID_TRANSFER.put(PENDING, new HashSet<>(Collections.singleton(IN_PROGRESS)));
-    VALID_TRANSFER.put(IN_PROGRESS, new HashSet<>(Arrays.asList(ABORTING, DEAD, COMPLETED)));
-    VALID_TRANSFER.put(ABORTING, new HashSet<>(Arrays.asList(ABORTED, DEAD)));
-    VALID_TRANSFER.put(COMPLETED, Collections.emptySet());
-    VALID_TRANSFER.put(DEAD, Collections.emptySet());
-    VALID_TRANSFER.put(ABORTED, Collections.emptySet());
+    VALID_TRANSFER.put(ExecutionTaskState.PENDING, new HashSet<>(Collections.singleton(ExecutionTaskState.IN_PROGRESS)));
+    VALID_TRANSFER.put(ExecutionTaskState.IN_PROGRESS,
+            new HashSet<>(Arrays.asList(ExecutionTaskState.ABORTING, ExecutionTaskState.DEAD, ExecutionTaskState.COMPLETED)));
+    VALID_TRANSFER.put(ExecutionTaskState.ABORTING, new HashSet<>(Arrays.asList(ExecutionTaskState.ABORTED, ExecutionTaskState.DEAD)));
+    VALID_TRANSFER.put(ExecutionTaskState.COMPLETED, Collections.emptySet());
+    VALID_TRANSFER.put(ExecutionTaskState.DEAD, Collections.emptySet());
+    VALID_TRANSFER.put(ExecutionTaskState.ABORTED, Collections.emptySet());
   }
 
   /**
@@ -94,7 +93,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
     _executionId = executionId;
     _proposal = proposal;
     _brokerId =  brokerId == null ? -1 : brokerId;
-    _state = State.PENDING;
+    _state = ExecutionTaskState.PENDING;
     _type = type;
     _startTimeMs = -1L;
     _endTimeMs = -1L;
@@ -111,14 +110,14 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
    * @param targetState the state to transfer to.
    * @return True if the transfer is valid, false otherwise.
    */
-  public boolean canTransferToState(State targetState) {
+  public boolean canTransferToState(ExecutionTaskState targetState) {
     return VALID_TRANSFER.get(_state).contains(targetState);
   }
 
   /**
    * @return The valid target state to transfer to.
    */
-  public Set<State> validTargetState() {
+  public Set<ExecutionTaskState> validTargetState() {
     return Collections.unmodifiableSet(VALID_TRANSFER.get(_state));
   }
 
@@ -146,7 +145,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   /**
    * @return The state of the task.
    */
-  public State state() {
+  public ExecutionTaskState state() {
     return this._state;
   }
 
@@ -177,8 +176,8 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
    * @param now Current system time.
    */
   public void inProgress(long now) {
-    ensureValidTransfer(IN_PROGRESS);
-    this._state = IN_PROGRESS;
+    ensureValidTransfer(ExecutionTaskState.IN_PROGRESS);
+    this._state = ExecutionTaskState.IN_PROGRESS;
     _startTimeMs = now;
     _alertTimeMs += now;
   }
@@ -189,8 +188,8 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
    * @param now Current system time.
    */
   public void kill(long now) {
-    ensureValidTransfer(DEAD);
-    this._state = DEAD;
+    ensureValidTransfer(ExecutionTaskState.DEAD);
+    this._state = ExecutionTaskState.DEAD;
     _endTimeMs = now;
   }
 
@@ -198,8 +197,8 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
    * Abort the task.
    */
   public void abort() {
-    ensureValidTransfer(ABORTING);
-    this._state = ABORTING;
+    ensureValidTransfer(ExecutionTaskState.ABORTING);
+    this._state = ExecutionTaskState.ABORTING;
   }
 
   /**
@@ -208,8 +207,8 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
    * @param now Current system time.
    */
   public void aborted(long now) {
-    ensureValidTransfer(ABORTED);
-    this._state = ABORTED;
+    ensureValidTransfer(ExecutionTaskState.ABORTED);
+    this._state = ExecutionTaskState.ABORTED;
     _endTimeMs = now;
   }
 
@@ -219,8 +218,8 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
    * @param now Current system time.
    */
   public void completed(long now) {
-    ensureValidTransfer(COMPLETED);
-    this._state = COMPLETED;
+    ensureValidTransfer(ExecutionTaskState.COMPLETED);
+    this._state = ExecutionTaskState.COMPLETED;
     _endTimeMs = now;
   }
 
@@ -234,7 +233,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
    * @param tasksToReport A list of tasks for which a slow execution alert will be sent out.
    */
   public void maybeReportExecutionTooSlow(long now, List<ExecutionTask> tasksToReport) {
-    if (!_slowExecutionReported && (_state == IN_PROGRESS || _state == ABORTING) && now > _alertTimeMs) {
+    if (!_slowExecutionReported && (_state == ExecutionTaskState.IN_PROGRESS || _state == ExecutionTaskState.ABORTING) && now > _alertTimeMs) {
       tasksToReport.add(this);
       // Mute the task to prevent sending the same alert repeatedly.
       _slowExecutionReported = true;
@@ -266,7 +265,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
     return executionStatsMap;
   }
 
-  private void ensureValidTransfer(State targetState) {
+  private void ensureValidTransfer(ExecutionTaskState targetState) {
     if (!canTransferToState(targetState)) {
       throw new IllegalStateException("Cannot mark a task in " + _state + " to" + targetState + "state. The "
                                           + "valid target state are " + validTargetState());
@@ -283,20 +282,6 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
      * @return enumerated values in the same order as values()
      */
     public static List<TaskType> cachedValues() {
-      return CACHED_VALUES;
-    }
-  }
-
-  public enum State {
-    PENDING, IN_PROGRESS, ABORTING, ABORTED, DEAD, COMPLETED;
-
-    private static final List<State> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
-
-    /**
-     * Use this instead of values() because values() creates a new array each time.
-     * @return enumerated values in the same order as values()
-     */
-    public static List<State> cachedValues() {
       return CACHED_VALUES;
     }
   }
