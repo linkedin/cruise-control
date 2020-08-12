@@ -22,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType;
-import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.ExecutionTasksSummary;
 /**
  * The class that helps track the execution status for the balancing.
@@ -261,7 +260,7 @@ public class ExecutionTaskManager {
    */
   public synchronized void markTasksInProgress(List<ExecutionTask> tasks) {
     for (ExecutionTask task : tasks) {
-      _executionTaskTracker.markTaskState(task, State.IN_PROGRESS);
+      _executionTaskTracker.markTaskState(task, ExecutionTaskState.IN_PROGRESS);
       switch (task.type()) {
         case INTER_BROKER_REPLICA_ACTION:
           _inProgressPartitionsForInterBrokerMovement.add(task.proposal().topicPartition());
@@ -287,11 +286,11 @@ public class ExecutionTaskManager {
    * Aborting execution will yield Aborted completion.
    */
   public synchronized void markTaskDone(ExecutionTask task) {
-    if (task.state() == State.IN_PROGRESS) {
-      _executionTaskTracker.markTaskState(task, State.COMPLETED);
+    if (task.state() == ExecutionTaskState.IN_PROGRESS) {
+      _executionTaskTracker.markTaskState(task, ExecutionTaskState.COMPLETED);
       completeTask(task);
-    } else if (task.state() == State.ABORTING) {
-      _executionTaskTracker.markTaskState(task, State.ABORTED);
+    } else if (task.state() == ExecutionTaskState.ABORTING) {
+      _executionTaskTracker.markTaskState(task, ExecutionTaskState.ABORTED);
       completeTask(task);
     }
   }
@@ -300,8 +299,8 @@ public class ExecutionTaskManager {
    * Mark an in-progress task as aborting (1) if an error is encountered and (2) the rollback is possible.
    */
   public synchronized void markTaskAborting(ExecutionTask task) {
-    if (task.state() == State.IN_PROGRESS) {
-      _executionTaskTracker.markTaskState(task, State.ABORTING);
+    if (task.state() == ExecutionTaskState.IN_PROGRESS) {
+      _executionTaskTracker.markTaskState(task, ExecutionTaskState.ABORTING);
     }
   }
 
@@ -309,8 +308,8 @@ public class ExecutionTaskManager {
    * Mark an in-progress task as aborting (1) if an error is encountered and (2) the rollback is not possible.
    */
   public synchronized void markTaskDead(ExecutionTask task) {
-    if (task.state() != State.DEAD) {
-      _executionTaskTracker.markTaskState(task, State.DEAD);
+    if (task.state() != ExecutionTaskState.DEAD) {
+      _executionTaskTracker.markTaskState(task, ExecutionTaskState.DEAD);
       completeTask(task);
     }
   }
@@ -369,7 +368,7 @@ public class ExecutionTaskManager {
   }
 
   /**
-   * @return The tasks that are {@link State#IN_PROGRESS} or {@link State#ABORTING} for all task types.
+   * @return The tasks that are {@link ExecutionTaskState#IN_PROGRESS} or {@link ExecutionTaskState#ABORTING} for all task types.
    */
   public synchronized Set<ExecutionTask> inExecutionTasks() {
     return inExecutionTasks(TaskType.cachedValues());
@@ -377,7 +376,7 @@ public class ExecutionTaskManager {
 
   /**
    * @param types Task type.
-   * @return The tasks that are {@link State#IN_PROGRESS} or {@link State#ABORTING} for the given task type.
+   * @return The tasks that are {@link ExecutionTaskState#IN_PROGRESS} or {@link ExecutionTaskState#ABORTING} for the given task type.
    */
   public synchronized Set<ExecutionTask> inExecutionTasks(Collection<TaskType> types) {
     return _executionTaskTracker.inExecutionTasks(types);

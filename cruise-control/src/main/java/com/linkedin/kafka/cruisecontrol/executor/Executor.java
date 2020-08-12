@@ -56,7 +56,6 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateStr
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION_LOGGER;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.TIME_ZONE;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.DATE_FORMAT;
-import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.ExecutionTasksSummary;
@@ -219,7 +218,7 @@ public class Executor {
   }
 
   /**
-   * @return The tasks that are {@link ExecutionTask.State#IN_PROGRESS} or {@link ExecutionTask.State#ABORTING} for all task types.
+   * @return The tasks that are {@link ExecutionTaskState#IN_PROGRESS} or {@link ExecutionTaskState#ABORTING} for all task types.
    */
   public Set<ExecutionTask> inExecutionTasks() {
     return _executionTaskManager.inExecutionTasks();
@@ -1185,7 +1184,8 @@ public class Executor {
                  finishedDataMovementInMB, totalDataToMoveInMB,
                  totalDataToMoveInMB == 0 ? 100 : String.format("%.2f", finishedDataMovementInMB * UNIT_INTERVAL_TO_PERCENTAGE
                                                                         / totalDataToMoveInMB));
-        throttleHelper.clearThrottles(completedTasks, tasksToExecute.stream().filter(t -> t.state() == IN_PROGRESS).collect(Collectors.toList()));
+        throttleHelper.clearThrottles(completedTasks,
+                tasksToExecute.stream().filter(t -> t.state() == ExecutionTaskState.IN_PROGRESS).collect(Collectors.toList()));
       }
       // After the partition movement finishes, wait for the controller to clean the reassignment zkPath. This also
       // ensures a clean stop when the execution is stopped in the middle.
@@ -1201,19 +1201,19 @@ public class Executor {
         LOG.info("Inter-broker partition movements finished.");
       } else {
         ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary(Collections.emptySet());
-        Map<ExecutionTask.State, Integer> partitionMovementTasksByState = executionTasksSummary.taskStat().get(INTER_BROKER_REPLICA_ACTION);
+        Map<ExecutionTaskState, Integer> partitionMovementTasksByState = executionTasksSummary.taskStat().get(INTER_BROKER_REPLICA_ACTION);
         LOG.info("Inter-broker partition movements stopped. For inter-broker partition movements {} tasks cancelled, {} tasks in-progress, "
                  + "{} tasks aborting, {} tasks aborted, {} tasks dead, {} tasks completed, {} remaining data to move; for intra-broker "
                  + "partition movement {} tasks cancelled; for leadership movements {} task cancelled.",
-                 partitionMovementTasksByState.get(PENDING),
-                 partitionMovementTasksByState.get(IN_PROGRESS),
-                 partitionMovementTasksByState.get(ABORTING),
-                 partitionMovementTasksByState.get(ABORTED),
-                 partitionMovementTasksByState.get(DEAD),
-                 partitionMovementTasksByState.get(COMPLETED),
+                 partitionMovementTasksByState.get(ExecutionTaskState.PENDING),
+                 partitionMovementTasksByState.get(ExecutionTaskState.IN_PROGRESS),
+                 partitionMovementTasksByState.get(ExecutionTaskState.ABORTING),
+                 partitionMovementTasksByState.get(ExecutionTaskState.ABORTED),
+                 partitionMovementTasksByState.get(ExecutionTaskState.DEAD),
+                 partitionMovementTasksByState.get(ExecutionTaskState.COMPLETED),
                  executionTasksSummary.remainingInterBrokerDataToMoveInMB(),
-                 executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION).get(PENDING),
-                 executionTasksSummary.taskStat().get(LEADER_ACTION).get(PENDING));
+                 executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION).get(ExecutionTaskState.PENDING),
+                 executionTasksSummary.taskStat().get(LEADER_ACTION).get(ExecutionTaskState.PENDING));
       }
     }
 
@@ -1257,18 +1257,18 @@ public class Executor {
         LOG.info("Intra-broker partition movements finished.");
       } else if (_stopSignal.get() != NO_STOP_EXECUTION) {
         ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary(Collections.emptySet());
-        Map<ExecutionTask.State, Integer> partitionMovementTasksByState = executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION);
+        Map<ExecutionTaskState, Integer> partitionMovementTasksByState = executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION);
         LOG.info("Intra-broker partition movements stopped. For intra-broker partition movements {} tasks cancelled, {} tasks in-progress, "
                  + "{} tasks aborting, {} tasks aborted, {} tasks dead, {} tasks completed, {} remaining data to move; for leadership "
                  + "movements {} task cancelled.",
-                 partitionMovementTasksByState.get(PENDING),
-                 partitionMovementTasksByState.get(IN_PROGRESS),
-                 partitionMovementTasksByState.get(ABORTING),
-                 partitionMovementTasksByState.get(ABORTED),
-                 partitionMovementTasksByState.get(DEAD),
-                 partitionMovementTasksByState.get(COMPLETED),
+                 partitionMovementTasksByState.get(ExecutionTaskState.PENDING),
+                 partitionMovementTasksByState.get(ExecutionTaskState.IN_PROGRESS),
+                 partitionMovementTasksByState.get(ExecutionTaskState.ABORTING),
+                 partitionMovementTasksByState.get(ExecutionTaskState.ABORTED),
+                 partitionMovementTasksByState.get(ExecutionTaskState.DEAD),
+                 partitionMovementTasksByState.get(ExecutionTaskState.COMPLETED),
                  executionTasksSummary.remainingIntraBrokerDataToMoveInMB(),
-                 executionTasksSummary.taskStat().get(LEADER_ACTION).get(PENDING));
+                 executionTasksSummary.taskStat().get(LEADER_ACTION).get(ExecutionTaskState.PENDING));
       }
     }
 
@@ -1285,16 +1285,16 @@ public class Executor {
       if (inExecutionTasks().isEmpty()) {
         LOG.info("Leadership movements finished.");
       } else if (_stopSignal.get() != NO_STOP_EXECUTION) {
-        Map<ExecutionTask.State, Integer> leadershipMovementTasksByState =
+        Map<ExecutionTaskState, Integer> leadershipMovementTasksByState =
             _executionTaskManager.getExecutionTasksSummary(Collections.emptySet()).taskStat().get(LEADER_ACTION);
         LOG.info("Leadership movements stopped. {} tasks cancelled, {} tasks in-progress, {} tasks aborting, {} tasks aborted, "
                  + "{} tasks dead, {} tasks completed.",
-                 leadershipMovementTasksByState.get(PENDING),
-                 leadershipMovementTasksByState.get(IN_PROGRESS),
-                 leadershipMovementTasksByState.get(ABORTING),
-                 leadershipMovementTasksByState.get(ABORTED),
-                 leadershipMovementTasksByState.get(DEAD),
-                 leadershipMovementTasksByState.get(COMPLETED));
+                 leadershipMovementTasksByState.get(ExecutionTaskState.PENDING),
+                 leadershipMovementTasksByState.get(ExecutionTaskState.IN_PROGRESS),
+                 leadershipMovementTasksByState.get(ExecutionTaskState.ABORTING),
+                 leadershipMovementTasksByState.get(ExecutionTaskState.ABORTED),
+                 leadershipMovementTasksByState.get(ExecutionTaskState.DEAD),
+                 leadershipMovementTasksByState.get(ExecutionTaskState.COMPLETED));
       }
     }
 
@@ -1439,8 +1439,8 @@ public class Executor {
 
       if (!tasksToCancel.isEmpty()) {
         // Sanity check to ensure that all tasks are marked as dead.
-        tasksToCancel.stream().filter(task -> task.state() != DEAD).forEach(task -> {
-          throw new IllegalArgumentException(String.format("Unexpected state for task %s (expected: %s).", task, DEAD));
+        tasksToCancel.stream().filter(task -> task.state() != ExecutionTaskState.DEAD).forEach(task -> {
+          throw new IllegalArgumentException(String.format("Unexpected state for task %s (expected: %s).", task, ExecutionTaskState.DEAD.toString()));
         });
 
         // Cancel/rollback reassignment of dead inter-broker replica tasks.
@@ -1508,7 +1508,7 @@ public class Executor {
                                         ExecutionTask task,
                                         AlterPartitionReassignmentsResult result) {
       // Only check tasks with IN_PROGRESS or ABORTING state.
-      if (task.state() == IN_PROGRESS || task.state() == ABORTING) {
+      if (task.state() == ExecutionTaskState.IN_PROGRESS || task.state() == ExecutionTaskState.ABORTING) {
         switch (task.type()) {
           case LEADER_ACTION:
             if (cluster.nodeById(task.proposal().newLeader().brokerId()) == null) {
