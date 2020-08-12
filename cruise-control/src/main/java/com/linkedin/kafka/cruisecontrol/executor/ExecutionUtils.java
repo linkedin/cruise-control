@@ -36,6 +36,8 @@ public final class ExecutionUtils {
   private static final Logger LOG = LoggerFactory.getLogger(ExecutionUtils.class);
   public static final long METADATA_REFRESH_BACKOFF = 100L;
   public static final long METADATA_EXPIRY_MS = Long.MAX_VALUE;
+  // A special timestamp to indicate that a broker is a permanent part of recently removed or demoted broker set.
+  public static final long PERMANENT_TIMESTAMP = 0L;
   public static final String EXECUTION_STARTED = "execution-started";
   public static final String KAFKA_ASSIGNER_MODE = "kafka_assigner";
   public static final String EXECUTION_STOPPED = "execution-stopped";

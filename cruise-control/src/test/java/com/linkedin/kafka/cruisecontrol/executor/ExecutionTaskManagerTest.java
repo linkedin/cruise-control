@@ -22,7 +22,6 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.SystemTime;
 import org.junit.Test;
 
-import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.*;
 import static org.junit.Assert.assertEquals;
 
 
@@ -48,20 +47,20 @@ public class ExecutionTaskManagerTest {
     ExecutionTaskManager taskManager = new ExecutionTaskManager(null, new MetricRegistry(), new SystemTime(),
             new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
 
-    List<List<ExecutionTask.State>> testSequences = new ArrayList<>();
+    List<List<ExecutionTaskState>> testSequences = new ArrayList<>();
     // Completed successfully.
-    testSequences.add(Arrays.asList(IN_PROGRESS, COMPLETED));
+    testSequences.add(Arrays.asList(ExecutionTaskState.IN_PROGRESS, ExecutionTaskState.COMPLETED));
     // Rollback succeeded.
-    testSequences.add(Arrays.asList(IN_PROGRESS, ABORTING, ABORTED));
+    testSequences.add(Arrays.asList(ExecutionTaskState.IN_PROGRESS, ExecutionTaskState.ABORTING, ExecutionTaskState.ABORTED));
     // Rollback failed.
-    testSequences.add(Arrays.asList(IN_PROGRESS, ABORTING, DEAD));
+    testSequences.add(Arrays.asList(ExecutionTaskState.IN_PROGRESS, ExecutionTaskState.ABORTING, ExecutionTaskState.DEAD));
     // Cannot rollback.
-    testSequences.add(Arrays.asList(IN_PROGRESS, DEAD));
+    testSequences.add(Arrays.asList(ExecutionTaskState.IN_PROGRESS, ExecutionTaskState.DEAD));
 
     ReplicaPlacementInfo r0 = new ReplicaPlacementInfo(0);
     ReplicaPlacementInfo r1 = new ReplicaPlacementInfo(1);
     ReplicaPlacementInfo r2 = new ReplicaPlacementInfo(2);
-    for (List<ExecutionTask.State> sequence : testSequences) {
+    for (List<ExecutionTaskState> sequence : testSequences) {
       taskManager.clear();
       // Make sure the proposal does not involve leader movement.
       ExecutionProposal proposal =
@@ -82,26 +81,26 @@ public class ExecutionTaskManagerTest {
     }
   }
 
-  private void verifyStateChangeSequence(List<ExecutionTask.State> stateSequence,
+  private void verifyStateChangeSequence(List<ExecutionTaskState> stateSequence,
                                          ExecutionTask task,
                                          ExecutionTaskManager taskManager) {
     stateSequence.forEach(s -> changeTaskState(s, task, taskManager));
   }
 
-  private void changeTaskState(ExecutionTask.State state, ExecutionTask task, ExecutionTaskManager taskManager) {
+  private void changeTaskState(ExecutionTaskState state, ExecutionTask task, ExecutionTaskManager taskManager) {
     ExecutionTaskTracker.ExecutionTasksSummary executionTasksSummary;
-    Map<ExecutionTask.State, Integer> taskStat;
+    Map<ExecutionTaskState, Integer> taskStat;
     switch (state) {
       case IN_PROGRESS:
         taskManager.markTasksInProgress(Collections.singletonList(task));
         executionTasksSummary = taskManager.getExecutionTasksSummary(Collections.emptySet());
         taskStat = executionTasksSummary.taskStat().get(ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION);
-        assertEquals(0, (int) taskStat.get(PENDING));
-        assertEquals(1, (int) taskStat.get(IN_PROGRESS));
-        assertEquals(0, (int) taskStat.get(ABORTING));
-        assertEquals(0, (int) taskStat.get(ABORTED));
-        assertEquals(0, (int) taskStat.get(COMPLETED));
-        assertEquals(0, (int) taskStat.get(DEAD));
+        assertEquals(0, (int) taskStat.get(ExecutionTaskState.PENDING));
+        assertEquals(1, (int) taskStat.get(ExecutionTaskState.IN_PROGRESS));
+        assertEquals(0, (int) taskStat.get(ExecutionTaskState.ABORTING));
+        assertEquals(0, (int) taskStat.get(ExecutionTaskState.ABORTED));
+        assertEquals(0, (int) taskStat.get(ExecutionTaskState.COMPLETED));
+        assertEquals(0, (int) taskStat.get(ExecutionTaskState.DEAD));
         assertEquals(0, executionTasksSummary.remainingInterBrokerDataToMoveInMB());
         assertEquals(10, executionTasksSummary.inExecutionInterBrokerDataMovementInMB());
         assertEquals(0, executionTasksSummary.finishedInterBrokerDataMovementInMB());
@@ -110,12 +109,12 @@ public class ExecutionTaskManagerTest {
         taskManager.markTaskAborting(task);
         executionTasksSummary = taskManager.getExecutionTasksSummary(Collections.emptySet());
         taskStat = executionTasksSummary.taskStat().get(ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION);
-        assertEquals(0, (int) taskStat.get(PENDING));
-        assertEquals(0, (int) taskStat.get(IN_PROGRESS));
-        assertEquals(1, (int) taskStat.get(ABORTING));
-        assertEquals(0, (int) taskStat.get(ABORTED));
-        assertEquals(0, (int) taskStat.get(COMPLETED));
-        assertEquals(0, (int) taskStat.get(DEAD));
+        assertEquals(0, (int) taskStat.get(ExecutionTaskState.PENDING));
+        assertEquals(0, (int) taskStat.get(ExecutionTaskState.IN_PROGRESS));
+        assertEquals(1, (int) taskStat.get(ExecutionTaskState.ABORTING));
+        assertEquals(0, (int) taskStat.get(ExecutionTaskState.ABORTED));
+        assertEquals(0, (int) taskStat.get(ExecutionTaskState.COMPLETED));
+        assertEquals(0, (int) taskStat.get(ExecutionTaskState.DEAD));
         assertEquals(0, executionTasksSummary.remainingInterBrokerDataToMoveInMB());
         assertEquals(10, executionTasksSummary.inExecutionInterBrokerDataMovementInMB());
         assertEquals(0, executionTasksSummary.finishedInterBrokerDataMovementInMB());
@@ -124,28 +123,28 @@ public class ExecutionTaskManagerTest {
         taskManager.markTaskDead(task);
         executionTasksSummary = taskManager.getExecutionTasksSummary(Collections.emptySet());
         taskStat = executionTasksSummary.taskStat().get(ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION);
-        assertEquals(0, (int) taskStat.get(PENDING));
-        assertEquals(0, (int) taskStat.get(IN_PROGRESS));
-        assertEquals(0, (int) taskStat.get(ABORTING));
-        assertEquals(0, (int) taskStat.get(ABORTED));
-        assertEquals(0, (int) taskStat.get(COMPLETED));
-        assertEquals(1, (int) taskStat.get(DEAD));
+        assertEquals(0, (int) taskStat.get(ExecutionTaskState.PENDING));
+        assertEquals(0, (int) taskStat.get(ExecutionTaskState.IN_PROGRESS));
+        assertEquals(0, (int) taskStat.get(ExecutionTaskState.ABORTING));
+        assertEquals(0, (int) taskStat.get(ExecutionTaskState.ABORTED));
+        assertEquals(0, (int) taskStat.get(ExecutionTaskState.COMPLETED));
+        assertEquals(1, (int) taskStat.get(ExecutionTaskState.DEAD));
         assertEquals(0, executionTasksSummary.remainingInterBrokerDataToMoveInMB());
         assertEquals(0, executionTasksSummary.inExecutionInterBrokerDataMovementInMB());
         assertEquals(10, executionTasksSummary.finishedInterBrokerDataMovementInMB());
         break;
       case ABORTED:
       case COMPLETED:
-        ExecutionTask.State origState = task.state();
+        ExecutionTaskState origState = task.state();
         taskManager.markTaskDone(task);
         executionTasksSummary = taskManager.getExecutionTasksSummary(Collections.emptySet());
         taskStat = executionTasksSummary.taskStat().get(ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION);
-        assertEquals(0, (int) taskStat.get(PENDING));
-        assertEquals(0, (int) taskStat.get(IN_PROGRESS));
-        assertEquals(0, (int) taskStat.get(ABORTING));
-        assertEquals(origState == ExecutionTask.State.ABORTING ? 1 : 0, (int) taskStat.get(ABORTED));
-        assertEquals(origState == ExecutionTask.State.ABORTING ? 0 : 1, (int) taskStat.get(COMPLETED));
-        assertEquals(0, (int) taskStat.get(DEAD));
+        assertEquals(0, (int) taskStat.get(ExecutionTaskState.PENDING));
+        assertEquals(0, (int) taskStat.get(ExecutionTaskState.IN_PROGRESS));
+        assertEquals(0, (int) taskStat.get(ExecutionTaskState.ABORTING));
+        assertEquals(origState == ExecutionTaskState.ABORTING ? 1 : 0, (int) taskStat.get(ExecutionTaskState.ABORTED));
+        assertEquals(origState == ExecutionTaskState.ABORTING ? 0 : 1, (int) taskStat.get(ExecutionTaskState.COMPLETED));
+        assertEquals(0, (int) taskStat.get(ExecutionTaskState.DEAD));
         assertEquals(0, executionTasksSummary.remainingInterBrokerDataToMoveInMB());
         assertEquals(0, executionTasksSummary.inExecutionInterBrokerDataMovementInMB());
         assertEquals(10, executionTasksSummary.finishedInterBrokerDataMovementInMB());
