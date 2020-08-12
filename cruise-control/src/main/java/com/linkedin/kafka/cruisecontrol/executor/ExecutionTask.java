@@ -11,7 +11,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 

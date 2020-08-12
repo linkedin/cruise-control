@@ -10,8 +10,6 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricsUtils;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.TopicMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.YammerMetricProcessor;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.Metric;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -26,11 +24,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
-import com.yammer.metrics.core.MetricsRegistry;
 import kafka.log.LogConfig;
-import kafka.metrics.KafkaYammerMetrics;
 import kafka.server.KafkaConfig;
+import kafka.metrics.KafkaYammerMetrics;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AlterConfigOp;
@@ -56,6 +52,9 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.common.utils.KafkaThread;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.Metric;
+import com.yammer.metrics.core.MetricsRegistry;
 
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtils.maybeUpdateConfig;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtils.CLIENT_REQUEST_TIMEOUT_MS;
@@ -79,6 +78,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   protected static final String CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY = "delete";
   protected static final Duration PRODUCER_CLOSE_TIMEOUT = Duration.ofSeconds(5);
   private boolean _kubernetesMode;
+  private MetricsRegistry _metricsRegistry;
 
   @Override
   public void init(List<KafkaMetric> metrics) {
@@ -89,6 +89,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     _metricsReporterRunner = new KafkaThread("CruiseControlMetricsReporterRunner", this, true);
     _yammerMetricProcessor = new YammerMetricProcessor();
     _metricsReporterRunner.start();
+    _metricsRegistry = metricsRegistry();
   }
 
   @Override
@@ -168,6 +169,26 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       } catch (CruiseControlMetricsReporterException e) {
         LOG.warn("Cruise Control metrics topic auto creation was disabled", e);
       }
+    }
+  }
+
+  /**
+   * Starting with Kafka 2.6.0, a new class {@link KafkaYammerMetrics} provides the default Metrics Registry. The old default
+   * registry does not work with 2.6+. Therefore if the new class exists, we use it and if it doesn't exist we use the
+   * old one.
+   *
+   * Once CC supports only 2.6.0 and newer, we can clean this up and use only KafkaYammerMetrics all the time.
+   *
+   * @return  MetricsRegistry with Kafka metrics
+   */
+  private static MetricsRegistry metricsRegistry()   {
+    try {
+      Class.forName("kafka.metrics.KafkaYammerMetrics");
+      LOG.info("KafkaYammerMetrics found and will be used.");
+      return KafkaYammerMetrics.defaultRegistry();
+    } catch (ClassNotFoundException e) {
+      LOG.info("KafkaYammerMetrics not found. Metrics will be used.");
+      return Metrics.defaultRegistry();
     }
   }
 
@@ -335,30 +356,11 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     });
   }
 
-  /**
-   * Starting with Kafka 2.6.0, a new class KafkaYammerMetrics provides the default Metrics Registry. The old default
-   * registry does not work with 2.6+. Therfore if the new class exists, we use it and if it doesn't exist we use the
-   * old one. More details can be found here: https://github.com/apache/kafka/blob/2.6.0/core/src/main/java/kafka/metrics/KafkaYammerMetrics.java
-   *
-   * Once CC supports only 2.6.0 and newer, we can clean this up and use only KafkaYammerMetrics all the time.
-   *
-   * @return  MetricsRegistry with Kafka metrics
-   */
-  private MetricsRegistry metricsRegistry()   {
-    try {
-      Class.forName("kafka.metrics.KafkaYammerMetrics");
-      LOG.info("KafkaYammerMetrics found and will be used.");
-      return KafkaYammerMetrics.defaultRegistry();
-    } catch (ClassNotFoundException e) {
-      LOG.info("KafkaYammerMetrics not found. Metrics will be used.");
-      return Metrics.defaultRegistry();
-    }
-  }
 
   private void reportYammerMetrics(long now) throws Exception {
     LOG.debug("Reporting yammer metrics.");
     YammerMetricProcessor.Context context = new YammerMetricProcessor.Context(this, now, _brokerId, _reportingIntervalMs);
-    for (Map.Entry<com.yammer.metrics.core.MetricName, Metric> entry : metricsRegistry().allMetrics().entrySet()) {
+    for (Map.Entry<com.yammer.metrics.core.MetricName, Metric> entry : _metricsRegistry.allMetrics().entrySet()) {
       LOG.trace("Processing yammer metric {}, scope = {}", entry.getKey(), entry.getKey().getScope());
       entry.getValue().processWith(_yammerMetricProcessor, entry.getKey(), context);
     }
