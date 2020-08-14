@@ -37,8 +37,6 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.NO_TASK_IN_PROGRESS;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.getRackHandleNull;
-import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.STOP_PROPOSAL_EXECUTION;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.FORCE_STOP_PARAM;
 
 
 public class RunnableUtils {
@@ -241,8 +239,7 @@ public class RunnableUtils {
       throw new IllegalStateException("Another request has asked for modifying the ongoing execution.");
     }
 
-    LOG.info("Gracefully stopping the ongoing execution... Use {} endpoint with {}=true to force-stop it now.",
-             STOP_PROPOSAL_EXECUTION, FORCE_STOP_PARAM);
+    LOG.info("Gracefully stopping the ongoing execution...");
 
     WaitingForOngoingExecutionToStop step = new WaitingForOngoingExecutionToStop();
     operationProgress.addStep(step);

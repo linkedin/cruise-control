@@ -27,7 +27,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -43,7 +42,6 @@ import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.internals.ClusterResourceListeners;
-import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.utils.LogContext;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
@@ -84,7 +82,6 @@ public class Executor {
   private static final String ZK_EXECUTOR_METRIC_TYPE = "Executor";
   // TODO: Make this configurable.
   public static final long SLOW_TASK_ALERTING_BACKOFF_TIME_MS = 60000L;
-  public static final long EXECUTION_TASK_FUTURE_ERROR_VERIFICATION_TIMEOUT_MS = 10000L;
   // The execution progress is controlled by the ExecutionTaskManager.
   private final ExecutionTaskManager _executionTaskManager;
   private final MetadataClient _metadataClient;
@@ -1019,6 +1016,7 @@ public class Executor {
         }
 
         // 3. Transfer leadership if possible.
+        boolean forceStoppedLeadershipMoves = false;
         if (_executorState.state() == INTRA_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS) {
           _executorState = ExecutorState.operationInProgress(LEADER_MOVEMENT_TASK_IN_PROGRESS,
                                                              _executionTaskManager.getExecutionTasksSummary(
@@ -1031,13 +1029,13 @@ public class Executor {
                                                              _recentlyDemotedBrokers,
                                                              _recentlyRemovedBrokers,
                                                              _isTriggeredByUserRequest);
-          moveLeaderships();
+          forceStoppedLeadershipMoves = moveLeaderships();
           updateOngoingExecutionState();
         }
 
-        // 4. Delete tasks from Zookeeper if needed.
-        if (_executorState.state() == STOPPING_EXECUTION && _stopSignal.get() == FORCE_STOP_EXECUTION) {
-          ExecutionUtils.deleteZNodesToStopExecution(_kafkaZkClient);
+        // 4. Delete leadership tasks from Zookeeper if needed.
+        if (_executorState.state() == STOPPING_EXECUTION && _stopSignal.get() == FORCE_STOP_EXECUTION && forceStoppedLeadershipMoves) {
+          ExecutionUtils.deleteZNodesToForceStopLeadershipMoves(_kafkaZkClient);
         }
       } catch (Throwable t) {
         LOG.error("Executor got exception during execution", t);
@@ -1175,7 +1173,7 @@ public class Executor {
           result = ExecutionUtils.submitReplicaReassignmentTasks(_adminClient, tasksToExecute);
         }
         // Wait indefinitely for partition movements to finish.
-        List<ExecutionTask> completedTasks = waitForExecutionTaskToFinish(result);
+        List<ExecutionTask> completedTasks = waitForInterBrokerReplicaTasksToFinish(result);
         partitionsToMove = _executionTaskManager.numRemainingInterBrokerPartitionMovements();
         int numFinishedPartitionMovements = _executionTaskManager.numFinishedInterBrokerPartitionMovements();
         long finishedDataMovementInMB = _executionTaskManager.finishedInterBrokerDataMovementInMB();
@@ -1187,16 +1185,7 @@ public class Executor {
                                                                         / totalDataToMoveInMB));
         throttleHelper.clearThrottles(completedTasks, tasksToExecute.stream().filter(t -> t.state() == IN_PROGRESS).collect(Collectors.toList()));
       }
-      // After the partition movement finishes, wait for the controller to clean the reassignment zkPath. This also
-      // ensures a clean stop when the execution is stopped in the middle.
-      Set<ExecutionTask> inExecutionTasks = inExecutionTasks();
-      while (!inExecutionTasks.isEmpty()) {
-        LOG.info("Waiting for {} tasks moving {} MB to finish.", inExecutionTasks.size(),
-                 _executionTaskManager.inExecutionInterBrokerDataToMoveInMB());
-        List<ExecutionTask> completedRemainingTasks = waitForExecutionTaskToFinish(null);
-        inExecutionTasks = inExecutionTasks();
-        throttleHelper.clearThrottles(completedRemainingTasks, new ArrayList<>(inExecutionTasks));
-      }
+      // At this point it is guaranteed that there are no in execution tasks to wait -- i.e. all tasks are completed or dead.
       if (_stopSignal.get() == NO_STOP_EXECUTION) {
         LOG.info("Inter-broker partition movements finished.");
       } else {
@@ -1217,7 +1206,7 @@ public class Executor {
       }
     }
 
-    private void intraBrokerMoveReplicas() throws InterruptedException, ExecutionException, TimeoutException {
+    private void intraBrokerMoveReplicas() {
       int numTotalPartitionMovements = _executionTaskManager.numRemainingIntraBrokerPartitionMovements();
       long totalDataToMoveInMB = _executionTaskManager.remainingIntraBrokerDataToMoveInMB();
       LOG.info("Starting {} intra-broker partition movements.", numTotalPartitionMovements);
@@ -1235,7 +1224,7 @@ public class Executor {
           executeIntraBrokerReplicaMovements(tasksToExecute, _adminClient, _executionTaskManager, _config);
         }
         // Wait indefinitely for partition movements to finish.
-        waitForExecutionTaskToFinish(null);
+        waitForIntraBrokerReplicaTasksToFinish();
         partitionsToMove = _executionTaskManager.numRemainingIntraBrokerPartitionMovements();
         int numFinishedPartitionMovements = _executionTaskManager.numFinishedIntraBrokerPartitionMovements();
         long finishedDataToMoveInMB = _executionTaskManager.finishedIntraBrokerDataToMoveInMB();
@@ -1250,7 +1239,7 @@ public class Executor {
       while (!inExecutionTasks.isEmpty()) {
         LOG.info("Waiting for {} tasks moving {} MB to finish", inExecutionTasks.size(),
                  _executionTaskManager.inExecutionIntraBrokerDataMovementInMB());
-        waitForExecutionTaskToFinish(null);
+        waitForIntraBrokerReplicaTasksToFinish();
         inExecutionTasks = inExecutionTasks();
       }
       if (inExecutionTasks().isEmpty()) {
@@ -1272,7 +1261,12 @@ public class Executor {
       }
     }
 
-    private void moveLeaderships() throws InterruptedException, ExecutionException, TimeoutException {
+    /**
+     * Executes leadership movement tasks.
+     *
+     * @return {@code true} if the leadership movements have been force stopped, {@code false} otherwise.
+     */
+    private boolean moveLeaderships() {
       int numTotalLeadershipMovements = _executionTaskManager.numRemainingLeadershipMovements();
       LOG.info("Starting {} leadership movements.", numTotalLeadershipMovements);
       int numFinishedLeadershipMovements = 0;
@@ -1296,9 +1290,11 @@ public class Executor {
                  leadershipMovementTasksByState.get(DEAD),
                  leadershipMovementTasksByState.get(COMPLETED));
       }
+
+      return _stopSignal.get() == FORCE_STOP_EXECUTION;
     }
 
-    private int moveLeadershipInBatch() throws InterruptedException, ExecutionException, TimeoutException {
+    private int moveLeadershipInBatch() {
       List<ExecutionTask> leadershipMovementTasks = _executionTaskManager.getLeadershipMovementTasks();
       int numLeadershipToMove = leadershipMovementTasks.size();
       LOG.debug("Executing {} leadership movements in a batch.", numLeadershipToMove);
@@ -1320,105 +1316,215 @@ public class Executor {
         ExecutorUtils.executePreferredLeaderElection(_kafkaZkClient, leadershipMovementTasks);
         LOG.trace("Waiting for leadership movement batch to finish.");
         while (!inExecutionTasks().isEmpty() && _stopSignal.get() == NO_STOP_EXECUTION) {
-          waitForExecutionTaskToFinish(null);
+          waitForLeadershipTasksToFinish();
         }
       }
       return numLeadershipToMove;
     }
 
     /**
-     * Periodically checks the metadata to see if (1) partition or (2) leadership reassignment has finished or not.
-     * @param result the result of a request to alter partition reassignments, or {@code null} to skip checking if
-     *               inter-broker replica action has already failed due to dead new replica. Ignored for other task types.
+     * First waits for {@link #executionProgressCheckIntervalMs} for the execution to make progress, then retrieves the
+     * cluster state for the progress check.
+     *
+     * @return The cluster state after waiting for the execution progress.
+     */
+    private Cluster getClusterForExecutionProgressCheck() {
+      try {
+        Thread.sleep(executionProgressCheckIntervalMs());
+      } catch (InterruptedException e) {
+        // let it go
+      }
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Tasks in execution: {}", inExecutionTasks());
+      }
+      return _metadataClient.refreshMetadata().cluster();
+    }
+
+    /**
+     * Periodically checks the metadata to see if inter-broker replica reassignment has finished or not.
+     * @param result the result of a request to alter partition reassignments -- can be {@code null} if no new tasks
+     *               for the execution are submitted.
+     *
      * @return Finished tasks.
      */
-    private List<ExecutionTask> waitForExecutionTaskToFinish(AlterPartitionReassignmentsResult result)
+    private List<ExecutionTask> waitForInterBrokerReplicaTasksToFinish(AlterPartitionReassignmentsResult result)
         throws InterruptedException, ExecutionException, TimeoutException {
       List<ExecutionTask> finishedTasks = new ArrayList<>();
       Set<Long> stoppedTaskIds = new HashSet<>();
       Set<Long> deletedTaskIds = new HashSet<>();
       Set<Long> deadTaskIds = new HashSet<>();
+
+      // Process result to ensure acceptance of reassignment request on broker-side and identify dead/deleted tasks.
+      Set<TopicPartition> deletedUponSubmission = new HashSet<>();
+      Set<TopicPartition> deadUponSubmission = new HashSet<>();
+      Set<TopicPartition> noReassignmentToCancel = new HashSet<>(0);
+      ExecutionUtils.processAlterPartitionReassignmentsResult(result, deletedUponSubmission, deadUponSubmission, noReassignmentToCancel);
+      if (!noReassignmentToCancel.isEmpty()) {
+        throw new IllegalStateException(String.format("Attempt to cancel reassignment of partitions %s during regular execution.",
+                                                      noReassignmentToCancel));
+      }
+
+      boolean retry;
       do {
-        // If there is no finished tasks, we need to check if anything is blocked.
-        maybeReexecuteTasks();
-        try {
-          Thread.sleep(executionProgressCheckIntervalMs());
-        } catch (InterruptedException e) {
-          // let it go
-        }
-
-        Cluster cluster = _metadataClient.refreshMetadata().cluster();
-        Map<ExecutionTask, ReplicaLogDirInfo> logDirInfoByTask = getLogdirInfoForExecutionTask(
-            _executionTaskManager.inExecutionTasks(Collections.singleton(INTRA_BROKER_REPLICA_ACTION)),
-            _adminClient, _config);
-
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Tasks in execution: {}", inExecutionTasks());
-        }
+        Cluster cluster = getClusterForExecutionProgressCheck();
         List<ExecutionTask> deadInterBrokerReplicaTasks = new ArrayList<>();
-        List<ExecutionTask> gracefullyStoppedInterBrokerReplicaTasks = new ArrayList<>();
+        List<ExecutionTask> stoppedInterBrokerReplicaTasks = new ArrayList<>();
         List<ExecutionTask> slowTasksToReport = new ArrayList<>();
         boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > SLOW_TASK_ALERTING_BACKOFF_TIME_MS;
         for (ExecutionTask task : inExecutionTasks()) {
           TopicPartition tp = task.proposal().topicPartition();
-          if (_stopSignal.get() == FORCE_STOP_EXECUTION
-              || (_stopSignal.get() == STOP_EXECUTION && task.type() == INTER_BROKER_REPLICA_ACTION)) {
-            // If the execution is (1) force-stopped or (2) gracefully-stopped during an ongoing inter-broker replica reassignment,
-            // then the executor will not just silently wait for the completion of the current in-progress tasks. For the former
-            // case, the executor will mark all in progress tasks as dead, cleanup the relevant reassignment zNodes, and then bounce
-            // the controller (see ExecutionUtils#deleteZNodesToStopExecution). For the latter case, the executor will mark in
+          if (_stopSignal.get() != NO_STOP_EXECUTION) {
+            // If the execution is (1) force- or (2) gracefully-stopped during an ongoing inter-broker replica reassignment, the
+            // executor will not silently wait for the completion of the current in-progress tasks. Instead, it will mark in
             // progress tasks as dead, and rollback the ongoing reassignment of gracefully stopped inter-broker replica reassignment.
-            LOG.debug("Task {} is marked as dead to {}.", task,
-                      _stopSignal.get() == FORCE_STOP_EXECUTION ? "force-stop the execution with a controller bounce"
-                                                                : "gracefully-stop the execution with a rollback");
+            LOG.debug("Task {} is marked as dead to stop the execution with a rollback.", task);
             finishedTasks.add(task);
             stoppedTaskIds.add(task.executionId());
             _executionTaskManager.markTaskDead(task);
-            if (_stopSignal.get() == STOP_EXECUTION) {
-              gracefullyStoppedInterBrokerReplicaTasks.add(task);
-            }
-          } else if (cluster.partition(tp) == null) {
-            // Handle topic deletion during the execution.
-            LOG.debug("Task {} is marked as finished because the topic has been deleted", task);
-            finishedTasks.add(task);
-            deletedTaskIds.add(task.executionId());
-            _executionTaskManager.markTaskAborting(task);
-            _executionTaskManager.markTaskDone(task);
-          } else if (ExecutionUtils.isTaskDone(cluster, logDirInfoByTask, task)) {
-            // Check to see if the task is done.
-            finishedTasks.add(task);
-            _executionTaskManager.markTaskDone(task);
+            stoppedInterBrokerReplicaTasks.add(task);
+          } else if (cluster.partition(tp) == null || deletedUponSubmission.contains(tp)) {
+            handleProgressWithTopicDeletion(task, finishedTasks, deletedTaskIds);
+          } else if (ExecutionUtils.isInterBrokerReplicaActionDone(cluster, task)) {
+            handleProgressWithCompletion(task, finishedTasks);
           } else {
             if (shouldReportSlowTasks) {
               task.maybeReportExecutionTooSlow(_time.milliseconds(), slowTasksToReport);
             }
-            if (maybeMarkTaskAsDead(cluster, logDirInfoByTask, task, result)) {
+            if (maybeMarkTaskAsDead(cluster, null, task, deadUponSubmission)) {
               deadTaskIds.add(task.executionId());
-              // Only add the dead tasks to execute if it is an inter-broker replica action.
-              if (task.type() == INTER_BROKER_REPLICA_ACTION) {
-                deadInterBrokerReplicaTasks.add(task);
-              }
+              // Add dead inter-broker replica tasks for handling.
+              deadInterBrokerReplicaTasks.add(task);
               finishedTasks.add(task);
             }
           }
         }
         sendSlowExecutionAlert(slowTasksToReport);
-        handleDeadInterBrokerReplicaTasks(deadInterBrokerReplicaTasks, gracefullyStoppedInterBrokerReplicaTasks);
+        handleDeadInterBrokerReplicaTasks(deadInterBrokerReplicaTasks, stoppedInterBrokerReplicaTasks);
         updateOngoingExecutionState();
-      } while (!inExecutionTasks().isEmpty() && finishedTasks.isEmpty());
+
+        retry = !inExecutionTasks().isEmpty() && finishedTasks.isEmpty();
+        // If there is no finished tasks, we need to check if anything is blocked.
+        if (retry) {
+          maybeReexecuteInterBrokerReplicaTasks(deletedUponSubmission, deadUponSubmission);
+        }
+      } while (retry);
 
       LOG.info("Finished tasks: {}.{}{}{}", finishedTasks,
-               stoppedTaskIds.isEmpty() ? "" : String.format(". [%sStopped: %s]", _stopSignal.get() == FORCE_STOP_EXECUTION
-                                                                                  ? "Force-" : "", stoppedTaskIds),
+               stoppedTaskIds.isEmpty() ? "" : String.format(". [Stopped: %s]", stoppedTaskIds),
                deletedTaskIds.isEmpty() ? "" : String.format(". [Deleted: %s]", deletedTaskIds),
                deadTaskIds.isEmpty() ? "" : String.format(". [Dead: %s]", deadTaskIds));
 
       return finishedTasks;
     }
 
+    private void handleProgressWithTopicDeletion(ExecutionTask task, List<ExecutionTask> finishedTasks, Set<Long> deletedTaskIds) {
+      // Handle topic deletion during the execution.
+      LOG.debug("Task {} is marked as finished because the topic has been deleted.", task);
+      finishedTasks.add(task);
+      deletedTaskIds.add(task.executionId());
+      _executionTaskManager.markTaskAborting(task);
+      _executionTaskManager.markTaskDone(task);
+    }
+
+    private void handleProgressWithCompletion(ExecutionTask task, List<ExecutionTask> finishedTasks) {
+      // Check to see if the task is done.
+      finishedTasks.add(task);
+      _executionTaskManager.markTaskDone(task);
+    }
+
     /**
-     * Attempts to cancel/rollback the ongoing reassignment of dead / gracefully stopped inter-broker replica actions
-     * and stops the execution if not already requested so by the user.
+     * Periodically checks the metadata to see if leadership reassignment has finished or not.
+     */
+    private void waitForLeadershipTasksToFinish() {
+      List<ExecutionTask> finishedTasks = new ArrayList<>();
+      Set<Long> stoppedTaskIds = new HashSet<>();
+      Set<Long> deletedTaskIds = new HashSet<>();
+      Set<Long> deadTaskIds = new HashSet<>();
+      do {
+        // If there is no finished tasks, we need to check if anything is blocked.
+        maybeReexecuteLeadershipTasks();
+        Cluster cluster = getClusterForExecutionProgressCheck();
+
+        List<ExecutionTask> slowTasksToReport = new ArrayList<>();
+        boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > SLOW_TASK_ALERTING_BACKOFF_TIME_MS;
+        for (ExecutionTask task : inExecutionTasks()) {
+          TopicPartition tp = task.proposal().topicPartition();
+          if (_stopSignal.get() == FORCE_STOP_EXECUTION) {
+            // If the execution is force-stopped, the executor will mark all in progress tasks as dead, cleanup the
+            // relevant zNodes, and then bounce the controller (see ExecutionUtils#deleteZNodesToForceStopLeadershipMoves).
+            LOG.debug("Task {} is marked as dead to force-stop the execution with a controller bounce.", task);
+            finishedTasks.add(task);
+            stoppedTaskIds.add(task.executionId());
+            _executionTaskManager.markTaskDead(task);
+          } else if (cluster.partition(tp) == null) {
+            handleProgressWithTopicDeletion(task, finishedTasks, deletedTaskIds);
+          } else if (ExecutionUtils.isLeadershipMovementDone(cluster, task)) {
+            handleProgressWithCompletion(task, finishedTasks);
+          } else {
+            if (shouldReportSlowTasks) {
+              task.maybeReportExecutionTooSlow(_time.milliseconds(), slowTasksToReport);
+            }
+            if (maybeMarkTaskAsDead(cluster, null, task, null)) {
+              deadTaskIds.add(task.executionId());
+              finishedTasks.add(task);
+            }
+          }
+        }
+        sendSlowExecutionAlert(slowTasksToReport);
+        updateOngoingExecutionState();
+      } while (!inExecutionTasks().isEmpty() && finishedTasks.isEmpty());
+
+      LOG.info("Finished tasks: {}.{}{}{}", finishedTasks,
+               stoppedTaskIds.isEmpty() ? "" : String.format(". [Force-Stopped: %s]", stoppedTaskIds),
+               deletedTaskIds.isEmpty() ? "" : String.format(". [Deleted: %s]", deletedTaskIds),
+               deadTaskIds.isEmpty() ? "" : String.format(". [Dead: %s]", deadTaskIds));
+    }
+
+    /**
+     * Periodically checks the metadata to see if intra-broker replica reassignment has finished or not.
+     */
+    private void waitForIntraBrokerReplicaTasksToFinish() {
+      List<ExecutionTask> finishedTasks = new ArrayList<>();
+      Set<Long> deletedTaskIds = new HashSet<>();
+      Set<Long> deadTaskIds = new HashSet<>();
+      do {
+        // If there is no finished tasks, we need to check if anything is blocked.
+        maybeReexecuteIntraBrokerReplicaTasks();
+        Cluster cluster = getClusterForExecutionProgressCheck();
+        Map<ExecutionTask, ReplicaLogDirInfo> logDirInfoByTask = getLogdirInfoForExecutionTask(
+            _executionTaskManager.inExecutionTasks(Collections.singleton(INTRA_BROKER_REPLICA_ACTION)),
+            _adminClient, _config);
+
+        List<ExecutionTask> slowTasksToReport = new ArrayList<>();
+        boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > SLOW_TASK_ALERTING_BACKOFF_TIME_MS;
+        for (ExecutionTask task : inExecutionTasks()) {
+          TopicPartition tp = task.proposal().topicPartition();
+          if (cluster.partition(tp) == null) {
+            handleProgressWithTopicDeletion(task, finishedTasks, deletedTaskIds);
+          } else if (ExecutionUtils.isIntraBrokerReplicaActionDone(logDirInfoByTask, task)) {
+            handleProgressWithCompletion(task, finishedTasks);
+          } else {
+            if (shouldReportSlowTasks) {
+              task.maybeReportExecutionTooSlow(_time.milliseconds(), slowTasksToReport);
+            }
+            if (maybeMarkTaskAsDead(cluster, logDirInfoByTask, task, null)) {
+              deadTaskIds.add(task.executionId());
+              finishedTasks.add(task);
+            }
+          }
+        }
+        sendSlowExecutionAlert(slowTasksToReport);
+        updateOngoingExecutionState();
+      } while (!inExecutionTasks().isEmpty() && finishedTasks.isEmpty());
+
+      LOG.info("Finished tasks: {}.{}{}", finishedTasks,
+               deletedTaskIds.isEmpty() ? "" : String.format(". [Deleted: %s]", deletedTaskIds),
+               deadTaskIds.isEmpty() ? "" : String.format(". [Dead: %s]", deadTaskIds));
+    }
+
+    /**
+     * Attempts to cancel/rollback the ongoing reassignment of dead / stopped inter-broker replica actions and stops the
+     * execution if not already requested so by the user.
      *
      * If all dead tasks are due to stopped inter-broker replica tasks, it waits until the rollback is completed.
      * Otherwise, it will not wait for the actual rollback to complete to avoid being blocked on a potentially stuck
@@ -1428,14 +1534,14 @@ public class Executor {
      *
      * @param deadInterBrokerReplicaTasks Inter-broker replica tasks that are expected to be marked as dead due to dead
      *                                    destination brokers.
-     * @param gracefullyStoppedInterBrokerReplicaTasks Inter-broker replica tasks that are expected to be marked as dead
-     *                                                due to being gracefully stopped by user.
+     * @param stoppedInterBrokerReplicaTasks Inter-broker replica tasks that are expected to be marked as dead due to
+     *                                       being stopped by user.
      */
     private void handleDeadInterBrokerReplicaTasks(List<ExecutionTask> deadInterBrokerReplicaTasks,
-                                                   List<ExecutionTask> gracefullyStoppedInterBrokerReplicaTasks)
+                                                   List<ExecutionTask> stoppedInterBrokerReplicaTasks)
         throws InterruptedException, ExecutionException, TimeoutException {
       List<ExecutionTask> tasksToCancel = new ArrayList<>(deadInterBrokerReplicaTasks);
-      tasksToCancel.addAll(gracefullyStoppedInterBrokerReplicaTasks);
+      tasksToCancel.addAll(stoppedInterBrokerReplicaTasks);
 
       if (!tasksToCancel.isEmpty()) {
         // Sanity check to ensure that all tasks are marked as dead.
@@ -1444,7 +1550,15 @@ public class Executor {
         });
 
         // Cancel/rollback reassignment of dead inter-broker replica tasks.
-        ExecutionUtils.submitReplicaReassignmentTasks(_adminClient, tasksToCancel);
+        AlterPartitionReassignmentsResult result = ExecutionUtils.submitReplicaReassignmentTasks(_adminClient, tasksToCancel);
+        // Process the partition reassignment result.
+        Set<TopicPartition> deleted = new HashSet<>();
+        Set<TopicPartition> dead = new HashSet<>();
+        Set<TopicPartition> noReassignmentToCancel = new HashSet<>();
+        ExecutionUtils.processAlterPartitionReassignmentsResult(result, deleted, dead, noReassignmentToCancel);
+        LOG.debug("Handling dead inter-broker replica tasks {} (deleted: {} dead: {} noReassignmentToCancel: {})",
+                  tasksToCancel, deleted, dead, noReassignmentToCancel);
+
         if (_stopSignal.get() == NO_STOP_EXECUTION) {
           // If there are dead tasks, Cruise Control stops the execution.
           LOG.info("Stop the execution due to {} dead tasks: {}.", tasksToCancel.size(), tasksToCancel);
@@ -1454,6 +1568,9 @@ public class Executor {
         if (deadInterBrokerReplicaTasks.isEmpty()) {
           // All dead tasks are due to stopped inter-broker replica tasks. Wait until the tasks being cancelled are done.
           Set<TopicPartition> beingCancelled = tasksToCancel.stream().map(task -> task.proposal().topicPartition()).collect(Collectors.toSet());
+          beingCancelled.removeAll(deleted);
+          beingCancelled.removeAll(dead);
+          beingCancelled.removeAll(noReassignmentToCancel);
 
           while (true) {
             Set<TopicPartition> intersection = new HashSet<>(ExecutionUtils.partitionsBeingReassigned(_adminClient));
@@ -1499,14 +1616,14 @@ public class Executor {
      * @param cluster the kafka cluster
      * @param logdirInfoByTask  disk information for ongoing intra-broker replica movement tasks
      * @param task the task to check
-     * @param result the result of a request to alter partition reassignments, or {@code null} to skip checking if
-     *               inter-broker replica action has already failed due to dead new replica. Ignored for other task types.
+     * @param deadInterBrokerReassignments the set of partitions that were dead upon submission of the corresponding
+     *                                     inter-broker replica reassignment task (ignored for other task types).
      * @return {@code true} if the task is marked as dead, {@code false} otherwise.
      */
     private boolean maybeMarkTaskAsDead(Cluster cluster,
                                         Map<ExecutionTask, ReplicaLogDirInfo> logdirInfoByTask,
                                         ExecutionTask task,
-                                        AlterPartitionReassignmentsResult result) {
+                                        Set<TopicPartition> deadInterBrokerReassignments) {
       // Only check tasks with IN_PROGRESS or ABORTING state.
       if (task.state() == IN_PROGRESS || task.state() == ABORTING) {
         switch (task.type()) {
@@ -1524,18 +1641,10 @@ public class Executor {
 
           case INTER_BROKER_REPLICA_ACTION:
             for (ReplicaPlacementInfo broker : task.proposal().newReplicas()) {
-              if (cluster.nodeById(broker.brokerId()) == null) {
+              if (cluster.nodeById(broker.brokerId()) == null
+                  || deadInterBrokerReassignments.contains(task.proposal().topicPartition())) {
                 _executionTaskManager.markTaskDead(task);
                 LOG.warn("Killing execution for task {} because the new replica {} is down.", task, broker);
-                return true;
-              }
-              // Check this later to avoid unnecessary wait on future.
-              boolean requestFailedDueToDeadBroker =
-                  (result != null && verifyFutureError(result.values().get(task.proposal().topicPartition()),
-                                                       Errors.INVALID_REPLICA_ASSIGNMENT.exception().getClass()));
-              if (requestFailedDueToDeadBroker) {
-                _executionTaskManager.markTaskDead(task);
-                LOG.warn("Killing execution for task {} because the new replica {} was down.", task, broker);
                 return true;
               }
             }
@@ -1556,68 +1665,65 @@ public class Executor {
       return false;
     }
 
-    private boolean verifyFutureError(Future<?> future, Class<? extends Throwable> exceptionClass) {
-      if (future == null) {
-        return false;
-      }
-      try {
-        future.get(EXECUTION_TASK_FUTURE_ERROR_VERIFICATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-      } catch (ExecutionException ee) {
-        return exceptionClass == ee.getCause().getClass();
-      } catch (TimeoutException | InterruptedException e) {
-        // This may indicate transient (e.g. network) issues.
-        LOG.warn("Failed to verify future error {}.", exceptionClass, e);
-      }
-      return false;
-    }
-
     /**
-     * TODO: Verify whether this function is needed on Kafka 2.4+.
+     * Identifies if there is a need for re-execution, if so, ensures re-execution of inter-broker replica reassignments
+     * -- e.g. in case there is a controller failover.
+     *
+     * @param deleted if re-execution is needed, a set to populate with partitions that were deleted upon submission of
+     *                the corresponding inter-broker replica reassignment tasks. No change otherwise.
+     * @param dead if re-execution is needed, a set to populate with partitions that were dead upon submission of the
+     *             corresponding inter-broker replica reassignment tasks.
      */
-    private boolean maybeReexecuteInterBrokerReplicaActions() throws InterruptedException, ExecutionException, TimeoutException {
-      List<ExecutionTask> interBrokerReplicaActionsToReexecute =
+    private void maybeReexecuteInterBrokerReplicaTasks(Set<TopicPartition> deleted, Set<TopicPartition> dead) {
+      List<ExecutionTask> interBrokerReplicaTasksToReexecute =
           new ArrayList<>(_executionTaskManager.inExecutionTasks(Collections.singleton(INTER_BROKER_REPLICA_ACTION)));
       boolean shouldReexecute = false;
       try {
-        shouldReexecute = !ExecutionUtils.isSubset(ExecutionUtils.partitionsBeingReassigned(_adminClient), interBrokerReplicaActionsToReexecute);
+        shouldReexecute = !ExecutionUtils.isSubset(ExecutionUtils.partitionsBeingReassigned(_adminClient), interBrokerReplicaTasksToReexecute);
       } catch (TimeoutException | InterruptedException | ExecutionException e) {
         // This may indicate transient (e.g. network) issues.
         LOG.warn("Failed to retrieve partitions being reassigned. Skipping reexecution check for inter-broker replica actions.", e);
       }
       if (shouldReexecute) {
-        LOG.info("Reexecuting tasks {}", interBrokerReplicaActionsToReexecute);
-        ExecutionUtils.submitReplicaReassignmentTasks(_adminClient, interBrokerReplicaActionsToReexecute);
+        LOG.info("Reexecuting tasks {}", interBrokerReplicaTasksToReexecute);
+        AlterPartitionReassignmentsResult result = ExecutionUtils.submitReplicaReassignmentTasks(_adminClient, interBrokerReplicaTasksToReexecute);
+        // Process the partition reassignment result.
+        Set<TopicPartition> noReassignmentToCancel = new HashSet<>();
+        ExecutionUtils.processAlterPartitionReassignmentsResult(result, deleted, dead, noReassignmentToCancel);
+        if (!noReassignmentToCancel.isEmpty()) {
+          throw new IllegalStateException(String.format("Attempt to cancel reassignment of partitions %s during re-execution.",
+                                                        noReassignmentToCancel));
+        }
       }
-      return !interBrokerReplicaActionsToReexecute.isEmpty();
     }
 
-    private boolean maybeReexecuteIntraBrokerReplicaActions() {
-      List<ExecutionTask> intraBrokerReplicaActionsToReexecute =
+    /**
+     * Identifies if there is a need for re-execution, if so, ensures re-execution of intra-broker replica reassignments
+     * -- e.g. in case there is a controller failover.
+     */
+    private void maybeReexecuteIntraBrokerReplicaTasks() {
+      List<ExecutionTask> intraBrokerReplicaTasksToReexecute =
           new ArrayList<>(_executionTaskManager.inExecutionTasks(Collections.singleton(INTRA_BROKER_REPLICA_ACTION)));
-      getLogdirInfoForExecutionTask(intraBrokerReplicaActionsToReexecute, _adminClient, _config).forEach((k, v) -> {
+      getLogdirInfoForExecutionTask(intraBrokerReplicaTasksToReexecute, _adminClient, _config).forEach((k, v) -> {
         String targetLogdir = k.proposal().replicasToMoveBetweenDisksByBroker().get(k.brokerId()).logdir();
         // If task is completed or in-progress, do not reexecute the task.
         if (targetLogdir.equals(v.getCurrentReplicaLogDir()) || targetLogdir.equals(v.getFutureReplicaLogDir())) {
-          intraBrokerReplicaActionsToReexecute.remove(k);
+          intraBrokerReplicaTasksToReexecute.remove(k);
         }
       });
-      if (!intraBrokerReplicaActionsToReexecute.isEmpty()) {
-        LOG.info("Reexecuting tasks {}", intraBrokerReplicaActionsToReexecute);
-        executeIntraBrokerReplicaMovements(intraBrokerReplicaActionsToReexecute, _adminClient, _executionTaskManager, _config);
+      if (!intraBrokerReplicaTasksToReexecute.isEmpty()) {
+        LOG.info("Reexecuting tasks {}", intraBrokerReplicaTasksToReexecute);
+        executeIntraBrokerReplicaMovements(intraBrokerReplicaTasksToReexecute, _adminClient, _executionTaskManager, _config);
       }
-      return !intraBrokerReplicaActionsToReexecute.isEmpty();
     }
 
     /**
      * Due to the race condition between the controller and Cruise Control, some of the submitted tasks may be
      * deleted by controller without being executed. We will resubmit those tasks in that case.
      */
-    private void maybeReexecuteTasks() throws InterruptedException, ExecutionException, TimeoutException {
-      boolean hasOngoingInterBrokerReplicaActions = maybeReexecuteInterBrokerReplicaActions();
-      boolean hasOngoingIntraBrokerReplicaActions = maybeReexecuteIntraBrokerReplicaActions();
-
+    private void maybeReexecuteLeadershipTasks() {
       // Only reexecute leader actions if there is no replica actions running.
-      if (!hasOngoingInterBrokerReplicaActions && !hasOngoingIntraBrokerReplicaActions && !hasOngoingLeaderElection()) {
+      if (!hasOngoingLeaderElection()) {
         List<ExecutionTask> leaderActionsToReexecute = new ArrayList<>(_executionTaskManager.inExecutionTasks(Collections.singleton(LEADER_ACTION)));
         if (!leaderActionsToReexecute.isEmpty()) {
           LOG.info("Reexecuting tasks {}", leaderActionsToReexecute);

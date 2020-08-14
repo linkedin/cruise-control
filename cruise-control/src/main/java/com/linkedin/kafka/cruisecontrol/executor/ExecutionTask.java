@@ -268,7 +268,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
 
   private void ensureValidTransfer(State targetState) {
     if (!canTransferToState(targetState)) {
-      throw new IllegalStateException("Cannot mark a task in " + _state + " to" + targetState + "state. The "
+      throw new IllegalStateException("Cannot mark a task in " + _state + " to " + targetState + "state. The "
                                           + "valid target state are " + validTargetState());
     }
   }
