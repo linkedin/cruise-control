@@ -45,14 +45,14 @@ object ExecutorUtils {
         var addTask = true
         val replicasToWrite = inProgressReplicasOpt match {
           case Some(inProgressReplicas) =>
-            if (task.state() == ExecutionTask.State.ABORTING) {
+            if (task.state() == ExecutionTaskState.ABORTING) {
               oldReplicas
-            } else if (task.state() == ExecutionTask.State.DEAD
-              || task.state() == ExecutionTask.State.ABORTED
-              || task.state() == ExecutionTask.State.COMPLETED) {
+            } else if (task.state() == ExecutionTaskState.DEAD
+              || task.state() == ExecutionTaskState.ABORTED
+              || task.state() == ExecutionTaskState.COMPLETED) {
               addTask = false
               Seq.empty
-            } else if (task.state() == ExecutionTask.State.IN_PROGRESS) {
+            } else if (task.state() == ExecutionTaskState.IN_PROGRESS) {
               if (!newReplicas.equals(inProgressReplicas)) {
                 throw new RuntimeException(s"The provided new replica list $newReplicas" +
                   s"is different from the in progress replica list $inProgressReplicas for $tp")
@@ -62,10 +62,10 @@ object ExecutorUtils {
               throw new IllegalStateException(s"Should never be here, the state is ${task.state()}")
             }
           case None =>
-            if (task.state() == ExecutionTask.State.ABORTED
-              || task.state() == ExecutionTask.State.DEAD
-              || task.state() == ExecutionTask.State.ABORTING
-              || task.state() == ExecutionTask.State.COMPLETED) {
+            if (task.state() == ExecutionTaskState.ABORTED
+              || task.state() == ExecutionTaskState.DEAD
+              || task.state() == ExecutionTaskState.ABORTING
+              || task.state() == ExecutionTaskState.COMPLETED) {
               LOG.warn(s"No need to abort tasks $task because the partition is not in reassignment")
               addTask = false
               Seq.empty
@@ -96,7 +96,6 @@ object ExecutorUtils {
   def executePreferredLeaderElection(kafkaZkClient: KafkaZkClient, tasks: java.util.List[ExecutionTask]) {
     val partitionsToExecute = tasks.asScala.map(task =>
       new TopicPartition(task.proposal.topic, task.proposal.partitionId)).toSet
-
     val preferredReplicaElectionCommand = new PreferredReplicaLeaderElectionCommand(kafkaZkClient, partitionsToExecute)
     preferredReplicaElectionCommand.moveLeaderToPreferredReplica()
   }

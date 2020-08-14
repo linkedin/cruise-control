@@ -54,7 +54,6 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateStr
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION_LOGGER;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.TIME_ZONE;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.DATE_FORMAT;
-import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.ExecutionTasksSummary;
@@ -74,14 +73,8 @@ import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.Replic
 public class Executor {
   private static final Logger LOG = LoggerFactory.getLogger(Executor.class);
   private static final Logger OPERATION_LOG = LoggerFactory.getLogger(OPERATION_LOGGER);
-  // TODO: Make this configurable.
-  public static final long MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS = 5000L;
-  // A special timestamp to indicate that a broker is a permanent part of recently removed or demoted broker set.
-  private static final long PERMANENT_TIMESTAMP = 0L;
   private static final String ZK_EXECUTOR_METRIC_GROUP = "CruiseControlExecutor";
   private static final String ZK_EXECUTOR_METRIC_TYPE = "Executor";
-  // TODO: Make this configurable.
-  public static final long SLOW_TASK_ALERTING_BACKOFF_TIME_MS = 60000L;
   // The execution progress is controlled by the ExecutionTaskManager.
   private final ExecutionTaskManager _executionTaskManager;
   private final MetadataClient _metadataClient;
@@ -124,6 +117,8 @@ public class Executor {
   private final ConcurrencyAdjuster _concurrencyAdjuster;
   private final ScheduledExecutorService _concurrencyAdjusterExecutor;
   private volatile boolean _concurrencyAdjusterEnabled;
+  private final long _minExecutionProgressCheckIntervalMs;
+  public final long _slowTaskAlertingBackoffTimeMs;
   private final KafkaCruiseControlConfig _config;
 
   /**
@@ -201,6 +196,8 @@ public class Executor {
     _anomalyDetector = anomalyDetector;
     _demotionHistoryRetentionTimeMs = config.getLong(ExecutorConfig.DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG);
     _removalHistoryRetentionTimeMs = config.getLong(ExecutorConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG);
+    _minExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
+    _slowTaskAlertingBackoffTimeMs = config.getLong(ExecutorConfig.SLOW_TASK_ALERTING_BACKOFF_TIME_MS_CONFIG);
     _concurrencyAdjusterEnabled = config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_ENABLED_CONFIG);
     _concurrencyAdjusterExecutor = Executors.newSingleThreadScheduledExecutor(
         new KafkaCruiseControlThreadFactory(ConcurrencyAdjuster.class.getSimpleName(), true, null));
@@ -216,7 +213,7 @@ public class Executor {
   }
 
   /**
-   * @return The tasks that are {@link ExecutionTask.State#IN_PROGRESS} or {@link ExecutionTask.State#ABORTING} for all task types.
+   * @return The tasks that are {@link ExecutionTaskState#IN_PROGRESS} or {@link ExecutionTaskState#ABORTING} for all task types.
    */
   public Set<ExecutionTask> inExecutionTasks() {
     return _executionTaskManager.inExecutionTasks();
@@ -225,18 +222,18 @@ public class Executor {
   /**
    * Dynamically set the interval between checking and updating (if needed) the progress of an initiated execution.
    * To prevent setting this value to a very small value by mistake, ensure that the requested interval is greater than
-   * the {@link #MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS}.
+   * the {@link #_minExecutionProgressCheckIntervalMs}.
    *
    * @param requestedExecutionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
    *                                                  execution (if null, use {@link #_defaultExecutionProgressCheckIntervalMs}).
    */
   public synchronized void setRequestedExecutionProgressCheckIntervalMs(Long requestedExecutionProgressCheckIntervalMs) {
     if (requestedExecutionProgressCheckIntervalMs != null
-        && requestedExecutionProgressCheckIntervalMs < MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS) {
+        && requestedExecutionProgressCheckIntervalMs < _minExecutionProgressCheckIntervalMs) {
       throw new IllegalArgumentException("Attempt to set execution progress check interval ["
                                          + requestedExecutionProgressCheckIntervalMs
                                          + "ms] to smaller than the minimum execution progress check interval in cluster ["
-                                         + MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS + "ms].");
+                                         + _minExecutionProgressCheckIntervalMs + "ms].");
     }
     _requestedExecutionProgressCheckIntervalMs = requestedExecutionProgressCheckIntervalMs;
   }
@@ -274,7 +271,7 @@ public class Executor {
     LOG.debug("Remove expired demotion history");
     _latestDemoteStartTimeMsByBrokerId.entrySet().removeIf(entry -> {
       long startTime = entry.getValue();
-      return startTime != PERMANENT_TIMESTAMP && startTime + _demotionHistoryRetentionTimeMs < _time.milliseconds();
+      return startTime != ExecutionUtils.PERMANENT_TIMESTAMP && startTime + _demotionHistoryRetentionTimeMs < _time.milliseconds();
     });
   }
 
@@ -282,7 +279,7 @@ public class Executor {
     LOG.debug("Remove expired broker removal history");
     _latestRemoveStartTimeMsByBrokerId.entrySet().removeIf(entry -> {
       long startTime = entry.getValue();
-      return startTime != PERMANENT_TIMESTAMP && startTime + _removalHistoryRetentionTimeMs < _time.milliseconds();
+      return startTime != ExecutionUtils.PERMANENT_TIMESTAMP && startTime + _removalHistoryRetentionTimeMs < _time.milliseconds();
     });
   }
 
@@ -407,7 +404,7 @@ public class Executor {
    * @param brokersToAdd Brokers to add to the {@link #_latestRemoveStartTimeMsByBrokerId}.
    */
   public void addRecentlyRemovedBrokers(Set<Integer> brokersToAdd) {
-    brokersToAdd.forEach(brokerId -> _latestRemoveStartTimeMsByBrokerId.put(brokerId, PERMANENT_TIMESTAMP));
+    brokersToAdd.forEach(brokerId -> _latestRemoveStartTimeMsByBrokerId.put(brokerId, ExecutionUtils.PERMANENT_TIMESTAMP));
   }
 
   /**
@@ -417,7 +414,7 @@ public class Executor {
    * @param brokersToAdd Brokers to add to the {@link #_latestDemoteStartTimeMsByBrokerId}.
    */
   public void addRecentlyDemotedBrokers(Set<Integer> brokersToAdd) {
-    brokersToAdd.forEach(brokerId -> _latestDemoteStartTimeMsByBrokerId.put(brokerId, PERMANENT_TIMESTAMP));
+    brokersToAdd.forEach(brokerId -> _latestDemoteStartTimeMsByBrokerId.put(brokerId, ExecutionUtils.PERMANENT_TIMESTAMP));
   }
 
   /**
@@ -896,7 +893,7 @@ public class Executor {
         // Add/overwrite the latest demotion time of (non-permanent) demoted brokers (if any).
         demotedBrokers.forEach(id -> {
           Long demoteStartTime = _latestDemoteStartTimeMsByBrokerId.get(id);
-          if (demoteStartTime == null || demoteStartTime != PERMANENT_TIMESTAMP) {
+          if (demoteStartTime == null || demoteStartTime != ExecutionUtils.PERMANENT_TIMESTAMP) {
             _latestDemoteStartTimeMsByBrokerId.put(id, _time.milliseconds());
           }
         });
@@ -905,7 +902,7 @@ public class Executor {
         // Add/overwrite the latest removal time of (non-permanent) removed brokers (if any).
         removedBrokers.forEach(id -> {
           Long removeStartTime = _latestRemoveStartTimeMsByBrokerId.get(id);
-          if (removeStartTime == null || removeStartTime != PERMANENT_TIMESTAMP) {
+          if (removeStartTime == null || removeStartTime != ExecutionUtils.PERMANENT_TIMESTAMP) {
             _latestRemoveStartTimeMsByBrokerId.put(id, _time.milliseconds());
           }
         });
@@ -1183,26 +1180,27 @@ public class Executor {
                  finishedDataMovementInMB, totalDataToMoveInMB,
                  totalDataToMoveInMB == 0 ? 100 : String.format("%.2f", finishedDataMovementInMB * UNIT_INTERVAL_TO_PERCENTAGE
                                                                         / totalDataToMoveInMB));
-        throttleHelper.clearThrottles(completedTasks, tasksToExecute.stream().filter(t -> t.state() == IN_PROGRESS).collect(Collectors.toList()));
+        throttleHelper.clearThrottles(completedTasks,
+                tasksToExecute.stream().filter(t -> t.state() == ExecutionTaskState.IN_PROGRESS).collect(Collectors.toList()));
       }
       // At this point it is guaranteed that there are no in execution tasks to wait -- i.e. all tasks are completed or dead.
       if (_stopSignal.get() == NO_STOP_EXECUTION) {
         LOG.info("Inter-broker partition movements finished.");
       } else {
         ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary(Collections.emptySet());
-        Map<ExecutionTask.State, Integer> partitionMovementTasksByState = executionTasksSummary.taskStat().get(INTER_BROKER_REPLICA_ACTION);
+        Map<ExecutionTaskState, Integer> partitionMovementTasksByState = executionTasksSummary.taskStat().get(INTER_BROKER_REPLICA_ACTION);
         LOG.info("Inter-broker partition movements stopped. For inter-broker partition movements {} tasks cancelled, {} tasks in-progress, "
                  + "{} tasks aborting, {} tasks aborted, {} tasks dead, {} tasks completed, {} remaining data to move; for intra-broker "
                  + "partition movement {} tasks cancelled; for leadership movements {} task cancelled.",
-                 partitionMovementTasksByState.get(PENDING),
-                 partitionMovementTasksByState.get(IN_PROGRESS),
-                 partitionMovementTasksByState.get(ABORTING),
-                 partitionMovementTasksByState.get(ABORTED),
-                 partitionMovementTasksByState.get(DEAD),
-                 partitionMovementTasksByState.get(COMPLETED),
+                 partitionMovementTasksByState.get(ExecutionTaskState.PENDING),
+                 partitionMovementTasksByState.get(ExecutionTaskState.IN_PROGRESS),
+                 partitionMovementTasksByState.get(ExecutionTaskState.ABORTING),
+                 partitionMovementTasksByState.get(ExecutionTaskState.ABORTED),
+                 partitionMovementTasksByState.get(ExecutionTaskState.DEAD),
+                 partitionMovementTasksByState.get(ExecutionTaskState.COMPLETED),
                  executionTasksSummary.remainingInterBrokerDataToMoveInMB(),
-                 executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION).get(PENDING),
-                 executionTasksSummary.taskStat().get(LEADER_ACTION).get(PENDING));
+                 executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION).get(ExecutionTaskState.PENDING),
+                 executionTasksSummary.taskStat().get(LEADER_ACTION).get(ExecutionTaskState.PENDING));
       }
     }
 
@@ -1246,18 +1244,18 @@ public class Executor {
         LOG.info("Intra-broker partition movements finished.");
       } else if (_stopSignal.get() != NO_STOP_EXECUTION) {
         ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary(Collections.emptySet());
-        Map<ExecutionTask.State, Integer> partitionMovementTasksByState = executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION);
+        Map<ExecutionTaskState, Integer> partitionMovementTasksByState = executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION);
         LOG.info("Intra-broker partition movements stopped. For intra-broker partition movements {} tasks cancelled, {} tasks in-progress, "
                  + "{} tasks aborting, {} tasks aborted, {} tasks dead, {} tasks completed, {} remaining data to move; for leadership "
                  + "movements {} task cancelled.",
-                 partitionMovementTasksByState.get(PENDING),
-                 partitionMovementTasksByState.get(IN_PROGRESS),
-                 partitionMovementTasksByState.get(ABORTING),
-                 partitionMovementTasksByState.get(ABORTED),
-                 partitionMovementTasksByState.get(DEAD),
-                 partitionMovementTasksByState.get(COMPLETED),
+                 partitionMovementTasksByState.get(ExecutionTaskState.PENDING),
+                 partitionMovementTasksByState.get(ExecutionTaskState.IN_PROGRESS),
+                 partitionMovementTasksByState.get(ExecutionTaskState.ABORTING),
+                 partitionMovementTasksByState.get(ExecutionTaskState.ABORTED),
+                 partitionMovementTasksByState.get(ExecutionTaskState.DEAD),
+                 partitionMovementTasksByState.get(ExecutionTaskState.COMPLETED),
                  executionTasksSummary.remainingIntraBrokerDataToMoveInMB(),
-                 executionTasksSummary.taskStat().get(LEADER_ACTION).get(PENDING));
+                 executionTasksSummary.taskStat().get(LEADER_ACTION).get(ExecutionTaskState.PENDING));
       }
     }
 
@@ -1279,16 +1277,16 @@ public class Executor {
       if (inExecutionTasks().isEmpty()) {
         LOG.info("Leadership movements finished.");
       } else if (_stopSignal.get() != NO_STOP_EXECUTION) {
-        Map<ExecutionTask.State, Integer> leadershipMovementTasksByState =
+        Map<ExecutionTaskState, Integer> leadershipMovementTasksByState =
             _executionTaskManager.getExecutionTasksSummary(Collections.emptySet()).taskStat().get(LEADER_ACTION);
         LOG.info("Leadership movements stopped. {} tasks cancelled, {} tasks in-progress, {} tasks aborting, {} tasks aborted, "
                  + "{} tasks dead, {} tasks completed.",
-                 leadershipMovementTasksByState.get(PENDING),
-                 leadershipMovementTasksByState.get(IN_PROGRESS),
-                 leadershipMovementTasksByState.get(ABORTING),
-                 leadershipMovementTasksByState.get(ABORTED),
-                 leadershipMovementTasksByState.get(DEAD),
-                 leadershipMovementTasksByState.get(COMPLETED));
+                 leadershipMovementTasksByState.get(ExecutionTaskState.PENDING),
+                 leadershipMovementTasksByState.get(ExecutionTaskState.IN_PROGRESS),
+                 leadershipMovementTasksByState.get(ExecutionTaskState.ABORTING),
+                 leadershipMovementTasksByState.get(ExecutionTaskState.ABORTED),
+                 leadershipMovementTasksByState.get(ExecutionTaskState.DEAD),
+                 leadershipMovementTasksByState.get(ExecutionTaskState.COMPLETED));
       }
 
       return _stopSignal.get() == FORCE_STOP_EXECUTION;
@@ -1370,7 +1368,7 @@ public class Executor {
         List<ExecutionTask> deadInterBrokerReplicaTasks = new ArrayList<>();
         List<ExecutionTask> stoppedInterBrokerReplicaTasks = new ArrayList<>();
         List<ExecutionTask> slowTasksToReport = new ArrayList<>();
-        boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > SLOW_TASK_ALERTING_BACKOFF_TIME_MS;
+        boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > _slowTaskAlertingBackoffTimeMs;
         for (ExecutionTask task : inExecutionTasks()) {
           TopicPartition tp = task.proposal().topicPartition();
           if (_stopSignal.get() != NO_STOP_EXECUTION) {
@@ -1446,7 +1444,7 @@ public class Executor {
         Cluster cluster = getClusterForExecutionProgressCheck();
 
         List<ExecutionTask> slowTasksToReport = new ArrayList<>();
-        boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > SLOW_TASK_ALERTING_BACKOFF_TIME_MS;
+        boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > _slowTaskAlertingBackoffTimeMs;
         for (ExecutionTask task : inExecutionTasks()) {
           TopicPartition tp = task.proposal().topicPartition();
           if (_stopSignal.get() == FORCE_STOP_EXECUTION) {
@@ -1496,7 +1494,7 @@ public class Executor {
             _adminClient, _config);
 
         List<ExecutionTask> slowTasksToReport = new ArrayList<>();
-        boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > SLOW_TASK_ALERTING_BACKOFF_TIME_MS;
+        boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > _slowTaskAlertingBackoffTimeMs;
         for (ExecutionTask task : inExecutionTasks()) {
           TopicPartition tp = task.proposal().topicPartition();
           if (cluster.partition(tp) == null) {
@@ -1545,8 +1543,8 @@ public class Executor {
 
       if (!tasksToCancel.isEmpty()) {
         // Sanity check to ensure that all tasks are marked as dead.
-        tasksToCancel.stream().filter(task -> task.state() != DEAD).forEach(task -> {
-          throw new IllegalArgumentException(String.format("Unexpected state for task %s (expected: %s).", task, DEAD));
+        tasksToCancel.stream().filter(task -> task.state() != ExecutionTaskState.DEAD).forEach(task -> {
+          throw new IllegalArgumentException(String.format("Unexpected state for task %s (expected: %s).", task, ExecutionTaskState.DEAD));
         });
 
         // Cancel/rollback reassignment of dead inter-broker replica tasks.
@@ -1625,7 +1623,7 @@ public class Executor {
                                         ExecutionTask task,
                                         Set<TopicPartition> deadInterBrokerReassignments) {
       // Only check tasks with IN_PROGRESS or ABORTING state.
-      if (task.state() == IN_PROGRESS || task.state() == ABORTING) {
+      if (task.state() == ExecutionTaskState.IN_PROGRESS || task.state() == ExecutionTaskState.ABORTING) {
         switch (task.type()) {
           case LEADER_ACTION:
             if (cluster.nodeById(task.proposal().newLeader().brokerId()) == null) {

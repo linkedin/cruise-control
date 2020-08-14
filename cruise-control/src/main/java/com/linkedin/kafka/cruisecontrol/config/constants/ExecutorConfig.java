@@ -289,6 +289,22 @@ public class ExecutorConfig {
       + " timeout using: list-partition-reassignments-timeout-for-the-initial-response * (base-backoff ^ attempt).";
 
   /**
+   * <code>min.execution.progress.check.interval.ms</code>
+   */
+  public static final String MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG = "min.execution.progress.check.interval.ms";
+  public static final long DEFAULT_MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS = 5000L;
+  public static final String MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_DOC = "The minimum execution progress check interval that users "
+      + "can dynamically set the execution progress check interval to.";
+
+  /**
+   * <code>slow.task.alerting.backoff.ms</code>
+   */
+  public static final String SLOW_TASK_ALERTING_BACKOFF_TIME_MS_CONFIG = "slow.task.alerting.backoff.ms";
+  public static final long DEFAULT_SLOW_TASK_ALERTING_BACKOFF_TIME_MS = 60000L;
+  public static final String SLOW_TASK_ALERTING_BACKOFF_TIME_MS_DOC = "The minimum interval between slow task alerts. This backoff "
+      + "helps bundling slow tasks to report rather than individually reporting them upon detection.";
+
+  /**
    * Define configs for Executor.
    *
    * @param configDef Config definition.
@@ -454,6 +470,18 @@ public class ExecutorConfig {
                             DEFAULT_LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS,
                             atLeast(1),
                             ConfigDef.Importance.LOW,
-                            LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS_DOC);
+                            LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS_DOC)
+                    .define(MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG,
+                            ConfigDef.Type.LONG,
+                            DEFAULT_MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS,
+                            atLeast(1),
+                            ConfigDef.Importance.MEDIUM,
+                            MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_DOC)
+                    .define(SLOW_TASK_ALERTING_BACKOFF_TIME_MS_CONFIG,
+                            ConfigDef.Type.LONG,
+                            DEFAULT_SLOW_TASK_ALERTING_BACKOFF_TIME_MS,
+                            atLeast(0),
+                            ConfigDef.Importance.MEDIUM,
+                            SLOW_TASK_ALERTING_BACKOFF_TIME_MS_DOC);
   }
 }
