@@ -31,9 +31,11 @@ import kafka.zk.KafkaZkClient;
 import kafka.zk.ZkVersion;
 import org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult;
 import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.protocol.Errors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,6 +66,7 @@ public final class ExecutionUtils {
   public static final int ADDITIVE_INCREASE_PARAM = 1;
   public static final int MULTIPLICATIVE_DECREASE_PARAM = 2;
   static final Map<String, Double> CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME = new HashMap<>(5);
+  public static final long EXECUTION_TASK_FUTURE_ERROR_VERIFICATION_TIMEOUT_MS = 10000L;
   static long LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS;
   static int LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS;
 
@@ -222,7 +225,11 @@ public final class ExecutionUtils {
     return partitionReassignments;
   }
 
-  private static Optional<NewPartitionReassignment> cancelReassignmentValue() {
+  /**
+   * Package private for unit tests.
+   * @return A value to indicate a cancelled reassignment for any partition.
+   */
+  static Optional<NewPartitionReassignment> cancelReassignmentValue() {
     return java.util.Optional.empty();
   }
 
@@ -233,17 +240,15 @@ public final class ExecutionUtils {
   /**
    * Submits the given inter-broker replica reassignment tasks for execution using the given admin client.
    *
-   * @param adminClient The adminClient to retrieve ongoing replica reassignments and submit new reassignments.
+   * @param adminClient The adminClient to submit new inter-broker replica reassignments.
    * @param tasks Inter-broker replica reassignment tasks to execute.
-   * @return The {@link AlterPartitionReassignmentsResult result} of reassignment request, {@code null} otherwise.
+   * @return The {@link AlterPartitionReassignmentsResult result} of reassignment request -- cannot be {@code null}.
    */
-  public static AlterPartitionReassignmentsResult submitReplicaReassignmentTasks(AdminClient adminClient, List<ExecutionTask> tasks)
-      throws InterruptedException, ExecutionException, TimeoutException {
+  public static AlterPartitionReassignmentsResult submitReplicaReassignmentTasks(AdminClient adminClient, List<ExecutionTask> tasks) {
     if (tasks == null || tasks.isEmpty()) {
       throw new IllegalArgumentException(String.format("Tasks to execute (%s) cannot be null or empty.", tasks));
     }
 
-    Map<TopicPartition, PartitionReassignment> ongoingReassignments = ongoingPartitionReassignments(adminClient);
     // Update the ongoing replica reassignments in case the task status has changed.
     Map<TopicPartition, Optional<NewPartitionReassignment>> newReassignments = new HashMap<>(tasks.size());
     for (ExecutionTask task : tasks) {
@@ -252,43 +257,34 @@ public final class ExecutionUtils {
       for (ReplicaPlacementInfo replicaPlacementInfo : task.proposal().newReplicas()) {
         newReplicas.add(replicaPlacementInfo.brokerId());
       }
-      PartitionReassignment ongoingReassignment = ongoingReassignments.get(tp);
       switch (task.state()) {
         case ABORTING:
         case ABORTED:
         case DEAD:
-          if (ongoingReassignment != null) {
-            // A task in one of these states should not have a corresponding partition movement -- cancel it.
-            newReassignments.put(tp, cancelReassignmentValue());
-            LOG.debug("The ongoing reassignment {} will be cancelled for task {}.", ongoingReassignment, task);
-          } else {
-            // No action needed.
-            LOG.debug("Task {} already has no corresponding replica reassignment.", task);
-          }
+          // A task in one of these states should not have a corresponding partition movement -- cancel it.
+          newReassignments.put(tp, cancelReassignmentValue());
+          LOG.debug("The ongoing reassignment will be cancelled for task {}.", task);
           break;
         case COMPLETED:
           // No action needed.
           LOG.debug("Task {} has already been completed.", task);
           break;
         case IN_PROGRESS:
-          if (ongoingReassignment != null) {
-            // Ensure that the order of new replicas is the same as the requested task replica order
-            if (!ongoingReassignment.addingReplicas().equals(newReplicas)) {
-              newReassignments.put(tp, reassignmentValue(newReplicas));
-              LOG.debug("Task {} will modify the ongoing reassignment {}.", task, ongoingReassignment);
-            }
-          } else {
-            // No need to check whether the topic exists or being deleted as the server response will indicate those.
-            newReassignments.put(tp, reassignmentValue(newReplicas));
-            LOG.debug("Task {} will be executed.", task);
-          }
+          // No need to check whether the topic exists or being deleted as the server response will indicate those.
+          // Likewise, no need to check if there is already an ongoing execution for the partition, because if one
+          // exists, it will be modified to execute the desired task.
+          newReassignments.put(tp, reassignmentValue(newReplicas));
+          LOG.debug("Task {} will be executed.", task);
           break;
         default:
           throw new IllegalStateException(String.format("Unrecognized task state %s.", task.state()));
       }
     }
 
-    return newReassignments.isEmpty() ? null : adminClient.alterPartitionReassignments(newReassignments);
+    if (newReassignments.isEmpty()) {
+      throw new IllegalArgumentException("All tasks submitted for replica reassignment are already completed.");
+    }
+    return adminClient.alterPartitionReassignments(newReassignments);
   }
 
   /**
@@ -312,50 +308,76 @@ public final class ExecutionUtils {
   }
 
   /**
-   * Deletes zNodes for ongoing replica and leadership movement tasks. Then deletes controller zNode to trigger a
-   * controller re-election for the cancellation to take effect.
+   * Process the given {@link AlterPartitionReassignmentsResult result} of alterPartitionReassignments request to:
+   * <ul>
+   *   <li>ensure that the corresponding request has been accepted,</li>
+   *   <li>identify the set of partitions that were deleted upon submission of the corresponding inter-broker replica
+   *   reassignment tasks and populate the given set</li>
+   *   <li>identify the set of partitions that were dead upon submission of the corresponding inter-broker replica
+   *   reassignment tasks and populate the given set, and</li>
+   *   <li>identify the set of partitions that were not in progress upon submission of the corresponding cancellation/
+   *   rollback for the inter-broker replica reassignment tasks and populate the given set</li>
+   * </ul>
    *
-   * This operation has side-effects that may leave partitions with extra replication factor and changes the controller.
-   * Hence, it will be deprecated in Kafka 2.4+, which introduced PartitionReassignment Kafka API to enable graceful and
-   * instant mechanism to cancel ongoing replica reassignments.
+   * @param result the result of a request to alter partition reassignments, or {@code null} if no new reassignment submitted.
+   * @param deleted a set to populate with partitions that were deleted upon submission of the corresponding inter-broker
+   *                replica reassignment tasks.
+   * @param dead a set to populate with partitions that were dead upon submission of the corresponding inter-broker
+   *             replica reassignment tasks.
+   * @param noReassignmentToCancel a set to populate with partitions that were not in progress upon submission of the
+   *                               corresponding cancellation/rollback for the inter-broker replica reassignment tasks.
+   */
+  public static void processAlterPartitionReassignmentsResult(AlterPartitionReassignmentsResult result,
+                                                              Set<TopicPartition> deleted,
+                                                              Set<TopicPartition> dead,
+                                                              Set<TopicPartition> noReassignmentToCancel) {
+    if (result != null) {
+      for (Map.Entry<TopicPartition, KafkaFuture<Void>> entry: result.values().entrySet()) {
+        TopicPartition tp = entry.getKey();
+        try {
+          entry.getValue().get(EXECUTION_TASK_FUTURE_ERROR_VERIFICATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+          LOG.debug("Replica reassignment for {} has been accepted.", tp);
+        } catch (ExecutionException ee) {
+          if (Errors.INVALID_REPLICA_ASSIGNMENT.exception().getClass() == ee.getCause().getClass()) {
+            dead.add(tp);
+            LOG.debug("Replica reassignment failed for {} due to dead destination broker(s).", tp);
+          } else if (Errors.UNKNOWN_TOPIC_OR_PARTITION.exception().getClass() == ee.getCause().getClass()) {
+            deleted.add(tp);
+            LOG.debug("Replica reassignment failed for {} due to its topic deletion.", tp);
+          } else if (Errors.NO_REASSIGNMENT_IN_PROGRESS.exception().getClass() == ee.getCause().getClass()) {
+            // Attempt to cancel/rollback a reassignment that does not exist.
+            noReassignmentToCancel.add(tp);
+            LOG.debug("Rollback failed for {} due to lack of corresponding ongoing replica reassignment.", tp);
+          } else {
+            // Not expected to happen.
+            throw new IllegalStateException(String.format("%s encountered an unknown execution exception.", tp), ee);
+          }
+        } catch (TimeoutException | InterruptedException e) {
+          // May indicate transient (e.g. network) issues and might require a task re-execution -- i.e. handled in Executor.
+          // If this is observed frequently, we may need to bump up EXECUTION_TASK_FUTURE_ERROR_VERIFICATION_TIMEOUT_MS.
+          LOG.warn("Failed to process AlterPartitionReassignmentsResult of {}.", tp, e);
+        }
+      }
+    }
+  }
+
+  /**
+   * Deletes zNode for ongoing leadership movement tasks. Then deletes controller zNode to trigger a controller
+   * re-election for the cancellation to take effect.
+   *
+   * This operation has side-effects -- i.e. changes the controller. Note that, the executor adopted PartitionReassignment
+   * Kafka API for graceful and instant mechanism to cancel ongoing replica reassignments. Hence, no such side-effects
+   * would be incurred to stop ongoing replica reassignments.
    *
    * @param kafkaZkClient KafkaZkClient to use for deleting the relevant zNodes to force stop the execution (if any).
    */
-  public static void deleteZNodesToStopExecution(KafkaZkClient kafkaZkClient) {
-    // Delete zNode of ongoing replica movement tasks.
-    LOG.info("Deleting zNode for ongoing replica movements {}.", kafkaZkClient.getPartitionReassignment());
-    kafkaZkClient.deletePartitionReassignment(ZkVersion.MatchAnyVersion());
+  public static void deleteZNodesToForceStopLeadershipMoves(KafkaZkClient kafkaZkClient) {
     // delete zNode of ongoing leadership movement tasks.
     LOG.info("Deleting zNode for ongoing leadership changes {}.", kafkaZkClient.getPreferredReplicaElection());
     kafkaZkClient.deletePreferredReplicaElection(ZkVersion.MatchAnyVersion());
     // Delete controller zNode to trigger a controller re-election.
     LOG.info("Deleting controller zNode to re-elect a new controller. Old controller is {}.", kafkaZkClient.getControllerId());
     kafkaZkClient.deleteController(ZkVersion.MatchAnyVersion());
-  }
-
-  /**
-   * Check if the given task is done.
-   * For what it means to be done, see {@link #isInterBrokerReplicaActionDone}, {@link #isIntraBrokerReplicaActionDone},
-   * and {@link #isLeadershipMovementDone}.
-   *
-   * @param cluster Kafka cluster.
-   * @param logdirInfoByTask Disk information for the intra-broker replica movement task, ignored otherwise.
-   * @param task Task to check for being done.
-   * @return {@code true} if task is done, {@code false} otherwise.
-   */
-  public static boolean isTaskDone(Cluster cluster,
-                                   Map<ExecutionTask, DescribeReplicaLogDirsResult.ReplicaLogDirInfo> logdirInfoByTask,
-                                   ExecutionTask task) {
-    switch (task.type()) {
-      case INTER_BROKER_REPLICA_ACTION:
-        return isInterBrokerReplicaActionDone(cluster, task);
-      case INTRA_BROKER_REPLICA_ACTION:
-        return isIntraBrokerReplicaActionDone(logdirInfoByTask, task);
-      case LEADER_ACTION:
-        return isLeadershipMovementDone(cluster, task);
-      default:
-        throw new IllegalStateException("Unknown task type " + task.type());
-    }
   }
 
   /**
@@ -375,7 +397,7 @@ public final class ExecutionUtils {
    * @param task Task to check for being done.
    * @return {@code true} if task is done, {@code false} otherwise.
    */
-  private static boolean isInterBrokerReplicaActionDone(Cluster cluster, ExecutionTask task) {
+  static boolean isInterBrokerReplicaActionDone(Cluster cluster, ExecutionTask task) {
     PartitionInfo partitionInfo = cluster.partition(task.proposal().topicPartition());
     switch (task.state()) {
       case IN_PROGRESS:
@@ -397,9 +419,8 @@ public final class ExecutionUtils {
    * @param task Task to check for being done.
    * @return {@code true} if task is done, {@code false} otherwise.
    */
-  private static boolean isIntraBrokerReplicaActionDone(
-      Map<ExecutionTask, DescribeReplicaLogDirsResult.ReplicaLogDirInfo> logdirInfoByTask,
-      ExecutionTask task) {
+  static boolean isIntraBrokerReplicaActionDone(Map<ExecutionTask, DescribeReplicaLogDirsResult.ReplicaLogDirInfo> logdirInfoByTask,
+                                                ExecutionTask task) {
     if (logdirInfoByTask.containsKey(task)) {
       return logdirInfoByTask.get(task).getCurrentReplicaLogDir()
                              .equals(task.proposal().replicasToMoveBetweenDisksByBroker().get(task.brokerId()).logdir());
@@ -423,7 +444,7 @@ public final class ExecutionUtils {
    * @param task Task to check for being done.
    * @return {@code true} if task is done, {@code false} otherwise.
    */
-  private static boolean isLeadershipMovementDone(Cluster cluster, ExecutionTask task) {
+  static boolean isLeadershipMovementDone(Cluster cluster, ExecutionTask task) {
     switch (task.state()) {
       case IN_PROGRESS:
         TopicPartition tp = task.proposal().topicPartition();

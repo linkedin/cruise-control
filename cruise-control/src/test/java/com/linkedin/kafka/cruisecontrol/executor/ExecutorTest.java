@@ -33,10 +33,13 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.AlterPartitionReassignmentsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.clients.producer.Producer;
@@ -46,6 +49,7 @@ import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
@@ -62,6 +66,7 @@ import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC2;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC3;
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutionUtils.*;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.SamplingMode.ALL;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.SamplingMode.BROKER_METRICS_ONLY;
 import static org.easymock.EasyMock.expectLastCall;
@@ -91,6 +96,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   private static final int MOCK_BROKER_ID_TO_DROP = 1;
   private static final long LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS = 1000L;
   private static final int LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS = 1;
+  private static final long EXECUTION_ALERTING_THRESHOLD_MS = 100L;
+  private static final long MOCK_CURRENT_TIME = 1596842708000L;
 
   @Override
   public int clusterSize() {
@@ -176,6 +183,122 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     } finally {
       KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
     }
+  }
+
+  @Test
+  public void testSubmitReplicaReassignmentTasksWithDeadTaskAndNoReassignmentInProgress()
+      throws InterruptedException, TimeoutException {
+    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
+        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
+
+    TopicPartition tp = new TopicPartition(TOPIC0, 0);
+    ExecutionProposal proposal = new ExecutionProposal(tp,
+                                                       100,
+                                                       new ReplicaPlacementInfo(0),
+                                                       Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(1)),
+                                                       Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(2)));
+
+    ExecutionTask task = new ExecutionTask(0,
+                                           proposal,
+                                           ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION,
+                                           EXECUTION_ALERTING_THRESHOLD_MS);
+    task.inProgress(MOCK_CURRENT_TIME);
+    task.kill(MOCK_CURRENT_TIME);
+
+    AlterPartitionReassignmentsResult result = ExecutionUtils.submitReplicaReassignmentTasks(adminClient, Collections.singletonList(task));
+
+    assertEquals(1, result.values().size());
+    assertTrue(verifyFutureError(result.values().get(tp), Errors.NO_REASSIGNMENT_IN_PROGRESS.exception().getClass()));
+  }
+
+  @Test
+  public void testSubmitReplicaReassignmentTasksWithInProgressTaskAndNonExistingTopic()
+      throws InterruptedException, TimeoutException {
+    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
+        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
+
+    ExecutionProposal proposal = new ExecutionProposal(TP0,
+                                                       100,
+                                                       new ReplicaPlacementInfo(0),
+                                                       Collections.singletonList(new ReplicaPlacementInfo(0)),
+                                                       Collections.singletonList(new ReplicaPlacementInfo(1)));
+
+    ExecutionTask task = new ExecutionTask(0,
+                                           proposal,
+                                           ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION,
+                                           EXECUTION_ALERTING_THRESHOLD_MS);
+    task.inProgress(MOCK_CURRENT_TIME);
+
+    AlterPartitionReassignmentsResult result = ExecutionUtils.submitReplicaReassignmentTasks(adminClient, Collections.singletonList(task));
+
+    assertEquals(1, result.values().size());
+    // Expect topic deletion -- i.e. or it has never been created.
+    assertTrue(verifyFutureError(result.values().get(TP0), Errors.UNKNOWN_TOPIC_OR_PARTITION.exception().getClass()));
+  }
+
+  @Test
+  public void testSubmitReplicaReassignmentTasksWithInProgressTaskAndExistingTopic()
+      throws InterruptedException, ExecutionException {
+    Map<String, TopicDescription> topicDescriptions = createTopics(0);
+    int initialLeader0 = topicDescriptions.get(TOPIC0).partitions().get(0).leader().id();
+    ExecutionProposal proposal0 =
+        new ExecutionProposal(TP0, 0, new ReplicaPlacementInfo(initialLeader0),
+                              Collections.singletonList(new ReplicaPlacementInfo(initialLeader0)),
+                              Collections.singletonList(new ReplicaPlacementInfo(initialLeader0 == 0 ? 1 : 0)));
+
+    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
+        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
+
+    ExecutionTask task = new ExecutionTask(0,
+                                           proposal0,
+                                           ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION,
+                                           EXECUTION_ALERTING_THRESHOLD_MS);
+    task.inProgress(MOCK_CURRENT_TIME);
+
+    AlterPartitionReassignmentsResult result = ExecutionUtils.submitReplicaReassignmentTasks(adminClient, Collections.singletonList(task));
+
+    assertEquals(1, result.values().size());
+    // Can retrieve the future if it is successful.
+    result.values().get(TP0).get();
+  }
+
+  @Test
+  public void testSubmitReplicaReassignmentTasksWithEmptyNullOrAllCompletedTasks() {
+    AdminClient mockAdminClient = EasyMock.mock(AdminClient.class);
+    // 1. Verify with an empty task list.
+    assertThrows(IllegalArgumentException.class, () -> ExecutionUtils.submitReplicaReassignmentTasks(mockAdminClient, Collections.emptyList()));
+    // 2. Verify with null tasks.
+    assertThrows(IllegalArgumentException.class, () -> ExecutionUtils.submitReplicaReassignmentTasks(mockAdminClient, null));
+
+    // 2. Verify with all completed tasks.
+    TopicPartition tp = new TopicPartition(TOPIC0, 0);
+    ExecutionProposal proposal = new ExecutionProposal(tp,
+                                                       100,
+                                                       new ReplicaPlacementInfo(0),
+                                                       Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(1)),
+                                                       Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(2)));
+
+    ExecutionTask task = new ExecutionTask(0,
+                                           proposal,
+                                           ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION,
+                                           EXECUTION_ALERTING_THRESHOLD_MS);
+    task.inProgress(MOCK_CURRENT_TIME);
+    task.completed(MOCK_CURRENT_TIME);
+    assertThrows(IllegalArgumentException.class, () -> ExecutionUtils.submitReplicaReassignmentTasks(mockAdminClient,
+                                                                                                     Collections.singletonList(task)));
+  }
+
+  private static boolean verifyFutureError(Future<?> future, Class<? extends Throwable> exceptionClass)
+      throws TimeoutException, InterruptedException {
+    if (future == null) {
+      return false;
+    }
+    try {
+      future.get(EXECUTION_TASK_FUTURE_ERROR_VERIFICATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    } catch (ExecutionException ee) {
+      return exceptionClass == ee.getCause().getClass();
+    }
+    return false;
   }
 
   @Test
