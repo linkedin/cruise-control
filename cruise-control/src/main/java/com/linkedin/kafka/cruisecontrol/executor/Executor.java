@@ -73,14 +73,8 @@ import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.Replic
 public class Executor {
   private static final Logger LOG = LoggerFactory.getLogger(Executor.class);
   private static final Logger OPERATION_LOG = LoggerFactory.getLogger(OPERATION_LOGGER);
-  // TODO: Make this configurable.
-  public static final long MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS = 5000L;
-  // A special timestamp to indicate that a broker is a permanent part of recently removed or demoted broker set.
-  private static final long PERMANENT_TIMESTAMP = 0L;
   private static final String ZK_EXECUTOR_METRIC_GROUP = "CruiseControlExecutor";
   private static final String ZK_EXECUTOR_METRIC_TYPE = "Executor";
-  // TODO: Make this configurable.
-  public static final long SLOW_TASK_ALERTING_BACKOFF_TIME_MS = 60000L;
   // The execution progress is controlled by the ExecutionTaskManager.
   private final ExecutionTaskManager _executionTaskManager;
   private final MetadataClient _metadataClient;
@@ -123,6 +117,8 @@ public class Executor {
   private final ConcurrencyAdjuster _concurrencyAdjuster;
   private final ScheduledExecutorService _concurrencyAdjusterExecutor;
   private volatile boolean _concurrencyAdjusterEnabled;
+  private final long _minExecutionProgressCheckIntervalMs;
+  public final long _slowTaskAlertingBackoffTimeMs;
   private final KafkaCruiseControlConfig _config;
 
   /**
@@ -200,6 +196,8 @@ public class Executor {
     _anomalyDetector = anomalyDetector;
     _demotionHistoryRetentionTimeMs = config.getLong(ExecutorConfig.DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG);
     _removalHistoryRetentionTimeMs = config.getLong(ExecutorConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG);
+    _minExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
+    _slowTaskAlertingBackoffTimeMs = config.getLong(ExecutorConfig.SLOW_TASK_ALERTING_BACKOFF_TIME_MS_CONFIG);
     _concurrencyAdjusterEnabled = config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_ENABLED_CONFIG);
     _concurrencyAdjusterExecutor = Executors.newSingleThreadScheduledExecutor(
         new KafkaCruiseControlThreadFactory(ConcurrencyAdjuster.class.getSimpleName(), true, null));
@@ -224,18 +222,18 @@ public class Executor {
   /**
    * Dynamically set the interval between checking and updating (if needed) the progress of an initiated execution.
    * To prevent setting this value to a very small value by mistake, ensure that the requested interval is greater than
-   * the {@link #MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS}.
+   * the {@link #_minExecutionProgressCheckIntervalMs}.
    *
    * @param requestedExecutionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
    *                                                  execution (if null, use {@link #_defaultExecutionProgressCheckIntervalMs}).
    */
   public synchronized void setRequestedExecutionProgressCheckIntervalMs(Long requestedExecutionProgressCheckIntervalMs) {
     if (requestedExecutionProgressCheckIntervalMs != null
-        && requestedExecutionProgressCheckIntervalMs < MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS) {
+        && requestedExecutionProgressCheckIntervalMs < _minExecutionProgressCheckIntervalMs) {
       throw new IllegalArgumentException("Attempt to set execution progress check interval ["
                                          + requestedExecutionProgressCheckIntervalMs
                                          + "ms] to smaller than the minimum execution progress check interval in cluster ["
-                                         + MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS + "ms].");
+                                         + _minExecutionProgressCheckIntervalMs + "ms].");
     }
     _requestedExecutionProgressCheckIntervalMs = requestedExecutionProgressCheckIntervalMs;
   }
@@ -273,7 +271,7 @@ public class Executor {
     LOG.debug("Remove expired demotion history");
     _latestDemoteStartTimeMsByBrokerId.entrySet().removeIf(entry -> {
       long startTime = entry.getValue();
-      return startTime != PERMANENT_TIMESTAMP && startTime + _demotionHistoryRetentionTimeMs < _time.milliseconds();
+      return startTime != ExecutionUtils.PERMANENT_TIMESTAMP && startTime + _demotionHistoryRetentionTimeMs < _time.milliseconds();
     });
   }
 
@@ -281,7 +279,7 @@ public class Executor {
     LOG.debug("Remove expired broker removal history");
     _latestRemoveStartTimeMsByBrokerId.entrySet().removeIf(entry -> {
       long startTime = entry.getValue();
-      return startTime != PERMANENT_TIMESTAMP && startTime + _removalHistoryRetentionTimeMs < _time.milliseconds();
+      return startTime != ExecutionUtils.PERMANENT_TIMESTAMP && startTime + _removalHistoryRetentionTimeMs < _time.milliseconds();
     });
   }
 
@@ -406,7 +404,7 @@ public class Executor {
    * @param brokersToAdd Brokers to add to the {@link #_latestRemoveStartTimeMsByBrokerId}.
    */
   public void addRecentlyRemovedBrokers(Set<Integer> brokersToAdd) {
-    brokersToAdd.forEach(brokerId -> _latestRemoveStartTimeMsByBrokerId.put(brokerId, PERMANENT_TIMESTAMP));
+    brokersToAdd.forEach(brokerId -> _latestRemoveStartTimeMsByBrokerId.put(brokerId, ExecutionUtils.PERMANENT_TIMESTAMP));
   }
 
   /**
@@ -416,7 +414,7 @@ public class Executor {
    * @param brokersToAdd Brokers to add to the {@link #_latestDemoteStartTimeMsByBrokerId}.
    */
   public void addRecentlyDemotedBrokers(Set<Integer> brokersToAdd) {
-    brokersToAdd.forEach(brokerId -> _latestDemoteStartTimeMsByBrokerId.put(brokerId, PERMANENT_TIMESTAMP));
+    brokersToAdd.forEach(brokerId -> _latestDemoteStartTimeMsByBrokerId.put(brokerId, ExecutionUtils.PERMANENT_TIMESTAMP));
   }
 
   /**
@@ -895,7 +893,7 @@ public class Executor {
         // Add/overwrite the latest demotion time of (non-permanent) demoted brokers (if any).
         demotedBrokers.forEach(id -> {
           Long demoteStartTime = _latestDemoteStartTimeMsByBrokerId.get(id);
-          if (demoteStartTime == null || demoteStartTime != PERMANENT_TIMESTAMP) {
+          if (demoteStartTime == null || demoteStartTime != ExecutionUtils.PERMANENT_TIMESTAMP) {
             _latestDemoteStartTimeMsByBrokerId.put(id, _time.milliseconds());
           }
         });
@@ -904,7 +902,7 @@ public class Executor {
         // Add/overwrite the latest removal time of (non-permanent) removed brokers (if any).
         removedBrokers.forEach(id -> {
           Long removeStartTime = _latestRemoveStartTimeMsByBrokerId.get(id);
-          if (removeStartTime == null || removeStartTime != PERMANENT_TIMESTAMP) {
+          if (removeStartTime == null || removeStartTime != ExecutionUtils.PERMANENT_TIMESTAMP) {
             _latestRemoveStartTimeMsByBrokerId.put(id, _time.milliseconds());
           }
         });
@@ -1370,7 +1368,7 @@ public class Executor {
         List<ExecutionTask> deadInterBrokerReplicaTasks = new ArrayList<>();
         List<ExecutionTask> stoppedInterBrokerReplicaTasks = new ArrayList<>();
         List<ExecutionTask> slowTasksToReport = new ArrayList<>();
-        boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > SLOW_TASK_ALERTING_BACKOFF_TIME_MS;
+        boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > _slowTaskAlertingBackoffTimeMs;
         for (ExecutionTask task : inExecutionTasks()) {
           TopicPartition tp = task.proposal().topicPartition();
           if (_stopSignal.get() != NO_STOP_EXECUTION) {
@@ -1446,7 +1444,7 @@ public class Executor {
         Cluster cluster = getClusterForExecutionProgressCheck();
 
         List<ExecutionTask> slowTasksToReport = new ArrayList<>();
-        boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > SLOW_TASK_ALERTING_BACKOFF_TIME_MS;
+        boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > _slowTaskAlertingBackoffTimeMs;
         for (ExecutionTask task : inExecutionTasks()) {
           TopicPartition tp = task.proposal().topicPartition();
           if (_stopSignal.get() == FORCE_STOP_EXECUTION) {
@@ -1496,7 +1494,7 @@ public class Executor {
             _adminClient, _config);
 
         List<ExecutionTask> slowTasksToReport = new ArrayList<>();
-        boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > SLOW_TASK_ALERTING_BACKOFF_TIME_MS;
+        boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > _slowTaskAlertingBackoffTimeMs;
         for (ExecutionTask task : inExecutionTasks()) {
           TopicPartition tp = task.proposal().topicPartition();
           if (cluster.partition(tp) == null) {
@@ -1546,7 +1544,7 @@ public class Executor {
       if (!tasksToCancel.isEmpty()) {
         // Sanity check to ensure that all tasks are marked as dead.
         tasksToCancel.stream().filter(task -> task.state() != ExecutionTaskState.DEAD).forEach(task -> {
-          throw new IllegalArgumentException(String.format("Unexpected state for task %s (expected: %s).", task, ExecutionTaskState.DEAD.toString()));
+          throw new IllegalArgumentException(String.format("Unexpected state for task %s (expected: %s).", task, ExecutionTaskState.DEAD));
         });
 
         // Cancel/rollback reassignment of dead inter-broker replica tasks.

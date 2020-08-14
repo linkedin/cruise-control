@@ -329,14 +329,14 @@ public class ExecutionTaskTracker {
   }
 
   public static class ExecutionTasksSummary {
-    private long _finishedInterBrokerDataMovementInMB;
-    private long _finishedIntraBrokerDataMovementInMB;
-    private long _inExecutionInterBrokerDataMovementInMB;
-    private long _inExecutionIntraBrokerDataMovementInMB;
+    private final long _finishedInterBrokerDataMovementInMB;
+    private final long _finishedIntraBrokerDataMovementInMB;
+    private final long _inExecutionInterBrokerDataMovementInMB;
+    private final long _inExecutionIntraBrokerDataMovementInMB;
     private final long _remainingInterBrokerDataToMoveInMB;
     private final long _remainingIntraBrokerDataToMoveInMB;
-    private Map<TaskType, Map<ExecutionTaskState, Integer>> _taskStat;
-    private Map<TaskType, Map<ExecutionTaskState, Set<ExecutionTask>>> _filteredTasksByState;
+    private final Map<TaskType, Map<ExecutionTaskState, Integer>> _taskStat;
+    private final Map<TaskType, Map<ExecutionTaskState, Set<ExecutionTask>>> _filteredTasksByState;
 
     ExecutionTasksSummary(long finishedInterBrokerDataMovementInMB,
                           long finishedIntraBrokerDataMovementInMB,

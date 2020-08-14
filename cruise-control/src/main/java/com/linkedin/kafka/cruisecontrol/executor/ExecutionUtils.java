@@ -51,6 +51,8 @@ public final class ExecutionUtils {
   public static final int DEFAULT_RETRY_BACKOFF_BASE = 2;
   public static final long METADATA_REFRESH_BACKOFF = 100L;
   public static final long METADATA_EXPIRY_MS = Long.MAX_VALUE;
+  // A special timestamp to indicate that a broker is a permanent part of recently removed or demoted broker set.
+  public static final long PERMANENT_TIMESTAMP = 0L;
   public static final String EXECUTION_STARTED = "execution-started";
   public static final String KAFKA_ASSIGNER_MODE = "kafka_assigner";
   public static final String EXECUTION_STOPPED = "execution-stopped";
