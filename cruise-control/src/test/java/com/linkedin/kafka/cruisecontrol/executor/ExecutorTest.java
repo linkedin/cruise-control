@@ -13,10 +13,10 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
+import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorManager;
 import com.linkedin.kafka.cruisecontrol.exception.OngoingExecutionException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaClientsIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
-import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
@@ -181,7 +181,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     assertThrows(IllegalStateException.class,
                  () -> new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class), null, null));
     Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class),
-                                     null, EasyMock.mock(AnomalyDetector.class));
+                                     null, EasyMock.mock(AnomalyDetectorManager.class));
 
     // Verify correctness of set/get requested execution progress check interval.
     long defaultExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
@@ -227,14 +227,15 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     EasyMock.expect(mockMetadataClient.refreshMetadata()).andReturn(clusterAndGeneration).anyTimes();
     EasyMock.expect(mockMetadataClient.cluster()).andReturn(clusterAndGeneration.cluster()).anyTimes();
     LoadMonitor mockLoadMonitor = getMockLoadMonitor();
-    AnomalyDetector mockAnomalyDetector = getMockAnomalyDetector(RANDOM_UUID);
+    AnomalyDetectorManager mockAnomalyDetectorManager = getMockAnomalyDetector(RANDOM_UUID);
     UserTaskManager.UserTaskInfo mockUserTaskInfo = getMockUserTaskInfo();
     // This tests runs two consecutive executions. First one completes w/o error, but the second one with error.
     UserTaskManager mockUserTaskManager = getMockUserTaskManager(RANDOM_UUID, mockUserTaskInfo, Arrays.asList(false, true));
-    EasyMock.replay(mockMetadataClient, mockLoadMonitor, mockAnomalyDetector, mockUserTaskInfo, mockUserTaskManager);
+    EasyMock.replay(mockMetadataClient, mockLoadMonitor, mockAnomalyDetectorManager, mockUserTaskInfo, mockUserTaskManager);
 
     Collection<ExecutionProposal> proposalsToExecute = Collections.singletonList(proposal);
-    Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient, null, mockAnomalyDetector);
+    Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient, null,
+                                     mockAnomalyDetectorManager);
     executor.setUserTaskManager(mockUserTaskManager);
 
     executor.setGeneratingProposalsForExecution(RANDOM_UUID, ExecutorTest.class::getSimpleName, true);
@@ -314,7 +315,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     waitUntilTrue(() -> (!executor.hasOngoingExecution() && executor.state().state() == ExecutorState.State.NO_TASK_IN_PROGRESS),
                   "Proposal execution did not finish within the time limit",
                   EXECUTION_DEADLINE_MS, EXECUTION_REGULAR_CHECK_MS);
-    EasyMock.verify(mockMetadataClient, mockLoadMonitor, mockAnomalyDetector, mockUserTaskInfo, mockUserTaskManager);
+    EasyMock.verify(mockMetadataClient, mockLoadMonitor, mockAnomalyDetectorManager, mockUserTaskInfo, mockUserTaskManager);
   }
 
   /**
@@ -450,15 +451,15 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     return mockLoadMonitor;
   }
 
-  private static AnomalyDetector getMockAnomalyDetector(String anomalyId) {
-    AnomalyDetector mockAnomalyDetector = EasyMock.mock(AnomalyDetector.class);
-    mockAnomalyDetector.maybeClearOngoingAnomalyDetectionTimeMs();
+  private static AnomalyDetectorManager getMockAnomalyDetector(String anomalyId) {
+    AnomalyDetectorManager mockAnomalyDetectorManager = EasyMock.mock(AnomalyDetectorManager.class);
+    mockAnomalyDetectorManager.maybeClearOngoingAnomalyDetectionTimeMs();
     expectLastCall().anyTimes();
-    mockAnomalyDetector.resetHasUnfixableGoals();
+    mockAnomalyDetectorManager.resetHasUnfixableGoals();
     expectLastCall().anyTimes();
-    mockAnomalyDetector.markSelfHealingFinished(anomalyId);
+    mockAnomalyDetectorManager.markSelfHealingFinished(anomalyId);
     expectLastCall().anyTimes();
-    return mockAnomalyDetector;
+    return mockAnomalyDetectorManager;
   }
 
   private static UserTaskManager.UserTaskInfo getMockUserTaskInfo() {
@@ -484,7 +485,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     ExecutorNotifier mockExecutorNotifier = EasyMock.mock(ExecutorNotifier.class);
     LoadMonitor mockLoadMonitor = getMockLoadMonitor();
     Capture<String> captureMessage = Capture.newInstance(CaptureType.FIRST);
-    AnomalyDetector mockAnomalyDetector = getMockAnomalyDetector(RANDOM_UUID);
+    AnomalyDetectorManager mockAnomalyDetectorManager = getMockAnomalyDetector(RANDOM_UUID);
 
     if (completeWithError) {
       mockExecutorNotifier.sendAlert(EasyMock.capture(captureMessage));
@@ -493,11 +494,13 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     }
 
     if (isTriggeredByUserRequest) {
-      EasyMock.replay(mockUserTaskInfo, mockUserTaskManager, mockExecutorNotifier, mockLoadMonitor, mockAnomalyDetector);
+      EasyMock.replay(mockUserTaskInfo, mockUserTaskManager, mockExecutorNotifier, mockLoadMonitor,
+                      mockAnomalyDetectorManager);
     } else {
-      EasyMock.replay(mockUserTaskInfo, mockExecutorNotifier, mockLoadMonitor, mockAnomalyDetector);
+      EasyMock.replay(mockUserTaskInfo, mockExecutorNotifier, mockLoadMonitor, mockAnomalyDetectorManager);
     }
-    Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), null, mockExecutorNotifier, mockAnomalyDetector);
+    Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), null, mockExecutorNotifier,
+                                     mockAnomalyDetectorManager);
     executor.setUserTaskManager(mockUserTaskManager);
     Map<TopicPartition, Integer> replicationFactors = new HashMap<>(proposalsToCheck.size());
     for (ExecutionProposal proposal : proposalsToCheck) {
@@ -541,9 +544,9 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
 
     }
     if (isTriggeredByUserRequest) {
-      EasyMock.verify(mockUserTaskInfo, mockUserTaskManager, mockExecutorNotifier, mockLoadMonitor, mockAnomalyDetector);
+      EasyMock.verify(mockUserTaskInfo, mockUserTaskManager, mockExecutorNotifier, mockLoadMonitor, mockAnomalyDetectorManager);
     } else {
-      EasyMock.verify(mockUserTaskInfo, mockExecutorNotifier, mockLoadMonitor, mockAnomalyDetector);
+      EasyMock.verify(mockUserTaskInfo, mockExecutorNotifier, mockLoadMonitor, mockAnomalyDetectorManager);
     }
   }
 

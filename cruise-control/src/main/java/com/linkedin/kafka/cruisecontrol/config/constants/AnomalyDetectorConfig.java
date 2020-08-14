@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import com.linkedin.kafka.cruisecontrol.detector.DiskFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
+import com.linkedin.kafka.cruisecontrol.detector.NoopMaintenanceEventReader;
 import com.linkedin.kafka.cruisecontrol.detector.NoopMetricAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.NoopTopicAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.NoopNotifier;
@@ -214,6 +215,14 @@ public class AnomalyDetectorConfig {
       + "topic state to identify topic anomalies.";
 
   /**
+   * <code>maintenance.event.reader.class</code>
+   */
+  public static final String MAINTENANCE_EVENT_READER_CLASS_CONFIG = "maintenance.event.reader.class";
+  public static final String DEFAULT_MAINTENANCE_EVENT_READER_CLASS = NoopMaintenanceEventReader.class.getName();
+  public static final String MAINTENANCE_EVENT_READER_CLASS_DOC = "A maintenance event reader class to retrieve maintenance "
+      + "events from the user-defined store.";
+
+  /**
    * Define configs for Anomaly Detector.
    *
    * @param configDef Config definition.
@@ -330,6 +339,11 @@ public class AnomalyDetectorConfig {
                             ConfigDef.Type.LONG,
                             DEFAULT_TOPIC_ANOMALY_DETECTION_INTERVAL_MS,
                             ConfigDef.Importance.LOW,
-                            TOPIC_ANOMALY_DETECTION_INTERVAL_MS_DOC);
+                            TOPIC_ANOMALY_DETECTION_INTERVAL_MS_DOC)
+                    .define(MAINTENANCE_EVENT_READER_CLASS_CONFIG,
+                            ConfigDef.Type.CLASS,
+                            DEFAULT_MAINTENANCE_EVENT_READER_CLASS,
+                            ConfigDef.Importance.MEDIUM,
+                            MAINTENANCE_EVENT_READER_CLASS_DOC);
   }
 }

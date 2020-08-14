@@ -17,7 +17,7 @@ import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
-import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
+import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorManager;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorState;
 import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolutionException;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
@@ -55,7 +55,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,7 +74,7 @@ public class KafkaCruiseControl {
   private final GoalOptimizer _goalOptimizer;
   private final ExecutorService _goalOptimizerExecutor;
   private final Executor _executor;
-  private final AnomalyDetector _anomalyDetector;
+  private final AnomalyDetectorManager _anomalyDetectorManager;
   private final Time _time;
 
   private static final String VERSION;
@@ -101,14 +100,14 @@ public class KafkaCruiseControl {
    */
   public KafkaCruiseControl(KafkaCruiseControlConfig config, MetricRegistry dropwizardMetricRegistry) {
     _config = config;
-    _time = new SystemTime();
+    _time = Time.SYSTEM;
     // initialize some of the static state of Kafka Cruise Control;
     ModelUtils.init(config);
     ModelParameters.init(config);
 
     // Instantiate the components.
-    _anomalyDetector = new AnomalyDetector(this, _time, dropwizardMetricRegistry);
-    _executor = new Executor(config, _time, dropwizardMetricRegistry, _anomalyDetector);
+    _anomalyDetectorManager = new AnomalyDetectorManager(this, _time, dropwizardMetricRegistry);
+    _executor = new Executor(config, _time, dropwizardMetricRegistry, _anomalyDetectorManager);
     _loadMonitor = new LoadMonitor(config, _time, dropwizardMetricRegistry, KafkaMetricDef.commonMetricDef());
     _goalOptimizerExecutor = Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("GoalOptimizerExecutor", true, null));
     _goalOptimizer = new GoalOptimizer(config, _loadMonitor, _time, dropwizardMetricRegistry, _executor);
@@ -119,14 +118,14 @@ public class KafkaCruiseControl {
    */
   KafkaCruiseControl(KafkaCruiseControlConfig config,
                      Time time,
-                     AnomalyDetector anomalyDetector,
+                     AnomalyDetectorManager anomalyDetectorManager,
                      Executor executor,
                      LoadMonitor loadMonitor,
                      ExecutorService goalOptimizerExecutor,
                      GoalOptimizer goalOptimizer) {
     _config = config;
     _time = time;
-    _anomalyDetector = anomalyDetector;
+    _anomalyDetectorManager = anomalyDetectorManager;
     _executor = executor;
     _loadMonitor = loadMonitor;
     _goalOptimizerExecutor = goalOptimizerExecutor;
@@ -175,12 +174,20 @@ public class KafkaCruiseControl {
   }
 
   /**
+   * Make the caller thread sleep for the given number of milliseconds.
+   * @param ms Time to sleep in milliseconds.
+   */
+  public void sleep(long ms) {
+    _time.sleep(ms);
+  }
+
+  /**
    * Start up the Cruise Control.
    */
   public void startUp() {
     LOG.info("Starting Kafka Cruise Control...");
     _loadMonitor.startUp();
-    _anomalyDetector.startDetection();
+    _anomalyDetectorManager.startDetection();
     _goalOptimizerExecutor.submit(_goalOptimizer);
     LOG.info("Kafka Cruise Control started.");
   }
@@ -195,7 +202,7 @@ public class KafkaCruiseControl {
         LOG.info("Shutting down Kafka Cruise Control...");
         _loadMonitor.shutdown();
         _executor.shutdown();
-        _anomalyDetector.shutdown();
+        _anomalyDetectorManager.shutdown();
         _goalOptimizer.shutdown();
         LOG.info("Kafka Cruise Control shutdown completed.");
       }
@@ -374,7 +381,7 @@ public class KafkaCruiseControl {
    * @return The old value of self healing for the given anomaly type.
    */
   public boolean setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled) {
-    return _anomalyDetector.setSelfHealingFor(anomalyType, isSelfHealingEnabled);
+    return _anomalyDetectorManager.setSelfHealingFor(anomalyType, isSelfHealingEnabled);
   }
 
   /**
@@ -764,7 +771,7 @@ public class KafkaCruiseControl {
    * @return Anomaly detector state.
    */
   public AnomalyDetectorState anomalyDetectorState() {
-    return _anomalyDetector.anomalyDetectorState();
+    return _anomalyDetectorManager.anomalyDetectorState();
   }
 
   /**

@@ -262,7 +262,11 @@ public class LoadMonitorTaskRunner {
       LOG.warn("Interrupted while waiting for metric fetcher manager to shutdown.");
     }
     _metricFetcherManager.shutdown();
-    _sampleStore.close();
+    try {
+      _sampleStore.close();
+    } catch (Exception e) {
+      LOG.warn("Received exception when closing sample store.", e);
+    }
     LOG.info("Load monitor task runner shutdown completed.");
   }
 

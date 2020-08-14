@@ -41,25 +41,23 @@ import static java.util.stream.Collectors.toSet;
 /**
  * This class detects broker failures.
  */
-public class BrokerFailureDetector {
+public class BrokerFailureDetector extends AbstractAnomalyDetector {
   private static final Logger LOG = LoggerFactory.getLogger(BrokerFailureDetector.class);
   public static final String FAILED_BROKERS_OBJECT_CONFIG = "failed.brokers.object";
   // Config to indicate whether detected broker failures are fixable or not.
   public static final String BROKER_FAILURES_FIXABLE_CONFIG = "broker.failures.fixable.object";
   private static final String ZK_BROKER_FAILURE_METRIC_GROUP = "CruiseControlAnomaly";
   private static final String ZK_BROKER_FAILURE_METRIC_TYPE = "BrokerFailure";
-  private final KafkaCruiseControl _kafkaCruiseControl;
   private final String _failedBrokersZkPath;
   private final ZkClient _zkClient;
   private final KafkaZkClient _kafkaZkClient;
   private final Map<Integer, Long> _failedBrokers;
-  private final Queue<Anomaly> _anomalies;
   private final short _fixableFailedBrokerCountThreshold;
   private final double _fixableFailedBrokerPercentageThreshold;
 
-  public BrokerFailureDetector(Queue<Anomaly> anomalies,
-                               KafkaCruiseControl kafkaCruiseControl) {
-    KafkaCruiseControlConfig config = kafkaCruiseControl.config();
+  public BrokerFailureDetector(Queue<Anomaly> anomalies, KafkaCruiseControl kafkaCruiseControl) {
+    super(anomalies, kafkaCruiseControl);
+    KafkaCruiseControlConfig config = _kafkaCruiseControl.config();
     String zkUrl = config.getString(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG);
     boolean zkSecurityEnabled = config.getBoolean(ExecutorConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
     ZkConnection zkConnection = new ZkConnection(zkUrl, ZK_SESSION_TIMEOUT);
@@ -69,8 +67,6 @@ public class BrokerFailureDetector {
                                                                  zkSecurityEnabled);
     _failedBrokers = new HashMap<>();
     _failedBrokersZkPath = config.getString(AnomalyDetectorConfig.FAILED_BROKERS_ZK_PATH_CONFIG);
-    _anomalies = anomalies;
-    _kafkaCruiseControl = kafkaCruiseControl;
     _fixableFailedBrokerCountThreshold = config.getShort(AnomalyDetectorConfig.FIXABLE_FAILED_BROKER_COUNT_THRESHOLD_CONFIG);
     _fixableFailedBrokerPercentageThreshold = config.getDouble(AnomalyDetectorConfig.FIXABLE_FAILED_BROKER_PERCENTAGE_THRESHOLD_CONFIG);
   }

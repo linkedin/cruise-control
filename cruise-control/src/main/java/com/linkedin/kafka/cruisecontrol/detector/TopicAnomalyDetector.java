@@ -21,16 +21,12 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.get
  * This class will be scheduled to periodically check if {@link TopicAnomalyFinder} identifies a topic anomaly.
  * An alert will be triggered if one of the desired topic property is not met.
  */
-public class TopicAnomalyDetector implements Runnable {
+public class TopicAnomalyDetector extends AbstractAnomalyDetector implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(TopicAnomalyDetector.class);
-  private final Queue<Anomaly> _anomalies;
-  private final KafkaCruiseControl _kafkaCruiseControl;
   private final List<TopicAnomalyFinder> _topicAnomalyFinders;
 
-  TopicAnomalyDetector(Queue<Anomaly> anomalies,
-                       KafkaCruiseControl kafkaCruiseControl) {
-    _anomalies = anomalies;
-    _kafkaCruiseControl = kafkaCruiseControl;
+  TopicAnomalyDetector(Queue<Anomaly> anomalies, KafkaCruiseControl kafkaCruiseControl) {
+    super(anomalies, kafkaCruiseControl);
     Map<String, Object> configWithCruiseControlObject = Collections.singletonMap(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG,
                                                                                  kafkaCruiseControl);
     _topicAnomalyFinders = kafkaCruiseControl.config().getConfiguredInstances(AnomalyDetectorConfig.TOPIC_ANOMALY_FINDER_CLASSES_CONFIG,
