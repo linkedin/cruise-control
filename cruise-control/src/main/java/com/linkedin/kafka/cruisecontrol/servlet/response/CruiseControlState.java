@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorState;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionTask;
+import com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskState;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitorState;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
@@ -26,7 +27,6 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.IN_PROGRES
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType;
-import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State;
 
 @JsonResponseClass
 public class CruiseControlState extends AbstractCruiseControlResponse {
@@ -132,7 +132,7 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
       if (!IN_PROGRESS_STATES.contains(_executorState.state())) {
         return;
       }
-      Map<TaskType, Map<State, Set<ExecutionTask>>> taskSnapshot = _executorState.executionTasksSummary().filteredTasksByState();
+      Map<TaskType, Map<ExecutionTaskState, Set<ExecutionTask>>> taskSnapshot = _executorState.executionTasksSummary().filteredTasksByState();
       taskSnapshot.forEach((type, taskMap) -> {
         String taskTypeString = type == TaskType.INTER_BROKER_REPLICA_ACTION ? INTER_BROKER_PARTITION_MOVEMENTS :
                                 type == TaskType.INTRA_BROKER_REPLICA_ACTION ? INTRA_BROKER_PARTITION_MOVEMENTS :
@@ -140,23 +140,23 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
         sb.append(String.format("%n%n%s %s:%n",
                                 _executorState.state() == ExecutorState.State.STOPPING_EXECUTION ? "Cancelled" : "Pending",
                                 taskTypeString));
-        for (ExecutionTask task :  taskMap.get(State.PENDING)) {
+        for (ExecutionTask task :  taskMap.get(ExecutionTaskState.PENDING)) {
           sb.append(String.format("%s%n", task));
         }
         sb.append(String.format("%n%nIn progress %s:%n", taskTypeString));
-        for (ExecutionTask task : taskMap.get(State.IN_PROGRESS)) {
+        for (ExecutionTask task : taskMap.get(ExecutionTaskState.IN_PROGRESS)) {
           sb.append(String.format("%s%n", task));
         }
         sb.append(String.format("%n%nAborting %s:%n", taskTypeString));
-        for (ExecutionTask task :  taskMap.get(State.ABORTING)) {
+        for (ExecutionTask task :  taskMap.get(ExecutionTaskState.ABORTING)) {
           sb.append(String.format("%s%n", task));
         }
         sb.append(String.format("%n%nAborted %s:%n", taskTypeString));
-        for (ExecutionTask task :  taskMap.get(State.ABORTED)) {
+        for (ExecutionTask task :  taskMap.get(ExecutionTaskState.ABORTED)) {
           sb.append(String.format("%s%n", task));
         }
         sb.append(String.format("%n%nDead %s:%n", taskTypeString));
-        for (ExecutionTask task :  taskMap.get(State.DEAD)) {
+        for (ExecutionTask task :  taskMap.get(ExecutionTaskState.DEAD)) {
           sb.append(String.format("%s%n", task));
         }
       });

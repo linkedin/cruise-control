@@ -186,10 +186,11 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     // Verify correctness of set/get requested execution progress check interval.
     long defaultExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
     assertEquals(defaultExecutionProgressCheckIntervalMs, executor.executionProgressCheckIntervalMs());
-    executor.setRequestedExecutionProgressCheckIntervalMs(Executor.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS);
-    assertEquals(Executor.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS, executor.executionProgressCheckIntervalMs());
+    long minExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
+    executor.setRequestedExecutionProgressCheckIntervalMs(minExecutionProgressCheckIntervalMs);
+    assertEquals(minExecutionProgressCheckIntervalMs, executor.executionProgressCheckIntervalMs());
     assertThrows(IllegalArgumentException.class,
-                 () -> executor.setRequestedExecutionProgressCheckIntervalMs(Executor.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS - 1));
+                 () -> executor.setRequestedExecutionProgressCheckIntervalMs(minExecutionProgressCheckIntervalMs - 1));
 
     // Verify correctness of add/drop recently removed/demoted brokers.
     assertFalse(executor.dropRecentlyRemovedBrokers(Collections.emptySet()));
@@ -556,6 +557,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     props.setProperty(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, zookeeper().connectionString());
     props.setProperty(ExecutorConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG, "10");
     props.setProperty(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG, "400");
+    props.setProperty(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG, "200");
     props.setProperty(AnalyzerConfig.DEFAULT_GOALS_CONFIG, TestConstants.DEFAULT_GOALS_VALUES);
     props.setProperty(ExecutorConfig.DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG, Long.toString(DEMOTION_HISTORY_RETENTION_TIME_MS));
     props.setProperty(ExecutorConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG, Long.toString(REMOVAL_HISTORY_RETENTION_TIME_MS));

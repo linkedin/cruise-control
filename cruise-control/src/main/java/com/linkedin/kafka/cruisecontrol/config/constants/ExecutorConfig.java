@@ -272,6 +272,22 @@ public class ExecutorConfig {
       + " (if enabled) attempts to decrease the number of allowed concurrent inter-broker partition movements.";
 
   /**
+   * <code>min.execution.progress.check.interval.ms</code>
+   */
+  public static final String MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG = "min.execution.progress.check.interval.ms";
+  public static final long DEFAULT_MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS = 5000L;
+  public static final String MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_DOC = "The minimum execution progress check interval that users "
+      + "can dynamically set the execution progress check interval to.";
+
+  /**
+   * <code>slow.task.alerting.backoff.ms</code>
+   */
+  public static final String SLOW_TASK_ALERTING_BACKOFF_TIME_MS_CONFIG = "slow.task.alerting.backoff.ms";
+  public static final long DEFAULT_SLOW_TASK_ALERTING_BACKOFF_TIME_MS = 60000L;
+  public static final String SLOW_TASK_ALERTING_BACKOFF_TIME_MS_DOC = "The minimum interval between slow task alerts. This backoff "
+      + "helps bundling slow tasks to report rather than individually reporting them upon detection.";
+
+  /**
    * Define configs for Executor.
    *
    * @param configDef Config definition.
@@ -425,6 +441,18 @@ public class ExecutorConfig {
                             DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE,
                             atLeast(10.0),
                             ConfigDef.Importance.MEDIUM,
-                            CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_DOC);
+                            CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_DOC)
+                    .define(MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG,
+                            ConfigDef.Type.LONG,
+                            DEFAULT_MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS,
+                            atLeast(1),
+                            ConfigDef.Importance.MEDIUM,
+                            MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_DOC)
+                    .define(SLOW_TASK_ALERTING_BACKOFF_TIME_MS_CONFIG,
+                            ConfigDef.Type.LONG,
+                            DEFAULT_SLOW_TASK_ALERTING_BACKOFF_TIME_MS,
+                            atLeast(0),
+                            ConfigDef.Importance.MEDIUM,
+                            SLOW_TASK_ALERTING_BACKOFF_TIME_MS_DOC);
   }
 }

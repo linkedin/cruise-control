@@ -198,11 +198,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    *   <li>{@link ExecutorConfig#MAX_NUM_CLUSTER_MOVEMENTS_CONFIG} >
    *     {@link ExecutorConfig#NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG}</li>
    *   <li>{@link ExecutorConfig#MAX_NUM_CLUSTER_MOVEMENTS_CONFIG} >=
-   *   {@link ExecutorConfig#NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG}</li>
+   *     {@link ExecutorConfig#NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG}</li>
    *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_CONFIG} >
    *     {@link ExecutorConfig#NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG}</li>
    *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_CONFIG} <=
    *     {@link ExecutorConfig#MAX_NUM_CLUSTER_MOVEMENTS_CONFIG}</li>
+   *   <li>{@link ExecutorConfig#MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG} <=
+   *     {@link ExecutorConfig#EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG}</li>
    * </ul>
    */
   private void sanityCheckConcurrency() {
@@ -241,6 +243,14 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                                 + concurrencyAdjusterMaxPartitionMovementsPerBroker
                                 + "] cannot be greater than the maximum number of allowed movements in cluster ["
                                 + maxClusterPartitionMovementConcurrency + "].");
+    }
+    long minExecutionProgressCheckIntervalMs = getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
+    long defaultExecutionProgressCheckIntervalMs = getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
+    if (minExecutionProgressCheckIntervalMs > defaultExecutionProgressCheckIntervalMs) {
+      throw new ConfigException("Minimum execution progress check interval ["
+                                + minExecutionProgressCheckIntervalMs
+                                + "] cannot be greater than the default execution progress check interval ["
+                                + defaultExecutionProgressCheckIntervalMs + "].");
     }
   }
 
