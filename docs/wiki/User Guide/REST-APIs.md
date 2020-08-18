@@ -1,5 +1,31 @@
-## A NOTE ON USING UUID/COOKIES
+## Contents
+
+- [Asynchronous Endpoints](#asynchronous-endpoints)
+    - [UUIDs](#uuids)
+    - [Cookies](#cookies)
+- [GET Requests](#get-requests)
+    * [Query the state of Cruise Control](#query-the-state-of-cruise-control)
+    * [Query the current cluster load](#query-the-current-cluster-load)
+    * [Query partition resource utilization](#query-partition-resource-utilization)
+    * [Query partition and replica state](#query-partition-and-replica-state)
+    * [Get optimization proposals](#get-optimization-proposals)
+    * [Query the user request result](#query-the-user-request-result)
+- [POST Requests](#post-requests)
+    * [Trigger a workload balance](#trigger-a-workload-balance)
+    * [Add a list of new brokers to Kafka Cluster](#add-a-list-of-new-brokers-to-kafka-cluster)
+    * [Decommission a list of brokers from the Kafka cluster](#decommission-a-list-of-brokers-from-the-kafka-cluster)
+    * [Fix offline replicas in Kafka cluster](#fix-offline-replicas-in-kafka-cluster)
+    * [Demote a list of brokers from the Kafka cluster](#demote-a-list-of-brokers-from-the-kafka-cluster)
+    * [Stop the current proposal execution task](#stop-the-current-proposal-execution-task)
+    * [Pause metrics load sampling](#pause-metrics-load-sampling)
+    * [Resume metrics load sampling](#resume-metrics-load-sampling)
+    * [Change Kafka topic configuration](#change-kafka-topic-configuration)
+    * [Change Cruise Control configuration](#change-cruise-control-configuration)
+
+## Asynchronous Endpoints
+
 **Please ensure proper use of UUIDs or cookies to interact with async endpoints.**
+
 Selected Cruise Control (CC) endpoints accept async calls to avoid blocking more than a configured period of time 
 (via `webserver.request.maxBlockTimeMs` configuration).
 If the server-side processing of such requests takes more than this configured time, along with a with `SC_ACCEPTED` code, 
@@ -7,22 +33,29 @@ CC returns a progress response.
 This response contains both (1) a `sessionId`, and (2) a UUID corresponding to the client cookie and the request, respectively.
 The completed response of an in-progress request can be retrieved within a predefined time.
 Using cookies, this response can be retrieved before the timeout is configured via `webserver.session.maxExpiryTimeMs`.
-Using the UUID, the timout is configured via relevant completed user task retention time configuration 
+Using the UUID, the timeout is configured via relevant completed user task retention time configuration 
 (see `completed.kafka.monitor.user.task.retention.time.ms`, `completed.cruise.control.monitor.user.task.retention.time.ms`,
 `completed.kafka.admin.user.task.retention.time.ms`, `completed.cruise.control.admin.user.task.retention.time.ms`,
 and `completed.user.task.retention.time.ms` ).
 
-* Here is a quick recap of how to use **UUID** with requests using `cURL`:
+### UUIDs
+
+Here is an example how to use **UUID** with requests using `cURL`:
+
 1. Create a new request
 
  `curl -vv -X POST "http://CRUISE_CONTROL_HOST:9090/kafkacruisecontrol/remove_broker?brokerid=1234&dryrun=false"`
 
 2. Retrieve the `User-Task-ID` from response header, e.g. `User-Task-ID: 5ce7c299-53b3-48b6-b72e-6623e25bd9a8`
+
 3. Specifying the `User-Task-ID` in request that has not completed
 
  `curl -vv -X POST -H "User-Task-ID: 5ce7c299-53b3-48b6-b72e-6623e25bd9a8" "http://CRUISE_CONTROL_HOST:9090/kafkacruisecontrol/remove_broker?brokerid=1234&dryrun=false"`
 
-* Here is a quick recap of how to use **cookies** with requests using `cURL`:
+### Cookies
+
+Here is an example of how to use **cookies** with requests using `cURL`:
+
 1. Create a cookie associated with a new request
 
  `curl -X POST -c /tmp/mycookie-jar.txt "http://CRUISE_CONTROL_HOST:9090/kafkacruisecontrol/remove_broker?brokerid=1234&dryrun=false"`
@@ -31,11 +64,12 @@ and `completed.user.task.retention.time.ms` ).
 
  `curl -X POST -b /tmp/mycookie-jar.txt "http://CRUISE_CONTROL_HOST:9090/kafkacruisecontrol/remove_broker?brokerid=1234&dryrun=false"`
 
-* Note that a `User-Task-ID` or a `sessionId` and is applicable for an entire `URL`, including its parameters.
-Hence, the same endpoint with different parameters would create and use a different `User-Task-Id`.
+Note that a `User-Task-ID` or a `sessionId` and is applicable for an entire `URL`, including its parameters. Hence, the same endpoint with different parameters would create and use a different `User-Task-Id`.
 
-## GET REQUESTS
+## GET Requests
+
 The GET requests in Kafka Cruise Control REST API are for read only operations, i.e. the operations that do not have any external impacts. The GET requests include the following operations:
+
 * [Query the state of Cruise Control](#query-the-state-of-cruise-control)
 * [Query the current cluster load](#query-the-current-cluster-load)
 * [Query partition resource utilization](#query-partition-resource-utilization)
@@ -44,6 +78,7 @@ The GET requests in Kafka Cruise Control REST API are for read only operations, 
 * [Query the user request result](#query-the-user-request-result)
 
 ### Query the state of Cruise Control
+
 User can query the state of Kafka Cruise Control at any time by issuing a HTTP GET request.
 
     GET /kafkacruisecontrol/state
