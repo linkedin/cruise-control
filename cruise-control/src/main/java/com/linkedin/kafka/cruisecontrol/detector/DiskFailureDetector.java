@@ -32,22 +32,17 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAF
 /**
  * This class detects disk failures.
  **/
-public class DiskFailureDetector implements Runnable {
+public class DiskFailureDetector extends AbstractAnomalyDetector implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(DiskFailureDetector.class);
   public static final String FAILED_DISKS_OBJECT_CONFIG = "failed.disks.object";
-  private final KafkaCruiseControl _kafkaCruiseControl;
   private final AdminClient _adminClient;
-  private final Queue<Anomaly> _anomalies;
   private int _lastCheckedClusterGeneration;
   private final KafkaCruiseControlConfig _config;
 
-  public DiskFailureDetector(AdminClient adminClient,
-                             Queue<Anomaly> anomalies,
-                             KafkaCruiseControl kafkaCruiseControl) {
+  public DiskFailureDetector(AdminClient adminClient, Queue<Anomaly> anomalies, KafkaCruiseControl kafkaCruiseControl) {
+    super(anomalies, kafkaCruiseControl);
     _adminClient = adminClient;
-    _anomalies = anomalies;
     _lastCheckedClusterGeneration = -1;
-    _kafkaCruiseControl = kafkaCruiseControl;
     _config = _kafkaCruiseControl.config();
   }
 

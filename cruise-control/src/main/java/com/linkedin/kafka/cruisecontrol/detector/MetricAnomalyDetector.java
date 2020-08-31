@@ -24,19 +24,15 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.get
  * This class will be scheduled to periodically check if {@link KafkaMetricAnomalyFinder} identifies a metric anomaly.
  * An alert will be triggered if one of the goals is not met.
  */
-public class MetricAnomalyDetector implements Runnable {
+public class MetricAnomalyDetector extends AbstractAnomalyDetector implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(MetricAnomalyDetector.class);
   public static final String METRIC_ANOMALY_DESCRIPTION_OBJECT_CONFIG = "metric.anomaly.description.object";
   public static final String METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG = "metric.anomaly.broker.entities.object";
   public static final String METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG = "metric.anomaly.fixable.object";
-  private final Queue<Anomaly> _anomalies;
   private final List<MetricAnomalyFinder> _kafkaMetricAnomalyFinders;
-  private final KafkaCruiseControl _kafkaCruiseControl;
 
-  public MetricAnomalyDetector(Queue<Anomaly> anomalies,
-                               KafkaCruiseControl kafkaCruiseControl) {
-    _anomalies = anomalies;
-    _kafkaCruiseControl = kafkaCruiseControl;
+  public MetricAnomalyDetector(Queue<Anomaly> anomalies, KafkaCruiseControl kafkaCruiseControl) {
+    super(anomalies, kafkaCruiseControl);
     Map<String, Object> configWithCruiseControlObject = Collections.singletonMap(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG,
                                                                                  kafkaCruiseControl);
     _kafkaMetricAnomalyFinders = kafkaCruiseControl.config().getConfiguredInstances(
