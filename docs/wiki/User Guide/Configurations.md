@@ -1,3 +1,24 @@
+## Contents
+
+- [Configurations inherited from Kafka clients](#configurations-inherited-from-kafka-clients)
+- [Cruise Control Configurations](#cruise-control-configurations)
+    - [Analyzer Configurations](#analyzer-configurations)
+    - [Executor Configurations](#executor-configurations)
+    - [AnomalyDetector Configurations](#anomalydetector-configurations)
+    - [UserTaskManager Configurations](#usertaskmanager-configurations)
+    - [Servlet Configurations](#servlet-configurations)
+    - [Configurations under development and testing](#configurations-under-development-and-testing)
+- [Configurations of pluggable classes](#configurations-of-pluggable-classes)
+    - [CruiseControlMetricsReporterSampler configurations](#cruisecontrolmetricsreportersampler-configurations)
+    - [KafkaSampleStore configurations](#kafkasamplestore-configurations)
+    - [BrokerCapacityConfigurationFileResolver configurations](#brokercapacityconfigurationfileresolver-configurations)
+        - [Populating the Capacity Config File](#populating-the-capacity-config-file)
+    - [SelfHealingNotifer configurations](#selfhealingnotifer-configurations)
+- [CruiseControlMetricsReporter configurations](#cruisecontrolmetricsreporter-configurations)
+- [PercentileMetricAnomalyFinderConfig configurations](#percentilemetricanomalyfinderconfig-configurations)
+- [SlowBrokerFinder configurations](#slowbrokerfinder-configurations)
+- [Resolving environment variables as config values](#resolving-environment-variables-as-config-values)
+
 ## Configurations inherited from Kafka clients
 The following configurations are inherited from the open source Kafka client configurations. They will be used by all the clients in Cruise Control to communicate with the Kafka cluster.
 
@@ -203,6 +224,7 @@ We are still trying to improve cruise control. And following are some configurat
 | linear.regression.model.min.num.cpu.util.buckets    | Integer | N         | 5             | The minimum number of full CPU utilization buckets required to generate a linear regression model.                          |
 
 ## Configurations of pluggable classes
+
 ### CruiseControlMetricsReporterSampler configurations
 | Name                                      | Type   | Required? | Default Value                                              | Description                                                                                                                              |
 |-------------------------------------------|--------|-----------|------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
@@ -296,7 +318,7 @@ with a non-default capacity. See:
 
 Besides the above configurations, CruiseControlMetricsReporter takes all the configurations for vanilla KafkaProducer with a prefix of "cruise.control.metrics.reporter."
 
-##Resolving environment variables as config values
+## Resolving environment variables as config values
 It is often required to resolve an environment variable as a config value. Such case is when a password is set by the environment to avoid putting them into config files.
 
 For instance the following config will resolve the `SSL_KEYSTORE_PASSWORD` environment variable and set its value as the actual value of the `webserver.ssl.keystore.password` config:
