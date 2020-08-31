@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
+import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorManager;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.util.concurrent.ExecutionException;
@@ -25,7 +25,7 @@ public class KafkaCruiseControlTest {
   public void testSanityCheckDryRun() throws InterruptedException, ExecutionException, TimeoutException {
     KafkaCruiseControlConfig config = EasyMock.mock(KafkaCruiseControlConfig.class);
     Time time = EasyMock.mock(Time.class);
-    AnomalyDetector anomalyDetector = EasyMock.mock(AnomalyDetector.class);
+    AnomalyDetectorManager anomalyDetectorManager = EasyMock.mock(AnomalyDetectorManager.class);
     Executor executor = EasyMock.strictMock(Executor.class);
     LoadMonitor loadMonitor = EasyMock.mock(LoadMonitor.class);
     ExecutorService goalOptimizerExecutor = EasyMock.mock(ExecutorService.class);
@@ -48,8 +48,8 @@ public class KafkaCruiseControlTest {
     EasyMock.expect(executor.hasOngoingExecution()).andReturn(false).once();
     EasyMock.expect(executor.hasOngoingPartitionReassignments()).andThrow(new TimeoutException()).once();
 
-    EasyMock.replay(config, time, anomalyDetector, executor, loadMonitor, goalOptimizerExecutor, goalOptimizer);
-    KafkaCruiseControl kafkaCruiseControl = new KafkaCruiseControl(config, time, anomalyDetector, executor,
+    EasyMock.replay(config, time, anomalyDetectorManager, executor, loadMonitor, goalOptimizerExecutor, goalOptimizer);
+    KafkaCruiseControl kafkaCruiseControl = new KafkaCruiseControl(config, time, anomalyDetectorManager, executor,
                                                                    loadMonitor, goalOptimizerExecutor, goalOptimizer);
 
     // Expect no failure (dryrun = true) regardless of ongoing executions.
@@ -69,6 +69,6 @@ public class KafkaCruiseControlTest {
     // by other tools timed out, request to stop is irrelevant.
     assertThrows(IllegalStateException.class, () -> kafkaCruiseControl.sanityCheckDryRun(false, false));
 
-    EasyMock.verify(config, time, anomalyDetector, executor, loadMonitor, goalOptimizerExecutor, goalOptimizer);
+    EasyMock.verify(config, time, anomalyDetectorManager, executor, loadMonitor, goalOptimizerExecutor, goalOptimizer);
   }
 }

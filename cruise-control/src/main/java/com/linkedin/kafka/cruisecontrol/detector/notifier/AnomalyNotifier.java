@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import com.linkedin.kafka.cruisecontrol.detector.DiskFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
+import com.linkedin.kafka.cruisecontrol.detector.MaintenanceEvent;
 import com.linkedin.kafka.cruisecontrol.detector.TopicAnomaly;
 import java.util.Map;
 import org.apache.kafka.common.annotation.InterfaceStability;
@@ -53,6 +54,15 @@ public interface AnomalyNotifier extends CruiseControlConfigurable {
    * {@link com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotificationResult.Action}.
    */
   AnomalyNotificationResult onTopicAnomaly(TopicAnomaly topicAnomaly);
+
+  /**
+   * This method is called when a maintenance event is detected.
+   *
+   * @param maintenanceEvent the detected maintenance event.
+   * @return The notification result that asks Cruise Control to perform a particular
+   * {@link com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotificationResult.Action}.
+   */
+  AnomalyNotificationResult onMaintenanceEvent(MaintenanceEvent maintenanceEvent);
 
   /**
    * This method is called when a disk failure is detected.
