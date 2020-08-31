@@ -85,6 +85,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.wr
 public class KafkaSampleStore implements SampleStore {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaSampleStore.class);
   protected static final Duration PRODUCER_CLOSE_TIMEOUT = Duration.ofMinutes(3);
+  protected static final Duration CONSUMER_CLOSE_TIMEOUT = Duration.ofSeconds(10);
   // Keep additional windows in case some of the windows do not have enough samples.
   protected static final int ADDITIONAL_WINDOW_TO_RETAIN_FACTOR = 2;
   protected static final ConsumerRecords<byte[], byte[]> SHUTDOWN_RECORDS = new ConsumerRecords<>(Collections.emptyMap());
@@ -395,6 +396,10 @@ public class KafkaSampleStore implements SampleStore {
   public void close() {
     _shutdown = true;
     _producer.close(PRODUCER_CLOSE_TIMEOUT);
+    // Close consumers.
+    for (KafkaConsumer<byte[], byte[]> consumer : _consumers) {
+      consumer.close(CONSUMER_CLOSE_TIMEOUT);
+    }
   }
 
   protected void prepareConsumers() {

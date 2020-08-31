@@ -23,12 +23,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.SEC_TO_MS;
-import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector.METRIC_REGISTRY_NAME;
-import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.GOAL_VIOLATION;
-import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.METRIC_ANOMALY;
-import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.BROKER_FAILURE;
-import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.DISK_FAILURE;
-import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.TOPIC_ANOMALY;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorManager.METRIC_REGISTRY_NAME;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.*;
+
 
 @JsonResponseClass
 public class AnomalyDetectorState {
@@ -47,6 +44,8 @@ public class AnomalyDetectorState {
   private static final String RECENT_METRIC_ANOMALIES = "recentMetricAnomalies";
   @JsonResponseField
   private static final String RECENT_TOPIC_ANOMALIES = "recentTopicAnomalies";
+  @JsonResponseField
+  private static final String RECENT_MAINTENANCE_EVENTS = "recentMaintenanceEvents";
   @JsonResponseField
   private static final String RECENT_DISK_FAILURES = "recentDiskFailures";
   @JsonResponseField(required = false)
@@ -73,8 +72,8 @@ public class AnomalyDetectorState {
   private long _ongoingAnomalyCount;
   private double _ongoingAnomalyDurationSumForAverageMs;
   private final Time _time;
-  private AtomicLong _numSelfHealingStarted;
-  private AtomicLong _numSelfHealingFailedToStart;
+  private final AtomicLong _numSelfHealingStarted;
+  private final AtomicLong _numSelfHealingFailedToStart;
   private final Map<AnomalyType, Meter> _anomalyRateByType;
   private double _balancednessScore;
   private boolean _hasUnfixableGoals;
@@ -132,6 +131,8 @@ public class AnomalyDetectorState {
                              dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "disk-failure-rate")));
       _anomalyRateByType.put(TOPIC_ANOMALY,
                              dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "topic-anomaly-rate")));
+      _anomalyRateByType.put(MAINTENANCE_EVENT,
+                             dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "maintenance-event-rate")));
     } else {
       _anomalyRateByType = new HashMap<>(KafkaAnomalyType.cachedValues().size());
       KafkaAnomalyType.cachedValues().forEach(anomalyType -> _anomalyRateByType.put(anomalyType, new Meter()));
@@ -355,9 +356,7 @@ public class AnomalyDetectorState {
     Map<Boolean, Set<String>> selfHealingByEnableStatus = new HashMap<>(2);
     selfHealingByEnableStatus.put(true, new HashSet<>(KafkaAnomalyType.cachedValues().size()));
     selfHealingByEnableStatus.put(false, new HashSet<>(KafkaAnomalyType.cachedValues().size()));
-    _selfHealingEnabled.forEach((key, value) -> {
-      selfHealingByEnableStatus.get(value).add(key.toString());
-    });
+    _selfHealingEnabled.forEach((key, value) -> selfHealingByEnableStatus.get(value).add(key.toString()));
     return selfHealingByEnableStatus;
   }
 
@@ -375,6 +374,7 @@ public class AnomalyDetectorState {
     anomalyDetectorState.put(RECENT_METRIC_ANOMALIES, recentAnomalies(METRIC_ANOMALY, true));
     anomalyDetectorState.put(RECENT_DISK_FAILURES, recentAnomalies(DISK_FAILURE, true));
     anomalyDetectorState.put(RECENT_TOPIC_ANOMALIES, recentAnomalies(TOPIC_ANOMALY, true));
+    anomalyDetectorState.put(RECENT_MAINTENANCE_EVENTS, recentAnomalies(MAINTENANCE_EVENT, true));
     anomalyDetectorState.put(METRICS, metrics());
     if (_ongoingSelfHealingAnomaly != null) {
       anomalyDetectorState.put(ONGOING_SELF_HEALING_ANOMALY, _ongoingSelfHealingAnomaly.anomalyId());
@@ -386,7 +386,7 @@ public class AnomalyDetectorState {
   @Override
   public synchronized String toString() {
     Map<Boolean, Set<String>> selfHealingByEnableStatus = getSelfHealingByEnableStatus();
-    return String.format("{%s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%.3f}%n",
+    return String.format("{%s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%.3f}%n",
                          SELF_HEALING_ENABLED, selfHealingByEnableStatus.get(true),
                          SELF_HEALING_DISABLED, selfHealingByEnableStatus.get(false),
                          SELF_HEALING_ENABLED_RATIO, selfHealingEnabledRatio().getJsonStructure(),
@@ -395,6 +395,7 @@ public class AnomalyDetectorState {
                          RECENT_METRIC_ANOMALIES, recentAnomalies(METRIC_ANOMALY, false),
                          RECENT_DISK_FAILURES, recentAnomalies(DISK_FAILURE, false),
                          RECENT_TOPIC_ANOMALIES, recentAnomalies(TOPIC_ANOMALY, false),
+                         RECENT_MAINTENANCE_EVENTS, recentAnomalies(MAINTENANCE_EVENT, false),
                          METRICS, _metrics,
                          ONGOING_SELF_HEALING_ANOMALY, _ongoingSelfHealingAnomaly == null
                                                        ? "None" : _ongoingSelfHealingAnomaly.anomalyId(),

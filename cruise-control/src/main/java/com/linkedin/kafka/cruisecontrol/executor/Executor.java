@@ -11,7 +11,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
-import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
+import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorManager;
 import com.linkedin.kafka.cruisecontrol.exception.OngoingExecutionException;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
@@ -112,7 +112,7 @@ public class Executor {
   private final ConcurrentMap<Integer, Long> _latestRemoveStartTimeMsByBrokerId;
   private final ScheduledExecutorService _executionHistoryScannerExecutor;
   private UserTaskManager _userTaskManager;
-  private final AnomalyDetector _anomalyDetector;
+  private final AnomalyDetectorManager _anomalyDetectorManager;
   private final ConcurrencyAdjuster _concurrencyAdjuster;
   private final ScheduledExecutorService _concurrencyAdjusterExecutor;
   private volatile boolean _concurrencyAdjusterEnabled;
@@ -128,8 +128,8 @@ public class Executor {
   public Executor(KafkaCruiseControlConfig config,
                   Time time,
                   MetricRegistry dropwizardMetricRegistry,
-                  AnomalyDetector anomalyDetector) {
-    this(config, time, dropwizardMetricRegistry, null, null, anomalyDetector);
+                  AnomalyDetectorManager anomalyDetectorManager) {
+    this(config, time, dropwizardMetricRegistry, null, null, anomalyDetectorManager);
   }
 
   /**
@@ -143,7 +143,7 @@ public class Executor {
            MetricRegistry dropwizardMetricRegistry,
            MetadataClient metadataClient,
            ExecutorNotifier executorNotifier,
-           AnomalyDetector anomalyDetector) {
+           AnomalyDetectorManager anomalyDetectorManager) {
     String zkUrl = config.getString(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG);
     _numExecutionStopped = new AtomicInteger(0);
     _numExecutionStoppedByUser = new AtomicInteger(0);
@@ -189,10 +189,10 @@ public class Executor {
                                                                                 ExecutorNotifier.class);
     // Must be set before execution via #setUserTaskManager(UserTaskManager)
     _userTaskManager = null;
-    if (anomalyDetector == null) {
-      throw new IllegalStateException("Anomaly detector cannot be null.");
+    if (anomalyDetectorManager == null) {
+      throw new IllegalStateException("Anomaly detector manager cannot be null.");
     }
-    _anomalyDetector = anomalyDetector;
+    _anomalyDetectorManager = anomalyDetectorManager;
     _demotionHistoryRetentionTimeMs = config.getLong(ExecutorConfig.DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG);
     _removalHistoryRetentionTimeMs = config.getLong(ExecutorConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG);
     _minExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
@@ -654,8 +654,8 @@ public class Executor {
     _executionStoppedByUser.set(false);
     sanityCheckOngoingMovement();
     _hasOngoingExecution = true;
-    _anomalyDetector.maybeClearOngoingAnomalyDetectionTimeMs();
-    _anomalyDetector.resetHasUnfixableGoals();
+    _anomalyDetectorManager.maybeClearOngoingAnomalyDetectionTimeMs();
+    _anomalyDetectorManager.resetHasUnfixableGoals();
     _stopSignal.set(NO_STOP_EXECUTION);
     _executionStoppedByUser.set(false);
     if (_isKafkaAssignerMode) {
@@ -1040,7 +1040,7 @@ public class Executor {
       if (userTaskInfo != null) {
         _userTaskManager.markTaskExecutionFinished(_uuid, _executorState.state() == STOPPING_EXECUTION || _executionException != null);
       } else {
-        _anomalyDetector.markSelfHealingFinished(_uuid);
+        _anomalyDetectorManager.markSelfHealingFinished(_uuid);
       }
 
       String prefix = String.format("Task [%s] %s execution is ", _uuid,

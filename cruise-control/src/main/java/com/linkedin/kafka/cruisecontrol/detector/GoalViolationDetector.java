@@ -46,11 +46,9 @@ import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet
  * This class will be scheduled to run periodically to check if the given goals are violated or not. An alert will be
  * triggered if one of the goals is not met.
  */
-public class GoalViolationDetector implements Runnable {
+public class GoalViolationDetector extends AbstractAnomalyDetector implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(GoalViolationDetector.class);
-  private final KafkaCruiseControl _kafkaCruiseControl;
   private final List<Goal> _detectionGoals;
-  private final Queue<Anomaly> _anomalies;
   private ModelGeneration _lastCheckedModelGeneration;
   private final Pattern _excludedTopics;
   private final boolean _allowCapacityEstimation;
@@ -61,17 +59,15 @@ public class GoalViolationDetector implements Runnable {
   private final OptimizationOptionsGenerator _optimizationOptionsGenerator;
   protected static final double BALANCEDNESS_SCORE_WITH_OFFLINE_REPLICAS = -1.0;
 
-  public GoalViolationDetector(Queue<Anomaly> anomalies,
-                               KafkaCruiseControl kafkaCruiseControl) {
-    KafkaCruiseControlConfig config = kafkaCruiseControl.config();
+  public GoalViolationDetector(Queue<Anomaly> anomalies, KafkaCruiseControl kafkaCruiseControl) {
+    super(anomalies, kafkaCruiseControl);
+    KafkaCruiseControlConfig config = _kafkaCruiseControl.config();
     // Notice that we use a separate set of Goal instances for anomaly detector to avoid interference.
     _detectionGoals = config.getConfiguredInstances(AnomalyDetectorConfig.ANOMALY_DETECTION_GOALS_CONFIG, Goal.class);
-    _anomalies = anomalies;
     _excludedTopics = Pattern.compile(config.getString(AnalyzerConfig.TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG));
     _allowCapacityEstimation = config.getBoolean(AnomalyDetectorConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
     _excludeRecentlyDemotedBrokers = config.getBoolean(AnomalyDetectorConfig.SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
     _excludeRecentlyRemovedBrokers = config.getBoolean(AnomalyDetectorConfig.SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
-    _kafkaCruiseControl = kafkaCruiseControl;
     _balancednessCostByGoal = balancednessCostByGoal(_detectionGoals,
                                                      config.getDouble(AnalyzerConfig.GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG),
                                                      config.getDouble(AnalyzerConfig.GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_CONFIG));
