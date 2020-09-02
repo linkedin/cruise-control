@@ -44,6 +44,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.config.ConfigResource;
+import org.apache.kafka.common.config.TopicConfig;
 import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.errors.ReassignmentInProgressException;
 import org.apache.kafka.common.errors.TopicExistsException;
@@ -176,15 +177,33 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
         reporterConfig.getInt(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS_CONFIG);
     Short cruiseControlMetricsTopicReplicaFactor =
         reporterConfig.getShort(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_CONFIG);
+    Short cruiseControlMetricsTopicMinInsyncReplicas =
+            reporterConfig.getShort(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_MIN_INSYNC_REPLICAS_CONFIG);
+
     if (cruiseControlMetricsTopicReplicaFactor <= 0 || cruiseControlMetricsTopicNumPartition <= 0) {
       throw new CruiseControlMetricsReporterException("The topic configuration must explicitly set the replication factor and the num partitions");
     }
+
     NewTopic newTopic = new NewTopic(cruiseControlMetricsTopic, cruiseControlMetricsTopicNumPartition, cruiseControlMetricsTopicReplicaFactor);
 
-    Map<String, String> config = new HashMap<>(2);
+    Map<String, String> config = new HashMap<>(cruiseControlMetricsTopicMinInsyncReplicas > 0 ? 3 : 2);
     config.put(LogConfig.RetentionMsProp(),
                Long.toString(reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_RETENTION_MS_CONFIG)));
     config.put(LogConfig.CleanupPolicyProp(), CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY);
+    if (cruiseControlMetricsTopicMinInsyncReplicas > 0) {
+      // If the user has set the minISR for the metrics topic we need to check that the replication factor is set to a level that allows the
+      // minISR to be met.
+      if (cruiseControlMetricsTopicReplicaFactor >= cruiseControlMetricsTopicMinInsyncReplicas) {
+        config.put(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, String.valueOf(cruiseControlMetricsTopicMinInsyncReplicas));
+      } else {
+        throw new CruiseControlMetricsReporterException(String.format(
+                "The configured topic replication factor (%d) must be greater than or equal to" +
+                "the configured topic minimum insync replicas (%d)",
+                cruiseControlMetricsTopicReplicaFactor,
+                cruiseControlMetricsTopicMinInsyncReplicas));
+      }
+      // If the user does not set the metrics minISR we do not set that config and use the Kafka cluster's default.
+    }
     newTopic.configs(config);
     return newTopic;
   }
