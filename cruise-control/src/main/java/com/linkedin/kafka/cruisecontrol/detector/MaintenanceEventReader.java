@@ -29,7 +29,5 @@ public interface MaintenanceEventReader extends CruiseControlConfigurable, AutoC
    * @param timeout The maximum time to block (must not be greater than {@link Long#MAX_VALUE} milliseconds)
    * @return Set of maintenance events, or empty set if none is available after the given timeout expires.
    */
-  Set<MaintenanceEvent>
-
-  readEvents(Duration timeout);
+  Set<MaintenanceEvent> readEvents(Duration timeout);
 }
