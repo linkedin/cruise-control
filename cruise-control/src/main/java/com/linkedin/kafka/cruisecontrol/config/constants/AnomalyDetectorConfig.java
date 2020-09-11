@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import com.linkedin.kafka.cruisecontrol.detector.DiskFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
+import com.linkedin.kafka.cruisecontrol.detector.MaintenanceEvent;
 import com.linkedin.kafka.cruisecontrol.detector.NoopMaintenanceEventReader;
 import com.linkedin.kafka.cruisecontrol.detector.NoopMetricAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.NoopTopicAnomalyFinder;
@@ -55,32 +56,28 @@ public class AnomalyDetectorConfig {
    */
   public static final String BROKER_FAILURES_CLASS_CONFIG = "broker.failures.class";
   public static final String DEFAULT_BROKER_FAILURES_CLASS = BrokerFailures.class.getName();
-  public static final String BROKER_FAILURES_CLASS_DOC = String.format("The %s class that extends broker failures.",
-                                                                DEFAULT_BROKER_FAILURES_CLASS);
+  public static final String BROKER_FAILURES_CLASS_DOC = "The name of class that extends broker failures.";
 
   /**
    * <code>goal.violations.class</code>
    */
   public static final String GOAL_VIOLATIONS_CLASS_CONFIG = "goal.violations.class";
   public static final String DEFAULT_GOAL_VIOLATIONS_CLASS = GoalViolations.class.getName();
-  public static final String GOAL_VIOLATIONS_CLASS_DOC = String.format("The %s class that extends goal violations.",
-                                                                DEFAULT_GOAL_VIOLATIONS_CLASS);
+  public static final String GOAL_VIOLATIONS_CLASS_DOC = "The name of class that extends goal violations.";
 
   /**
    * <code>disk.failures.class</code>
    */
   public static final String DISK_FAILURES_CLASS_CONFIG = "disk.failures.class";
   public static final String DEFAULT_DISK_FAILURES_CLASS = DiskFailures.class.getName();
-  public static final String DISK_FAILURES_CLASS_DOC = String.format("The %s class that extends disk failures.",
-                                                              DEFAULT_DISK_FAILURES_CLASS);
+  public static final String DISK_FAILURES_CLASS_DOC = "The name of class that extends disk failures.";
 
   /**
    * <code>metric.anomaly.class</code>
    */
   public static final String METRIC_ANOMALY_CLASS_CONFIG = "metric.anomaly.class";
   public static final String DEFAULT_METRIC_ANOMALY_CLASS = KafkaMetricAnomaly.class.getName();
-  public static final String METRIC_ANOMALY_CLASS_DOC = String.format("The %s class that extends metric anomaly.",
-                                                               DEFAULT_METRIC_ANOMALY_CLASS);
+  public static final String METRIC_ANOMALY_CLASS_DOC = "The name of class that extends metric anomaly.";
 
   /**
    * <code>self.healing.goals</code>
@@ -223,6 +220,13 @@ public class AnomalyDetectorConfig {
       + "events from the user-defined store.";
 
   /**
+   * <code>maintenance.event.class</code>
+   */
+  public static final String MAINTENANCE_EVENT_CLASS_CONFIG = "maintenance.event.class";
+  public static final String DEFAULT_MAINTENANCE_EVENT_CLASS = MaintenanceEvent.class.getName();
+  public static final String MAINTENANCE_EVENT_CLASS_DOC = "The name of class that extends maintenance event.";
+
+  /**
    * Define configs for Anomaly Detector.
    *
    * @param configDef Config definition.
@@ -344,6 +348,11 @@ public class AnomalyDetectorConfig {
                             ConfigDef.Type.CLASS,
                             DEFAULT_MAINTENANCE_EVENT_READER_CLASS,
                             ConfigDef.Importance.MEDIUM,
-                            MAINTENANCE_EVENT_READER_CLASS_DOC);
+                            MAINTENANCE_EVENT_READER_CLASS_DOC)
+                    .define(MAINTENANCE_EVENT_CLASS_CONFIG,
+                            ConfigDef.Type.CLASS,
+                            DEFAULT_MAINTENANCE_EVENT_CLASS,
+                            ConfigDef.Importance.MEDIUM,
+                            MAINTENANCE_EVENT_CLASS_DOC);
   }
 }

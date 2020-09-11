@@ -8,6 +8,7 @@ import com.linkedin.cruisecontrol.exception.NotEnoughValidWindowsException;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
@@ -15,9 +16,14 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_CONCURRENT_MOVEMENTS;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.computeOptimizationOptions;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.isKafkaAssignerMode;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.sanityCheckBrokersHavingOfflineReplicasOnBadDisks;
@@ -34,16 +40,36 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
   protected final Long _executionProgressCheckIntervalMs;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Long _replicationThrottle;
-  // Currently no self-healing action triggers broker addition -- i.e. all are triggered by user requests.
-  protected static final boolean ADD_BROKERS_IS_TRIGGERED_BY_USER_REQUEST = true;
   protected static final boolean SKIP_AUTO_REFRESHING_CONCURRENCY = false;
+
+  /**
+   * Constructor to be used for creating a runnable for self-healing.
+   */
+  public AddBrokersRunnable(KafkaCruiseControl kafkaCruiseControl,
+                            Set<Integer> brokerIds,
+                            List<String> selfHealingGoals,
+                            boolean allowCapacityEstimation,
+                            boolean excludeRecentlyDemotedBrokers,
+                            boolean excludeRecentlyRemovedBrokers,
+                            String anomalyId,
+                            Supplier<String> reasonSupplier) {
+    super(kafkaCruiseControl, new OperationFuture("Broker Addition Self-Healing"), selfHealingGoals, allowCapacityEstimation,
+          excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, anomalyId, reasonSupplier, false);
+    _brokerIds = brokerIds;
+    _throttleAddedBrokers = false;
+    _concurrentInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
+    _concurrentLeaderMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
+    _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
+    _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
+    _replicationThrottle = kafkaCruiseControl.config().getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
+  }
 
   public AddBrokersRunnable(KafkaCruiseControl kafkaCruiseControl,
                             OperationFuture future,
                             AddBrokerParameters parameters,
                             String uuid) {
     super(kafkaCruiseControl, future, parameters, parameters.dryRun(), parameters.stopOngoingExecution(), parameters.skipHardGoalCheck(),
-          uuid, parameters::reason, ADD_BROKERS_IS_TRIGGERED_BY_USER_REQUEST);
+          uuid, parameters::reason, true);
     _brokerIds = parameters.brokerIds();
     _throttleAddedBrokers = parameters.throttleAddedBrokers();
     _concurrentInterBrokerPartitionMovements = parameters.concurrentInterBrokerPartitionMovements();
@@ -91,7 +117,7 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
                                            _executionProgressCheckIntervalMs,
                                            _replicaMovementStrategy,
                                            _replicationThrottle,
-                                           true,
+                                           _isTriggeredByUserRequest,
                                            _uuid,
                                            SKIP_AUTO_REFRESHING_CONCURRENCY);
     }
