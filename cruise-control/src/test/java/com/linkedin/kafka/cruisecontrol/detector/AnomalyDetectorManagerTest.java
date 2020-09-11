@@ -74,10 +74,10 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.A
  * Unit test class for anomaly detector manager.
  */
 public class AnomalyDetectorManagerTest {
-  static private final long MOCK_ANOMALY_DETECTION_INTERVAL_MS = 3000L;
-  static private final long MOCK_ANOMALY_DETECTOR_SHUTDOWN_MS = 5000L;
-  static private final long MOCK_DELAY_CHECK_MS = 1000L;
-  static private final Map<AnomalyType, Float> MOCK_SELF_HEALING_ENABLED_RATIO = new HashMap<>(KafkaAnomalyType.cachedValues().size());
+  private static final long MOCK_ANOMALY_DETECTION_INTERVAL_MS = 3000L;
+  private static final long MOCK_ANOMALY_DETECTOR_SHUTDOWN_MS = 5000L;
+  private static final long MOCK_DELAY_CHECK_MS = 1000L;
+  private static final Map<AnomalyType, Float> MOCK_SELF_HEALING_ENABLED_RATIO = new HashMap<>(KafkaAnomalyType.cachedValues().size());
   static {
     for (AnomalyType anomalyType : KafkaAnomalyType.cachedValues()) {
       MOCK_SELF_HEALING_ENABLED_RATIO.put(anomalyType, 0.99f);
