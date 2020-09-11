@@ -34,6 +34,6 @@ public class NoopMaintenanceEventReader implements MaintenanceEventReader {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() {
   }
 }
