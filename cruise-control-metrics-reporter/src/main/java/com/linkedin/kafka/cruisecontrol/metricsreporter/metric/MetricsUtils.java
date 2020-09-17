@@ -148,8 +148,8 @@ public class MetricsUtils {
                                                           com.yammer.metrics.core.MetricName metricName,
                                                           double value,
                                                           String attribute) {
-    CruiseControlMetric ccm =
-        toCruiseControlMetric(now, brokerId, metricName.getName(), yammerMetricScopeToTags(metricName.getScope()), value, attribute);
+    Map<String, String> tags = yammerMetricScopeToTags(metricName.getScope());
+    CruiseControlMetric ccm = tags == null ? null : toCruiseControlMetric(now, brokerId, metricName.getName(), tags, value, attribute);
     if (ccm == null) {
       throw new IllegalArgumentException(String.format("Cannot convert yammer metric %s to a Cruise Control metric for "
                                                        + "broker %d at time %d for tag %s", metricName, brokerId, now, attribute));
@@ -198,20 +198,21 @@ public class MetricsUtils {
    * @return True if the yammer metric name is an interested metric, false otherwise.
    */
   public static boolean isInterested(com.yammer.metrics.core.MetricName metricName) {
-    return isInterested(metricName.getGroup(), metricName.getName(), metricName.getType(),
-                        yammerMetricScopeToTags(metricName.getScope()));
+    Map<String, String> tags = yammerMetricScopeToTags(metricName.getScope());
+    return tags != null && isInterested(metricName.getGroup(), metricName.getName(), metricName.getType(), tags);
   }
 
   /**
    * Convert a yammer metrics scope to a tags map.
-   * Skip parsing scopes that (1) are {@code null} or (2) have keys without a matching value
-   * (see https://github.com/linkedin/cruise-control/issues/1296).
+   * @param scope Scope of the Yammer metric.
+   * @return Empty map for {@code null} scope, {@code null} for scope with keys without a matching value (i.e. unacceptable
+   * scope) (see https://github.com/linkedin/cruise-control/issues/1296), parsed tags otherwise.
    */
   private static Map<String, String> yammerMetricScopeToTags(String scope) {
     if (scope != null) {
       String[] kv = scope.split("\\.");
       if (kv.length % 2 != 0) {
-        return Collections.emptyMap();
+        return null;
       }
       Map<String, String> tags = new HashMap<>();
       for (int i = 0; i < kv.length; i += 2) {
