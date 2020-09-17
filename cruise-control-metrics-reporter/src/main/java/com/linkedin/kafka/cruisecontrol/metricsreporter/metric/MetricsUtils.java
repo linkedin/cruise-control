@@ -204,11 +204,15 @@ public class MetricsUtils {
 
   /**
    * Convert a yammer metrics scope to a tags map.
+   * Skip parsing scopes that (1) are {@code null} or (2) have keys without a matching value
+   * (see https://github.com/linkedin/cruise-control/issues/1296).
    */
   private static Map<String, String> yammerMetricScopeToTags(String scope) {
     if (scope != null) {
       String[] kv = scope.split("\\.");
-      assert kv.length % 2 == 0;
+      if (kv.length % 2 != 0) {
+        return Collections.emptyMap();
+      }
       Map<String, String> tags = new HashMap<>();
       for (int i = 0; i < kv.length; i += 2) {
         tags.put(kv[i], kv[i + 1]);
