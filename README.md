@@ -68,7 +68,7 @@ Control). The metrics reporter periodically samples the Kafka raw metrics on the
     * `./gradlew jar`
     * Copy `./cruise-control-metrics-reporter/build/libs/cruise-control-metrics-reporter-A.B.C.jar` (Where `A.B.C` is
     the version of the Cruise Control) to your Kafka server dependency jar folder. For Apache Kafka, the folder would
-    be `core/build/dependant-libs-SCALA_VERSION/`
+    be `core/build/dependant-libs-SCALA_VERSION/` (for a Kafka source checkout) or `libs/` (for a Kafka release download).
     * Modify Kafka server configuration to set `metric.reporters` to
     `com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter`. For Apache Kafka, server 
     properties are located at `./config/server.properties`.
