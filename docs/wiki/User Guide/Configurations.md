@@ -11,6 +11,7 @@
 - [Configurations of pluggable classes](#configurations-of-pluggable-classes)
     - [CruiseControlMetricsReporterSampler configurations](#cruisecontrolmetricsreportersampler-configurations)
     - [KafkaSampleStore configurations](#kafkasamplestore-configurations)
+    - [MaintenanceEventTopicReader configurations](#maintenanceeventtopicreader-configurations)
     - [BrokerCapacityConfigurationFileResolver configurations](#brokercapacityconfigurationfileresolver-configurations)
         - [Populating the Capacity Config File](#populating-the-capacity-config-file)
     - [SelfHealingNotifier configurations](#selfhealingnotifier-configurations)
@@ -244,6 +245,14 @@ We are still trying to improve cruise control. And following are some configurat
 | min.partition.sample.store.topic.retention.time.ms    | Integer | N         | 3600000       | The config for the minimal retention time for Kafka partition sample store topic                                                                                                                        |
 | min.broker.sample.store.topic.retention.time.ms       | Integer | N         | 3600000       | The config for the minimal retention time for Kafka broker sample store topic                                                                                                                           |
 | skip.sample.store.topic.rack.awareness.check          | Boolean | N         | false         | The config to skip rack awareness sanity check for sample store topics                                                                                                                                  |
+
+### MaintenanceEventTopicReader configurations
+| Name                                          | Type    | Required? | Default Value           | Description                                                       |
+|-----------------------------------------------|---------|-----------|-------------------------|-------------------------------------------------------------------|
+| maintenance.event.topic                       | String  | N         | __MaintenanceEvent      | The name of the Kafka topic to consume maintenance events from    |
+| maintenance.event.topic.replication.factor    | Short   | N         | min(2, #alive-brokers)  | The replication factor of the maintenance event topic             |
+| maintenance.event.topic.partition.count       | Integer | N         | 32                      | The partition count of the maintenance event topic                |
+| maintenance.event.topic.retention.ms          | Long    | N         | 21600000                | The retention of the maintenance event topic                      |
 
 ### BrokerCapacityConfigurationFileResolver configurations
 | Name                 | Type   | Required? | Default Value             | Description                                                                        |

@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
@@ -14,9 +15,18 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Random;
 import java.util.Set;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.RECONNECT_BACKOFF_MS_CONFIG;
 
 
 /**
@@ -28,8 +38,40 @@ public class AnomalyDetectorUtils {
   public static final String ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG = "anomaly.detection.time.ms.object";
   public static final long MAX_METADATA_WAIT_MS = 60000L;
   public static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures();
+  public static final Random RANDOM = new Random();
 
   private AnomalyDetectorUtils() {
+  }
+
+  /**
+   * Create a Kafka consumer for retrieving reported Maintenance plans.
+   * The consumer uses {@link String} for keys and {@link MaintenancePlan} for values.
+   *
+   * @param configs The configurations for Cruise Control.
+   * @return A new Kafka consumer
+   */
+  public static Consumer<String, MaintenancePlan> createMaintenanceEventConsumer(Map<String, ?> configs, String groupIdPrefix) {
+    // Get bootstrap servers
+    String bootstrapServers = configs.get(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG).toString();
+    // Trim the brackets in List's String representation.
+    if (bootstrapServers.length() > 2) {
+      bootstrapServers = bootstrapServers.substring(1, bootstrapServers.length() - 1);
+    }
+
+    // Create consumer
+    long randomToken = RANDOM.nextLong();
+    Properties consumerProps = new Properties();
+    consumerProps.putAll(configs);
+    consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    consumerProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, groupIdPrefix + randomToken);
+    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, groupIdPrefix + "-consumer-" + randomToken);
+    consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+    consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+    consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
+    consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, MaintenancePlanSerde.class.getName());
+    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, configs.get(RECONNECT_BACKOFF_MS_CONFIG).toString());
+    return new KafkaConsumer<>(consumerProps);
   }
 
   /**

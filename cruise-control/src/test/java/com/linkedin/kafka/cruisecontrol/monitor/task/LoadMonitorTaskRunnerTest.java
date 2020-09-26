@@ -13,7 +13,7 @@ import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
-import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
+import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager;
@@ -211,11 +211,11 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
                               long endTime,
                               SamplingMode mode,
                               MetricDef metricDef,
-                              long timeout) throws MetricSamplingException {
+                              long timeout) throws SamplingException {
 
       if (_exceptionsLeft > 0) {
         _exceptionsLeft--;
-        throw new MetricSamplingException("Error");
+        throw new SamplingException("Error");
       }
       Set<PartitionMetricSample> partitionMetricSamples = new HashSet<>(assignedPartitions.size());
       for (TopicPartition tp : assignedPartitions) {

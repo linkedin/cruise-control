@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.Executors;
 
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.createSampleStoreConsumer;
+
 
 /**
  * This samples store only reads the partition metric samples and broker metric samples from the Kafka topic.
@@ -32,7 +34,7 @@ public class ReadOnlyKafkaSampleStore extends KafkaSampleStore {
     _metricProcessorExecutor = Executors.newFixedThreadPool(numProcessingThreads);
     _consumers = new ArrayList<>(numProcessingThreads);
     for (int i = 0; i < numProcessingThreads; i++) {
-      _consumers.add(createConsumer(config));
+      _consumers.add(createSampleStoreConsumer(config, CONSUMER_GROUP_ID_PREFIX));
     }
     _loadingProgress = -1.0;
   }

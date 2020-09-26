@@ -10,26 +10,48 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGo
 import com.linkedin.kafka.cruisecontrol.config.EnvConfigProvider;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
+import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
+import java.util.Collections;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.AlterConfigOp;
+import org.apache.kafka.clients.admin.AlterConfigsResult;
+import org.apache.kafka.clients.admin.Config;
+import org.apache.kafka.clients.admin.ConfigEntry;
+import org.apache.kafka.clients.admin.CreatePartitionsResult;
+import org.apache.kafka.clients.admin.CreateTopicsResult;
+import org.apache.kafka.clients.admin.DescribeConfigsResult;
 import org.apache.kafka.clients.admin.DescribeLogDirsResult;
+import org.apache.kafka.clients.admin.NewPartitions;
+import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.admin.TopicDescription;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.config.SslConfigs;
+import org.apache.kafka.common.errors.ReassignmentInProgressException;
+import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.message.MetadataResponseData;
 import org.apache.kafka.common.record.RecordBatch;
 import org.apache.kafka.common.requests.AbstractResponse;
 import org.apache.kafka.common.requests.MetadataResponse;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.SystemTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.Option;
 
 import java.io.FileInputStream;
@@ -49,12 +71,15 @@ import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_HARD_GOAL_CHECK_PARAM;
+import static kafka.log.LogConfig.CleanupPolicyProp;
+import static kafka.log.LogConfig.RetentionMsProp;
 
 
 /**
  * Util class for convenience.
  */
 public class KafkaCruiseControlUtils {
+  private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlUtils.class);
   public static final double MAX_BALANCEDNESS_SCORE = 100.0;
   public static final int ZK_SESSION_TIMEOUT = 120000;
   public static final int ZK_CONNECTION_TIMEOUT = 120000;
@@ -72,6 +97,8 @@ public class KafkaCruiseControlUtils {
   public static final int REQUEST_VERSION_UPDATE = -1;
   public static final String ENV_CONFIG_PROVIDER_NAME = "env";
   public static final String ENV_CONFIG_PROVIDER_CLASS_CONFIG = ".env.class";
+  public static final long CLIENT_REQUEST_TIMEOUT_MS = 30000L;
+  public static final String DEFAULT_CLEANUP_POLICY = "delete";
 
   private KafkaCruiseControlUtils() {
 
@@ -166,6 +193,194 @@ public class KafkaCruiseControlUtils {
       throw new ConfigException(String.format("Configuration %s must be provided.", configName));
     }
     return value;
+  }
+
+  /**
+   * Creates the given topic if it does not exist.
+   *
+   * @param adminClient The adminClient to send createTopics request.
+   * @param topicToBeCreated A wrapper around the topic to be created.
+   * @return {@code false} if the topic to be created already exists, {@code true} otherwise.
+   */
+  public static boolean createTopic(AdminClient adminClient, NewTopic topicToBeCreated) {
+    try {
+      CreateTopicsResult createTopicsResult = adminClient.createTopics(Collections.singletonList(topicToBeCreated));
+      createTopicsResult.values().get(topicToBeCreated.name()).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+      LOG.info("Topic {} has been created.", topicToBeCreated.name());
+    } catch (InterruptedException | ExecutionException | TimeoutException e) {
+      if (e.getCause() instanceof TopicExistsException) {
+        return false;
+      }
+      throw new IllegalStateException(String.format("Unable to create topic %s.", topicToBeCreated.name()), e);
+    }
+    return true;
+  }
+
+  /**
+   * Build a wrapper around the topic with the given desired properties and {@link #DEFAULT_CLEANUP_POLICY}.
+   *
+   * @param topic The name of the topic.
+   * @param partitionCount Desired partition count.
+   * @param replicationFactor Desired replication factor.
+   * @param retentionMs Desired retention in milliseconds.
+   * @return A wrapper around the topic with the given desired properties.
+   */
+  public static NewTopic wrapTopic(String topic, int partitionCount, short replicationFactor, long retentionMs) {
+    if (partitionCount <= 0 || replicationFactor <= 0 || retentionMs <= 0) {
+      throw new IllegalArgumentException(String.format("Partition count (%d), replication factor (%d), and retention ms (%d)"
+                                                       + " must be positive for the topic (%s).", partitionCount,
+                                                       replicationFactor, retentionMs, topic));
+    }
+
+    NewTopic newTopic = new NewTopic(topic, partitionCount, replicationFactor);
+    Map<String, String> config = new HashMap<>(2);
+    config.put(RetentionMsProp(), Long.toString(retentionMs));
+    config.put(CleanupPolicyProp(), DEFAULT_CLEANUP_POLICY);
+    newTopic.configs(config);
+
+    return newTopic;
+  }
+
+  /**
+   * Add config altering operations to the given configs to alter for configs that differ between current and desired.
+   *
+   * @param configsToAlter A set of config altering operations to be populated.
+   * @param desiredConfig Desired config value by name.
+   * @param currentConfig Current config.
+   */
+  private static void maybeUpdateConfig(Set<AlterConfigOp> configsToAlter, Map<String, String> desiredConfig, Config currentConfig) {
+    for (Map.Entry<String, String> entry : desiredConfig.entrySet()) {
+      String configName = entry.getKey();
+      String targetConfigValue = entry.getValue();
+      ConfigEntry currentConfigEntry = currentConfig.get(configName);
+      if (currentConfigEntry == null || !currentConfigEntry.value().equals(targetConfigValue)) {
+        configsToAlter.add(new AlterConfigOp(new ConfigEntry(configName, targetConfigValue), AlterConfigOp.OpType.SET));
+      }
+    }
+  }
+
+  /**
+   * Update topic configurations with the desired configs specified in the given topicToUpdateConfigs.
+   *
+   * @param adminClient The adminClient to send describeConfigs and incrementalAlterConfigs requests.
+   * @param topicToUpdateConfigs Existing topic to update selected configs if needed -- cannot be {@code null}.
+   * @return {@code true} if the request is completed successfully, {@code false} if there are any exceptions.
+   */
+  public static boolean maybeUpdateTopicConfig(AdminClient adminClient, NewTopic topicToUpdateConfigs) {
+    String topicName = topicToUpdateConfigs.name();
+    // Retrieve topic config to check if it needs an update.
+    ConfigResource topicResource = new ConfigResource(ConfigResource.Type.TOPIC, topicName);
+    DescribeConfigsResult describeConfigsResult = adminClient.describeConfigs(Collections.singleton(topicResource));
+    Config topicConfig;
+    try {
+      topicConfig = describeConfigsResult.values().get(topicResource).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    } catch (InterruptedException | ExecutionException | TimeoutException e) {
+      LOG.warn("Config check for topic {} failed due to failure to describe its configs.", topicName, e);
+      return false;
+    }
+
+    // Update configs if needed.
+    Map<String, String> desiredConfig = topicToUpdateConfigs.configs();
+    if (desiredConfig != null) {
+      Set<AlterConfigOp> alterConfigOps = new HashSet<>(desiredConfig.size());
+      maybeUpdateConfig(alterConfigOps, desiredConfig, topicConfig);
+      if (!alterConfigOps.isEmpty()) {
+        AlterConfigsResult alterConfigsResult
+            = adminClient.incrementalAlterConfigs(Collections.singletonMap(topicResource, alterConfigOps));
+        try {
+          alterConfigsResult.values().get(topicResource).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+          LOG.warn("Config change for topic {} failed.", topicName, e);
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Increase the partition count of the given existing topic to the desired partition count (if needed).
+   *
+   * @param adminClient The adminClient to send describeTopics and createPartitions requests.
+   * @param topicToAddPartitions Existing topic to add more partitions if needed -- cannot be {@code null}.
+   * @return {@code true} if the request is completed successfully, {@code false} if there are any exceptions.
+   */
+  public static boolean maybeIncreasePartitionCount(AdminClient adminClient, NewTopic topicToAddPartitions) {
+    String topicName = topicToAddPartitions.name();
+
+    // Retrieve partition count of topic to check if it needs a partition count update.
+    TopicDescription topicDescription;
+    try {
+      topicDescription = adminClient.describeTopics(Collections.singletonList(topicName)).values()
+                                    .get(topicName).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    } catch (InterruptedException | ExecutionException | TimeoutException e) {
+      LOG.warn("Partition count increase check for topic {} failed due to failure to describe cluster.", topicName, e);
+      return false;
+    }
+
+    // Update partition count of topic if needed.
+    if (topicDescription.partitions().size() < topicToAddPartitions.numPartitions()) {
+      CreatePartitionsResult createPartitionsResult = adminClient.createPartitions(
+          Collections.singletonMap(topicName, NewPartitions.increaseTo(topicToAddPartitions.numPartitions())));
+
+      try {
+        createPartitionsResult.values().get(topicName).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+      } catch (InterruptedException | ExecutionException | TimeoutException e) {
+        LOG.warn("Partition count increase to {} for topic {} failed{}.", topicToAddPartitions.numPartitions(), topicName,
+                 (e.getCause() instanceof ReassignmentInProgressException) ? " due to ongoing reassignment" : "", e);
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Sanity check whether there are failures in partition offsets fetched by a consumer. This typically happens due to
+   * transient network failures (e.g. Error sending fetch request XXX to node XXX: org.apache.kafka.common.errors.DisconnectException.)
+   * that prevents the consumer from getting offset from some brokers for as long as reconnect.backoff.ms.
+   *
+   * @param endOffsets End offsets retrieved by consumer.
+   * @param offsetsForTimes Offsets for times retrieved by consumer.
+   */
+  public static void sanityCheckOffsetFetch(Map<TopicPartition, Long> endOffsets,
+                                            Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes)
+      throws SamplingException {
+    Set<TopicPartition> failedToFetchOffsets = new HashSet<>();
+    for (Map.Entry<TopicPartition, OffsetAndTimestamp> entry : offsetsForTimes.entrySet()) {
+      if (entry.getValue() == null && endOffsets.get(entry.getKey()) == null) {
+        failedToFetchOffsets.add(entry.getKey());
+      }
+    }
+
+    if (!failedToFetchOffsets.isEmpty()) {
+      throw new SamplingException(String.format("Consumer failed to fetch offsets for %s. Consider decreasing "
+                                                + "reconnect.backoff.ms to mitigate consumption failures"
+                                                + " due to transient network issues.", failedToFetchOffsets));
+    }
+  }
+
+  /**
+   * Check whether the given consumer is done with the consumption of each partition with the given offsets.
+   * A consumption is considered as done if either of the following is satisfied:
+   * <ul>
+   *   <li>The consumer has caught up with the provided offsets</li>
+   *   <li>All partitions are paused</li>
+   * </ul>
+   *
+   * @param offsets Offsets for each partition consumption to catch up.
+   * @return True if the consumption is done, false otherwise.
+   */
+  public static <K, V> boolean consumptionDone(Consumer<K, V> consumer, Map<TopicPartition, Long> offsets) {
+    Set<TopicPartition> partitionsNotPaused = new HashSet<>(consumer.assignment());
+    partitionsNotPaused.removeAll(consumer.paused());
+    for (TopicPartition tp : partitionsNotPaused) {
+      if (consumer.position(tp) < offsets.get(tp)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
@@ -366,9 +581,9 @@ public class KafkaCruiseControlUtils {
     // Add bootstrap server.
     List<String> bootstrapServers = configs.getList(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG);
     String bootstrapServersString = bootstrapServers.toString()
-        .replace(" ", "")
-        .replace("[", "")
-        .replace("]", "");
+                                                    .replace(" ", "")
+                                                    .replace("[", "")
+                                                    .replace("]", "");
     adminClientConfigs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServersString);
 
     // Add security protocol (if specified).

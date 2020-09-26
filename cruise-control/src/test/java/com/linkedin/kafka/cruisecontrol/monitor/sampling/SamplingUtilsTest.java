@@ -28,8 +28,11 @@ import org.apache.kafka.common.config.ConfigResource;
 import org.easymock.EasyMock;
 import org.junit.Test;
 
-import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.CLIENT_REQUEST_TIMEOUT_MS;
-import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.DEFAULT_CLEANUP_POLICY;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.CLIENT_REQUEST_TIMEOUT_MS;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.DEFAULT_CLEANUP_POLICY;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.maybeIncreasePartitionCount;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.maybeUpdateTopicConfig;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.wrapTopic;
 import static kafka.log.LogConfig.CleanupPolicyProp;
 import static kafka.log.LogConfig.RetentionMsProp;
 import static org.junit.Assert.assertTrue;
@@ -61,7 +64,7 @@ public class SamplingUtilsTest {
     Map<ConfigResource, KafkaFuture<Void>> alterConfigsValues = Collections.singletonMap(MOCK_TOPIC_RESOURCE,
                                                                                          EasyMock.createMock(KafkaFuture.class));
 
-    NewTopic topicToUpdateConfigs = SamplingUtils.wrapTopic(MOCK_TOPIC, MOCK_PARTITION_COUNT, MOCK_REPLICATION_FACTOR, MOCK_DESIRED_RETENTION_MS);
+    NewTopic topicToUpdateConfigs = wrapTopic(MOCK_TOPIC, MOCK_PARTITION_COUNT, MOCK_REPLICATION_FACTOR, MOCK_DESIRED_RETENTION_MS);
     EasyMock.expect(adminClient.describeConfigs(EasyMock.eq(Collections.singleton(MOCK_TOPIC_RESOURCE)))).andReturn(describeConfigsResult);
     EasyMock.expect(describeConfigsResult.values()).andReturn(describeConfigsValues);
     EasyMock.expect(describedConfigsFuture.get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS)).andReturn(topicConfig);
@@ -76,7 +79,7 @@ public class SamplingUtilsTest {
     EasyMock.replay(adminClient, describeConfigsResult, describedConfigsFuture, topicConfig, alterConfigsResult);
 
 
-    boolean updateTopicConfig = SamplingUtils.maybeUpdateTopicConfig(adminClient, topicToUpdateConfigs);
+    boolean updateTopicConfig = maybeUpdateTopicConfig(adminClient, topicToUpdateConfigs);
     EasyMock.verify(adminClient, describeConfigsResult, describedConfigsFuture, topicConfig, alterConfigsResult);
     assertTrue(updateTopicConfig);
   }
@@ -84,8 +87,7 @@ public class SamplingUtilsTest {
   @Test
   public void testMaybeIncreasePartitionCount() throws InterruptedException, ExecutionException, TimeoutException {
     AdminClient adminClient = EasyMock.createMock(AdminClient.class);
-    NewTopic topicToAddPartitions = SamplingUtils.wrapTopic(MOCK_TOPIC, MOCK_DESIRED_PARTITION_COUNT,
-                                                            MOCK_REPLICATION_FACTOR, MOCK_DESIRED_RETENTION_MS);
+    NewTopic topicToAddPartitions = wrapTopic(MOCK_TOPIC, MOCK_DESIRED_PARTITION_COUNT, MOCK_REPLICATION_FACTOR, MOCK_DESIRED_RETENTION_MS);
     DescribeTopicsResult describeTopicsResult = EasyMock.createMock(DescribeTopicsResult.class);
     KafkaFuture<TopicDescription> topicDescriptionFuture = EasyMock.createMock(KafkaFuture.class);
     TopicDescription topicDescription = EasyMock.createMock(TopicDescription.class);
@@ -102,7 +104,7 @@ public class SamplingUtilsTest {
     EasyMock.expect(createPartitionsResult.values()).andReturn(createPartitionsValues);
 
     EasyMock.replay(adminClient, describeTopicsResult, topicDescriptionFuture, topicDescription, createPartitionsResult);
-    boolean increasePartitionCount = SamplingUtils.maybeIncreasePartitionCount(adminClient, topicToAddPartitions);
+    boolean increasePartitionCount = maybeIncreasePartitionCount(adminClient, topicToAddPartitions);
 
     EasyMock.verify(adminClient, describeTopicsResult, topicDescriptionFuture, topicDescription, createPartitionsResult);
     assertTrue(increasePartitionCount);
