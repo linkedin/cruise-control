@@ -18,26 +18,30 @@ class AbstractSetOfChoicesParameter(AbstractParameter):
 
 class DisableSelfHealingForParameter(AbstractSetOfChoicesParameter):
     """disable_self_healing_for=[Set-of-{@link AnomalyType}]"""
-    lowercase_set_of_choices = {'goal_violation', 'metric_anomaly', 'broker_failure'}
+    lowercase_set_of_choices = {'broker_failure', 'disk_failure', 'goal_violation', 'maintenance_event',
+                                'metric_anomaly', 'topic_anomaly'}
     name = 'disable_self_healing_for'
     description = "The anomaly detectors for which to disable self-healing"
     argparse_properties = {
         'args': ('--disable-self-healing-for', '--disable-self-healing'),
         # nargs='+' allows for multiple of the set to be specified
-        'kwargs': dict(help=description, metavar='ANOMALY_DETECTOR', choices=lowercase_set_of_choices, nargs='+', type=str.lower)
+        'kwargs': dict(help=description, metavar='ANOMALY_DETECTOR', choices=lowercase_set_of_choices, nargs='+',
+                       type=str.lower)
 
     }
 
 
 class EnableSelfHealingForParameter(AbstractSetOfChoicesParameter):
     """enable_self_healing_for=[Set-of-{@link AnomalyType}]"""
-    lowercase_set_of_choices = {'goal_violation', 'metric_anomaly', 'broker_failure'}
+    lowercase_set_of_choices = {'broker_failure', 'disk_failure', 'goal_violation', 'maintenance_event',
+                                'metric_anomaly', 'topic_anomaly'}
     name = 'enable_self_healing_for'
     description = "The anomaly detectors for which to enable self-healing"
     argparse_properties = {
         'args': ('--enable-self-healing-for', '--enable-self-healing'),
         # nargs='+' allows for multiple of the set to be specified
-        'kwargs': dict(help=description, metavar='ANOMALY_DETECTOR', choices=lowercase_set_of_choices, nargs='+', type=str.lower)
+        'kwargs': dict(help=description, metavar='ANOMALY_DETECTOR', choices=lowercase_set_of_choices, nargs='+',
+                       type=str.lower)
     }
 
 
@@ -60,5 +64,6 @@ class SubstatesParameter(AbstractSetOfChoicesParameter):
     argparse_properties = {
         'args': ('--substate', '--substates'),
         # nargs='+' allows for multiple of the set to be specified
-        'kwargs': dict(help=description, metavar='SUBSTATE', choices=lowercase_set_of_choices, nargs='+', type=str.lower)
+        'kwargs': dict(help=description, metavar='SUBSTATE', choices=lowercase_set_of_choices, nargs='+',
+                       type=str.lower)
     }
