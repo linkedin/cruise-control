@@ -33,7 +33,8 @@ class DisableSelfHealingForParameter(AbstractSetOfChoicesParameter):
 
 class EnableSelfHealingForParameter(AbstractSetOfChoicesParameter):
     """enable_self_healing_for=[Set-of-{@link AnomalyType}]"""
-    lowercase_set_of_choices = {'goal_violation', 'metric_anomaly', 'broker_failure'}
+    lowercase_set_of_choices = {'broker_failure', 'disk_failure', 'goal_violation', 'maintenance_event',
+                                'metric_anomaly', 'topic_anomaly'}
     name = 'enable_self_healing_for'
     description = "The anomaly detectors for which to enable self-healing"
     argparse_properties = {
