@@ -106,7 +106,6 @@ public class SessionManager {
    *
    * @return The {@link OperationFuture} for the provided async operation.
    */
-  @SuppressWarnings("unchecked")
   synchronized OperationFuture getAndCreateSessionIfNotExist(HttpServletRequest request,
                                                              Supplier<OperationFuture> operation,
                                                              int step) {

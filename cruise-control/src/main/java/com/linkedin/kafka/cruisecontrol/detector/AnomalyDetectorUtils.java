@@ -54,13 +54,10 @@ public class AnomalyDetectorUtils {
    * @param clientIdPrefix Client id prefix.
    * @return A new Kafka consumer
    */
+  @SuppressWarnings("unchecked")
   public static Consumer<String, MaintenancePlan> createMaintenanceEventConsumer(Map<String, ?> configs, String clientIdPrefix) {
     // Get bootstrap servers
-    String bootstrapServers = configs.get(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG).toString();
-    // Trim the brackets in List's String representation.
-    if (bootstrapServers.length() > 2) {
-      bootstrapServers = bootstrapServers.substring(1, bootstrapServers.length() - 1);
-    }
+    String bootstrapServers = String.join(",", (List<String>) configs.get(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG));
 
     // Create consumer
     long randomToken = RANDOM.nextLong();

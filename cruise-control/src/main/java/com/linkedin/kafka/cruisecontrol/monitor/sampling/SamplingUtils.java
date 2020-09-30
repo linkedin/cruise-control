@@ -345,13 +345,16 @@ public class SamplingUtils {
     return new KafkaConsumer<>(consumerProps);
   }
 
-  private static String bootstrapServers(Map<String, ?> configs) {
-    String bootstrapServers = configs.get(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG).toString();
-    // Trim the brackets in List's String representation.
-    if (bootstrapServers.length() > 2) {
-      bootstrapServers = bootstrapServers.substring(1, bootstrapServers.length() - 1);
-    }
-    return bootstrapServers;
+  /**
+   * Retrieve comma separated bootstrap servers from the configurations for Cruise Control for configuring
+   * {@link org.apache.kafka.clients.CommonClientConfigs#BOOTSTRAP_SERVERS_CONFIG}.
+   *
+   * @param config The configurations for Cruise Control.
+   * @return Comma separated bootstrap servers.
+   */
+  @SuppressWarnings("unchecked")
+  public static String bootstrapServers(Map<String, ?> config) {
+    return String.join(",", (List<String>) config.get(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG));
   }
 
   /**

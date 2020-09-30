@@ -47,6 +47,7 @@ import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.bootstrapServers;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.createSampleStoreConsumer;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.createTopic;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.CLIENT_REQUEST_TIMEOUT_MS;
@@ -194,12 +195,7 @@ public class KafkaSampleStore implements SampleStore {
   protected KafkaProducer<byte[], byte[]> createProducer(Map<String, ?> config) {
     Properties producerProps = new Properties();
     producerProps.putAll(config);
-    String bootstrapServers = config.get(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG).toString();
-    // Trim the brackets in List's String representation.
-    if (bootstrapServers.length() > 2) {
-      bootstrapServers = bootstrapServers.substring(1, bootstrapServers.length() - 1);
-    }
-    producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers(config));
     producerProps.setProperty(ProducerConfig.CLIENT_ID_CONFIG, PRODUCER_CLIENT_ID);
     // Set batch.size and linger.ms to a big number to have better batching.
     producerProps.setProperty(ProducerConfig.LINGER_MS_CONFIG, "30000");
