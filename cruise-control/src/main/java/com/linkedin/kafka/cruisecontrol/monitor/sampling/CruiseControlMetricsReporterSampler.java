@@ -39,10 +39,11 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
   // Configurations
   public static final String METRIC_REPORTER_SAMPLER_BOOTSTRAP_SERVERS = "metric.reporter.sampler.bootstrap.servers";
   public static final String METRIC_REPORTER_TOPIC = "metric.reporter.topic";
+  @Deprecated
   public static final String METRIC_REPORTER_SAMPLER_GROUP_ID = "metric.reporter.sampler.group.id";
   public static final Duration METRIC_REPORTER_CONSUMER_POLL_TIMEOUT = Duration.ofMillis(5000L);
   // Default configs
-  public static final String DEFAULT_METRIC_REPORTER_SAMPLER_GROUP_ID = "CruiseControlMetricsReporterSampler";
+  public static final String CONSUMER_CLIENT_ID_PREFIX = "CruiseControlMetricsReporterSampler";
   public static final long ACCEPTABLE_NETWORK_DELAY_MS = 100L;
   protected CruiseControlMetricsProcessor _metricsProcessor;
 
@@ -186,7 +187,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     _acceptableMetricRecordProduceDelayMs = ACCEPTABLE_NETWORK_DELAY_MS +
         Math.max(reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_MAX_BLOCK_MS_CONFIG),
                  reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS_CONFIG));
-    _metricConsumer = createMetricConsumer(configs);
+    _metricConsumer = createMetricConsumer(configs, CONSUMER_CLIENT_ID_PREFIX);
     _currentPartitionAssignment = Collections.emptySet();
     if (refreshPartitionAssignment()) {
       throw new IllegalStateException("Cruise Control cannot find partitions for the metrics reporter that topic matches "

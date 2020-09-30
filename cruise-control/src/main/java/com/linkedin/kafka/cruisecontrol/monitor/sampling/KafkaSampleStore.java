@@ -94,7 +94,7 @@ public class KafkaSampleStore implements SampleStore {
   protected static final long DEFAULT_MIN_PARTITION_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS = 3600000L;
   protected static final long DEFAULT_MIN_BROKER_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS = 3600000L;
   protected static final String PRODUCER_CLIENT_ID = "KafkaCruiseControlSampleStoreProducer";
-  protected static final String CONSUMER_GROUP_ID_PREFIX = "KafkaCruiseControlSampleStore";
+  protected static final String CONSUMER_CLIENT_ID_PREFIX = "KafkaCruiseControlSampleStore";
 
   protected List<KafkaConsumer<byte[], byte[]>> _consumers;
   protected ExecutorService _metricProcessorExecutor;
@@ -155,7 +155,7 @@ public class KafkaSampleStore implements SampleStore {
     _metricProcessorExecutor = Executors.newFixedThreadPool(numProcessingThreads);
     _consumers = new ArrayList<>(numProcessingThreads);
     for (int i = 0; i < numProcessingThreads; i++) {
-      _consumers.add(createSampleStoreConsumer(config, CONSUMER_GROUP_ID_PREFIX));
+      _consumers.add(createSampleStoreConsumer(config, CONSUMER_CLIENT_ID_PREFIX));
     }
 
     _producer = createProducer(config);

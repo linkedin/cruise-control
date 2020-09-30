@@ -23,10 +23,12 @@ public class RebalancePlan extends MaintenancePlan {
   /**
    * Deserialize given byte buffer to a {@link RebalancePlan}.
    *
+   * @param headerSize The header size of the buffer.
    * @param buffer buffer to deserialize.
    * @return The {@link RebalancePlan} corresponding to the deserialized buffer.
    */
-  public static RebalancePlan fromBuffer(ByteBuffer buffer) throws UnknownVersionException {
+  public static RebalancePlan fromBuffer(int headerSize, ByteBuffer buffer) throws UnknownVersionException {
+    verifyCrc(headerSize, buffer);
     byte version = buffer.get();
     if (version > PLAN_VERSION) {
       throw new UnknownVersionException("Cannot deserialize the plan for version " + version + ". Current version: " + PLAN_VERSION);

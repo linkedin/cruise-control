@@ -17,7 +17,7 @@ import org.apache.kafka.common.serialization.Serializer;
 public class MaintenancePlanSerde implements Serializer<MaintenancePlan>, Deserializer<MaintenancePlan> {
   // The overhead of the type bytes
   private static final int EVENT_TYPE_OFFSET = 0;
-  private static final int HEADER_LENGTH = 1;
+  private static final int HEADER_LENGTH = Byte.BYTES;
 
   /**
    * Serialize the Maintenance plan to a byte array.
@@ -41,17 +41,17 @@ public class MaintenancePlanSerde implements Serializer<MaintenancePlan>, Deseri
     ByteBuffer buffer = ByteBuffer.wrap(bytes);
     switch (MaintenanceEventType.forId(buffer.get())) {
       case ADD_BROKER:
-        return AddBrokerPlan.fromBuffer(buffer);
+        return AddBrokerPlan.fromBuffer(HEADER_LENGTH, buffer);
       case REMOVE_BROKER:
-        return RemoveBrokerPlan.fromBuffer(buffer);
+        return RemoveBrokerPlan.fromBuffer(HEADER_LENGTH, buffer);
       case FIX_OFFLINE_REPLICAS:
-        return FixOfflineReplicasPlan.fromBuffer(buffer);
+        return FixOfflineReplicasPlan.fromBuffer(HEADER_LENGTH, buffer);
       case REBALANCE:
-        return RebalancePlan.fromBuffer(buffer);
+        return RebalancePlan.fromBuffer(HEADER_LENGTH, buffer);
       case DEMOTE_BROKER:
-        return DemoteBrokerPlan.fromBuffer(buffer);
+        return DemoteBrokerPlan.fromBuffer(HEADER_LENGTH, buffer);
       case TOPIC_REPLICATION_FACTOR:
-        return TopicReplicationFactorPlan.fromBuffer(buffer);
+        return TopicReplicationFactorPlan.fromBuffer(HEADER_LENGTH, buffer);
       default:
         // This could happen when a new type of maintenance event is added but we are still running the old code.
         return null;

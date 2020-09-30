@@ -341,6 +341,13 @@ public class KafkaCruiseControlUtils {
    * transient network failures (e.g. Error sending fetch request XXX to node XXX: org.apache.kafka.common.errors.DisconnectException.)
    * that prevents the consumer from getting offset from some brokers for as long as reconnect.backoff.ms.
    *
+   * Note the following assumptions for the given parameters:
+   * <ul>
+   *   <li>if a partition has never been written to, its end offset is expected to be {@code 0}.</li>
+   *   <li>if the earliest offset, whose timestamp is greater than or equal to the given timestamp in the corresponding
+   *   partition does not exist, {@code null} is expected for the offset for the time of the partition.</li>
+   * </ul>
+   *
    * @param endOffsets End offsets retrieved by consumer.
    * @param offsetsForTimes Offsets for times retrieved by consumer.
    */

@@ -24,24 +24,12 @@ import java.util.List;
  */
 public enum MaintenanceEventType {
   // Do not change the order of enums. Append new ones to the end.
-  ADD_BROKER((byte) 0),
-  REMOVE_BROKER((byte) 1),
-  FIX_OFFLINE_REPLICAS((byte) 2),
-  REBALANCE((byte) 3),
-  DEMOTE_BROKER((byte) 4),
-  TOPIC_REPLICATION_FACTOR((byte) 5);
+  ADD_BROKER, REMOVE_BROKER, FIX_OFFLINE_REPLICAS, REBALANCE, DEMOTE_BROKER, TOPIC_REPLICATION_FACTOR;
 
   // This id helps with serialization and deserialization of event types
-  private final byte _id;
-
-  MaintenanceEventType(byte id) {
-    _id = id;
-  }
-
   byte id() {
-    return _id;
+    return (byte) ordinal();
   }
-
   /**
    * Retrieve the {@link MaintenanceEvent} that corresponds to the given id.
    *

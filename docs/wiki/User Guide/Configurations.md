@@ -251,7 +251,7 @@ We are still trying to improve cruise control. And following are some configurat
 |-----------------------------------------------|---------|-----------|-------------------------|-------------------------------------------------------------------|
 | maintenance.event.topic                       | String  | N         | __MaintenanceEvent      | The name of the Kafka topic to consume maintenance events from    |
 | maintenance.event.topic.replication.factor    | Short   | N         | min(2, #alive-brokers)  | The replication factor of the maintenance event topic             |
-| maintenance.event.topic.partition.count       | Integer | N         | 32                      | The partition count of the maintenance event topic                |
+| maintenance.event.topic.partition.count       | Integer | N         | 8                       | The partition count of the maintenance event topic                |
 | maintenance.event.topic.retention.ms          | Long    | N         | 21600000                | The retention of the maintenance event topic                      |
 
 ### BrokerCapacityConfigurationFileResolver configurations

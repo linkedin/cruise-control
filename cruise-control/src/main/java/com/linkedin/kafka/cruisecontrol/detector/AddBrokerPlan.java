@@ -38,13 +38,13 @@ public class AddBrokerPlan extends MaintenancePlan {
   @Override
   public ByteBuffer toBuffer(int headerSize) {
     short numBrokersToAdd = (short) _brokers.size();
-    ByteBuffer buffer = ByteBuffer.allocate(headerSize
-                                            + Byte.BYTES /* plan version */
-                                            + Long.BYTES /* timeMs */
-                                            + Integer.BYTES /* broker id */
-                                            + Short.BYTES /* number of brokers to add */
-                                            + (Integer.BYTES * numBrokersToAdd) /* brokers to add */);
-    buffer.position(headerSize);
+    int contentSize = (Byte.BYTES /* plan version */
+                       + Long.BYTES /* timeMs */
+                       + Integer.BYTES /* broker id */
+                       + Short.BYTES /* number of brokers to add */
+                       + (Integer.BYTES * numBrokersToAdd) /* brokers to add */);
+    ByteBuffer buffer = ByteBuffer.allocate(headerSize + Long.BYTES /* crc */ + contentSize);
+    buffer.position(headerSize + Long.BYTES);
     buffer.put(planVersion());
     buffer.putLong(timeMs());
     buffer.putInt(brokerId());
@@ -52,16 +52,19 @@ public class AddBrokerPlan extends MaintenancePlan {
     for (Integer brokerToAdd : _brokers) {
       buffer.putInt(brokerToAdd);
     }
+    putCrc(headerSize, buffer, contentSize);
     return buffer;
   }
 
   /**
    * Deserialize given byte buffer to an {@link AddBrokerPlan}.
    *
+   * @param headerSize The header size of the buffer.
    * @param buffer buffer to deserialize.
    * @return The {@link AddBrokerPlan} corresponding to the deserialized buffer.
    */
-  public static AddBrokerPlan fromBuffer(ByteBuffer buffer) throws UnknownVersionException {
+  public static AddBrokerPlan fromBuffer(int headerSize, ByteBuffer buffer) throws UnknownVersionException {
+    verifyCrc(headerSize, buffer);
     byte version = buffer.get();
     if (version > PLAN_VERSION) {
       throw new UnknownVersionException("Cannot deserialize the plan for version " + version + ". Current version: " + PLAN_VERSION);

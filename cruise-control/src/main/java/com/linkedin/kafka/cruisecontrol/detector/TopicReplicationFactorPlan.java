@@ -52,14 +52,13 @@ public class TopicReplicationFactorPlan extends MaintenancePlan {
       requiredCapacityForRFEntries += (Short.BYTES /* replication factor */ + Integer.BYTES /* regex length */
                                        + entry.getValue().getBytes(StandardCharsets.UTF_8).length /* regex */);
     }
-
-    ByteBuffer buffer = ByteBuffer.allocate(headerSize
-                                            + Byte.BYTES /* plan version */
-                                            + Long.BYTES /* timeMs */
-                                            + Integer.BYTES /* broker id */
-                                            + Byte.BYTES /* number of replication factor update entries */
-                                            + requiredCapacityForRFEntries /* total capacity for all entries */);
-    buffer.position(headerSize);
+    int contentSize = (Byte.BYTES /* plan version */
+                       + Long.BYTES /* timeMs */
+                       + Integer.BYTES /* broker id */
+                       + Byte.BYTES /* number of replication factor update entries */
+                       + requiredCapacityForRFEntries /* total capacity for all entries */);
+    ByteBuffer buffer = ByteBuffer.allocate(headerSize + Long.BYTES /* crc */ + contentSize);
+    buffer.position(headerSize + Long.BYTES);
     buffer.put(planVersion());
     buffer.putLong(timeMs());
     buffer.putInt(brokerId());
@@ -70,16 +69,19 @@ public class TopicReplicationFactorPlan extends MaintenancePlan {
       buffer.putInt(regex.length);
       buffer.put(regex);
     }
+    putCrc(headerSize, buffer, contentSize);
     return buffer;
   }
 
   /**
    * Deserialize given byte buffer to an {@link TopicReplicationFactorPlan}.
    *
+   * @param headerSize The header size of the buffer.
    * @param buffer buffer to deserialize.
    * @return The {@link TopicReplicationFactorPlan} corresponding to the deserialized buffer.
    */
-  public static TopicReplicationFactorPlan fromBuffer(ByteBuffer buffer) throws UnknownVersionException {
+  public static TopicReplicationFactorPlan fromBuffer(int headerSize, ByteBuffer buffer) throws UnknownVersionException {
+    verifyCrc(headerSize, buffer);
     byte version = buffer.get();
     if (version > PLAN_VERSION) {
       throw new UnknownVersionException("Cannot deserialize the plan for version " + version + ". Current version: " + PLAN_VERSION);

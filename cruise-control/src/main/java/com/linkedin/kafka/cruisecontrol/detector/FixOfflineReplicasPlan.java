@@ -23,10 +23,12 @@ public class FixOfflineReplicasPlan extends MaintenancePlan {
   /**
    * Deserialize given byte buffer to an {@link FixOfflineReplicasPlan}.
    *
+   * @param headerSize The header size of the buffer.
    * @param buffer buffer to deserialize.
    * @return The {@link FixOfflineReplicasPlan} corresponding to the deserialized buffer.
    */
-  public static FixOfflineReplicasPlan fromBuffer(ByteBuffer buffer) throws UnknownVersionException {
+  public static FixOfflineReplicasPlan fromBuffer(int headerSize, ByteBuffer buffer) throws UnknownVersionException {
+    verifyCrc(headerSize, buffer);
     byte version = buffer.get();
     if (version > PLAN_VERSION) {
       throw new UnknownVersionException("Cannot deserialize the plan for version " + version + ". Current version: " + PLAN_VERSION);

@@ -39,8 +39,6 @@ import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.RE
 import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.*;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler.METRIC_REPORTER_SAMPLER_BOOTSTRAP_SERVERS;
-import static com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler.METRIC_REPORTER_SAMPLER_GROUP_ID;
-import static com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler.DEFAULT_METRIC_REPORTER_SAMPLER_GROUP_ID;
 
 
 public class SamplingUtils {
@@ -318,28 +316,26 @@ public class SamplingUtils {
    * Create a Kafka consumer for retrieving reported Cruise Control metrics.
    * The consumer uses {@link String} for keys and {@link CruiseControlMetric} for values.
    *
+   * This consumer is not intended to use (1) the group management functionality by using subscribe(topic) or (2) the Kafka-based
+   * offset management strategy. Hence, the {@link ConsumerConfig#GROUP_ID_CONFIG} config is irrelevant to it.
+   *
    * @param configs The configurations for Cruise Control.
+   * @param clientIdPrefix Client id prefix.
    * @return A new Kafka consumer
    */
-  public static Consumer<String, CruiseControlMetric> createMetricConsumer(Map<String, ?> configs) {
+  public static Consumer<String, CruiseControlMetric> createMetricConsumer(Map<String, ?> configs, String clientIdPrefix) {
     // Get bootstrap servers
     String bootstrapServers = (String) configs.get(METRIC_REPORTER_SAMPLER_BOOTSTRAP_SERVERS);
     if (bootstrapServers == null) {
       bootstrapServers = bootstrapServers(configs);
     }
-    // Get group id
-    long randomToken = RANDOM.nextLong();
-    String groupId = (String) configs.get(METRIC_REPORTER_SAMPLER_GROUP_ID);
-    if (groupId == null) {
-      groupId = DEFAULT_METRIC_REPORTER_SAMPLER_GROUP_ID + "-" + randomToken;
-    }
 
     // Create consumer
+    long randomToken = RANDOM.nextLong();
     Properties consumerProps = new Properties();
     consumerProps.putAll(configs);
     consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-    consumerProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, groupId + "-consumer-" + randomToken);
+    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, clientIdPrefix + "-consumer-" + randomToken);
     consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
     consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
     consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
@@ -362,17 +358,19 @@ public class SamplingUtils {
    * Create a Kafka consumer for retrieving samples from the Sample Store.
    * The consumer uses {@link ByteArrayDeserializer} for both key and values.
    *
+   * This consumer is not intended to use (1) the group management functionality by using subscribe(topic) or (2) the Kafka-based
+   * offset management strategy. Hence, the {@link ConsumerConfig#GROUP_ID_CONFIG} config is irrelevant to it.
+   *
    * @param configs The configurations for Cruise Control.
-   * @param groupIdPrefix Group id prefix of the consumer.
+   * @param clientIdPrefix Client id prefix.
    * @return A new Kafka consumer
    */
-  public static KafkaConsumer<byte[], byte[]> createSampleStoreConsumer(Map<String, ?> configs, String groupIdPrefix) {
+  public static KafkaConsumer<byte[], byte[]> createSampleStoreConsumer(Map<String, ?> configs, String clientIdPrefix) {
     long randomToken = RANDOM.nextLong();
     Properties consumerProps = new Properties();
     consumerProps.putAll(configs);
     consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers(configs));
-    consumerProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, groupIdPrefix + randomToken);
-    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, groupIdPrefix + "-consumer-" + randomToken);
+    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, clientIdPrefix + "-consumer-" + randomToken);
     consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
     consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
     consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));

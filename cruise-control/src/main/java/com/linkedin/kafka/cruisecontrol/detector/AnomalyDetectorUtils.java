@@ -47,10 +47,14 @@ public class AnomalyDetectorUtils {
    * Create a Kafka consumer for retrieving reported Maintenance plans.
    * The consumer uses {@link String} for keys and {@link MaintenancePlan} for values.
    *
+   * This consumer is not intended to use (1) the group management functionality by using subscribe(topic) or (2) the Kafka-based
+   * offset management strategy. Hence, the {@link ConsumerConfig#GROUP_ID_CONFIG} config is irrelevant to it.
+   *
    * @param configs The configurations for Cruise Control.
+   * @param clientIdPrefix Client id prefix.
    * @return A new Kafka consumer
    */
-  public static Consumer<String, MaintenancePlan> createMaintenanceEventConsumer(Map<String, ?> configs, String groupIdPrefix) {
+  public static Consumer<String, MaintenancePlan> createMaintenanceEventConsumer(Map<String, ?> configs, String clientIdPrefix) {
     // Get bootstrap servers
     String bootstrapServers = configs.get(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG).toString();
     // Trim the brackets in List's String representation.
@@ -63,8 +67,7 @@ public class AnomalyDetectorUtils {
     Properties consumerProps = new Properties();
     consumerProps.putAll(configs);
     consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-    consumerProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, groupIdPrefix + randomToken);
-    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, groupIdPrefix + "-consumer-" + randomToken);
+    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, clientIdPrefix + "-consumer-" + randomToken);
     consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
     consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
     consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));

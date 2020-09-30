@@ -83,11 +83,11 @@ public class MaintenanceEventTopicReader implements MaintenanceEventReader {
   public static final String MAINTENANCE_EVENT_TOPIC_REPLICATION_FACTOR_CONFIG = "maintenance.event.topic.replication.factor";
   public static final short DEFAULT_MAINTENANCE_EVENT_TOPIC_REPLICATION_FACTOR = 2;
   public static final String MAINTENANCE_EVENT_TOPIC_PARTITION_COUNT_CONFIG = "maintenance.event.topic.partition.count";
-  public static final int DEFAULT_MAINTENANCE_EVENT_TOPIC_PARTITION_COUNT = 32;
+  public static final int DEFAULT_MAINTENANCE_EVENT_TOPIC_PARTITION_COUNT = 8;
   public static final String MAINTENANCE_EVENT_TOPIC_RETENTION_MS_CONFIG = "maintenance.event.topic.retention.ms";
   public static final long DEFAULT_MAINTENANCE_EVENT_TOPIC_RETENTION_TIME_MS = Duration.ofHours(6).toMillis();
   public static final Duration CONSUMER_CLOSE_TIMEOUT = Duration.ofSeconds(2);
-  public static final String CONSUMER_GROUP_ID_PREFIX = MaintenanceEventTopicReader.class.getSimpleName();
+  public static final String CONSUMER_CLIENT_ID_PREFIX = MaintenanceEventTopicReader.class.getSimpleName();
   // How far should topic reader initially (i.e. upon startup) look back in the history for maintenance events.
   public static final long INIT_MAINTENANCE_HISTORY_MS = 60000L;
 
@@ -258,7 +258,7 @@ public class MaintenanceEventTopicReader implements MaintenanceEventReader {
     _maintenancePlanExpirationMs = maintenancePlanExpirationMs == null || maintenancePlanExpirationMs.isEmpty()
                                    ? DEFAULT_MAINTENANCE_PLAN_EXPIRATION_MS : Long.parseLong(maintenancePlanExpirationMs);
 
-    _consumer = createMaintenanceEventConsumer(configs, CONSUMER_GROUP_ID_PREFIX);
+    _consumer = createMaintenanceEventConsumer(configs, CONSUMER_CLIENT_ID_PREFIX);
 
     ensureTopicCreated(configs);
     _currentPartitionAssignment = Collections.emptySet();
