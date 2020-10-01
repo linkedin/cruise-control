@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
-import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtils;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionMetricSample;
@@ -20,7 +19,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -30,10 +28,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -47,16 +43,17 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.errors.TopicExistsException;
-import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.CLIENT_REQUEST_TIMEOUT_MS;
-import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.maybeUpdateTopicConfig;
-import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.maybeIncreasePartitionCount;
-import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.wrapTopic;
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.bootstrapServers;
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.createSampleStoreConsumer;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.createTopic;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.CLIENT_REQUEST_TIMEOUT_MS;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.maybeUpdateTopicConfig;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.maybeIncreasePartitionCount;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.wrapTopic;
 
 /**
  * The sample store that implements the {@link SampleStore}. It stores the partition metric samples and broker metric
@@ -98,8 +95,7 @@ public class KafkaSampleStore implements SampleStore {
   protected static final long DEFAULT_MIN_PARTITION_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS = 3600000L;
   protected static final long DEFAULT_MIN_BROKER_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS = 3600000L;
   protected static final String PRODUCER_CLIENT_ID = "KafkaCruiseControlSampleStoreProducer";
-  protected static final String CONSUMER_CLIENT_ID = "KafkaCruiseControlSampleStoreConsumer";
-  protected static final Random RANDOM = new Random();
+  protected static final String CONSUMER_CLIENT_ID_PREFIX = "KafkaCruiseControlSampleStore";
 
   protected List<KafkaConsumer<byte[], byte[]>> _consumers;
   protected ExecutorService _metricProcessorExecutor;
@@ -160,7 +156,7 @@ public class KafkaSampleStore implements SampleStore {
     _metricProcessorExecutor = Executors.newFixedThreadPool(numProcessingThreads);
     _consumers = new ArrayList<>(numProcessingThreads);
     for (int i = 0; i < numProcessingThreads; i++) {
-      _consumers.add(createConsumer(config));
+      _consumers.add(createSampleStoreConsumer(config, CONSUMER_CLIENT_ID_PREFIX));
     }
 
     _producer = createProducer(config);
@@ -196,37 +192,10 @@ public class KafkaSampleStore implements SampleStore {
     return _sampleStoreTopicReplicationFactor;
   }
 
-  /**
-   * Creates the given topic if it does not exist.
-   *
-   * @param adminClient The adminClient to send createTopics request.
-   * @param topicToBeCreated A wrapper around the topic to be created.
-   * @return {@code false} if the topic to be created already exists, {@code true} otherwise.
-   */
-  protected static boolean createTopic(AdminClient adminClient, NewTopic topicToBeCreated) {
-    try {
-      CreateTopicsResult createTopicsResult = adminClient.createTopics(Collections.singletonList(topicToBeCreated));
-      createTopicsResult.values().get(topicToBeCreated.name()).get(CruiseControlMetricsUtils.CLIENT_REQUEST_TIMEOUT_MS,
-                                                                   TimeUnit.MILLISECONDS);
-      LOG.info("Topic {} has been created.", topicToBeCreated.name());
-    } catch (InterruptedException | ExecutionException | TimeoutException e) {
-      if (e.getCause() instanceof TopicExistsException) {
-        return false;
-      }
-      throw new IllegalStateException(String.format("Unable to create topic %s.", topicToBeCreated.name()), e);
-    }
-    return true;
-  }
-
   protected KafkaProducer<byte[], byte[]> createProducer(Map<String, ?> config) {
     Properties producerProps = new Properties();
     producerProps.putAll(config);
-    String bootstrapServers = config.get(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG).toString();
-    // Trim the brackets in List's String representation.
-    if (bootstrapServers.length() > 2) {
-      bootstrapServers = bootstrapServers.substring(1, bootstrapServers.length() - 1);
-    }
-    producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers(config));
     producerProps.setProperty(ProducerConfig.CLIENT_ID_CONFIG, PRODUCER_CLIENT_ID);
     // Set batch.size and linger.ms to a big number to have better batching.
     producerProps.setProperty(ProducerConfig.LINGER_MS_CONFIG, "30000");
@@ -239,28 +208,6 @@ public class KafkaSampleStore implements SampleStore {
     producerProps.setProperty(ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG,
                               config.get(MonitorConfig.RECONNECT_BACKOFF_MS_CONFIG).toString());
     return new KafkaProducer<>(producerProps);
-  }
-
-  protected KafkaConsumer<byte[], byte[]> createConsumer(Map<String, ?> config) {
-    Properties consumerProps = new Properties();
-    consumerProps.putAll(config);
-    long randomToken = RANDOM.nextLong();
-    String bootstrapServers = config.get(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG).toString();
-    // Trim the brackets in List's String representation.
-    if (bootstrapServers.length() > 2) {
-      bootstrapServers = bootstrapServers.substring(1, bootstrapServers.length() - 1);
-    }
-    consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-    consumerProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "KafkaCruiseControlSampleStore" + randomToken);
-    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, CONSUMER_CLIENT_ID + randomToken);
-    consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-    consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
-    consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
-    consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
-    consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
-    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG,
-                                             config.get(MonitorConfig.RECONNECT_BACKOFF_MS_CONFIG).toString());
-    return new KafkaConsumer<>(consumerProps);
   }
 
   @SuppressWarnings("unchecked")

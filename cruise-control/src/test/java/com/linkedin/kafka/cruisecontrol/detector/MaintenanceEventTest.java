@@ -66,7 +66,7 @@ public class MaintenanceEventTest {
     MOCK_BROKERS_OBJECT = Collections.unmodifiableSet(mockBrokersObject);
   }
   // Note that the use of MOCK_TOPICS_WITH_RF_UPDATE assumes the use of a cluster model, which contains T1.
-  private static final Map<Short, Set<String>> MOCK_TOPICS_WITH_RF_UPDATE = Collections.singletonMap((short) 2, Collections.singleton(T1));
+  private static final Map<Short, String> MOCK_TOPICS_WITH_RF_UPDATE = Collections.singletonMap((short) 2, T1);
   private static final String SELF_HEALING_REASON_PREFIX = String.format("Self healing for %s: ", MAINTENANCE_EVENT);
   private static final String WITH_BROKERS_REASON_SUFFIX = String.format(" for brokers: [%s]}", MOCK_BROKERS_OBJECT);
   private static final String WITH_RF_UPDATE_SUFFIX = String.format(" by desired RF: [%s]}", MOCK_TOPICS_WITH_RF_UPDATE);

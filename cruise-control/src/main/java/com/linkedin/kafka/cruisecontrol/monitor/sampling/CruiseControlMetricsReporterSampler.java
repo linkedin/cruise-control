@@ -7,35 +7,31 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
-import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
+import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
-import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
-import java.util.Random;
 import java.util.Set;
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigException;
-import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.consumptionDone;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckOffsetFetch;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager.BROKER_CAPACITY_CONFIG_RESOLVER_OBJECT_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.sanityCheckOffsetFetch;
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.createMetricConsumer;
 
 
 public class CruiseControlMetricsReporterSampler implements MetricSampler {
@@ -43,14 +39,13 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
   // Configurations
   public static final String METRIC_REPORTER_SAMPLER_BOOTSTRAP_SERVERS = "metric.reporter.sampler.bootstrap.servers";
   public static final String METRIC_REPORTER_TOPIC = "metric.reporter.topic";
+  @Deprecated
   public static final String METRIC_REPORTER_SAMPLER_GROUP_ID = "metric.reporter.sampler.group.id";
   public static final Duration METRIC_REPORTER_CONSUMER_POLL_TIMEOUT = Duration.ofMillis(5000L);
   // Default configs
-  public static final String DEFAULT_METRIC_REPORTER_SAMPLER_GROUP_ID = "CruiseControlMetricsReporterSampler";
+  public static final String CONSUMER_CLIENT_ID_PREFIX = "CruiseControlMetricsReporterSampler";
   public static final long ACCEPTABLE_NETWORK_DELAY_MS = 100L;
   protected CruiseControlMetricsProcessor _metricsProcessor;
-  // static random token to avoid group conflict.
-  protected static final Random RANDOM = new Random();
 
   protected Consumer<String, CruiseControlMetric> _metricConsumer;
   protected String _metricReporterTopic;
@@ -69,7 +64,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
                             long endTimeMs,
                             SamplingMode mode,
                             MetricDef metricDef,
-                            long timeout) throws MetricSamplingException {
+                            long timeout) throws SamplingException {
     if (refreshPartitionAssignment()) {
       return MetricSampler.EMPTY_SAMPLES;
     }
@@ -123,7 +118,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
         _metricConsumer.pause(partitionsToPause);
         partitionsToPause.clear();
       }
-    } while (!consumptionDone(endOffsets) && System.currentTimeMillis() < timeout);
+    } while (!consumptionDone(_metricConsumer, endOffsets) && System.currentTimeMillis() < timeout);
     LOG.info("Finished sampling for topic partitions {} in time range [{},{}]. Collected {} metrics.",
              _currentPartitionAssignment, startTimeMs, endTimeMs, totalMetricsAdded);
 
@@ -136,23 +131,6 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     } finally {
       _metricsProcessor.clear();
     }
-  }
-
-  /**
-   * The check if the consumption is done or not. The consumption is done if the consumer has caught up with the
-   * log end or all the partitions are paused.
-   * @param endOffsets the log end for each partition.
-   * @return True if the consumption is done, false otherwise.
-   */
-  protected boolean consumptionDone(Map<TopicPartition, Long> endOffsets) {
-    Set<TopicPartition> partitionsNotPaused = new HashSet<>(_metricConsumer.assignment());
-    partitionsNotPaused.removeAll(_metricConsumer.paused());
-    for (TopicPartition tp : partitionsNotPaused) {
-      if (_metricConsumer.position(tp) < endOffsets.get(tp)) {
-        return false;
-      }
-    }
-    return true;
   }
 
   /**
@@ -201,43 +179,15 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     }
     boolean allowCpuCapacityEstimation = (Boolean) configs.get(MonitorConfig.SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG);
     _metricsProcessor = new CruiseControlMetricsProcessor(capacityResolver, allowCpuCapacityEstimation);
-
-    String bootstrapServers = (String) configs.get(METRIC_REPORTER_SAMPLER_BOOTSTRAP_SERVERS);
-    if (bootstrapServers == null) {
-      bootstrapServers = configs.get(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG).toString();
-      // Trim the brackets in List's String representation.
-      if (bootstrapServers.length() > 2) {
-        bootstrapServers = bootstrapServers.substring(1, bootstrapServers.length() - 1);
-      }
-    }
     _metricReporterTopic = (String) configs.get(METRIC_REPORTER_TOPIC);
     if (_metricReporterTopic == null) {
       _metricReporterTopic = CruiseControlMetricsReporterConfig.DEFAULT_CRUISE_CONTROL_METRICS_TOPIC;
     }
-    String groupId = (String) configs.get(METRIC_REPORTER_SAMPLER_GROUP_ID);
-    if (groupId == null) {
-      groupId = DEFAULT_METRIC_REPORTER_SAMPLER_GROUP_ID + "-" + RANDOM.nextLong();
-    }
-    String reconnectBackoffMs = configs.get(MonitorConfig.RECONNECT_BACKOFF_MS_CONFIG).toString();
-
     CruiseControlMetricsReporterConfig reporterConfig = new CruiseControlMetricsReporterConfig(configs, false);
     _acceptableMetricRecordProduceDelayMs = ACCEPTABLE_NETWORK_DELAY_MS +
         Math.max(reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_MAX_BLOCK_MS_CONFIG),
                  reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS_CONFIG));
-
-    Properties consumerProps = new Properties();
-    consumerProps.putAll(configs);
-    Random random = new Random();
-    consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-    consumerProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, groupId + "-consumer-" + random.nextInt());
-    consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
-    consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
-    consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
-    consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-    consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, MetricSerde.class.getName());
-    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, reconnectBackoffMs);
-    _metricConsumer = new KafkaConsumer<>(consumerProps);
+    _metricConsumer = createMetricConsumer(configs, CONSUMER_CLIENT_ID_PREFIX);
     _currentPartitionAssignment = Collections.emptySet();
     if (refreshPartitionAssignment()) {
       throw new IllegalStateException("Cruise Control cannot find partitions for the metrics reporter that topic matches "

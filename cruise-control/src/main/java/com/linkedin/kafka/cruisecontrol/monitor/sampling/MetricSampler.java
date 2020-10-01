@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
-import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
+import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionMetricSample;
 import java.util.Collections;
@@ -59,7 +59,7 @@ public interface MetricSampler extends CruiseControlConfigurable, AutoCloseable 
                      SamplingMode mode,
                      MetricDef metricDef,
                      long timeout)
-      throws MetricSamplingException;
+      throws SamplingException;
 
   /**
    * The sampling mode to indicate which type of samples is interested.

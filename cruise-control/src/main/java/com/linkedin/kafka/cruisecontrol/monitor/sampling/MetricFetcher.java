@@ -7,7 +7,7 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
-import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
+import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionMetricSample;
 import java.util.Set;
@@ -76,7 +76,7 @@ abstract class MetricFetcher implements Callable<Boolean> {
 
     try {
       fetchMetricsForAssignedPartitions();
-    } catch (MetricSamplingException mse) {
+    } catch (SamplingException mse) {
       LOG.warn("Received sampling error.", mse);
       hasSamplingError = true;
     } catch (Throwable t) {
@@ -90,7 +90,7 @@ abstract class MetricFetcher implements Callable<Boolean> {
   /**
    * Execute one iteration of metric sampling for all the assigned partitions.
    */
-  protected void fetchMetricsForAssignedPartitions() throws MetricSamplingException {
+  protected void fetchMetricsForAssignedPartitions() throws SamplingException {
     final Timer.Context ctx = _fetchTimer.time();
 
     try {
@@ -113,7 +113,7 @@ abstract class MetricFetcher implements Callable<Boolean> {
    * Fetch the metric samples indicated by {@link #_samplingMode}.
    * @return The accepted partition and broker metric samples.
    */
-  protected MetricSampler.Samples fetchSamples() throws MetricSamplingException {
+  protected MetricSampler.Samples fetchSamples() throws SamplingException {
     MetricSampler.Samples samples = _metricSampler.getSamples(_cluster, _assignedPartitions, _startTimeMs, _endTimeMs,
                                                               _samplingMode, _metricDef, _timeout);
     if (samples == null) {

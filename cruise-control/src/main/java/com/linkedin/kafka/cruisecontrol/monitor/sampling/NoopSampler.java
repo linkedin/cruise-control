@@ -5,7 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
-import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
+import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import java.util.Map;
 import java.util.Set;
 import org.apache.kafka.common.Cluster;
@@ -16,7 +16,7 @@ public class NoopSampler implements MetricSampler {
 
   @Override
   public Samples getSamples(Cluster cluster, Set<TopicPartition> assignedPartitions, long startTimeMs, long endTimeMs,
-                            SamplingMode mode, MetricDef metricDef, long timeout) throws MetricSamplingException {
+                            SamplingMode mode, MetricDef metricDef, long timeout) throws SamplingException {
     return null;
   }
 
