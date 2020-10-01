@@ -5,6 +5,9 @@
 package com.linkedin.kafka.cruisecontrol.detector;
 
 
+/**
+ * A plan to fix offline replicas in the cluster.
+ */
 public class FixOfflineReplicasPlan extends MaintenancePlan {
   public static final byte LATEST_SUPPORTED_VERSION = 0;
 

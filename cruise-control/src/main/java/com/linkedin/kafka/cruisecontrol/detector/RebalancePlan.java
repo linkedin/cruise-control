@@ -5,6 +5,9 @@
 package com.linkedin.kafka.cruisecontrol.detector;
 
 
+/**
+ * A plan to rebalance the cluster.
+ */
 public class RebalancePlan extends MaintenancePlan {
   public static final byte LATEST_SUPPORTED_VERSION = 0;
 

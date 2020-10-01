@@ -7,6 +7,11 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import java.util.Set;
 
 
+/**
+ * A plan to demote brokers.
+ *
+ * The desired brokers to demote are indicated using a set of broker ids.
+ */
 public class DemoteBrokerPlan extends MaintenancePlanWithBrokers {
   public static final byte LATEST_SUPPORTED_VERSION = 0;
 

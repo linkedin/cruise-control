@@ -10,6 +10,11 @@ import java.util.Map;
 import org.apache.kafka.common.utils.Crc32C;
 
 
+/**
+ * A plan to update the replication factor of specified topics.
+ *
+ * The desired replication factor for topics are indicated using topic regex per desired replication factor.
+ */
 public class TopicReplicationFactorPlan extends MaintenancePlan {
   public static final byte LATEST_SUPPORTED_VERSION = 0;
   // A map containing the regex of topics by the corresponding desired replication factor
