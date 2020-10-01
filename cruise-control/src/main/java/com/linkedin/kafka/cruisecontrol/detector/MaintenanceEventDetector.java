@@ -58,6 +58,11 @@ public class MaintenanceEventDetector extends AbstractAnomalyDetector implements
         LOG.warn("Maintenance event detector encountered an exception.", e);
       }
     }
+    try {
+      _maintenanceEventReader.close();
+    } catch (Exception e) {
+      LOG.error("Received exception while closing maintenance event reader", e);
+    }
 
     LOG.debug("Maintenance event detector is shutdown.");
   }

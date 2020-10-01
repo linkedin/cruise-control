@@ -16,7 +16,7 @@ import java.util.Properties;
 
 public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegrationTestHarness {
 
-  private KafkaCruiseControlConfig _config;
+  protected KafkaCruiseControlConfig _config;
   protected KafkaCruiseControlApp _app;
 
   protected static final String LOCALHOST = "localhost";
@@ -36,7 +36,6 @@ public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegra
 
   /**
    * Starts up an embedded Cruise Control environment with Zookeeper, Kafka brokers and a Cruise Control instance.
-   * @throws Exception
    */
   public void start() throws Exception {
     super.setUp();
@@ -47,8 +46,7 @@ public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegra
   }
 
   /**
-   * Shuts down the CruiseControl instance, Kafka brokers and the Zookeeper instance.
-   * @throws Exception
+   * Shuts down the Cruise Control instance, Kafka brokers and the Zookeeper instance.
    */
   public void stop() {
     if (_app != null) {

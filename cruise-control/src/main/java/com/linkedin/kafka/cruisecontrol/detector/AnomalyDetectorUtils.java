@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
@@ -14,9 +15,18 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Random;
 import java.util.Set;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.RECONNECT_BACKOFF_MS_CONFIG;
 
 
 /**
@@ -28,8 +38,40 @@ public class AnomalyDetectorUtils {
   public static final String ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG = "anomaly.detection.time.ms.object";
   public static final long MAX_METADATA_WAIT_MS = 60000L;
   public static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures();
+  public static final Random RANDOM = new Random();
 
   private AnomalyDetectorUtils() {
+  }
+
+  /**
+   * Create a Kafka consumer for retrieving reported Maintenance plans.
+   * The consumer uses {@link String} for keys and {@link MaintenancePlan} for values.
+   *
+   * This consumer is not intended to use (1) the group management functionality by using subscribe(topic) or (2) the Kafka-based
+   * offset management strategy. Hence, the {@link ConsumerConfig#GROUP_ID_CONFIG} config is irrelevant to it.
+   *
+   * @param configs The configurations for Cruise Control.
+   * @param clientIdPrefix Client id prefix.
+   * @return A new Kafka consumer
+   */
+  @SuppressWarnings("unchecked")
+  public static Consumer<String, MaintenancePlan> createMaintenanceEventConsumer(Map<String, ?> configs, String clientIdPrefix) {
+    // Get bootstrap servers
+    String bootstrapServers = String.join(",", (List<String>) configs.get(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG));
+
+    // Create consumer
+    long randomToken = RANDOM.nextLong();
+    Properties consumerProps = new Properties();
+    consumerProps.putAll(configs);
+    consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, clientIdPrefix + "-consumer-" + randomToken);
+    consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+    consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+    consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
+    consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, MaintenancePlanSerde.class.getName());
+    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, configs.get(RECONNECT_BACKOFF_MS_CONFIG).toString());
+    return new KafkaConsumer<>(consumerProps);
   }
 
   /**

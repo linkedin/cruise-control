@@ -7,8 +7,10 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.cruisecontrol.metricdef.MetricInfo;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
+import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType;
 import com.linkedin.kafka.cruisecontrol.model.ModelUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
@@ -16,46 +18,34 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerLoad;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionMetricSample;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
+import java.util.Random;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.AlterConfigOp;
-import org.apache.kafka.clients.admin.AlterConfigsResult;
-import org.apache.kafka.clients.admin.Config;
-import org.apache.kafka.clients.admin.ConfigEntry;
-import org.apache.kafka.clients.admin.CreatePartitionsResult;
-import org.apache.kafka.clients.admin.DescribeConfigsResult;
-import org.apache.kafka.clients.admin.NewPartitions;
-import org.apache.kafka.clients.admin.NewTopic;
-import org.apache.kafka.clients.admin.TopicDescription;
-import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.config.ConfigResource;
-import org.apache.kafka.common.errors.ReassignmentInProgressException;
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static kafka.log.LogConfig.CleanupPolicyProp;
-import static kafka.log.LogConfig.RetentionMsProp;
+import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.RECONNECT_BACKOFF_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.*;
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler.METRIC_REPORTER_SAMPLER_BOOTSTRAP_SERVERS;
 
 
 public class SamplingUtils {
   private static final Logger LOG = LoggerFactory.getLogger(SamplingUtils.class);
   private static final String SKIP_BUILDING_SAMPLE_PREFIX = "Skip generating metric sample for ";
-  public static final long CLIENT_REQUEST_TIMEOUT_MS = 10000L;
-  public static final String DEFAULT_CLEANUP_POLICY = "delete";
   public static final int UNRECOGNIZED_BROKER_ID = -1;
+  public static final Random RANDOM = new Random();
 
   private SamplingUtils() {
   }
@@ -135,29 +125,6 @@ public class SamplingUtils {
       result += metricSample.metricValue(id);
     }
     return result;
-  }
-
-  /**
-   * Check whether there are failures in fetching offsets during sampling.
-   *
-   * @param endOffsets End offsets retrieved by consumer.
-   * @param offsetsForTimes Offsets for times retrieved by consumer.
-   */
-  static void sanityCheckOffsetFetch(Map<TopicPartition, Long> endOffsets,
-                                     Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes)
-      throws MetricSamplingException {
-    Set<TopicPartition> failedToFetchOffsets = new HashSet<>();
-    for (Map.Entry<TopicPartition, OffsetAndTimestamp> entry : offsetsForTimes.entrySet()) {
-      if (entry.getValue() == null && endOffsets.get(entry.getKey()) == null) {
-        failedToFetchOffsets.add(entry.getKey());
-      }
-    }
-
-    if (!failedToFetchOffsets.isEmpty()) {
-      throw new MetricSamplingException(String.format("Metric consumer failed to fetch offsets for %s. Consider "
-                                                      + "decreasing reconnect.backoff.ms to mitigate consumption failures"
-                                                      + " due to transient network issues.", failedToFetchOffsets));
-    }
   }
 
   /**
@@ -346,124 +313,73 @@ public class SamplingUtils {
   }
 
   /**
-   * Build a wrapper around the topic with the given desired properties and {@link #DEFAULT_CLEANUP_POLICY}.
+   * Create a Kafka consumer for retrieving reported Cruise Control metrics.
+   * The consumer uses {@link String} for keys and {@link CruiseControlMetric} for values.
    *
-   * @param topic The name of the topic.
-   * @param partitionCount Desired partition count.
-   * @param replicationFactor Desired replication factor.
-   * @param retentionMs Desired retention in milliseconds.
-   * @return A wrapper around the topic with the given desired properties.
+   * This consumer is not intended to use (1) the group management functionality by using subscribe(topic) or (2) the Kafka-based
+   * offset management strategy. Hence, the {@link ConsumerConfig#GROUP_ID_CONFIG} config is irrelevant to it.
+   *
+   * @param configs The configurations for Cruise Control.
+   * @param clientIdPrefix Client id prefix.
+   * @return A new Kafka consumer
    */
-  public static NewTopic wrapTopic(String topic, int partitionCount, short replicationFactor, long retentionMs) {
-    if (partitionCount <= 0 || replicationFactor <= 0 || retentionMs <= 0) {
-      throw new IllegalArgumentException(String.format("Partition count (%d), replication factor (%d), and retention ms (%d)"
-                                                       + " must be positive for the topic (%s).", partitionCount,
-                                                       replicationFactor, retentionMs, topic));
+  public static Consumer<String, CruiseControlMetric> createMetricConsumer(Map<String, ?> configs, String clientIdPrefix) {
+    // Get bootstrap servers
+    String bootstrapServers = (String) configs.get(METRIC_REPORTER_SAMPLER_BOOTSTRAP_SERVERS);
+    if (bootstrapServers == null) {
+      bootstrapServers = bootstrapServers(configs);
     }
 
-    NewTopic newTopic = new NewTopic(topic, partitionCount, replicationFactor);
-    Map<String, String> config = new HashMap<>(2);
-    config.put(RetentionMsProp(), Long.toString(retentionMs));
-    config.put(CleanupPolicyProp(), DEFAULT_CLEANUP_POLICY);
-    newTopic.configs(config);
-
-    return newTopic;
+    // Create consumer
+    long randomToken = RANDOM.nextLong();
+    Properties consumerProps = new Properties();
+    consumerProps.putAll(configs);
+    consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, clientIdPrefix + "-consumer-" + randomToken);
+    consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+    consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+    consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
+    consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, MetricSerde.class.getName());
+    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, configs.get(RECONNECT_BACKOFF_MS_CONFIG).toString());
+    return new KafkaConsumer<>(consumerProps);
   }
 
   /**
-   * Add config altering operations to the given configs to alter for configs that differ between current and desired.
+   * Retrieve comma separated bootstrap servers from the configurations for Cruise Control for configuring
+   * {@link org.apache.kafka.clients.CommonClientConfigs#BOOTSTRAP_SERVERS_CONFIG}.
    *
-   * @param configsToAlter A set of config altering operations to be populated.
-   * @param desiredConfig Desired config value by name.
-   * @param currentConfig Current config.
+   * @param config The configurations for Cruise Control.
+   * @return Comma separated bootstrap servers.
    */
-  private static void maybeUpdateConfig(Set<AlterConfigOp> configsToAlter, Map<String, String> desiredConfig, Config currentConfig) {
-    for (Map.Entry<String, String> entry : desiredConfig.entrySet()) {
-      String configName = entry.getKey();
-      String targetConfigValue = entry.getValue();
-      ConfigEntry currentConfigEntry = currentConfig.get(configName);
-      if (currentConfigEntry == null || !currentConfigEntry.value().equals(targetConfigValue)) {
-        configsToAlter.add(new AlterConfigOp(new ConfigEntry(configName, targetConfigValue), AlterConfigOp.OpType.SET));
-      }
-    }
+  @SuppressWarnings("unchecked")
+  public static String bootstrapServers(Map<String, ?> config) {
+    return String.join(",", (List<String>) config.get(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG));
   }
 
   /**
-   * Update topic configurations with the desired configs specified in the given topicToUpdateConfigs.
+   * Create a Kafka consumer for retrieving samples from the Sample Store.
+   * The consumer uses {@link ByteArrayDeserializer} for both key and values.
    *
-   * @param adminClient The adminClient to send describeConfigs and incrementalAlterConfigs requests.
-   * @param topicToUpdateConfigs Existing topic to update selected configs if needed -- cannot be {@code null}.
-   * @return {@code true} if the request is completed successfully, {@code false} if there are any exceptions.
-   */
-  public static boolean maybeUpdateTopicConfig(AdminClient adminClient, NewTopic topicToUpdateConfigs) {
-    String topicName = topicToUpdateConfigs.name();
-    // Retrieve topic config to check if it needs an update.
-    ConfigResource topicResource = new ConfigResource(ConfigResource.Type.TOPIC, topicName);
-    DescribeConfigsResult describeConfigsResult = adminClient.describeConfigs(Collections.singleton(topicResource));
-    Config topicConfig;
-    try {
-      topicConfig = describeConfigsResult.values().get(topicResource).get(CLIENT_REQUEST_TIMEOUT_MS,
-                                                                          TimeUnit.MILLISECONDS);
-    } catch (InterruptedException | ExecutionException | TimeoutException e) {
-      LOG.warn("Config check for topic {} failed due to failure to describe its configs.", topicName, e);
-      return false;
-    }
-
-    // Update configs if needed.
-    Map<String, String> desiredConfig = topicToUpdateConfigs.configs();
-    if (desiredConfig != null) {
-      Set<AlterConfigOp> alterConfigOps = new HashSet<>(desiredConfig.size());
-      maybeUpdateConfig(alterConfigOps, desiredConfig, topicConfig);
-      if (!alterConfigOps.isEmpty()) {
-        AlterConfigsResult alterConfigsResult
-            = adminClient.incrementalAlterConfigs(Collections.singletonMap(topicResource, alterConfigOps));
-        try {
-          alterConfigsResult.values().get(topicResource).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
-          LOG.warn("Config change for topic {} failed.", topicName, e);
-          return false;
-        }
-      }
-    }
-
-    return true;
-  }
-
-  /**
-   * Increase the partition count of the given existing topic to the desired partition count (if needed).
+   * This consumer is not intended to use (1) the group management functionality by using subscribe(topic) or (2) the Kafka-based
+   * offset management strategy. Hence, the {@link ConsumerConfig#GROUP_ID_CONFIG} config is irrelevant to it.
    *
-   * @param adminClient The adminClient to send describeTopics and createPartitions requests.
-   * @param topicToAddPartitions Existing topic to add more partitions if needed -- cannot be {@code null}.
-   * @return {@code true} if the request is completed successfully, {@code false} if there are any exceptions.
+   * @param configs The configurations for Cruise Control.
+   * @param clientIdPrefix Client id prefix.
+   * @return A new Kafka consumer
    */
-  public static boolean maybeIncreasePartitionCount(AdminClient adminClient, NewTopic topicToAddPartitions) {
-    String topicName = topicToAddPartitions.name();
-
-    // Retrieve partition count of topic to check if it needs a partition count update.
-    TopicDescription topicDescription;
-    try {
-      topicDescription = adminClient.describeTopics(Collections.singletonList(topicName)).values()
-                                    .get(topicName).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-    } catch (InterruptedException | ExecutionException | TimeoutException e) {
-      LOG.warn("Partition count increase check for topic {} failed due to failure to describe cluster.", topicName, e);
-      return false;
-    }
-
-    // Update partition count of topic if needed.
-    if (topicDescription.partitions().size() < topicToAddPartitions.numPartitions()) {
-      CreatePartitionsResult createPartitionsResult = adminClient.createPartitions(
-          Collections.singletonMap(topicName, NewPartitions.increaseTo(topicToAddPartitions.numPartitions())));
-
-      try {
-        createPartitionsResult.values().get(topicName).get(CLIENT_REQUEST_TIMEOUT_MS,
-                                                           TimeUnit.MILLISECONDS);
-      } catch (InterruptedException | ExecutionException | TimeoutException e) {
-        LOG.warn("Partition count increase to {} for topic {} failed{}.", topicToAddPartitions.numPartitions(), topicName,
-                 (e.getCause() instanceof ReassignmentInProgressException) ? " due to ongoing reassignment" : "", e);
-        return false;
-      }
-    }
-
-    return true;
+  public static KafkaConsumer<byte[], byte[]> createSampleStoreConsumer(Map<String, ?> configs, String clientIdPrefix) {
+    long randomToken = RANDOM.nextLong();
+    Properties consumerProps = new Properties();
+    consumerProps.putAll(configs);
+    consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers(configs));
+    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, clientIdPrefix + "-consumer-" + randomToken);
+    consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+    consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
+    consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+    consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, configs.get(RECONNECT_BACKOFF_MS_CONFIG).toString());
+    return new KafkaConsumer<>(consumerProps);
   }
 }

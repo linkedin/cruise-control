@@ -26,7 +26,6 @@ import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorC
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getSelfHealingGoalNames;
-import static com.linkedin.kafka.cruisecontrol.detector.AnomalyUtils.buildTopicRegex;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyUtils.extractKafkaCruiseControlObjectFromConfig;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.MAINTENANCE_EVENT;
 
@@ -42,8 +41,8 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyTyp
  *   <li>{@link #BROKERS_OBJECT_CONFIG}: A set of broker ids to add, remove, or demote (required for
  *   {@link MaintenanceEventType#ADD_BROKER}, {@link MaintenanceEventType#REMOVE_BROKER}, and
  *   {@link MaintenanceEventType#DEMOTE_BROKER})</li>
- *   <li>{@link #TOPICS_WITH_RF_UPDATE_CONFIG}: Topics for replication factor update by the desired replication factor
- *   (required for {@link MaintenanceEventType#TOPIC_REPLICATION_FACTOR})</li>
+ *   <li>{@link #TOPICS_WITH_RF_UPDATE_CONFIG}: Topics (specified as a regex) for replication factor update by the desired
+ *   replication factor (required for {@link MaintenanceEventType#TOPIC_REPLICATION_FACTOR})</li>
  * </ul>
  */
 public class MaintenanceEvent extends KafkaAnomaly {
@@ -54,8 +53,9 @@ public class MaintenanceEvent extends KafkaAnomaly {
   protected GoalBasedOperationRunnable _goalBasedOperationRunnable;
   protected MaintenanceEventType _maintenanceEventType;
   protected Set<Integer> _brokers;
-  // Topic having at least one partition, which are requested to go through the specified replication factor update.
-  protected Map<Short, Set<String>> _topicsWithRFUpdate;
+  // Topics (specified as a regex) having at least one partition, which are requested to go through the specified
+  // replication factor update.
+  protected Map<Short, String> _topicsWithRFUpdate;
 
   @Override
   public Supplier<String> reasonSupplier() {
@@ -65,6 +65,10 @@ public class MaintenanceEvent extends KafkaAnomaly {
   @Override
   public AnomalyType anomalyType() {
     return MAINTENANCE_EVENT;
+  }
+
+  public MaintenanceEventType maintenanceEventType() {
+    return _maintenanceEventType;
   }
 
   @Override
@@ -103,17 +107,17 @@ public class MaintenanceEvent extends KafkaAnomaly {
 
   @SuppressWarnings("unchecked")
   protected void initTopicsWithRFUpdate(Map<String, ?> configs) {
-    _topicsWithRFUpdate = (Map<Short, Set<String>>) configs.get(TOPICS_WITH_RF_UPDATE_CONFIG);
+    _topicsWithRFUpdate = (Map<Short, String>) configs.get(TOPICS_WITH_RF_UPDATE_CONFIG);
     if (_topicsWithRFUpdate == null || _topicsWithRFUpdate.isEmpty()) {
-      throw new IllegalArgumentException(String.format("Missing %s to identify topics for replication factor update.",
-                                                       TOPICS_WITH_RF_UPDATE_CONFIG));
+      throw new IllegalArgumentException(String.format("Missing %s to identify topics (specified as a regex) for replication "
+                                                       + "factor update.", TOPICS_WITH_RF_UPDATE_CONFIG));
     }
   }
 
   protected Map<Short, Pattern> topicPatternByReplicationFactor(Map<String, ?> configs) {
     initTopicsWithRFUpdate(configs);
     Map<Short, Pattern> topicPatternByReplicationFactor = new HashMap<>(_topicsWithRFUpdate.size());
-    _topicsWithRFUpdate.forEach((key, value) -> topicPatternByReplicationFactor.put(key, buildTopicRegex(value)));
+    _topicsWithRFUpdate.forEach((key, value) -> topicPatternByReplicationFactor.put(key, Pattern.compile(value)));
     return topicPatternByReplicationFactor;
   }
 
