@@ -17,6 +17,7 @@ import com.google.gson.JsonSerializer;
 import com.google.gson.reflect.TypeToken;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serializer;
@@ -32,7 +33,7 @@ public class MaintenancePlanSerde implements Serializer<MaintenancePlan>, Deseri
   @Override
   public MaintenancePlan deserialize(String topic, byte[] bytes) {
     try {
-      return _gson.fromJson(new String(bytes), MaintenancePlan.class);
+      return _gson.fromJson(new String(bytes, StandardCharsets.UTF_8), MaintenancePlan.class);
     } catch (Exception e) {
       throw new RuntimeException("Error occurred while deserializing Maintenance plan.", e);
     }
@@ -45,7 +46,7 @@ public class MaintenancePlanSerde implements Serializer<MaintenancePlan>, Deseri
 
   @Override
   public byte[] serialize(String topic, MaintenancePlan recordValue) {
-    return _gson.toJson(recordValue, new TypeToken<MaintenancePlan>() { }.getType()).getBytes();
+    return _gson.toJson(recordValue, new TypeToken<MaintenancePlan>() { }.getType()).getBytes(StandardCharsets.UTF_8);
   }
 
   @Override
