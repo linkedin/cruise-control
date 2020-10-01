@@ -4,20 +4,19 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
-import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.Map;
+import org.apache.kafka.common.utils.Crc32C;
 
 
 public class TopicReplicationFactorPlan extends MaintenancePlan {
-  public static final byte PLAN_VERSION = 0;
+  public static final byte LATEST_SUPPORTED_VERSION = 0;
   // A map containing the regex of topics by the corresponding desired replication factor
   private final Map<Short, String> _topicRegexWithRFUpdate;
 
   public TopicReplicationFactorPlan(long timeMs, int brokerId, Map<Short, String> topicRegexWithRFUpdate) {
-    super(MaintenanceEventType.TOPIC_REPLICATION_FACTOR, timeMs, brokerId);
+    super(MaintenanceEventType.TOPIC_REPLICATION_FACTOR, timeMs, brokerId, LATEST_SUPPORTED_VERSION);
     if (topicRegexWithRFUpdate == null || topicRegexWithRFUpdate.isEmpty()) {
       throw new IllegalArgumentException("Missing replication factor updates for the plan.");
     }
@@ -35,30 +34,25 @@ public class TopicReplicationFactorPlan extends MaintenancePlan {
     _topicRegexWithRFUpdate = topicRegexWithRFUpdate;
   }
 
-  @Override
-  public byte planVersion() {
-    return PLAN_VERSION;
-  }
-
   public Map<Short, String> topicRegexWithRFUpdate() {
     return _topicRegexWithRFUpdate;
   }
 
-  @Override
-  public ByteBuffer toBuffer(int headerSize) {
+  protected long getCrc() {
     byte numRFUpdateEntries = (byte) _topicRegexWithRFUpdate.size();
     int requiredCapacityForRFEntries = 0;
     for (Map.Entry<Short, String> entry : _topicRegexWithRFUpdate.entrySet()) {
       requiredCapacityForRFEntries += (Short.BYTES /* replication factor */ + Integer.BYTES /* regex length */
                                        + entry.getValue().getBytes(StandardCharsets.UTF_8).length /* regex */);
     }
-    int contentSize = (Byte.BYTES /* plan version */
+    int contentSize = (Byte.BYTES /* maintenance event type id */
+                       + Byte.BYTES /* plan version */
                        + Long.BYTES /* timeMs */
                        + Integer.BYTES /* broker id */
                        + Byte.BYTES /* number of replication factor update entries */
                        + requiredCapacityForRFEntries /* total capacity for all entries */);
-    ByteBuffer buffer = ByteBuffer.allocate(headerSize + Long.BYTES /* crc */ + contentSize);
-    buffer.position(headerSize + Long.BYTES);
+    ByteBuffer buffer = ByteBuffer.allocate(contentSize);
+    buffer.put(maintenanceEventType().id());
     buffer.put(planVersion());
     buffer.putLong(timeMs());
     buffer.putInt(brokerId());
@@ -69,38 +63,8 @@ public class TopicReplicationFactorPlan extends MaintenancePlan {
       buffer.putInt(regex.length);
       buffer.put(regex);
     }
-    putCrc(headerSize, buffer, contentSize);
-    return buffer;
-  }
-
-  /**
-   * Deserialize given byte buffer to an {@link TopicReplicationFactorPlan}.
-   *
-   * @param headerSize The header size of the buffer.
-   * @param buffer buffer to deserialize.
-   * @return The {@link TopicReplicationFactorPlan} corresponding to the deserialized buffer.
-   */
-  public static TopicReplicationFactorPlan fromBuffer(int headerSize, ByteBuffer buffer) throws UnknownVersionException {
-    verifyCrc(headerSize, buffer);
-    byte version = buffer.get();
-    if (version > PLAN_VERSION) {
-      throw new UnknownVersionException("Cannot deserialize the plan for version " + version + ". Current version: " + PLAN_VERSION);
-    }
-
-    long timeMs = buffer.getLong();
-    int brokerId = buffer.getInt();
-    byte numRFUpdateEntries = buffer.get();
-    Map<Short, String> topicRegexWithRFUpdate = new HashMap<>(numRFUpdateEntries);
-
-    for (int i = 0; i < numRFUpdateEntries; i++) {
-      short replicationFactor = buffer.getShort();
-      int regexLength = buffer.getInt();
-      String regex = new String(buffer.array(), buffer.arrayOffset() + buffer.position(), regexLength, StandardCharsets.UTF_8);
-      buffer.position(buffer.position() + regexLength);
-      topicRegexWithRFUpdate.put(replicationFactor, regex);
-    }
-
-    return new TopicReplicationFactorPlan(timeMs, brokerId, topicRegexWithRFUpdate);
+    // The CRC covers all data to the end of the buffer.
+    return Crc32C.compute(buffer, -buffer.position(), contentSize);
   }
 
   @Override

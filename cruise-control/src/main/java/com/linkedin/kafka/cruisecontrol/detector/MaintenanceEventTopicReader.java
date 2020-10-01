@@ -177,9 +177,9 @@ public class MaintenanceEventTopicReader implements MaintenanceEventReader {
         ConsumerRecords<String, MaintenancePlan> records = _consumer.poll(timeout);
         for (ConsumerRecord<String, MaintenancePlan> record : records) {
           if (record == null) {
-            // This means that the record cannot be parsed because the maintenance event type is not recognized.
-            // It might happen when newer type of maintenance events have been added and the current code is still old.
-            // We simply ignore that metric in this case (see MaintenancePlanSerde#fromBytes).
+            // This means that the record cannot be parsed because the maintenance plan version is not supported. It might
+            // happen when existing maintenance plans have been updated and the current code is still old. We simply ignore
+            // that plan in this case (see MaintenancePlanSerde.MaintenancePlanTypeAdapter#verifyTypeAndVersion(String, byte).
             LOG.warn("Cannot parse record, please update your Cruise Control version.");
             continue;
           }
