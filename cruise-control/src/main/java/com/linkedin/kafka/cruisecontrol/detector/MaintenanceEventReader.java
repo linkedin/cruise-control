@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
+import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import java.time.Duration;
 import java.util.Set;
 import org.apache.kafka.common.annotation.InterfaceStability;
@@ -29,5 +30,5 @@ public interface MaintenanceEventReader extends CruiseControlConfigurable, AutoC
    * @param timeout The maximum time to block (must not be greater than {@link Long#MAX_VALUE} milliseconds)
    * @return Set of maintenance events, or empty set if none is available after the given timeout expires.
    */
-  Set<MaintenanceEvent> readEvents(Duration timeout);
+  Set<MaintenanceEvent> readEvents(Duration timeout) throws SamplingException;
 }

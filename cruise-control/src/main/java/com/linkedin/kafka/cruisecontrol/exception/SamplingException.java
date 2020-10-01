@@ -5,11 +5,11 @@
 package com.linkedin.kafka.cruisecontrol.exception;
 
 /**
- * The exception indicating something went wrong during the metrics sampling.
+ * The exception indicating something went wrong while sampling data from a requested source.
  */
-public class MetricSamplingException extends KafkaCruiseControlException {
+public class SamplingException extends KafkaCruiseControlException {
 
-  public MetricSamplingException(String message) {
+  public SamplingException(String message) {
     super(message);
   }
 

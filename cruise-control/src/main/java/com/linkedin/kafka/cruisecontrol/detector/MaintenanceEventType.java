@@ -23,7 +23,26 @@ import java.util.List;
  * </ul>
  */
 public enum MaintenanceEventType {
+  // Do not change the order of enums. Append new ones to the end.
   ADD_BROKER, REMOVE_BROKER, FIX_OFFLINE_REPLICAS, REBALANCE, DEMOTE_BROKER, TOPIC_REPLICATION_FACTOR;
+
+  // This id helps with serialization and deserialization of event types
+  byte id() {
+    return (byte) ordinal();
+  }
+  /**
+   * Retrieve the {@link MaintenanceEvent} that corresponds to the given id.
+   *
+   * @param id ID that corresponds to the maintenance event type.
+   * @return Maintenance Event type with the given id.
+   */
+  public static MaintenanceEventType forId(byte id) {
+    if (id < cachedValues().size()) {
+      return cachedValues().get(id);
+    }
+
+    throw new IllegalArgumentException("MaintenanceEventType " + id + " does not exist.");
+  }
 
   private static final List<MaintenanceEventType> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 
