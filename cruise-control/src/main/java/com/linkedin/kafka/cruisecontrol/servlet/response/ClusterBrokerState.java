@@ -16,6 +16,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
+import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
@@ -25,7 +26,6 @@ import org.apache.kafka.common.requests.DescribeLogDirsResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.describeLogDirs;
 import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG;
 
 @JsonResponseClass
@@ -56,13 +56,13 @@ public class ClusterBrokerState {
   protected final Map<Integer, Set<String>> _onlineLogDirsByBrokerId;
   protected final Map<Integer, Set<String>> _offlineLogDirsByBrokerId;
   protected final Cluster _kafkaCluster;
-  protected final Map<String, Object> _adminClientConfigs;
+  protected final AdminClient _adminClient;
   protected final KafkaCruiseControlConfig _config;
 
-  public ClusterBrokerState(Cluster kafkaCluster, Map<String, Object> adminClientConfigs, KafkaCruiseControlConfig config)
+  public ClusterBrokerState(Cluster kafkaCluster, AdminClient adminClient, KafkaCruiseControlConfig config)
       throws ExecutionException, InterruptedException {
     _kafkaCluster = kafkaCluster;
-    _adminClientConfigs = adminClientConfigs;
+    _adminClient = adminClient;
     _config = config;
     _leaderCountByBrokerId = new TreeMap<>();
     _outOfSyncCountByBrokerId = new TreeMap<>();
@@ -163,8 +163,8 @@ public class ClusterBrokerState {
       }
     }
 
-    Map<Integer, KafkaFuture<Map<String, DescribeLogDirsResponse.LogDirInfo>>> logDirsByBrokerId = describeLogDirs(aliveBrokers,
-                                                                                                                   _adminClientConfigs).values();
+    Map<Integer, KafkaFuture<Map<String, DescribeLogDirsResponse.LogDirInfo>>> logDirsByBrokerId
+        = _adminClient.describeLogDirs(aliveBrokers).values();
     for (Map.Entry<Integer, KafkaFuture<Map<String, DescribeLogDirsResponse.LogDirInfo>>> entry : logDirsByBrokerId.entrySet()) {
       onlineLogDirsByBrokerId.put(entry.getKey(), new HashSet<>());
       offlineLogDirsByBrokerId.put(entry.getKey(), new HashSet<>());

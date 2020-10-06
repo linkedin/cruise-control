@@ -6,8 +6,6 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.common.config.ConfigDef;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -258,8 +256,7 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
       _topicMinISRRecordRetentionTimeMs = DEFAULT_TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS;
     }
 
-    KafkaCruiseControlConfig config = _kafkaCruiseControl.config();
-    _adminClient = KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
+    _adminClient = _kafkaCruiseControl.adminClient();
     _cachedTopicMinISR = new LinkedHashMap<>();
   }
 

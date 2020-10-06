@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCEmbeddedBroker;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
 
@@ -22,7 +23,9 @@ public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegra
   protected static final String LOCALHOST = "localhost";
   private static final int ANY_PORT = 0;
 
-  protected abstract Map<String, Object> withConfigs();
+  protected Map<String, Object> withConfigs() {
+    return Collections.emptyMap();
+  }
 
   private void setupConfig() {
     Properties properties = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
