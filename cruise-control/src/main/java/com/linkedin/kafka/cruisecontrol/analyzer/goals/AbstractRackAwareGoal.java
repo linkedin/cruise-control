@@ -1,0 +1,169 @@
+/*
+ * Copyright 2020 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ */
+
+package com.linkedin.kafka.cruisecontrol.analyzer.goals;
+
+import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
+import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
+import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
+import com.linkedin.kafka.cruisecontrol.model.Broker;
+import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
+import com.linkedin.kafka.cruisecontrol.model.Replica;
+import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.function.Function;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.BROKER_REJECT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
+
+
+/**
+ * An abstract class for custom rack aware goals.
+ */
+public abstract class AbstractRackAwareGoal extends AbstractGoal {
+  private static final Logger LOG = LoggerFactory.getLogger(AbstractRackAwareGoal.class);
+
+  @Override
+  public ClusterModelStatsComparator clusterModelStatsComparator() {
+    return new GoalUtils.HardGoalStatsComparator();
+  }
+
+  @Override
+  public ModelCompletenessRequirements clusterModelCompletenessRequirements() {
+    return new ModelCompletenessRequirements(MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING, 0.0, true);
+  }
+
+  /**
+   * This is a hard goal; hence, the proposals are not limited to dead broker replicas in case of self-healing.
+   * Get brokers that the rebalance process will go over to apply balancing actions to replicas they contain.
+   *
+   * @param clusterModel The state of the cluster.
+   * @return A collection of brokers that the rebalance process will go over to apply balancing actions to replicas
+   * they contain.
+   */
+  @Override
+  protected SortedSet<Broker> brokersToBalance(ClusterModel clusterModel) {
+    return clusterModel.brokers();
+  }
+
+  @Override
+  public boolean isHardGoal() {
+    return true;
+  }
+
+  @Override
+  protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
+    return true;
+  }
+
+  @Override
+  public void finish() {
+    _finished = true;
+  }
+
+  /**
+   * Check whether the given action is acceptable by this goal. The following actions are acceptable:
+   * <ul>
+   *   <li>All leadership moves</li>
+   *   <li>Replica moves that do not violate {@link #doesReplicaMoveViolateActionAcceptance(ClusterModel, Function, Function)}</li>
+   *   <li>Swaps that do not violate {@link #doesReplicaMoveViolateActionAcceptance(ClusterModel, Function, Function)}
+   *   in both direction</li>
+   * </ul>
+   *
+   * @param action Action to be checked for acceptance.
+   * @param clusterModel The state of the cluster.
+   * @return {@link ActionAcceptance#ACCEPT} if the action is acceptable by this goal,
+   * {@link ActionAcceptance#BROKER_REJECT} if the action is rejected due to violating rack awareness in the destination
+   * broker after moving source replica to destination broker, {@link ActionAcceptance#REPLICA_REJECT} otherwise.
+   */
+  @Override
+  public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
+    switch (action.balancingAction()) {
+      case LEADERSHIP_MOVEMENT:
+        return ACCEPT;
+      case INTER_BROKER_REPLICA_MOVEMENT:
+      case INTER_BROKER_REPLICA_SWAP:
+        if (doesReplicaMoveViolateActionAcceptance(clusterModel,
+                                                   c -> c.broker(action.sourceBrokerId()).replica(action.topicPartition()),
+                                                   c -> c.broker(action.destinationBrokerId()))) {
+          return BROKER_REJECT;
+        }
+
+        if (action.balancingAction() == ActionType.INTER_BROKER_REPLICA_SWAP
+            && doesReplicaMoveViolateActionAcceptance(clusterModel,
+                                                      c -> c.broker(action.destinationBrokerId()).replica(action.destinationTopicPartition()),
+                                                      c -> c.broker(action.sourceBrokerId()))) {
+          return REPLICA_REJECT;
+        }
+        return ACCEPT;
+      default:
+        throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
+    }
+  }
+
+  protected abstract boolean doesReplicaMoveViolateActionAcceptance(ClusterModel clusterModel,
+                                                                    Function<ClusterModel, Replica> sourceReplicaFunction,
+                                                                    Function<ClusterModel, Broker> destinationBrokerFunction);
+
+  /**
+   * Rebalance the given broker without violating the constraints of this custom rack aware goal and optimized goals.
+   *
+   * @param broker Broker to be balanced.
+   * @param clusterModel The state of the cluster.
+   * @param optimizedGoals Optimized goals.
+   * @param optimizationOptions Options to take into account during optimization.
+   * @param failIfCannotMove {@code true} to throw an {@link OptimizationFailureException} in case a required balancing
+   * action for a replica fails for all rack-aware eligible brokers, {@code false} to just log the failure and return.
+   * this parameter enables selected goals fail early in case the unsatisfiability of a goal can be determined early.
+   */
+  protected void rebalanceForBroker(Broker broker,
+                                    ClusterModel clusterModel,
+                                    Set<Goal> optimizedGoals,
+                                    OptimizationOptions optimizationOptions,
+                                    boolean failIfCannotMove)
+      throws OptimizationFailureException {
+    for (Replica replica : broker.trackedSortedReplicas(replicaSortName(this, false, false)).sortedReplicas(true)) {
+      if (broker.isAlive() && !broker.currentOfflineReplicas().contains(replica) && shouldKeepInTheCurrentRack(replica, clusterModel)) {
+        continue;
+      }
+      // The relevant rack awareness condition is violated. Move replica to an eligible broker
+      SortedSet<Broker> eligibleBrokers = rackAwareEligibleBrokers(replica, clusterModel);
+      if (maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers,
+                                    ActionType.INTER_BROKER_REPLICA_MOVEMENT, optimizedGoals, optimizationOptions) == null) {
+        if (failIfCannotMove) {
+          throw new OptimizationFailureException(String.format("Failed to move replica %s to any broker in %s", replica, eligibleBrokers));
+        }
+        LOG.debug("Failed to move replica {} to any broker in {}", replica, eligibleBrokers);
+      }
+    }
+  }
+
+  /**
+   * Check whether the given alive replica should stay in the current rack or be moved to another rack to satisfy the
+   * specific requirements of the custom rack aware goal in the given cluster state.
+   *
+   * @param replica An alive replica to check whether it should stay in the current rack.
+   * @param clusterModel The state of the cluster.
+   * @return True if the given alive replica should stay in the current rack, false otherwise.
+   */
+  protected abstract boolean shouldKeepInTheCurrentRack(Replica replica, ClusterModel clusterModel);
+
+  /**
+   * Get a list of eligible brokers for moving the given replica in the given cluster to satisfy the specific
+   * requirements of the custom rack aware goal.
+   *
+   * @param replica Replica for which a set of rack aware eligible brokers are requested.
+   * @param clusterModel The state of the cluster.
+   * @return A list of rack aware eligible brokers for the given replica in the given cluster.
+   */
+  protected abstract SortedSet<Broker> rackAwareEligibleBrokers(Replica replica, ClusterModel clusterModel);
+}

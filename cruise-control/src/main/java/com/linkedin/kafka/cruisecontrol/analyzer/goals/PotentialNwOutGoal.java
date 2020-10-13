@@ -142,9 +142,6 @@ public class PotentialNwOutGoal extends AbstractGoal {
                                              _minMonitoredPartitionPercentage, false);
   }
 
-  /**
-   * Get the name of this goal. Name of a goal provides an identification for the goal in human readable format.
-   */
   @Override
   public String name() {
     return PotentialNwOutGoal.class.getSimpleName();

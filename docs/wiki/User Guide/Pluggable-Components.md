@@ -15,9 +15,12 @@ The default implementation of Sample Store produces the samples back to the Kafk
 The broker Capacity Config Resolver is the way for Cruise Control to get the broker capacity for each of the resources. The default implementation is file based properties. Users can also have a customized implementation to retrieve the capacity of the brokers from some hardware resource management system.
 
 ## Goals
-The goals in Kafka Cruise Control are pluggable with different priorities. The default priority is:
+The goals in Kafka Cruise Control are pluggable with different priorities.
 
 * **Rack-awareness**: A goal that ensures all the replicas of each partition are assigned in a rack aware manner.
+
+ * **RackAwareDistributionGoal** - Contrary to `RackAwareGoal`, as long as replicas of each partition can achieve a perfectly
+ even distribution across the racks, this goal lets placement of multiple replicas of a partition into a single rack.
 
 * **ReplicaCapacityGoal**: Attempt to make all the brokers in a cluster to have less than a given number of replicas.
 
@@ -37,11 +40,11 @@ The goals in Kafka Cruise Control are pluggable with different priorities. The d
     * NetworkOutboundUtilDistributionGoal
     * CpuUtilDistributionGoal
 
-* **LeaderBytesInDistributionGoal**: Attempt to make the leader bytes in rate on each host to be balanced.
-
 * **TopicReplicaDistributionGoal**: Attempt to make the replicas of the same topic evenly distributed across the entire cluster.
 
 * **LeaderReplicaDistributionGoal**: Attempt to make all the brokers in a cluster to have the similar number of leader replicas.
+
+* **LeaderBytesInDistributionGoal**: Attempt to make the leader bytes in rate on each host to be balanced.
 
 * **PreferredLeaderElectionGoal**: Attempt to make the first replica in replica list leader replica of the partition for all topic partition.
 

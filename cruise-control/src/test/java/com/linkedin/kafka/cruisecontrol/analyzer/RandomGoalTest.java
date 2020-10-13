@@ -17,6 +17,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGo
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
@@ -73,6 +74,7 @@ public class RandomGoalTest {
     Collection<Object[]> p = new ArrayList<>();
 
     List<String> goalsSortedByPriority = Arrays.asList(RackAwareGoal.class.getName(),
+                                                       RackAwareDistributionGoal.class.getName(),
                                                        ReplicaCapacityGoal.class.getName(),
                                                        DiskCapacityGoal.class.getName(),
                                                        NetworkInboundCapacityGoal.class.getName(),
@@ -125,6 +127,7 @@ public class RandomGoalTest {
     List<String> shuffledSoftGoalNames = new ArrayList<>(goalsSortedByPriority);
     // Remove the hard goals.
     shuffledSoftGoalNames.remove(RackAwareGoal.class.getName());
+    shuffledSoftGoalNames.remove(RackAwareDistributionGoal.class.getName());
     shuffledSoftGoalNames.remove(ReplicaCapacityGoal.class.getName());
     shuffledSoftGoalNames.remove(CpuCapacityGoal.class.getName());
     shuffledSoftGoalNames.remove(DiskCapacityGoal.class.getName());
@@ -145,10 +148,10 @@ public class RandomGoalTest {
     return new Object[]{modifiedProperties, goalNameByPriority, balancingConstraint, verifications};
   }
 
-  private Map<ClusterProperty, Number> _modifiedProperties;
-  private List<String> _goalNameByPriority;
-  private BalancingConstraint _balancingConstraint;
-  private List<OptimizationVerifier.Verification> _verifications;
+  private final Map<ClusterProperty, Number> _modifiedProperties;
+  private final List<String> _goalNameByPriority;
+  private final BalancingConstraint _balancingConstraint;
+  private final List<OptimizationVerifier.Verification> _verifications;
 
   /**
    * Constructor of Random Goal Test.
