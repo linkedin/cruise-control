@@ -18,7 +18,7 @@ import org.apache.kafka.common.TopicPartition;
  * The interface to get metric samples of given topic partitions.
  * <p>
  * Kafka Cruise Control periodically collects the metrics of all the partitions in the cluster, including the leader and follower
- * replicas. The {@link #getSamples(Cluster, Set, long, long, SamplingMode, MetricDef, long)}
+ * replicas. The {@link #getSamples(MetricSamplerOptions)}
  * will be called for all the replicas of partitions in the cluster in one sampling period.
  * The MetricSampler may be used by multiple threads at the same time, so the implementation need to be thread safe.
  *
@@ -27,6 +27,8 @@ public interface MetricSampler extends CruiseControlConfigurable, AutoCloseable 
   Samples EMPTY_SAMPLES = new Samples(Collections.emptySet(), Collections.emptySet());
 
   /**
+   * @deprecated Please use {@link #getSamples(MetricSamplerOptions)}
+   *
    * Get the metric sample of the given topic partition and replica from the Kafka cluster.
    *
    * The samples include PartitionMetricSamples and BrokerMetricSamples.
@@ -60,6 +62,95 @@ public interface MetricSampler extends CruiseControlConfigurable, AutoCloseable 
                      MetricDef metricDef,
                      long timeout)
       throws SamplingException;
+
+  /**
+   * Get the metric sample of the given topic partition and replica from the Kafka cluster.
+   *
+   * The samples include PartitionMetricSamples and BrokerMetricSamples.
+   *
+   * Due to the lack of direct metrics at partition level, Kafka Cruise Control needs to estimate the CPU
+   * utilization for each partition by using the following formula:
+   *
+   *  BROKER_CPU_UTIL = a * ALL_TOPIC_BYTES_IN_RATE + b * ALL_TOPIC_BYTES_OUT_RATE + c * ALL_FOLLOWER_BYTES_IN_RATE
+   *
+   *  LEADER_PARTITION_CPU_UTIL = a * LEADER_PARTITION_BYTES_IN + b * LEADER_PARTITION_BYTES_OUT
+   *
+   *  FOLLOWER_PARTITION_CPU_UTIL = c * LEADER_PARTITION_BYTES_IN
+   *
+   * Kafka Cruise Control needs to know the parameters of a, b and c for cost evaluation of leader and
+   * partition movement.
+   *
+   * @param metricSamplerOptions This class encapsulates all the arguments needed by MetricSampler to get samples.
+   * @return The PartitionMetricSample of the topic partition and replica id
+   */
+  Samples getSamples(MetricSamplerOptions metricSamplerOptions) throws SamplingException;
+
+  /**
+   * This class encapsulates the options that need to be passed to the {@link #getSamples(MetricSamplerOptions)}
+   * method. Future use-cases may choose to extend this class and add more options.
+   */
+  public class MetricSamplerOptions {
+    /**
+     * @param cluster the metadata of the cluster.
+     * @param assignedPartitions the topic partition
+     * @param startTimeMs the start time of the sampling period.
+     * @param endTimeMs the end time of the sampling period.
+     * @param mode The sampling mode.
+     * @param metricDef the metric definitions.
+     * @param timeout The sampling timeout to stop sampling even if there is more data to get.
+     */
+    public MetricSamplerOptions(Cluster cluster,
+                                Set<TopicPartition> assignedPartitions,
+                                long startTimeMs,
+                                long endTimeMs,
+                                SamplingMode mode,
+                                MetricDef metricDef,
+                                long timeout) {
+      this._cluster = cluster;
+      this._assignedPartitions = assignedPartitions;
+      this._startTimeMs = startTimeMs;
+      this._endTimeMs = endTimeMs;
+      this._mode = mode;
+      this._metricDef = metricDef;
+      this._timeout = timeout;
+    }
+
+    private final Cluster _cluster;
+    private final Set<TopicPartition> _assignedPartitions;
+    private final long _startTimeMs;
+    private final long _endTimeMs;
+    private final SamplingMode _mode;
+    private final MetricDef _metricDef;
+    private final long _timeout;
+
+    public Cluster cluster() {
+      return _cluster;
+    }
+
+    public Set<TopicPartition> assignedPartitions() {
+      return _assignedPartitions;
+    }
+
+    public long startTimeMs() {
+      return _startTimeMs;
+    }
+
+    public long endTimeMs() {
+      return _endTimeMs;
+    }
+
+    public SamplingMode mode() {
+      return _mode;
+    }
+
+    public MetricDef metricDef() {
+      return _metricDef;
+    }
+
+    public long timeout() {
+      return _timeout;
+    }
+  }
 
   /**
    * The sampling mode to indicate which type of samples is interested.
