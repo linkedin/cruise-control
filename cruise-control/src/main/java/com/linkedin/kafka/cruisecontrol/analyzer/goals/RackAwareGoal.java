@@ -19,7 +19,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
@@ -44,11 +43,7 @@ public class RackAwareGoal extends AbstractRackAwareGoal {
   }
 
   @Override
-  protected boolean doesReplicaMoveViolateActionAcceptance(ClusterModel clusterModel,
-                                                           Function<ClusterModel, Replica> sourceReplicaFunction,
-                                                           Function<ClusterModel, Broker> destinationBrokerFunction) {
-    Replica sourceReplica = sourceReplicaFunction.apply(clusterModel);
-    Broker destinationBroker = destinationBrokerFunction.apply(clusterModel);
+  protected boolean doesReplicaMoveViolateActionAcceptance(ClusterModel clusterModel, Replica sourceReplica, Broker destinationBroker) {
     // Destination broker cannot be in a rack that violates rack awareness.
     Set<Broker> partitionBrokers = clusterModel.partition(sourceReplica.topicPartition()).partitionBrokers();
     partitionBrokers.remove(sourceReplica.broker());

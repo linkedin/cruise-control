@@ -15,7 +15,6 @@ import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.Set;
 import java.util.SortedSet;
-import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,8 +73,8 @@ public abstract class AbstractRackAwareGoal extends AbstractGoal {
    * Check whether the given action is acceptable by this goal. The following actions are acceptable:
    * <ul>
    *   <li>All leadership moves</li>
-   *   <li>Replica moves that do not violate {@link #doesReplicaMoveViolateActionAcceptance(ClusterModel, Function, Function)}</li>
-   *   <li>Swaps that do not violate {@link #doesReplicaMoveViolateActionAcceptance(ClusterModel, Function, Function)}
+   *   <li>Replica moves that do not violate {@link #doesReplicaMoveViolateActionAcceptance(ClusterModel, Replica, Broker)}</li>
+   *   <li>Swaps that do not violate {@link #doesReplicaMoveViolateActionAcceptance(ClusterModel, Replica, Broker)}
    *   in both direction</li>
    * </ul>
    *
@@ -93,15 +92,15 @@ public abstract class AbstractRackAwareGoal extends AbstractGoal {
       case INTER_BROKER_REPLICA_MOVEMENT:
       case INTER_BROKER_REPLICA_SWAP:
         if (doesReplicaMoveViolateActionAcceptance(clusterModel,
-                                                   c -> c.broker(action.sourceBrokerId()).replica(action.topicPartition()),
-                                                   c -> c.broker(action.destinationBrokerId()))) {
+                                                   clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition()),
+                                                   clusterModel.broker(action.destinationBrokerId()))) {
           return BROKER_REJECT;
         }
 
         if (action.balancingAction() == ActionType.INTER_BROKER_REPLICA_SWAP
             && doesReplicaMoveViolateActionAcceptance(clusterModel,
-                                                      c -> c.broker(action.destinationBrokerId()).replica(action.destinationTopicPartition()),
-                                                      c -> c.broker(action.sourceBrokerId()))) {
+                                                      clusterModel.broker(action.destinationBrokerId()).replica(action.destinationTopicPartition()),
+                                                      clusterModel.broker(action.sourceBrokerId()))) {
           return REPLICA_REJECT;
         }
         return ACCEPT;
@@ -110,9 +109,18 @@ public abstract class AbstractRackAwareGoal extends AbstractGoal {
     }
   }
 
+  /**
+   * Check whether the given replica move would violate the action acceptance for this custom rack aware goal.
+   *
+   * @param clusterModel The state of the cluster.
+   * @param sourceReplica Source replica
+   * @param destinationBroker Destination broker to receive the given source replica.
+   * @return {@code true} if the given replica move would violate action acceptance (i.e. the move is not acceptable),
+   * {@code false} otherwise.
+   */
   protected abstract boolean doesReplicaMoveViolateActionAcceptance(ClusterModel clusterModel,
-                                                                    Function<ClusterModel, Replica> sourceReplicaFunction,
-                                                                    Function<ClusterModel, Broker> destinationBrokerFunction);
+                                                                    Replica sourceReplica,
+                                                                    Broker destinationBroker);
 
   /**
    * Rebalance the given broker without violating the constraints of this custom rack aware goal and optimized goals.

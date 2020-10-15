@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.function.Function;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 import static java.util.Collections.max;
@@ -76,11 +75,8 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
   }
 
   @Override
-  protected boolean doesReplicaMoveViolateActionAcceptance(ClusterModel clusterModel,
-                                                           Function<ClusterModel, Replica> sourceReplicaFunction,
-                                                           Function<ClusterModel, Broker> destinationBrokerFunction) {
-    Replica sourceReplica = sourceReplicaFunction.apply(clusterModel);
-    String destinationRackId = destinationBrokerFunction.apply(clusterModel).rack().id();
+  protected boolean doesReplicaMoveViolateActionAcceptance(ClusterModel clusterModel, Replica sourceReplica, Broker destinationBroker) {
+    String destinationRackId = destinationBroker.rack().id();
     String sourceRackId = sourceReplica.broker().rack().id();
 
     if (sourceRackId.equals(destinationRackId)) {
@@ -201,8 +197,13 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
 
     int baseLimit = _balanceLimit.baseLimitByRF(partitionBrokers.size());
 
-    // An replica is allowed to be moved to a rack at the base limit only if the number of racks with at least one more
-    // replica over the base limit is fewer than the allowed number of such racks
+    // A replica is allowed to be moved to a rack at the base limit only if the number of racks with at least one more
+    // replica over the base limit is fewer than the allowed number of such racks.
+    // For example, suppose a partition has 5 replicas in a cluster with 3 racks. In the ideal distribution, 2 racks has
+    // 2 replicas and the other rack has 1 replica from the partition. Suppose that in the current distribution, Rack-1
+    // has 1 offline and 1 online replica, Rack-2 has 2 online replicas, and Rack-3 has 1 online replica. In this scenario,
+    // we can place the offline replica to an alive broker in either Rack-1 or Rack-3, because the cluster has only one
+    // rack with at least one more replica over the base limit and we know that the ideal distribution allows 2 such racks.
     boolean canMoveToRacksAtBaseLimit = false;
     int numRacksWithOneMoreReplicaLimit = _balanceLimit.numRacksWithOneMoreReplicaByRF(partitionBrokers.size());
     int numRacksWithAtLeastOneMoreReplica = (int) numReplicasByRack.values().stream().filter(r -> r > baseLimit).count();
