@@ -124,6 +124,9 @@ public interface Goal extends CruiseControlConfigurable {
 
   /**
    * A comparator that compares two cluster model stats.
+   * <p>
+   *   Note: this comparator imposes orderings that are inconsistent with equals.
+   * </p>
    */
   interface ClusterModelStatsComparator extends Comparator<ClusterModelStats>, Serializable {
 

@@ -121,15 +121,15 @@ public abstract class AbstractRackAwareGoal extends AbstractGoal {
    * @param clusterModel The state of the cluster.
    * @param optimizedGoals Optimized goals.
    * @param optimizationOptions Options to take into account during optimization.
-   * @param failIfCannotMove {@code true} to throw an {@link OptimizationFailureException} in case a required balancing
-   * action for a replica fails for all rack-aware eligible brokers, {@code false} to just log the failure and return.
-   * this parameter enables selected goals fail early in case the unsatisfiability of a goal can be determined early.
+   * @param throwExceptionIfCannotMove {@code true} to throw an {@link OptimizationFailureException} in case a required
+   * balancing action for a replica fails for all rack-aware eligible brokers, {@code false} to just log the failure and return.
+   * This parameter enables selected goals fail early in case the unsatisfiability of a goal can be determined early.
    */
   protected void rebalanceForBroker(Broker broker,
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
                                     OptimizationOptions optimizationOptions,
-                                    boolean failIfCannotMove)
+                                    boolean throwExceptionIfCannotMove)
       throws OptimizationFailureException {
     for (Replica replica : broker.trackedSortedReplicas(replicaSortName(this, false, false)).sortedReplicas(true)) {
       if (broker.isAlive() && !broker.currentOfflineReplicas().contains(replica) && shouldKeepInTheCurrentRack(replica, clusterModel)) {
@@ -139,10 +139,10 @@ public abstract class AbstractRackAwareGoal extends AbstractGoal {
       SortedSet<Broker> eligibleBrokers = rackAwareEligibleBrokers(replica, clusterModel);
       if (maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers,
                                     ActionType.INTER_BROKER_REPLICA_MOVEMENT, optimizedGoals, optimizationOptions) == null) {
-        if (failIfCannotMove) {
-          throw new OptimizationFailureException(String.format("Failed to move replica %s to any broker in %s", replica, eligibleBrokers));
+        if (throwExceptionIfCannotMove) {
+          throw new OptimizationFailureException(String.format("Cannot move replica %s to any broker in %s", replica, eligibleBrokers));
         }
-        LOG.debug("Failed to move replica {} to any broker in {}", replica, eligibleBrokers);
+        LOG.debug("Cannot move replica {} to any broker in {}", replica, eligibleBrokers);
       }
     }
   }
