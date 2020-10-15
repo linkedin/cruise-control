@@ -241,7 +241,7 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
 
     int baseLimit = _balanceLimit.baseLimitByRF(replicationFactor);
     int numRacksWithOneMoreReplicaLimit = _balanceLimit.numRacksWithOneMoreReplicaByRF(replicationFactor);
-    int upperLimit = baseLimit + numRacksWithOneMoreReplicaLimit == 0 ? 0 : 1;
+    int upperLimit = baseLimit + (numRacksWithOneMoreReplicaLimit == 0 ? 0 : 1);
 
     int numReplicasInThisRack = numReplicasByRack.get(replica.broker().rack().id());
     if (numReplicasInThisRack <= baseLimit) {
