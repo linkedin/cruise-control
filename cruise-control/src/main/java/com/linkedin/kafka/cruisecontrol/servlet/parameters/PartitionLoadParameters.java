@@ -97,10 +97,10 @@ public class PartitionLoadParameters extends AbstractParameters {
     _endMs = ParameterUtils.endMs(_request);
     _partitionLowerBoundary = ParameterUtils.partitionBoundary(_request, false);
     _partitionUpperBoundary = ParameterUtils.partitionBoundary(_request, true);
+    _entries = ParameterUtils.entries(_request);
     _minValidPartitionRatio = ParameterUtils.minValidPartitionRatio(_request);
     _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_request);
     _brokerIds = ParameterUtils.brokerIds(_request, true);
-    _entries = ParameterUtils.entries(_request);
   }
 
   public Resource resource() {
