@@ -202,6 +202,10 @@ public class Broker implements Serializable, Comparable<Broker> {
     return _state != State.DEAD;
   }
 
+  public boolean isUsingJBOD() {
+    return _diskByLogdir.size() > 1;
+  }
+
   /**
    * @return True if the broker is a new broker, false otherwise.
    */
