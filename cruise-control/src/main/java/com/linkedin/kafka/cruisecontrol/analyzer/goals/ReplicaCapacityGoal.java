@@ -13,7 +13,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
-import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
 import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
@@ -84,7 +83,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
 
   @Override
   public ClusterModelStatsComparator clusterModelStatsComparator() {
-    return new ReplicaCapacityGoalStatsComparator();
+    return new GoalUtils.HardGoalStatsComparator();
   }
 
   @Override
@@ -175,15 +174,6 @@ public class ReplicaCapacityGoal extends AbstractGoal {
                               .trackSortedReplicasFor(replicaSortName(this, false, false), clusterModel);
   }
 
-  /**
-   * Check if requirements of this goal are not violated if this action is applied to the given cluster state,
-   * false otherwise.
-   *
-   * @param clusterModel The state of the cluster.
-   * @param action Action containing information about potential modification to the given cluster model.
-   * @return True if requirements of this goal are not violated if this action is applied to the given cluster state,
-   * false otherwise.
-   */
   @Override
   protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
     Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
@@ -313,20 +303,6 @@ public class ReplicaCapacityGoal extends AbstractGoal {
 
     // Return eligible brokers.
     return eligibleBrokers;
-  }
-
-  private static class ReplicaCapacityGoalStatsComparator implements ClusterModelStatsComparator {
-
-    @Override
-    public int compare(ClusterModelStats stats1, ClusterModelStats stats2) {
-      // This goal do not care about stats. The optimization would have already failed if the goal is not met.
-      return 0;
-    }
-
-    @Override
-    public String explainLastComparison() {
-      return null;
-    }
   }
 
   /**

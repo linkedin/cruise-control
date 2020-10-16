@@ -16,6 +16,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistri
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
@@ -94,6 +95,27 @@ public class ExcludedBrokersForReplicaMoveTest {
                  noDeadBroker, null));
     // With single excluded broker, rack aware unsatisfiable cluster, one dead broker (Exception)
     p.add(params(6, RackAwareGoal.class, excludeB1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(),
+                 deadBroker0, null));
+
+    // ============RackAwareDistributionGoal============
+    // With single excluded broker, rack aware satisfiable cluster, no dead brokers (No exception, No proposal, Expected to look optimized)
+    p.add(params(0, RackAwareDistributionGoal.class, excludeB1, null, DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true));
+    // With single excluded broker, rack aware satisfiable cluster -- but with a broker excluded on the other rack, no
+    // dead brokers (Exception)
+    p.add(params(1, RackAwareDistributionGoal.class, excludeB2, OptimizationFailureException.class, DeterministicCluster.rackAwareSatisfiable(),
+                 noDeadBroker, null));
+    // With single excluded broker, rack aware satisfiable cluster, one dead broker on this rack (Exception)
+    p.add(params(2, RackAwareDistributionGoal.class, excludeB2, OptimizationFailureException.class, DeterministicCluster.rackAwareSatisfiable(),
+                 deadBroker0, null));
+    // Without excluded broker, rack aware satisfiable cluster, no dead brokers (No exception, Proposal expected, Expected to look optimized)
+    p.add(params(3, RackAwareDistributionGoal.class, noExclusion, null, DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true));
+    // Without excluded broker, rack aware satisfiable cluster, one dead broker (No exception, Proposal expected, Expected to look optimized)
+    p.add(params(4, RackAwareDistributionGoal.class, noExclusion, null, DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true));
+    // With single excluded broker, rack aware unsatisfiable but rack aware distribution satisfiable cluster, no dead broker
+    // (No exception, No proposal, Expected to look optimized)
+    p.add(params(5, RackAwareDistributionGoal.class, excludeB1, null, DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, true));
+    // With single excluded broker, rack aware unsatisfiable cluster, one dead broker (Exception)
+    p.add(params(6, RackAwareDistributionGoal.class, excludeB1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(),
                  deadBroker0, null));
 
     // ============ReplicaCapacityGoal============
@@ -210,12 +232,12 @@ public class ExcludedBrokersForReplicaMoveTest {
     return p;
   }
 
-  private int _testId;
-  private Goal _goal;
-  private OptimizationOptions _optimizationOptions;
-  private Class<Throwable> _exceptionClass;
-  private ClusterModel _clusterModel;
-  private Boolean _expectedToOptimize;
+  private final int _testId;
+  private final Goal _goal;
+  private final OptimizationOptions _optimizationOptions;
+  private final Class<Throwable> _exceptionClass;
+  private final ClusterModel _clusterModel;
+  private final Boolean _expectedToOptimize;
 
   /**
    * Constructor of Excluded Brokers For Replica Move Test.

@@ -183,14 +183,6 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
     return isGettingMoreBalanced(sourceDisk, destinationDisk, sourceUtilizationDelta) ? ACCEPT : REPLICA_REJECT;
   }
 
-  /**
-   * Check if requirements of this goal are not violated if this action is applied to the given cluster state, false otherwise.
-   *
-   * @param  clusterModel The state of the cluster.
-   * @param  action Action containing information about potential modification to the given cluster model.
-   * @return True if requirements of this goal are not violated if this action is applied to the given cluster state,
-   *         false otherwise.
-   */
   @Override
   protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
     double sourceUtilizationDelta = sourceUtilizationDelta(action, clusterModel);
@@ -518,9 +510,7 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
     return new ModelCompletenessRequirements(_numWindows, _minMonitoredPartitionPercentage, false);
   }
 
-  /**
-   * @return The name of this goal. Name of a goal provides an identification for the goal in human readable format.
-   */
+  @Override
   public String name() {
     return this.getClass().getSimpleName();
   }

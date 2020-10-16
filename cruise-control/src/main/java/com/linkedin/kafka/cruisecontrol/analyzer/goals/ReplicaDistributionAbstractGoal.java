@@ -48,7 +48,7 @@ public abstract class ReplicaDistributionAbstractGoal extends AbstractGoal {
    * Apply several adjustments to the requested rebalance threshold to be used by goal optimization.
    * <ol>
    *   <li>If the goal optimization is triggered by goal violation detector, increase threshold by multiplying with
-   *       {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG}</li>
+   *       {@link com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig#GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG}</li>
    *   <li>Add a balance margin to avoid churn, e.g. if the threshold with prior adjustment applied is balancePercentage,
    *       we use (balancePercentage-1)*{@link #BALANCE_MARGIN} instead.</li>
    * </ol>
@@ -154,15 +154,6 @@ public abstract class ReplicaDistributionAbstractGoal extends AbstractGoal {
    */
   abstract double balancePercentage();
 
-  /**
-   * Check if requirements of this goal are not violated if this proposal is applied to the given cluster state,
-   * false otherwise.
-   *
-   * @param clusterModel The state of the cluster.
-   * @param action Action containing information about potential modification to the given cluster model.
-   * @return True if requirements of this goal are not violated if this proposal is applied to the given cluster state,
-   *         false otherwise.
-   */
   @Override
   protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
     Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());

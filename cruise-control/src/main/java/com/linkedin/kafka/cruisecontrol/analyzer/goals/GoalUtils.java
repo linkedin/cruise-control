@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
+import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Disk;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import java.util.ArrayList;
@@ -44,6 +45,22 @@ public class GoalUtils {
 
   private GoalUtils() {
 
+  }
+
+  /**
+   * A convenience {@link com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal.ClusterModelStatsComparator} for typical hard goals.
+   */
+  public static class HardGoalStatsComparator implements Goal.ClusterModelStatsComparator {
+    @Override
+    public int compare(ClusterModelStats stats1, ClusterModelStats stats2) {
+      // Stats are irrelevant to a hard goal. The optimization would already fail if the goal requirements are not met.
+      return 0;
+    }
+
+    @Override
+    public String explainLastComparison() {
+      return null;
+    }
   }
 
   /**

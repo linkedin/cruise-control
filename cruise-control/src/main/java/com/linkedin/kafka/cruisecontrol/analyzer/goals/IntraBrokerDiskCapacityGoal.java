@@ -13,7 +13,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
-import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Disk;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
@@ -139,15 +138,6 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
     }
   }
 
-  /**
-   * Check if requirements of this goal are not violated if this action is applied to the given cluster state,
-   * false otherwise.
-   *
-   * @param  clusterModel The state of the cluster.
-   * @param  action Action containing information about potential modification to the given cluster model.
-   * @return True if requirements of this goal are not violated if this action is applied to the given cluster state,
-   *         false otherwise.
-   */
   @Override
   protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
     Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
@@ -230,18 +220,7 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
 
   @Override
   public ClusterModelStatsComparator clusterModelStatsComparator() {
-    return new ClusterModelStatsComparator() {
-      @Override
-      public int compare(ClusterModelStats stats1, ClusterModelStats stats2) {
-        // This goal does not care about stats. The optimization would have already failed if the goal is not met.
-        return 0;
-      }
-
-      @Override
-      public String explainLastComparison() {
-        return null;
-      }
-    };
+    return new GoalUtils.HardGoalStatsComparator();
   }
 
   @Override
@@ -250,9 +229,7 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
     return new ModelCompletenessRequirements(MIN_NUM_VALID_WINDOWS, _minMonitoredPartitionPercentage, true);
   }
 
-  /**
-   * @return The name of this goal. Name of a goal provides an identification for the goal in human readable format.
-   */
+  @Override
   public String name() {
     return this.getClass().getSimpleName();
   }
