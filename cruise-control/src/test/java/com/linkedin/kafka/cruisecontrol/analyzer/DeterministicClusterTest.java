@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.IntraBrokerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderReplicaDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
@@ -58,10 +59,10 @@ import static org.junit.Assert.assertTrue;
  */
 @RunWith(Parameterized.class)
 public class DeterministicClusterTest {
-  private BalancingConstraint _balancingConstraint;
-  private ClusterModel _cluster;
-  private List<String> _goalNameByPriority;
-  private List<OptimizationVerifier.Verification> _verifications;
+  private final BalancingConstraint _balancingConstraint;
+  private final ClusterModel _cluster;
+  private final List<String> _goalNameByPriority;
+  private final List<OptimizationVerifier.Verification> _verifications;
 
   @Rule
   public ExpectedException _expected = ExpectedException.none();
@@ -97,6 +98,7 @@ public class DeterministicClusterTest {
     Collection<Object[]> p = new ArrayList<>();
 
     List<String> goalNameByPriority = Arrays.asList(RackAwareGoal.class.getName(),
+                                                    RackAwareDistributionGoal.class.getName(),
                                                     ReplicaCapacityGoal.class.getName(),
                                                     DiskCapacityGoal.class.getName(),
                                                     NetworkInboundCapacityGoal.class.getName(),

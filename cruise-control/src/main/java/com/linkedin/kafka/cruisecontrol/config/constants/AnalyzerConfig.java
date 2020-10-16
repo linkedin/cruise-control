@@ -20,6 +20,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGo
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
@@ -219,6 +220,7 @@ public class AnalyzerConfig {
    */
   public static final String GOALS_CONFIG = "goals";
   public static final String DEFAULT_GOALS = new StringJoiner(",").add(RackAwareGoal.class.getName())
+                                                                  .add(RackAwareDistributionGoal.class.getName())
                                                                   .add(ReplicaCapacityGoal.class.getName())
                                                                   .add(DiskCapacityGoal.class.getName())
                                                                   .add(NetworkInboundCapacityGoal.class.getName())

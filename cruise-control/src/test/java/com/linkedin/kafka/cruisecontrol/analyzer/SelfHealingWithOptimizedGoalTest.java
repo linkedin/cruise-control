@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistri
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
@@ -23,7 +24,6 @@ import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
-import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -44,7 +44,6 @@ import static org.junit.Assert.assertTrue;
 @RunWith(Parameterized.class)
 public class SelfHealingWithOptimizedGoalTest {
   private final BalancingConstraint _balancingConstraint;
-  private final ClusterModel _clusterModel;
   private final List<String> _goalNameByPriority;
   private final List<OptimizationVerifier.Verification> _verifications;
 
@@ -52,16 +51,13 @@ public class SelfHealingWithOptimizedGoalTest {
    * Constructor for self-healing test.
    *
    * @param balancingConstraint Balancing constraint.
-   * @param clusterModel The state of the cluster.
    * @param goalNameByPriority Name of goals by the order of execution priority.
    * @param verifications The verifications to make.
    */
   public SelfHealingWithOptimizedGoalTest(BalancingConstraint balancingConstraint,
-                                          ClusterModel clusterModel,
                                           List<String> goalNameByPriority,
                                           List<OptimizationVerifier.Verification> verifications) {
     _balancingConstraint = balancingConstraint;
-    _clusterModel = clusterModel;
     _goalNameByPriority = goalNameByPriority;
     _verifications = verifications;
   }
@@ -74,10 +70,7 @@ public class SelfHealingWithOptimizedGoalTest {
   @Parameterized.Parameters
   public static Collection<Object[]> data() {
     Collection<Object[]> p = new ArrayList<>();
-
-    // Sorted by priority.
-    List<String> goalNameByPriority = Arrays.asList(RackAwareGoal.class.getName(),
-                                                    ReplicaCapacityGoal.class.getName(),
+    List<String> goalNameByPriority = Arrays.asList(ReplicaCapacityGoal.class.getName(),
                                                     DiskCapacityGoal.class.getName(),
                                                     NetworkInboundCapacityGoal.class.getName(),
                                                     NetworkOutboundCapacityGoal.class.getName(),
@@ -98,27 +91,27 @@ public class SelfHealingWithOptimizedGoalTest {
     balancingConstraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     List<OptimizationVerifier.Verification> verifications = Arrays.asList(BROKEN_BROKERS, REGRESSION);
 
-    // ----------##TEST: RACK AWARE GOAL + ONE OTHER GOAL.
-    for (int i = 1; i < goalNameByPriority.size(); i++) {
-      List<String> testGoals = Arrays.asList(RackAwareGoal.class.getName(), goalNameByPriority.get(i));
-      p.add(params(balancingConstraint, DeterministicCluster.deadBroker(TestConstants.BROKER_CAPACITY),
-                   testGoals, verifications));
+    // ----------##TEST: (RACK AWARE GOAL || RACK AWARE DISTRIBUTION GOAL) + ONE OTHER GOAL.
+    for (String goal : goalNameByPriority) {
+      List<String> testGoalsWithRackAware = Arrays.asList(RackAwareGoal.class.getName(), goal);
+      p.add(params(balancingConstraint, testGoalsWithRackAware, verifications));
+      List<String> testGoalsWithRackAwareDistribution = Arrays.asList(RackAwareDistributionGoal.class.getName(), goal);
+      p.add(params(balancingConstraint, testGoalsWithRackAwareDistribution, verifications));
     }
 
     return p;
   }
 
   private static Object[] params(BalancingConstraint balancingConstraint,
-                                 ClusterModel clusterModel,
                                  List<String> goalNameByPriority,
                                  List<OptimizationVerifier.Verification> verifications) {
-    return new Object[]{balancingConstraint, clusterModel, goalNameByPriority, verifications};
+    return new Object[]{balancingConstraint, goalNameByPriority, verifications};
   }
 
   @Test
   public void test() throws Exception {
     assertTrue("Self-healing test failed to improve the existing state.",
-               OptimizationVerifier.executeGoalsFor(_balancingConstraint, _clusterModel, _goalNameByPriority, Collections.emptySet(),
-                                                    _verifications, true));
+               OptimizationVerifier.executeGoalsFor(_balancingConstraint, DeterministicCluster.deadBroker(TestConstants.BROKER_CAPACITY),
+                                                    _goalNameByPriority, Collections.emptySet(), _verifications, true));
   }
 }

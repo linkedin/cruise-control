@@ -190,9 +190,6 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     return new ModelCompletenessRequirements(MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING, 0.0, true);
   }
 
-  /**
-   * Get the name of this goal. Name of a goal provides an identification for the goal in human readable format.
-   */
   @Override
   public String name() {
     return TopicReplicaDistributionGoal.class.getSimpleName();

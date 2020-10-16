@@ -14,7 +14,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
-import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Load;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 
@@ -104,7 +103,7 @@ public abstract class CapacityGoal extends AbstractGoal {
 
   @Override
   public ClusterModelStatsComparator clusterModelStatsComparator() {
-    return new CapGoalStatsComparator();
+    return new GoalUtils.HardGoalStatsComparator();
   }
 
   @Override
@@ -113,9 +112,6 @@ public abstract class CapacityGoal extends AbstractGoal {
     return new ModelCompletenessRequirements(MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING, _minMonitoredPartitionPercentage, true);
   }
 
-  /**
-   * Get the name of this goal. Name of a goal provides an identification for the goal in human readable format.
-   */
   @Override
   public abstract String name();
 
@@ -484,19 +480,5 @@ public abstract class CapacityGoal extends AbstractGoal {
     }
     // Utilization would be under the limit after adding the load to the destination broker.
     return true;
-  }
-
-  private static class CapGoalStatsComparator implements ClusterModelStatsComparator {
-
-    @Override
-    public int compare(ClusterModelStats stats1, ClusterModelStats stats2) {
-      // This goal does not care about stats. The optimization would have already failed if the goal is not met.
-      return 0;
-    }
-
-    @Override
-    public String explainLastComparison() {
-      return null;
-    }
   }
 }
