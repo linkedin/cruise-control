@@ -83,7 +83,7 @@ public class PartitionLoadParameters extends AbstractParameters {
     try {
       _resource = Resource.valueOf(resourceString.toUpperCase());
     } catch (IllegalArgumentException iae) {
-      throw new UserRequestException(String.format("Invalid resource type %s. The resource type must be one of the"
+      throw new UserRequestException(String.format("Invalid resource type %s. The resource type must be one of the "
                                                    + "following: CPU, DISK, NW_IN, NW_OUT", resourceString));
     }
 
@@ -97,10 +97,14 @@ public class PartitionLoadParameters extends AbstractParameters {
     _endMs = ParameterUtils.endMs(_request);
     _partitionLowerBoundary = ParameterUtils.partitionBoundary(_request, false);
     _partitionUpperBoundary = ParameterUtils.partitionBoundary(_request, true);
-    _entries = ParameterUtils.entries(_request);
     _minValidPartitionRatio = ParameterUtils.minValidPartitionRatio(_request);
     _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_request);
     _brokerIds = ParameterUtils.brokerIds(_request, true);
+    _entries = ParameterUtils.entries(_request);
+    if (_entries < 0) {
+      throw new UserRequestException("Invalid entries value. The entries value must be"
+          + " greater than or equal to 0. Got negative value: " + _entries);
+    }
   }
 
   public Resource resource() {
