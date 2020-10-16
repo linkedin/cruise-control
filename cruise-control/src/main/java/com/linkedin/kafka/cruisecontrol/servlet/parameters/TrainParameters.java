@@ -51,6 +51,7 @@ public class TrainParameters extends AbstractParameters {
     if (_startMs == null || _endMs == null) {
       throw new UserRequestException("Missing start or end parameter.");
     }
+    ParameterUtils.validateTimeRange(_startMs, _endMs);
   }
 
   public Long startMs() {

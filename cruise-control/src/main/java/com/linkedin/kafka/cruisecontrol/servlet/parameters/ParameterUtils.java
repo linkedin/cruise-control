@@ -24,6 +24,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 
+import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -408,16 +409,31 @@ public class ParameterUtils {
     return timeString.toUpperCase().equals("NOW") ? System.currentTimeMillis() : Long.parseLong(timeString);
   }
 
-  static long startMs(HttpServletRequest request) {
-    String parameterString = caseSensitiveParameterName(request.getParameterMap(), START_MS_PARAM);
-    return parameterString == null ? DEFAULT_START_TIME_FOR_CLUSTER_MODEL
-                                   : Long.parseLong(request.getParameter(parameterString));
+  @Nullable
+  static Long startMs(HttpServletRequest request) {
+    return parseParamAsLong(request, START_MS_PARAM);
   }
 
-  static long endMs(HttpServletRequest request) {
-    String parameterString = caseSensitiveParameterName(request.getParameterMap(), END_MS_PARAM);
-    return parameterString == null ? System.currentTimeMillis()
-                                   : Long.parseLong(request.getParameter(parameterString));
+  @Nullable
+  static Long endMs(HttpServletRequest request) {
+    return parseParamAsLong(request, END_MS_PARAM);
+  }
+
+  static long startMsOrDefault(HttpServletRequest request, long defaultStartMs) {
+    Long startMs = parseParamAsLong(request, START_MS_PARAM);
+    return startMs == null ? defaultStartMs : startMs;
+  }
+
+  static long endMsOrDefault(HttpServletRequest request, long defaultEndMs) {
+    Long endMs = parseParamAsLong(request, END_MS_PARAM);
+    return endMs == null ? defaultEndMs : endMs;
+  }
+
+  static void validateTimeRange(long startMs, long endMs) {
+    if (startMs >= endMs) {
+      throw new UserRequestException(
+          String.format("Invalid time range. Start time must be smaller than end time. Got: [%d, %d]", startMs, endMs));
+    }
   }
 
   static Pattern topic(HttpServletRequest request) {
@@ -1056,6 +1072,12 @@ public class ParameterUtils {
 
   static boolean fetchCompletedTask(HttpServletRequest request) {
     return getBooleanParam(request, FETCH_COMPLETED_TASK_PARAM, false);
+  }
+
+  @Nullable
+  private static Long parseParamAsLong(HttpServletRequest request, String paramName) {
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), paramName);
+    return parameterString == null ? null : Long.parseLong(request.getParameter(parameterString));
   }
 
   /**

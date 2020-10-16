@@ -59,6 +59,9 @@ public class BootstrapParameters extends AbstractParameters {
     if (_startMs == null && _endMs != null) {
       throw new UserRequestException("The start time cannot be empty when end time is specified.");
     }
+    if (_startMs != null && _endMs != null) {
+      ParameterUtils.validateTimeRange(_startMs, _endMs);
+    }
   }
 
   public Long startMs() {
