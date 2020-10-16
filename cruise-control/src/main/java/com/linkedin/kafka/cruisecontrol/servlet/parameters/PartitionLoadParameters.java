@@ -83,7 +83,7 @@ public class PartitionLoadParameters extends AbstractParameters {
     try {
       _resource = Resource.valueOf(resourceString.toUpperCase());
     } catch (IllegalArgumentException iae) {
-      throw new UserRequestException(String.format("Invalid resource type %s. The resource type must be one of the"
+      throw new UserRequestException(String.format("Invalid resource type %s. The resource type must be one of the "
                                                    + "following: CPU, DISK, NW_IN, NW_OUT", resourceString));
     }
 
