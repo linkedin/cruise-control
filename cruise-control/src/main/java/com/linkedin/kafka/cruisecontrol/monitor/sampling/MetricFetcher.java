@@ -114,7 +114,7 @@ abstract class MetricFetcher implements Callable<Boolean> {
    * @return The accepted partition and broker metric samples.
    */
   protected MetricSampler.Samples fetchSamples() throws SamplingException {
-    MetricSampler.MetricSamplerOptions metricSamplerOptions = new MetricSampler.MetricSamplerOptions(
+    MetricSamplerOptions metricSamplerOptions = new MetricSamplerOptions(
         _cluster, _assignedPartitions, _startTimeMs, _endTimeMs, _samplingMode, _metricDef, _timeout);
     MetricSampler.Samples samples = _metricSampler.getSamples(metricSamplerOptions);
     if (samples == null) {

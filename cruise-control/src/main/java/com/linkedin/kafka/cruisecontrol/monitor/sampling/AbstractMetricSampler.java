@@ -17,10 +17,17 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetr
 
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager.BROKER_CAPACITY_CONFIG_RESOLVER_OBJECT_CONFIG;
 
+/**
+ * This is a base implementation of a MetricSampler that can be overriden by concrete Metric Sampler
+ * implementations. It takes care of the common logic of initializing a {@link CruiseControlMetricsProcessor},
+ * and then using it to record every individual {@link CruiseControlMetric}, and finally convert all
+ * of these into {@link com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.Samples}.
+ */
 abstract public class AbstractMetricSampler implements MetricSampler {
     private CruiseControlMetricsProcessor _metricsProcessor;
 
-    @Override public void configure(Map<String, ?> configs) {
+    @Override
+    public void configure(Map<String, ?> configs) {
         BrokerCapacityConfigResolver capacityResolver =
             (BrokerCapacityConfigResolver) configs.get(BROKER_CAPACITY_CONFIG_RESOLVER_OBJECT_CONFIG);
         if (capacityResolver == null) {
@@ -56,8 +63,24 @@ abstract public class AbstractMetricSampler implements MetricSampler {
         }
     }
 
+    /**
+     * This method will be called to add all the {@link CruiseControlMetric}s
+     * for a cluster in one sampling period.
+     *
+     * Concrete metric sampler implementations can implement this method according to
+     * their corresponding business logic of fetching metrics for the cluster.
+     *
+     * @param metricSamplerOptions Object that encapsulates all the options to be used for sampling metrics.
+     * @return Total number of metrics sampled.
+     */
     abstract protected int addMetrics(MetricSamplerOptions metricSamplerOptions) throws SamplingException;
-
+    /**
+     * This method records a single individual metric obtained from the cluster during a sampling period.
+     * The {@link #addMetrics(MetricSamplerOptions)} method implemented in the conrete metric sampler
+     * class will call this method for every metric it obtains for a single sampling period for the cluster.
+     *
+     * @param metric Individual CruiseControlMetric being recorded by the Metric Sampler.
+     */
     protected void addMetric(CruiseControlMetric metric) {
         this._metricsProcessor.addMetric(metric);
     }

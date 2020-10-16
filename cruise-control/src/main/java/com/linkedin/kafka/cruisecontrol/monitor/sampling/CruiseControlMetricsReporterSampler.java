@@ -109,7 +109,7 @@ public class CruiseControlMetricsReporterSampler extends AbstractMetricSampler {
         partitionsToPause.clear();
       }
     } while (!consumptionDone(_metricConsumer, endOffsets) &&
-        System.currentTimeMillis() < metricSamplerOptions.timeout());
+        System.currentTimeMillis() < metricSamplerOptions.timeoutMs());
     LOG.info("Finished sampling for topic partitions {} in time range [{},{}]. Collected {} metrics.",
         _currentPartitionAssignment, metricSamplerOptions.startTimeMs(),
         metricSamplerOptions.endTimeMs(), totalMetricsAdded);
