@@ -742,7 +742,11 @@ public class ParameterUtils {
    */
   public static int entries(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), ENTRIES_PARAM);
-    return parameterString == null ? Integer.MAX_VALUE : Integer.parseInt(request.getParameter(parameterString));
+    int entries = parameterString == null ? Integer.MAX_VALUE : Integer.parseInt(request.getParameter(parameterString));
+    if (entries < 0) {
+      throw new UserRequestException("The requested entries must be positive (Requested: " + entries + ").");
+    }
+    return entries;
   }
 
   /**

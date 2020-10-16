@@ -101,10 +101,6 @@ public class PartitionLoadParameters extends AbstractParameters {
     _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_request);
     _brokerIds = ParameterUtils.brokerIds(_request, true);
     _entries = ParameterUtils.entries(_request);
-    if (_entries < 0) {
-      throw new UserRequestException("Invalid entries value. The entries value must be"
-          + " greater than or equal to 0. Got negative value: " + _entries);
-    }
   }
 
   public Resource resource() {
