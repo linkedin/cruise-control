@@ -201,7 +201,7 @@ public class Partition implements Serializable {
    * @return The set of brokers that contain replicas of the partition.
    */
   public Set<Broker> partitionBrokers() {
-    Set<Broker> partitionBrokers = new HashSet<>();
+    Set<Broker> partitionBrokers = new HashSet<>(_replicas.size());
     _replicas.forEach(r -> partitionBrokers.add(r.broker()));
     return partitionBrokers;
   }
@@ -210,7 +210,7 @@ public class Partition implements Serializable {
    * @return The set of racks that contains replicas of the partition.
    */
   public Set<Rack> partitionRacks() {
-    Set<Rack> partitionRacks = new HashSet<>();
+    Set<Rack> partitionRacks = new HashSet<>(_replicas.size());
     _replicas.forEach(r -> partitionRacks.add(r.broker().rack()));
     return partitionRacks;
   }

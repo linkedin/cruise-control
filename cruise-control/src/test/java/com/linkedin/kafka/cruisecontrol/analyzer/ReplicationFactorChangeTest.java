@@ -16,6 +16,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistri
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
@@ -79,6 +80,7 @@ public class ReplicationFactorChangeTest {
     for (short replicationFactor : Arrays.asList(SMALL_REPLICATION_FACTOR, LARGE_REPLICATION_FACTOR)) {
       for (boolean isSmallCluster: Arrays.asList(true, false)) {
         for (Class<? extends Goal> goalClass : Arrays.asList(RackAwareGoal.class,
+                                                             RackAwareDistributionGoal.class,
                                                              ReplicaCapacityGoal.class,
                                                              DiskCapacityGoal.class,
                                                              NetworkInboundCapacityGoal.class,
@@ -114,9 +116,7 @@ public class ReplicationFactorChangeTest {
     return null;
   }
 
-  private static boolean expectedToOptimize(short replicationFactor,
-                                            Class<? extends Goal> goalClass,
-                                            boolean smallCluster) {
+  private static boolean expectedToOptimize(short replicationFactor, Class<? extends Goal> goalClass, boolean smallCluster) {
     if ((replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == ReplicaDistributionGoal.class && smallCluster) ||
         (replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == DiskUsageDistributionGoal.class) ||
         (replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == NetworkInboundUsageDistributionGoal.class) ||
@@ -124,24 +124,23 @@ public class ReplicationFactorChangeTest {
         (replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == CpuUsageDistributionGoal.class) ||
         (replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == LeaderReplicaDistributionGoal.class  && smallCluster) ||
         (replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == NetworkOutboundUsageDistributionGoal.class && smallCluster) ||
-        (replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == CpuUsageDistributionGoal.class && smallCluster) ||
         (goalClass == LeaderBytesInDistributionGoal.class && (replicationFactor == SMALL_REPLICATION_FACTOR || smallCluster)) ||
         (replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == DiskUsageDistributionGoal.class && !smallCluster) ||
         (replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == NetworkInboundUsageDistributionGoal.class && !smallCluster) ||
-        (replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == CpuUsageDistributionGoal.class && !smallCluster)) {
+        (replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == CpuUsageDistributionGoal.class)) {
       return false;
     }
     return true;
   }
 
-  private int _testId;
-  private Set<String> _topics;
-  private short _replicationFactor;
-  private Goal _goal;
-  private OptimizationOptions _optimizationOptions;
-  private Class<Throwable> _exceptionClass;
-  private ClusterModel _clusterModel;
-  private Boolean _expectedToOptimize;
+  private final int _testId;
+  private final Set<String> _topics;
+  private final short _replicationFactor;
+  private final Goal _goal;
+  private final OptimizationOptions _optimizationOptions;
+  private final Class<Throwable> _exceptionClass;
+  private final ClusterModel _clusterModel;
+  private final Boolean _expectedToOptimize;
   private Map<String, List<Integer>> _brokersByRack;
   private Map<Integer, String> _rackByBroker;
   private Cluster _cluster;

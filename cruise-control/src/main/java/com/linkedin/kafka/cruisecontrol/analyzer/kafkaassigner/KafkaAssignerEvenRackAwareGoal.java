@@ -15,7 +15,6 @@ import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
-import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Partition;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
@@ -430,26 +429,12 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
 
   @Override
   public ClusterModelStatsComparator clusterModelStatsComparator() {
-    return new EvenRackAwareGoalStatsComparator();
+    return new GoalUtils.HardGoalStatsComparator();
   }
 
   @Override
   public void configure(Map<String, ?> configs) {
     // No external config is used.
-  }
-
-  private static class EvenRackAwareGoalStatsComparator implements ClusterModelStatsComparator {
-
-    @Override
-    public int compare(ClusterModelStats stats1, ClusterModelStats stats2) {
-      // This goal does not care about stats. The optimization would have already failed if the goal is not met.
-      return 0;
-    }
-
-    @Override
-    public String explainLastComparison() {
-      return null;
-    }
   }
 
   /**
