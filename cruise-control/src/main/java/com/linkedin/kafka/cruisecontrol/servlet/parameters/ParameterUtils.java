@@ -248,6 +248,23 @@ public class ParameterUtils {
   }
 
   /**
+   * Get the long parameter parameter.
+   *
+   * @param request HTTP request received by Cruise Control.
+   * @param parameter Parameter to parse from the request.
+   * @param defaultIfMissing Default value to set if the request does not contain the parameter.
+   * @return The specified value for the parameter, or defaultIfMissing if the parameter is missing.
+   */
+  public static Long getLongParam(HttpServletRequest request, String parameter, @Nullable Long defaultIfMissing) {
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), parameter);
+
+    if (parameterString == null) {
+      return defaultIfMissing;
+    }
+    return Long.parseLong(request.getParameter(parameterString));
+  }
+
+  /**
    * Get the {@link List} parameter.
    *
    * @param request HTTP request received by Cruise Control.
@@ -409,24 +426,12 @@ public class ParameterUtils {
     return timeString.toUpperCase().equals("NOW") ? System.currentTimeMillis() : Long.parseLong(timeString);
   }
 
-  @Nullable
-  static Long startMs(HttpServletRequest request) {
-    return parseParamAsLong(request, START_MS_PARAM);
+  static Long startMsOrDefault(HttpServletRequest request, @Nullable Long defaultIfMissing) {
+    return getLongParam(request, START_MS_PARAM, defaultIfMissing);
   }
 
-  @Nullable
-  static Long endMs(HttpServletRequest request) {
-    return parseParamAsLong(request, END_MS_PARAM);
-  }
-
-  static long startMsOrDefault(HttpServletRequest request, long defaultStartMs) {
-    Long startMs = parseParamAsLong(request, START_MS_PARAM);
-    return startMs == null ? defaultStartMs : startMs;
-  }
-
-  static long endMsOrDefault(HttpServletRequest request, long defaultEndMs) {
-    Long endMs = parseParamAsLong(request, END_MS_PARAM);
-    return endMs == null ? defaultEndMs : endMs;
+  static Long endMsOrDefault(HttpServletRequest request, @Nullable Long defaultIfMissing) {
+    return getLongParam(request, END_MS_PARAM, defaultIfMissing);
   }
 
   static void validateTimeRange(long startMs, long endMs) {
@@ -1072,12 +1077,6 @@ public class ParameterUtils {
 
   static boolean fetchCompletedTask(HttpServletRequest request) {
     return getBooleanParam(request, FETCH_COMPLETED_TASK_PARAM, false);
-  }
-
-  @Nullable
-  private static Long parseParamAsLong(HttpServletRequest request, String paramName) {
-    String parameterString = caseSensitiveParameterName(request.getParameterMap(), paramName);
-    return parameterString == null ? null : Long.parseLong(request.getParameter(parameterString));
   }
 
   /**
