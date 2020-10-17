@@ -203,6 +203,13 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
+   * @return True if the broker is using JBOD, false otherwise
+   */
+  public boolean isUsingJBOD() {
+    return !_diskByLogdir.isEmpty();
+  }
+
+  /**
    * @return True if the broker is a new broker, false otherwise.
    */
   public boolean isNew() {
