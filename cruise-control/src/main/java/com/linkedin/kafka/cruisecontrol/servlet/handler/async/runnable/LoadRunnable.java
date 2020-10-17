@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ClusterLoadParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.PartitionLoadParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 
@@ -65,9 +66,8 @@ public class LoadRunnable extends OperationRunnable {
       if (cachedBrokerStats != null) {
         return cachedBrokerStats;
       }
-    }
-    if (_populateDiskInfo && !isClusterUsingJBOD()) {
-      throw new UserRequestException("populate_disk_info = true when Kafka cluster is NOT using JBOD");
+    } else if (isClusterUsingJBOD()) {
+      throw new UserRequestException(String.format("Cannot set %s=true for non-JBOD Kafka clusters.", ParameterUtils.POPULATE_DISK_INFO_PARAM));
     }
 
     if (_start != DEFAULT_START_TIME_FOR_CLUSTER_MODEL) {
@@ -80,14 +80,8 @@ public class LoadRunnable extends OperationRunnable {
   private boolean isClusterUsingJBOD() throws Exception {
     ClusterModel clusterModel = _kafkaCruiseControl.loadMonitor().clusterCapacity();
     // If and only if all brokers in the cluster are using JBOD, the cluster is considered to be using JBOD
-    for (Broker broker : clusterModel.brokers()) {
-      if (!broker.isUsingJBOD()) {
-        return false;
-      }
-    }
-    return true;
+    return clusterModel.brokers().stream().allMatch(Broker::isUsingJBOD);
   }
-
 
   /**
    * Get the cluster model starting from earliest available timestamp to {@link #_end} timestamp.
