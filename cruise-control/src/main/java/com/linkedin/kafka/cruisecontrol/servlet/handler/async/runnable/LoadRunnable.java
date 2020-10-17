@@ -12,12 +12,12 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ClusterLoadParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.PartitionLoadParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 
 import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.MIN_VALID_PARTITION_RATIO_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.POPULATE_DISK_INFO_PARAM;
 
 
 /**
@@ -67,7 +67,7 @@ public class LoadRunnable extends OperationRunnable {
         return cachedBrokerStats;
       }
     } else if (isClusterUsingJBOD()) {
-      throw new UserRequestException(String.format("Cannot set %s=true for non-JBOD Kafka clusters.", ParameterUtils.POPULATE_DISK_INFO_PARAM));
+      throw new UserRequestException(String.format("Cannot set %s=true for non-JBOD Kafka clusters.", POPULATE_DISK_INFO_PARAM));
     }
 
     if (_start != DEFAULT_START_TIME_FOR_CLUSTER_MODEL) {
