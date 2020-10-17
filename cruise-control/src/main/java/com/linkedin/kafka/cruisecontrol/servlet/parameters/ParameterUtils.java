@@ -257,11 +257,7 @@ public class ParameterUtils {
    */
   public static Long getLongParam(HttpServletRequest request, String parameter, @Nullable Long defaultIfMissing) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), parameter);
-
-    if (parameterString == null) {
-      return defaultIfMissing;
-    }
-    return Long.parseLong(request.getParameter(parameterString));
+    return parameterString == null ? defaultIfMissing : Long.valueOf(request.getParameter(parameterString));
   }
 
   /**
