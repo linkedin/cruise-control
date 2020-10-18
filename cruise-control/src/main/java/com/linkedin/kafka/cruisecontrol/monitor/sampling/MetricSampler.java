@@ -27,7 +27,7 @@ public interface MetricSampler extends CruiseControlConfigurable, AutoCloseable 
   Samples EMPTY_SAMPLES = new Samples(Collections.emptySet(), Collections.emptySet());
 
   /**
-   * Get the metric samples from the Kafka cluster with the options passed in {@link MetricSamplerOptions}.
+   * Get the metric samples from the Kafka cluster with the options passed as arguments.
    * The samples include PartitionMetricSamples and BrokerMetricSamples.
    *
    * Due to the lack of direct metrics at partition level, Kafka Cruise Control needs to estimate the CPU
@@ -48,7 +48,7 @@ public interface MetricSampler extends CruiseControlConfigurable, AutoCloseable 
    * @param endTimeMs the end time of the sampling period.
    * @param mode The sampling mode.
    * @param metricDef the metric definitions.
-   * @param timeout The sampling timeout in milliseconds to stop sampling even if there is more data to get.
+   * @param timeoutMs The sampling timeout in milliseconds to stop sampling even if there is more data to get.
    * @return Samples collected from the Kafka cluster.
    */
   @Deprecated
@@ -58,7 +58,7 @@ public interface MetricSampler extends CruiseControlConfigurable, AutoCloseable 
                      long endTimeMs,
                      SamplingMode mode,
                      MetricDef metricDef,
-                     long timeout)
+                     long timeoutMs)
       throws SamplingException;
 
   /**

@@ -212,9 +212,9 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
                               long endTime,
                               SamplingMode mode,
                               MetricDef metricDef,
-                              long timeout) throws SamplingException {
+                              long timeoutMs) throws SamplingException {
       return getSamples(
-          new MetricSamplerOptions(cluster, assignedPartitions, startTime, endTime, mode, metricDef, timeout));
+          new MetricSamplerOptions(cluster, assignedPartitions, startTime, endTime, mode, metricDef, timeoutMs));
     }
 
     @Override

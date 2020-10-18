@@ -54,7 +54,7 @@ public class CruiseControlMetricsReporterSampler extends AbstractMetricSampler {
 
   @Override
 
-  protected int addMetrics(MetricSamplerOptions metricSamplerOptions) throws SamplingException {
+  protected int retrieveMetricsForProcessing(MetricSamplerOptions metricSamplerOptions) throws SamplingException {
     if (refreshPartitionAssignment()) {
       return 0;
     }
@@ -93,14 +93,15 @@ public class CruiseControlMetricsReporterSampler extends AbstractMetricSampler {
         long recordTime = record.value().time();
         if (recordTime + _acceptableMetricRecordProduceDelayMs < metricSamplerOptions.startTimeMs()) {
           LOG.debug("Discarding metric {} because its timestamp is more than {} ms earlier than the start time of sampling period {}.",
-              record.value(), _acceptableMetricRecordProduceDelayMs, metricSamplerOptions.startTimeMs());
+                    record.value(), _acceptableMetricRecordProduceDelayMs, metricSamplerOptions.startTimeMs());
         } else if (recordTime >= metricSamplerOptions.endTimeMs()) {
           TopicPartition tp = new TopicPartition(record.topic(), record.partition());
           LOG.debug("Saw metric {} whose timestamp is larger than the end time of sampling period {}. Pausing "
-              + "partition {} at offset {}.", record.value(), metricSamplerOptions.endTimeMs(), tp, record.offset());
+                    + "partition {} at offset {}.", record.value(), metricSamplerOptions.endTimeMs(),
+                    tp, record.offset());
           partitionsToPause.add(tp);
         } else {
-          addMetric(record.value());
+          addMetricForProcessing(record.value());
           totalMetricsAdded++;
         }
       }
@@ -109,10 +110,10 @@ public class CruiseControlMetricsReporterSampler extends AbstractMetricSampler {
         partitionsToPause.clear();
       }
     } while (!consumptionDone(_metricConsumer, endOffsets) &&
-        System.currentTimeMillis() < metricSamplerOptions.timeoutMs());
+             System.currentTimeMillis() < metricSamplerOptions.timeoutMs());
     LOG.info("Finished sampling for topic partitions {} in time range [{},{}]. Collected {} metrics.",
-        _currentPartitionAssignment, metricSamplerOptions.startTimeMs(),
-        metricSamplerOptions.endTimeMs(), totalMetricsAdded);
+             _currentPartitionAssignment, metricSamplerOptions.startTimeMs(),
+             metricSamplerOptions.endTimeMs(), totalMetricsAdded);
 
     return totalMetricsAdded;
   }
