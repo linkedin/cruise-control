@@ -4,8 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
-import com.linkedin.cruisecontrol.metricdef.MetricDef;
-import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
@@ -21,7 +19,6 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
-import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigException;
@@ -30,11 +27,10 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.consumptionDone;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckOffsetFetch;
-import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager.BROKER_CAPACITY_CONFIG_RESOLVER_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.createMetricConsumer;
 
 
-public class CruiseControlMetricsReporterSampler implements MetricSampler {
+public class CruiseControlMetricsReporterSampler extends AbstractMetricSampler {
   private static final Logger LOG = LoggerFactory.getLogger(CruiseControlMetricsReporterSampler.class);
   // Configurations
   public static final String METRIC_REPORTER_SAMPLER_BOOTSTRAP_SERVERS = "metric.reporter.sampler.bootstrap.servers";
@@ -45,7 +41,6 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
   // Default configs
   public static final String CONSUMER_CLIENT_ID_PREFIX = "CruiseControlMetricsReporterSampler";
   public static final long ACCEPTABLE_NETWORK_DELAY_MS = 100L;
-  protected CruiseControlMetricsProcessor _metricsProcessor;
 
   protected Consumer<String, CruiseControlMetric> _metricConsumer;
   protected String _metricReporterTopic;
@@ -58,20 +53,15 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
   protected long _acceptableMetricRecordProduceDelayMs;
 
   @Override
-  public Samples getSamples(Cluster cluster,
-                            Set<TopicPartition> assignedPartitions,
-                            long startTimeMs,
-                            long endTimeMs,
-                            SamplingMode mode,
-                            MetricDef metricDef,
-                            long timeout) throws SamplingException {
+
+  protected int retrieveMetricsForProcessing(MetricSamplerOptions metricSamplerOptions) throws SamplingException {
     if (refreshPartitionAssignment()) {
-      return MetricSampler.EMPTY_SAMPLES;
+      return 0;
     }
     // Now seek to the startTimeMs.
     Map<TopicPartition, Long> timestampToSeek = new HashMap<>(_currentPartitionAssignment.size());
     for (TopicPartition tp : _currentPartitionAssignment) {
-      timestampToSeek.put(tp, startTimeMs);
+      timestampToSeek.put(tp, metricSamplerOptions.startTimeMs());
     }
     Set<TopicPartition> assignment = new HashSet<>(_currentPartitionAssignment);
     Map<TopicPartition, Long> endOffsets = _metricConsumer.endOffsets(assignment);
@@ -101,16 +91,17 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
           continue;
         }
         long recordTime = record.value().time();
-        if (recordTime + _acceptableMetricRecordProduceDelayMs < startTimeMs) {
+        if (recordTime + _acceptableMetricRecordProduceDelayMs < metricSamplerOptions.startTimeMs()) {
           LOG.debug("Discarding metric {} because its timestamp is more than {} ms earlier than the start time of sampling period {}.",
-                    record.value(), _acceptableMetricRecordProduceDelayMs, startTimeMs);
-        } else if (recordTime >= endTimeMs) {
+                    record.value(), _acceptableMetricRecordProduceDelayMs, metricSamplerOptions.startTimeMs());
+        } else if (recordTime >= metricSamplerOptions.endTimeMs()) {
           TopicPartition tp = new TopicPartition(record.topic(), record.partition());
           LOG.debug("Saw metric {} whose timestamp is larger than the end time of sampling period {}. Pausing "
-                    + "partition {} at offset {}.", record.value(), endTimeMs, tp, record.offset());
+                    + "partition {} at offset {}.", record.value(), metricSamplerOptions.endTimeMs(),
+                    tp, record.offset());
           partitionsToPause.add(tp);
         } else {
-          _metricsProcessor.addMetric(record.value());
+          addMetricForProcessing(record.value());
           totalMetricsAdded++;
         }
       }
@@ -118,19 +109,13 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
         _metricConsumer.pause(partitionsToPause);
         partitionsToPause.clear();
       }
-    } while (!consumptionDone(_metricConsumer, endOffsets) && System.currentTimeMillis() < timeout);
+    } while (!consumptionDone(_metricConsumer, endOffsets) &&
+             System.currentTimeMillis() < metricSamplerOptions.timeoutMs());
     LOG.info("Finished sampling for topic partitions {} in time range [{},{}]. Collected {} metrics.",
-             _currentPartitionAssignment, startTimeMs, endTimeMs, totalMetricsAdded);
+             _currentPartitionAssignment, metricSamplerOptions.startTimeMs(),
+             metricSamplerOptions.endTimeMs(), totalMetricsAdded);
 
-    try {
-      if (totalMetricsAdded > 0) {
-        return _metricsProcessor.process(cluster, assignedPartitions, mode);
-      } else {
-        return new Samples(Collections.emptySet(), Collections.emptySet());
-      }
-    } finally {
-      _metricsProcessor.clear();
-    }
+    return totalMetricsAdded;
   }
 
   /**
@@ -167,18 +152,13 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
 
   @Override
   public void configure(Map<String, ?> configs) {
+    super.configure(configs);
     int numSamplers = (Integer) configs.get(MonitorConfig.NUM_METRIC_FETCHERS_CONFIG);
     if (numSamplers != 1) {
       throw new ConfigException("CruiseControlMetricsReporterSampler is not thread safe. Please change " +
                                 MonitorConfig.NUM_METRIC_FETCHERS_CONFIG + " to 1");
     }
 
-    BrokerCapacityConfigResolver capacityResolver = (BrokerCapacityConfigResolver) configs.get(BROKER_CAPACITY_CONFIG_RESOLVER_OBJECT_CONFIG);
-    if (capacityResolver == null) {
-      throw new IllegalArgumentException("Metrics reporter sampler configuration is missing broker capacity config resolver object.");
-    }
-    boolean allowCpuCapacityEstimation = (Boolean) configs.get(MonitorConfig.SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG);
-    _metricsProcessor = new CruiseControlMetricsProcessor(capacityResolver, allowCpuCapacityEstimation);
     _metricReporterTopic = (String) configs.get(METRIC_REPORTER_TOPIC);
     if (_metricReporterTopic == null) {
       _metricReporterTopic = CruiseControlMetricsReporterConfig.DEFAULT_CRUISE_CONTROL_METRICS_TOPIC;
