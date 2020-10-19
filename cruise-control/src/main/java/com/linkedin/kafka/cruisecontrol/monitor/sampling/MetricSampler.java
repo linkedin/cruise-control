@@ -17,9 +17,9 @@ import org.apache.kafka.common.TopicPartition;
 /**
  * The interface to get metric samples of given topic partitions.
  * <p>
- * Kafka Cruise Control periodically collects the metrics of all the partitions in the cluster, including the leader and follower
- * replicas. The {@link #getSamples(Cluster, Set, long, long, SamplingMode, MetricDef, long)}
- * will be called for all the replicas of partitions in the cluster in one sampling period.
+ * Kafka Cruise Control periodically collects the metrics of topics, brokers and partitions in the cluster.
+ * The {@link #getSamples(MetricSamplerOptions)} is called periodically to collect metrics
+ * of all these types from a cluster in one sampling period.
  * The MetricSampler may be used by multiple threads at the same time, so the implementation need to be thread safe.
  *
  */
@@ -27,8 +27,7 @@ public interface MetricSampler extends CruiseControlConfigurable, AutoCloseable 
   Samples EMPTY_SAMPLES = new Samples(Collections.emptySet(), Collections.emptySet());
 
   /**
-   * Get the metric sample of the given topic partition and replica from the Kafka cluster.
-   *
+   * Get the metric samples from the Kafka cluster with the options passed as arguments.
    * The samples include PartitionMetricSamples and BrokerMetricSamples.
    *
    * Due to the lack of direct metrics at partition level, Kafka Cruise Control needs to estimate the CPU
@@ -49,17 +48,39 @@ public interface MetricSampler extends CruiseControlConfigurable, AutoCloseable 
    * @param endTimeMs the end time of the sampling period.
    * @param mode The sampling mode.
    * @param metricDef the metric definitions.
-   * @param timeout The sampling timeout to stop sampling even if there is more data to get.
-   * @return The PartitionMetricSample of the topic partition and replica id
+   * @param timeoutMs The sampling timeout in milliseconds to stop sampling even if there is more data to get.
+   * @return Samples collected from the Kafka cluster.
    */
+  @Deprecated
   Samples getSamples(Cluster cluster,
                      Set<TopicPartition> assignedPartitions,
                      long startTimeMs,
                      long endTimeMs,
                      SamplingMode mode,
                      MetricDef metricDef,
-                     long timeout)
+                     long timeoutMs)
       throws SamplingException;
+
+  /**
+   * Get the metric samples from the Kafka cluster with the options passed in {@link MetricSamplerOptions}.
+   * The samples include PartitionMetricSamples and BrokerMetricSamples.
+   *
+   * Due to the lack of direct metrics at partition level, Kafka Cruise Control needs to estimate the CPU
+   * utilization for each partition by using the following formula:
+   *
+   *  BROKER_CPU_UTIL = a * ALL_TOPIC_BYTES_IN_RATE + b * ALL_TOPIC_BYTES_OUT_RATE + c * ALL_FOLLOWER_BYTES_IN_RATE
+   *
+   *  LEADER_PARTITION_CPU_UTIL = a * LEADER_PARTITION_BYTES_IN + b * LEADER_PARTITION_BYTES_OUT
+   *
+   *  FOLLOWER_PARTITION_CPU_UTIL = c * LEADER_PARTITION_BYTES_IN
+   *
+   * Kafka Cruise Control needs to know the parameters of a, b and c for cost evaluation of leader and
+   * partition movement.
+   *
+   * @param metricSamplerOptions This class encapsulates all the arguments needed by MetricSampler to get samples.
+   * @return Samples collected from the Kafka cluster.
+   */
+  Samples getSamples(MetricSamplerOptions metricSamplerOptions) throws SamplingException;
 
   /**
    * The sampling mode to indicate which type of samples is interested.

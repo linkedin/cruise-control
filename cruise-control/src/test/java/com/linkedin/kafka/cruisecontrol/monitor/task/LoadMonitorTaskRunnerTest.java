@@ -18,6 +18,7 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaIntegration
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSamplerOptions;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampleStore;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaBrokerMetricSampleAggregator;
@@ -211,15 +212,22 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
                               long endTime,
                               SamplingMode mode,
                               MetricDef metricDef,
-                              long timeout) throws SamplingException {
+                              long timeoutMs) throws SamplingException {
+      return getSamples(
+          new MetricSamplerOptions(cluster, assignedPartitions, startTime, endTime, mode, metricDef, timeoutMs));
+    }
 
+    @Override
+    public Samples getSamples(MetricSamplerOptions metricSamplerOptions) throws SamplingException {
       if (_exceptionsLeft > 0) {
         _exceptionsLeft--;
         throw new SamplingException("Error");
       }
-      Set<PartitionMetricSample> partitionMetricSamples = new HashSet<>(assignedPartitions.size());
-      for (TopicPartition tp : assignedPartitions) {
-        PartitionMetricSample sample = new PartitionMetricSample(cluster.partition(tp).leader().id(), tp);
+      Set<PartitionMetricSample> partitionMetricSamples =
+          new HashSet<>(metricSamplerOptions.assignedPartitions().size());
+      for (TopicPartition tp : metricSamplerOptions.assignedPartitions()) {
+        PartitionMetricSample sample = new PartitionMetricSample(
+            metricSamplerOptions.cluster().partition(tp).leader().id(), tp);
         long now = TIME.milliseconds();
         for (Resource resource : Resource.cachedValues()) {
           for (MetricInfo metricInfo : KafkaMetricDef.resourceToMetricInfo(resource)) {
