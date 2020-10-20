@@ -17,6 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import javax.annotation.Nonnull;
 import org.apache.commons.math3.stat.regression.OLSMultipleLinearRegression;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -169,6 +170,7 @@ public class LinearRegressionModelParameters {
   /**
    * @return Linear regression model state.
    */
+  @Nonnull
   public synchronized LinearRegressionModelState modelState() {
     Map<Integer, Double> detailCompleteness = new HashMap<>();
     for (Map.Entry<Integer, AtomicInteger> entry : INDICES.entrySet()) {

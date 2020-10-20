@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorState;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionTask;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskState;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
+import com.linkedin.kafka.cruisecontrol.model.LinearRegressionModelParameters;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitorState;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlStateParameters;
@@ -22,6 +23,7 @@ import java.util.Map;
 import com.google.gson.Gson;
 import java.util.Set;
 import java.util.StringJoiner;
+import org.apache.commons.math3.linear.SingularMatrixException;
 
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.IN_PROGRESS_STATES;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
@@ -170,8 +172,15 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
    * @param sb String builder to append super verbose response.
    */
   protected void writeSuperVerbose(StringBuilder sb) {
-    if (_monitorState != null && _monitorState.detailTrainingProgress() != null) {
-      sb.append(String.format("%n%nLinear Regression Model State:%n%s", _monitorState.detailTrainingProgress()));
+    if (_monitorState != null) {
+      LinearRegressionModelParameters.LinearRegressionModelState linearRegressionModelState;
+      try {
+        linearRegressionModelState = _monitorState.detailTrainingProgress();
+      } catch (SingularMatrixException e) {
+        sb.append(String.format("%n%nFailed to calculate Linear Regression Model State with error message:%n%s", e.getMessage()));
+        return;
+      }
+      sb.append(String.format("%n%nLinear Regression Model State:%n%s", linearRegressionModelState));
     }
   }
 

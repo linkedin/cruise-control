@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.HashMap;
+import javax.annotation.Nonnull;
 
 
 @JsonResponseClass
@@ -354,6 +355,7 @@ public class LoadMonitorState {
     return _bootstrapProgress;
   }
 
+  @Nonnull
   public LinearRegressionModelParameters.LinearRegressionModelState detailTrainingProgress() {
     return ModelParameters.linearRegressionModelState();
   }

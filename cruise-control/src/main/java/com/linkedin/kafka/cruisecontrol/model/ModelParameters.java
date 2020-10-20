@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerMetricSample;
 import java.util.Collection;
+import javax.annotation.Nonnull;
 import org.apache.kafka.common.record.CompressionType;
 
 
@@ -72,6 +73,7 @@ public class ModelParameters {
     LINEAR_REGRESSION_PARAMETERS.addMetricObservation(trainingData);
   }
 
+  @Nonnull
   public static LinearRegressionModelParameters.LinearRegressionModelState linearRegressionModelState() {
     return LINEAR_REGRESSION_PARAMETERS.modelState();
   }
