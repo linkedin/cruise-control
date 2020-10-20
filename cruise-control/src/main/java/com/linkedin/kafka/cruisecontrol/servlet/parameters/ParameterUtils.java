@@ -394,13 +394,7 @@ public class ParameterUtils {
   }
 
   static Long replicationThrottle(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    String parameterString = caseSensitiveParameterName(request.getParameterMap(), REPLICATION_THROTTLE_PARAM);
-    Long value;
-    if (parameterString == null) {
-      value = config.getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
-    } else {
-      value = Long.parseLong(request.getParameter(parameterString));
-    }
+    Long value = getLongParam(request, REPLICATION_THROTTLE_PARAM, config.getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG));
     if (value != null && value < 0) {
       throw new UserRequestException(String.format("Requested rebalance throttle must be non-negative (Requested: %s).", value));
     }
@@ -826,8 +820,7 @@ public class ParameterUtils {
    * @return Execution progress check interval in milliseconds.
    */
   static Long executionProgressCheckIntervalMs(HttpServletRequest request) {
-    String parameterString = caseSensitiveParameterName(request.getParameterMap(), EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
-    return parameterString == null ? null : Long.parseLong(request.getParameter(parameterString));
+    return getLongParam(request, EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM, null);
   }
 
   /**
