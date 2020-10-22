@@ -9,7 +9,6 @@ import com.codahale.metrics.MetricRegistry;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
@@ -30,7 +29,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
@@ -59,7 +57,6 @@ public class AnomalyDetectorManager {
   private static final Logger OPERATION_LOG = LoggerFactory.getLogger(OPERATION_LOGGER);
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final AnomalyNotifier _anomalyNotifier;
-  private final AdminClient _adminClient;
   // Detectors
   private final GoalViolationDetector _goalViolationDetector;
   private final BrokerFailureDetector _brokerFailureDetector;
@@ -84,7 +81,6 @@ public class AnomalyDetectorManager {
     // otherwise, handle anomaly in order of detected time.
     _anomalies = new PriorityBlockingQueue<>(ANOMALY_QUEUE_INITIAL_CAPACITY, anomalyComparator());
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
-    _adminClient = KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
     Long anomalyDetectionIntervalMs = config.getLong(AnomalyDetectorConfig.ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
     _anomalyDetectionIntervalMsByType = new HashMap<>(KafkaAnomalyType.cachedValues().size() - 2);
     Long goalViolationDetectionIntervalMs = config.getLong(AnomalyDetectorConfig.GOAL_VIOLATION_DETECTION_INTERVAL_MS_CONFIG);
@@ -108,7 +104,7 @@ public class AnomalyDetectorManager {
     _goalViolationDetector = new GoalViolationDetector(_anomalies, _kafkaCruiseControl);
     _brokerFailureDetector = new BrokerFailureDetector(_anomalies, _kafkaCruiseControl);
     _metricAnomalyDetector = new MetricAnomalyDetector(_anomalies, _kafkaCruiseControl);
-    _diskFailureDetector = new DiskFailureDetector(_adminClient, _anomalies, _kafkaCruiseControl);
+    _diskFailureDetector = new DiskFailureDetector(_anomalies, _kafkaCruiseControl);
     _topicAnomalyDetector = new TopicAnomalyDetector(_anomalies, _kafkaCruiseControl);
     _maintenanceEventDetector = new MaintenanceEventDetector(_anomalies, _kafkaCruiseControl);
     _detectorScheduler = Executors.newScheduledThreadPool(NUM_ANOMALY_DETECTION_THREADS,
@@ -133,7 +129,6 @@ public class AnomalyDetectorManager {
    * Package private constructor for unit test.
    */
   AnomalyDetectorManager(PriorityBlockingQueue<Anomaly> anomalies,
-                         AdminClient adminClient,
                          long anomalyDetectionIntervalMs,
                          KafkaCruiseControl kafkaCruiseControl,
                          AnomalyNotifier anomalyNotifier,
@@ -145,7 +140,6 @@ public class AnomalyDetectorManager {
                          MaintenanceEventDetector maintenanceEventDetector,
                          ScheduledExecutorService detectorScheduler) {
     _anomalies = anomalies;
-    _adminClient = adminClient;
     _anomalyDetectionIntervalMsByType = new HashMap<>(KafkaAnomalyType.cachedValues().size() - 1);
     KafkaAnomalyType.cachedValues().stream().filter(type -> type != BROKER_FAILURE)
                     .forEach(type -> _anomalyDetectionIntervalMsByType.put(type, anomalyDetectionIntervalMs));
@@ -226,7 +220,6 @@ public class AnomalyDetectorManager {
     _anomalies.add(SHUTDOWN_ANOMALY);
     _maintenanceEventDetector.shutdown();
     _detectorScheduler.shutdown();
-    KafkaCruiseControlUtils.closeAdminClientWithTimeout(_adminClient);
     try {
       _detectorScheduler.awaitTermination(SCHEDULER_SHUTDOWN_TIMEOUT_MS, TimeUnit.MILLISECONDS);
       if (!_detectorScheduler.isTerminated()) {

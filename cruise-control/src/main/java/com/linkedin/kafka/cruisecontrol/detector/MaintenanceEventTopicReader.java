@@ -308,9 +308,8 @@ public class MaintenanceEventTopicReader implements MaintenanceEventReader {
            : Integer.parseInt(maintenanceEventTopicPartitionCount);
   }
 
-  @SuppressWarnings("unchecked")
   protected void ensureTopicCreated(Map<String, ?> config) {
-    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient((Map<String, Object>) config);
+    AdminClient adminClient = _kafkaCruiseControl.adminClient();
     try {
       short replicationFactor = maintenanceEventTopicReplicationFactor(config, adminClient);
       long retentionMs = maintenanceEventTopicRetentionMs(config);
