@@ -53,12 +53,15 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.closeAdminClientWithTimeout;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.createAdminClient;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPriority;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.partitionWithOfflineReplicas;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.STOP_ONGOING_EXECUTION_PARAM;
@@ -76,6 +79,7 @@ public class KafkaCruiseControl {
   private final Executor _executor;
   private final AnomalyDetectorManager _anomalyDetectorManager;
   private final Time _time;
+  private final AdminClient _adminClient;
 
   private static final String VERSION;
   private static final String COMMIT_ID;
@@ -106,6 +110,7 @@ public class KafkaCruiseControl {
     ModelParameters.init(config);
 
     // Instantiate the components.
+    _adminClient = createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
     _anomalyDetectorManager = new AnomalyDetectorManager(this, _time, dropwizardMetricRegistry);
     _executor = new Executor(config, _time, dropwizardMetricRegistry, _anomalyDetectorManager);
     _loadMonitor = new LoadMonitor(config, _time, dropwizardMetricRegistry, KafkaMetricDef.commonMetricDef());
@@ -125,6 +130,7 @@ public class KafkaCruiseControl {
                      GoalOptimizer goalOptimizer) {
     _config = config;
     _time = time;
+    _adminClient = createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
     _anomalyDetectorManager = anomalyDetectorManager;
     _executor = executor;
     _loadMonitor = loadMonitor;
@@ -153,6 +159,14 @@ public class KafkaCruiseControl {
    */
   public LoadMonitorTaskRunner.LoadMonitorTaskRunnerState getLoadMonitorTaskRunnerState() {
     return _loadMonitor.taskRunnerState();
+  }
+
+  /**
+   * Retrieve the Admin Client (expected to be thread-safe).
+   * @return Admin Client of Cruise Control.
+   */
+  public AdminClient adminClient() {
+    return _adminClient;
   }
 
   /**
@@ -204,6 +218,7 @@ public class KafkaCruiseControl {
         _executor.shutdown();
         _anomalyDetectorManager.shutdown();
         _goalOptimizer.shutdown();
+        closeAdminClientWithTimeout(_adminClient);
         LOG.info("Kafka Cruise Control shutdown completed.");
       }
     };

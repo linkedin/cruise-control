@@ -377,7 +377,7 @@ public class MetricSampleAggregatorTest {
                                      (byte) (samplesPerWindow * numThreads * (numRandomEntities / numEntities)),
                                      0, _metricDef);
 
-    final Random random = new Random();
+    final Random random = new Random(0xDEADBEEF);
     List<Thread> threads = new ArrayList<>();
     for (int i = 0; i < numThreads; i++) {
       Thread t = new Thread() {

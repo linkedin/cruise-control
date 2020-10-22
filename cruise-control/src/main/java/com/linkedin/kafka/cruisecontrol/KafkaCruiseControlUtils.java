@@ -27,7 +27,6 @@ import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.clients.admin.CreatePartitionsResult;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.DescribeConfigsResult;
-import org.apache.kafka.clients.admin.DescribeLogDirsResult;
 import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
@@ -59,7 +58,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -524,22 +522,6 @@ public class KafkaCruiseControlUtils {
     String zooKeeperClientName = String.format("%s-%s", metricGroup, metricType);
     return KafkaZkClient.apply(connectString, zkSecurityEnabled, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
                                new SystemTime(), metricGroup, metricType, Option.apply(zooKeeperClientName));
-  }
-
-  /**
-   * Describe LogDirs using the given bootstrap servers for the given brokers.
-   *
-   * @param brokers Brokers for which the logDirs will be described.
-   * @param adminClientConfigs Configurations used for the AdminClient.
-   * @return DescribeLogDirsResult using the given bootstrap servers for the given brokers.
-   */
-  public static DescribeLogDirsResult describeLogDirs(Collection<Integer> brokers, Map<String, Object> adminClientConfigs) {
-    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(adminClientConfigs);
-    try {
-      return adminClient.describeLogDirs(brokers);
-    } finally {
-      KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
-    }
   }
 
   /**
