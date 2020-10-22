@@ -82,8 +82,8 @@ public class ParameterUtilsTest {
         ParameterUtils.REPLICATION_THROTTLE_PARAM,
         new String[]{ParameterUtils.REPLICATION_THROTTLE_PARAM});
 
-    EasyMock.expect(mockRequest.getParameterMap()).andReturn(paramMap).times(1);
-    EasyMock.expect(mockRequest.getParameter(ParameterUtils.REPLICATION_THROTTLE_PARAM)).andReturn(REPLICATION_THROTTLE_STRING).times(1);
+    EasyMock.expect(mockRequest.getParameterMap()).andReturn(paramMap).once();
+    EasyMock.expect(mockRequest.getParameter(ParameterUtils.REPLICATION_THROTTLE_PARAM)).andReturn(REPLICATION_THROTTLE_STRING).once();
     EasyMock.expect(controlConfig.getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG)).andReturn(null); // No default
 
     EasyMock.replay(mockRequest, controlConfig);
@@ -125,9 +125,9 @@ public class ParameterUtilsTest {
         ParameterUtils.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM,
         new String[]{ParameterUtils.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM});
 
-    EasyMock.expect(mockRequest.getParameterMap()).andReturn(paramMap).times(1);
+    EasyMock.expect(mockRequest.getParameterMap()).andReturn(paramMap).once();
     EasyMock.expect(mockRequest.getParameter(ParameterUtils.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM))
-            .andReturn(EXECUTION_PROGRESS_CHECK_INTERVAL_STRING).times(1);
+            .andReturn(EXECUTION_PROGRESS_CHECK_INTERVAL_STRING).once();
 
     EasyMock.replay(mockRequest);
 
