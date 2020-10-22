@@ -78,8 +78,9 @@ public class ParameterUtilsTest {
     HttpServletRequest mockRequest = EasyMock.mock(HttpServletRequest.class);
     KafkaCruiseControlConfig controlConfig = EasyMock.mock(KafkaCruiseControlConfig.class);
 
-    Map<String, String[]> paramMap = new HashMap<>();
-    paramMap.put(ParameterUtils.REPLICATION_THROTTLE_PARAM, new String[]{ParameterUtils.REPLICATION_THROTTLE_PARAM});
+    Map<String, String[]> paramMap = Collections.singletonMap(
+        ParameterUtils.REPLICATION_THROTTLE_PARAM,
+        new String[]{ParameterUtils.REPLICATION_THROTTLE_PARAM});
 
     EasyMock.expect(mockRequest.getParameterMap()).andReturn(paramMap).times(1);
     EasyMock.expect(mockRequest.getParameter(ParameterUtils.REPLICATION_THROTTLE_PARAM)).andReturn(REPLICATION_THROTTLE_STRING).times(1);
@@ -97,7 +98,7 @@ public class ParameterUtilsTest {
     HttpServletRequest mockRequest = EasyMock.mock(HttpServletRequest.class);
     KafkaCruiseControlConfig controlConfig = EasyMock.mock(KafkaCruiseControlConfig.class);
     // No parameter string value in the parameter map
-    EasyMock.expect(mockRequest.getParameterMap()).andReturn(Collections.emptyMap()).times(1);
+    EasyMock.expect(mockRequest.getParameterMap()).andReturn(Collections.emptyMap()).once();
     EasyMock.expect(controlConfig.getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG))
             .andReturn(Long.valueOf(DEFAULT_REPLICATION_THROTTLE_STRING));
 
@@ -110,7 +111,7 @@ public class ParameterUtilsTest {
   @Test
   public void testParseExecutionProgressCheckIntervalMsNoValue() {
     HttpServletRequest mockRequest = EasyMock.mock(HttpServletRequest.class);
-    EasyMock.expect(mockRequest.getParameterMap()).andReturn(Collections.emptyMap()).times(1);
+    EasyMock.expect(mockRequest.getParameterMap()).andReturn(Collections.emptyMap()).once();
     EasyMock.replay(mockRequest);
     Assert.assertNull(ParameterUtils.executionProgressCheckIntervalMs(mockRequest));
     EasyMock.verify(mockRequest);
@@ -120,8 +121,7 @@ public class ParameterUtilsTest {
   public void testParseExecutionProgressCheckIntervalMsWithValue() {
     HttpServletRequest mockRequest = EasyMock.mock(HttpServletRequest.class);
 
-    Map<String, String[]> paramMap = new HashMap<>();
-    paramMap.put(
+    Map<String, String[]> paramMap = Collections.singletonMap(
         ParameterUtils.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM,
         new String[]{ParameterUtils.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM});
 
