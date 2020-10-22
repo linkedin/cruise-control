@@ -4,12 +4,12 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.handler.sync;
 
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaClusterStateParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaClusterState;
 import java.util.Map;
+import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.Cluster;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.KAFKA_CLUSTER_STATE_PARAMETER_OBJECT_CONFIG;
@@ -20,6 +20,7 @@ public class KafkaClusterStateRequest extends AbstractSyncRequest {
   protected KafkaCruiseControlConfig _config;
   protected KafkaClusterStateParameters _parameters;
   protected TopicConfigProvider _topicConfigProvider;
+  protected AdminClient _adminClient;
 
   public KafkaClusterStateRequest() {
     super();
@@ -27,8 +28,7 @@ public class KafkaClusterStateRequest extends AbstractSyncRequest {
 
   @Override
   protected KafkaClusterState handle() {
-    Map<String, Object> adminClientConfigs = KafkaCruiseControlUtils.parseAdminClientConfigs(_config);
-    return new KafkaClusterState(_kafkaCluster, _topicConfigProvider, adminClientConfigs, _config);
+    return new KafkaClusterState(_kafkaCluster, _topicConfigProvider, _adminClient, _config);
   }
 
   @Override
@@ -47,6 +47,7 @@ public class KafkaClusterStateRequest extends AbstractSyncRequest {
     _kafkaCluster = _servlet.asyncKafkaCruiseControl().kafkaCluster();
     _topicConfigProvider = _servlet.asyncKafkaCruiseControl().topicConfigProvider();
     _config = _servlet.asyncKafkaCruiseControl().config();
+    _adminClient = _servlet.asyncKafkaCruiseControl().adminClient();
     _parameters = (KafkaClusterStateParameters) configs.get(KAFKA_CLUSTER_STATE_PARAMETER_OBJECT_CONFIG);
     if (_parameters == null) {
       throw new IllegalArgumentException("Parameter configuration is missing from the request.");

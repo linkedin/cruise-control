@@ -31,6 +31,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.*;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.MaintenanceEventTopicReader.DEFAULT_MAINTENANCE_PLAN_EXPIRATION_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.MaintenanceEventTopicReader.MAINTENANCE_EVENT_TOPIC_CONFIG;
@@ -192,6 +193,8 @@ public class MaintenanceEventTopicReaderTest extends CruiseControlIntegrationTes
     // The current time is expected to cause (1) a valid rebalance plan creation, but (2) an expired demote broker plan.
     long currentMockTime = TEST_REBALANCE_PLAN_TIME + DEFAULT_MAINTENANCE_PLAN_EXPIRATION_MS;
     EasyMock.expect(mockKafkaCruiseControl.timeMs()).andReturn(currentMockTime).anyTimes();
+    EasyMock.expect(mockKafkaCruiseControl.adminClient())
+            .andReturn(createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(_config))).anyTimes();
     EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(_config).anyTimes();
 
     EasyMock.replay(mockKafkaCruiseControl);
