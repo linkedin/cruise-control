@@ -50,6 +50,7 @@ public class ParameterUtilsTest {
 
     Assert.assertEquals(Long.valueOf(START_TIME_STRING), startMs);
     Assert.assertEquals(Long.valueOf(END_TIME_STRING), endMs);
+    EasyMock.verify(mockRequest);
   }
 
   @Test
@@ -69,6 +70,7 @@ public class ParameterUtilsTest {
 
     Assert.assertEquals(DEFAULT_START_TIME_MS, startMs);
     Assert.assertEquals(DEFAULT_END_TIME_MS, endMs);
+    EasyMock.verify(mockRequest);
   }
 
   @Test
@@ -83,11 +85,11 @@ public class ParameterUtilsTest {
     EasyMock.expect(mockRequest.getParameter(ParameterUtils.REPLICATION_THROTTLE_PARAM)).andReturn(REPLICATION_THROTTLE_STRING).times(1);
     EasyMock.expect(controlConfig.getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG)).andReturn(null); // No default
 
-    EasyMock.replay(mockRequest);
-    EasyMock.replay(controlConfig);
+    EasyMock.replay(mockRequest, controlConfig);
 
     Long replicationThrottle = ParameterUtils.replicationThrottle(mockRequest, controlConfig);
     Assert.assertEquals(Long.valueOf(REPLICATION_THROTTLE_STRING), replicationThrottle);
+    EasyMock.verify(mockRequest);
   }
 
   @Test
@@ -99,8 +101,7 @@ public class ParameterUtilsTest {
     EasyMock.expect(controlConfig.getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG))
             .andReturn(Long.valueOf(DEFAULT_REPLICATION_THROTTLE_STRING));
 
-    EasyMock.replay(mockRequest);
-    EasyMock.replay(controlConfig);
+    EasyMock.replay(mockRequest, controlConfig);
 
     Long replicationThrottle = ParameterUtils.replicationThrottle(mockRequest, controlConfig);
     Assert.assertEquals(Long.valueOf(DEFAULT_REPLICATION_THROTTLE_STRING), replicationThrottle);
@@ -112,6 +113,7 @@ public class ParameterUtilsTest {
     EasyMock.expect(mockRequest.getParameterMap()).andReturn(Collections.emptyMap()).times(1);
     EasyMock.replay(mockRequest);
     Assert.assertNull(ParameterUtils.executionProgressCheckIntervalMs(mockRequest));
+    EasyMock.verify(mockRequest);
   }
 
   @Test
@@ -130,6 +132,8 @@ public class ParameterUtilsTest {
     EasyMock.replay(mockRequest);
 
     Long executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(mockRequest);
+
+    EasyMock.verify(mockRequest);
     Assert.assertEquals(Long.valueOf(EXECUTION_PROGRESS_CHECK_INTERVAL_STRING), executionProgressCheckIntervalMs);
   }
 }
