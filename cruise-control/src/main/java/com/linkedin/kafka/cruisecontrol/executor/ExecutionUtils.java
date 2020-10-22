@@ -350,6 +350,9 @@ public final class ExecutionUtils {
             // Attempt to cancel/rollback a reassignment that does not exist.
             noReassignmentToCancel.add(tp);
             LOG.debug("Rollback failed for {} due to lack of corresponding ongoing replica reassignment.", tp);
+          } else if (org.apache.kafka.common.errors.TimeoutException.class == ee.getCause().getClass()) {
+            // May indicate transient (e.g. network) issues and might require a task re-execution -- i.e. handled in Executor.
+            LOG.warn("Failed to process AlterPartitionReassignmentsResult of {}.", tp, ee.getCause());
           } else {
             // Not expected to happen.
             throw new IllegalStateException(String.format("%s encountered an unknown execution exception.", tp), ee);
