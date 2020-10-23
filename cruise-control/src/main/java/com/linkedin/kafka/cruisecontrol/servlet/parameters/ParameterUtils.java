@@ -24,6 +24,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 
+import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -247,6 +248,19 @@ public class ParameterUtils {
   }
 
   /**
+   * Get the long parameter parameter.
+   *
+   * @param request HTTP request received by Cruise Control.
+   * @param parameter Parameter to parse from the request.
+   * @param defaultIfMissing Default value to set if the request does not contain the parameter.
+   * @return The specified value for the parameter, or defaultIfMissing if the parameter is missing.
+   */
+  public static Long getLongParam(HttpServletRequest request, String parameter, @Nullable Long defaultIfMissing) {
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), parameter);
+    return parameterString == null ? defaultIfMissing : Long.valueOf(request.getParameter(parameterString));
+  }
+
+  /**
    * Get the {@link List} parameter.
    *
    * @param request HTTP request received by Cruise Control.
@@ -380,13 +394,7 @@ public class ParameterUtils {
   }
 
   static Long replicationThrottle(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    String parameterString = caseSensitiveParameterName(request.getParameterMap(), REPLICATION_THROTTLE_PARAM);
-    Long value;
-    if (parameterString == null) {
-      value = config.getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
-    } else {
-      value = Long.parseLong(request.getParameter(parameterString));
-    }
+    Long value = getLongParam(request, REPLICATION_THROTTLE_PARAM, config.getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG));
     if (value != null && value < 0) {
       throw new UserRequestException(String.format("Requested rebalance throttle must be non-negative (Requested: %s).", value));
     }
@@ -408,16 +416,19 @@ public class ParameterUtils {
     return timeString.toUpperCase().equals("NOW") ? System.currentTimeMillis() : Long.parseLong(timeString);
   }
 
-  static long startMs(HttpServletRequest request) {
-    String parameterString = caseSensitiveParameterName(request.getParameterMap(), START_MS_PARAM);
-    return parameterString == null ? DEFAULT_START_TIME_FOR_CLUSTER_MODEL
-                                   : Long.parseLong(request.getParameter(parameterString));
+  static Long startMsOrDefault(HttpServletRequest request, @Nullable Long defaultIfMissing) {
+    return getLongParam(request, START_MS_PARAM, defaultIfMissing);
   }
 
-  static long endMs(HttpServletRequest request) {
-    String parameterString = caseSensitiveParameterName(request.getParameterMap(), END_MS_PARAM);
-    return parameterString == null ? System.currentTimeMillis()
-                                   : Long.parseLong(request.getParameter(parameterString));
+  static Long endMsOrDefault(HttpServletRequest request, @Nullable Long defaultIfMissing) {
+    return getLongParam(request, END_MS_PARAM, defaultIfMissing);
+  }
+
+  static void validateTimeRange(long startMs, long endMs) {
+    if (startMs >= endMs) {
+      throw new UserRequestException(
+          String.format("Invalid time range. Start time must be smaller than end time. Got: [%d, %d]", startMs, endMs));
+    }
   }
 
   static Pattern topic(HttpServletRequest request) {
@@ -809,8 +820,7 @@ public class ParameterUtils {
    * @return Execution progress check interval in milliseconds.
    */
   static Long executionProgressCheckIntervalMs(HttpServletRequest request) {
-    String parameterString = caseSensitiveParameterName(request.getParameterMap(), EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
-    return parameterString == null ? null : Long.parseLong(request.getParameter(parameterString));
+    return getLongParam(request, EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM, null);
   }
 
   /**
