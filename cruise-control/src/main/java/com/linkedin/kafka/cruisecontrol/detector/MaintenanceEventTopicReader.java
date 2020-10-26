@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import java.time.Duration;
@@ -310,16 +309,12 @@ public class MaintenanceEventTopicReader implements MaintenanceEventReader {
 
   protected void ensureTopicCreated(Map<String, ?> config) {
     AdminClient adminClient = _kafkaCruiseControl.adminClient();
-    try {
-      short replicationFactor = maintenanceEventTopicReplicationFactor(config, adminClient);
-      long retentionMs = maintenanceEventTopicRetentionMs(config);
-      int partitionCount = maintenanceEventTopicPartitionCount(config);
+    short replicationFactor = maintenanceEventTopicReplicationFactor(config, adminClient);
+    long retentionMs = maintenanceEventTopicRetentionMs(config);
+    int partitionCount = maintenanceEventTopicPartitionCount(config);
 
-      NewTopic maintenanceEventTopic = wrapTopic(_maintenanceEventTopic, partitionCount, replicationFactor, retentionMs);
-      maybeCreateOrUpdateTopic(adminClient, maintenanceEventTopic);
-    } finally {
-      KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
-    }
+    NewTopic maintenanceEventTopic = wrapTopic(_maintenanceEventTopic, partitionCount, replicationFactor, retentionMs);
+    maybeCreateOrUpdateTopic(adminClient, maintenanceEventTopic);
   }
 
   /**
