@@ -13,6 +13,7 @@ import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.util.Properties;
+import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.utils.SystemTime;
 import org.easymock.EasyMock;
 import org.junit.Test;
@@ -29,8 +30,8 @@ public class GoalOptimizerTest {
     props.setProperty(AnalyzerConfig.DEFAULT_GOALS_CONFIG, TestConstants.DEFAULT_GOALS_VALUES);
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(props);
 
-    GoalOptimizer goalOptimizer = new GoalOptimizer(config, EasyMock.mock(LoadMonitor.class), new SystemTime(),
-                                                    new MetricRegistry(), EasyMock.mock(Executor.class));
+    GoalOptimizer goalOptimizer = new GoalOptimizer(config, EasyMock.mock(LoadMonitor.class), new SystemTime(), new MetricRegistry(),
+                                                    EasyMock.mock(Executor.class), EasyMock.mock(AdminClient.class));
     // Should exit immediately.
     goalOptimizer.run();
   }

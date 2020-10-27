@@ -21,6 +21,7 @@ import java.io.ObjectInputStream;
 import java.util.Arrays;
 import java.util.Properties;
 import java.util.stream.Collectors;
+import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.utils.SystemTime;
 import org.easymock.EasyMock;
 
@@ -57,7 +58,8 @@ public class OfflineProposalGenerator {
                                                     null,
                                                     new SystemTime(),
                                                     new MetricRegistry(),
-                                                    EasyMock.mock(Executor.class));
+                                                    EasyMock.mock(Executor.class),
+                                                    EasyMock.mock(AdminClient.class));
     start = System.currentTimeMillis();
     OptimizerResult optimizerResult = goalOptimizer.optimizations(clusterModel, new OperationProgress());
     end = System.currentTimeMillis();
