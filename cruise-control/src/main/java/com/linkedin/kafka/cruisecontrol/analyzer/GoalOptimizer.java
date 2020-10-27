@@ -24,7 +24,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,12 +40,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ADMIN_CLIENT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.balancednessCostByGoal;
 import static com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.BOOTSTRAPPING;
 import static com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.LOADING;
@@ -92,7 +94,8 @@ public class GoalOptimizer implements Runnable {
                        LoadMonitor loadMonitor,
                        Time time,
                        MetricRegistry dropwizardMetricRegistry,
-                       Executor executor) {
+                       Executor executor,
+                       AdminClient adminClient) {
     _goalsByPriority = AnalyzerUtils.getGoalsByPriority(config);
     _defaultModelCompletenessRequirements = MonitorUtils.combineLoadRequirementOptions(_goalsByPriority);
     _requirementsWithAvailableValidWindows = new ModelCompletenessRequirements(
@@ -121,7 +124,9 @@ public class GoalOptimizer implements Runnable {
     _priorityWeight = config.getDouble(AnalyzerConfig.GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG);
     _strictnessWeight = config.getDouble(AnalyzerConfig.GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_CONFIG);
     _allowCapacityEstimationOnProposalPrecompute = config.getBoolean(AnalyzerConfig.ALLOW_CAPACITY_ESTIMATION_ON_PROPOSAL_PRECOMPUTE_CONFIG);
-    Map<String, Object> overrideConfigs = Collections.singletonMap(KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG, config);
+    Map<String, Object> overrideConfigs = new HashMap<>(2);
+    overrideConfigs.put(KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG, config);
+    overrideConfigs.put(ADMIN_CLIENT_CONFIG, adminClient);
     _optimizationOptionsGenerator = config.getConfiguredInstance(AnalyzerConfig.OPTIMIZATION_OPTIONS_GENERATOR_CLASS_CONFIG,
                                                                  OptimizationOptionsGenerator.class,
                                                                  overrideConfigs);
