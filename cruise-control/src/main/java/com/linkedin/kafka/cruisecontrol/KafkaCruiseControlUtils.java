@@ -78,6 +78,8 @@ import static kafka.log.LogConfig.RetentionMsProp;
  */
 public class KafkaCruiseControlUtils {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlUtils.class);
+  // Config to pass an Admin client to a pluggable component
+  public static final String ADMIN_CLIENT_CONFIG = "admin.client.object";
   public static final double MAX_BALANCEDNESS_SCORE = 100.0;
   public static final int ZK_SESSION_TIMEOUT = 120000;
   public static final int ZK_CONNECTION_TIMEOUT = 120000;

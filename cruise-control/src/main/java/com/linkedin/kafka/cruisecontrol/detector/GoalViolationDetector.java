@@ -34,6 +34,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ADMIN_CLIENT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.balancednessCostByGoal;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.MAX_BALANCEDNESS_SCORE;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
@@ -72,7 +73,9 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
                                                      config.getDouble(AnalyzerConfig.GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG),
                                                      config.getDouble(AnalyzerConfig.GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_CONFIG));
     _balancednessScore = MAX_BALANCEDNESS_SCORE;
-    Map<String, Object> overrideConfigs = Collections.singletonMap(KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG, config);
+    Map<String, Object> overrideConfigs = new HashMap<>(2);
+    overrideConfigs.put(KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG, config);
+    overrideConfigs.put(ADMIN_CLIENT_CONFIG, _kafkaCruiseControl.adminClient());
     _optimizationOptionsGenerator = config.getConfiguredInstance(AnalyzerConfig.OPTIMIZATION_OPTIONS_GENERATOR_CLASS_CONFIG,
                                                                  OptimizationOptionsGenerator.class,
                                                                  overrideConfigs);
