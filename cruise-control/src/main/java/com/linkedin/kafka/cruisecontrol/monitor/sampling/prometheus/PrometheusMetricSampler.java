@@ -1,0 +1,251 @@
+/*
+ * Copyright 2020 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ */
+
+package com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.apache.http.HttpHost;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.Node;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.linkedin.cruisecontrol.common.config.ConfigDef;
+import com.linkedin.cruisecontrol.common.config.ConfigException;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfigUtils;
+import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.BrokerMetric;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.PartitionMetric;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.TopicMetric;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.AbstractMetricSampler;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSamplerOptions;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model.PrometheusQueryResult;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model.PrometheusValue;
+
+import static com.linkedin.cruisecontrol.common.config.ConfigDef.Type.CLASS;
+
+/**
+ * Prometheus metric sampler.
+ */
+public class PrometheusMetricSampler extends AbstractMetricSampler {
+    private static final String PROMETHEUS_METRICS_SAMPLING_INTERVAL_MS_CONFIG = "prometheus.metrics.sampling.interval.ms";
+    private static final Integer DEFAULT_PROMETHEUS_METRICS_SAMPLING_INTERVAL_MS = 60000;
+    private static final int MILLIS_IN_SECOND = 1000;
+
+    private static final String PROMETHEUS_QUERY_SUPPLIER_CONFIG = "prometheus.query.supplier";
+    private static final Class<?> DEFAULT_PROMETHEUS_QUERY_SUPPLIER = DefaultPrometheusQuerySupplier.class;
+
+    private static final String PROMETHEUS_SERVER_ENDPOINT_CONFIG = "prometheus.server.endpoint";
+
+    private static final Logger LOG = LoggerFactory.getLogger(PrometheusMetricSampler.class);
+
+    protected Integer _samplingIntervalMs;
+    protected Map<String, Integer> _hostToBrokerIdMap = new HashMap<>();
+    protected PrometheusAdapter _prometheusAdapter;
+    protected Map<RawMetricType, String> _metricToPrometheusQueryMap;
+
+    @Override
+    public void configure(Map<String, ?> configs) {
+        super.configure(configs);
+        configureSamplingInterval(configs);
+        configurePrometheusAdapter(configs);
+        configureQueryMap(configs);
+    }
+
+    private void configureSamplingInterval(Map<String, ?> configs) {
+        _samplingIntervalMs = DEFAULT_PROMETHEUS_METRICS_SAMPLING_INTERVAL_MS;
+        if (configs.containsKey(PROMETHEUS_METRICS_SAMPLING_INTERVAL_MS_CONFIG)) {
+            String samplingIntervalMsString = (String) configs.get(PROMETHEUS_METRICS_SAMPLING_INTERVAL_MS_CONFIG);
+            try {
+                _samplingIntervalMs = Integer.parseInt(samplingIntervalMsString);
+            } catch (NumberFormatException e) {
+                throw new ConfigException("%s config should be a positive number, provided %s",
+                    samplingIntervalMsString);
+            }
+
+            if (_samplingIntervalMs <= 0) {
+                throw new ConfigException(String.format("%s config should be set to positive,"
+                    + " provided %d.", PROMETHEUS_METRICS_SAMPLING_INTERVAL_MS_CONFIG, _samplingIntervalMs));
+            }
+        }
+    }
+
+    private void configurePrometheusAdapter(Map<String, ?> configs) {
+        final String endpoint = (String) configs.get(PROMETHEUS_SERVER_ENDPOINT_CONFIG);
+        if (endpoint == null) {
+            throw new ConfigException(String.format(
+                "%s config is required by Prometheus metric sampler", PROMETHEUS_SERVER_ENDPOINT_CONFIG));
+        }
+
+        try {
+            HttpHost host = HttpHost.create(endpoint);
+            if (host.getPort() < 0) {
+                throw new IllegalArgumentException();
+            }
+            CloseableHttpClient httpClient = HttpClients.createDefault();
+            _prometheusAdapter = new PrometheusAdapter(httpClient, host, _samplingIntervalMs);
+        } catch (IllegalArgumentException ex) {
+            throw new ConfigException(
+                String.format("Prometheus endpoint URI is malformed, "
+                    + "expected schema://host:port, provided %s", endpoint));
+        }
+    }
+
+    private void configureQueryMap(Map<String, ?> configs) {
+        String prometheusQuerySupplierClassName = (String) configs.get(PROMETHEUS_QUERY_SUPPLIER_CONFIG);
+        Class<?> prometheusQuerySupplierClass = DEFAULT_PROMETHEUS_QUERY_SUPPLIER;
+        if (prometheusQuerySupplierClassName != null) {
+            prometheusQuerySupplierClass = (Class<?>) ConfigDef.parseType(PROMETHEUS_QUERY_SUPPLIER_CONFIG,
+                prometheusQuerySupplierClassName, CLASS);
+            if (!PrometheusQuerySupplier.class.isAssignableFrom(prometheusQuerySupplierClass)) {
+                throw new ConfigException(String.format(
+                    "Invalid %s is provided to prometheus metric sampler, provided %s",
+                    PROMETHEUS_QUERY_SUPPLIER_CONFIG, prometheusQuerySupplierClass));
+            }
+        }
+        PrometheusQuerySupplier prometheusQuerySupplier = KafkaCruiseControlConfigUtils.getConfiguredInstance(
+            prometheusQuerySupplierClass, PrometheusQuerySupplier.class, Collections.emptyMap());
+        _metricToPrometheusQueryMap = prometheusQuerySupplier.get();
+    }
+
+    @Override
+    public void close() {
+        // do nothing
+    }
+
+    private Integer getBrokerIdForHostName(String host, Cluster cluster) {
+        Integer cachedId = _hostToBrokerIdMap.get(host);
+        if (cachedId != null) {
+            return cachedId;
+        }
+        mapNodesToClusterId(cluster);
+        return _hostToBrokerIdMap.get(host);
+    }
+
+    private void mapNodesToClusterId(Cluster cluster) {
+        for (Node node : cluster.nodes()) {
+            _hostToBrokerIdMap.put(node.host(), node.id());
+        }
+    }
+
+    @Override
+    protected int retrieveMetricsForProcessing(MetricSamplerOptions metricSamplerOptions) throws SamplingException {
+        int metricsAdded = 0;
+        for (Map.Entry<RawMetricType, String> metricToQueryEntry : _metricToPrometheusQueryMap.entrySet()) {
+            final RawMetricType metricType = metricToQueryEntry.getKey();
+            final String prometheusQuery = metricToQueryEntry.getValue();
+            final List<PrometheusQueryResult> prometheusQueryResults;
+            try {
+                prometheusQueryResults = _prometheusAdapter.queryMetric(prometheusQuery,
+                                                                        metricSamplerOptions.startTimeMs(),
+                                                                        metricSamplerOptions.endTimeMs());
+            } catch (IOException e) {
+                LOG.error("Error when attempting to query Prometheus metrics", e);
+                throw new SamplingException("Could not query metrics from Prometheus");
+            }
+            for (PrometheusQueryResult result : prometheusQueryResults) {
+                switch (metricType.metricScope()) {
+                    case BROKER:
+                        metricsAdded += addBrokerMetrics(metricSamplerOptions.cluster(), metricType, result);
+                        break;
+                    case TOPIC:
+                        metricsAdded += addTopicMetrics(metricSamplerOptions.cluster(), metricType, result);
+                        break;
+                    case PARTITION:
+                        metricsAdded += addPartitionMetrics(metricSamplerOptions.cluster(), metricType, result);
+                        break;
+                    default:
+                        // Not supported.
+                        break;
+                }
+            }
+        }
+        return metricsAdded;
+    }
+
+    private int addBrokerMetrics(Cluster cluster, RawMetricType metricType, PrometheusQueryResult queryResult)
+        throws SamplingException {
+        int brokerId = getBrokerId(cluster, queryResult);
+
+        int metricsAdded = 0;
+        for (PrometheusValue value : queryResult.values()) {
+            addMetricForProcessing(new BrokerMetric(metricType, value.epochSeconds() * MILLIS_IN_SECOND,
+                brokerId, value.value()));
+            metricsAdded++;
+        }
+        return metricsAdded;
+    }
+
+    private int addTopicMetrics(Cluster cluster, RawMetricType metricType, PrometheusQueryResult queryResult)
+        throws SamplingException {
+        int brokerId = getBrokerId(cluster, queryResult);
+        String topic = getTopic(queryResult);
+
+        int metricsAdded = 0;
+        for (PrometheusValue value : queryResult.values()) {
+            addMetricForProcessing(new TopicMetric(metricType, value.epochSeconds() * MILLIS_IN_SECOND,
+                brokerId, topic, value.value()));
+            metricsAdded++;
+        }
+        return metricsAdded;
+    }
+
+    private int addPartitionMetrics(Cluster cluster, RawMetricType metricType, PrometheusQueryResult queryResult)
+        throws SamplingException {
+        int brokerId = getBrokerId(cluster, queryResult);
+        String topic = getTopic(queryResult);
+        int partition = getPartition(queryResult);
+
+        int metricsAdded = 0;
+        for (PrometheusValue value : queryResult.values()) {
+            addMetricForProcessing(new PartitionMetric(metricType, value.epochSeconds() * MILLIS_IN_SECOND,
+                brokerId, topic, partition, value.value()));
+            metricsAdded++;
+        }
+        return metricsAdded;
+    }
+
+    private int getBrokerId(Cluster cluster, PrometheusQueryResult queryResult) throws SamplingException {
+        String hostPort = queryResult.metric().instance();
+        if (hostPort == null) {
+            throw new SamplingException("Instance returned as part of Prometheus API response is null.");
+        }
+        Integer brokerId;
+
+        String hostName = hostPort.split(":")[0];
+        brokerId = getBrokerIdForHostName(hostName, cluster);
+        if (brokerId == null) {
+            throw new SamplingException(String.format(
+                "Unexpected host %s, does not map to any broker found from Kafka cluster metadata.", hostName));
+        }
+        return brokerId;
+    }
+
+    private String getTopic(PrometheusQueryResult queryResult) throws SamplingException {
+        String topic = queryResult.metric().topic();
+        if (topic == null) {
+            throw new SamplingException("Topic was not returned as part of Prometheus API response.");
+        }
+        return topic;
+    }
+
+    private int getPartition(PrometheusQueryResult queryResult) throws SamplingException {
+        String partitionString = queryResult.metric().partition();
+        if (partitionString == null) {
+            throw new SamplingException("Partition was not returned as part of Prometheus API response.");
+        }
+        try {
+            return Integer.parseInt(partitionString);
+        } catch (NumberFormatException e) {
+            throw new SamplingException("Partition returned as part of Prometheus API response was not a number.");
+        }
+    }
+}
