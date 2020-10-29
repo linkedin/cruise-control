@@ -76,7 +76,9 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
 
             if (_samplingIntervalMs <= 0) {
                 throw new ConfigException(String.format("%s config should be set to positive,"
-                    + " provided %d.", PROMETHEUS_QUERY_RESOLUTION_STEP_MS_CONFIG, _samplingIntervalMs));
+                                                        + " provided %d.",
+                                                        PROMETHEUS_QUERY_RESOLUTION_STEP_MS_CONFIG,
+                                                        _samplingIntervalMs));
             }
         }
     }
@@ -98,7 +100,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
         } catch (IllegalArgumentException ex) {
             throw new ConfigException(
                 String.format("Prometheus endpoint URI is malformed, "
-                    + "expected schema://host:port, provided %s", endpoint));
+                              + "expected schema://host:port, provided %s", endpoint));
         }
     }
 
@@ -181,7 +183,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
         int metricsAdded = 0;
         for (PrometheusValue value : queryResult.values()) {
             addMetricForProcessing(new BrokerMetric(metricType, value.epochSeconds() * MILLIS_IN_SECOND,
-                brokerId, value.value()));
+                                   brokerId, value.value()));
             metricsAdded++;
         }
         return metricsAdded;
@@ -195,7 +197,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
         int metricsAdded = 0;
         for (PrometheusValue value : queryResult.values()) {
             addMetricForProcessing(new TopicMetric(metricType, value.epochSeconds() * MILLIS_IN_SECOND,
-                brokerId, topic, value.value()));
+                                   brokerId, topic, value.value()));
             metricsAdded++;
         }
         return metricsAdded;
@@ -210,7 +212,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
         int metricsAdded = 0;
         for (PrometheusValue value : queryResult.values()) {
             addMetricForProcessing(new PartitionMetric(metricType, value.epochSeconds() * MILLIS_IN_SECOND,
-                brokerId, topic, partition, value.value()));
+                                   brokerId, topic, partition, value.value()));
             metricsAdded++;
         }
         return metricsAdded;

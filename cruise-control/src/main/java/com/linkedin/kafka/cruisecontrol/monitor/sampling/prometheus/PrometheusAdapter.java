@@ -67,7 +67,8 @@ class PrometheusAdapter {
             String responseString = IOUtils.toString(content, StandardCharsets.UTF_8);
             if (responseCode != 200) {
                 throw new IOException(String.format("Received non-success response code on Prometheus API HTTP call,"
-                    + " response code = %s, response body = %s", responseCode, responseString));
+                                                    + " response code = %s, response body = %s",
+                                                    responseCode, responseString));
             }
             PrometheusResponse prometheusResponse = GSON.fromJson(responseString, PrometheusResponse.class);
             if (prometheusResponse == null) {
