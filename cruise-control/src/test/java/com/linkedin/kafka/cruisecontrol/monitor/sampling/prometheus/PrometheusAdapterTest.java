@@ -25,6 +25,9 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model.Promet
 import static org.junit.Assert.assertEquals;
 
 public class PrometheusAdapterTest extends LocalServerTestBase {
+    private static final long START_TIME_MS = 1603301400000L;
+    private static final long END_TIME_MS = 1603301459000L;
+
     @Test
     public void testSuccessfulResponseDeserialized() throws Exception {
         this.serverBootstrap.registerHandler("/api/v1/query_range", new HttpRequestHandler() {
@@ -39,7 +42,7 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
             = new PrometheusAdapter(this.httpclient, httpHost, 30000);
         final List<PrometheusQueryResult> prometheusQueryResults = prometheusAdapter.queryMetric(
             "kafka_server_BrokerTopicMetrics_OneMinuteRate{name=\"BytesOutPerSec\",topic=\"\"}",
-            1603301400000L, 1603301459000L);
+            START_TIME_MS, END_TIME_MS);
 
         assertEquals(expectedResults().toString(), prometheusQueryResults.toString());
         assertEquals(expectedResults(), prometheusQueryResults);
@@ -137,7 +140,7 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
 
         prometheusAdapter.queryMetric(
             "kafka_server_BrokerTopicMetrics_OneMinuteRate{name=\"BytesOutPerSec\",topic=\"\"}",
-            1603301400000L, 1603301459000L);
+            START_TIME_MS, END_TIME_MS);
     }
 
     @Test(expected = IOException.class)
@@ -156,7 +159,7 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
 
         prometheusAdapter.queryMetric(
             "kafka_server_BrokerTopicMetrics_OneMinuteRate{name=\"BytesOutPerSec\",topic=\"\"}",
-            1603301400000L, 1603301459000L);
+            START_TIME_MS, END_TIME_MS);
     }
 
     @Test(expected = IOException.class)
@@ -175,7 +178,7 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
 
         prometheusAdapter.queryMetric(
             "kafka_server_BrokerTopicMetrics_OneMinuteRate{name=\"BytesOutPerSec\",topic=\"\"}",
-            1603301400000L, 1603301459000L);
+            START_TIME_MS, END_TIME_MS);
     }
 
     @Test(expected = IOException.class)
@@ -194,7 +197,7 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
 
         prometheusAdapter.queryMetric(
             "kafka_server_BrokerTopicMetrics_OneMinuteRate{name=\"BytesOutPerSec\",topic=\"\"}",
-            1603301400000L, 1603301459000L);
+            START_TIME_MS, END_TIME_MS);
     }
 
     @Test(expected = IOException.class)
@@ -213,7 +216,7 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
 
         prometheusAdapter.queryMetric(
             "kafka_server_BrokerTopicMetrics_OneMinuteRate{name=\"BytesOutPerSec\",topic=\"\"}",
-            1603301400000L, 1603301459000L);
+            START_TIME_MS, END_TIME_MS);
     }
 
     @Test(expected = IOException.class)
@@ -232,6 +235,6 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
 
         prometheusAdapter.queryMetric(
             "kafka_server_BrokerTopicMetrics_OneMinuteRate{name=\"BytesOutPerSec\",topic=\"\"}",
-            1603301400000L, 1603301459000L);
+            START_TIME_MS, END_TIME_MS);
     }
 }

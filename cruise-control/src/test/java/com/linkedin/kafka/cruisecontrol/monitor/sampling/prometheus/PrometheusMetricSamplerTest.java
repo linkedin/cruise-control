@@ -48,14 +48,23 @@ import static org.junit.Assert.*;
  * Unit test for {@link PrometheusMetricSampler} class.
  */
 public class PrometheusMetricSamplerTest {
+    private static final int MILLIS_IN_SECOND = 1000;
+    private static final double DOUBLE_DELTA = 0.00000001;
+    private static final double BYTES_IN_KB = 1024.0;
+
     private static final int FIXED_VALUE = 94;
     private static final long START_EPOCH_SECONDS = 1603301400L;
-    private static final int MILLIS_IN_SECOND = 1000;
     private static final long START_TIME_MS = START_EPOCH_SECONDS * MILLIS_IN_SECOND;
     private static final long END_TIME_MS = START_TIME_MS + 59 * MILLIS_IN_SECOND;
+
+    private static final int TOTAL_BROKERS = 3;
+    private static final int TOTAL_PARTITIONS = 3;
+
     private static final String DOMAIN_NAME_PLACEHOLDER = "__name_placeholder__";
+    private static final String JMX_JOB = "jmx";
     private static final String METRIC_NAME_PLACEHOLDER = "MetricNamePlaceholder";
     private static final String TEST_TOPIC = "test-topic";
+
     private PrometheusMetricSampler _prometheusMetricSampler;
     private PrometheusAdapter _prometheusAdapter;
     private Map<RawMetricType, String> _prometheusQueryMap;
@@ -273,7 +282,7 @@ public class PrometheusMetricSamplerTest {
     }
 
     private void assertSamplesValid(MetricSampler.Samples samples) {
-        assertEquals(3, samples.brokerMetricSamples().size());
+        assertEquals(TOTAL_BROKERS, samples.brokerMetricSamples().size());
         assertEquals(
             new HashSet<>(Arrays.asList(0, 1, 2)),
             samples.brokerMetricSamples().stream()
@@ -282,13 +291,13 @@ public class PrometheusMetricSamplerTest {
         samples.brokerMetricSamples().forEach(brokerMetricSample -> {
             assertEquals(FIXED_VALUE,
                          brokerMetricSample.metricValue(KafkaMetricDef.CPU_USAGE),
-                   0.00000001);
-            assertEquals(FIXED_VALUE / 1024.0,
+                DOUBLE_DELTA);
+            assertEquals(FIXED_VALUE / BYTES_IN_KB,
                          brokerMetricSample.metricValue(KafkaMetricDef.LEADER_BYTES_OUT),
-                   0.00000001);
+                DOUBLE_DELTA);
         });
 
-        assertEquals(3, samples.partitionMetricSamples().size());
+        assertEquals(TOTAL_BROKERS, samples.partitionMetricSamples().size());
         assertEquals(
             new HashSet<>(Arrays.asList(0, 1, 2)),
             samples.partitionMetricSamples().stream()
@@ -302,11 +311,11 @@ public class PrometheusMetricSamplerTest {
             assertEquals(FIXED_VALUE,
                          partitionMetricSample.metricValue(
                              KafkaMetricDef.commonMetricDefId(KafkaMetricDef.MESSAGE_IN_RATE)),
-                   0.00000001);
-            assertEquals(FIXED_VALUE / 1024.0,
+                DOUBLE_DELTA);
+            assertEquals(FIXED_VALUE / BYTES_IN_KB,
                          partitionMetricSample.metricValue(
                          KafkaMetricDef.commonMetricDefId(KafkaMetricDef.LEADER_BYTES_IN)),
-                         0.00000001);
+                DOUBLE_DELTA);
         });
     }
 
@@ -334,11 +343,11 @@ public class PrometheusMetricSamplerTest {
 
     private List<PrometheusQueryResult> buildBrokerResults() {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
-        for (int brokerId = 0; brokerId < 3; brokerId++) {
+        for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
                 DOMAIN_NAME_PLACEHOLDER,
                 "broker-" + brokerId + ".test-cluster.org:11001",
-                "jmx",
+                JMX_JOB,
                 METRIC_NAME_PLACEHOLDER,
                 null,
                 null
@@ -349,11 +358,11 @@ public class PrometheusMetricSamplerTest {
 
     private List<PrometheusQueryResult> buildBrokerResultsWithBadHostname() {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
-        for (int brokerId = 0; brokerId < 3; brokerId++) {
+        for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
                 DOMAIN_NAME_PLACEHOLDER,
                 "broker-" + brokerId + ".non-existent-cluster.org:11001",
-                "jmx",
+                JMX_JOB,
                 METRIC_NAME_PLACEHOLDER,
                 null,
                 null
@@ -364,11 +373,11 @@ public class PrometheusMetricSamplerTest {
 
     private List<PrometheusQueryResult> buildBrokerResultsWithNullHostPort() {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
-        for (int brokerId = 0; brokerId < 3; brokerId++) {
+        for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
                 DOMAIN_NAME_PLACEHOLDER,
                 null,
-                "jmx",
+                JMX_JOB,
                 METRIC_NAME_PLACEHOLDER,
                 null,
                 null
@@ -379,11 +388,11 @@ public class PrometheusMetricSamplerTest {
 
     private List<PrometheusQueryResult> buildTopicResults() {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
-        for (int brokerId = 0; brokerId < 3; brokerId++) {
+        for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
                 DOMAIN_NAME_PLACEHOLDER,
                 "broker-" + brokerId + ".test-cluster.org:11001",
-                "jmx",
+                JMX_JOB,
                 METRIC_NAME_PLACEHOLDER,
                 TEST_TOPIC,
                 null
@@ -394,11 +403,11 @@ public class PrometheusMetricSamplerTest {
 
     private List<PrometheusQueryResult> buildTopicResultsWithNullTopic() {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
-        for (int brokerId = 0; brokerId < 3; brokerId++) {
+        for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
                 DOMAIN_NAME_PLACEHOLDER,
                 "broker-" + brokerId + ".test-cluster.org:11001",
-                "jmx",
+                JMX_JOB,
                 METRIC_NAME_PLACEHOLDER,
                 null,
                 null
@@ -409,11 +418,11 @@ public class PrometheusMetricSamplerTest {
 
     private List<PrometheusQueryResult> buildPartitionResultsWithNullPartition() {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
-        for (int brokerId = 0; brokerId < 3; brokerId++) {
+        for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
                 DOMAIN_NAME_PLACEHOLDER,
                 "broker-" + brokerId + ".test-cluster.org:11001",
-                "jmx",
+                JMX_JOB,
                 METRIC_NAME_PLACEHOLDER,
                 TEST_TOPIC,
                 null
@@ -424,11 +433,11 @@ public class PrometheusMetricSamplerTest {
 
     private List<PrometheusQueryResult> buildPartitionResultsWithMalformedPartition() {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
-        for (int brokerId = 0; brokerId < 3; brokerId++) {
+        for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
                 DOMAIN_NAME_PLACEHOLDER,
                 "broker-" + brokerId + ".test-cluster.org:11001",
-                "jmx",
+                JMX_JOB,
                 METRIC_NAME_PLACEHOLDER,
                 TEST_TOPIC,
                 "non-number"
@@ -439,12 +448,12 @@ public class PrometheusMetricSamplerTest {
 
     private List<PrometheusQueryResult> buildPartitionResults() {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
-        for (int brokerId = 0; brokerId < 3; brokerId++) {
-            for (int partition = 0; partition < 3; partition++) {
+        for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
+            for (int partition = 0; partition < TOTAL_PARTITIONS; partition++) {
                 resultList.add(new PrometheusQueryResult(new PrometheusMetric(
                     DOMAIN_NAME_PLACEHOLDER,
                     "broker-" + brokerId + ".test-cluster.org:11001",
-                    "jmx",
+                    JMX_JOB,
                     METRIC_NAME_PLACEHOLDER,
                     TEST_TOPIC,
                     String.valueOf(partition)
@@ -481,7 +490,7 @@ public class PrometheusMetricSamplerTest {
 
     private Set<TopicPartition> generatePartitions() {
         Set<TopicPartition> set = new HashSet<>();
-        for (int partition = 0; partition <= 2; partition++) {
+        for (int partition = 0; partition < TOTAL_PARTITIONS; partition++) {
             TopicPartition topicPartition = new TopicPartition(TEST_TOPIC, partition);
             set.add(topicPartition);
         }
@@ -489,11 +498,13 @@ public class PrometheusMetricSamplerTest {
     }
 
     private Cluster generateCluster() {
-        Node[] allNodes = new Node[3];
-        Set<PartitionInfo> partitionInfo = new HashSet<>(3);
-        for (int i = 0; i < 3; i++) {
-            allNodes[i] = new Node(i, "broker-" + i + ".test-cluster.org", 9092);
-            partitionInfo.add(new PartitionInfo(TEST_TOPIC, i, allNodes[i], allNodes, allNodes));
+        Node[] allNodes = new Node[TOTAL_BROKERS];
+        Set<PartitionInfo> partitionInfo = new HashSet<>(TOTAL_BROKERS);
+        for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
+            allNodes[brokerId] = new Node(brokerId, "broker-" + brokerId + ".test-cluster.org", 9092);
+        }
+        for (int partitionId = 0; partitionId < TOTAL_PARTITIONS; partitionId++) {
+            partitionInfo.add(new PartitionInfo(TEST_TOPIC, partitionId, allNodes[partitionId], allNodes, allNodes));
         }
         return new Cluster("cluster_id", Arrays.asList(allNodes),
                            partitionInfo, Collections.emptySet(), Collections.emptySet());
