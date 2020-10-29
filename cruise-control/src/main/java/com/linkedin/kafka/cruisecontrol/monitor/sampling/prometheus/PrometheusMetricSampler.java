@@ -36,14 +36,17 @@ import static com.linkedin.cruisecontrol.common.config.ConfigDef.Type.CLASS;
  * Prometheus metric sampler.
  */
 public class PrometheusMetricSampler extends AbstractMetricSampler {
-    private static final String PROMETHEUS_METRICS_SAMPLING_INTERVAL_MS_CONFIG = "prometheus.metrics.sampling.interval.ms";
-    private static final Integer DEFAULT_PROMETHEUS_METRICS_SAMPLING_INTERVAL_MS = 60000;
+    // Config name visible to tests
+    static final String PROMETHEUS_SERVER_ENDPOINT_CONFIG = "prometheus.server.endpoint";
+
+    // Config name visible to tests
+    static final String PROMETHEUS_QUERY_RESOLUTION_STEP_MS_CONFIG = "prometheus.query.resolution.step.ms";
+    private static final Integer DEFAULT_PROMETHEUS_METRICS_SAMPLING_INTERVAL_MS = 60_000;
     private static final int MILLIS_IN_SECOND = 1000;
 
-    private static final String PROMETHEUS_QUERY_SUPPLIER_CONFIG = "prometheus.query.supplier";
+    // Config name visible to tests
+    static final String PROMETHEUS_QUERY_SUPPLIER_CONFIG = "prometheus.query.supplier";
     private static final Class<?> DEFAULT_PROMETHEUS_QUERY_SUPPLIER = DefaultPrometheusQuerySupplier.class;
-
-    private static final String PROMETHEUS_SERVER_ENDPOINT_CONFIG = "prometheus.server.endpoint";
 
     private static final Logger LOG = LoggerFactory.getLogger(PrometheusMetricSampler.class);
 
@@ -62,8 +65,8 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
 
     private void configureSamplingInterval(Map<String, ?> configs) {
         _samplingIntervalMs = DEFAULT_PROMETHEUS_METRICS_SAMPLING_INTERVAL_MS;
-        if (configs.containsKey(PROMETHEUS_METRICS_SAMPLING_INTERVAL_MS_CONFIG)) {
-            String samplingIntervalMsString = (String) configs.get(PROMETHEUS_METRICS_SAMPLING_INTERVAL_MS_CONFIG);
+        if (configs.containsKey(PROMETHEUS_QUERY_RESOLUTION_STEP_MS_CONFIG)) {
+            String samplingIntervalMsString = (String) configs.get(PROMETHEUS_QUERY_RESOLUTION_STEP_MS_CONFIG);
             try {
                 _samplingIntervalMs = Integer.parseInt(samplingIntervalMsString);
             } catch (NumberFormatException e) {
@@ -73,7 +76,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
 
             if (_samplingIntervalMs <= 0) {
                 throw new ConfigException(String.format("%s config should be set to positive,"
-                    + " provided %d.", PROMETHEUS_METRICS_SAMPLING_INTERVAL_MS_CONFIG, _samplingIntervalMs));
+                    + " provided %d.", PROMETHEUS_QUERY_RESOLUTION_STEP_MS_CONFIG, _samplingIntervalMs));
             }
         }
     }

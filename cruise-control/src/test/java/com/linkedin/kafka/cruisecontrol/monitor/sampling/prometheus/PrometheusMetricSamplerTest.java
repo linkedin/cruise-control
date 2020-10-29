@@ -40,15 +40,9 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model.Promet
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model.PrometheusQueryResult;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model.PrometheusValue;
 
-import static org.easymock.EasyMock.anyLong;
-import static org.easymock.EasyMock.anyString;
-import static org.easymock.EasyMock.eq;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.mock;
-import static org.easymock.EasyMock.replay;
-import static org.easymock.EasyMock.verify;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.PrometheusMetricSampler.*;
+import static org.easymock.EasyMock.*;
+import static org.junit.Assert.*;
 
 /**
  * Unit test for {@link PrometheusMetricSampler} class.
@@ -79,7 +73,7 @@ public class PrometheusMetricSamplerTest {
     @Test(expected = ConfigException.class)
     public void testConfigureWithPrometheusEndpointNoPortFails() throws Exception {
         Map<String, Object> config = new HashMap<>();
-        config.put("prometheus.server.endpoint", "http://kafka-cluster-1.org");
+        config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "http://kafka-cluster-1.org");
         addCapacityConfig(config);
         _prometheusMetricSampler.configure(config);
     }
@@ -87,7 +81,7 @@ public class PrometheusMetricSamplerTest {
     @Test(expected = ConfigException.class)
     public void testConfigureWithPrometheusEndpointNegativePortFails() throws Exception {
         Map<String, Object> config = new HashMap<>();
-        config.put("prometheus.server.endpoint", "http://kafka-cluster-1.org:-20");
+        config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "http://kafka-cluster-1.org:-20");
         addCapacityConfig(config);
         _prometheusMetricSampler.configure(config);
     }
@@ -95,7 +89,7 @@ public class PrometheusMetricSamplerTest {
     @Test
     public void testConfigureWithPrometheusEndpointNoSchemaDoesNotFail() throws Exception {
         Map<String, Object> config = new HashMap<>();
-        config.put("prometheus.server.endpoint", "kafka-cluster-1.org:9090");
+        config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "kafka-cluster-1.org:9090");
         addCapacityConfig(config);
         _prometheusMetricSampler.configure(config);
     }
@@ -110,7 +104,7 @@ public class PrometheusMetricSamplerTest {
     @Test(expected = SamplingException.class)
     public void testGetSamplesQueryThrowsException() throws Exception {
         Map<String, Object> config = new HashMap<>();
-        config.put("prometheus.server.endpoint", "http://kafka-cluster-1.org:9090");
+        config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "http://kafka-cluster-1.org:9090");
         addCapacityConfig(config);
         _prometheusMetricSampler.configure(config);
 
@@ -126,9 +120,9 @@ public class PrometheusMetricSamplerTest {
     @Test
     public void testGetSamplesCustomPrometheusQuerySupplier() throws Exception {
         Map<String, Object> config = new HashMap<>();
-        config.put("prometheus.server.endpoint", "http://kafka-cluster-1.org:9090");
+        config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "http://kafka-cluster-1.org:9090");
         addCapacityConfig(config);
-        config.put("prometheus.query.supplier", TestQuerySupplier.class.getName());
+        config.put(PROMETHEUS_QUERY_SUPPLIER_CONFIG, TestQuerySupplier.class.getName());
         _prometheusMetricSampler.configure(config);
 
         MetricSamplerOptions metricSamplerOptions = buildMetricSamplerOptions();
@@ -146,18 +140,18 @@ public class PrometheusMetricSamplerTest {
     @Test(expected = ConfigException.class)
     public void testGetSamplesPrometheusQuerySupplierUnknownClass() throws Exception {
         Map<String, Object> config = new HashMap<>();
-        config.put("prometheus.server.endpoint", "http://kafka-cluster-1.org:9090");
+        config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "http://kafka-cluster-1.org:9090");
         addCapacityConfig(config);
-        config.put("prometheus.query.supplier", "com.test.NonExistentClass");
+        config.put(PROMETHEUS_QUERY_SUPPLIER_CONFIG, "com.test.NonExistentClass");
         _prometheusMetricSampler.configure(config);
     }
 
     @Test(expected = ConfigException.class)
     public void testGetSamplesPrometheusQuerySupplierInvalidClass() throws Exception {
         Map<String, Object> config = new HashMap<>();
-        config.put("prometheus.server.endpoint", "http://kafka-cluster-1.org:9090");
+        config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "http://kafka-cluster-1.org:9090");
         addCapacityConfig(config);
-        config.put("prometheus.query.supplier", String.class.getName());
+        config.put(PROMETHEUS_QUERY_SUPPLIER_CONFIG, String.class.getName());
         _prometheusMetricSampler.configure(config);
     }
 
@@ -176,7 +170,7 @@ public class PrometheusMetricSamplerTest {
     @Test
     public void testGetSamplesSuccess() throws Exception {
         Map<String, Object> config = new HashMap<>();
-        config.put("prometheus.server.endpoint", "http://kafka-cluster-1.org:9090");
+        config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "http://kafka-cluster-1.org:9090");
         addCapacityConfig(config);
         _prometheusMetricSampler.configure(config);
 
@@ -198,8 +192,8 @@ public class PrometheusMetricSamplerTest {
     @Test
     public void testGetSamplesWithCustomSamplingInterval() throws Exception {
         Map<String, Object> config = new HashMap<>();
-        config.put("prometheus.server.endpoint", "http://kafka-cluster-1.org:9090");
-        config.put("prometheus.metrics.sampling.interval.ms", "5000");
+        config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "http://kafka-cluster-1.org:9090");
+        config.put(PROMETHEUS_QUERY_RESOLUTION_STEP_MS_CONFIG, "5000");
         addCapacityConfig(config);
         _prometheusMetricSampler.configure(config);
         assertEquals(5000, (long) _prometheusMetricSampler._prometheusAdapter._samplingIntervalMs);
@@ -208,8 +202,8 @@ public class PrometheusMetricSamplerTest {
     @Test(expected = ConfigException.class)
     public void testGetSamplesWithCustomMalformedSamplingInterval() throws Exception {
         Map<String, Object> config = new HashMap<>();
-        config.put("prometheus.server.endpoint", "http://kafka-cluster-1.org:9090");
-        config.put("prometheus.metrics.sampling.interval.ms", "non-number");
+        config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "http://kafka-cluster-1.org:9090");
+        config.put(PROMETHEUS_QUERY_RESOLUTION_STEP_MS_CONFIG, "non-number");
         addCapacityConfig(config);
         _prometheusMetricSampler.configure(config);
     }
@@ -217,8 +211,8 @@ public class PrometheusMetricSamplerTest {
     @Test(expected = ConfigException.class)
     public void testGetSamplesWithCustomNegativeSamplingInterval() throws Exception {
         Map<String, Object> config = new HashMap<>();
-        config.put("prometheus.server.endpoint", "http://kafka-cluster-1.org:9090");
-        config.put("prometheus.metrics.sampling.interval.ms", "-2000");
+        config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "http://kafka-cluster-1.org:9090");
+        config.put(PROMETHEUS_QUERY_RESOLUTION_STEP_MS_CONFIG, "-2000");
         addCapacityConfig(config);
         _prometheusMetricSampler.configure(config);
     }
@@ -258,7 +252,7 @@ public class PrometheusMetricSamplerTest {
         List<PrometheusQueryResult> topicResults,
         List<PrometheusQueryResult> partitionResults) throws Exception {
         Map<String, Object> config = new HashMap<>();
-        config.put("prometheus.server.endpoint", "http://kafka-cluster-1.org:9090");
+        config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "http://kafka-cluster-1.org:9090");
         addCapacityConfig(config);
         _prometheusMetricSampler.configure(config);
 
