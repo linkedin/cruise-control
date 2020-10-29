@@ -26,6 +26,9 @@ import com.google.gson.Gson;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model.PrometheusQueryResult;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model.PrometheusResponse;
 
+/**
+ * This class provides an adapter to make queries to a Prometheus Server to fetch metric values.
+ */
 class PrometheusAdapter {
     private static final int MILLIS_IN_SECOND = 1000;
     private static final Gson GSON = new Gson();

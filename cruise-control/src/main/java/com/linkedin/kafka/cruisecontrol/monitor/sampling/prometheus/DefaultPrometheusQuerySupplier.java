@@ -12,7 +12,11 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.*;
 
 /**
- * Default prometheus query supplier.
+ * Default prometheus query supplier. This can be used if the Prometheus JMX and node exporters on the
+ * Kafka brokers are running with standard vanilla configuration, and do not have any special rules for
+ * transformation of metric names.
+ *
+ * See {@link PrometheusQuerySupplier}
  */
 public class DefaultPrometheusQuerySupplier implements PrometheusQuerySupplier {
     private static final Map<RawMetricType, String> TYPE_TO_QUERY = new HashMap<>();

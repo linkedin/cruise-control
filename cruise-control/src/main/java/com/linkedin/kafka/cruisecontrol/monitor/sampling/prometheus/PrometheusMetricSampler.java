@@ -33,7 +33,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model.Promet
 import static com.linkedin.cruisecontrol.common.config.ConfigDef.Type.CLASS;
 
 /**
- * Prometheus metric sampler.
+ * Metric sampler that fetches Kafka metrics from a Prometheus server and converts them to samples.
  */
 public class PrometheusMetricSampler extends AbstractMetricSampler {
     // Config name visible to tests
