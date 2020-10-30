@@ -203,11 +203,19 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    *     {@link ExecutorConfig#NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG}</li>
    *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_CONFIG} <=
    *     {@link ExecutorConfig#MAX_NUM_CLUSTER_MOVEMENTS_CONFIG}</li>
+   *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MIN_PARTITION_MOVEMENTS_PER_BROKER_CONFIG} <=
+   *     {@link ExecutorConfig#NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG}</li>
+   *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_CONFIG} <=
+   *     {@link ExecutorConfig#NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG}</li>
+   *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_CONFIG} >
+   *     {@link ExecutorConfig#NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG}</li>
+   *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_CONFIG} <=
+   *     {@link ExecutorConfig#MAX_NUM_CLUSTER_MOVEMENTS_CONFIG}</li>
    *   <li>{@link ExecutorConfig#MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG} <=
    *     {@link ExecutorConfig#EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG}</li>
    * </ul>
    */
-  private void sanityCheckConcurrency() {
+  void sanityCheckConcurrency() {
     int maxClusterPartitionMovementConcurrency = getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
 
     int interBrokerPartitionMovementConcurrency = getInt(ExecutorConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG);
@@ -241,6 +249,33 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     if (concurrencyAdjusterMaxPartitionMovementsPerBroker > maxClusterPartitionMovementConcurrency) {
       throw new ConfigException("Maximum partition movements per broker of concurrency adjuster ["
                                 + concurrencyAdjusterMaxPartitionMovementsPerBroker
+                                + "] cannot be greater than the maximum number of allowed movements in cluster ["
+                                + maxClusterPartitionMovementConcurrency + "].");
+    }
+
+    int concurrencyAdjusterMinPartitionMovementsPerBroker = getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_PARTITION_MOVEMENTS_PER_BROKER_CONFIG);
+    if (interBrokerPartitionMovementConcurrency < concurrencyAdjusterMinPartitionMovementsPerBroker) {
+      throw new ConfigException("Inter-broker partition movement concurrency [" + interBrokerPartitionMovementConcurrency
+                                + "] cannot be smaller than the concurrency adjuster minimum partition movements per broker ["
+                                + concurrencyAdjusterMinPartitionMovementsPerBroker + "].");
+    }
+
+    int concurrencyAdjusterMinLeadershipMovements = getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_CONFIG);
+    if (leadershipMovementConcurrency < concurrencyAdjusterMinLeadershipMovements) {
+      throw new ConfigException("Leadership movement concurrency [" + leadershipMovementConcurrency
+                                + "] cannot be smaller than the concurrency adjuster minimum leadership movements ["
+                                + concurrencyAdjusterMinLeadershipMovements + "].");
+    }
+
+    int concurrencyAdjusterMaxLeadershipMovements = getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_CONFIG);
+    if (leadershipMovementConcurrency > concurrencyAdjusterMaxLeadershipMovements) {
+      throw new ConfigException("Leadership movement concurrency [" + leadershipMovementConcurrency
+                                + "] cannot be greater than the concurrency adjuster maximum leadership movements ["
+                                + concurrencyAdjusterMaxLeadershipMovements + "].");
+    }
+
+    if (concurrencyAdjusterMaxLeadershipMovements > maxClusterPartitionMovementConcurrency) {
+      throw new ConfigException("Maximum leadership movements of concurrency adjuster [" + concurrencyAdjusterMaxLeadershipMovements
                                 + "] cannot be greater than the maximum number of allowed movements in cluster ["
                                 + maxClusterPartitionMovementConcurrency + "].");
     }

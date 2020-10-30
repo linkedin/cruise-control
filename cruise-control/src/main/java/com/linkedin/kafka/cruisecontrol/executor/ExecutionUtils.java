@@ -50,8 +50,10 @@ public final class ExecutionUtils {
   public static final String GAUGE_EXECUTION_LEADERSHIP_MOVEMENTS_GLOBAL_CAP = "leadership-movements-global-cap";
   public static final long EXECUTION_HISTORY_SCANNER_PERIOD_SECONDS = 5;
   public static final long EXECUTION_HISTORY_SCANNER_INITIAL_DELAY_SECONDS = 0;
-  public static final int ADDITIVE_INCREASE_PARAM = 1;
-  public static final int MULTIPLICATIVE_DECREASE_PARAM = 2;
+  static final Map<ConcurrencyType, Integer> ADDITIVE_INCREASE = new HashMap<>(ConcurrencyType.cachedValues().size());
+  static final Map<ConcurrencyType, Integer> MULTIPLICATIVE_DECREASE = new HashMap<>(ConcurrencyType.cachedValues().size());
+  static final Map<ConcurrencyType, Integer> MAX_CONCURRENCY = new HashMap<>(ConcurrencyType.cachedValues().size());
+  static final Map<ConcurrencyType, Integer> MIN_CONCURRENCY = new HashMap<>(ConcurrencyType.cachedValues().size());
   static final Map<String, Double> CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME = new HashMap<>(5);
 
 
@@ -73,6 +75,22 @@ public final class ExecutionUtils {
                                                   config.getDouble(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_CONSUMER_FETCH_LOCAL_TIME_MS_CONFIG));
     CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.put(BROKER_REQUEST_QUEUE_SIZE.name(),
                                                   config.getDouble(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_CONFIG));
+    ADDITIVE_INCREASE.put(ConcurrencyType.INTER_BROKER_REPLICA,
+                          config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_INTER_BROKER_REPLICA_CONFIG));
+    ADDITIVE_INCREASE.put(ConcurrencyType.LEADERSHIP,
+                          config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_LEADERSHIP_CONFIG));
+    MULTIPLICATIVE_DECREASE.put(ConcurrencyType.INTER_BROKER_REPLICA,
+                                config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_INTER_BROKER_REPLICA_CONFIG));
+    MULTIPLICATIVE_DECREASE.put(ConcurrencyType.LEADERSHIP,
+                                config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_LEADERSHIP_CONFIG));
+    MAX_CONCURRENCY.put(ConcurrencyType.INTER_BROKER_REPLICA,
+                        config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_CONFIG));
+    MAX_CONCURRENCY.put(ConcurrencyType.LEADERSHIP,
+                        config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_CONFIG));
+    MIN_CONCURRENCY.put(ConcurrencyType.INTER_BROKER_REPLICA,
+                        config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_PARTITION_MOVEMENTS_PER_BROKER_CONFIG));
+    MIN_CONCURRENCY.put(ConcurrencyType.LEADERSHIP,
+                        config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_CONFIG));
   }
 
   private static String toMetricName(Short metricId) {
@@ -133,31 +151,33 @@ public final class ExecutionUtils {
   }
 
   /**
-   * Provide a recommended concurrency for the ongoing inter-broker partition movements using selected current broker
+   * Provide a recommended concurrency for the ongoing movements of the given concurrency type using selected current broker
    * metrics and based on additive-increase/multiplicative-decrease (AIMD) feedback control algorithm.
    *
    * @param currentMetricsByBroker Current metrics by broker.
-   * @param currentInterBrokerPartitionMovementConcurrency The effective allowed inter-broker partition movement concurrency per broker.
-   * @param maxPartitionMovementsPerBroker The maximum allowed inter-broker partition movement concurrency per broker.
-   * @return {@code null} to indicate recommendation for no change in allowed inter-broker partition movement concurrency.
-   * Otherwise an integer to indicate the recommended inter-broker partition movement concurrency.
+   * @param currentMovementConcurrency The effective allowed movement concurrency.
+   * @param concurrencyType The type of concurrency for which the recommendation is requested.
+   * @return {@code null} to indicate recommendation for no change in allowed movement concurrency.
+   * Otherwise an integer to indicate the recommended movement concurrency.
    */
   static Integer recommendedConcurrency(Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker,
-                                        int currentInterBrokerPartitionMovementConcurrency,
-                                        int maxPartitionMovementsPerBroker) {
-    boolean withinAdjusterLimit = ExecutionUtils.withinConcurrencyAdjusterLimit(currentMetricsByBroker);
+                                        int currentMovementConcurrency,
+                                        ConcurrencyType concurrencyType) {
+    boolean withinAdjusterLimit = withinConcurrencyAdjusterLimit(currentMetricsByBroker);
     Integer recommendedConcurrency = null;
     if (withinAdjusterLimit) {
-      // Additive-increase inter-broker replica reassignment concurrency (MAX: maxPartitionMovementsPerBroker).
-      if (currentInterBrokerPartitionMovementConcurrency < maxPartitionMovementsPerBroker) {
-        recommendedConcurrency = currentInterBrokerPartitionMovementConcurrency + ADDITIVE_INCREASE_PARAM;
-        LOG.info("Concurrency adjuster recommended an increase in inter-broker partition movement concurrency to {}", recommendedConcurrency);
+      int maxMovementsConcurrency = MAX_CONCURRENCY.get(concurrencyType);
+      // Additive-increase reassignment concurrency (MAX: maxMovementsConcurrency).
+      if (currentMovementConcurrency < maxMovementsConcurrency) {
+        recommendedConcurrency = Math.min(maxMovementsConcurrency, currentMovementConcurrency + ADDITIVE_INCREASE.get(concurrencyType));
+        LOG.info("Concurrency adjuster recommended an increase in {} movement concurrency to {}", concurrencyType, recommendedConcurrency);
       }
     } else {
-      // Multiplicative-decrease inter-broker replica reassignment concurrency (MIN: 1).
-      if (currentInterBrokerPartitionMovementConcurrency > 1) {
-        recommendedConcurrency = Math.max(1, currentInterBrokerPartitionMovementConcurrency / MULTIPLICATIVE_DECREASE_PARAM);
-        LOG.info("Concurrency adjuster recommended a decrease in inter-broker partition movement concurrency to {}", recommendedConcurrency);
+      int minMovementsConcurrency = MIN_CONCURRENCY.get(concurrencyType);
+      // Multiplicative-decrease reassignment concurrency (MIN: minMovementsConcurrency).
+      if (currentMovementConcurrency > minMovementsConcurrency) {
+        recommendedConcurrency = Math.max(minMovementsConcurrency, currentMovementConcurrency / MULTIPLICATIVE_DECREASE.get(concurrencyType));
+        LOG.info("Concurrency adjuster recommended a decrease in {} movement concurrency to {}", concurrencyType, recommendedConcurrency);
       }
     }
     return recommendedConcurrency;
@@ -233,12 +253,12 @@ public final class ExecutionUtils {
   /**
    * For an inter-broker replica movement action, the completion depends on the task state:
    * <ul>
-   *   <li>{@link ExecutionTask.State#IN_PROGRESS}: when the current replica list is the same as the new replica list
+   *   <li>{@link ExecutionTaskState#IN_PROGRESS}: when the current replica list is the same as the new replica list
    *   and all replicas are in-sync.</li>
-   *   <li>{@link ExecutionTask.State#ABORTING}: done when the current replica list is the same as the old replica list.
+   *   <li>{@link ExecutionTaskState#ABORTING}: done when the current replica list is the same as the old replica list.
    *   Due to race condition, we also consider it done if the current replica list is the same as the new replica list
    *   and all replicas are in-sync.</li>
-   *   <li>{@link ExecutionTask.State#DEAD}: always considered as done because we neither move forward or rollback.</li>
+   *   <li>{@link ExecutionTaskState#DEAD}: always considered as done because we neither move forward or rollback.</li>
    * </ul>
    *
    * There should be no other task state seen here.
@@ -282,10 +302,10 @@ public final class ExecutionUtils {
   /**
    * The completeness of leadership movement depends on the task state:
    * <ul>
-   *   <li>{@link ExecutionTask.State#IN_PROGRESS}: Done when either (1) the proposed leader becomes the leader, (2) the
+   *   <li>{@link ExecutionTaskState#IN_PROGRESS}: Done when either (1) the proposed leader becomes the leader, (2) the
    *   partition has no leader in the cluster (e.g. deleted or offline), or (3) the partition has another leader and the
    *   proposed leader is out of ISR.</li>
-   *   <li>{@link ExecutionTask.State#ABORTING} or {@link ExecutionTask.State#DEAD}: Always considered as done. The
+   *   <li>{@link ExecutionTaskState#ABORTING} or {@link ExecutionTaskState#DEAD}: Always considered as done. The
    *   destination cannot become leader anymore.</li>
    * </ul>
    *
