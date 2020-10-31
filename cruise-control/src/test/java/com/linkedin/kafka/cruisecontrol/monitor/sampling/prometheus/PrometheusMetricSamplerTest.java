@@ -228,35 +228,35 @@ public class PrometheusMetricSamplerTest {
 
     @Test
     public void testPrometheusQueryReturnsBadHostname() throws Exception {
-        testPrometheusQueryReturnsBadResults(buildBrokerResultsWithBadHostname(),
+        testPrometheusQueryReturnsInvalidResults(buildBrokerResultsWithBadHostname(),
                                              buildTopicResults(), buildPartitionResults());
     }
 
     @Test
     public void testPrometheusQueryReturnsNullHostPort() throws Exception {
-        testPrometheusQueryReturnsBadResults(buildBrokerResultsWithNullHostPort(),
+        testPrometheusQueryReturnsInvalidResults(buildBrokerResultsWithNullHostPort(),
             buildTopicResults(), buildPartitionResults());
     }
 
     @Test
     public void testPrometheusQueryReturnsNullTopic() throws Exception {
-        testPrometheusQueryReturnsBadResults(buildBrokerResults(),
+        testPrometheusQueryReturnsInvalidResults(buildBrokerResults(),
             buildTopicResultsWithNullTopic(), buildPartitionResults());
     }
 
     @Test
     public void testPrometheusQueryReturnsNullPartition() throws Exception {
-        testPrometheusQueryReturnsBadResults(buildBrokerResults(),
+        testPrometheusQueryReturnsInvalidResults(buildBrokerResults(),
             buildTopicResults(), buildPartitionResultsWithNullPartition());
     }
 
     @Test
     public void testPrometheusQueryReturnsMalformedPartition() throws Exception {
-        testPrometheusQueryReturnsBadResults(buildBrokerResults(),
+        testPrometheusQueryReturnsInvalidResults(buildBrokerResults(),
             buildTopicResults(), buildPartitionResultsWithMalformedPartition());
     }
 
-    public void testPrometheusQueryReturnsBadResults(
+    public void testPrometheusQueryReturnsInvalidResults(
         List<PrometheusQueryResult> brokerResults,
         List<PrometheusQueryResult> topicResults,
         List<PrometheusQueryResult> partitionResults) throws Exception {
@@ -273,12 +273,7 @@ public class PrometheusMetricSamplerTest {
         }
 
         replay(_prometheusAdapter);
-        try {
-            _prometheusMetricSampler.getSamples(metricSamplerOptions);
-            fail("SamplingException expected, should not reach here");
-        } catch (SamplingException e) {
-            // expected
-        }
+        _prometheusMetricSampler.getSamples(metricSamplerOptions);
     }
 
     private void assertSamplesValid(MetricSampler.Samples samples) {

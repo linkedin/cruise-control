@@ -157,19 +157,31 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
                 throw new SamplingException("Could not query metrics from Prometheus");
             }
             for (PrometheusQueryResult result : prometheusQueryResults) {
-                switch (metricType.metricScope()) {
-                    case BROKER:
-                        metricsAdded += addBrokerMetrics(metricSamplerOptions.cluster(), metricType, result);
-                        break;
-                    case TOPIC:
-                        metricsAdded += addTopicMetrics(metricSamplerOptions.cluster(), metricType, result);
-                        break;
-                    case PARTITION:
-                        metricsAdded += addPartitionMetrics(metricSamplerOptions.cluster(), metricType, result);
-                        break;
-                    default:
-                        // Not supported.
-                        break;
+                try {
+                    switch (metricType.metricScope()) {
+                        case BROKER:
+                            metricsAdded += addBrokerMetrics(metricSamplerOptions.cluster(), metricType, result);
+                            break;
+                        case TOPIC:
+                            metricsAdded += addTopicMetrics(metricSamplerOptions.cluster(), metricType, result);
+                            break;
+                        case PARTITION:
+                            metricsAdded += addPartitionMetrics(metricSamplerOptions.cluster(), metricType, result);
+                            break;
+                        default:
+                            // Not supported.
+                            break;
+                    }
+                } catch (InvalidPrometheusResultException e) {
+                    /* We can ignore invalid or malformed Prometheus results, for example one which has a hostname
+                    that could not be matched to any broker, or one where the topic name is null. Such records
+                    will not be converted to metrics. There are valid use cases where this may occur - for instance,
+                    when a Prometheus server store metrics from multiple Kafka clusters, in which case the hostname
+                    may not correspond to any of this cluster's broker hosts.
+
+                    This can be really frequent, and hence, it would not make sense to fill the log entries by
+                    logging this repeatedly.
+                     */
                 }
             }
         }
@@ -177,7 +189,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
     }
 
     private int addBrokerMetrics(Cluster cluster, RawMetricType metricType, PrometheusQueryResult queryResult)
-        throws SamplingException {
+        throws InvalidPrometheusResultException {
         int brokerId = getBrokerId(cluster, queryResult);
 
         int metricsAdded = 0;
@@ -190,7 +202,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
     }
 
     private int addTopicMetrics(Cluster cluster, RawMetricType metricType, PrometheusQueryResult queryResult)
-        throws SamplingException {
+        throws InvalidPrometheusResultException {
         int brokerId = getBrokerId(cluster, queryResult);
         String topic = getTopic(queryResult);
 
@@ -204,7 +216,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
     }
 
     private int addPartitionMetrics(Cluster cluster, RawMetricType metricType, PrometheusQueryResult queryResult)
-        throws SamplingException {
+        throws InvalidPrometheusResultException {
         int brokerId = getBrokerId(cluster, queryResult);
         String topic = getTopic(queryResult);
         int partition = getPartition(queryResult);
@@ -218,39 +230,40 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
         return metricsAdded;
     }
 
-    private int getBrokerId(Cluster cluster, PrometheusQueryResult queryResult) throws SamplingException {
+    private int getBrokerId(Cluster cluster, PrometheusQueryResult queryResult) throws
+        InvalidPrometheusResultException {
         String hostPort = queryResult.metric().instance();
         if (hostPort == null) {
-            throw new SamplingException("Instance returned as part of Prometheus API response is null.");
+            throw new InvalidPrometheusResultException("Instance returned as part of Prometheus API response is null.");
         }
         Integer brokerId;
 
         String hostName = hostPort.split(":")[0];
         brokerId = getBrokerIdForHostName(hostName, cluster);
         if (brokerId == null) {
-            throw new SamplingException(String.format(
+            throw new InvalidPrometheusResultException(String.format(
                 "Unexpected host %s, does not map to any broker found from Kafka cluster metadata.", hostName));
         }
         return brokerId;
     }
 
-    private String getTopic(PrometheusQueryResult queryResult) throws SamplingException {
+    private String getTopic(PrometheusQueryResult queryResult) throws InvalidPrometheusResultException {
         String topic = queryResult.metric().topic();
         if (topic == null) {
-            throw new SamplingException("Topic was not returned as part of Prometheus API response.");
+            throw new InvalidPrometheusResultException("Topic was not returned as part of Prometheus API response.");
         }
         return topic;
     }
 
-    private int getPartition(PrometheusQueryResult queryResult) throws SamplingException {
+    private int getPartition(PrometheusQueryResult queryResult) throws InvalidPrometheusResultException {
         String partitionString = queryResult.metric().partition();
         if (partitionString == null) {
-            throw new SamplingException("Partition was not returned as part of Prometheus API response.");
+            throw new InvalidPrometheusResultException("Partition was not returned as part of Prometheus API response.");
         }
         try {
             return Integer.parseInt(partitionString);
         } catch (NumberFormatException e) {
-            throw new SamplingException("Partition returned as part of Prometheus API response was not a number.");
+            throw new InvalidPrometheusResultException("Partition returned as part of Prometheus API response was not a number.");
         }
     }
 }
