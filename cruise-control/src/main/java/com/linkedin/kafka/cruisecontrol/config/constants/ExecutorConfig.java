@@ -202,8 +202,7 @@ public class ExecutorConfig {
    */
   public static final String CONCURRENCY_ADJUSTER_INTERVAL_MS_CONFIG = "concurrency.adjuster.interval.ms";
   public static final long DEFAULT_CONCURRENCY_ADJUSTER_INTERVAL_MS = 360000L;
-  public static final String CONCURRENCY_ADJUSTER_INTERVAL_MS_DOC = "The interval of concurrency auto adjustment for"
-      + " inter-broker partition movements.";
+  public static final String CONCURRENCY_ADJUSTER_INTERVAL_MS_DOC = "The interval of concurrency auto adjustment.";
 
   /**
    * <code>concurrency.adjuster.max.partition.movements.per.broker</code>
@@ -217,12 +216,63 @@ public class ExecutorConfig {
       + "must be greater than num.concurrent.partition.movements.per.broker and not more than max.num.cluster.movements.";
 
   /**
-   * <code>concurrency.adjuster.enabled</code>
+   * <code>concurrency.adjuster.max.leadership.movements</code>
    */
+  public static final String CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_CONFIG = "concurrency.adjuster.max.leadership.movements";
+  public static final int DEFAULT_CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS = 1100;
+  public static final String CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_DOC = "The maximum number of leadership movements "
+      + "the concurrency auto adjustment will allow the executor to perform in one batch to avoid overwhelming the cluster. "
+      + "It cannot be (1) smaller than num.concurrent.leader.movements and (2) greater than max.num.cluster.movements.";
+
+  /**
+   * <code>concurrency.adjuster.min.partition.movements.per.broker</code>
+   */
+  public static final String CONCURRENCY_ADJUSTER_MIN_PARTITION_MOVEMENTS_PER_BROKER_CONFIG =
+      "concurrency.adjuster.min.partition.movements.per.broker";
+  public static final int DEFAULT_CONCURRENCY_ADJUSTER_MIN_PARTITION_MOVEMENTS_PER_BROKER = 1;
+  public static final String CONCURRENCY_ADJUSTER_MIN_PARTITION_MOVEMENTS_PER_BROKER_DOC = "The minimum number of "
+      + "partitions the concurrency auto adjustment will allow the executor to move in or out of a broker at the same time. "
+      + "It enforces a cap on the minimum concurrent inter-broker partition movements to avoid an unacceptable execution pace."
+      + " It cannot be greater than num.concurrent.partition.movements.per.broker.";
+
+  /**
+   * <code>concurrency.adjuster.min.leadership.movements</code>
+   */
+  public static final String CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_CONFIG = "concurrency.adjuster.min.leadership.movements";
+  public static final int DEFAULT_CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS = 100;
+  public static final String CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_DOC = "The minimum number of leadership movements "
+      + "the concurrency auto adjustment will allow the executor to perform in one batch to avoid an unacceptable execution pace."
+      + " It cannot be greater than num.concurrent.leader.movements.";
+
+  /**
+   * <code>concurrency.adjuster.enabled</code>
+   * @deprecated This config will be removed in a future release. Please enable concurrency adjusters individually using:
+   * <ul>
+   *   <li>{@link #CONCURRENCY_ADJUSTER_INTER_BROKER_REPLICA_ENABLED_CONFIG}</li>
+   *   <li>{@link #CONCURRENCY_ADJUSTER_LEADERSHIP_ENABLED_CONFIG}</li>
+   * </ul>
+   */
+  @Deprecated
   public static final String CONCURRENCY_ADJUSTER_ENABLED_CONFIG = "concurrency.adjuster.enabled";
   public static final boolean DEFAULT_CONCURRENCY_ADJUSTER_ENABLED = false;
   public static final String CONCURRENCY_ADJUSTER_ENABLED_DOC = "The flag to indicate whether the concurrency of "
-      + "inter-broker partition movements will be auto-adjusted based on dynamically changing broker metrics.";
+      + "all supported movements will be auto-adjusted based on dynamically changing broker metrics. It enables concurrency adjuster "
+      + "for all supported concurrency types, regardless of whether the particular concurrency type is disabled.";
+
+  /**
+   * <code>concurrency.adjuster.inter.broker.replica.enabled</code>
+   */
+  public static final String CONCURRENCY_ADJUSTER_INTER_BROKER_REPLICA_ENABLED_CONFIG = "concurrency.adjuster.inter.broker.replica.enabled";
+  public static final boolean DEFAULT_CONCURRENCY_ADJUSTER_INTER_BROKER_REPLICA_ENABLED = false;
+  public static final String CONCURRENCY_ADJUSTER_INTER_BROKER_REPLICA_ENABLED_DOC = "Enable concurrency adjuster for "
+      + "inter-broker replica reassignments.";
+
+  /**
+   * <code>concurrency.adjuster.leadership.enabled</code>
+   */
+  public static final String CONCURRENCY_ADJUSTER_LEADERSHIP_ENABLED_CONFIG = "concurrency.adjuster.leadership.enabled";
+  public static final boolean DEFAULT_CONCURRENCY_ADJUSTER_LEADERSHIP_ENABLED = false;
+  public static final String CONCURRENCY_ADJUSTER_LEADERSHIP_ENABLED_DOC = "Enable concurrency adjuster for leadership reassignments.";
 
   /**
    * <code>concurrency.adjuster.limit.log.flush.time.ms</code>
@@ -230,8 +280,8 @@ public class ExecutorConfig {
   public static final String CONCURRENCY_ADJUSTER_LIMIT_LOG_FLUSH_TIME_MS_CONFIG = "concurrency.adjuster.limit.log.flush.time.ms";
   public static final double DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_LOG_FLUSH_TIME_MS = 2000.0;
   public static final String CONCURRENCY_ADJUSTER_LIMIT_LOG_FLUSH_TIME_MS_DOC = "The limit on the 99.9th percentile broker metric"
-      + " value of log flush time. If any broker exceeds this limit during an ongoing inter-broker partition reassignment, the "
-      + "concurrency adjuster (if enabled) attempts to decrease the number of allowed concurrent inter-broker partition movements.";
+      + " value of log flush time. If any broker exceeds this limit during an ongoing reassignment, the relevant concurrency "
+      + "adjuster (if enabled) attempts to decrease the number of allowed concurrent movements.";
 
   /**
    * <code>concurrency.adjuster.limit.follower.fetch.local.time.ms</code>
@@ -240,8 +290,8 @@ public class ExecutorConfig {
       = "concurrency.adjuster.limit.follower.fetch.local.time.ms";
   public static final double DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_FOLLOWER_FETCH_LOCAL_TIME_MS = 500.0;
   public static final String CONCURRENCY_ADJUSTER_LIMIT_FOLLOWER_FETCH_LOCAL_TIME_MS_DOC = "The limit on the 99.9th percentile broker metric"
-      + " value of follower fetch local time. If any broker exceeds this limit during an ongoing inter-broker partition reassignment, the "
-      + "concurrency adjuster (if enabled) attempts to decrease the number of allowed concurrent inter-broker partition movements.";
+      + " value of follower fetch local time. If any broker exceeds this limit during an ongoing reassignment, the relevant concurrency "
+      + "adjuster (if enabled) attempts to decrease the number of allowed concurrent movements.";
 
   /**
    * <code>concurrency.adjuster.limit.produce.local.time.ms</code>
@@ -249,8 +299,8 @@ public class ExecutorConfig {
   public static final String CONCURRENCY_ADJUSTER_LIMIT_PRODUCE_LOCAL_TIME_MS_CONFIG = "concurrency.adjuster.limit.produce.local.time.ms";
   public static final double DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_PRODUCE_LOCAL_TIME_MS = 1000.0;
   public static final String CONCURRENCY_ADJUSTER_LIMIT_PRODUCE_LOCAL_TIME_MS_DOC = "The limit on the 99.9th percentile broker metric"
-      + " value of produce local time. If any broker exceeds this limit during an ongoing inter-broker partition reassignment, the "
-      + "concurrency adjuster (if enabled) attempts to decrease the number of allowed concurrent inter-broker partition movements.";
+      + " value of produce local time. If any broker exceeds this limit during an ongoing reassignment, the relevant concurrency "
+      + "adjuster (if enabled) attempts to decrease the number of allowed concurrent movements.";
 
   /**
    * <code>concurrency.adjuster.limit.consumer.fetch.local.time.ms</code>
@@ -259,8 +309,8 @@ public class ExecutorConfig {
       = "concurrency.adjuster.limit.consumer.fetch.local.time.ms";
   public static final double DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_CONSUMER_FETCH_LOCAL_TIME_MS = 500.0;
   public static final String CONCURRENCY_ADJUSTER_LIMIT_CONSUMER_FETCH_LOCAL_TIME_MS_DOC = "The limit on the 99.9th percentile broker metric"
-      + " value of consumer fetch local time. If any broker exceeds this limit during an ongoing inter-broker partition reassignment, the "
-      + "concurrency adjuster (if enabled) attempts to decrease the number of allowed concurrent inter-broker partition movements.";
+      + " value of consumer fetch local time. If any broker exceeds this limit during an ongoing reassignment, the relevant concurrency "
+      + "adjuster (if enabled) attempts to decrease the number of allowed concurrent movements.";
 
   /**
    * <code>concurrency.adjuster.limit.request.queue.size</code>
@@ -268,8 +318,48 @@ public class ExecutorConfig {
   public static final String CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_CONFIG = "concurrency.adjuster.limit.request.queue.size";
   public static final double DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE = 1000.0;
   public static final String CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_DOC = "The limit on the broker metric value of request "
-      + "queue size. If any broker exceeds this limit during an ongoing inter-broker partition reassignment, the concurrency adjuster"
-      + " (if enabled) attempts to decrease the number of allowed concurrent inter-broker partition movements.";
+      + "queue size. If any broker exceeds this limit during an ongoing reassignment, the relevant concurrency adjuster"
+      + " (if enabled) attempts to decrease the number of allowed concurrent movements.";
+
+  /**
+   * <code>concurrency.adjuster.additive.increase.inter.broker.replica</code>
+   */
+  public static final String CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_INTER_BROKER_REPLICA_CONFIG
+      = "concurrency.adjuster.additive.increase.inter.broker.replica";
+  public static final int DEFAULT_CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_INTER_BROKER_REPLICA = 1;
+  public static final String CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_INTER_BROKER_REPLICA_DOC = "The fixed number by which the "
+      + "concurrency cap on inter-broker replica movements will be increased by the concurrency adjuster (if enabled) when all "
+      + "considered metrics are within the concurrency adjuster limit.";
+
+  /**
+   * <code>concurrency.adjuster.additive.increase.leadership</code>
+   */
+  public static final String CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_LEADERSHIP_CONFIG
+      = "concurrency.adjuster.additive.increase.leadership";
+  public static final int DEFAULT_CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_LEADERSHIP = 100;
+  public static final String CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_LEADERSHIP_DOC = "The fixed number by which the "
+      + "concurrency cap on leadership movements will be increased by the concurrency adjuster (if enabled) when all "
+      + "considered metrics are within the concurrency adjuster limit.";
+
+  /**
+   * <code>concurrency.adjuster.multiplicative.decrease.inter.broker.replica</code>
+   */
+  public static final String CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_INTER_BROKER_REPLICA_CONFIG
+      = "concurrency.adjuster.multiplicative.decrease.inter.broker.replica";
+  public static final int DEFAULT_CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_INTER_BROKER_REPLICA = 2;
+  public static final String CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_INTER_BROKER_REPLICA_DOC = "The fixed number by which the "
+      + "concurrency cap on inter-broker replica movements will be divided by the concurrency adjuster (if enabled) when any "
+      + "considered metric exceeds the concurrency adjuster limit.";
+
+  /**
+   * <code>concurrency.adjuster.multiplicative.decrease.leadership</code>
+   */
+  public static final String CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_LEADERSHIP_CONFIG
+      = "concurrency.adjuster.multiplicative.decrease.leadership";
+  public static final int DEFAULT_CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_LEADERSHIP = 2;
+  public static final String CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_LEADERSHIP_DOC = "The fixed number by which the "
+      + "concurrency cap on leadership movements will be divided by the concurrency adjuster (if enabled) when any "
+      + "considered metric exceeds the concurrency adjuster limit.";
 
   /**
    * <code>min.execution.progress.check.interval.ms</code>
@@ -407,11 +497,39 @@ public class ExecutorConfig {
                             atLeast(1),
                             ConfigDef.Importance.MEDIUM,
                             CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_DOC)
+                    .define(CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_CONFIG,
+                            ConfigDef.Type.INT,
+                            DEFAULT_CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS,
+                            atLeast(1),
+                            ConfigDef.Importance.LOW,
+                            CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_DOC)
+                    .define(CONCURRENCY_ADJUSTER_MIN_PARTITION_MOVEMENTS_PER_BROKER_CONFIG,
+                            ConfigDef.Type.INT,
+                            DEFAULT_CONCURRENCY_ADJUSTER_MIN_PARTITION_MOVEMENTS_PER_BROKER,
+                            atLeast(1),
+                            ConfigDef.Importance.LOW,
+                            CONCURRENCY_ADJUSTER_MIN_PARTITION_MOVEMENTS_PER_BROKER_DOC)
+                    .define(CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_CONFIG,
+                            ConfigDef.Type.INT,
+                            DEFAULT_CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS,
+                            atLeast(1),
+                            ConfigDef.Importance.LOW,
+                            CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_DOC)
                     .define(CONCURRENCY_ADJUSTER_ENABLED_CONFIG,
                             ConfigDef.Type.BOOLEAN,
                             DEFAULT_CONCURRENCY_ADJUSTER_ENABLED,
                             ConfigDef.Importance.HIGH,
                             CONCURRENCY_ADJUSTER_ENABLED_DOC)
+                    .define(CONCURRENCY_ADJUSTER_INTER_BROKER_REPLICA_ENABLED_CONFIG,
+                            ConfigDef.Type.BOOLEAN,
+                            DEFAULT_CONCURRENCY_ADJUSTER_INTER_BROKER_REPLICA_ENABLED,
+                            ConfigDef.Importance.HIGH,
+                            CONCURRENCY_ADJUSTER_INTER_BROKER_REPLICA_ENABLED_DOC)
+                    .define(CONCURRENCY_ADJUSTER_LEADERSHIP_ENABLED_CONFIG,
+                            ConfigDef.Type.BOOLEAN,
+                            DEFAULT_CONCURRENCY_ADJUSTER_LEADERSHIP_ENABLED,
+                            ConfigDef.Importance.HIGH,
+                            CONCURRENCY_ADJUSTER_LEADERSHIP_ENABLED_DOC)
                     .define(CONCURRENCY_ADJUSTER_LIMIT_LOG_FLUSH_TIME_MS_CONFIG,
                             ConfigDef.Type.DOUBLE,
                             DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_LOG_FLUSH_TIME_MS,
@@ -442,6 +560,30 @@ public class ExecutorConfig {
                             atLeast(10.0),
                             ConfigDef.Importance.MEDIUM,
                             CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_DOC)
+                    .define(CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_INTER_BROKER_REPLICA_CONFIG,
+                            ConfigDef.Type.INT,
+                            DEFAULT_CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_INTER_BROKER_REPLICA,
+                            atLeast(1),
+                            ConfigDef.Importance.LOW,
+                            CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_INTER_BROKER_REPLICA_DOC)
+                    .define(CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_LEADERSHIP_CONFIG,
+                            ConfigDef.Type.INT,
+                            DEFAULT_CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_LEADERSHIP,
+                            atLeast(1),
+                            ConfigDef.Importance.LOW,
+                            CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_LEADERSHIP_DOC)
+                    .define(CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_INTER_BROKER_REPLICA_CONFIG,
+                            ConfigDef.Type.INT,
+                            DEFAULT_CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_INTER_BROKER_REPLICA,
+                            atLeast(2),
+                            ConfigDef.Importance.LOW,
+                            CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_INTER_BROKER_REPLICA_DOC)
+                    .define(CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_LEADERSHIP_CONFIG,
+                            ConfigDef.Type.INT,
+                            DEFAULT_CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_LEADERSHIP,
+                            atLeast(2),
+                            ConfigDef.Importance.LOW,
+                            CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_LEADERSHIP_DOC)
                     .define(MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG,
                             ConfigDef.Type.LONG,
                             DEFAULT_MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS,

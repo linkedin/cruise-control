@@ -104,7 +104,7 @@ public class Executor {
   private final AtomicInteger _numExecutionStartedInKafkaAssignerMode;
   private final AtomicInteger _numExecutionStartedInNonKafkaAssignerMode;
   private volatile boolean _isKafkaAssignerMode;
-  private volatile boolean _skipAutoRefreshingConcurrency;
+  private volatile boolean _skipInterBrokerReplicaConcurrencyAdjustment;
   // TODO: Execution history is currently kept in memory, but ideally we should move it to a persistent store.
   private final long _demotionHistoryRetentionTimeMs;
   private final long _removalHistoryRetentionTimeMs;
@@ -115,7 +115,7 @@ public class Executor {
   private final AnomalyDetectorManager _anomalyDetectorManager;
   private final ConcurrencyAdjuster _concurrencyAdjuster;
   private final ScheduledExecutorService _concurrencyAdjusterExecutor;
-  private volatile boolean _concurrencyAdjusterEnabled;
+  private final ConcurrentMap<ConcurrencyType, Boolean> _concurrencyAdjusterEnabled;
   private final long _minExecutionProgressCheckIntervalMs;
   public final long _slowTaskAlertingBackoffTimeMs;
   private final KafkaCruiseControlConfig _config;
@@ -152,7 +152,7 @@ public class Executor {
     _numExecutionStartedInKafkaAssignerMode = new AtomicInteger(0);
     _numExecutionStartedInNonKafkaAssignerMode = new AtomicInteger(0);
     _isKafkaAssignerMode = false;
-    _skipAutoRefreshingConcurrency = false;
+    _skipInterBrokerReplicaConcurrencyAdjustment = false;
     ExecutionUtils.init(config);
     _config = config;
 
@@ -197,7 +197,14 @@ public class Executor {
     _removalHistoryRetentionTimeMs = config.getLong(ExecutorConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG);
     _minExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
     _slowTaskAlertingBackoffTimeMs = config.getLong(ExecutorConfig.SLOW_TASK_ALERTING_BACKOFF_TIME_MS_CONFIG);
-    _concurrencyAdjusterEnabled = config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_ENABLED_CONFIG);
+    _concurrencyAdjusterEnabled = new ConcurrentHashMap<>(ConcurrencyType.cachedValues().size());
+    boolean allEnabled = config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_ENABLED_CONFIG);
+    _concurrencyAdjusterEnabled.put(ConcurrencyType.INTER_BROKER_REPLICA,
+                                    allEnabled || config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_INTER_BROKER_REPLICA_ENABLED_CONFIG));
+    _concurrencyAdjusterEnabled.put(ConcurrencyType.LEADERSHIP,
+                                    allEnabled || config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_LEADERSHIP_ENABLED_CONFIG));
+    // Support for intra-broker replica movement is pending https://github.com/linkedin/cruise-control/issues/1299.
+    _concurrencyAdjusterEnabled.put(ConcurrencyType.INTRA_BROKER_REPLICA, false);
     _concurrencyAdjusterExecutor = Executors.newSingleThreadScheduledExecutor(
         new KafkaCruiseControlThreadFactory(ConcurrencyAdjuster.class.getSimpleName(), true, null));
     long intervalMs = config.getLong(ExecutorConfig.CONCURRENCY_ADJUSTER_INTERVAL_MS_CONFIG);
@@ -298,44 +305,67 @@ public class Executor {
   }
 
   /**
-   * A runnable class to auto-adjust the allowed inter-broker partition reassignment concurrency for ongoing executions
+   * A runnable class to auto-adjust the allowed reassignment concurrency for ongoing executions
    * using selected broker metrics and based on additive-increase/multiplicative-decrease (AIMD) feedback control algorithm.
    * Skips concurrency adjustment for demote operations.
    */
   private class ConcurrencyAdjuster implements Runnable {
-    private final int _maxPartitionMovementsPerBroker;
     private LoadMonitor _loadMonitor;
 
     public ConcurrencyAdjuster() {
-      _maxPartitionMovementsPerBroker = _config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_CONFIG);
       _loadMonitor = null;
     }
 
     /**
-     * Initialize the inter-broker partition reassignment concurrency adjustment with the load monitor and the initially
-     * requested inter-broker partition reassignment concurrency.
+     * Initialize the reassignment concurrency adjustment with the load monitor and the initially requested reassignment concurrency.
      *
      * @param loadMonitor Load monitor.
      * @param requestedInterBrokerPartitionMovementConcurrency The maximum number of concurrent inter-broker partition movements
      *                                                         per broker(if null, use num.concurrent.partition.movements.per.broker).
+     * @param requestedLeadershipMovementConcurrency The maximum number of concurrent leader movements
+     *                                               (if null, use num.concurrent.leader.movements).
      */
-    public synchronized void initAdjustment(LoadMonitor loadMonitor, Integer requestedInterBrokerPartitionMovementConcurrency) {
+    public synchronized void initAdjustment(LoadMonitor loadMonitor,
+                                            Integer requestedInterBrokerPartitionMovementConcurrency,
+                                            Integer requestedLeadershipMovementConcurrency) {
       _loadMonitor = loadMonitor;
       setRequestedInterBrokerPartitionMovementConcurrency(requestedInterBrokerPartitionMovementConcurrency);
+      setRequestedLeadershipMovementConcurrency(requestedLeadershipMovementConcurrency);
     }
 
-    private boolean canRefreshConcurrency() {
-      return _concurrencyAdjusterEnabled && _executorState.state() == ExecutorState.State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS
-             && !_skipAutoRefreshingConcurrency && _loadMonitor != null;
+    private boolean canRefreshConcurrency(ConcurrencyType concurrencyType) {
+      if (!_concurrencyAdjusterEnabled.get(concurrencyType) || _loadMonitor == null) {
+        return false;
+      }
+      switch (concurrencyType) {
+        case LEADERSHIP:
+          return _executorState.state() == LEADER_MOVEMENT_TASK_IN_PROGRESS;
+        case INTER_BROKER_REPLICA:
+          return _executorState.state() == ExecutorState.State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS
+                 && !_skipInterBrokerReplicaConcurrencyAdjustment;
+        default:
+          throw new IllegalArgumentException("Unsupported concurrency type " + concurrencyType + " is provided.");
+      }
     }
 
-    private synchronized void refreshConcurrency() {
-      if (canRefreshConcurrency()) {
+    private synchronized void refreshInterBrokerReplicaConcurrency() {
+      if (canRefreshConcurrency(ConcurrencyType.INTER_BROKER_REPLICA)) {
         Integer recommendedConcurrency = ExecutionUtils.recommendedConcurrency(_loadMonitor.currentBrokerMetricValues(),
                                                                                _executionTaskManager.interBrokerPartitionMovementConcurrency(),
-                                                                               _maxPartitionMovementsPerBroker);
+                                                                               ConcurrencyType.INTER_BROKER_REPLICA);
         if (recommendedConcurrency != null) {
           setRequestedInterBrokerPartitionMovementConcurrency(recommendedConcurrency);
+        }
+      }
+    }
+
+    private synchronized void refreshLeadershipConcurrency() {
+      if (canRefreshConcurrency(ConcurrencyType.LEADERSHIP)) {
+        Integer recommendedConcurrency = ExecutionUtils.recommendedConcurrency(_loadMonitor.currentBrokerMetricValues(),
+                                                                               _executionTaskManager.leadershipMovementConcurrency(),
+                                                                               ConcurrencyType.LEADERSHIP);
+        if (recommendedConcurrency != null) {
+          setRequestedLeadershipMovementConcurrency(recommendedConcurrency);
         }
       }
     }
@@ -343,9 +373,10 @@ public class Executor {
     @Override
     public void run() {
       try {
-        refreshConcurrency();
+        refreshInterBrokerReplicaConcurrency();
+        refreshLeadershipConcurrency();
       } catch (Throwable t) {
-        LOG.warn("Received exception when trying to adjust inter-broker replica reassignment concurrency.", t);
+        LOG.warn("Received exception when trying to adjust reassignment concurrency.", t);
       }
     }
   }
@@ -427,22 +458,18 @@ public class Executor {
    * Enable or disable concurrency adjuster for the given concurrency type in the executor.
    *
    * <ul>
-   *   <li>TODO: Support for concurrency adjusters of {@link ConcurrencyType#LEADERSHIP leadership} and
-   *   {@link ConcurrencyType#INTRA_BROKER_REPLICA intra-broker replica} movements are pending
-   *   <a href="https://github.com/linkedin/cruise-control/issues/1298">#1298</a> and
-   *   <a href="https://github.com/linkedin/cruise-control/issues/1299">#1299</a>.</li>
+   *   <li>TODO: Support for concurrency adjuster of {@link ConcurrencyType#INTRA_BROKER_REPLICA intra-broker replica movement}
+   *   is pending <a href="https://github.com/linkedin/cruise-control/issues/1299">#1299</a>.</li>
    * </ul>
    * @param concurrencyType Type of concurrency for which to enable or disable concurrency adjuster.
    * @param isConcurrencyAdjusterEnabled {@code true} if concurrency adjuster is enabled for the given type, {@code false} otherwise.
    * @return {@code true} if concurrency adjuster was enabled before for the given concurrency type, {@code false} otherwise.
    */
-  public boolean setConcurrencyAdjusterFor(ConcurrencyType concurrencyType, boolean isConcurrencyAdjusterEnabled) {
-    if (concurrencyType != ConcurrencyType.INTER_BROKER_REPLICA) {
+  public Boolean setConcurrencyAdjusterFor(ConcurrencyType concurrencyType, boolean isConcurrencyAdjusterEnabled) {
+    if (concurrencyType != ConcurrencyType.INTER_BROKER_REPLICA && concurrencyType != ConcurrencyType.LEADERSHIP) {
       throw new IllegalArgumentException(String.format("Concurrency adjuster for %s is not yet supported.", concurrencyType));
     }
-    boolean oldValue = _concurrencyAdjusterEnabled;
-    _concurrencyAdjusterEnabled = isConcurrencyAdjusterEnabled;
-    return oldValue;
+    return _concurrencyAdjusterEnabled.put(concurrencyType, isConcurrencyAdjusterEnabled);
   }
 
   /**
@@ -466,8 +493,8 @@ public class Executor {
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
    * @param isKafkaAssignerMode {@code true} if kafka assigner mode, {@code false} otherwise.
-   * @param skipAutoRefreshingConcurrency {@code true} to skip auto refreshing concurrency even if the concurrency adjuster
-   *                                                 is enabled, {@code false} otherwise.
+   * @param skipInterBrokerReplicaConcurrencyAdjustment {@code true} to skip auto adjusting concurrency of inter-broker
+   * replica movements even if the concurrency adjuster is enabled, {@code false} otherwise.
    */
   public synchronized void executeProposals(Collection<ExecutionProposal> proposals,
                                             Set<Integer> unthrottledBrokers,
@@ -482,10 +509,10 @@ public class Executor {
                                             boolean isTriggeredByUserRequest,
                                             String uuid,
                                             boolean isKafkaAssignerMode,
-                                            boolean skipAutoRefreshingConcurrency) throws OngoingExecutionException {
+                                            boolean skipInterBrokerReplicaConcurrencyAdjustment) throws OngoingExecutionException {
     setExecutionMode(isKafkaAssignerMode);
     sanityCheckExecuteProposals(loadMonitor, uuid);
-    _skipAutoRefreshingConcurrency = skipAutoRefreshingConcurrency;
+    _skipInterBrokerReplicaConcurrencyAdjustment = skipInterBrokerReplicaConcurrencyAdjustment;
     try {
       initProposalExecution(proposals, unthrottledBrokers, requestedInterBrokerPartitionMovementConcurrency,
                             requestedIntraBrokerPartitionMovementConcurrency, requestedLeadershipMovementConcurrency,
@@ -528,9 +555,8 @@ public class Executor {
     _executionTaskManager.setExecutionModeForTaskTracker(_isKafkaAssignerMode);
     _executionTaskManager.addExecutionProposals(proposals, brokersToSkipConcurrencyCheck, _metadataClient.refreshMetadata().cluster(),
                                                 replicaMovementStrategy);
-    _concurrencyAdjuster.initAdjustment(loadMonitor, requestedInterBrokerPartitionMovementConcurrency);
+    _concurrencyAdjuster.initAdjustment(loadMonitor, requestedInterBrokerPartitionMovementConcurrency, requestedLeadershipMovementConcurrency);
     setRequestedIntraBrokerPartitionMovementConcurrency(requestedIntraBrokerPartitionMovementConcurrency);
-    setRequestedLeadershipMovementConcurrency(requestedLeadershipMovementConcurrency);
     setRequestedExecutionProgressCheckIntervalMs(requestedExecutionProgressCheckIntervalMs);
   }
 
@@ -563,7 +589,7 @@ public class Executor {
                                                   String uuid) throws OngoingExecutionException {
     setExecutionMode(false);
     sanityCheckExecuteProposals(loadMonitor, uuid);
-    _skipAutoRefreshingConcurrency = true;
+    _skipInterBrokerReplicaConcurrencyAdjustment = true;
     try {
       initProposalExecution(proposals, demotedBrokers, concurrentSwaps, 0, requestedLeadershipMovementConcurrency,
                             requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, isTriggeredByUserRequest, loadMonitor);

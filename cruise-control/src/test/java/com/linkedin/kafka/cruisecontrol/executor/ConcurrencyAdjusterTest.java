@@ -34,7 +34,14 @@ public class ConcurrencyAdjusterTest {
   private static final double MOCK_COMMON_CONCURRENCY_ADJUSTER_LIMIT = 100.0;
   private static final int NUM_BROKERS = 4;
   private static final Random RANDOM = new Random(0xDEADBEEF);
-  private static final int MAX_PARTITION_MOVEMENTS_PER_BROKER = 12;
+  private static final int MOCK_ADDITIVE_INCREASE_INTER_BROKER_REPLICA = 2;
+  private static final int MOCK_ADDITIVE_INCREASE_LEADERSHIP = 50;
+  private static final int MOCK_MD_INTER_BROKER_REPLICA = 2;
+  private static final int MOCK_MD_LEADERSHIP = 3;
+  private static final int MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER = 12;
+  private static final int MOCK_MAX_LEADERSHIP_MOVEMENTS = 1000;
+  private static final int MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER = 1;
+  private static final int MOCK_MIN_LEADERSHIP_MOVEMENTS_CONFIG = 50;
 
   /**
    * Setup the test.
@@ -87,35 +94,95 @@ public class ConcurrencyAdjusterTest {
 
   @Test
   public void testRecommendedConcurrency() {
-    // Verify a recommended increase in concurrency.
+    // 1. Verify a recommended increase in concurrency for different concurrency types.
     List<Map<Short, Double>> metricValueByIdPerBroker = new ArrayList<>(NUM_BROKERS);
     for (int i = 0; i < NUM_BROKERS; i++) {
       metricValueByIdPerBroker.add(populateMetricValues(0));
     }
     Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = createCurrentMetrics(metricValueByIdPerBroker);
-    Integer recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
-                                                                       MAX_PARTITION_MOVEMENTS_PER_BROKER - 3,
-                                                                       MAX_PARTITION_MOVEMENTS_PER_BROKER);
-    assertEquals(MAX_PARTITION_MOVEMENTS_PER_BROKER - 2, recommendedConcurrency.intValue());
 
-    // Verify no change in concurrency due to hitting max limit.
+    // 1.1. Inter-broker replica reassignment (non-capped)
+    int currentMovementConcurrency = MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER - MOCK_ADDITIVE_INCREASE_INTER_BROKER_REPLICA - 1;
+    Integer recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
+                                                                           currentMovementConcurrency,
+                                                                           ConcurrencyType.INTER_BROKER_REPLICA);
+    assertEquals(currentMovementConcurrency + MOCK_ADDITIVE_INCREASE_INTER_BROKER_REPLICA, recommendedConcurrency.intValue());
+
+    // 1.2. Leadership reassignment (non-capped)
+    currentMovementConcurrency = MOCK_MAX_LEADERSHIP_MOVEMENTS - MOCK_ADDITIVE_INCREASE_LEADERSHIP - 1;
     recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
-                                                                   MAX_PARTITION_MOVEMENTS_PER_BROKER,
-                                                                   MAX_PARTITION_MOVEMENTS_PER_BROKER);
+                                                                   currentMovementConcurrency,
+                                                                   ConcurrencyType.LEADERSHIP);
+    assertEquals(currentMovementConcurrency + MOCK_ADDITIVE_INCREASE_LEADERSHIP, recommendedConcurrency.intValue());
+
+    // 1.3. Inter-broker replica reassignment (capped)
+    currentMovementConcurrency = MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER - MOCK_ADDITIVE_INCREASE_INTER_BROKER_REPLICA + 1;
+    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
+                                                                   currentMovementConcurrency,
+                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
+    assertEquals(MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER, recommendedConcurrency.intValue());
+
+    // 1.4. Leadership reassignment (capped)
+    currentMovementConcurrency = MOCK_MAX_LEADERSHIP_MOVEMENTS - MOCK_ADDITIVE_INCREASE_LEADERSHIP + 1;
+    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
+                                                                   currentMovementConcurrency,
+                                                                   ConcurrencyType.LEADERSHIP);
+    assertEquals(MOCK_MAX_LEADERSHIP_MOVEMENTS, recommendedConcurrency.intValue());
+
+    // 2. Verify no change in concurrency due to hitting max limit for different concurrency types.
+    // 2.1. Inter-broker replica reassignment
+    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
+                                                                   MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER,
+                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
     assertNull(recommendedConcurrency);
 
-    // Verify a recommended decrease in concurrency.
+    // 2.2. Leadership reassignment
+    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
+                                                                   MOCK_MAX_LEADERSHIP_MOVEMENTS,
+                                                                   ConcurrencyType.LEADERSHIP);
+    assertNull(recommendedConcurrency);
+
+    // 3. Verify a recommended decrease in concurrency for different concurrency types.
     metricValueByIdPerBroker.add(populateMetricValues(1));
     currentMetrics = createCurrentMetrics(metricValueByIdPerBroker);
+    // 3.1. Inter-broker replica reassignment (non-capped)
     recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
-                                                                   MAX_PARTITION_MOVEMENTS_PER_BROKER,
-                                                                   MAX_PARTITION_MOVEMENTS_PER_BROKER);
-    assertEquals(MAX_PARTITION_MOVEMENTS_PER_BROKER / 2, recommendedConcurrency.intValue());
+                                                                   MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER,
+                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
+    assertEquals(MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER / MOCK_MD_INTER_BROKER_REPLICA, recommendedConcurrency.intValue());
 
-    // Verify no change in concurrency due to hitting lower limit.
+    // 3.2. Leadership reassignment (non-capped)
     recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
-                                                                   1,
-                                                                   MAX_PARTITION_MOVEMENTS_PER_BROKER);
+                                                                   MOCK_MAX_LEADERSHIP_MOVEMENTS,
+                                                                   ConcurrencyType.LEADERSHIP);
+    assertEquals(MOCK_MAX_LEADERSHIP_MOVEMENTS / MOCK_MD_LEADERSHIP, recommendedConcurrency.intValue());
+
+
+    // 3.3. Inter-broker replica reassignment (capped)
+    currentMovementConcurrency = (MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER * MOCK_MD_INTER_BROKER_REPLICA + 1) - 1;
+                                 recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
+                                                                   currentMovementConcurrency,
+                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
+    assertEquals(MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER, recommendedConcurrency.intValue());
+
+    // 3.4. Leadership reassignment (capped)
+    currentMovementConcurrency = (MOCK_MIN_LEADERSHIP_MOVEMENTS_CONFIG * MOCK_MD_LEADERSHIP) - 1;
+    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
+                                                                   currentMovementConcurrency,
+                                                                   ConcurrencyType.LEADERSHIP);
+    assertEquals(MOCK_MIN_LEADERSHIP_MOVEMENTS_CONFIG, recommendedConcurrency.intValue());
+
+    // 4. Verify no change in concurrency due to hitting lower limit.
+    // 4.1. Inter-broker replica reassignment
+    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
+                                                                   MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER,
+                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
+    assertNull(recommendedConcurrency);
+
+    // 4.2. Leadership reassignment
+    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
+                                                                   MOCK_MIN_LEADERSHIP_MOVEMENTS_CONFIG,
+                                                                   ConcurrencyType.LEADERSHIP);
     assertNull(recommendedConcurrency);
   }
 
@@ -160,6 +227,22 @@ public class ConcurrencyAdjusterTest {
                       Double.toString(MOCK_COMMON_CONCURRENCY_ADJUSTER_LIMIT));
     props.setProperty(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_CONFIG,
                       Double.toString(MOCK_COMMON_CONCURRENCY_ADJUSTER_LIMIT));
+    props.setProperty(ExecutorConfig.CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_INTER_BROKER_REPLICA_CONFIG,
+                      Integer.toString(MOCK_ADDITIVE_INCREASE_INTER_BROKER_REPLICA));
+    props.setProperty(ExecutorConfig.CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_LEADERSHIP_CONFIG,
+                      Integer.toString(MOCK_ADDITIVE_INCREASE_LEADERSHIP));
+    props.setProperty(ExecutorConfig.CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_INTER_BROKER_REPLICA_CONFIG,
+                      Integer.toString(MOCK_MD_INTER_BROKER_REPLICA));
+    props.setProperty(ExecutorConfig.CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_LEADERSHIP_CONFIG,
+                      Integer.toString(MOCK_MD_LEADERSHIP));
+    props.setProperty(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_CONFIG,
+                      Integer.toString(MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER));
+    props.setProperty(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_CONFIG,
+                      Integer.toString(MOCK_MAX_LEADERSHIP_MOVEMENTS));
+    props.setProperty(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_PARTITION_MOVEMENTS_PER_BROKER_CONFIG,
+                      Integer.toString(MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER));
+    props.setProperty(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_CONFIG,
+                      Integer.toString(MOCK_MIN_LEADERSHIP_MOVEMENTS_CONFIG));
     return props;
   }
 }
