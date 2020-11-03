@@ -9,21 +9,20 @@ import java.util.Objects;
 
 import com.google.gson.annotations.SerializedName;
 
+/**
+ * Encapsulates the results of the Prometheus API call.
+ */
 public class PrometheusData {
-    @SerializedName("resultType")
-    final private String _resultType;
     @SerializedName("result")
-    final private List<PrometheusQueryResult> _result;
+    private final List<PrometheusQueryResult> _result;
 
-    public PrometheusData(String resultType, List<PrometheusQueryResult> result) {
-        _resultType = resultType;
+    public PrometheusData(List<PrometheusQueryResult> result) {
         _result = result;
     }
 
-    public String resultType() {
-        return _resultType;
-    }
-
+    /**
+     * @return List of query results.
+     */
     public List<PrometheusQueryResult> result() {
         return _result;
     }
@@ -37,12 +36,11 @@ public class PrometheusData {
             return false;
         }
         PrometheusData that = (PrometheusData) o;
-        return Objects.equals(_resultType, that._resultType) &&
-            Objects.equals(_result, that._result);
+        return Objects.equals(_result, that._result);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(_resultType, _result);
+        return Objects.hash(_result);
     }
 }

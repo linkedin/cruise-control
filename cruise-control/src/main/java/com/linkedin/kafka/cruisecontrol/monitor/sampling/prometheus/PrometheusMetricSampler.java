@@ -31,9 +31,23 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model.Promet
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model.PrometheusValue;
 
 import static com.linkedin.cruisecontrol.common.config.ConfigDef.Type.CLASS;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.SEC_TO_MS;
 
 /**
  * Metric sampler that fetches Kafka metrics from a Prometheus server and converts them to samples.
+ *
+ * Required configurations for this class.
+ * <ul>
+ *   <li>{@link #PROMETHEUS_SERVER_ENDPOINT_CONFIG}: The config for the HTTP endpoint of the Prometheus server
+ *   which is to be used as a source for sampling metrics.</li>
+ *   <li>{@link #PROMETHEUS_QUERY_RESOLUTION_STEP_MS_CONFIG}: The config for the resolution of the Prometheus
+ *   query made to the server (default: {@link #DEFAULT_PROMETHEUS_QUERY_RESOLUTION_STEP_MS}).
+ *   If this is set to 30 seconds for a 2 minutes query interval, the query returns with 4 values, which are
+ *   then aggregated into the metric sample.</li>
+ *   <li>{@link #PROMETHEUS_QUERY_SUPPLIER_CONFIG}: The config for the class that supplies the Prometheus queries
+ *   corresponding to Kafka raw metrics (default: {@link #DEFAULT_PROMETHEUS_QUERY_SUPPLIER}). If there are no
+ *   customizations done when configuring Prometheus node exporter, the default class should work fine.</li>
+ * </ul>
  */
 public class PrometheusMetricSampler extends AbstractMetricSampler {
     // Config name visible to tests
@@ -41,8 +55,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
 
     // Config name visible to tests
     static final String PROMETHEUS_QUERY_RESOLUTION_STEP_MS_CONFIG = "prometheus.query.resolution.step.ms";
-    private static final Integer DEFAULT_PROMETHEUS_METRICS_SAMPLING_INTERVAL_MS = 60_000;
-    private static final int MILLIS_IN_SECOND = 1000;
+    private static final Integer DEFAULT_PROMETHEUS_QUERY_RESOLUTION_STEP_MS = 60_000;
 
     // Config name visible to tests
     static final String PROMETHEUS_QUERY_SUPPLIER_CONFIG = "prometheus.query.supplier";
@@ -50,10 +63,11 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
 
     private static final Logger LOG = LoggerFactory.getLogger(PrometheusMetricSampler.class);
 
-    protected Integer _samplingIntervalMs;
+    protected int _samplingIntervalMs;
     protected Map<String, Integer> _hostToBrokerIdMap = new HashMap<>();
     protected PrometheusAdapter _prometheusAdapter;
     protected Map<RawMetricType, String> _metricToPrometheusQueryMap;
+    private CloseableHttpClient _httpClient;
 
     @Override
     public void configure(Map<String, ?> configs) {
@@ -64,7 +78,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
     }
 
     private void configureSamplingInterval(Map<String, ?> configs) {
-        _samplingIntervalMs = DEFAULT_PROMETHEUS_METRICS_SAMPLING_INTERVAL_MS;
+        _samplingIntervalMs = DEFAULT_PROMETHEUS_QUERY_RESOLUTION_STEP_MS;
         if (configs.containsKey(PROMETHEUS_QUERY_RESOLUTION_STEP_MS_CONFIG)) {
             String samplingIntervalMsString = (String) configs.get(PROMETHEUS_QUERY_RESOLUTION_STEP_MS_CONFIG);
             try {
@@ -95,8 +109,8 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
             if (host.getPort() < 0) {
                 throw new IllegalArgumentException();
             }
-            CloseableHttpClient httpClient = HttpClients.createDefault();
-            _prometheusAdapter = new PrometheusAdapter(httpClient, host, _samplingIntervalMs);
+            _httpClient = HttpClients.createDefault();
+            _prometheusAdapter = new PrometheusAdapter(_httpClient, host, _samplingIntervalMs);
         } catch (IllegalArgumentException ex) {
             throw new ConfigException(
                 String.format("Prometheus endpoint URI is malformed, "
@@ -122,8 +136,8 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
     }
 
     @Override
-    public void close() {
-        // do nothing
+    public void close() throws IOException {
+        _httpClient.close();
     }
 
     private Integer getBrokerIdForHostName(String host, Cluster cluster) {
@@ -194,7 +208,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
 
         int metricsAdded = 0;
         for (PrometheusValue value : queryResult.values()) {
-            addMetricForProcessing(new BrokerMetric(metricType, value.epochSeconds() * MILLIS_IN_SECOND,
+            addMetricForProcessing(new BrokerMetric(metricType, value.epochSeconds() * SEC_TO_MS,
                                    brokerId, value.value()));
             metricsAdded++;
         }
@@ -208,7 +222,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
 
         int metricsAdded = 0;
         for (PrometheusValue value : queryResult.values()) {
-            addMetricForProcessing(new TopicMetric(metricType, value.epochSeconds() * MILLIS_IN_SECOND,
+            addMetricForProcessing(new TopicMetric(metricType, value.epochSeconds() * SEC_TO_MS,
                                    brokerId, topic, value.value()));
             metricsAdded++;
         }
@@ -223,7 +237,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
 
         int metricsAdded = 0;
         for (PrometheusValue value : queryResult.values()) {
-            addMetricForProcessing(new PartitionMetric(metricType, value.epochSeconds() * MILLIS_IN_SECOND,
+            addMetricForProcessing(new PartitionMetric(metricType, value.epochSeconds() * SEC_TO_MS,
                                    brokerId, topic, partition, value.value()));
             metricsAdded++;
         }

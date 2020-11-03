@@ -8,21 +8,31 @@ import java.util.Objects;
 
 import com.google.gson.annotations.SerializedName;
 
+/**
+ * Represents the response sent from the Prometheus HTTP API.
+ */
 public class PrometheusResponse {
     @SerializedName("status")
-    final private String _status;
+    private final String _status;
     @SerializedName("data")
-    final private PrometheusData _data;
+    private final PrometheusData _data;
 
     public PrometheusResponse(String status, PrometheusData data) {
         _status = status;
         _data = data;
     }
 
+    /**
+     * @return Status of the API call. Expected to be "success" if call was successful.
+     */
     public String status() {
         return _status;
     }
 
+    /**
+     *
+     * @return Data encapsulating the results from the API call.
+     */
     public PrometheusData data() {
         return _data;
     }

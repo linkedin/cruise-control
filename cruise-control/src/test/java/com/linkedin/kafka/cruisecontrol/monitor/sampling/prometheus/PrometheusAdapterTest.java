@@ -99,10 +99,7 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
         return Arrays.asList(
             new PrometheusQueryResult(
                 new PrometheusMetric(
-                    "kafka_server_BrokerTopicMetrics_OneMinuteRate",
                     "b-1.test-cluster.org:11001",
-                    "jmx",
-                    "BytesOutPerSec",
                     null, null),
                 Arrays.asList(
                     new PrometheusValue(1603301400L, 1024),
@@ -111,10 +108,7 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
             ),
             new PrometheusQueryResult(
                 new PrometheusMetric(
-                    "kafka_server_BrokerTopicMetrics_OneMinuteRate",
                     "b-2.test-cluster.org:11001",
-                    "jmx",
-                    "BytesOutPerSec",
                     null, null),
                 Arrays.asList(
                     new PrometheusValue(1603301400L, 4096),

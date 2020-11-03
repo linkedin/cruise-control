@@ -9,6 +9,9 @@ import java.util.Objects;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.annotations.SerializedName;
 
+/**
+ * Encapsulates the value of a metric at a given instant in time.
+ */
 @JsonAdapter(PrometheusValueDeserializer.class)
 public class PrometheusValue {
     @SerializedName("epochSeconds")
@@ -17,14 +20,21 @@ public class PrometheusValue {
     private final double _value;
 
     public PrometheusValue(final long epochSeconds, final double value) {
-        this._epochSeconds = epochSeconds;
-        this._value = value;
+        _epochSeconds = epochSeconds;
+        _value = value;
     }
 
+    /**
+     * @return The timestamp at which the metric obtained this value,
+     * represented as seconds elapsed since the Unix epoch.
+     */
     public long epochSeconds() {
         return _epochSeconds;
     }
 
+    /**
+     * @return The value of the metric at the given time.
+     */
     public double value() {
         return _value;
     }

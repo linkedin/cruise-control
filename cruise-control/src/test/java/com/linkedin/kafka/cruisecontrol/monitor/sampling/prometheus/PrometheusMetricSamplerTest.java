@@ -340,10 +340,7 @@ public class PrometheusMetricSamplerTest {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
         for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
-                DOMAIN_NAME_PLACEHOLDER,
                 "broker-" + brokerId + ".test-cluster.org:11001",
-                JMX_JOB,
-                METRIC_NAME_PLACEHOLDER,
                 null,
                 null
             ), Arrays.asList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
@@ -355,10 +352,7 @@ public class PrometheusMetricSamplerTest {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
         for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
-                DOMAIN_NAME_PLACEHOLDER,
                 "broker-" + brokerId + ".non-existent-cluster.org:11001",
-                JMX_JOB,
-                METRIC_NAME_PLACEHOLDER,
                 null,
                 null
             ), Arrays.asList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
@@ -370,10 +364,7 @@ public class PrometheusMetricSamplerTest {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
         for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
-                DOMAIN_NAME_PLACEHOLDER,
                 null,
-                JMX_JOB,
-                METRIC_NAME_PLACEHOLDER,
                 null,
                 null
             ), Arrays.asList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
@@ -385,10 +376,7 @@ public class PrometheusMetricSamplerTest {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
         for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
-                DOMAIN_NAME_PLACEHOLDER,
                 "broker-" + brokerId + ".test-cluster.org:11001",
-                JMX_JOB,
-                METRIC_NAME_PLACEHOLDER,
                 TEST_TOPIC,
                 null
             ), Arrays.asList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
@@ -400,10 +388,7 @@ public class PrometheusMetricSamplerTest {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
         for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
-                DOMAIN_NAME_PLACEHOLDER,
                 "broker-" + brokerId + ".test-cluster.org:11001",
-                JMX_JOB,
-                METRIC_NAME_PLACEHOLDER,
                 null,
                 null
             ), Arrays.asList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
@@ -415,10 +400,7 @@ public class PrometheusMetricSamplerTest {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
         for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
-                DOMAIN_NAME_PLACEHOLDER,
                 "broker-" + brokerId + ".test-cluster.org:11001",
-                JMX_JOB,
-                METRIC_NAME_PLACEHOLDER,
                 TEST_TOPIC,
                 null
             ), Arrays.asList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
@@ -430,10 +412,7 @@ public class PrometheusMetricSamplerTest {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
         for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
-                DOMAIN_NAME_PLACEHOLDER,
                 "broker-" + brokerId + ".test-cluster.org:11001",
-                JMX_JOB,
-                METRIC_NAME_PLACEHOLDER,
                 TEST_TOPIC,
                 "non-number"
             ), Arrays.asList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
@@ -446,10 +425,7 @@ public class PrometheusMetricSamplerTest {
         for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             for (int partition = 0; partition < TOTAL_PARTITIONS; partition++) {
                 resultList.add(new PrometheusQueryResult(new PrometheusMetric(
-                    DOMAIN_NAME_PLACEHOLDER,
                     "broker-" + brokerId + ".test-cluster.org:11001",
-                    JMX_JOB,
-                    METRIC_NAME_PLACEHOLDER,
                     TEST_TOPIC,
                     String.valueOf(partition)
                 ), Arrays.asList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));

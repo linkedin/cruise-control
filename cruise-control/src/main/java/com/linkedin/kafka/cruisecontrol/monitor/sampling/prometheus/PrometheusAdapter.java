@@ -10,6 +10,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
@@ -26,22 +27,28 @@ import com.google.gson.Gson;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model.PrometheusQueryResult;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model.PrometheusResponse;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.SEC_TO_MS;
+
 /**
  * This class provides an adapter to make queries to a Prometheus Server to fetch metric values.
  */
 class PrometheusAdapter {
-    private static final int MILLIS_IN_SECOND = 1000;
     private static final Gson GSON = new Gson();
+    private static final String QUERY_RANGE_API_PATH = "/api/v1/query_range";
+    private static final String SUCCESS = "success";
 
     private final CloseableHttpClient _httpClient;
     /* Visible for testing */
     final HttpHost _prometheusEndpoint;
     /* Visible for testing */
-    final Integer _samplingIntervalMs;
+    final int _samplingIntervalMs;
 
     public PrometheusAdapter(CloseableHttpClient httpClient,
                              HttpHost prometheusEndpoint,
-                             Integer samplingIntervalMs) {
+                             int samplingIntervalMs) {
+        if (httpClient == null || prometheusEndpoint == null) {
+            throw new IllegalArgumentException("httpClient or prometheusEndpoint cannot be null.");
+        }
         _httpClient = httpClient;
         _prometheusEndpoint = prometheusEndpoint;
         _samplingIntervalMs = samplingIntervalMs;
@@ -50,14 +57,19 @@ class PrometheusAdapter {
     public List<PrometheusQueryResult> queryMetric(String queryString,
                                                    long startTimeMs,
                                                    long endTimeMs) throws IOException {
-        URI queryUri = URI.create(_prometheusEndpoint.toURI() + "/api/v1/query_range");
+        URI queryUri = URI.create(_prometheusEndpoint.toURI() + QUERY_RANGE_API_PATH);
         HttpPost httpPost = new HttpPost(queryUri);
 
         List<NameValuePair> data = new ArrayList<>();
         data.add(new BasicNameValuePair("query", queryString));
-        data.add(new BasicNameValuePair("start", String.valueOf(startTimeMs / MILLIS_IN_SECOND)));
-        data.add(new BasicNameValuePair("end", String.valueOf(endTimeMs / MILLIS_IN_SECOND)));
-        data.add(new BasicNameValuePair("step", String.valueOf(_samplingIntervalMs / MILLIS_IN_SECOND)));
+        /* "start" and "end" are expected to be unix timestamp in seconds (number of seconds since the Unix epoch).
+         They accept values with a decimal point (up to 64 bits). The samples returned are inclusive of the "end"
+         timestamp provided.
+         */
+        data.add(new BasicNameValuePair("start", String.valueOf((double) startTimeMs / SEC_TO_MS)));
+        data.add(new BasicNameValuePair("end", String.valueOf((double) endTimeMs / SEC_TO_MS)));
+        // step is expected to be in seconds, and accept values with a decimal point (up to 64 bits).
+        data.add(new BasicNameValuePair("step", String.valueOf((double) _samplingIntervalMs / SEC_TO_MS)));
 
         httpPost.setEntity(new UrlEncodedFormEntity(data));
         try (CloseableHttpResponse response = _httpClient.execute(httpPost)) {
@@ -65,7 +77,7 @@ class PrometheusAdapter {
             HttpEntity entity = response.getEntity();
             InputStream content = entity.getContent();
             String responseString = IOUtils.toString(content, StandardCharsets.UTF_8);
-            if (responseCode != 200) {
+            if (responseCode != HttpServletResponse.SC_OK) {
                 throw new IOException(String.format("Received non-success response code on Prometheus API HTTP call,"
                                                     + " response code = %s, response body = %s",
                                                     responseCode, responseString));
@@ -76,7 +88,7 @@ class PrometheusAdapter {
                     "No response received from Prometheus API query, response body = %s", responseString));
             }
 
-            if (!"success".equals(prometheusResponse.status())) {
+            if (!SUCCESS.equals(prometheusResponse.status())) {
                 throw new IOException(String.format(
                     "Prometheus API query was not successful, response body = %s", responseString));
             }
