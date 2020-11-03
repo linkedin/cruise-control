@@ -12,13 +12,10 @@ import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   private static final ConfigDef CONFIG;
   private static final Set<String> CONFIGS = new HashSet<>();
-  private static final Logger LOG = LoggerFactory.getLogger(CruiseControlMetricsReporterConfig.class);
   public static final String PREFIX = "cruise.control.metrics.reporter.";
   // Configurations
   public static final String CRUISE_CONTROL_METRICS_TOPIC_CONFIG = "cruise.control.metrics.topic";
@@ -67,7 +64,7 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   public static final Short DEFAULT_CRUISE_CONTROL_MIN_INSYNC_REPLICAS = -1;
   public static final long DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS = 60000;
   public static final String PRODUCER_ID = "CruiseControlMetricsReporter";
-  public static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS = 30 * 1000;
+  public static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS = 5 * 1000;
   public static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_MAX_BLOCK_MS = 60 * 1000;
   public static final int DEFAULT_CRUISE_CONTROL_METRICS_BATCH_SIZE = 800 * 1000;
   public static final boolean DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_KUBERNETES_MODE = false;
