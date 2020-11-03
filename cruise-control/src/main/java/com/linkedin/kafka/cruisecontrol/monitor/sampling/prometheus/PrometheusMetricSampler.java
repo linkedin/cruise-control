@@ -157,7 +157,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
 
     @Override
     protected int retrieveMetricsForProcessing(MetricSamplerOptions metricSamplerOptions) throws SamplingException {
-        int metricSamplesAdded = 0;
+        int metricsAdded = 0;
         int resultsSkipped = 0;
         for (Map.Entry<RawMetricType, String> metricToQueryEntry : _metricToPrometheusQueryMap.entrySet()) {
             final RawMetricType metricType = metricToQueryEntry.getKey();
@@ -175,13 +175,13 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
                 try {
                     switch (metricType.metricScope()) {
                         case BROKER:
-                            metricSamplesAdded += addBrokerMetrics(metricSamplerOptions.cluster(), metricType, result);
+                            metricsAdded += addBrokerMetrics(metricSamplerOptions.cluster(), metricType, result);
                             break;
                         case TOPIC:
-                            metricSamplesAdded += addTopicMetrics(metricSamplerOptions.cluster(), metricType, result);
+                            metricsAdded += addTopicMetrics(metricSamplerOptions.cluster(), metricType, result);
                             break;
                         case PARTITION:
-                            metricSamplesAdded += addPartitionMetrics(metricSamplerOptions.cluster(), metricType, result);
+                            metricsAdded += addPartitionMetrics(metricSamplerOptions.cluster(), metricType, result);
                             break;
                         default:
                             // Not supported.
@@ -201,21 +201,21 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
                 }
             }
         }
-        LOG.info("Added {} metric samples. Skipped {} invalid query results.", metricSamplesAdded, resultsSkipped);
-        return metricSamplesAdded;
+        LOG.info("Added {} metric values. Skipped {} invalid query results.", metricsAdded, resultsSkipped);
+        return metricsAdded;
     }
 
     private int addBrokerMetrics(Cluster cluster, RawMetricType metricType, PrometheusQueryResult queryResult)
         throws InvalidPrometheusResultException {
         int brokerId = getBrokerId(cluster, queryResult);
 
-        int metricSamplesAdded = 0;
+        int metricsAdded = 0;
         for (PrometheusValue value : queryResult.values()) {
             addMetricForProcessing(new BrokerMetric(metricType, value.epochSeconds() * SEC_TO_MS,
                                    brokerId, value.value()));
-            metricSamplesAdded++;
+            metricsAdded++;
         }
-        return metricSamplesAdded;
+        return metricsAdded;
     }
 
     private int addTopicMetrics(Cluster cluster, RawMetricType metricType, PrometheusQueryResult queryResult)
@@ -223,13 +223,13 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
         int brokerId = getBrokerId(cluster, queryResult);
         String topic = getTopic(queryResult);
 
-        int metricSamplesAdded = 0;
+        int metricsAdded = 0;
         for (PrometheusValue value : queryResult.values()) {
             addMetricForProcessing(new TopicMetric(metricType, value.epochSeconds() * SEC_TO_MS,
                                    brokerId, topic, value.value()));
-            metricSamplesAdded++;
+            metricsAdded++;
         }
-        return metricSamplesAdded;
+        return metricsAdded;
     }
 
     private int addPartitionMetrics(Cluster cluster, RawMetricType metricType, PrometheusQueryResult queryResult)
@@ -238,13 +238,13 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
         String topic = getTopic(queryResult);
         int partition = getPartition(queryResult);
 
-        int metricSamplesAdded = 0;
+        int metricsAdded = 0;
         for (PrometheusValue value : queryResult.values()) {
             addMetricForProcessing(new PartitionMetric(metricType, value.epochSeconds() * SEC_TO_MS,
                                    brokerId, topic, partition, value.value()));
-            metricSamplesAdded++;
+            metricsAdded++;
         }
-        return metricSamplesAdded;
+        return metricsAdded;
     }
 
     private int getBrokerId(Cluster cluster, PrometheusQueryResult queryResult) throws
