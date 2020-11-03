@@ -157,7 +157,8 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
 
     @Override
     protected int retrieveMetricsForProcessing(MetricSamplerOptions metricSamplerOptions) throws SamplingException {
-        int metricsAdded = 0;
+        int metricSamplesAdded = 0;
+        int resultsSkipped = 0;
         for (Map.Entry<RawMetricType, String> metricToQueryEntry : _metricToPrometheusQueryMap.entrySet()) {
             final RawMetricType metricType = metricToQueryEntry.getKey();
             final String prometheusQuery = metricToQueryEntry.getValue();
@@ -174,13 +175,13 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
                 try {
                     switch (metricType.metricScope()) {
                         case BROKER:
-                            metricsAdded += addBrokerMetrics(metricSamplerOptions.cluster(), metricType, result);
+                            metricSamplesAdded += addBrokerMetrics(metricSamplerOptions.cluster(), metricType, result);
                             break;
                         case TOPIC:
-                            metricsAdded += addTopicMetrics(metricSamplerOptions.cluster(), metricType, result);
+                            metricSamplesAdded += addTopicMetrics(metricSamplerOptions.cluster(), metricType, result);
                             break;
                         case PARTITION:
-                            metricsAdded += addPartitionMetrics(metricSamplerOptions.cluster(), metricType, result);
+                            metricSamplesAdded += addPartitionMetrics(metricSamplerOptions.cluster(), metricType, result);
                             break;
                         default:
                             // Not supported.
@@ -193,26 +194,28 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
                     when a Prometheus server store metrics from multiple Kafka clusters, in which case the hostname
                     may not correspond to any of this cluster's broker hosts.
 
-                    This can be really frequent, and hence, it would not make sense to fill the log entries by
-                    logging this repeatedly.
+                    This can be really frequent, and hence, we are only going to log them at trace level.
                      */
+                    LOG.trace("Invalid query result received from Prometheus for query {}", prometheusQuery, e);
+                    resultsSkipped++;
                 }
             }
         }
-        return metricsAdded;
+        LOG.info("Added {} metric samples. Skipped {} invalid query results.", metricSamplesAdded, resultsSkipped);
+        return metricSamplesAdded;
     }
 
     private int addBrokerMetrics(Cluster cluster, RawMetricType metricType, PrometheusQueryResult queryResult)
         throws InvalidPrometheusResultException {
         int brokerId = getBrokerId(cluster, queryResult);
 
-        int metricsAdded = 0;
+        int metricSamplesAdded = 0;
         for (PrometheusValue value : queryResult.values()) {
             addMetricForProcessing(new BrokerMetric(metricType, value.epochSeconds() * SEC_TO_MS,
                                    brokerId, value.value()));
-            metricsAdded++;
+            metricSamplesAdded++;
         }
-        return metricsAdded;
+        return metricSamplesAdded;
     }
 
     private int addTopicMetrics(Cluster cluster, RawMetricType metricType, PrometheusQueryResult queryResult)
@@ -220,13 +223,13 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
         int brokerId = getBrokerId(cluster, queryResult);
         String topic = getTopic(queryResult);
 
-        int metricsAdded = 0;
+        int metricSamplesAdded = 0;
         for (PrometheusValue value : queryResult.values()) {
             addMetricForProcessing(new TopicMetric(metricType, value.epochSeconds() * SEC_TO_MS,
                                    brokerId, topic, value.value()));
-            metricsAdded++;
+            metricSamplesAdded++;
         }
-        return metricsAdded;
+        return metricSamplesAdded;
     }
 
     private int addPartitionMetrics(Cluster cluster, RawMetricType metricType, PrometheusQueryResult queryResult)
@@ -235,13 +238,13 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
         String topic = getTopic(queryResult);
         int partition = getPartition(queryResult);
 
-        int metricsAdded = 0;
+        int metricSamplesAdded = 0;
         for (PrometheusValue value : queryResult.values()) {
             addMetricForProcessing(new PartitionMetric(metricType, value.epochSeconds() * SEC_TO_MS,
                                    brokerId, topic, partition, value.value()));
-            metricsAdded++;
+            metricSamplesAdded++;
         }
-        return metricsAdded;
+        return metricSamplesAdded;
     }
 
     private int getBrokerId(Cluster cluster, PrometheusQueryResult queryResult) throws
@@ -256,7 +259,9 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
         brokerId = getBrokerIdForHostName(hostName, cluster);
         if (brokerId == null) {
             throw new InvalidPrometheusResultException(String.format(
-                "Unexpected host %s, does not map to any broker found from Kafka cluster metadata.", hostName));
+                "Unexpected host %s, does not map to any of broker found from Kafka cluster metadata."
+                    + " Brokers found in Kafka cluster metadata = %s",
+                hostName, _hostToBrokerIdMap.keySet()));
         }
         return brokerId;
     }
