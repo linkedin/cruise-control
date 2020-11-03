@@ -203,54 +203,87 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    *     {@link ExecutorConfig#NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG}</li>
    *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_CONFIG} <=
    *     {@link ExecutorConfig#MAX_NUM_CLUSTER_MOVEMENTS_CONFIG}</li>
+   *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MIN_PARTITION_MOVEMENTS_PER_BROKER_CONFIG} <=
+   *     {@link ExecutorConfig#NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG}</li>
+   *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_CONFIG} <=
+   *     {@link ExecutorConfig#NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG}</li>
+   *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_CONFIG} >
+   *     {@link ExecutorConfig#NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG}</li>
+   *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_CONFIG} <=
+   *     {@link ExecutorConfig#MAX_NUM_CLUSTER_MOVEMENTS_CONFIG}</li>
    *   <li>{@link ExecutorConfig#MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG} <=
    *     {@link ExecutorConfig#EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG}</li>
    * </ul>
    */
-  private void sanityCheckConcurrency() {
+  void sanityCheckConcurrency() {
     int maxClusterPartitionMovementConcurrency = getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
 
     int interBrokerPartitionMovementConcurrency = getInt(ExecutorConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG);
     if (interBrokerPartitionMovementConcurrency >= maxClusterPartitionMovementConcurrency) {
-      throw new ConfigException("Inter-broker partition movement concurrency [" + interBrokerPartitionMovementConcurrency
-                                + "] must be smaller than the maximum number of allowed movements in cluster ["
-                                + maxClusterPartitionMovementConcurrency + "].");
+      throw new ConfigException(String.format("Inter-broker partition movement concurrency [%d] must be smaller than the "
+                                              + "maximum number of allowed movements in cluster [%d].",
+                                              interBrokerPartitionMovementConcurrency, maxClusterPartitionMovementConcurrency));
     }
 
     int intraBrokerPartitionMovementConcurrency = getInt(ExecutorConfig.NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG);
     if (intraBrokerPartitionMovementConcurrency >= maxClusterPartitionMovementConcurrency) {
-      throw new ConfigException("Intra-broker partition movement concurrency [" + intraBrokerPartitionMovementConcurrency
-                                + "] must be smaller than the maximum number of allowed movements in cluster ["
-                                + maxClusterPartitionMovementConcurrency + "].");
+      throw new ConfigException(String.format("Intra-broker partition movement concurrency [%d] must be smaller than the "
+                                              + "maximum number of allowed movements in cluster [%d].",
+                                              intraBrokerPartitionMovementConcurrency, maxClusterPartitionMovementConcurrency));
     }
 
     int leadershipMovementConcurrency = getInt(ExecutorConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
     if (leadershipMovementConcurrency > maxClusterPartitionMovementConcurrency) {
-      throw new ConfigException("Leadership movement concurrency [" + leadershipMovementConcurrency
-                                + "] cannot be greater than the maximum number of allowed movements in cluster ["
-                                + maxClusterPartitionMovementConcurrency + "].");
+      throw new ConfigException(String.format("Leadership movement concurrency [%d] cannot be greater than the maximum number"
+                                              + " of allowed movements in cluster [%d].",
+                                              leadershipMovementConcurrency, maxClusterPartitionMovementConcurrency));
     }
 
     int concurrencyAdjusterMaxPartitionMovementsPerBroker = getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_CONFIG);
     if (interBrokerPartitionMovementConcurrency >= concurrencyAdjusterMaxPartitionMovementsPerBroker) {
-      throw new ConfigException("Inter-broker partition movement concurrency [" + interBrokerPartitionMovementConcurrency
-                                + "] must be smaller than the concurrency adjuster maximum partition movements per broker ["
-                                + concurrencyAdjusterMaxPartitionMovementsPerBroker + "].");
+      throw new ConfigException(String.format("Inter-broker partition movement concurrency [%d] must be smaller than the "
+                                              + "concurrency adjuster maximum partition movements per broker [%d].",
+                                              interBrokerPartitionMovementConcurrency, concurrencyAdjusterMaxPartitionMovementsPerBroker));
     }
 
     if (concurrencyAdjusterMaxPartitionMovementsPerBroker > maxClusterPartitionMovementConcurrency) {
-      throw new ConfigException("Maximum partition movements per broker of concurrency adjuster ["
-                                + concurrencyAdjusterMaxPartitionMovementsPerBroker
-                                + "] cannot be greater than the maximum number of allowed movements in cluster ["
-                                + maxClusterPartitionMovementConcurrency + "].");
+      throw new ConfigException(String.format("Maximum partition movements per broker of concurrency adjuster [%d] cannot"
+                                              + " be greater than the maximum number of allowed movements in cluster [%d].",
+                                              concurrencyAdjusterMaxPartitionMovementsPerBroker, maxClusterPartitionMovementConcurrency));
+    }
+
+    int concurrencyAdjusterMinPartitionMovementsPerBroker = getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_PARTITION_MOVEMENTS_PER_BROKER_CONFIG);
+    if (interBrokerPartitionMovementConcurrency < concurrencyAdjusterMinPartitionMovementsPerBroker) {
+      throw new ConfigException(String.format("Inter-broker partition movement concurrency [%d] cannot be smaller than the"
+                                              + " concurrency adjuster minimum partition movements per broker [%d].",
+                                              interBrokerPartitionMovementConcurrency, concurrencyAdjusterMinPartitionMovementsPerBroker));
+    }
+
+    int concurrencyAdjusterMinLeadershipMovements = getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_CONFIG);
+    if (leadershipMovementConcurrency < concurrencyAdjusterMinLeadershipMovements) {
+      throw new ConfigException(String.format("Leadership movement concurrency [%d] cannot be smaller than the concurrency "
+                                              + "adjuster minimum leadership movements [%d].", leadershipMovementConcurrency,
+                                              concurrencyAdjusterMinLeadershipMovements));
+    }
+
+    int concurrencyAdjusterMaxLeadershipMovements = getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_CONFIG);
+    if (leadershipMovementConcurrency > concurrencyAdjusterMaxLeadershipMovements) {
+      throw new ConfigException(String.format("Leadership movement concurrency [%d] cannot be greater than the concurrency "
+                                              + "adjuster maximum leadership movements [%d].", leadershipMovementConcurrency,
+                                              concurrencyAdjusterMaxLeadershipMovements));
+    }
+
+    if (concurrencyAdjusterMaxLeadershipMovements > maxClusterPartitionMovementConcurrency) {
+      throw new ConfigException(String.format("Maximum leadership movements of concurrency adjuster [%d] cannot be greater "
+                                              + "than the maximum number of allowed movements in cluster [%d].",
+                                              concurrencyAdjusterMaxLeadershipMovements, maxClusterPartitionMovementConcurrency));
     }
     long minExecutionProgressCheckIntervalMs = getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
     long defaultExecutionProgressCheckIntervalMs = getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
     if (minExecutionProgressCheckIntervalMs > defaultExecutionProgressCheckIntervalMs) {
-      throw new ConfigException("Minimum execution progress check interval ["
-                                + minExecutionProgressCheckIntervalMs
-                                + "] cannot be greater than the default execution progress check interval ["
-                                + defaultExecutionProgressCheckIntervalMs + "].");
+      throw new ConfigException(String.format("Minimum execution progress check interval [%d] cannot be greater than the "
+                                              + "default execution progress check interval [%d].",
+                                              minExecutionProgressCheckIntervalMs, defaultExecutionProgressCheckIntervalMs));
     }
   }
 
@@ -262,8 +295,8 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     long leaderMovementTimeoutMs = getLong(ExecutorConfig.LEADER_MOVEMENT_TIMEOUT_MS_CONFIG);
     long taskExecutionAlertingThresholdMs = getLong(ExecutorConfig.TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG);
     if (taskExecutionAlertingThresholdMs >= leaderMovementTimeoutMs) {
-      throw new ConfigException("Task execution time alerting threshold [" + taskExecutionAlertingThresholdMs
-                                + "ms] cannot be greater than leader movement timeout [" + leaderMovementTimeoutMs + "ms].");
+      throw new ConfigException(String.format("Task execution time alerting threshold [%dms] cannot be greater than leader movement"
+                                              + " timeout [%sms].", taskExecutionAlertingThresholdMs, leaderMovementTimeoutMs));
     }
   }
 

@@ -615,8 +615,8 @@ public class KafkaCruiseControl {
    *                            when executing proposals (if null, no throttling is applied).
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
-   * @param skipAutoRefreshingConcurrency {@code true} to skip auto refreshing concurrency even if the concurrency adjuster
-   *                                                 is enabled, {@code false} otherwise.
+   * @param skipInterBrokerReplicaConcurrencyAdjustment {@code true} to skip auto adjusting concurrency of inter-broker
+   * replica movements even if the concurrency adjuster is enabled, {@code false} otherwise.
    */
   public void executeProposals(Set<ExecutionProposal> proposals,
                                Set<Integer> unthrottledBrokers,
@@ -629,12 +629,13 @@ public class KafkaCruiseControl {
                                Long replicationThrottle,
                                boolean isTriggeredByUserRequest,
                                String uuid,
-                               boolean skipAutoRefreshingConcurrency) throws OngoingExecutionException {
+                               boolean skipInterBrokerReplicaConcurrencyAdjustment) throws OngoingExecutionException {
     if (hasProposalsToExecute(proposals, uuid)) {
       _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor,
                                  concurrentInterBrokerPartitionMovements, concurrentIntraBrokerPartitionMovements,
                                  concurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy,
-                                 replicationThrottle, isTriggeredByUserRequest, uuid, isKafkaAssignerMode, skipAutoRefreshingConcurrency);
+                                 replicationThrottle, isTriggeredByUserRequest, uuid, isKafkaAssignerMode,
+                                 skipInterBrokerReplicaConcurrencyAdjustment);
     } else {
       failGeneratingProposalsForExecution(uuid);
     }
