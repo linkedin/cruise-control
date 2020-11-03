@@ -60,9 +60,6 @@ public class PrometheusMetricSamplerTest {
     private static final int TOTAL_BROKERS = 3;
     private static final int TOTAL_PARTITIONS = 3;
 
-    private static final String DOMAIN_NAME_PLACEHOLDER = "__name_placeholder__";
-    private static final String JMX_JOB = "jmx";
-    private static final String METRIC_NAME_PLACEHOLDER = "MetricNamePlaceholder";
     private static final String TEST_TOPIC = "test-topic";
 
     private PrometheusMetricSampler _prometheusMetricSampler;
