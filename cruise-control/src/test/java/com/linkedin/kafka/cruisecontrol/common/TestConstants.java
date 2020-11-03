@@ -92,7 +92,7 @@ public final class TestConstants {
 
   private static final int NUM_SNAPSHOTS = 2;
   // Cluster properties to be used as a base. Any changes specified in modified properties will be applied to this.
-  public final static Map<ClusterProperty, Number> BASE_PROPERTIES;
+  public static final Map<ClusterProperty, Number> BASE_PROPERTIES;
 
   static {
     Map<ClusterProperty, Number> properties = new HashMap<>();
@@ -113,8 +113,8 @@ public final class TestConstants {
   }
 
   // Broker and disk capacity (homogeneous cluster is assumed).
-  public final static Map<Resource, Double> BROKER_CAPACITY;
-  public final static Map<String, Double> DISK_CAPACITY;
+  public static final Map<Resource, Double> BROKER_CAPACITY;
+  public static final Map<String, Double> DISK_CAPACITY;
   public static final String LOGDIR0 = "/mnt/i00";
   public static final String LOGDIR1 = "/mnt/i01";
 

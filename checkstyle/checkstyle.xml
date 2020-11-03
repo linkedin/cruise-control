@@ -86,7 +86,10 @@ LinkedIn Java style.
         <module name="StringLiteralEquality"/>
         <!-- Use 'L' with long literals -->
         <module name="UpperEll"/>
-
+        <!-- The order of modifiers must conform to JLS suggestions -->
+        <module name="ModifierOrder"/>
+        <!-- The JLS discourages the use redundant modifiers -->
+        <module name="RedundantModifier"/>
         <!-- IMPORTS -->
 
         <!-- No imports statements using '*' notation except static imports -->

@@ -270,7 +270,7 @@ public class PreferredLeaderElectionGoalTest {
     }
   }
 
-  static private class ClusterModelAndInfo {
+  private static class ClusterModelAndInfo {
     ClusterModel _clusterModel;
     Cluster _clusterInfo;
 

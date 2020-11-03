@@ -561,7 +561,7 @@ public class UserTaskManager implements Closeable {
     return _sessionKeyToUserTaskIdMap.size();
   }
 
-  static public class SessionKey {
+  public static class SessionKey {
     private final HttpSession _httpSession;
     private final String _requestUrl;
     private final Map<String, Set<String>> _queryParams;
