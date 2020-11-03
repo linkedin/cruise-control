@@ -34,8 +34,12 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.SEC_TO_MS
  */
 class PrometheusAdapter {
     private static final Gson GSON = new Gson();
-    private static final String QUERY_RANGE_API_PATH = "/api/v1/query_range";
-    private static final String SUCCESS = "success";
+    static final String QUERY_RANGE_API_PATH = "/api/v1/query_range";
+    static final String SUCCESS = "success";
+    private static final String QUERY = "query";
+    private static final String START = "start";
+    private static final String END = "end";
+    private static final String STEP = "step";
 
     private final CloseableHttpClient _httpClient;
     /* Visible for testing */
@@ -61,15 +65,15 @@ class PrometheusAdapter {
         HttpPost httpPost = new HttpPost(queryUri);
 
         List<NameValuePair> data = new ArrayList<>();
-        data.add(new BasicNameValuePair("query", queryString));
+        data.add(new BasicNameValuePair(QUERY, queryString));
         /* "start" and "end" are expected to be unix timestamp in seconds (number of seconds since the Unix epoch).
          They accept values with a decimal point (up to 64 bits). The samples returned are inclusive of the "end"
          timestamp provided.
          */
-        data.add(new BasicNameValuePair("start", String.valueOf((double) startTimeMs / SEC_TO_MS)));
-        data.add(new BasicNameValuePair("end", String.valueOf((double) endTimeMs / SEC_TO_MS)));
+        data.add(new BasicNameValuePair(START, String.valueOf((double) startTimeMs / SEC_TO_MS)));
+        data.add(new BasicNameValuePair(END, String.valueOf((double) endTimeMs / SEC_TO_MS)));
         // step is expected to be in seconds, and accept values with a decimal point (up to 64 bits).
-        data.add(new BasicNameValuePair("step", String.valueOf((double) _samplingIntervalMs / SEC_TO_MS)));
+        data.add(new BasicNameValuePair(STEP, String.valueOf((double) _samplingIntervalMs / SEC_TO_MS)));
 
         httpPost.setEntity(new UrlEncodedFormEntity(data));
         try (CloseableHttpResponse response = _httpClient.execute(httpPost)) {

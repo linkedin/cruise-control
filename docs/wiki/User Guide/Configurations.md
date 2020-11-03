@@ -10,6 +10,7 @@
     - [Configurations under development and testing](#configurations-under-development-and-testing)
 - [Configurations of pluggable classes](#configurations-of-pluggable-classes)
     - [CruiseControlMetricsReporterSampler configurations](#cruisecontrolmetricsreportersampler-configurations)
+    - [PrometheusMetricSampler configurations](#prometheusmetricsampler-configurations)
     - [KafkaSampleStore configurations](#kafkasamplestore-configurations)
     - [MaintenanceEventTopicReader configurations](#maintenanceeventtopicreader-configurations)
     - [BrokerCapacityConfigurationFileResolver configurations](#brokercapacityconfigurationfileresolver-configurations)
@@ -233,8 +234,8 @@ We are still trying to improve cruise control. And following are some configurat
 | metric.reporter.sampler.group.id          | String | N         | 60,000                                                     | The consumer group id to use for the consumers to consume from the Kafka cluster.                                                        |
 
 ### PrometheusMetricSampler configurations
-| Name                                 | Type    | Required? | Default Value | Description                                                                                                                                                                                                |
-|-------------------------------------------|--------|-----------|------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
+| Name                                 | Type    | Required? | Default Value                                                                               | Description                                                                                                                                                                                                |
+|--------------------------------------|---------|-----------|---------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | prometheus.server.endpoint           | String  | Y         |                                                                                             | The HTTP endpoint of the Prometheus server which is to be used as a source for sampling metrics.                                                                                                           |
 | prometheus.query.resolution.step.ms  | Integer | N         | 60,000                                                                                      | The resolution of the Prometheus query made to the server. If this is set to 30 seconds for a 2 minutes query interval, the query returns with 4 values, which are then aggregated into the metric sample. |
 | prometheus.query.supplier            | Class   | N         | com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.DefaultPrometheusQuerySupplier | The class that supplies the Prometheus queries corresponding to Kafka raw metrics. If there are no customizations done when configuring Prometheus node exporter, the default class should work fine.      |

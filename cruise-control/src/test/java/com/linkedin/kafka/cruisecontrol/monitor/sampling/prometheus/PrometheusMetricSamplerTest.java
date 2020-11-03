@@ -120,7 +120,11 @@ public class PrometheusMetricSamplerTest {
             .andThrow(new IOException("Exception in fetching metrics"));
 
         replay(_prometheusAdapter);
-        _prometheusMetricSampler.getSamples(metricSamplerOptions);
+        try {
+            _prometheusMetricSampler.getSamples(metricSamplerOptions);
+        } finally {
+            verify(_prometheusAdapter);
+        }
     }
 
     @Test
@@ -161,7 +165,7 @@ public class PrometheusMetricSamplerTest {
         _prometheusMetricSampler.configure(config);
     }
 
-    private MetricSamplerOptions buildMetricSamplerOptions() {
+    private static MetricSamplerOptions buildMetricSamplerOptions() {
         return new MetricSamplerOptions(
             generateCluster(),
             generatePartitions(),
@@ -202,7 +206,7 @@ public class PrometheusMetricSamplerTest {
         config.put(PROMETHEUS_QUERY_RESOLUTION_STEP_MS_CONFIG, "5000");
         addCapacityConfig(config);
         _prometheusMetricSampler.configure(config);
-        assertEquals(5000, (long) _prometheusMetricSampler._prometheusAdapter._samplingIntervalMs);
+        assertEquals(5000, _prometheusMetricSampler._prometheusAdapter._samplingIntervalMs);
     }
 
     @Test(expected = ConfigException.class)
@@ -333,91 +337,91 @@ public class PrometheusMetricSamplerTest {
         }
     }
 
-    private List<PrometheusQueryResult> buildBrokerResults() {
+    private static List<PrometheusQueryResult> buildBrokerResults() {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
         for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
                 "broker-" + brokerId + ".test-cluster.org:11001",
                 null,
                 null
-            ), Arrays.asList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
+            ), Collections.singletonList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
         }
         return resultList;
     }
 
-    private List<PrometheusQueryResult> buildBrokerResultsWithBadHostname() {
+    private static List<PrometheusQueryResult> buildBrokerResultsWithBadHostname() {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
         for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
                 "broker-" + brokerId + ".non-existent-cluster.org:11001",
                 null,
                 null
-            ), Arrays.asList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
+            ), Collections.singletonList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
         }
         return resultList;
     }
 
-    private List<PrometheusQueryResult> buildBrokerResultsWithNullHostPort() {
+    private static List<PrometheusQueryResult> buildBrokerResultsWithNullHostPort() {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
         for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
                 null,
                 null,
                 null
-            ), Arrays.asList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
+            ), Collections.singletonList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
         }
         return resultList;
     }
 
-    private List<PrometheusQueryResult> buildTopicResults() {
+    private static List<PrometheusQueryResult> buildTopicResults() {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
         for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
                 "broker-" + brokerId + ".test-cluster.org:11001",
                 TEST_TOPIC,
                 null
-            ), Arrays.asList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
+            ), Collections.singletonList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
         }
         return resultList;
     }
 
-    private List<PrometheusQueryResult> buildTopicResultsWithNullTopic() {
+    private static List<PrometheusQueryResult> buildTopicResultsWithNullTopic() {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
         for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
                 "broker-" + brokerId + ".test-cluster.org:11001",
                 null,
                 null
-            ), Arrays.asList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
+            ), Collections.singletonList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
         }
         return resultList;
     }
 
-    private List<PrometheusQueryResult> buildPartitionResultsWithNullPartition() {
+    private static List<PrometheusQueryResult> buildPartitionResultsWithNullPartition() {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
         for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
                 "broker-" + brokerId + ".test-cluster.org:11001",
                 TEST_TOPIC,
                 null
-            ), Arrays.asList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
+            ), Collections.singletonList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
         }
         return resultList;
     }
 
-    private List<PrometheusQueryResult> buildPartitionResultsWithMalformedPartition() {
+    private static List<PrometheusQueryResult> buildPartitionResultsWithMalformedPartition() {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
         for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
                 "broker-" + brokerId + ".test-cluster.org:11001",
                 TEST_TOPIC,
                 "non-number"
-            ), Arrays.asList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
+            ), Collections.singletonList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
         }
         return resultList;
     }
 
-    private List<PrometheusQueryResult> buildPartitionResults() {
+    private static List<PrometheusQueryResult> buildPartitionResults() {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
         for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             for (int partition = 0; partition < TOTAL_PARTITIONS; partition++) {
@@ -425,7 +429,7 @@ public class PrometheusMetricSamplerTest {
                     "broker-" + brokerId + ".test-cluster.org:11001",
                     TEST_TOPIC,
                     String.valueOf(partition)
-                ), Arrays.asList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
+                ), Collections.singletonList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
             }
         }
         return resultList;
@@ -456,7 +460,7 @@ public class PrometheusMetricSamplerTest {
         brokerCapacityConfigResolver.configure(config);
     }
 
-    private Set<TopicPartition> generatePartitions() {
+    private static Set<TopicPartition> generatePartitions() {
         Set<TopicPartition> set = new HashSet<>();
         for (int partition = 0; partition < TOTAL_PARTITIONS; partition++) {
             TopicPartition topicPartition = new TopicPartition(TEST_TOPIC, partition);
@@ -465,7 +469,7 @@ public class PrometheusMetricSamplerTest {
         return set;
     }
 
-    private Cluster generateCluster() {
+    private static Cluster generateCluster() {
         Node[] allNodes = new Node[TOTAL_BROKERS];
         Set<PartitionInfo> partitionInfo = new HashSet<>(TOTAL_BROKERS);
         for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
