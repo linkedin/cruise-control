@@ -350,10 +350,9 @@ public class Executor {
 
     private synchronized void refreshInterBrokerReplicaConcurrency() {
       if (canRefreshConcurrency(ConcurrencyType.INTER_BROKER_REPLICA)) {
-        Integer recommendedConcurrency
-            = ExecutionUtils.recommendedConcurrency(_loadMonitor.currentBrokerMetricValues(),
-                                                    _executionTaskManager.interBrokerPartitionMovementConcurrency(),
-                                                    ConcurrencyType.INTER_BROKER_REPLICA);
+        Integer recommendedConcurrency = ExecutionUtils.recommendedConcurrency(_loadMonitor.currentBrokerMetricValues(),
+                                                                               _executionTaskManager.interBrokerPartitionMovementConcurrency(),
+                                                                               ConcurrencyType.INTER_BROKER_REPLICA);
         if (recommendedConcurrency != null) {
           setRequestedInterBrokerPartitionMovementConcurrency(recommendedConcurrency);
         }
@@ -362,10 +361,9 @@ public class Executor {
 
     private synchronized void refreshLeadershipConcurrency() {
       if (canRefreshConcurrency(ConcurrencyType.LEADERSHIP)) {
-        Integer recommendedConcurrency
-            = ExecutionUtils.recommendedConcurrency(_loadMonitor.currentBrokerMetricValues(),
-                                                    _executionTaskManager.leadershipMovementConcurrency(),
-                                                    ConcurrencyType.LEADERSHIP);
+        Integer recommendedConcurrency = ExecutionUtils.recommendedConcurrency(_loadMonitor.currentBrokerMetricValues(),
+                                                                               _executionTaskManager.leadershipMovementConcurrency(),
+                                                                               ConcurrencyType.LEADERSHIP);
         if (recommendedConcurrency != null) {
           setRequestedLeadershipMovementConcurrency(recommendedConcurrency);
         }

@@ -13,12 +13,14 @@ import static org.junit.Assert.assertThrows;
 
 
 public class ConcurrencyConfigTest {
+  private static final String GET_INT_METHOD = "getInt";
+  private static final String GET_LONG_METHOD = "getLong";
 
   @Test
   public void testNumConcurrentPartitionMovementsPerBrokerNotSmallerThanMaxNumClusterMovements() {
     KafkaCruiseControlConfig config = EasyMock.partialMockBuilder(KafkaCruiseControlConfig.class)
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
                                               .createNiceMock();
     EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
@@ -33,9 +35,9 @@ public class ConcurrencyConfigTest {
   @Test
   public void testNumConcurrentIntraBrokerPartitionMovementsNotSmallerThanMaxNumClusterMovements() {
     KafkaCruiseControlConfig config = EasyMock.partialMockBuilder(KafkaCruiseControlConfig.class)
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
                                               .createNiceMock();
     EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
@@ -52,10 +54,10 @@ public class ConcurrencyConfigTest {
   @Test
   public void testNumConcurrentLeaderMovementsGreaterThanMaxNumClusterMovements() {
     KafkaCruiseControlConfig config = EasyMock.partialMockBuilder(KafkaCruiseControlConfig.class)
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
                                               .createNiceMock();
     EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
@@ -74,11 +76,11 @@ public class ConcurrencyConfigTest {
   @Test
   public void testNumConcurrentPartitionMovementsPerBrokerNotSmallerThanConcurrencyAdjusterMaxPartitionMovementsPerBroker() {
     KafkaCruiseControlConfig config = EasyMock.partialMockBuilder(KafkaCruiseControlConfig.class)
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
                                               .createNiceMock();
     EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
@@ -99,11 +101,11 @@ public class ConcurrencyConfigTest {
   @Test
   public void testConcurrencyAdjusterMaxPartitionMovementsPerBrokerGreaterThanMaxNumClusterMovements() {
     KafkaCruiseControlConfig config = EasyMock.partialMockBuilder(KafkaCruiseControlConfig.class)
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
                                               .createNiceMock();
     EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
@@ -124,12 +126,12 @@ public class ConcurrencyConfigTest {
   @Test
   public void testConcurrencyAdjusterMinPartitionMovementsPerBrokerGreaterThanNumConcurrentPartitionMovementsPerBroker() {
     KafkaCruiseControlConfig config = EasyMock.partialMockBuilder(KafkaCruiseControlConfig.class)
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
                                               .createNiceMock();
     EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
@@ -152,13 +154,13 @@ public class ConcurrencyConfigTest {
   @Test
   public void testConcurrencyAdjusterMinLeadershipMovementsGreaterThanNumConcurrentLeaderMovements() {
     KafkaCruiseControlConfig config = EasyMock.partialMockBuilder(KafkaCruiseControlConfig.class)
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
                                               .createNiceMock();
     EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
@@ -183,14 +185,14 @@ public class ConcurrencyConfigTest {
   @Test
   public void testConcurrencyAdjusterMaxLeadershipMovementsSmallerThanNumConcurrentLeaderMovements() {
     KafkaCruiseControlConfig config = EasyMock.partialMockBuilder(KafkaCruiseControlConfig.class)
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
                                               .createNiceMock();
     EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
@@ -217,14 +219,14 @@ public class ConcurrencyConfigTest {
   @Test
   public void testConcurrencyAdjusterMaxLeadershipMovementsGreaterThanMaxNumClusterMovements() {
     KafkaCruiseControlConfig config = EasyMock.partialMockBuilder(KafkaCruiseControlConfig.class)
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
                                               .createNiceMock();
     EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
@@ -251,16 +253,16 @@ public class ConcurrencyConfigTest {
   @Test
   public void testMinExecutionProgressCheckIntervalMsGreaterThanExecutionProgressCheckIntervalMs() {
     KafkaCruiseControlConfig config = EasyMock.partialMockBuilder(KafkaCruiseControlConfig.class)
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getInt")
-                                              .addMockedMethod("getLong")
-                                              .addMockedMethod("getLong")
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_INT_METHOD)
+                                              .addMockedMethod(GET_LONG_METHOD)
+                                              .addMockedMethod(GET_LONG_METHOD)
                                               .createNiceMock();
     EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
