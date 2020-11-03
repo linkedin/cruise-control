@@ -7,7 +7,7 @@ jobs:
       _JAVA_OPTIONS: "-Xms512m -Xmx1g"
     working_directory: ~/workspace
     docker:
-      - image: circleci/openjdk:8-jdk
+      - image: circleci/openjdk:11-jdk
     steps:
       - checkout
       - restore_cache:
@@ -37,7 +37,7 @@ jobs:
   publish:
     working_directory: ~/workspace
     docker:
-      - image: circleci/openjdk:8-jdk
+      - image: circleci/openjdk:11-jdk
     steps:
       - checkout
       - restore_cache:
