@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaTopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.DefaultMetricSamplerPartitionAssignor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
+import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.common.config.ConfigDef;
 
@@ -71,7 +72,7 @@ public class MonitorConfig {
    * <code>connections.max.idle.ms</code>
    */
   public static final String CONNECTIONS_MAX_IDLE_MS_CONFIG = CommonClientConfigs.CONNECTIONS_MAX_IDLE_MS_CONFIG;
-  public static final long DEFAULT_CONNECTIONS_MAX_IDLE_MS = 9 * 60 * 1000;
+  public static final long DEFAULT_CONNECTIONS_MAX_IDLE_MS = TimeUnit.MINUTES.toMillis(9);
   public static final String CONNECTIONS_MAX_IDLE_MS_DOC = CommonClientConfigs.CONNECTIONS_MAX_IDLE_MS_DOC;
 
   /**
@@ -85,14 +86,14 @@ public class MonitorConfig {
    * <code>request.timeout.ms</code>
    */
   public static final String REQUEST_TIMEOUT_MS_CONFIG = CommonClientConfigs.REQUEST_TIMEOUT_MS_CONFIG;
-  public static final int DEFAULT_REQUEST_TIMEOUT_MS = 30000;
+  public static final int DEFAULT_REQUEST_TIMEOUT_MS = (int) TimeUnit.SECONDS.toMillis(30);
   public static final String REQUEST_TIMEOUT_MS_DOC = CommonClientConfigs.REQUEST_TIMEOUT_MS_DOC;
 
   /**
    * <code>partition.metrics.windows.ms</code>
    */
   public static final String PARTITION_METRICS_WINDOW_MS_CONFIG = "partition.metrics.window.ms";
-  public static final long DEFAULT_PARTITION_METRICS_WINDOW_MS = 60 * 60 * 1000;
+  public static final long DEFAULT_PARTITION_METRICS_WINDOW_MS = TimeUnit.HOURS.toMillis(1);
   public static final String PARTITION_METRICS_WINDOW_MS_DOC = "The size of the window in milliseconds to aggregate "
       + "the Kafka partition metrics.";
 
@@ -153,7 +154,7 @@ public class MonitorConfig {
    * <code>broker.metrics.window.ms</code>
    */
   public static final String BROKER_METRICS_WINDOW_MS_CONFIG = "broker.metrics.window.ms";
-  public static final long DEFAULT_BROKER_METRICS_WINDOW_MS = 60 * 60 * 1000;
+  public static final long DEFAULT_BROKER_METRICS_WINDOW_MS = TimeUnit.HOURS.toMillis(1);
   public static final String BROKER_METRICS_WINDOW_MS_DOC = "The size of the window in milliseconds to aggregate the"
       + " Kafka broker metrics.";
 
@@ -221,7 +222,7 @@ public class MonitorConfig {
    * <code>metric.sampling.interval.ms</code>
    */
   public static final String METRIC_SAMPLING_INTERVAL_MS_CONFIG = "metric.sampling.interval.ms";
-  public static final long DEFAULT_METRIC_SAMPLING_INTERVAL_MS = 60000L;
+  public static final long DEFAULT_METRIC_SAMPLING_INTERVAL_MS = TimeUnit.MINUTES.toMillis(1);
   public static final String METRIC_SAMPLING_INTERVAL_MS_DOC = "The interval of metric sampling.";
 
   /**
@@ -333,7 +334,7 @@ public class MonitorConfig {
    * <code>monitor.state.update.interval.ms</code>
    */
   public static final String MONITOR_STATE_UPDATE_INTERVAL_MS_CONFIG = "monitor.state.update.interval.ms";
-  public static final long DEFAULT_MONITOR_STATE_UPDATE_INTERVAL_MS = 30000L;
+  public static final long DEFAULT_MONITOR_STATE_UPDATE_INTERVAL_MS = TimeUnit.SECONDS.toMillis(30);
   public static final String MONITOR_STATE_UPDATE_INTERVAL_MS_DOC = "The load monitor interval to refresh the monitor state.";
 
   /**

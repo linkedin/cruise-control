@@ -66,8 +66,8 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
   public static final String TOPIC_REPLICATION_FACTOR_MARGIN_CONFIG = "topic.replication.factor.margin";
   public static final short DEFAULT_TOPIC_REPLICATION_FACTOR_MARGIN = 1;
   public static final String TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS_CONFIG = "topic.min.isr.record.retention.time.ms";
-  public static final long DEFAULT_TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS = 12 * 60 * 60 * 1000;
-  public static final long DESCRIBE_TOPIC_CONFIG_TIMEOUT_MS = 100000L;
+  public static final long DEFAULT_TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS = TimeUnit.HOURS.toMillis(12);
+  public static final long DESCRIBE_TOPIC_CONFIG_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(100);
   private KafkaCruiseControl _kafkaCruiseControl;
   private short _targetReplicationFactor;
   private Pattern _topicExcludedFromCheck;

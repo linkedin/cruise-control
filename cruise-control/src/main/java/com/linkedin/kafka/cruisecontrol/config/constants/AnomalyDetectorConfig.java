@@ -19,6 +19,7 @@ import com.linkedin.kafka.cruisecontrol.detector.notifier.NoopNotifier;
 import java.util.Collections;
 import java.util.List;
 import java.util.StringJoiner;
+import java.util.concurrent.TimeUnit;
 import org.apache.kafka.common.config.ConfigDef;
 
 import static org.apache.kafka.common.config.ConfigDef.Range.between;
@@ -147,7 +148,7 @@ public class AnomalyDetectorConfig {
    * <code>anomaly.detection.interval.ms</code>
    */
   public static final String ANOMALY_DETECTION_INTERVAL_MS_CONFIG = "anomaly.detection.interval.ms";
-  public static final long DEFAULT_ANOMALY_DETECTION_INTERVAL_MS = 300000L;
+  public static final long DEFAULT_ANOMALY_DETECTION_INTERVAL_MS = TimeUnit.MINUTES.toMillis(5);
   public static final String ANOMALY_DETECTION_INTERVAL_MS_DOC = "The interval in millisecond that the detectors will "
       + "run to detect the anomalies.";
 
@@ -182,7 +183,7 @@ public class AnomalyDetectorConfig {
    * <code>broker.failure.detection.backoff.ms</code>
    */
   public static final String BROKER_FAILURE_DETECTION_BACKOFF_MS_CONFIG = "broker.failure.detection.backoff.ms";
-  public static final long DEFAULT_BROKER_FAILURE_DETECTION_BACKOFF_MS = 300000L;
+  public static final long DEFAULT_BROKER_FAILURE_DETECTION_BACKOFF_MS = TimeUnit.MINUTES.toMillis(5);
   public static final String BROKER_FAILURE_DETECTION_BACKOFF_MS_DOC = "The backoff time in millisecond before broker failure "
       + "detector triggers another broker failure detection if currently detected broker failure is not ready to fix.";
 

@@ -57,11 +57,11 @@ import static org.junit.Assert.assertNotNull;
  * The unit test for metric fetcher manager.
  */
 public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
-  private static final long WINDOW_MS = 10000L;
+  private static final long WINDOW_MS = TimeUnit.SECONDS.toMillis(10);
   private static final int NUM_WINDOWS = 5;
   private static final int NUM_TOPICS = 100;
   private static final int NUM_PARTITIONS = 4;
-  private static final long SAMPLING_INTERVAL = 100000L;
+  private static final long SAMPLING_INTERVAL = TimeUnit.SECONDS.toMillis(100);
   private static final MetricDef METRIC_DEF = KafkaMetricDef.commonMetricDef();
   // Using autoTick = 1
   private static final Time TIME = new MockTime(1L);

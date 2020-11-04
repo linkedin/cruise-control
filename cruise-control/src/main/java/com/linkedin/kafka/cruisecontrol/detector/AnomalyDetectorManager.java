@@ -48,7 +48,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyTyp
 public class AnomalyDetectorManager {
   static final String METRIC_REGISTRY_NAME = "AnomalyDetector";
   private static final int INIT_JITTER_BOUND = 10000;
-  private static final long SCHEDULER_SHUTDOWN_TIMEOUT_MS = 5000L;
+  private static final long SCHEDULER_SHUTDOWN_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(5);
   // For each anomaly type, one thread is needed to run corresponding anomaly detector.
   // One more thread is needed to run anomaly handler task.
   private static final int NUM_ANOMALY_DETECTION_THREADS = KafkaAnomalyType.cachedValues().size() + 1;

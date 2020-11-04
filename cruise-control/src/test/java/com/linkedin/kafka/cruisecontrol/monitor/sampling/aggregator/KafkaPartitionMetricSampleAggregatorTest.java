@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.SortedSet;
+import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
@@ -64,7 +65,7 @@ import static org.junit.Assert.fail;
 public class KafkaPartitionMetricSampleAggregatorTest {
   private static final int PARTITION = 0;
   private static final int NUM_WINDOWS = 20;
-  private static final long WINDOW_MS = 1000L;
+  private static final long WINDOW_MS = TimeUnit.SECONDS.toMillis(1);
   private static final int MIN_SAMPLES_PER_WINDOW = 4;
   private static final TopicPartition TP = new TopicPartition(TOPIC0, PARTITION);
   private static final PartitionEntity PE = new PartitionEntity(TP);

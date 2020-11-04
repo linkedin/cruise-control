@@ -5,6 +5,7 @@ package com.linkedin.kafka.cruisecontrol.metricsreporter;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.AlterConfigOp;
@@ -19,10 +20,10 @@ import java.util.function.Supplier;
 
 public class CruiseControlMetricsUtils {
 
-  public static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = 10000L;
-  public static final long CLIENT_REQUEST_TIMEOUT_MS = 10000L;
+  public static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
+  public static final long CLIENT_REQUEST_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
 
-  private static final long DEFAULT_RETRY_BACKOFF_SCALE_MS = 5000L;
+  private static final long DEFAULT_RETRY_BACKOFF_SCALE_MS = TimeUnit.SECONDS.toMillis(5);
   private static final int DEFAULT_RETRY_BACKOFF_BASE = 2;
 
   private CruiseControlMetricsUtils() {

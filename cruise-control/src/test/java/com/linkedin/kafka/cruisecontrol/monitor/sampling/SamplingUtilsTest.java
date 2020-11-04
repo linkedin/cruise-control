@@ -46,7 +46,7 @@ public class SamplingUtilsTest {
   private static final int MOCK_PARTITION_COUNT = 1;
   private static final int MOCK_DESIRED_PARTITION_COUNT = 2;
   private static final short MOCK_REPLICATION_FACTOR = 3;
-  private static final long MOCK_DESIRED_RETENTION_MS = 10000L;
+  private static final long MOCK_DESIRED_RETENTION_MS = TimeUnit.SECONDS.toMillis(10);
   private static final String MOCK_CURRENT_RETENTION_MS = "100";
   private static final ConfigResource MOCK_TOPIC_RESOURCE = new ConfigResource(ConfigResource.Type.TOPIC, MOCK_TOPIC);
 
