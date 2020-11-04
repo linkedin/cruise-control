@@ -25,16 +25,16 @@ import static org.junit.Assert.assertEquals;
 
 
 public class SlowBrokerFinderTest {
-  private final static double NORMAL_BYTES_IN_RATE = 4096;
+  private static final double NORMAL_BYTES_IN_RATE = 4096;
   // The maximal ratio of fluctuation value to metric value for byte in rate metrics.
-  private final static double BYTE_IN_RATE_VARIANCE_RATIO = 0.1;
-  private final static double NORMAL_LOG_FLUSH_TIME_MS = 100.0;
+  private static final double BYTE_IN_RATE_VARIANCE_RATIO = 0.1;
+  private static final double NORMAL_LOG_FLUSH_TIME_MS = 100.0;
   // The maximal ratio of fluctuation value to metric value for log flush time metric.
-  private final static double LOG_FLUSH_TIME_MS_VARIANCE_RATIO = 0.25;
-  private final static double SMALL_BYTES_IN_RATE = 1024;
-  private final static int METRIC_HISTORY_WINDOW_SIZE = 10;
-  private final static int CURRENT_METRIC_WINDOW = 11;
-  private final static int METRIC_ANOMALY_MULTIPLIER = 4;
+  private static final double LOG_FLUSH_TIME_MS_VARIANCE_RATIO = 0.25;
+  private static final double SMALL_BYTES_IN_RATE = 1024;
+  private static final int METRIC_HISTORY_WINDOW_SIZE = 10;
+  private static final int CURRENT_METRIC_WINDOW = 11;
+  private static final int METRIC_ANOMALY_MULTIPLIER = 4;
 
   /**
    * Test slow broker finder can detect the abnormal metric rise of single broker.

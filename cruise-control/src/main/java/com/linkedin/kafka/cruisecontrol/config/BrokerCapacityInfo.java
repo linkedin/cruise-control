@@ -22,9 +22,9 @@ import java.util.stream.Collectors;
  * The information also contains the number of CPU cores and may contain disk capacities by logDirs (i.e. for JBOD).
  */
 public class BrokerCapacityInfo {
-  public final static short DEFAULT_NUM_CPU_CORES = 1;
-  private final static String DEFAULT_ESTIMATION_INFO = "";
-  private final static Map<String, Double> DEFAULT_DISK_CAPACITY_BY_LOGDIR = null;
+  public static final short DEFAULT_NUM_CPU_CORES = 1;
+  private static final String DEFAULT_ESTIMATION_INFO = "";
+  private static final Map<String, Double> DEFAULT_DISK_CAPACITY_BY_LOGDIR = null;
   private final Map<Resource, Double> _capacity;
   private final String _estimationInfo;
   private final Map<String, Double> _diskCapacityByLogDir;
