@@ -565,7 +565,7 @@ public class LoadMonitorTest {
     waitUntilTrue(() -> (loadMonitor.state(clusterAndGeneration.cluster()).state() == LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING),
                   "Load monitor state did not begin running.", WAIT_DEADLINE_MS, CHECK_MS);
 
-    return new TestContext(loadMonitor, aggregator, config, metadata);
+    return new TestContext(loadMonitor, aggregator);
   }
 
   private void waitForStateUpdate(LoadMonitor loadMonitor) {
@@ -611,17 +611,10 @@ public class LoadMonitorTest {
   private static class TestContext {
     private final LoadMonitor _loadMonitor;
     private final KafkaPartitionMetricSampleAggregator _aggregator;
-    private final KafkaCruiseControlConfig _config;
-    private final Metadata _metadata;
 
-    private TestContext(LoadMonitor loadMonitor,
-                        KafkaPartitionMetricSampleAggregator aggregator,
-                        KafkaCruiseControlConfig config,
-                        Metadata metadata) {
+    private TestContext(LoadMonitor loadMonitor, KafkaPartitionMetricSampleAggregator aggregator) {
       _loadMonitor = loadMonitor;
       _aggregator = aggregator;
-      _config = config;
-      _metadata = metadata;
     }
 
     private LoadMonitor loadmonitor() {
@@ -630,14 +623,6 @@ public class LoadMonitorTest {
 
     private KafkaPartitionMetricSampleAggregator aggregator() {
       return _aggregator;
-    }
-
-    private KafkaCruiseControlConfig config() {
-      return _config;
-    }
-
-    private Metadata metadata() {
-      return _metadata;
     }
   }
 }
