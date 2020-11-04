@@ -28,6 +28,8 @@ import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.anomalyComparator;
 import static org.easymock.EasyMock.anyLong;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
@@ -71,7 +73,7 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
       }
       assertEquals("One broker failure should have been detected before timeout.", 1, anomalies.size());
       Anomaly anomaly = anomalies.remove();
-      assertTrue("The anomaly should be BrokerFailure", anomaly instanceof BrokerFailures);
+      assertThat(anomaly, instanceOf(BrokerFailures.class));
       BrokerFailures brokerFailures = (BrokerFailures) anomaly;
       assertEquals("The failed broker should be 0 and time should be 100L", Collections.singletonMap(brokerId, 100L),
                    brokerFailures.failedBrokers());

@@ -28,10 +28,11 @@ import static org.easymock.EasyMock.mock;
 import static org.easymock.EasyMock.niceMock;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 public class JwtAuthenticatorTest {
 
@@ -139,7 +140,7 @@ public class JwtAuthenticatorTest {
     verify(configuration, request, response);
 
     assertNotNull(authentication);
-    assertTrue(authentication.getUserIdentity().getUserPrincipal() instanceof JwtUserPrincipal);
+    assertThat(authentication.getUserIdentity().getUserPrincipal(), instanceOf(JwtUserPrincipal.class));
     JwtUserPrincipal userPrincipal = (JwtUserPrincipal) authentication.getUserIdentity().getUserPrincipal();
     assertEquals(TEST_USER, userPrincipal.getName());
     assertEquals(tokenAndKeys.token(), userPrincipal.getSerializedToken());

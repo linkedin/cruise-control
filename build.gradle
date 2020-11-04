@@ -7,8 +7,8 @@ plugins {
   id "com.jfrog.artifactory"
   id "idea"
   id "jacoco" // Java Code Coverage plugin
-  id "com.github.ben-manes.versions" version "0.28.0"
-  id "com.github.spotbugs" version "4.2.4" apply false
+  id "com.github.ben-manes.versions" version "0.34.0"
+  id "com.github.spotbugs" version "4.5.1" apply false
 }
 
 group = 'com.linkedin.cruisecontrol'
@@ -98,7 +98,7 @@ subprojects {
   }
 
   spotbugs {
-    toolVersion = '4.0.3'
+    toolVersion = '4.1.4'
     excludeFilter = file("$rootDir/gradle/findbugs-exclude.xml")
     ignoreFailures = false
     jvmArgs = [ '-Xms512m' ]
@@ -154,7 +154,7 @@ project(':cruise-control-core') {
     compile "org.slf4j:slf4j-api:1.7.30"
     compile 'junit:junit:4.13'
     compile 'org.apache.commons:commons-math3:3.6.1'
-    compile 'org.eclipse.jetty:jetty-servlet:9.4.29.v20200521'
+    compile 'org.eclipse.jetty:jetty-servlet:9.4.33.v20201020'
     implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'
     testOutput sourceSets.test.output
   }
@@ -234,12 +234,12 @@ project(':cruise-control') {
     compile 'org.apache.commons:commons-math3:3.6.1'
     compile 'org.apache.httpcomponents:httpclient:4.5.12'
     compile 'com.google.code.gson:gson:2.8.6'
-    compile 'org.eclipse.jetty:jetty-server:9.4.29.v20200521'
+    compile 'org.eclipse.jetty:jetty-server:9.4.33.v20201020'
     compile 'io.dropwizard.metrics:metrics-core:3.2.6'
-    compile 'com.nimbusds:nimbus-jose-jwt:8.19'
+    compile 'com.nimbusds:nimbus-jose-jwt:9.1.2'
     compile 'com.101tec:zkclient:0.11'
-    compile group: 'io.swagger.parser.v3', name: 'swagger-parser-v3', version: '2.0.20'
-    compile group: 'io.github.classgraph', name: 'classgraph', version: '4.8.84'
+    compile 'io.swagger.parser.v3:swagger-parser-v3:2.0.23'
+    compile 'io.github.classgraph:classgraph:4.8.90'
 
     testCompile project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
     testCompile project(path: ':cruise-control-core', configuration: 'testOutput')
@@ -247,9 +247,9 @@ project(':cruise-control') {
     testCompile 'org.easymock:easymock:4.2'
     testCompile "org.apache.kafka:kafka_2.12:$kafkaVersion:test"
     testCompile "org.apache.kafka:kafka-clients:$kafkaVersion:test"
-    testCompile 'commons-io:commons-io:2.7'
+    testCompile 'commons-io:commons-io:2.8.0'
     testCompile 'org.apache.httpcomponents:httpclient:4.5.12:tests'
-    testCompile 'org.bouncycastle:bcpkix-jdk15on:1.65'
+    testCompile 'org.bouncycastle:bcpkix-jdk15on:1.67'
     testCompile 'org.apache.kerby:kerb-simplekdc:2.0.1'
 
     implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'
@@ -353,12 +353,12 @@ project(':cruise-control-metrics-reporter') {
     compile 'junit:junit:4.13'
     compile 'org.apache.commons:commons-math3:3.6.1'
 
-    testCompile 'org.bouncycastle:bcpkix-jdk15on:1.65'
-    testCompile 'org.powermock:powermock-module-junit4:2.0.7'
-    testCompile 'org.powermock:powermock-api-easymock:2.0.7'
+    testCompile 'org.bouncycastle:bcpkix-jdk15on:1.67'
+    testCompile 'org.powermock:powermock-module-junit4:2.0.9'
+    testCompile 'org.powermock:powermock-api-easymock:2.0.9'
     testCompile "org.apache.kafka:kafka-clients:$kafkaVersion:test"
     testCompile "org.apache.kafka:kafka-clients:$kafkaVersion"
-    testCompile 'commons-io:commons-io:2.7'
+    testCompile 'commons-io:commons-io:2.8.0'
     testOutput sourceSets.test.output
 
     implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'
