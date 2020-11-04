@@ -143,11 +143,11 @@ public class GoalOptimizer implements Runnable {
       if (loadMonitorTaskRunnerState == LOADING || loadMonitorTaskRunnerState == BOOTSTRAPPING) {
         LOG.info("Skipping proposal precomputing because load monitor is in " + loadMonitorTaskRunnerState + " state.");
         // Check in 30 seconds to see if the load monitor state has changed.
-        sleepTime = 30000L;
+        sleepTime = TimeUnit.SECONDS.toMillis(30);
       } else if (!_loadMonitor.meetCompletenessRequirements(_requirementsWithAvailableValidWindows)) {
         LOG.info("Skipping proposal precomputing because load monitor does not have enough snapshots.");
         // Check in 30 seconds to see if the load monitor has sufficient number of snapshots.
-        sleepTime = 30000L;
+        sleepTime = TimeUnit.SECONDS.toMillis(30);
       } else {
         try {
           if (!validCachedProposal()) {
@@ -170,7 +170,7 @@ public class GoalOptimizer implements Runnable {
           }
         } catch (KafkaCruiseControlException e) {
           // Check in 30 seconds to see if the ongoing execution has finished.
-          sleepTime = 30000L;
+          sleepTime = TimeUnit.SECONDS.toMillis(30);
           LOG.debug("Skipping proposal precomputing because there is an ongoing execution.", e);
         }
       }

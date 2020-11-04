@@ -80,8 +80,8 @@ public class LoadMonitor {
   // Kafka Load Monitor server log.
   private static final Logger LOG = LoggerFactory.getLogger(LoadMonitor.class);
   // Metadata TTL is set based on experience -- i.e. a short TTL with large metadata may cause excessive load on brokers.
-  private static final long METADATA_TTL = 10000L;
-  private static final long METADATA_REFRESH_BACKOFF = 5000L;
+  private static final long METADATA_TTL = TimeUnit.SECONDS.toMillis(10);
+  private static final long METADATA_REFRESH_BACKOFF = TimeUnit.SECONDS.toMillis(5);
   // The maximum time allowed to make a state update. If the state value cannot be updated in time it will be invalidated.
   // TODO: Make this configurable.
   private final long _monitorStateUpdateTimeoutMs;
