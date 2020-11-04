@@ -81,8 +81,8 @@ public class KafkaCruiseControlUtils {
   // Config to pass an Admin client to a pluggable component
   public static final String ADMIN_CLIENT_CONFIG = "admin.client.object";
   public static final double MAX_BALANCEDNESS_SCORE = 100.0;
-  public static final int ZK_SESSION_TIMEOUT = 120000;
-  public static final int ZK_CONNECTION_TIMEOUT = 120000;
+  public static final int ZK_SESSION_TIMEOUT = (int) TimeUnit.MINUTES.toMillis(2);
+  public static final int ZK_CONNECTION_TIMEOUT = (int) TimeUnit.MINUTES.toMillis(2);
   public static final long KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
   public static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
   public static final String DATE_FORMAT = "YYYY-MM-dd_HH:mm:ss z";

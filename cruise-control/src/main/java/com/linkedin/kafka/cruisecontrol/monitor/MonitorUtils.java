@@ -52,7 +52,7 @@ public class MonitorUtils {
   public static final double UNIT_INTERVAL_TO_PERCENTAGE = 100.0;
   private static final Logger LOG = LoggerFactory.getLogger(MonitorUtils.class);
   public static final Map<Resource, Double> EMPTY_BROKER_CAPACITY;
-  public static final long BROKER_CAPACITY_FETCH_TIMEOUT_MS = 10000L;
+  public static final long BROKER_CAPACITY_FETCH_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
 
   static {
     Map<Resource, Double> emptyBrokerCapacity = new HashMap<>(Resource.cachedValues().size());
