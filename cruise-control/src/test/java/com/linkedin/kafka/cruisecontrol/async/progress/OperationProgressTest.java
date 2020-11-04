@@ -6,7 +6,8 @@ package com.linkedin.kafka.cruisecontrol.async.progress;
 
 import org.junit.Test;
 
-import static org.junit.Assert.assertTrue;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -20,9 +21,9 @@ public class OperationProgressTest {
     OperationProgress progress2 = new OperationProgress();
     progress2.addStep(new WaitingForClusterModel());
 
-    assertTrue(progress1.progress().get(0) instanceof Pending);
+    assertThat(progress1.progress().get(0), instanceOf(Pending.class));
     progress1.refer(progress2);
-    assertTrue(progress1.progress().get(0) instanceof WaitingForClusterModel);
+    assertThat(progress1.progress().get(0), instanceOf(WaitingForClusterModel.class));
     assertEquals(progress1.progress(), progress2.progress());
   }
 

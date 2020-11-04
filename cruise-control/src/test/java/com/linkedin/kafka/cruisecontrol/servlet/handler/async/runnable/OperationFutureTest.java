@@ -15,13 +15,15 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 
 
 public class OperationFutureTest {
-  private static CruiseControlResponse DEFAULT_RESULT = new PauseSamplingResult(null);
+  private static final CruiseControlResponse DEFAULT_RESULT = new PauseSamplingResult(null);
 
   @Test
   public void testGetCompleted() throws InterruptedException {
@@ -43,7 +45,7 @@ public class OperationFutureTest {
     t.join();
     assertFalse(future.isDone());
     assertEquals(DEFAULT_RESULT, t.result());
-    assertTrue(t.exception() instanceof TimeoutException);
+    assertThat(t.exception(), instanceOf(TimeoutException.class));
   }
 
   @Test
@@ -56,7 +58,7 @@ public class OperationFutureTest {
     assertTrue(future.isDone());
     t.join();
     assertEquals(DEFAULT_RESULT, t.result());
-    assertTrue(t.exception() instanceof ExecutionException);
+    assertThat(t.exception(), instanceOf(ExecutionException.class));
     assertEquals(cause, t.exception().getCause());
   }
 
@@ -93,8 +95,8 @@ public class OperationFutureTest {
     future.cancel(true);
     t.join();
     executionThread.join();
-    assertTrue(t.result() instanceof PauseSamplingResult);
-    assertTrue(t.exception() instanceof CancellationException);
+    assertThat(t.result(), instanceOf(PauseSamplingResult.class));
+    assertThat(t.exception(), instanceOf(CancellationException.class));
     assertTrue(future.isDone());
     assertTrue(future.isCancelled());
     assertTrue(interrupted.get());
