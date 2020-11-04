@@ -313,7 +313,7 @@ public class Executor {
   private class ConcurrencyAdjuster implements Runnable {
     private LoadMonitor _loadMonitor;
 
-    public ConcurrencyAdjuster() {
+    ConcurrencyAdjuster() {
       _loadMonitor = null;
     }
 

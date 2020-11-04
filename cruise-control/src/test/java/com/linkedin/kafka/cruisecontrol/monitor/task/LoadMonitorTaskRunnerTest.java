@@ -259,7 +259,7 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
     private long _nanos;
     private final long _autoTickMs;
 
-    public MockTime(long autoTickMs) {
+    MockTime(long autoTickMs) {
       _nanos = 0;
       _autoTickMs = autoTickMs;
     }
