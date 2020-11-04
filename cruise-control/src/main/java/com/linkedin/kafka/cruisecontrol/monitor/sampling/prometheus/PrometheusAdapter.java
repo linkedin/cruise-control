@@ -47,9 +47,9 @@ class PrometheusAdapter {
     /* Visible for testing */
     final int _samplingIntervalMs;
 
-    public PrometheusAdapter(CloseableHttpClient httpClient,
-                             HttpHost prometheusEndpoint,
-                             int samplingIntervalMs) {
+    PrometheusAdapter(CloseableHttpClient httpClient,
+                      HttpHost prometheusEndpoint,
+                      int samplingIntervalMs) {
         if (httpClient == null || prometheusEndpoint == null) {
             throw new IllegalArgumentException("httpClient or prometheusEndpoint cannot be null.");
         }

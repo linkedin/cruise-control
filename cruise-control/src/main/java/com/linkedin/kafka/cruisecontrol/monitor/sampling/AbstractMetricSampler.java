@@ -23,7 +23,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherMan
  * and then using it to record every individual {@link CruiseControlMetric}, and finally convert all
  * of these into {@link com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.Samples}.
  */
-abstract public class AbstractMetricSampler implements MetricSampler {
+public abstract class AbstractMetricSampler implements MetricSampler {
     private CruiseControlMetricsProcessor _metricsProcessor;
 
     @Override
@@ -73,7 +73,7 @@ abstract public class AbstractMetricSampler implements MetricSampler {
      * @param metricSamplerOptions Object that encapsulates all the options to be used for sampling metrics.
      * @return Total number of metrics retrieved.
      */
-    abstract protected int retrieveMetricsForProcessing(MetricSamplerOptions metricSamplerOptions)
+    protected abstract int retrieveMetricsForProcessing(MetricSamplerOptions metricSamplerOptions)
         throws SamplingException;
     /**
      * This method adds a metric obtained from the cluster to the list of metrics being

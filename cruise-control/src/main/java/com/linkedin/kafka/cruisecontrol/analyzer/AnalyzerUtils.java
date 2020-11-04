@@ -32,7 +32,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
  * A util class for Analyzer.
  */
 public class AnalyzerUtils {
-  public final static double EPSILON = 1E-5;
+  public static final double EPSILON = 1E-5;
 
   private AnalyzerUtils() {
 

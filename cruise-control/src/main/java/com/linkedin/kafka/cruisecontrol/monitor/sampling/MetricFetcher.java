@@ -47,16 +47,16 @@ abstract class MetricFetcher implements Callable<Boolean> {
    * @param fetchFailureRate The meter to keep track of failure rate while fetching metrics.
    * @param samplingMode The mode of sampling to indicate the sample type of interest.
    */
-  public MetricFetcher(MetricSampler metricSampler,
-                       Cluster cluster,
-                       SampleStore sampleStore,
-                       Set<TopicPartition> assignedPartitions,
-                       long startTimeMs,
-                       long endTimeMs,
-                       MetricDef metricDef,
-                       Timer fetchTimer,
-                       Meter fetchFailureRate,
-                       MetricSampler.SamplingMode samplingMode) {
+  MetricFetcher(MetricSampler metricSampler,
+                Cluster cluster,
+                SampleStore sampleStore,
+                Set<TopicPartition> assignedPartitions,
+                long startTimeMs,
+                long endTimeMs,
+                MetricDef metricDef,
+                Timer fetchTimer,
+                Meter fetchFailureRate,
+                MetricSampler.SamplingMode samplingMode) {
     _metricSampler = metricSampler;
     _cluster = cluster;
     _sampleStore = sampleStore;
