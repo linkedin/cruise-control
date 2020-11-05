@@ -13,6 +13,8 @@ import com.yammer.metrics.core.MetricName;
 import com.yammer.metrics.core.MetricProcessor;
 import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.stats.Snapshot;
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,9 +31,9 @@ public class YammerMetricProcessor implements MetricProcessor<YammerMetricProces
     if (MetricsUtils.isInterested(metricName)) {
       LOG.trace("Processing metric {} of type Meter.", metricName);
       double value;
-      if (context.reportingInterval() <= 60000L) {
+      if (context.reportingInterval().toMillis() <= TimeUnit.MINUTES.toMillis(1)) {
         value = metered.oneMinuteRate();
-      } else if (context.reportingInterval() <= 300000) {
+      } else if (context.reportingInterval().toMillis() <= TimeUnit.MINUTES.toMillis(5)) {
         value = metered.fiveMinuteRate();
       } else {
         value = metered.fifteenMinuteRate();
@@ -154,13 +156,13 @@ public class YammerMetricProcessor implements MetricProcessor<YammerMetricProces
     private final CruiseControlMetricsReporter _reporter;
     private final long _time;
     private final int _brokerId;
-    private final long _reportingInterval;
+    private final Duration _reportingInterval;
 
-    public Context(CruiseControlMetricsReporter reporter, long time, int brokerId, long reportingInterval) {
+    public Context(CruiseControlMetricsReporter reporter, long time, int brokerId, long reportingIntervalMs) {
       _reporter = reporter;
       _time = time;
       _brokerId = brokerId;
-      _reportingInterval = reportingInterval;
+      _reportingInterval = Duration.ofMillis(reportingIntervalMs);
     }
 
     private CruiseControlMetricsReporter reporter() {
@@ -175,7 +177,7 @@ public class YammerMetricProcessor implements MetricProcessor<YammerMetricProces
       return _brokerId;
     }
 
-    private long reportingInterval() {
+    private Duration reportingInterval() {
       return _reportingInterval;
     }
   }

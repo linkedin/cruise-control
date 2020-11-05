@@ -59,6 +59,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet
  */
 public class GoalOptimizer implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(GoalOptimizer.class);
+  private static final long HALF_MINUTE_IN_MS = TimeUnit.SECONDS.toMillis(30);
   private final List<Goal> _goalsByPriority;
   private final BalancingConstraint _balancingConstraint;
   private final Pattern _defaultExcludedTopics;
@@ -139,15 +140,15 @@ public class GoalOptimizer implements Runnable {
     LOG.info("Starting proposal candidate computation.");
     while (!_shutdown && _numPrecomputingThreads > 0) {
       LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
-      long sleepTime = _proposalExpirationMs;
+      long sleepTimeMs = _proposalExpirationMs;
       if (loadMonitorTaskRunnerState == LOADING || loadMonitorTaskRunnerState == BOOTSTRAPPING) {
         LOG.info("Skipping proposal precomputing because load monitor is in " + loadMonitorTaskRunnerState + " state.");
-        // Check in 30 seconds to see if the load monitor state has changed.
-        sleepTime = TimeUnit.SECONDS.toMillis(30);
+        // Check in {@value HALF_MINUTE_IN_MS} to see if the load monitor state has changed.
+        sleepTimeMs = HALF_MINUTE_IN_MS;
       } else if (!_loadMonitor.meetCompletenessRequirements(_requirementsWithAvailableValidWindows)) {
         LOG.info("Skipping proposal precomputing because load monitor does not have enough snapshots.");
-        // Check in 30 seconds to see if the load monitor has sufficient number of snapshots.
-        sleepTime = TimeUnit.SECONDS.toMillis(30);
+        // Check in {@value HALF_MINUTE_IN_MS} to see if the load monitor has sufficient number of snapshots.
+        sleepTimeMs = HALF_MINUTE_IN_MS;
       } else {
         try {
           if (!validCachedProposal()) {
@@ -169,12 +170,12 @@ public class GoalOptimizer implements Runnable {
                       + "Cached generation: {}", _cachedProposals.modelGeneration());
           }
         } catch (KafkaCruiseControlException e) {
-          // Check in 30 seconds to see if the ongoing execution has finished.
-          sleepTime = TimeUnit.SECONDS.toMillis(30);
+          // Check in {@value HALF_MINUTE_IN_MS} to see if the ongoing execution has finished.
+          sleepTimeMs = HALF_MINUTE_IN_MS;
           LOG.debug("Skipping proposal precomputing because there is an ongoing execution.", e);
         }
       }
-      long deadline = _time.milliseconds() + sleepTime;
+      long deadline = _time.milliseconds() + sleepTimeMs;
       if (!_shutdown && _time.milliseconds() < deadline) {
         try {
           Thread.sleep(deadline - _time.milliseconds());

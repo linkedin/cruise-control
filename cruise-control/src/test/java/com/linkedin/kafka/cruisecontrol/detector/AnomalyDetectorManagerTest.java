@@ -606,7 +606,7 @@ public class AnomalyDetectorManagerTest {
     anomalyDetectorManager.shutdown();
     Thread t = new Thread(anomalyDetectorManager::shutdown);
     t.start();
-    t.join(30000L);
+    t.join(TimeUnit.SECONDS.toMillis(30));
     assertEquals(0, anomalyDetectorManager.numSelfHealingStarted());
     assertEquals(0, anomalyDetectorManager.numCheckedWithDelay());
     assertTrue(detectorScheduler.isTerminated());
