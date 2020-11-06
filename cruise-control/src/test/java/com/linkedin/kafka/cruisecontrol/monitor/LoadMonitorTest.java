@@ -79,9 +79,9 @@ public class LoadMonitorTest {
 
   private static final int NUM_WINDOWS = 2;
   private static final int MIN_SAMPLES_PER_WINDOW = 4;
-  private static final long WINDOW_MS = 1000;
+  private static final long WINDOW_MS = TimeUnit.SECONDS.toMillis(1);
   private static final String DEFAULT_CLEANUP_POLICY = "delete";
-  private static final long WAIT_DEADLINE_MS = 30000L;
+  private static final long WAIT_DEADLINE_MS = TimeUnit.SECONDS.toMillis(30);
   private static final long CHECK_MS = 10L;
   private static final long MONITOR_STATE_UPDATE_INTERVAL_MS = 100L;
   private static final long START_TIME_MS = 100L;

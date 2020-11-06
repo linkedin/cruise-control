@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +23,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAF
 
 public class MaintenanceEventDetector extends AbstractAnomalyDetector implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(MaintenanceEventDetector.class);
-  public static final long DETECTION_NOT_READY_BACKOFF_MS = 10000L;
+  public static final long DETECTION_NOT_READY_BACKOFF_MS = TimeUnit.SECONDS.toMillis(10);
   // TODO: Make this configurable.
   public static final Duration READ_EVENTS_TIMEOUT = Duration.ofSeconds(5);
   private volatile boolean _shutdown;

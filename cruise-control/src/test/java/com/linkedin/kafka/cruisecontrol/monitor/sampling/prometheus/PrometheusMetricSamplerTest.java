@@ -17,6 +17,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
@@ -48,14 +49,13 @@ import static org.junit.Assert.*;
  * Unit test for {@link PrometheusMetricSampler} class.
  */
 public class PrometheusMetricSamplerTest {
-    private static final int MILLIS_IN_SECOND = 1000;
     private static final double DOUBLE_DELTA = 0.00000001;
     private static final double BYTES_IN_KB = 1024.0;
 
     private static final int FIXED_VALUE = 94;
     private static final long START_EPOCH_SECONDS = 1603301400L;
-    private static final long START_TIME_MS = START_EPOCH_SECONDS * MILLIS_IN_SECOND;
-    private static final long END_TIME_MS = START_TIME_MS + 59 * MILLIS_IN_SECOND;
+    private static final long START_TIME_MS = TimeUnit.SECONDS.toMillis(START_EPOCH_SECONDS);
+    private static final long END_TIME_MS = START_TIME_MS + TimeUnit.SECONDS.toMillis(59);
 
     private static final int TOTAL_BROKERS = 3;
     private static final int TOTAL_PARTITIONS = 3;

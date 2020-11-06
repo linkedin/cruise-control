@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.apache.http.HttpHost;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -55,7 +56,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
 
     // Config name visible to tests
     static final String PROMETHEUS_QUERY_RESOLUTION_STEP_MS_CONFIG = "prometheus.query.resolution.step.ms";
-    private static final Integer DEFAULT_PROMETHEUS_QUERY_RESOLUTION_STEP_MS = 60_000;
+    private static final Integer DEFAULT_PROMETHEUS_QUERY_RESOLUTION_STEP_MS = (int) TimeUnit.MINUTES.toMillis(1);
 
     // Config name visible to tests
     static final String PROMETHEUS_QUERY_SUPPLIER_CONFIG = "prometheus.query.supplier";

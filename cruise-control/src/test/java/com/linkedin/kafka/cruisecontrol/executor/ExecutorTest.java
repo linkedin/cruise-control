@@ -86,10 +86,10 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   private static final String RANDOM_UUID = "random_uuid";
   // A UUID to test the proposal execution to be started with UNKNOWN_UUID, but the executor received RANDOM_UUID.
   private static final String UNKNOWN_UUID = "unknown_uuid";
-  private static final long REMOVAL_HISTORY_RETENTION_TIME_MS = 43200000L;
-  private static final long DEMOTION_HISTORY_RETENTION_TIME_MS = 86400000L;
+  private static final long REMOVAL_HISTORY_RETENTION_TIME_MS = TimeUnit.HOURS.toMillis(12);
+  private static final long DEMOTION_HISTORY_RETENTION_TIME_MS = TimeUnit.DAYS.toMillis(1);
   private static final long PRODUCE_SIZE_IN_BYTES = 10000L;
-  private static final long EXECUTION_DEADLINE_MS = 30000L;
+  private static final long EXECUTION_DEADLINE_MS = TimeUnit.SECONDS.toMillis(30);
   private static final long EXECUTION_SHORT_CHECK_MS = 10L;
   private static final long EXECUTION_REGULAR_CHECK_MS = 100L;
   private static final Random RANDOM = new Random(0xDEADBEEF);

@@ -73,9 +73,9 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.A
  * Unit test class for anomaly detector manager.
  */
 public class AnomalyDetectorManagerTest {
-  private static final long MOCK_ANOMALY_DETECTION_INTERVAL_MS = 3000L;
-  private static final long MOCK_ANOMALY_DETECTOR_SHUTDOWN_MS = 5000L;
-  private static final long MOCK_DELAY_CHECK_MS = 1000L;
+  private static final long MOCK_ANOMALY_DETECTION_INTERVAL_MS = TimeUnit.SECONDS.toMillis(3);
+  private static final long MOCK_ANOMALY_DETECTOR_SHUTDOWN_MS = TimeUnit.SECONDS.toMillis(5);
+  private static final long MOCK_DELAY_CHECK_MS = TimeUnit.SECONDS.toMillis(1);
   private static final Map<AnomalyType, Float> MOCK_SELF_HEALING_ENABLED_RATIO = new HashMap<>(KafkaAnomalyType.cachedValues().size());
   static {
     for (AnomalyType anomalyType : KafkaAnomalyType.cachedValues()) {
@@ -606,7 +606,7 @@ public class AnomalyDetectorManagerTest {
     anomalyDetectorManager.shutdown();
     Thread t = new Thread(anomalyDetectorManager::shutdown);
     t.start();
-    t.join(30000L);
+    t.join(TimeUnit.SECONDS.toMillis(30));
     assertEquals(0, anomalyDetectorManager.numSelfHealingStarted());
     assertEquals(0, anomalyDetectorManager.numCheckedWithDelay());
     assertTrue(detectorScheduler.isTerminated());

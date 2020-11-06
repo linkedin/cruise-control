@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.config.AbstractConfig;
@@ -57,15 +58,15 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   public static final String DEFAULT_CRUISE_CONTROL_METRICS_TOPIC = "__CruiseControlMetrics";
   public static final Integer DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS = -1;
   public static final boolean DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE = false;
-  public static final long DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_TIMEOUT_MS = 10000L;
+  public static final long DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
   public static final Integer DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_RETRIES = 5;
   public static final Short DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR = -1;
-  public static final long DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_RETENTION_MS = 18000000L;
+  public static final long DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_RETENTION_MS = TimeUnit.HOURS.toMillis(5);
   public static final Short DEFAULT_CRUISE_CONTROL_MIN_INSYNC_REPLICAS = -1;
-  public static final long DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS = 60000;
+  public static final long DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS = TimeUnit.MINUTES.toMillis(1);
   public static final String PRODUCER_ID = "CruiseControlMetricsReporter";
-  public static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS = 5 * 1000;
-  public static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_MAX_BLOCK_MS = 60 * 1000;
+  public static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS = (int) TimeUnit.SECONDS.toMillis(5);
+  public static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_MAX_BLOCK_MS = (int) TimeUnit.MINUTES.toMillis(1);
   public static final int DEFAULT_CRUISE_CONTROL_METRICS_BATCH_SIZE = 800 * 1000;
   public static final boolean DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_KUBERNETES_MODE = false;
 
