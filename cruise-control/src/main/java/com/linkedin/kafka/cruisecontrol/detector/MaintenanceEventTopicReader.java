@@ -88,7 +88,7 @@ public class MaintenanceEventTopicReader implements MaintenanceEventReader {
   public static final Duration CONSUMER_CLOSE_TIMEOUT = Duration.ofSeconds(2);
   public static final String CONSUMER_CLIENT_ID_PREFIX = MaintenanceEventTopicReader.class.getSimpleName();
   // How far should topic reader initially (i.e. upon startup) look back in the history for maintenance events.
-  public static final long INIT_MAINTENANCE_HISTORY_MS = 60000L;
+  public static final long INIT_MAINTENANCE_HISTORY_MS = TimeUnit.MINUTES.toMillis(1);
 
   /**
    * Seek to the relevant offsets (i.e. either (1) end time of the last event read period or (2) end offset) that the

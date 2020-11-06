@@ -81,14 +81,14 @@ public class KafkaCruiseControlUtils {
   // Config to pass an Admin client to a pluggable component
   public static final String ADMIN_CLIENT_CONFIG = "admin.client.object";
   public static final double MAX_BALANCEDNESS_SCORE = 100.0;
-  public static final int ZK_SESSION_TIMEOUT = 120000;
-  public static final int ZK_CONNECTION_TIMEOUT = 120000;
-  public static final long KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS = 10000;
-  public static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = 10000;
+  public static final int ZK_SESSION_TIMEOUT = (int) TimeUnit.MINUTES.toMillis(2);
+  public static final int ZK_CONNECTION_TIMEOUT = (int) TimeUnit.MINUTES.toMillis(2);
+  public static final long KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
+  public static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
   public static final String DATE_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
   public static final String DATE_FORMAT2 = "dd/MM/yyyy HH:mm:ss";
   public static final String TIME_ZONE = "UTC";
-  public static final int SEC_TO_MS = 1000;
+  public static final int SEC_TO_MS = (int) TimeUnit.SECONDS.toMillis(1);
   private static final int MIN_TO_MS = SEC_TO_MS * 60;
   private static final int HOUR_TO_MS = MIN_TO_MS * 60;
   private static final int DAY_TO_MS = HOUR_TO_MS * 24;
@@ -97,7 +97,7 @@ public class KafkaCruiseControlUtils {
   public static final int REQUEST_VERSION_UPDATE = -1;
   public static final String ENV_CONFIG_PROVIDER_NAME = "env";
   public static final String ENV_CONFIG_PROVIDER_CLASS_CONFIG = ".env.class";
-  public static final long CLIENT_REQUEST_TIMEOUT_MS = 30000L;
+  public static final long CLIENT_REQUEST_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(30);
   public static final String DEFAULT_CLEANUP_POLICY = "delete";
 
   private KafkaCruiseControlUtils() {

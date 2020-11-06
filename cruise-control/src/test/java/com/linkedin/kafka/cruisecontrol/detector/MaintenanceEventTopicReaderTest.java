@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.Config;
@@ -49,7 +50,7 @@ public class MaintenanceEventTopicReaderTest extends CruiseControlIntegrationTes
   public static final String TEST_TOPIC = "__CloudMaintenanceEvent";
   public static final String TEST_TOPIC_REPLICATION_FACTOR = "1";
   public static final String TEST_TOPIC_PARTITION_COUNT = "8";
-  public static final String TEST_TOPIC_RETENTION_TIME_MS = "3600000";
+  public static final String TEST_TOPIC_RETENTION_TIME_MS = Long.toString(TimeUnit.HOURS.toMillis(1));
   public static final String RETENTION_MS_CONFIG = "retention.ms";
   public static final long TEST_REBALANCE_PLAN_TIME = 1601089200000L;
   public static final long TEST_EXPIRED_PLAN_TIME = TEST_REBALANCE_PLAN_TIME - 1L;

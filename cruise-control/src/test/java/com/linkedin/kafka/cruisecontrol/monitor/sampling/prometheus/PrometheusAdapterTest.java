@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
@@ -31,7 +32,7 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
     private static final long END_TIME_SECS = 1603301459L;
     private static final long START_TIME_MS = START_TIME_SECS * SEC_TO_MS;
     private static final long END_TIME_MS = END_TIME_SECS * SEC_TO_MS;
-    private static final int SAMPLING_INTERVAL_MS = 30_000;
+    private static final int SAMPLING_INTERVAL_MS = (int) TimeUnit.SECONDS.toMillis(30);
     private static final int ONE_KB = 1024;
 
     @Test

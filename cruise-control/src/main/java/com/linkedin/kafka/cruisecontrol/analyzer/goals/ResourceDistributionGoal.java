@@ -29,6 +29,7 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -52,7 +53,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ResourceDistributi
 public abstract class ResourceDistributionGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(ResourceDistributionGoal.class);
   private static final double BALANCE_MARGIN = 0.9;
-  private static final long PER_BROKER_SWAP_TIMEOUT_MS = 1000L;
+  private static final long PER_BROKER_SWAP_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(1);
   // Flag to indicate whether the self healing failed to relocate all offline replicas away from dead brokers or broken
   // disks in its initial attempt and currently omitting the resource balance limit to relocate remaining replicas.
   private boolean _fixOfflineReplicasOnly;
