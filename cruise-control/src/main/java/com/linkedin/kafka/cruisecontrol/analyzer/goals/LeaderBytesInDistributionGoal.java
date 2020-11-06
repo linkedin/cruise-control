@@ -22,17 +22,18 @@ import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
-import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.*;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.DENOMINATOR_FOR_MIN_VALID_WINDOWS_FOR_SELF_HEALING;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
@@ -46,14 +47,19 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(LeaderBytesInDistributionGoal.class);
 
   private double _meanLeaderBytesIn;
+  private double _meanLeaderBytesOut;
+  private final Map<Resource, Double> _utilizationByResource;
+
   private Set<Integer> _overLimitBrokerIds;
 
   public LeaderBytesInDistributionGoal() {
+    _utilizationByResource = new HashMap<>();
   }
 
   /** Testing constructor */
   LeaderBytesInDistributionGoal(BalancingConstraint balancingConstraint) {
     _balancingConstraint = balancingConstraint;
+    _utilizationByResource = new HashMap<>();
   }
 
   /**
@@ -68,8 +74,6 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
     Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
     Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
-
-    initMeanLeaderBytesIn(clusterModel);
 
     if (!sourceReplica.isLeader()) {
       switch (action.balancingAction()) {
@@ -89,26 +93,66 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
       }
     }
 
-    double sourceReplicaUtilization = sourceReplica.load().expectedUtilizationFor(Resource.NW_IN);
+    double sourceReplicaUtilization;
     double newDestLeaderBytesIn;
 
     switch (action.balancingAction()) {
       case INTER_BROKER_REPLICA_SWAP:
-        double destinationReplicaUtilization = destinationBroker.replica(action.destinationTopicPartition()).load()
-            .expectedUtilizationFor(Resource.NW_IN);
-        newDestLeaderBytesIn = destinationBroker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN)
-                               + sourceReplicaUtilization - destinationReplicaUtilization;
 
         Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
+        Map<Resource, Double> srcBalanceThresholds = balanceThresholds(clusterModel, sourceBroker.id());
+        Replica destinationReplica = destinationBroker.replica(action.destinationTopicPartition());
+
+        // Check whether reject the action based on the resulted inbound network utilization on the source broker
+        double destinationReplicaUtilization = destinationReplica.load().expectedUtilizationFor(Resource.NW_IN);
+        sourceReplicaUtilization = sourceReplica.load().expectedUtilizationFor(Resource.NW_IN);
+
         double newSourceLeaderBytesIn = sourceBroker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN)
                                         + destinationReplicaUtilization - sourceReplicaUtilization;
 
-        if (newSourceLeaderBytesIn > balanceThreshold(clusterModel, sourceBroker.id())) {
+        if (newSourceLeaderBytesIn > srcBalanceThresholds.get(Resource.NW_IN)) {
           return REPLICA_REJECT;
         }
+
+        // Check whether reject the action based on the resulted outbound network utilization on the source broker
+        destinationReplicaUtilization = destinationReplica.load().expectedUtilizationFor(Resource.NW_OUT);
+        sourceReplicaUtilization = sourceReplica.load().expectedUtilizationFor(Resource.NW_OUT);
+
+        double newSourceLeaderBytesOut = sourceBroker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_OUT)
+                                        + destinationReplicaUtilization - sourceReplicaUtilization;
+
+        if (newSourceLeaderBytesOut > srcBalanceThresholds.get(Resource.NW_OUT)) {
+          return REPLICA_REJECT;
+        }
+
+        // Check whether reject the action based on the resulted CPU utilization on the source broker
+        destinationReplicaUtilization = destinationReplica.load().expectedUtilizationFor(Resource.CPU);
+        sourceReplicaUtilization = sourceReplica.load().expectedUtilizationFor(Resource.CPU);
+
+        double newSourceBrokerCpuUtilization = sourceBroker.load().expectedUtilizationFor(Resource.CPU)
+                                              + destinationReplicaUtilization - sourceReplicaUtilization;
+
+        if (newSourceBrokerCpuUtilization > srcBalanceThresholds.get(Resource.CPU)) {
+          return BROKER_REJECT;
+        }
+
+        // Check whether reject the action based on the resulted disk utilization on the source broker
+        destinationReplicaUtilization = destinationReplica.load().expectedUtilizationFor(Resource.DISK);
+        sourceReplicaUtilization = sourceReplica.load().expectedUtilizationFor(Resource.DISK);
+
+        double newSourceBrokerDiskUtilization = sourceBroker.load().expectedUtilizationFor(Resource.DISK)
+            + destinationReplicaUtilization - sourceReplicaUtilization;
+
+        if (newSourceBrokerDiskUtilization > srcBalanceThresholds.get(Resource.DISK)) {
+          return BROKER_REJECT;
+        }
+
+        newDestLeaderBytesIn = destinationBroker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN)
+            + sourceReplicaUtilization - destinationReplicaUtilization;
         break;
       case INTER_BROKER_REPLICA_MOVEMENT:
       case LEADERSHIP_MOVEMENT:
+        sourceReplicaUtilization = sourceReplica.load().expectedUtilizationFor(Resource.NW_IN);
         newDestLeaderBytesIn = destinationBroker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN)
                                + sourceReplicaUtilization;
         break;
@@ -223,10 +267,42 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
     }
   }
 
-  private void initMeanLeaderBytesIn(ClusterModel clusterModel) {
+  private double getMeanLeaderBytesIn(ClusterModel clusterModel) {
     if (_meanLeaderBytesIn == 0.0) {
       _meanLeaderBytesIn = meanLeaderResourceUtilization(clusterModel.brokers(), Resource.NW_IN);
     }
+    return _meanLeaderBytesIn;
+  }
+
+  private double getMeanLeaderBytesOut(ClusterModel clusterModel) {
+    if (_meanLeaderBytesOut == 0.0) {
+      _meanLeaderBytesOut = meanLeaderResourceUtilization(clusterModel.brokers(), Resource.NW_OUT);
+    }
+    return _meanLeaderBytesOut;
+  }
+
+  private double meanResourceUtilization(ClusterModel clusterModel, Resource resource) {
+    Double meanUtilization = _utilizationByResource.get(resource);
+    if (meanUtilization != null) {
+      return meanUtilization;
+    }
+
+    double accumulator = 0.0;
+    int brokerCount = 0;
+    for (Broker broker : clusterModel.brokers()) {
+      if (!broker.isAlive()) {
+        continue;
+      }
+      accumulator += broker.load().expectedUtilizationFor(resource);
+      brokerCount++;
+    }
+    if (brokerCount == 0) {
+      throw new IllegalStateException("Cannot calculate mean utilization since no broker is alive");
+    }
+
+    meanUtilization = accumulator / brokerCount;
+    _utilizationByResource.put(resource, meanUtilization);
+    return meanUtilization;
   }
 
   private static double meanLeaderResourceUtilization(Collection<Broker> brokers, Resource resource) {
@@ -239,6 +315,10 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
       accumulator += broker.leadershipLoadForNwResources().expectedUtilizationFor(resource);
       brokerCount++;
     }
+    if (brokerCount == 0) {
+      throw new IllegalStateException("Cannot calculate mean leader resource utilization since no broker is alive");
+    }
+
     return accumulator / brokerCount;
   }
 
@@ -251,12 +331,62 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
    * @return A non-negative value
    */
   private double balanceThreshold(ClusterModel clusterModel, int brokerId) {
-    initMeanLeaderBytesIn(clusterModel);
     double lowUtilizationThreshold =
         _balancingConstraint.lowUtilizationThreshold(Resource.NW_IN) * clusterModel.broker(brokerId).capacityFor(Resource.NW_IN);
     // We only balance leader bytes in rate of the brokers whose leader bytes in rate is higher than the minimum
     // balancing threshold.
-    return Math.max(_meanLeaderBytesIn * _balancingConstraint.resourceBalancePercentage(Resource.NW_IN), lowUtilizationThreshold);
+    return Math.max(
+        lowUtilizationThreshold,
+        getMeanLeaderBytesIn(clusterModel) * _balancingConstraint.resourceBalancePercentage(Resource.NW_IN)
+    );
+  }
+
+  private Map<Resource, Double> balanceThresholds(ClusterModel clusterModel, int brokerId) {
+    Map<Resource, Double> balanceThresholdByResource = new HashMap<>(Resource.cachedValues().size());
+    for (Resource resource : Resource.values()) {
+      balanceThresholdByResource.put(resource, balanceThresholdForResource(clusterModel, brokerId, resource));
+    }
+
+    return balanceThresholdByResource;
+  }
+
+  private double balanceThresholdForResource(ClusterModel clusterModel, int brokerId, Resource resource) {
+    double balanceThreshold;
+    double lowUtilizationThreshold = lowUtilizationThresholdForResource(clusterModel, brokerId, resource);
+
+    switch (resource) {
+      case CPU:
+      case DISK:
+        double meanUtilization = meanResourceUtilization(clusterModel, resource);
+        balanceThreshold = Math.max(meanUtilization * _balancingConstraint.resourceBalancePercentage(resource), lowUtilizationThreshold);
+        break;
+
+      case NW_IN:
+        // We only balance leader bytes in rate of the brokers whose leader bytes in rate is higher than the minimum
+        // balancing threshold.
+        balanceThreshold = Math.max(
+            lowUtilizationThreshold,
+            getMeanLeaderBytesIn(clusterModel) * _balancingConstraint.resourceBalancePercentage(resource)
+        );
+        break;
+
+      case NW_OUT:
+        // We only balance leader bytes out rate of the brokers whose leader bytes out rate is higher than the minimum
+        // balancing threshold.
+        balanceThreshold = Math.max(
+            lowUtilizationThreshold,
+            getMeanLeaderBytesOut(clusterModel) * _balancingConstraint.resourceBalancePercentage(resource)
+        );
+        break;
+
+      default:
+        throw new IllegalStateException();
+    }
+    return balanceThreshold;
+  }
+
+  private double lowUtilizationThresholdForResource(ClusterModel clusterModel, int brokerId, Resource resource) {
+    return _balancingConstraint.lowUtilizationThreshold(resource) * clusterModel.broker(brokerId).capacityFor(resource);
   }
 
   private class LeaderBytesInDistributionGoalStatsComparator implements ClusterModelStatsComparator {
