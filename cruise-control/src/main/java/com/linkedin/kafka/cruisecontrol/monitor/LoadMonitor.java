@@ -124,7 +124,7 @@ public class LoadMonitor {
     this(config,
          new MetadataClient(config,
                             new Metadata(METADATA_REFRESH_BACKOFF,
-                                         config.getLong(MonitorConfig.METADATA_MAX_AGE_CONFIG),
+                                         config.getLong(MonitorConfig.METADATA_MAX_AGE_MS_CONFIG),
                                          new LogContext(),
                                          new ClusterResourceListeners()),
                             METADATA_TTL,

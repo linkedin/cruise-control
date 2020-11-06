@@ -303,7 +303,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   /**
    * Sanity check to ensure that
    * <ul>
-   *   <li>{@link MonitorConfig#METADATA_MAX_AGE_CONFIG} is not longer than {@link MonitorConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG},</li>
+   *   <li>{@link MonitorConfig#METADATA_MAX_AGE_MS_CONFIG} is not longer than {@link MonitorConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG},</li>
    *   <li>sampling frequency per partition window is within the limits -- i.e. ({@link MonitorConfig#PARTITION_METRICS_WINDOW_MS_CONFIG} /
    *   {@link MonitorConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}) <= {@link Byte#MAX_VALUE}, and</li>
    *   <li>sampling frequency per broker window is within the limits -- i.e. ({@link MonitorConfig#BROKER_METRICS_WINDOW_MS_CONFIG} /
@@ -317,7 +317,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    * </ul>
    *
    * Sampling process involves a potential metadata update if the current metadata is stale. The configuration
-   * {@link MonitorConfig#METADATA_MAX_AGE_CONFIG} indicates the timeout of such a metadata update. Hence, this subprocess of the sampling
+   * {@link MonitorConfig#METADATA_MAX_AGE_MS_CONFIG} indicates the timeout of such a metadata update. Hence, this subprocess of the sampling
    * process cannot be set with a timeout larger than the total sampling timeout of {@link MonitorConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}.
    *
    * The number of samples at a given window cannot exceed a predefined maximum limit.
@@ -327,7 +327,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    */
   private void sanityCheckSamplingPeriod(Map<?, ?> originals) {
     long samplingIntervalMs = getLong(MonitorConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG);
-    long metadataTimeoutMs = getLong(MonitorConfig.METADATA_MAX_AGE_CONFIG);
+    long metadataTimeoutMs = getLong(MonitorConfig.METADATA_MAX_AGE_MS_CONFIG);
     if (metadataTimeoutMs > samplingIntervalMs) {
       throw new ConfigException("Attempt to set metadata refresh timeout [" + metadataTimeoutMs +
                                 "] to be longer than sampling period [" + samplingIntervalMs + "].");

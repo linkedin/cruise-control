@@ -43,9 +43,9 @@ public class MonitorConfig {
   /**
    * <code>metadata.max.age.ms</code>
    */
-  public static final String METADATA_MAX_AGE_CONFIG = CommonClientConfigs.METADATA_MAX_AGE_CONFIG;
+  public static final String METADATA_MAX_AGE_MS_CONFIG = CommonClientConfigs.METADATA_MAX_AGE_CONFIG;
   public static final long DEFAULT_METADATA_MAX_AGE_MS = TimeUnit.SECONDS.toMillis(55);
-  public static final String METADATA_MAX_AGE_DOC = CommonClientConfigs.METADATA_MAX_AGE_DOC;
+  public static final String METADATA_MAX_AGE_MS_DOC = CommonClientConfigs.METADATA_MAX_AGE_DOC;
 
   /**
    * <code>client.id</code>
@@ -353,12 +353,12 @@ public class MonitorConfig {
                             DEFAULT_SECURITY_PROTOCOL,
                             ConfigDef.Importance.MEDIUM,
                             SECURITY_PROTOCOL_DOC)
-                    .define(METADATA_MAX_AGE_CONFIG,
+                    .define(METADATA_MAX_AGE_MS_CONFIG,
                             ConfigDef.Type.LONG,
                             DEFAULT_METADATA_MAX_AGE_MS,
                             atLeast(0),
                             ConfigDef.Importance.LOW,
-                            METADATA_MAX_AGE_DOC)
+                            METADATA_MAX_AGE_MS_DOC)
                     .define(CLIENT_ID_CONFIG,
                             ConfigDef.Type.STRING,
                             DEFAULT_CLIENT_ID,
