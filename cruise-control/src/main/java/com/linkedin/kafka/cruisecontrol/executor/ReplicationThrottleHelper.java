@@ -151,8 +151,14 @@ class ReplicationThrottleHelper {
   }
 
   private void setThrottledRateIfUnset(int brokerId, String configKey) {
-    assert (_throttleRate != null);
-    assert (configKey.equals(LEADER_THROTTLED_RATE) || configKey.equals(FOLLOWER_THROTTLED_RATE));
+    if (_throttleRate == null) {
+      throw new IllegalStateException("Throttle rate cannot be null");
+    }
+    if ((!configKey.equals(LEADER_THROTTLED_RATE)) && (!configKey.equals(FOLLOWER_THROTTLED_RATE))) {
+      throw new IllegalArgumentException(
+          String.format("Config key must be either %s or %s", LEADER_THROTTLED_RATE, FOLLOWER_THROTTLED_RATE));
+    }
+
     Properties config = _kafkaZkClient.getEntityConfigs(ConfigType.Broker(), String.valueOf(brokerId));
     Object oldThrottleRate = config.setProperty(configKey, String.valueOf(_throttleRate));
     if (oldThrottleRate == null) {
@@ -173,15 +179,28 @@ class ReplicationThrottleHelper {
   }
 
   private void setThrottledReplicas(String topic, Set<String> replicas, String configKey) {
-    assert (configKey.equals(LEADER_THROTTLED_REPLICAS) || configKey.equals(FOLLOWER_THROTTLED_REPLICAS));
-    Properties config = _kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic);
-    // Merge new throttled replicas with existing configuration values.
-    Set<String> newThrottledReplicas = new TreeSet<>(replicas);
-    String oldThrottledReplicas = config.getProperty(configKey);
-    if (oldThrottledReplicas != null) {
-      newThrottledReplicas.addAll(Arrays.asList(oldThrottledReplicas.split(",")));
+    if ((!configKey.equals(LEADER_THROTTLED_REPLICAS)) && (!configKey.equals(FOLLOWER_THROTTLED_REPLICAS))) {
+      throw new IllegalArgumentException(
+          String.format("Config key must be either %s or %s", LEADER_THROTTLED_REPLICAS, FOLLOWER_THROTTLED_REPLICAS));
     }
-    config.setProperty(configKey, String.join(",", newThrottledReplicas));
+
+    Properties config = _kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic);
+    String oldThrottledReplicas = config.getProperty(configKey);
+    if (oldThrottledReplicas != null && oldThrottledReplicas.trim().equals("*")) {
+      // The existing setup throttles all replica. So, nothing needs to be changed
+      return;
+    }
+
+    if (replicas.size() == 1 && replicas.iterator().next().trim().equals("*")) {
+      config.setProperty(configKey, "*");
+    } else {
+      // Merge new throttled replicas with existing configuration values.
+      Set<String> newThrottledReplicas = new TreeSet<>(replicas);
+      if (oldThrottledReplicas != null) {
+        newThrottledReplicas.addAll(Arrays.asList(oldThrottledReplicas.split(",")));
+      }
+      config.setProperty(configKey, String.join(",", newThrottledReplicas));
+    }
     ExecutorUtils.changeTopicConfig(_adminZkClient, topic, config);
   }
 
