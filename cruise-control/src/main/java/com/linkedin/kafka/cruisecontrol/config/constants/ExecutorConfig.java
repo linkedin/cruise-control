@@ -112,7 +112,7 @@ public class ExecutorConfig {
    * <code>execution.progress.check.interval.ms</code>
    */
   public static final String EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG = "execution.progress.check.interval.ms";
-  public static final long DEFAULT_EXECUTION_PROGRESS_CHECK_INTERVAL_MS = 10000L;
+  public static final long DEFAULT_EXECUTION_PROGRESS_CHECK_INTERVAL_MS = TimeUnit.SECONDS.toMillis(10);
   public static final String EXECUTION_PROGRESS_CHECK_INTERVAL_MS_DOC = "The interval in milliseconds that the executor "
       + "will check on the execution progress.";
   /*
@@ -127,7 +127,7 @@ public class ExecutorConfig {
    * <code>leader.movement.timeout.ms</code>
    */
   public static final String LEADER_MOVEMENT_TIMEOUT_MS_CONFIG = "leader.movement.timeout.ms";
-  public static final long DEFAULT_LEADER_MOVEMENT_TIMEOUT_MS = 180000L;
+  public static final long DEFAULT_LEADER_MOVEMENT_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(3);
   public static final String LEADER_MOVEMENT_TIMEOUT_MS_DOC = "The maximum time to wait for a leader movement to finish. "
       + "A leader movement will be marked as failed if it takes longer than this time to finish.";
 
@@ -135,7 +135,7 @@ public class ExecutorConfig {
    * <code>task.execution.alerting.threshold.ms</code>
    */
   public static final String TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG = "task.execution.alerting.threshold.ms";
-  public static final long DEFAULT_TASK_EXECUTION_ALERTING_THRESHOLD_MS = 90000L;
+  public static final long DEFAULT_TASK_EXECUTION_ALERTING_THRESHOLD_MS = TimeUnit.SECONDS.toMillis(90);
 
   /**
    * <code>inter.broker.replica.movement.rate.alerting.threshold</code>
@@ -178,7 +178,7 @@ public class ExecutorConfig {
    * <code>logdir.response.timeout.ms</code>
    */
   public static final String LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG = "logdir.response.timeout.ms";
-  public static final long DEFAULT_LOGDIR_RESPONSE_TIMEOUT_MS = 10000L;
+  public static final long DEFAULT_LOGDIR_RESPONSE_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
   public static final String LOGDIR_RESPONSE_TIMEOUT_MS_DOC = "Timeout in ms for broker logdir to respond";
 
   /**
@@ -201,7 +201,7 @@ public class ExecutorConfig {
    * <code>concurrency.adjuster.interval.ms</code>
    */
   public static final String CONCURRENCY_ADJUSTER_INTERVAL_MS_CONFIG = "concurrency.adjuster.interval.ms";
-  public static final long DEFAULT_CONCURRENCY_ADJUSTER_INTERVAL_MS = 360000L;
+  public static final long DEFAULT_CONCURRENCY_ADJUSTER_INTERVAL_MS = TimeUnit.MINUTES.toMillis(6);
   public static final String CONCURRENCY_ADJUSTER_INTERVAL_MS_DOC = "The interval of concurrency auto adjustment.";
 
   /**
@@ -278,7 +278,7 @@ public class ExecutorConfig {
    * <code>concurrency.adjuster.limit.log.flush.time.ms</code>
    */
   public static final String CONCURRENCY_ADJUSTER_LIMIT_LOG_FLUSH_TIME_MS_CONFIG = "concurrency.adjuster.limit.log.flush.time.ms";
-  public static final double DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_LOG_FLUSH_TIME_MS = 2000.0;
+  public static final double DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_LOG_FLUSH_TIME_MS = TimeUnit.SECONDS.toMillis(2);
   public static final String CONCURRENCY_ADJUSTER_LIMIT_LOG_FLUSH_TIME_MS_DOC = "The limit on the 99.9th percentile broker metric"
       + " value of log flush time. If any broker exceeds this limit during an ongoing reassignment, the relevant concurrency "
       + "adjuster (if enabled) attempts to decrease the number of allowed concurrent movements.";
@@ -297,7 +297,7 @@ public class ExecutorConfig {
    * <code>concurrency.adjuster.limit.produce.local.time.ms</code>
    */
   public static final String CONCURRENCY_ADJUSTER_LIMIT_PRODUCE_LOCAL_TIME_MS_CONFIG = "concurrency.adjuster.limit.produce.local.time.ms";
-  public static final double DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_PRODUCE_LOCAL_TIME_MS = 1000.0;
+  public static final double DEFAULT_CONCURRENCY_ADJUSTER_LIMIT_PRODUCE_LOCAL_TIME_MS = (double) TimeUnit.SECONDS.toMillis(1);
   public static final String CONCURRENCY_ADJUSTER_LIMIT_PRODUCE_LOCAL_TIME_MS_DOC = "The limit on the 99.9th percentile broker metric"
       + " value of produce local time. If any broker exceeds this limit during an ongoing reassignment, the relevant concurrency "
       + "adjuster (if enabled) attempts to decrease the number of allowed concurrent movements.";
@@ -365,7 +365,7 @@ public class ExecutorConfig {
    * <code>min.execution.progress.check.interval.ms</code>
    */
   public static final String MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG = "min.execution.progress.check.interval.ms";
-  public static final long DEFAULT_MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS = 5000L;
+  public static final long DEFAULT_MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS = TimeUnit.SECONDS.toMillis(5);
   public static final String MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_DOC = "The minimum execution progress check interval that users "
       + "can dynamically set the execution progress check interval to.";
 
@@ -373,7 +373,7 @@ public class ExecutorConfig {
    * <code>slow.task.alerting.backoff.ms</code>
    */
   public static final String SLOW_TASK_ALERTING_BACKOFF_TIME_MS_CONFIG = "slow.task.alerting.backoff.ms";
-  public static final long DEFAULT_SLOW_TASK_ALERTING_BACKOFF_TIME_MS = 60000L;
+  public static final long DEFAULT_SLOW_TASK_ALERTING_BACKOFF_TIME_MS = TimeUnit.MINUTES.toMillis(1);
   public static final String SLOW_TASK_ALERTING_BACKOFF_TIME_MS_DOC = "The minimum interval between slow task alerts. This backoff "
       + "helps bundling slow tasks to report rather than individually reporting them upon detection.";
 

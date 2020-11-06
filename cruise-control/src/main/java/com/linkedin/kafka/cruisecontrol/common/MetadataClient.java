@@ -42,7 +42,7 @@ public class MetadataClient {
                         Time time) {
     _metadataGeneration = new AtomicInteger(0);
     _metadata = metadata;
-    _refreshMetadataTimeout = config.getLong(MonitorConfig.METADATA_MAX_AGE_CONFIG);
+    _refreshMetadataTimeout = config.getLong(MonitorConfig.METADATA_MAX_AGE_MS_CONFIG);
     _time = time;
     List<InetSocketAddress> addresses =
         ClientUtils.parseAndValidateAddresses(config.getList(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG),

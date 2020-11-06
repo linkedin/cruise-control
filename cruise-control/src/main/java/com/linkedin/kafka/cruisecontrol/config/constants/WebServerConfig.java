@@ -95,14 +95,14 @@ public class WebServerConfig {
    * <code>webserver.request.maxBlockTimeMs</code>
    */
   public static final String WEBSERVER_REQUEST_MAX_BLOCK_TIME_MS_CONFIG = "webserver.request.maxBlockTimeMs";
-  public static final long DEFAULT_WEBSERVER_REQUEST_MAX_BLOCK_TIME_MS = 10000L;
+  public static final long DEFAULT_WEBSERVER_REQUEST_MAX_BLOCK_TIME_MS = TimeUnit.SECONDS.toMillis(10);
   public static final String WEBSERVER_REQUEST_MAX_BLOCK_TIME_MS_DOC = "Time after which request is converted to Async";
 
   /**
    * <code>webserver.session.maxExpiryTimeMs</code>
    */
   public static final String WEBSERVER_SESSION_EXPIRY_MS_CONFIG = "webserver.session.maxExpiryTimeMs";
-  public static final long DEFAULT_WEBSERVER_SESSION_EXPIRY_MS = 60000L;
+  public static final long DEFAULT_WEBSERVER_SESSION_EXPIRY_MS = TimeUnit.MINUTES.toMillis(1);
   public static final String WEBSERVER_SESSION_EXPIRY_MS_DOC = "Default Session Expiry Period";
 
   /**

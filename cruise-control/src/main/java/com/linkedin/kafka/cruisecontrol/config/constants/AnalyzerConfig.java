@@ -28,6 +28,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionG
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import java.util.StringJoiner;
+import java.util.concurrent.TimeUnit;
 import org.apache.kafka.common.config.ConfigDef;
 
 import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
@@ -184,7 +185,7 @@ public class AnalyzerConfig {
    * <code>proposal.expiration.ms</code>
    */
   public static final String PROPOSAL_EXPIRATION_MS_CONFIG = "proposal.expiration.ms";
-  public static final long DEFAULT_PROPOSAL_EXPIRATION_MS = 900000L;
+  public static final long DEFAULT_PROPOSAL_EXPIRATION_MS = TimeUnit.MINUTES.toMillis(15);
   public static final String PROPOSAL_EXPIRATION_MS_DOC = "Kafka Cruise Control will cache one of the best proposal among all "
       + "the optimization proposal candidates it recently computed. This configuration defines when will the"
       + "cached proposal be invalidated and needs a recomputation. If proposal.expiration.ms is set to 0, Cruise Control"

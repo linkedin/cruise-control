@@ -27,7 +27,7 @@ public class CCEmbeddedBrokerBuilder {
   private int _plaintextPort = -1;
   private int _sslPort = -1;
   private File _trustStore;
-  private long _socketTimeout = 1500;
+  private long _socketTimeoutMs = 1500;
   //feature control
   private boolean _enableControlledShutdown;
   private long _controlledShutdownRetryBackoff = 100;
@@ -153,11 +153,11 @@ public class CCEmbeddedBrokerBuilder {
 
   /**
    * Set socket timeout
-   * @param socketTimeout Socket timeout.
+   * @param socketTimeoutMs Socket timeout.
    * @return This
    */
-  public CCEmbeddedBrokerBuilder socketTimeout(long socketTimeout) {
-    _socketTimeout = socketTimeout;
+  public CCEmbeddedBrokerBuilder socketTimeoutMs(long socketTimeoutMs) {
+    _socketTimeoutMs = socketTimeoutMs;
     return this;
   }
 
@@ -260,8 +260,8 @@ public class CCEmbeddedBrokerBuilder {
     props.put(KafkaConfig.ListenersProp(), csvJoiner.toString());
     props.put(KafkaConfig.LogDirProp(), _logDirectory.getAbsolutePath());
     props.put(KafkaConfig.ZkConnectProp(), _zkConnect);
-    props.put(KafkaConfig.ReplicaSocketTimeoutMsProp(), Long.toString(_socketTimeout));
-    props.put(KafkaConfig.ControllerSocketTimeoutMsProp(), Long.toString(_socketTimeout));
+    props.put(KafkaConfig.ReplicaSocketTimeoutMsProp(), Long.toString(_socketTimeoutMs));
+    props.put(KafkaConfig.ControllerSocketTimeoutMsProp(), Long.toString(_socketTimeoutMs));
     props.put(KafkaConfig.ControlledShutdownEnableProp(), Boolean.toString(_enableControlledShutdown));
     props.put(KafkaConfig.DeleteTopicEnableProp(), Boolean.toString(_enableDeleteTopic));
     props.put(KafkaConfig.ControlledShutdownRetryBackoffMsProp(), Long.toString(_controlledShutdownRetryBackoff));

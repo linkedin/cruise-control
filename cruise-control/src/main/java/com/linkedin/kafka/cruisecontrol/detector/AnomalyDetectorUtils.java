@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -36,7 +37,7 @@ public class AnomalyDetectorUtils {
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetectorUtils.class);
   public static final String KAFKA_CRUISE_CONTROL_OBJECT_CONFIG = "kafka.cruise.control.object";
   public static final String ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG = "anomaly.detection.time.ms.object";
-  public static final long MAX_METADATA_WAIT_MS = 60000L;
+  public static final long MAX_METADATA_WAIT_MS = TimeUnit.MINUTES.toMillis(1);
   public static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures();
   public static final Random RANDOM = new Random();
 
