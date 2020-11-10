@@ -322,6 +322,16 @@ public class AnalyzerConfig {
       + "partition movement. It is a regex. Notice that this regex will be ignored when decommission a broker is invoked.";
 
   /**
+   * <code>exclude.highreplication.topics.from.partition.movement</code>
+   */
+  public static final String EXCLUDE_HIGHREPLICATION_TOPICS_FROM_PARTITION_MOVEMEMENT_CONFIG = 
+                                                        "exclude.highreplication.topics.from.partition.movement";
+  public static final boolean DEFAULT_EXCLUDE_HIGHREPLICATION_TOPICS_FROM_PARTITION_MOVEMEMENT = false;
+  public static final String EXCLUDE_HIGHREPLICATION_TOPICS_FROM_PARTITION_MOVEMEMENT_DOC = "Exclude high replication topics(RF=#brokers) from"
+      + "partition movement. This is to allow lower RF topics in the cluster to not be blocked by unfixable topics allowing "
+      + "for partial replica distributions for fixable topics";
+
+  /**
    * <code>goal.violation.distribution.threshold.multiplier</code>
    */
   public static final String GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG = "goal.violation.distribution.threshold.multiplier";
@@ -488,6 +498,11 @@ public class AnalyzerConfig {
                             DEFAULT_TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT,
                             ConfigDef.Importance.LOW,
                             TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_DOC)
+                    .define(EXCLUDE_HIGHREPLICATION_TOPICS_FROM_PARTITION_MOVEMEMENT_CONFIG,
+                            ConfigDef.Type.BOOLEAN,
+                            DEFAULT_EXCLUDE_HIGHREPLICATION_TOPICS_FROM_PARTITION_MOVEMEMENT,
+                            ConfigDef.Importance.LOW,
+                            EXCLUDE_HIGHREPLICATION_TOPICS_FROM_PARTITION_MOVEMEMENT_DOC)
                     .define(GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG,
                             ConfigDef.Type.DOUBLE,
                             DEFAULT_GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER,

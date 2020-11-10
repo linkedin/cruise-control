@@ -268,7 +268,6 @@ public class ClusterModel implements Serializable {
     // We need to go through rack so all the cached capacity will be updated.
     broker.rack().setBrokerState(brokerId, newState);
     _selfHealingEligibleReplicas.addAll(broker.currentOfflineReplicas());
-    refreshCapacity();
     switch (newState) {
       case DEAD:
         _aliveBrokers.remove(broker);
@@ -299,6 +298,17 @@ public class ClusterModel implements Serializable {
       default:
         throw new IllegalArgumentException("Illegal broker state " + newState + " is provided.");
     }
+    if (ModelUtils.excludeHighReplicationFactorTopics()) {
+      Set<String> topicsWithHighReplicationFactor = _replicationFactorByTopic.entrySet().stream()
+                                                                                .filter(map -> map.getValue() > _aliveBrokers.size())
+                                                                                .map(map -> map.getKey()).collect(Collectors.toSet());
+      for (Replica r:  broker.currentOfflineReplicas()) {
+        if (topicsWithHighReplicationFactor.contains(r.getJsonStructure().get("topic"))) {
+          _selfHealingEligibleReplicas.remove(r);
+        }
+      }
+    }
+    refreshCapacity();
   }
 
   /**
