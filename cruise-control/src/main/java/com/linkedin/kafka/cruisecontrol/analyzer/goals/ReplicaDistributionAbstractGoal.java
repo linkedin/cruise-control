@@ -13,7 +13,6 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.SortedSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +34,8 @@ public abstract class ReplicaDistributionAbstractGoal extends AbstractGoal {
   protected double _avgReplicasOnAliveBroker;
   protected int _balanceUpperLimit;
   protected int _balanceLowerLimit;
+  // This is used to identify brokers not excluded for replica moves.
+  protected Set<Integer> _brokersAllowedReplicaMove;
 
   /**
    * Constructor for Replica Distribution Abstract Goal.
@@ -112,27 +113,21 @@ public abstract class ReplicaDistributionAbstractGoal extends AbstractGoal {
   }
 
   /**
-   * Get brokers that the rebalance process will go over to apply balancing actions to replicas they contain.
-   *
-   * @param clusterModel The state of the cluster.
-   * @return A collection of brokers that the rebalance process will go over to apply balancing actions to replicas
-   *         they contain.
-   */
-  @Override
-  protected SortedSet<Broker> brokersToBalance(ClusterModel clusterModel) {
-    return clusterModel.brokers();
-  }
-
-  /**
    * Initiates replica distribution abstract goal.
    *
    * @param clusterModel The state of the cluster.
    * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
+  protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
+      throws OptimizationFailureException {
+    _brokersAllowedReplicaMove = GoalUtils.aliveBrokersNotExcludedForReplicaMove(clusterModel, optimizationOptions);
+    if (_brokersAllowedReplicaMove.isEmpty()) {
+      // Handle the case when all alive brokers are excluded from replica moves.
+      throw new OptimizationFailureException("Cannot take any action as all alive brokers are excluded from replica moves.");
+    }
     // Initialize the average replicas on an alive broker.
-    _avgReplicasOnAliveBroker = numInterestedReplicas(clusterModel) / (double) clusterModel.aliveBrokers().size();
+    _avgReplicasOnAliveBroker = numInterestedReplicas(clusterModel) / (double) _brokersAllowedReplicaMove.size();
 
     // Log a warning if all replicas are excluded.
     if (clusterModel.topics().equals(optimizationOptions.excludedTopics())) {
@@ -142,6 +137,10 @@ public abstract class ReplicaDistributionAbstractGoal extends AbstractGoal {
     _fixOfflineReplicasOnly = false;
     _balanceUpperLimit = balanceUpperLimit(optimizationOptions, balancePercentage());
     _balanceLowerLimit = balanceLowerLimit(optimizationOptions, balancePercentage());
+  }
+
+  protected boolean isExcludedForReplicaMove(Broker broker) {
+    return !_brokersAllowedReplicaMove.contains(broker.id());
   }
 
   /**
@@ -207,11 +206,6 @@ public abstract class ReplicaDistributionAbstractGoal extends AbstractGoal {
     // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
     GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
     finish();
-  }
-
-  @Override
-  public void finish() {
-    _finished = true;
   }
 
   /**

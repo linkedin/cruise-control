@@ -441,7 +441,7 @@ public class GoalOptimizer implements Runnable {
       LOG.debug("Optimizing goal {}", goal.name());
       boolean succeeded = goal.optimize(clusterModel, optimizedGoals, optimizationOptions);
       optimizedGoals.add(goal);
-      statsByGoalPriority.put(goal, clusterModel.getClusterStats(_balancingConstraint));
+      statsByGoalPriority.put(goal, clusterModel.getClusterStats(_balancingConstraint, optimizationOptions));
 
       Set<ExecutionProposal> goalProposals = AnalyzerUtils.getDiff(preOptimizedReplicaDistribution,
                                                                    preOptimizedLeaderDistribution,
@@ -479,7 +479,7 @@ public class GoalOptimizer implements Runnable {
                                brokerStatsBeforeOptimization,
                                clusterModel.brokerStats(null),
                                clusterModel.generation(),
-                               clusterModel.getClusterStats(_balancingConstraint),
+                               clusterModel.getClusterStats(_balancingConstraint, optimizationOptions),
                                clusterModel.capacityEstimationInfoByBrokerId(),
                                optimizationOptions,
                                balancednessCostByGoal(goalsByPriority, _priorityWeight, _strictnessWeight));

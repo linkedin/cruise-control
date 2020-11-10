@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
@@ -48,6 +49,7 @@ public class ClusterModel implements Serializable {
   private static final long serialVersionUID = -6840253566423285966L;
   // Hypothetical broker that indicates the original broker of replicas to be created in the existing cluster model.
   private static final Broker GENESIS_BROKER = new Broker(null, -1, new BrokerCapacityInfo(EMPTY_BROKER_CAPACITY), false);
+  private static final OptimizationOptions DEFAULT_OPTIMIZATION_OPTIONS = new OptimizationOptions(Collections.emptySet());
 
   private final ModelGeneration _generation;
   private final Map<String, Rack> _racksById;
@@ -121,13 +123,24 @@ public class ClusterModel implements Serializable {
   }
 
   /**
+   * Populate the analysis stats with this cluster, given balancing constraint, and optimization options.
+   *
+   * @param balancingConstraint Balancing constraint.
+   * @param optimizationOptions Options to take into account while populating stats.
+   * @return Analysis stats with this cluster and given balancing constraint.
+   */
+  public ClusterModelStats getClusterStats(BalancingConstraint balancingConstraint, OptimizationOptions optimizationOptions) {
+    return (new ClusterModelStats()).populate(this, balancingConstraint, optimizationOptions);
+  }
+
+  /**
    * Populate the analysis stats with this cluster and given balancing constraint.
    *
    * @param balancingConstraint Balancing constraint.
    * @return Analysis stats with this cluster and given balancing constraint.
    */
   public ClusterModelStats getClusterStats(BalancingConstraint balancingConstraint) {
-    return (new ClusterModelStats()).populate(this, balancingConstraint);
+    return getClusterStats(balancingConstraint, DEFAULT_OPTIMIZATION_OPTIONS);
   }
 
   /**
@@ -408,7 +421,7 @@ public class ClusterModel implements Serializable {
    * @return The alive brokers in the cluster.
    */
   public Set<Broker> aliveBrokers() {
-    return _aliveBrokers;
+    return Collections.unmodifiableSet(_aliveBrokers);
   }
 
   /**
@@ -613,6 +626,20 @@ public class ClusterModel implements Serializable {
       }
     }
     return numAliveRacks;
+  }
+
+  /**
+   * @param optimizationOptions Options to use in checking the number of racks that are alive and allowed replica moves.
+   * @return The number of alive racks in the cluster that are allowed replica moves.
+   */
+  public int numAliveRacksAllowedReplicaMoves(OptimizationOptions optimizationOptions) {
+    int numAliveRacksAllowedReplicaMoves = 0;
+    for (Rack rack : _racksById.values()) {
+      if (rack.isAliveAndAllowedReplicaMoves(optimizationOptions)) {
+        numAliveRacksAllowedReplicaMoves++;
+      }
+    }
+    return numAliveRacksAllowedReplicaMoves;
   }
 
   /**

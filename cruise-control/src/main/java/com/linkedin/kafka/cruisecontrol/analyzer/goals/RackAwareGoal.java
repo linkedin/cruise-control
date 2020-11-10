@@ -200,7 +200,7 @@ public class RackAwareGoal extends AbstractRackAwareGoal {
   }
 
   @Override
-  protected boolean shouldKeepInTheCurrentRack(Replica replica, ClusterModel clusterModel) {
+  protected boolean shouldKeepInTheCurrentBroker(Replica replica, ClusterModel clusterModel) {
     // Rack awareness requires no more than one replica from a given partition residing in any rack in the cluster
     String myRackId = replica.broker().rack().id();
     int myBrokerId = replica.broker().id();

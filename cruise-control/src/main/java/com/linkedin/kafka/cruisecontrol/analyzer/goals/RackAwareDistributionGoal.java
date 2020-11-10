@@ -25,7 +25,7 @@ import static java.util.Collections.min;
 
 
 /**
- * HARD GOAL: Generate replica movement proposals to evenly distribute replicas over racks.
+ * HARD GOAL: Generate replica movement proposals to evenly distribute replicas over alive racks not excluded for replica moves.
  *
  * This is a relaxed version of {@link RackAwareGoal}. Contrary to {@link RackAwareGoal}, as long as replicas of each
  * partition can achieve a perfectly even distribution across the racks, this goal lets placement of multiple replicas
@@ -60,6 +60,8 @@ import static java.util.Collections.min;
  */
 public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
   private BalanceLimit _balanceLimit;
+  // This is used to identify brokers not excluded for replica moves.
+  private Set<Integer> _brokersAllowedReplicaMove;
 
   /**
    * Constructor for Rack Aware Distribution Goal.
@@ -88,6 +90,8 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
     Set<Broker> partitionBrokers = clusterModel.partition(sourceReplica.topicPartition()).partitionBrokers();
     Map<String, Integer> numReplicasByRack = numPartitionReplicasByRackId(partitionBrokers);
 
+    // Once this goal is optimized, it is guaranteed to have 0 replicas on brokers excluded for replica moves.
+    // Hence, no explicit check is necessary for verifying the replica source.
     return numReplicasByRack.getOrDefault(destinationRackId, 0) >= numReplicasByRack.getOrDefault(sourceRackId, 0);
   }
 
@@ -111,6 +115,10 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
     return RackAwareDistributionGoal.class.getSimpleName();
   }
 
+  private boolean isExcludedForReplicaMove(Broker broker) {
+    return !_brokersAllowedReplicaMove.contains(broker.id());
+  }
+
   /**
    * This is a hard goal; hence, the proposals are not limited to dead broker replicas in case of self-healing.
    *
@@ -118,8 +126,14 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
    * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
-    _balanceLimit = new BalanceLimit(clusterModel);
+  protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
+      throws OptimizationFailureException {
+    _brokersAllowedReplicaMove = GoalUtils.aliveBrokersNotExcludedForReplicaMove(clusterModel, optimizationOptions);
+    if (_brokersAllowedReplicaMove.isEmpty()) {
+      // Handle the case when all alive brokers are excluded from replica moves.
+      throw new OptimizationFailureException("Cannot take any action as all alive brokers are excluded from replica moves.");
+    }
+    _balanceLimit = new BalanceLimit(clusterModel, optimizationOptions);
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
 
     // Filter out some replicas based on optimization options.
@@ -232,7 +246,11 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
   }
 
   @Override
-  protected boolean shouldKeepInTheCurrentRack(Replica replica, ClusterModel clusterModel) {
+  protected boolean shouldKeepInTheCurrentBroker(Replica replica, ClusterModel clusterModel) {
+    if (isExcludedForReplicaMove(replica.broker())) {
+      // A replica in a broker excluded for the replica moves must be relocated to another broker.
+      return false;
+    }
     // Rack aware distribution requires perfectly even distribution for replicas of each partition across the racks.
     // This permits placement of multiple replicas of a partition into a single rack.
     Set<Broker> partitionBrokers = clusterModel.partition(replica.topicPartition()).partitionBrokers();
@@ -281,9 +299,9 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
 
       // Check if rack(s) have multiple replicas from the same partition (i.e. otherwise the distribution is rack-aware).
       if (maxNumReplicasInARack > 1) {
-        // Check whether there are racks with (1) no replicas despite having RF > number of alive racks or (2) more replicas
-        // that they could have been placed into other racks.
-        boolean someAliveRacksHaveNoReplicas = numReplicasByRack.size() < _balanceLimit.numAliveRacks();
+        // Check whether there are alive racks allowed replica moves with (1) no replicas despite having RF > number of
+        // alive racks allowed replica moves or (2) more replicas that they could have been placed into other racks.
+        boolean someAliveRacksHaveNoReplicas = numReplicasByRack.size() < _balanceLimit.numAliveRacksAllowedReplicaMoves();
         if (someAliveRacksHaveNoReplicas || maxNumReplicasInARack - min(numReplicasByRack.values()) > 1) {
           String mitigation = GoalUtils.mitigationForOptimizationFailures(optimizationOptions);
           throw new OptimizationFailureException(String.format("Optimization for goal %s failed for rack-aware distribution of "
@@ -301,38 +319,42 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
    * These limits are expressed in terms of the following:
    * <ul>
    *   <li>{@link #_baseLimitByRF}: The minimum number of replicas from the partition with the given replication factor
-   *   that each rack must contain</li>
-   *   <li>{@link #_numRacksWithOneMoreReplicaByRF}: The exact number of racks that must contain an additional replica
-   *   (i.e. the base limit + 1) from the partition with the given replication factor</li>
+   *   that each alive rack that is allowed replica moves must contain</li>
+   *   <li>{@link #_numRacksWithOneMoreReplicaByRF}: The exact number of racks that are allowed replica moves must contain
+   *   an additional replica (i.e. the base limit + 1) from the partition with the given replication factor</li>
    * </ul>
    *
    * <p>
-   *   For example, for a given replication factor (RF), if the base limit is 1 and the number of racks with one more
-   *   replica is 3, then 3 racks should have 2 replicas and each remaining rack should have 1 replica from the partition
-   *   with the given RF.
+   *   For example, for a given replication factor (RF), if the base limit is 1 and the number of racks (that are allowed
+   *   replica moves) with one more replica is 3, then 3 racks should have 2 replicas and each remaining rack should have
+   *   1 replica from the partition with the given RF.
    * </p>
    */
   private static class BalanceLimit {
-    private final int _numAliveRacks;
+    private final int _numAliveRacksAllowedReplicaMoves;
     private final Map<Integer, Integer> _baseLimitByRF;
     private final Map<Integer, Integer> _numRacksWithOneMoreReplicaByRF;
 
-    BalanceLimit(ClusterModel clusterModel) {
-      _numAliveRacks = clusterModel.numAliveRacks();
+    BalanceLimit(ClusterModel clusterModel, OptimizationOptions optimizationOptions) throws OptimizationFailureException {
+      _numAliveRacksAllowedReplicaMoves = clusterModel.numAliveRacksAllowedReplicaMoves(optimizationOptions);
+      if (_numAliveRacksAllowedReplicaMoves == 0) {
+        // Handle the case when all alive racks are excluded from replica moves.
+        throw new OptimizationFailureException("Cannot take any action as all alive racks are excluded from replica moves.");
+      }
       int maxReplicationFactor = clusterModel.maxReplicationFactor();
       _baseLimitByRF = new HashMap<>(maxReplicationFactor);
       _numRacksWithOneMoreReplicaByRF = new HashMap<>(maxReplicationFactor);
 
       // Precompute the limits for each possible replication factor up to maximum replication factor.
       for (int replicationFactor = 1; replicationFactor <= maxReplicationFactor; replicationFactor++) {
-        int baseLimit = replicationFactor / _numAliveRacks;
+        int baseLimit = replicationFactor / _numAliveRacksAllowedReplicaMoves;
         _baseLimitByRF.put(replicationFactor, baseLimit);
-        _numRacksWithOneMoreReplicaByRF.put(replicationFactor, replicationFactor % _numAliveRacks);
+        _numRacksWithOneMoreReplicaByRF.put(replicationFactor, replicationFactor % _numAliveRacksAllowedReplicaMoves);
       }
     }
 
-    public int numAliveRacks() {
-      return _numAliveRacks;
+    public int numAliveRacksAllowedReplicaMoves() {
+      return _numAliveRacksAllowedReplicaMoves;
     }
 
     public Integer baseLimitByRF(int replicationFactor) {

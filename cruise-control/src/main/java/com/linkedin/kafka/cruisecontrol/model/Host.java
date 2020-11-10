@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import java.io.IOException;
@@ -100,6 +101,23 @@ public class Host implements Serializable {
   public boolean isAlive() {
     for (Broker broker : _brokers.values()) {
       if (broker.isAlive()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Check whether the host is alive and allowed replica moves.
+   *
+   * @param optimizationOptions Options to retrieve excluded brokers for replica moves.
+   * @return Whether the host is alive and allowed replica moves. The host is alive and allowed replica moves as long as
+   * it has at least one broker alive which is not excluded for replica moves.
+   */
+  public boolean isAliveAndAllowedReplicaMoves(OptimizationOptions optimizationOptions) {
+    Set<Integer> excludedBrokers = optimizationOptions.excludedBrokersForReplicaMove();
+    for (Broker broker : _brokers.values()) {
+      if (broker.isAlive() && !excludedBrokers.contains(broker.id())) {
         return true;
       }
     }
