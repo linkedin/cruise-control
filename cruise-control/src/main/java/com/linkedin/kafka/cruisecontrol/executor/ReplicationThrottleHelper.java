@@ -154,7 +154,7 @@ class ReplicationThrottleHelper {
     if (_throttleRate == null) {
       throw new IllegalStateException("Throttle rate cannot be null");
     }
-    if ((!configKey.equals(LEADER_THROTTLED_RATE)) && (!configKey.equals(FOLLOWER_THROTTLED_RATE))) {
+    if (!configKey.equals(LEADER_THROTTLED_RATE) && !configKey.equals(FOLLOWER_THROTTLED_RATE)) {
       throw new IllegalArgumentException(
           String.format("Config key must be either %s or %s", LEADER_THROTTLED_RATE, FOLLOWER_THROTTLED_RATE));
     }
@@ -179,7 +179,7 @@ class ReplicationThrottleHelper {
   }
 
   private void setThrottledReplicas(String topic, Set<String> replicas, String configKey) {
-    if ((!configKey.equals(LEADER_THROTTLED_REPLICAS)) && (!configKey.equals(FOLLOWER_THROTTLED_REPLICAS))) {
+    if (!configKey.equals(LEADER_THROTTLED_REPLICAS) && !configKey.equals(FOLLOWER_THROTTLED_REPLICAS)) {
       throw new IllegalArgumentException(
           String.format("Config key must be either %s or %s", LEADER_THROTTLED_REPLICAS, FOLLOWER_THROTTLED_REPLICAS));
     }
