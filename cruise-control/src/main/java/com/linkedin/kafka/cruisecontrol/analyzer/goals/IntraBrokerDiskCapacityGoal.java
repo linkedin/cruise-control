@@ -234,11 +234,6 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
     return this.getClass().getSimpleName();
   }
 
-  @Override
-  public void finish() {
-    _finished = true;
-  }
-
   /**
    * Check whether the combined replica utilization is above the given disk capacity limits.
    *

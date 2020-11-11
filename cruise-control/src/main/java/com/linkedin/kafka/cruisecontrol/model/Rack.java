@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
@@ -33,7 +34,7 @@ public class Rack implements Serializable {
   private final String _id;
   private final Map<String, Host> _hosts;
   private final Map<Integer, Broker> _brokers;
-  private Load _load;
+  private final Load _load;
   private final double[] _rackCapacity;
 
   /**
@@ -146,6 +147,22 @@ public class Rack implements Serializable {
   public boolean isRackAlive() {
     for (Host host : _hosts.values()) {
       if (host.isAlive()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Check whether the rack is alive and allowed replica moves.
+   *
+   * @param optimizationOptions Options to use in checking if this rack has hosts that are alive and allowed replica moves.
+   * @return Whether the rack is alive and allowed replica moves. The rack is alive and allowed replica moves as long as
+   * it has at least one host alive which is not excluded for replica moves.
+   */
+  public boolean isAliveAndAllowedReplicaMoves(OptimizationOptions optimizationOptions) {
+    for (Host host : _hosts.values()) {
+      if (host.isAliveAndAllowedReplicaMoves(optimizationOptions)) {
         return true;
       }
     }

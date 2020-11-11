@@ -69,7 +69,7 @@ public abstract class AbstractGoal implements Goal {
       _succeeded = true;
       LOG.debug("Starting optimization for {}.", name());
       // Initialize pre-optimized stats.
-      ClusterModelStats statsBeforeOptimization = clusterModel.getClusterStats(_balancingConstraint);
+      ClusterModelStats statsBeforeOptimization = clusterModel.getClusterStats(_balancingConstraint, optimizationOptions);
       LOG.trace("[PRE - {}] {}", name(), statsBeforeOptimization);
       _finished = false;
       long goalStartTime = System.currentTimeMillis();
@@ -82,7 +82,7 @@ public abstract class AbstractGoal implements Goal {
         }
         updateGoalState(clusterModel, optimizationOptions);
       }
-      ClusterModelStats statsAfterOptimization = clusterModel.getClusterStats(_balancingConstraint);
+      ClusterModelStats statsAfterOptimization = clusterModel.getClusterStats(_balancingConstraint, optimizationOptions);
       LOG.trace("[POST - {}] {}", name(), statsAfterOptimization);
       if (LOG.isDebugEnabled()) {
         LOG.debug("Finished optimization for {} in {}ms.", name(), System.currentTimeMillis() - goalStartTime);
@@ -109,6 +109,11 @@ public abstract class AbstractGoal implements Goal {
   @Override
   public abstract String name();
 
+  @Override
+  public void finish() {
+    _finished = true;
+  }
+
   /**
    * Get sorted brokers that the rebalance process will go over to apply balancing actions to replicas they contain.
    *
@@ -116,7 +121,9 @@ public abstract class AbstractGoal implements Goal {
    * @return A collection of brokers that the rebalance process will go over to apply balancing actions to replicas
    * they contain.
    */
-  protected abstract SortedSet<Broker> brokersToBalance(ClusterModel clusterModel);
+  protected SortedSet<Broker> brokersToBalance(ClusterModel clusterModel) {
+    return clusterModel.brokers();
+  }
 
   /**
    * Check if requirements of this goal are not violated if this action is applied to the given cluster state,
