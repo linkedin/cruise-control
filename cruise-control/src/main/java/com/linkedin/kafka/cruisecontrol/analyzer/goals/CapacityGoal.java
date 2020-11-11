@@ -22,7 +22,6 @@ import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.List;
 import java.util.Set;
-import java.util.SortedSet;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -136,19 +135,6 @@ public abstract class CapacityGoal extends AbstractGoal {
   }
 
   /**
-   * This is a hard goal; hence, the proposals are not limited to broken broker replicas in case of self-healing.
-   * Get brokers that the rebalance process will go over to apply balancing actions to replicas they contain.
-   *
-   * @param clusterModel The state of the cluster.
-   * @return A collection of brokers that the rebalance process will go over to apply balancing actions to replicas
-   * they contain.
-   */
-  @Override
-  protected SortedSet<Broker> brokersToBalance(ClusterModel clusterModel) {
-    return clusterModel.brokers();
-  }
-
-  /**
    * Sanity checks: Existing total load on cluster is less than the limiting capacity
    * determined by the total capacity of alive cluster multiplied by the capacity threshold.
    *
@@ -210,11 +196,6 @@ public abstract class CapacityGoal extends AbstractGoal {
     // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
     GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
     finish();
-  }
-
-  @Override
-  public void finish() {
-    _finished = true;
   }
 
   /**

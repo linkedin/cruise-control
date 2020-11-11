@@ -180,7 +180,7 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
 
   @Override
   public void finish() {
-    _finished = true;
+    super.finish();
     // Clean up the memory
     _overLimitBrokerIds.clear();
   }

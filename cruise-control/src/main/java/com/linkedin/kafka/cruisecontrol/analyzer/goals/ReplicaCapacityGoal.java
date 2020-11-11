@@ -103,19 +103,6 @@ public class ReplicaCapacityGoal extends AbstractGoal {
 
   /**
    * This is a hard goal; hence, the proposals are not limited to dead broker replicas in case of self-healing.
-   * Get brokers that the rebalance process will go over to apply balancing actions to replicas they contain.
-   *
-   * @param clusterModel The state of the cluster.
-   * @return A collection of brokers that the rebalance process will go over to apply balancing actions to replicas
-   * they contain.
-   */
-  @Override
-  protected SortedSet<Broker> brokersToBalance(ClusterModel clusterModel) {
-    return clusterModel.brokers();
-  }
-
-  /**
-   * This is a hard goal; hence, the proposals are not limited to dead broker replicas in case of self-healing.
    * Sanity Check: Each node has sufficient number of replicas that can be moved to satisfy the replica capacity goal.
    *
    * @param clusterModel The state of the cluster.
@@ -202,11 +189,6 @@ public class ReplicaCapacityGoal extends AbstractGoal {
     } else {
       _isSelfHealingMode = false;
     }
-  }
-
-  @Override
-  public void finish() {
-    _finished = true;
   }
 
   /**
@@ -310,7 +292,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
    */
   private static class BrokerReplicaCount implements Comparable<BrokerReplicaCount> {
     private final Broker _broker;
-    private int _replicaCount;
+    private final int _replicaCount;
 
     BrokerReplicaCount(Broker broker) {
       _broker = broker;

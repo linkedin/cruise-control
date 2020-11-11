@@ -38,12 +38,12 @@ import static org.junit.Assert.assertTrue;
 @RunWith(Parameterized.class)
 public class IntraBrokerRebalanceTest {
 
-  private int _testId;
-  private Map<ClusterProperty, Number> _modifiedProperties;
-  private List<String> _goalNameByPriority;
-  private BalancingConstraint _balancingConstraint;
-  private Set<String> _excludedTopics;
-  private List<OptimizationVerifier.Verification> _verifications;
+  private final int _testId;
+  private final Map<ClusterProperty, Number> _modifiedProperties;
+  private final List<String> _goalNameByPriority;
+  private final BalancingConstraint _balancingConstraint;
+  private final Set<String> _excludedTopics;
+  private final List<OptimizationVerifier.Verification> _verifications;
 
   /**
    * Constructor of Self Healing Test.

@@ -43,7 +43,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaS
 
 
 /**
- * Soft goal to balance collocations of replicas of the same topic.
+ * Soft goal to balance collocations of replicas of the same topic over alive brokers not excluded for replica moves.
  * <ul>
  * <li>Under: (the average number of topic replicas per broker) * (1 + topic replica count balance percentage)</li>
  * <li>Above: (the average number of topic replicas per broker) * Math.max(0, 1 - topic replica count balance percentage)</li>
@@ -66,6 +66,8 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
   // Must contain all topics to ensure that the lower priority goals work w/o an NPE.
   private final Map<String, Integer> _balanceUpperLimitByTopic;
   private final Map<String, Integer> _balanceLowerLimitByTopic;
+  // This is used to identify brokers not excluded for replica moves.
+  private Set<Integer> _brokersAllowedReplicaMove;
 
   /**
    * A soft goal to balance collocations of replicas of the same topic.
@@ -125,7 +127,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
 
   /**
    * Check whether the given action is acceptable by this goal. An action is acceptable if the number of topic replicas at
-   * (1) the source broker does not go under the allowed limit.
+   * (1) the source broker does not go under the allowed limit -- unless the source broker is excluded for replica moves.
    * (2) the destination broker does not go over the allowed limit.
    *
    * @param action Action to be checked for acceptance.
@@ -146,6 +148,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
           return ACCEPT;
         }
 
+        // It is guaranteed that neither source nor destination brokers are excluded for replica moves.
         boolean acceptSourceToDest = (isReplicaCountUnderBalanceUpperLimitAfterChange(sourceTopic, destinationBroker, ADD)
                                       && isReplicaCountAboveBalanceLowerLimitAfterChange(sourceTopic, sourceBroker, REMOVE));
         return (acceptSourceToDest
@@ -156,7 +159,8 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
         return ACCEPT;
       case INTER_BROKER_REPLICA_MOVEMENT:
         return (isReplicaCountUnderBalanceUpperLimitAfterChange(sourceTopic, destinationBroker, ADD)
-                && isReplicaCountAboveBalanceLowerLimitAfterChange(sourceTopic, sourceBroker, REMOVE)) ? ACCEPT : REPLICA_REJECT;
+                && (isExcludedForReplicaMove(sourceBroker)
+                    || isReplicaCountAboveBalanceLowerLimitAfterChange(sourceTopic, sourceBroker, REMOVE))) ? ACCEPT : REPLICA_REJECT;
       default:
         throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
     }
@@ -180,6 +184,17 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     return changeType == ADD ? numTopicReplicas + 1 >= brokerBalanceLowerLimit : numTopicReplicas - 1 >= brokerBalanceLowerLimit;
   }
 
+  /**
+   * Check whether the given broker is excluded for replica moves.
+   * Such a broker cannot receive replicas, but can give them away.
+   *
+   * @param broker Broker to check for exclusion from replica moves.
+   * @return {@code true} if the given broker is excluded for replica moves, {@code false} otherwise.
+   */
+  private boolean isExcludedForReplicaMove(Broker broker) {
+    return !_brokersAllowedReplicaMove.contains(broker.id());
+  }
+
   @Override
   public ClusterModelStatsComparator clusterModelStatsComparator() {
     return new TopicReplicaDistrGoalStatsComparator();
@@ -201,57 +216,29 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
   }
 
   /**
-   * Get brokers that the rebalance process will go over to apply balancing actions to replicas they contain.
-   *
-   * @param clusterModel The state of the cluster.
-   * @return A collection of brokers that the rebalance process will go over to apply balancing actions to replicas
-   * they contain.
-   */
-  @Override
-  protected SortedSet<Broker> brokersToBalance(ClusterModel clusterModel) {
-    return clusterModel.brokers();
-  }
-
-  /**
-   * Get the set of topics to rebalance. If there are self healing eligible replicas, gets only their topics.
-   * Otherwise gets all topics except excludedTopics.
-   *
-   * @return The set of topics to rebalance.
-   */
-  private Set<String> topicsToRebalance(ClusterModel clusterModel, Set<String> excludedTopics) {
-    Set<String> topicsToRebalance;
-    if (!clusterModel.selfHealingEligibleReplicas().isEmpty()) {
-      topicsToRebalance = new HashSet<>();
-      for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
-        topicsToRebalance.add(replica.topicPartition().topic());
-      }
-    } else {
-      topicsToRebalance = new HashSet<>(clusterModel.topics());
-      topicsToRebalance.removeAll(excludedTopics);
-    }
-
-    if (topicsToRebalance.isEmpty()) {
-      LOG.warn("All topics are excluded from {}.", name());
-    }
-
-    return topicsToRebalance;
-  }
-
-  /**
    * Initiates this goal.
    *
    * @param clusterModel The state of the cluster.
    * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
+  protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
+      throws OptimizationFailureException {
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
-    Set<String> topicsToRebalance = topicsToRebalance(clusterModel, excludedTopics);
+    Set<String> topicsToRebalance = GoalUtils.topicsToRebalance(clusterModel, excludedTopics);
+    if (topicsToRebalance.isEmpty()) {
+      LOG.warn("All topics are excluded from {}.", name());
+    }
 
+    _brokersAllowedReplicaMove = GoalUtils.aliveBrokersNotExcludedForReplicaMove(clusterModel, optimizationOptions);
+    if (_brokersAllowedReplicaMove.isEmpty()) {
+      // Handle the case when all alive brokers are excluded from replica moves.
+      throw new OptimizationFailureException("Cannot take any action as all alive brokers are excluded from replica moves.");
+    }
     // Initialize the average replicas on an alive broker.
     for (String topic : clusterModel.topics()) {
       int numTopicReplicas = clusterModel.numTopicReplicas(topic);
-      _avgTopicReplicasOnAliveBroker.put(topic, (numTopicReplicas / (double) clusterModel.aliveBrokers().size()));
+      _avgTopicReplicasOnAliveBroker.put(topic, (numTopicReplicas / (double) _brokersAllowedReplicaMove.size()));
       _balanceUpperLimitByTopic.put(topic, balanceUpperLimit(topic, optimizationOptions));
       _balanceLowerLimitByTopic.put(topic, balanceLowerLimit(topic, optimizationOptions));
       // Retain only the topics to rebalance in _avgTopicReplicasOnAliveBroker
@@ -296,7 +283,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     String sourceTopic = action.topic();
 
     return isReplicaCountUnderBalanceUpperLimitAfterChange(sourceTopic, destinationBroker, ADD) &&
-           isReplicaCountAboveBalanceLowerLimitAfterChange(sourceTopic, sourceBroker, REMOVE);
+           (isExcludedForReplicaMove(sourceBroker) || isReplicaCountAboveBalanceLowerLimitAfterChange(sourceTopic, sourceBroker, REMOVE));
   }
 
   /**
@@ -331,11 +318,6 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     finish();
   }
 
-  @Override
-  public void finish() {
-    _finished = true;
-  }
-
   private static boolean skipBrokerRebalance(Broker broker,
                                              ClusterModel clusterModel,
                                              Collection<Replica> replicas,
@@ -343,7 +325,6 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
                                              boolean requireMoreReplicas,
                                              boolean hasOfflineTopicReplicas,
                                              boolean moveImmigrantReplicaOnly) {
-    boolean hasImmigrantTopicReplicas = replicas.stream().anyMatch(replica -> broker.immigrantReplicas().contains(replica));
     if (broker.isAlive() && !requireMoreReplicas && !requireLessReplicas) {
       LOG.trace("Skip rebalance: Broker {} is already within the limit for replicas {}.", broker, replicas);
       return true;
@@ -351,7 +332,9 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
       LOG.trace("Skip rebalance: Cluster has new brokers and this broker {} is not new, but does not require less load "
                 + "for replicas {}. Hence, it does not have any offline replicas.", broker, replicas);
       return true;
-    } else if (!clusterModel.selfHealingEligibleReplicas().isEmpty() && requireLessReplicas
+    }
+    boolean hasImmigrantTopicReplicas = replicas.stream().anyMatch(replica -> broker.immigrantReplicas().contains(replica));
+    if (!clusterModel.selfHealingEligibleReplicas().isEmpty() && requireLessReplicas
                && !hasOfflineTopicReplicas && !hasImmigrantTopicReplicas) {
       LOG.trace("Skip rebalance: Cluster is in self-healing mode and the broker {} requires less load, but none of its "
                 + "current offline or immigrant replicas are from the topic being balanced {}.", broker, replicas);
@@ -363,13 +346,6 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     }
 
     return false;
-  }
-
-  private static Set<Replica> retainCurrentOfflineBrokerReplicas(Broker broker, Collection<Replica> replicas) {
-    Set<Replica> offlineReplicas = new HashSet<>(replicas);
-    offlineReplicas.retainAll(broker.currentOfflineReplicas());
-
-    return offlineReplicas;
   }
 
   private boolean isTopicExcludedFromRebalance(String topic) {
@@ -399,10 +375,13 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
 
       Collection<Replica> replicas = broker.replicasOfTopicInBroker(topic);
       int numTopicReplicas = replicas.size();
-      int numOfflineTopicReplicas = retainCurrentOfflineBrokerReplicas(broker, replicas).size();
+      int numOfflineTopicReplicas = GoalUtils.retainCurrentOfflineBrokerReplicas(broker, replicas).size();
+      boolean isExcludedForReplicaMove = isExcludedForReplicaMove(broker);
 
-      boolean requireLessReplicas = numOfflineTopicReplicas > 0 || numTopicReplicas > _balanceUpperLimitByTopic.get(topic);
-      boolean requireMoreReplicas = broker.isAlive() && numTopicReplicas - numOfflineTopicReplicas < _balanceLowerLimitByTopic.get(topic);
+      boolean requireLessReplicas = numOfflineTopicReplicas > 0 || numTopicReplicas > _balanceUpperLimitByTopic.get(topic)
+                                    || isExcludedForReplicaMove;
+      boolean requireMoreReplicas = !isExcludedForReplicaMove && broker.isAlive()
+                                    && numTopicReplicas - numOfflineTopicReplicas < _balanceLowerLimitByTopic.get(topic);
 
       if (skipBrokerRebalance(broker, clusterModel, replicas, requireLessReplicas, requireMoreReplicas, numOfflineTopicReplicas > 0,
                               optimizationOptions.onlyMoveImmigrantReplicas())) {
@@ -453,11 +432,13 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
 
     Collection<Replica> replicasOfTopicInBroker = broker.replicasOfTopicInBroker(topic);
     int numReplicasOfTopicInBroker = replicasOfTopicInBroker.size();
-    int numOfflineTopicReplicas = retainCurrentOfflineBrokerReplicas(broker, replicasOfTopicInBroker).size();
+    int numOfflineTopicReplicas = GoalUtils.retainCurrentOfflineBrokerReplicas(broker, replicasOfTopicInBroker).size();
+    // If the source broker is excluded for replica move, set its upper limit to 0.
+    int balanceUpperLimitForSourceBroker = isExcludedForReplicaMove(broker) ? 0 : _balanceUpperLimitByTopic.get(topic);
 
     boolean wasUnableToMoveOfflineReplica = false;
     for (Replica replica : replicasToMoveOut(broker, topic)) {
-      if (wasUnableToMoveOfflineReplica && !replica.isCurrentOffline() && numReplicasOfTopicInBroker <= _balanceUpperLimitByTopic.get(topic)) {
+      if (wasUnableToMoveOfflineReplica && !replica.isCurrentOffline() && numReplicasOfTopicInBroker <= balanceUpperLimitForSourceBroker) {
         // Was unable to move offline replicas from the broker, and remaining replica count is under the balance limit.
         return false;
       }
@@ -470,7 +451,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
         if (wasOffline) {
           numOfflineTopicReplicas--;
         }
-        if (--numReplicasOfTopicInBroker <= (numOfflineTopicReplicas == 0 ? _balanceUpperLimitByTopic.get(topic) : 0)) {
+        if (--numReplicasOfTopicInBroker <= (numOfflineTopicReplicas == 0 ? balanceUpperLimitForSourceBroker : 0)) {
           return false;
         }
 
@@ -497,11 +478,11 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
       // B2 Info
       Collection<Replica> replicasOfTopicInB2 = b2.replicasOfTopicInBroker(topic);
       int numReplicasOfTopicInB2 = replicasOfTopicInB2.size();
-      int numOfflineTopicReplicasInB2 = retainCurrentOfflineBrokerReplicas(b2, replicasOfTopicInB2).size();
+      int numOfflineTopicReplicasInB2 = GoalUtils.retainCurrentOfflineBrokerReplicas(b2, replicasOfTopicInB2).size();
       // B1 Info
       Collection<Replica> replicasOfTopicInB1 = b1.replicasOfTopicInBroker(topic);
       int numReplicasOfTopicInB1 = replicasOfTopicInB1.size();
-      int numOfflineTopicReplicasInB1 = retainCurrentOfflineBrokerReplicas(b2, replicasOfTopicInB1).size();
+      int numOfflineTopicReplicasInB1 = GoalUtils.retainCurrentOfflineBrokerReplicas(b1, replicasOfTopicInB1).size();
 
       int resultByOfflineReplicas = Integer.compare(numOfflineTopicReplicasInB2, numOfflineTopicReplicasInB1);
       if (resultByOfflineReplicas == 0) {
@@ -519,7 +500,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     } else {
       for (Broker sourceBroker : clusterModel.brokers()) {
         if (sourceBroker.numReplicasOfTopicInBroker(topic) > _balanceLowerLimitByTopic.get(topic)
-            || !sourceBroker.currentOfflineReplicas().isEmpty()) {
+            || !sourceBroker.currentOfflineReplicas().isEmpty() || isExcludedForReplicaMove(sourceBroker)) {
           eligibleBrokers.add(sourceBroker);
         }
       }
@@ -534,7 +515,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     while (!eligibleBrokers.isEmpty()) {
       Broker sourceBroker = eligibleBrokers.poll();
       SortedSet<Replica> replicasToMove = replicasToMoveOut(sourceBroker, topic);
-      int numOfflineTopicReplicas = retainCurrentOfflineBrokerReplicas(sourceBroker, replicasToMove).size();
+      int numOfflineTopicReplicas = GoalUtils.retainCurrentOfflineBrokerReplicas(sourceBroker, replicasToMove).size();
 
       for (Replica replica : replicasToMove) {
         boolean wasOffline = replica.isCurrentOffline();
@@ -568,7 +549,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
 
     @Override
     public int compare(ClusterModelStats stats1, ClusterModelStats stats2) {
-      // Standard deviation of number of topic replicas over brokers in the current must be less than the
+      // Standard deviation of number of topic replicas over brokers not excluded for replica moves must be less than the
       // pre-optimized stats.
       double stdDev1 = stats1.topicReplicaStats().get(Statistic.ST_DEV).doubleValue();
       double stdDev2 = stats2.topicReplicaStats().get(Statistic.ST_DEV).doubleValue();
