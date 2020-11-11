@@ -41,19 +41,6 @@ public abstract class AbstractRackAwareGoal extends AbstractGoal {
     return new ModelCompletenessRequirements(MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING, 0.0, true);
   }
 
-  /**
-   * This is a hard goal; hence, the proposals are not limited to dead broker replicas in case of self-healing.
-   * Get brokers that the rebalance process will go over to apply balancing actions to replicas they contain.
-   *
-   * @param clusterModel The state of the cluster.
-   * @return A collection of brokers that the rebalance process will go over to apply balancing actions to replicas
-   * they contain.
-   */
-  @Override
-  protected SortedSet<Broker> brokersToBalance(ClusterModel clusterModel) {
-    return clusterModel.brokers();
-  }
-
   @Override
   public boolean isHardGoal() {
     return true;
@@ -62,11 +49,6 @@ public abstract class AbstractRackAwareGoal extends AbstractGoal {
   @Override
   protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
     return true;
-  }
-
-  @Override
-  public void finish() {
-    _finished = true;
   }
 
   /**
@@ -140,7 +122,7 @@ public abstract class AbstractRackAwareGoal extends AbstractGoal {
                                     boolean throwExceptionIfCannotMove)
       throws OptimizationFailureException {
     for (Replica replica : broker.trackedSortedReplicas(replicaSortName(this, false, false)).sortedReplicas(true)) {
-      if (broker.isAlive() && !broker.currentOfflineReplicas().contains(replica) && shouldKeepInTheCurrentRack(replica, clusterModel)) {
+      if (broker.isAlive() && !broker.currentOfflineReplicas().contains(replica) && shouldKeepInTheCurrentBroker(replica, clusterModel)) {
         continue;
       }
       // The relevant rack awareness condition is violated. Move replica to an eligible broker
@@ -156,14 +138,14 @@ public abstract class AbstractRackAwareGoal extends AbstractGoal {
   }
 
   /**
-   * Check whether the given alive replica should stay in the current rack or be moved to another rack to satisfy the
+   * Check whether the given alive replica should stay in the current broker or be moved to another broker to satisfy the
    * specific requirements of the custom rack aware goal in the given cluster state.
    *
-   * @param replica An alive replica to check whether it should stay in the current rack.
+   * @param replica An alive replica to check whether it should stay in the current broker.
    * @param clusterModel The state of the cluster.
-   * @return True if the given alive replica should stay in the current rack, false otherwise.
+   * @return True if the given alive replica should stay in the current broker, false otherwise.
    */
-  protected abstract boolean shouldKeepInTheCurrentRack(Replica replica, ClusterModel clusterModel);
+  protected abstract boolean shouldKeepInTheCurrentBroker(Replica replica, ClusterModel clusterModel);
 
   /**
    * Get a list of eligible brokers for moving the given replica in the given cluster to satisfy the specific

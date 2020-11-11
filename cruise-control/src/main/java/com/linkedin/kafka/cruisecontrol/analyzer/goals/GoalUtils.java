@@ -389,6 +389,62 @@ public class GoalUtils {
     return String.format("%s%s%s", goal.name(), reverse ? "-REVERSE" : "", leaderOnly ? "-LEADER" : "");
   }
 
+
+  /**
+   * Get the set of topics to rebalance for a soft goal.
+   *
+   * @param clusterModel The state of the cluster.
+   * @param excludedTopics The topics to exclude from rebalance.
+   * @return Topics of self-healing eligible replicas if the given cluster model has any, all topics except the given
+   * excluded topics otherwise.
+   */
+  public static Set<String> topicsToRebalance(ClusterModel clusterModel, Set<String> excludedTopics) {
+    Set<String> topicsToRebalance;
+    if (!clusterModel.selfHealingEligibleReplicas().isEmpty()) {
+      topicsToRebalance = new HashSet<>();
+      for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
+        topicsToRebalance.add(replica.topicPartition().topic());
+      }
+    } else {
+      topicsToRebalance = new HashSet<>(clusterModel.topics());
+      topicsToRebalance.removeAll(excludedTopics);
+    }
+
+    return topicsToRebalance;
+  }
+
+  /**
+   * Retain the subset of the given replicas that are currently offline and reside in the given broker.
+   *
+   * @param broker Broker, whose current offline replicas will be retrieved.
+   * @param replicas Replicas, whose subset will be retained in a new set.
+   * @return A new set of replicas that are currently offline and reside in the given broker.
+   */
+  public static Set<Replica> retainCurrentOfflineBrokerReplicas(Broker broker, Collection<Replica> replicas) {
+    Set<Replica> offlineReplicas = new HashSet<>(replicas);
+    offlineReplicas.retainAll(broker.currentOfflineReplicas());
+
+    return offlineReplicas;
+  }
+
+  /**
+   * Retrieve alive broker ids that are not excluded for replica moves.
+   * Returns a hashset to provide constant time lookup guaranteed by a HashSet.
+   *
+   * @param clusterModel The state of the cluster.
+   * @param optimizationOptions Options to retrieve excluded brokers for replica move
+   * @return Alive broker ids that are not excluded for replica moves.
+   */
+  public static HashSet<Integer> aliveBrokersNotExcludedForReplicaMove(ClusterModel clusterModel,
+                                                                       OptimizationOptions optimizationOptions) {
+    Set<Integer> excludedBrokers = optimizationOptions.excludedBrokersForReplicaMove();
+    return clusterModel.aliveBrokers()
+                       .stream()
+                       .filter(broker -> !excludedBrokers.contains(broker.id()))
+                       .map(Broker::id)
+                       .collect(Collectors.toCollection(HashSet::new));
+  }
+
   /**
    * Whenever appropriate, provide a message that is intended to help with the mitigation of of optimization failures
    * with the given optimization options.

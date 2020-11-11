@@ -78,7 +78,7 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
 
   /**
    * Check whether the given action is acceptable by this goal. An action is acceptable if the number of leader replicas at
-   * (1) the broker which gives away leader replica does not go under the allowed limit.
+   * (1) the broker which gives away leader replica does not go under the allowed limit -- unless it is excluded for replica moves.
    * (2) the broker which receives leader replica does not go over the allowed limit.
    *
    * @param action Action to be checked for acceptance.
@@ -114,7 +114,8 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
 
   private ActionAcceptance isLeaderMovementSatisfiable(Broker sourceBroker, Broker destinationBroker) {
     return (isReplicaCountUnderBalanceUpperLimitAfterChange(destinationBroker, destinationBroker.leaderReplicas().size(), ADD)
-           && isReplicaCountAboveBalanceLowerLimitAfterChange(sourceBroker, sourceBroker.leaderReplicas().size(), REMOVE))
+           && (isExcludedForReplicaMove(sourceBroker)
+               || isReplicaCountAboveBalanceLowerLimitAfterChange(sourceBroker, sourceBroker.leaderReplicas().size(), REMOVE)))
            ? ACCEPT : REPLICA_REJECT;
   }
 
@@ -143,8 +144,9 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
                                     OptimizationOptions optimizationOptions) {
     LOG.debug("Rebalancing broker {} [limits] lower: {} upper: {}.", broker.id(), _balanceLowerLimit, _balanceUpperLimit);
     int numLeaderReplicas = broker.leaderReplicas().size();
-    boolean requireLessLeaderReplicas = broker.isAlive() && numLeaderReplicas > _balanceUpperLimit;
-    boolean requireMoreLeaderReplicas = broker.isAlive() && numLeaderReplicas < _balanceLowerLimit;
+    boolean isExcludedForReplicaMove = isExcludedForReplicaMove(broker);
+    boolean requireLessLeaderReplicas = broker.isAlive() && numLeaderReplicas > (isExcludedForReplicaMove ? 0 : _balanceUpperLimit);
+    boolean requireMoreLeaderReplicas = !isExcludedForReplicaMove && broker.isAlive() && numLeaderReplicas < _balanceLowerLimit;
     boolean requireLessReplicas = _fixOfflineReplicasOnly && broker.currentOfflineReplicas().size() > 0;
     // Update broker ids over the balance limit for logging purposes.
     if (((requireLessLeaderReplicas
@@ -172,6 +174,8 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
     if (!clusterModel.deadBrokers().isEmpty()) {
       return true;
     }
+    // If the source broker is excluded for replica move, set its upper limit to 0.
+    int balanceUpperLimitForSourceBroker = isExcludedForReplicaMove(broker) ? 0 : _balanceUpperLimit;
     int numLeaderReplicas = broker.leaderReplicas().size();
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     for (Replica leader : new HashSet<>(broker.leaderReplicas())) {
@@ -190,7 +194,7 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
                                            optimizationOptions);
       // Only check if we successfully moved something.
       if (b != null) {
-        if (--numLeaderReplicas <= _balanceUpperLimit) {
+        if (--numLeaderReplicas <= balanceUpperLimitForSourceBroker) {
           return false;
         }
       }

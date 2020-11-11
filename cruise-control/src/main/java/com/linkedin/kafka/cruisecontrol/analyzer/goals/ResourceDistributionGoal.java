@@ -284,11 +284,6 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     finish();
   }
 
-  @Override
-  public void finish() {
-    _finished = true;
-  }
-
   /**
    * (1) REBALANCE BY LEADERSHIP MOVEMENT:
    * Perform leadership movement to ensure that the load on brokers for the outbound network and CPU load is under the
