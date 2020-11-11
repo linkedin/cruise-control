@@ -139,6 +139,13 @@ public abstract class ReplicaDistributionAbstractGoal extends AbstractGoal {
     _balanceLowerLimit = balanceLowerLimit(optimizationOptions, balancePercentage());
   }
 
+  /**
+   * Check whether the given broker is excluded for replica moves.
+   * Such a broker cannot receive replicas, but can give them away.
+   *
+   * @param broker Broker to check for exclusion from replica moves.
+   * @return {@code true} if the given broker is excluded for replica moves, {@code false} otherwise.
+   */
   protected boolean isExcludedForReplicaMove(Broker broker) {
     return !_brokersAllowedReplicaMove.contains(broker.id());
   }

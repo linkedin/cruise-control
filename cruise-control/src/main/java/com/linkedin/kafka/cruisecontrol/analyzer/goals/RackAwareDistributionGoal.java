@@ -115,6 +115,13 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
     return RackAwareDistributionGoal.class.getSimpleName();
   }
 
+  /**
+   * Check whether the given broker is excluded for replica moves.
+   * Such a broker cannot receive replicas, but can give them away.
+   *
+   * @param broker Broker to check for exclusion from replica moves.
+   * @return {@code true} if the given broker is excluded for replica moves, {@code false} otherwise.
+   */
   private boolean isExcludedForReplicaMove(Broker broker) {
     return !_brokersAllowedReplicaMove.contains(broker.id());
   }
