@@ -34,7 +34,7 @@ public enum Resource {
   private final int _id;
   private final boolean _isHostResource;
   private final boolean _isBrokerResource;
-  private double _epsilon;
+  private final double _epsilon;
 
   private static final List<Resource> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 

@@ -318,15 +318,14 @@ public class GoalUtils {
   }
 
   /**
-   * Get the utilization percentage of the broker for the given resource, or {@link #DEAD_BROKER_UTILIZATION} if the
-   * broker is dead. The utilization percentage for resources is calculated from broker capacity and
-   * {@link com.linkedin.kafka.cruisecontrol.model.Load#expectedUtilizationFor(Resource)} .
+   * Get the utilization of the broker for the given resource, or {@link #DEAD_BROKER_UTILIZATION} if the broker is dead.
+   * The utilization of an alive broker corresponds to the ratio of its expected utilization to its capacity.
    *
    * @param broker Broker for which the resource utilization percentage has been queried.
    * @param resource Resource for the utilization percentage.
-   * @return Utilization percentage of the broker for the given resource.
+   * @return Utilization of the broker for the given resource as a double in [0.0,1.0].
    */
-  public static double utilizationPercentage(Broker broker, Resource resource) {
+  public static double utilization(Broker broker, Resource resource) {
     double brokerCapacity = broker.capacityFor(resource);
     return brokerCapacity > 0 ? broker.load().expectedUtilizationFor(resource) / brokerCapacity : DEAD_BROKER_UTILIZATION;
   }
