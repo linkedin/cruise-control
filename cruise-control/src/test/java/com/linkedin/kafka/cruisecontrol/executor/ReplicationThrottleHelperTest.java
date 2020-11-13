@@ -61,6 +61,15 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     }
   }
 
+  private void setWildcardThrottleReplicaForTopic(KafkaZkClient kafkaZkClient, String topicName) {
+    for (String replicaThrottleProp :
+        Arrays.asList(ReplicationThrottleHelper.LEADER_THROTTLED_REPLICAS, ReplicationThrottleHelper.FOLLOWER_THROTTLED_REPLICAS)) {
+      Properties config = kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topicName);
+      config.setProperty(replicaThrottleProp, ReplicationThrottleHelper.WILD_CARD_ASTERISK);
+      ExecutorUtils.changeTopicConfig(new AdminZkClient(kafkaZkClient), topicName, config);
+    }
+  }
+
   private ExecutionTask inProgressTaskForProposal(long id, ExecutionProposal proposal) {
     ExecutionTask task = new ExecutionTask(id, proposal, ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION, TASK_EXECUTION_ALERTING_THRESHOLD_MS);
     task.inProgress(0);
@@ -205,6 +214,81 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     assertExpectedThrottledReplicas(kafkaZkClient, TOPIC0, "1:0,1:1");
     assertExpectedThrottledReplicas(kafkaZkClient, TOPIC1, "1:1");
   }
+
+  @Test
+  public void testDoNotModifyExistingWildcardReplicaThrottles() {
+    createTopics();
+
+    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
+        "ReplicationThrottleHelperTestMetricGroup", "AddingThrottlesWithNoPreExistingThrottles", false);
+
+    // Set replica throttle config values for both topics
+    setWildcardThrottleReplicaForTopic(kafkaZkClient, TOPIC0);
+    setWildcardThrottleReplicaForTopic(kafkaZkClient, TOPIC1);
+
+    final long throttleRate = 100L;
+
+    ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(kafkaZkClient, throttleRate);
+    ExecutionProposal proposal = new ExecutionProposal(
+        new TopicPartition(TOPIC0, 0),
+        100,
+        new ReplicaPlacementInfo(0),
+        Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(1)),
+        Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(2)));
+
+    ExecutionProposal proposal2 = new ExecutionProposal(
+        new TopicPartition(TOPIC0, 1),
+        100,
+        new ReplicaPlacementInfo(0),
+        Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(3)),
+        Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(2)));
+
+    throttleHelper.setThrottles(Arrays.asList(proposal, proposal2));
+
+    ExecutionTask completedTask = completedTaskForProposal(0, proposal);
+    ExecutionTask inProgressTask = inProgressTaskForProposal(1, proposal2);
+
+    assertExpectedThrottledRateForBroker(kafkaZkClient, 0, throttleRate);
+    assertExpectedThrottledRateForBroker(kafkaZkClient, 1, throttleRate);
+    assertExpectedThrottledRateForBroker(kafkaZkClient, 2, throttleRate);
+    assertExpectedThrottledRateForBroker(kafkaZkClient, 3, throttleRate);
+    // Topic-level throttled replica config value should remain as "*"
+    assertExpectedThrottledReplicas(kafkaZkClient, TOPIC0, ReplicationThrottleHelper.WILD_CARD_ASTERISK);
+    assertExpectedThrottledReplicas(kafkaZkClient, TOPIC1, ReplicationThrottleHelper.WILD_CARD_ASTERISK);
+
+    throttleHelper.clearThrottles(Collections.singletonList(completedTask), Collections.singletonList(inProgressTask));
+    assertExpectedThrottledRateForBroker(kafkaZkClient, 0, throttleRate);
+    // we expect broker 1 to be null since all replica movement related to it has completed.
+    assertExpectedThrottledRateForBroker(kafkaZkClient, 1, null);
+    assertExpectedThrottledRateForBroker(kafkaZkClient, 2, throttleRate);
+    // We expect broker 3 to have a throttle on it because there is an in-progress replica being moved
+    assertExpectedThrottledRateForBroker(kafkaZkClient, 3, throttleRate);
+    // Topic-level throttled replica config value should remain as "*"
+    assertExpectedThrottledReplicas(kafkaZkClient, TOPIC0, ReplicationThrottleHelper.WILD_CARD_ASTERISK);
+    assertExpectedThrottledReplicas(kafkaZkClient, TOPIC1, ReplicationThrottleHelper.WILD_CARD_ASTERISK);
+
+    // passing an inProgress task that is not complete should have no effect.
+    throttleHelper.clearThrottles(Collections.singletonList(completedTask), Collections.singletonList(inProgressTask));
+    assertExpectedThrottledRateForBroker(kafkaZkClient, 0, throttleRate);
+    // we expect broker 1 to be null since all replica movement related to it has completed.
+    assertExpectedThrottledRateForBroker(kafkaZkClient, 1, null);
+    assertExpectedThrottledRateForBroker(kafkaZkClient, 2, throttleRate);
+    // We expect broker 3 to have a throttle on it because there is an in-progress replica being moved
+    assertExpectedThrottledRateForBroker(kafkaZkClient, 3, throttleRate);
+    // Topic-level throttled replica config value should remain as "*"
+    assertExpectedThrottledReplicas(kafkaZkClient, TOPIC0, ReplicationThrottleHelper.WILD_CARD_ASTERISK);
+    assertExpectedThrottledReplicas(kafkaZkClient, TOPIC1, ReplicationThrottleHelper.WILD_CARD_ASTERISK);
+
+    // Completing the in-progress task and clearing the throttles should clean everything up.
+    inProgressTask.completed(3);
+    throttleHelper.clearThrottles(Arrays.asList(completedTask, inProgressTask), Collections.emptyList());
+
+    Arrays.asList(0, 1, 2, 3).forEach((i) -> assertExpectedThrottledRateForBroker(kafkaZkClient, i, null));
+    // Topic-level throttled replica config value should remain as "*"
+    assertExpectedThrottledReplicas(kafkaZkClient, TOPIC0, ReplicationThrottleHelper.WILD_CARD_ASTERISK);
+    assertExpectedThrottledReplicas(kafkaZkClient, TOPIC1, ReplicationThrottleHelper.WILD_CARD_ASTERISK);
+  }
+
 
   @Test
   public void testDoNotRemoveThrottlesForInProgressTasks() {

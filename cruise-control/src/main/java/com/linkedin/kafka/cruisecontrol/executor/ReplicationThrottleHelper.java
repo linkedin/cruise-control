@@ -28,7 +28,7 @@ import java.util.stream.Stream;
  */
 class ReplicationThrottleHelper {
   private static final Logger LOG = LoggerFactory.getLogger(ReplicationThrottleHelper.class);
-  private static final String WILD_CARD_ASTERISK = "*";
+  static final String WILD_CARD_ASTERISK = "*";
   static final String LEADER_THROTTLED_RATE = "leader.replication.throttled.rate";
   static final String FOLLOWER_THROTTLED_RATE = "follower.replication.throttled.rate";
   static final String LEADER_THROTTLED_REPLICAS = LogConfig.LeaderReplicationThrottledReplicasProp();
