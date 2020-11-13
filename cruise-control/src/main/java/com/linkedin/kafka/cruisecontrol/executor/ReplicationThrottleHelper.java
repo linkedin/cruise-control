@@ -156,13 +156,13 @@ class ReplicationThrottleHelper {
     }
     String replicaThrottleRateConfigKey = throttleLeaderReplicaRate ? LEADER_THROTTLED_RATE : FOLLOWER_THROTTLED_RATE;
     Properties config = _kafkaZkClient.getEntityConfigs(ConfigType.Broker(), String.valueOf(brokerId));
-    Object oldThrottleRate = config.setProperty(replicaThrottleRateConfigKey, String.valueOf(_throttleRate));
-    if (oldThrottleRate == null) {
+    Object currThrottleRate = config.setProperty(replicaThrottleRateConfigKey, String.valueOf(_throttleRate));
+    if (currThrottleRate == null) {
       LOG.debug("Setting {} to {} bytes/second for broker {}", replicaThrottleRateConfigKey, _throttleRate, brokerId);
       ExecutorUtils.changeBrokerConfig(_adminZkClient, brokerId, config);
     } else {
       LOG.debug("Not setting {} for broker {} because pre-existing throttle of {} was already set",
-          replicaThrottleRateConfigKey, brokerId, oldThrottleRate);
+          replicaThrottleRateConfigKey, brokerId, currThrottleRate);
     }
   }
 
@@ -178,16 +178,16 @@ class ReplicationThrottleHelper {
     String replicaThrottleConfigKey = throttleLeaderReplica ? LEADER_THROTTLED_REPLICAS : FOLLOWER_THROTTLED_REPLICAS;
 
     Properties config = _kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic);
-    String oldThrottledReplicas = config.getProperty(replicaThrottleConfigKey);
-    if (oldThrottledReplicas != null && oldThrottledReplicas.trim().equals(WILD_CARD_ASTERISK)) {
+    String currThrottledReplicas = config.getProperty(replicaThrottleConfigKey);
+    if (currThrottledReplicas != null && currThrottledReplicas.trim().equals(WILD_CARD_ASTERISK)) {
       // The existing setup throttles all replica. So, nothing needs to be changed.
       return;
     }
 
     // Merge new throttled replicas with existing configuration values.
     Set<String> newThrottledReplicas = new TreeSet<>(replicas);
-    if (oldThrottledReplicas != null) {
-      newThrottledReplicas.addAll(Arrays.asList(oldThrottledReplicas.split(",")));
+    if (currThrottledReplicas != null) {
+      newThrottledReplicas.addAll(Arrays.asList(currThrottledReplicas.split(",")));
     }
     config.setProperty(replicaThrottleConfigKey, String.join(",", newThrottledReplicas));
     ExecutorUtils.changeTopicConfig(_adminZkClient, topic, config);
@@ -210,15 +210,15 @@ class ReplicationThrottleHelper {
    * @return true if the given configuration properties are modified and false otherwise
    */
   private boolean removeLeaderThrottledReplicasFromTopic(Properties config, String topic, Set<String> replicas) {
-    String oldLeaderThrottledReplicas = config.getProperty(LEADER_THROTTLED_REPLICAS);
-    if (oldLeaderThrottledReplicas != null) {
-      if (oldLeaderThrottledReplicas.equals(WILD_CARD_ASTERISK)) {
+    String currLeaderThrottledReplicas = config.getProperty(LEADER_THROTTLED_REPLICAS);
+    if (currLeaderThrottledReplicas != null) {
+      if (currLeaderThrottledReplicas.equals(WILD_CARD_ASTERISK)) {
         LOG.debug("Existing config throttles all leader replicas. So, not remove any leader replica throttle");
         return false;
       }
 
       replicas.forEach(r -> LOG.debug("Removing leader throttles for topic {} on replica {}", topic, r));
-      String newLeaderThrottledReplicas = removeReplicasFromConfig(oldLeaderThrottledReplicas, replicas);
+      String newLeaderThrottledReplicas = removeReplicasFromConfig(currLeaderThrottledReplicas, replicas);
       if (newLeaderThrottledReplicas.isEmpty()) {
         config.remove(LEADER_THROTTLED_REPLICAS);
       } else {
@@ -240,15 +240,15 @@ class ReplicationThrottleHelper {
    * @return true if the given configuration properties are modified and false otherwise
    */
   private boolean removeFollowerThrottledReplicasFromTopic(Properties config, String topic, Set<String> replicas) {
-    String oldLeaderThrottledReplicas = config.getProperty(FOLLOWER_THROTTLED_REPLICAS);
-    if (oldLeaderThrottledReplicas != null) {
-      if (oldLeaderThrottledReplicas.equals(WILD_CARD_ASTERISK)) {
+    String currLeaderThrottledReplicas = config.getProperty(FOLLOWER_THROTTLED_REPLICAS);
+    if (currLeaderThrottledReplicas != null) {
+      if (currLeaderThrottledReplicas.equals(WILD_CARD_ASTERISK)) {
         LOG.debug("Existing config throttles all follower replicas. So, not remove any follower replica throttle");
         return false;
       }
 
       replicas.forEach(r -> LOG.debug("Removing follower throttles for topic {} and replica {}", topic, r));
-      String newLeaderThrottledReplicas = removeReplicasFromConfig(oldLeaderThrottledReplicas, replicas);
+      String newLeaderThrottledReplicas = removeReplicasFromConfig(currLeaderThrottledReplicas, replicas);
       if (newLeaderThrottledReplicas.isEmpty()) {
         config.remove(FOLLOWER_THROTTLED_REPLICAS);
       } else {
@@ -271,12 +271,12 @@ class ReplicationThrottleHelper {
 
   private void removeThrottledRateFromBroker(Integer brokerId) {
     Properties config = _kafkaZkClient.getEntityConfigs(ConfigType.Broker(), String.valueOf(brokerId));
-    Object oldLeaderThrottle = config.get(LEADER_THROTTLED_RATE);
-    Object oldFollowerThrottle = config.get(FOLLOWER_THROTTLED_RATE);
+    Object currLeaderThrottle = config.get(LEADER_THROTTLED_RATE);
+    Object currFollowerThrottle = config.get(FOLLOWER_THROTTLED_RATE);
     boolean configChange = false;
 
-    if (oldLeaderThrottle != null) {
-      if (oldLeaderThrottle.equals(WILD_CARD_ASTERISK)) {
+    if (currLeaderThrottle != null) {
+      if (currLeaderThrottle.equals(WILD_CARD_ASTERISK)) {
         LOG.debug("Existing config throttles all leader replicas. So, not remove any leader replica throttle on broker {}", brokerId);
       } else {
         LOG.debug("Removing leader throttle on broker {}", brokerId);
@@ -284,8 +284,8 @@ class ReplicationThrottleHelper {
         configChange = true;
       }
     }
-    if (oldFollowerThrottle != null) {
-      if (oldFollowerThrottle.equals(WILD_CARD_ASTERISK)) {
+    if (currFollowerThrottle != null) {
+      if (currFollowerThrottle.equals(WILD_CARD_ASTERISK)) {
         LOG.debug("Existing config throttles all follower replicas. So, not remove any follower replica throttle on broker {}", brokerId);
       } else {
         LOG.debug("Removing follower throttle on broker {}", brokerId);
