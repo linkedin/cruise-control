@@ -28,7 +28,7 @@ import java.util.stream.Stream;
  */
 class ReplicationThrottleHelper {
   private static final Logger LOG = LoggerFactory.getLogger(ReplicationThrottleHelper.class);
-  static final String WILD_CARD_ASTERISK = "*";
+  static final String WILDCARD_ASTERISK = "*";
   static final String LEADER_THROTTLED_RATE = "leader.replication.throttled.rate";
   static final String FOLLOWER_THROTTLED_RATE = "follower.replication.throttled.rate";
   static final String LEADER_THROTTLED_REPLICAS = LogConfig.LeaderReplicationThrottledReplicasProp();
@@ -179,7 +179,7 @@ class ReplicationThrottleHelper {
 
     Properties config = _kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic);
     String currThrottledReplicas = config.getProperty(replicaThrottleConfigKey);
-    if (currThrottledReplicas != null && currThrottledReplicas.trim().equals(WILD_CARD_ASTERISK)) {
+    if (currThrottledReplicas != null && currThrottledReplicas.trim().equals(WILDCARD_ASTERISK)) {
       // The existing setup throttles all replica. So, nothing needs to be changed.
       return;
     }
@@ -212,8 +212,8 @@ class ReplicationThrottleHelper {
   private boolean removeLeaderThrottledReplicasFromTopic(Properties config, String topic, Set<String> replicas) {
     String currLeaderThrottledReplicas = config.getProperty(LEADER_THROTTLED_REPLICAS);
     if (currLeaderThrottledReplicas != null) {
-      if (currLeaderThrottledReplicas.equals(WILD_CARD_ASTERISK)) {
-        LOG.debug("Existing config throttles all leader replicas. So, not remove any leader replica throttle");
+      if (currLeaderThrottledReplicas.equals(WILDCARD_ASTERISK)) {
+        LOG.debug("Existing config throttles all leader replicas. So, do not remove any leader replica throttle");
         return false;
       }
 
@@ -242,8 +242,8 @@ class ReplicationThrottleHelper {
   private boolean removeFollowerThrottledReplicasFromTopic(Properties config, String topic, Set<String> replicas) {
     String currLeaderThrottledReplicas = config.getProperty(FOLLOWER_THROTTLED_REPLICAS);
     if (currLeaderThrottledReplicas != null) {
-      if (currLeaderThrottledReplicas.equals(WILD_CARD_ASTERISK)) {
-        LOG.debug("Existing config throttles all follower replicas. So, not remove any follower replica throttle");
+      if (currLeaderThrottledReplicas.equals(WILDCARD_ASTERISK)) {
+        LOG.debug("Existing config throttles all follower replicas. So, do not remove any follower replica throttle");
         return false;
       }
 
@@ -276,8 +276,8 @@ class ReplicationThrottleHelper {
     boolean configChange = false;
 
     if (currLeaderThrottle != null) {
-      if (currLeaderThrottle.equals(WILD_CARD_ASTERISK)) {
-        LOG.debug("Existing config throttles all leader replicas. So, not remove any leader replica throttle on broker {}", brokerId);
+      if (currLeaderThrottle.equals(WILDCARD_ASTERISK)) {
+        LOG.debug("Existing config throttles all leader replicas. So, do not remove any leader replica throttle on broker {}", brokerId);
       } else {
         LOG.debug("Removing leader throttle on broker {}", brokerId);
         config.remove(LEADER_THROTTLED_RATE);
@@ -285,8 +285,8 @@ class ReplicationThrottleHelper {
       }
     }
     if (currFollowerThrottle != null) {
-      if (currFollowerThrottle.equals(WILD_CARD_ASTERISK)) {
-        LOG.debug("Existing config throttles all follower replicas. So, not remove any follower replica throttle on broker {}", brokerId);
+      if (currFollowerThrottle.equals(WILDCARD_ASTERISK)) {
+        LOG.debug("Existing config throttles all follower replicas. So, do not remove any follower replica throttle on broker {}", brokerId);
       } else {
         LOG.debug("Removing follower throttle on broker {}", brokerId);
         config.remove(FOLLOWER_THROTTLED_RATE);
