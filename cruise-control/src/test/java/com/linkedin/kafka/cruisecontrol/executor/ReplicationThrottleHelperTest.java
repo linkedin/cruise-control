@@ -89,12 +89,11 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
 
     // Test would fail on any unexpected interactions with the kafkaZkClient
     ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockKafkaZkClient, null);
-    ExecutionProposal proposal = new ExecutionProposal(
-        new TopicPartition("topic", 0),
-        100,
-        new ReplicaPlacementInfo(0),
-        Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(1)),
-        Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(2)));
+    ExecutionProposal proposal = new ExecutionProposal(new TopicPartition("topic", 0),
+                                           100,
+                                                       new ReplicaPlacementInfo(0),
+                                                       Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(1)),
+                                                       Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(2)));
 
     ExecutionTask task = completedTaskForProposal(0, proposal);
 
@@ -119,19 +118,18 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
   public void testAddingThrottlesWithNoPreExistingThrottles() {
     createTopics();
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
-        "ReplicationThrottleHelperTestMetricGroup",
-        "AddingThrottlesWithNoPreExistingThrottles",
-            false);
+                                                                  "ReplicationThrottleHelperTestMetricGroup",
+                                                                   "AddingThrottlesWithNoPreExistingThrottles",
+                                                              false);
 
     final long throttleRate = 100L;
 
     ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(kafkaZkClient, throttleRate);
-    ExecutionProposal proposal = new ExecutionProposal(
-        new TopicPartition(TOPIC0, 0),
-        100,
-         new ReplicaPlacementInfo(0),
-         Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(1)),
-         Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(2)));
+    ExecutionProposal proposal = new ExecutionProposal(new TopicPartition(TOPIC0, 0),
+                                           100,
+                                                       new ReplicaPlacementInfo(0),
+                                                       Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(1)),
+                                                       Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(2)));
 
     ExecutionTask task = completedTaskForProposal(0, proposal);
 
@@ -220,7 +218,9 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     createTopics();
 
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
-        "ReplicationThrottleHelperTestMetricGroup", "AddingThrottlesWithNoPreExistingThrottles", false);
+                                                                  "ReplicationThrottleHelperTestMetricGroup",
+                                                                   "AddingThrottlesWithNoPreExistingThrottles",
+                                                              false);
 
     // Set replica throttle config values for both topics
     setWildcardThrottleReplicaForTopic(kafkaZkClient, TOPIC0);
