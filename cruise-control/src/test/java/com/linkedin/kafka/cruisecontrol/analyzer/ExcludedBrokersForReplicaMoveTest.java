@@ -164,10 +164,10 @@ public class ExcludedBrokersForReplicaMoveTest {
                                                          NetworkOutboundUsageDistributionGoal.class,
                                                          CpuUsageDistributionGoal.class)) {
       // Test: With single excluded broker, balance not satisfiable cluster, no dead broker (No exception, No proposal
-      // for excluded broker, Not expected to look optimized)
+      // for excluded broker, Expected to look optimized)
       p.add(params(0, goalClass, excludeB1, null, unbalanced(), noDeadBroker, true));
       // Test: With single excluded topic, balance not satisfiable cluster, no dead broker (No exception, No proposal
-      // for excluded broker, Not expected to look optimized)
+      // for excluded broker, Expected to look optimized)
       p.add(params(1, goalClass, excludeB1, null, unbalanced(), deadBroker0, true));
       // Test: With all brokers excluded, balance not satisfiable, no dead brokers (Exception)
       p.add(params(2, goalClass, excludeAllBrokers, OptimizationFailureException.class, unbalanced(), noDeadBroker, null));
@@ -219,7 +219,7 @@ public class ExcludedBrokersForReplicaMoveTest {
     // excluded broker, Expected to look optimized)
     p.add(params(0, ReplicaDistributionGoal.class, excludeB1, null, unbalanced2(), noDeadBroker, true));
     // Test: With single excluded broker, satisfiable cluster, one dead broker (No exception, No proposal for
-    // excluded broker, Not expected to look optimized)
+    // excluded broker, Expected to look optimized)
     p.add(params(1, ReplicaDistributionGoal.class, excludeB1, null, unbalanced2(), deadBroker0, true));
     // Test: With all brokers excluded, balance not satisfiable, no dead brokers (Exception)
     p.add(params(2, ReplicaDistributionGoal.class, excludeAllBrokers, OptimizationFailureException.class, unbalanced2(), noDeadBroker, null));
