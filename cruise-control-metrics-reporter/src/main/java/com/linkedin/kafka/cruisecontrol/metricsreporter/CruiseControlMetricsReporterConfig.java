@@ -54,6 +54,14 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   public static final String CRUISE_CONTROL_METRICS_REPORTER_KUBERNETES_MODE_CONFIG = PREFIX + "kubernetes.mode";
   public static final String CRUISE_CONTROL_METRICS_REPORTER_KUBERNETES_MODE_DOC = "Cruise Control metrics reporter will report "
       + "metrics using methods that are aware of container boundaries.";
+  public static final String CRUISE_CONTROL_METRICS_REPORTER_NEW_PRODUCER_UPON_AUTH_ERROR_CONFIG = PREFIX + "new.producer.upon.auth.error";
+  public static final String CRUISE_CONTROL_METRICS_REPORTER_NEW_PRODUCER_UPON_AUTH_ERROR_DOC = "Cruise Control metrics reporter will "
+      + "create a new producer when an SSL authentication error gets thrown when it tries to send.";
+  public static final String CRUISE_CONTROL_METRICS_REPORTER_NEW_PRODUCER_UPON_AUTH_ERROR_TOTAL_ATTEMPT_CONFIG = PREFIX +
+      "new.producer.upon.auth.error.total.attempt";
+  public static final String CRUISE_CONTROL_METRICS_REPORTER_NEW_PRODUCER_UPON_AUTH_ERROR_TOTAL_ATTEMPT_DOC = "The total "
+      + "number of attempts that Cruise Control metrics reporter will take to create a new producer when an SSL authentication "
+      + "error gets thrown when it tries to send.";
   // Default values
   public static final String DEFAULT_CRUISE_CONTROL_METRICS_TOPIC = "__CruiseControlMetrics";
   public static final Integer DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS = -1;
@@ -69,6 +77,8 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   public static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_MAX_BLOCK_MS = (int) TimeUnit.MINUTES.toMillis(1);
   public static final int DEFAULT_CRUISE_CONTROL_METRICS_BATCH_SIZE = 800 * 1000;
   public static final boolean DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_KUBERNETES_MODE = false;
+  public static final boolean DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_NEW_PRODUCER_UPON_AUTH_ERROR = false;
+  public static final Integer DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_NEW_PRODUCER_UPON_AUTH_ERROR_TOTAL_ATTEMPT = Integer.MAX_VALUE;
 
   public CruiseControlMetricsReporterConfig(Map<?, ?> originals, boolean doLog) {
     super(CONFIG, originals, doLog);
@@ -146,7 +156,17 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
                 ConfigDef.Type.INT,
                 DEFAULT_CRUISE_CONTROL_METRICS_BATCH_SIZE,
                 ConfigDef.Importance.LOW,
-                CRUISE_CONTROL_METRICS_REPORTER_BATCH_SIZE_DOC);
+                CRUISE_CONTROL_METRICS_REPORTER_BATCH_SIZE_DOC)
+        .define(CRUISE_CONTROL_METRICS_REPORTER_NEW_PRODUCER_UPON_AUTH_ERROR_CONFIG,
+                ConfigDef.Type.BOOLEAN,
+                DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_NEW_PRODUCER_UPON_AUTH_ERROR,
+                ConfigDef.Importance.LOW,
+                CRUISE_CONTROL_METRICS_REPORTER_NEW_PRODUCER_UPON_AUTH_ERROR_DOC)
+        .define(CRUISE_CONTROL_METRICS_REPORTER_NEW_PRODUCER_UPON_AUTH_ERROR_TOTAL_ATTEMPT_CONFIG,
+                ConfigDef.Type.INT,
+                DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_NEW_PRODUCER_UPON_AUTH_ERROR_TOTAL_ATTEMPT,
+                ConfigDef.Importance.LOW,
+                CRUISE_CONTROL_METRICS_REPORTER_NEW_PRODUCER_UPON_AUTH_ERROR_TOTAL_ATTEMPT_DOC);
   }
 
   /**

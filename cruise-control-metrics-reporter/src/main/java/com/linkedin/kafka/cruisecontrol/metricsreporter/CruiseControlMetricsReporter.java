@@ -38,15 +38,14 @@ import org.apache.kafka.clients.admin.DescribeConfigsResult;
 import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
-import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.TopicConfig;
 import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.errors.ReassignmentInProgressException;
+import org.apache.kafka.common.errors.SslAuthenticationException;
 import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.metrics.KafkaMetric;
 import org.apache.kafka.common.metrics.MetricsReporter;
@@ -64,6 +63,9 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   private Map<org.apache.kafka.common.MetricName, KafkaMetric> _interestedMetrics = new ConcurrentHashMap<>();
   private KafkaThread _metricsReporterRunner;
   private KafkaProducer<String, CruiseControlMetric> _producer;
+  private boolean _newProducerUponSslAuthError;
+  private int _newProducerUponSslAuthErrorRemainingAttempt;
+  private Properties _producerProps;
   private String _cruiseControlMetricsTopic;
   private long _reportingIntervalMs;
   private int _brokerId;
@@ -147,6 +149,14 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     setIfAbsent(producerProps, ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, MetricSerde.class.getName());
     setIfAbsent(producerProps, ProducerConfig.ACKS_CONFIG, "all");
     _producer = new KafkaProducer<>(producerProps);
+    _newProducerUponSslAuthError = reporterConfig.getBoolean(
+        CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_NEW_PRODUCER_UPON_AUTH_ERROR_CONFIG);
+    if (_newProducerUponSslAuthError) {
+      _producerProps = producerProps;
+      _newProducerUponSslAuthErrorRemainingAttempt =
+          reporterConfig.getInt(
+              CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_NEW_PRODUCER_UPON_AUTH_ERROR_TOTAL_ATTEMPT_CONFIG);
+    }
 
     _brokerId = Integer.parseInt((String) configs.get(KafkaConfig.BrokerIdProp()));
 
@@ -340,15 +350,29 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     ProducerRecord<String, CruiseControlMetric> producerRecord =
         new ProducerRecord<>(_cruiseControlMetricsTopic, null, ccm.time(), key, ccm);
     LOG.debug("Sending Cruise Control metric {}.", ccm);
-    _producer.send(producerRecord, new Callback() {
-      @Override
-      public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+
+    try {
+      _producer.send(producerRecord, (recordMetadata, e) -> {
         if (e != null) {
           LOG.warn("Failed to send Cruise Control metric {}", ccm);
           _numMetricSendFailure++;
         }
+      });
+
+    } catch (SslAuthenticationException authenticationException) {
+      if (_newProducerUponSslAuthError && _newProducerUponSslAuthErrorRemainingAttempt > 0) {
+        _producer.close(PRODUCER_CLOSE_TIMEOUT);
+        // Creating a new producer reloads SSL key/trust stores
+        _producer = new KafkaProducer<>(_producerProps);
+        _newProducerUponSslAuthErrorRemainingAttempt--;
+        LOG.info("Created a new producer upon an exception {}. Remaining attempt count: {}",
+                 authenticationException.getMessage(),
+                 _newProducerUponSslAuthErrorRemainingAttempt);
+
+      } else {
+        throw authenticationException;
       }
-    });
+    }
   }
 
   private void reportYammerMetrics(long now) throws Exception {
