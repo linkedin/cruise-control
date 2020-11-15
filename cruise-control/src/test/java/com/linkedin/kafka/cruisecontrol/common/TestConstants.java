@@ -119,7 +119,7 @@ public final class TestConstants {
   public static final String LOGDIR1 = "/mnt/i01";
 
   static {
-    Map<Resource, Double> capacity = new HashMap<>();
+    Map<Resource, Double> capacity = new HashMap<>(Resource.cachedValues().size());
     capacity.put(Resource.CPU, TestConstants.TYPICAL_CPU_CAPACITY);
     capacity.put(Resource.DISK, TestConstants.LARGE_BROKER_CAPACITY);
     capacity.put(Resource.NW_IN, TestConstants.LARGE_BROKER_CAPACITY);

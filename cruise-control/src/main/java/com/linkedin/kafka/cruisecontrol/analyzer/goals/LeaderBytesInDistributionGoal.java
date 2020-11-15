@@ -13,6 +13,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
+import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
@@ -20,7 +21,6 @@ import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
 import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -41,12 +41,17 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_
 /**
  * Soft goal to distribute leader bytes evenly. This goal will not do any actual bytes movement; hence, it cannot be
  * used to fix offline replicas or decommission dead brokers.
+ *
+ * Warning: This custom goal does not take resource heterogeneity of inbound network capacity into account.
  */
 public class LeaderBytesInDistributionGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(LeaderBytesInDistributionGoal.class);
 
+  // The balance limits are based on brokers not excluded for replica moves.
   private double _meanLeaderBytesIn;
   private Set<Integer> _overLimitBrokerIds;
+  // This is used to identify brokers not excluded for replica moves.
+  private Set<Integer> _brokersAllowedReplicaMove;
 
   public LeaderBytesInDistributionGoal() {
   }
@@ -166,8 +171,13 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
   }
 
   @Override
-  protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
-    // While proposals exclude the excludedTopics, the leader bytes in still considers replicas of the excludedTopics.
+  protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
+      throws OptimizationFailureException {
+    _brokersAllowedReplicaMove = GoalUtils.aliveBrokersNotExcludedForReplicaMove(clusterModel, optimizationOptions);
+    if (_brokersAllowedReplicaMove.isEmpty()) {
+      // Handle the case when all alive brokers are excluded from replica moves.
+      throw new OptimizationFailureException("Cannot take any action as all alive brokers are excluded from replica moves.");
+    }
     _meanLeaderBytesIn = 0.0;
     _overLimitBrokerIds = new HashSet<>();
     // Sort leader replicas for each broker.
@@ -225,21 +235,10 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
 
   private void initMeanLeaderBytesIn(ClusterModel clusterModel) {
     if (_meanLeaderBytesIn == 0.0) {
-      _meanLeaderBytesIn = meanLeaderResourceUtilization(clusterModel.brokers(), Resource.NW_IN);
+      double bytesIn = clusterModel.aliveBrokers().stream().mapToDouble(b -> b.leadershipLoadForNwResources()
+                                                                              .expectedUtilizationFor(Resource.NW_IN)).sum();
+      _meanLeaderBytesIn = bytesIn / _brokersAllowedReplicaMove.size();
     }
-  }
-
-  private static double meanLeaderResourceUtilization(Collection<Broker> brokers, Resource resource) {
-    double accumulator = 0.0;
-    int brokerCount = 0;
-    for (Broker broker : brokers) {
-      if (!broker.isAlive()) {
-        continue;
-      }
-      accumulator += broker.leadershipLoadForNwResources().expectedUtilizationFor(resource);
-      brokerCount++;
-    }
-    return accumulator / brokerCount;
   }
 
   /**

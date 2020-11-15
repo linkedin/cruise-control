@@ -4,10 +4,17 @@
 
 package com.linkedin.kafka.cruisecontrol.model;
 
+import com.linkedin.cruisecontrol.metricdef.MetricInfo;
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
+import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static java.lang.Math.max;
 
 
 /**
@@ -130,5 +137,35 @@ public class ModelUtils {
         ModelParameters.getCoefficient(LinearRegressionModelParameters.ModelCoefficient.LEADER_BYTES_OUT);
     return leaderBytesInCoefficient * leaderBytesInRate
         + leaderBytesOutCoefficient * leaderBytesOutRate;
+  }
+
+  /**
+   * Get a single snapshot value that is representative for the given resource. The current algorithm uses
+   * <ul>
+   *   <li>the mean of the recent utilization for {@link Resource#NW_IN}, {@link Resource#NW_OUT}, and {@link Resource#CPU}</li>
+   *   <li>the latest utilization for {@link Resource#DISK}.</li>
+   * </ul>
+   *
+   * @param resource Resource for which the expected utilization will be provided.
+   * @param aggregatedMetricValues the aggregated metric values to calculate the expected utilization.
+   * @return A single representative utilization value on a resource, or {@code 0} if the given aggregatedMetricValues is empty.
+   */
+  public static double expectedUtilizationFor(Resource resource, AggregatedMetricValues aggregatedMetricValues) {
+    if (resource == null || aggregatedMetricValues == null) {
+      throw new IllegalArgumentException("Resource or aggregatedMetricValues cannot be null.");
+    }
+    if (aggregatedMetricValues.isEmpty()) {
+      return 0.0;
+    }
+    double result = 0;
+    for (MetricInfo info : KafkaMetricDef.resourceToMetricInfo(resource)) {
+      MetricValues valuesForId = aggregatedMetricValues.valuesFor(info.id());
+      if (valuesForId == null) {
+        throw new IllegalArgumentException(String.format("The aggregated metric values does not contain metric %s for resource %s.",
+                                                         info, resource.name()));
+      }
+      result += resource == Resource.DISK ? valuesForId.latest() : valuesForId.avg();
+    }
+    return max(result, 0.0);
   }
 }

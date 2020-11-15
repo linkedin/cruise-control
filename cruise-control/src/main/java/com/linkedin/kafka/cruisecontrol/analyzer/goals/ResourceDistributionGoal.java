@@ -39,7 +39,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionType.INTER_BROKER_REPLICA_MOVEMENT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionType.LEADERSHIP_MOVEMENT;
-import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.utilizationPercentage;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.utilization;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.DENOMINATOR_FOR_MIN_VALID_WINDOWS_FOR_SELF_HEALING;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
@@ -48,7 +48,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ResourceDistributi
 
 
 /**
- * SOFT GOAL: Balance {@link Resource} distribution over brokers.
+ * SOFT GOAL: Balance {@link Resource} distribution over alive brokers not excluded for replica moves.
  */
 public abstract class ResourceDistributionGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(ResourceDistributionGoal.class);
@@ -60,15 +60,14 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   private double _balanceUpperThreshold;
   private double _balanceLowerThreshold;
   private final Comparator<Broker> _brokerComparator;
+  // This is used to identify brokers not excluded for replica moves.
+  private Set<Integer> _brokersAllowedReplicaMove;
 
   /**
    * Constructor for Resource Distribution Goal.
    */
   public ResourceDistributionGoal() {
-    _brokerComparator = (b1, b2) -> {
-      int result = Double.compare(utilizationPercentage(b1, resource()), utilizationPercentage(b2, resource()));
-      return result != 0 ? result : b1.compareTo(b2);
-    };
+    _brokerComparator = Comparator.comparingDouble((Broker b) -> utilization(b, resource())).thenComparing(b -> b);
   }
 
   /**
@@ -85,7 +84,9 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    * Check whether given action is acceptable by this goal. An action is acceptable by this goal if it satisfies the
    * following: (1) if both source and destination brokers were within the limit before the action, the corresponding
    * limits cannot be violated after the action, (2) otherwise, the action cannot increase the utilization difference
-   * between brokers.
+   * between brokers. If the source broker is excluded for replica moves, then action cannot cause destination broker to
+   * be unbalanced -- i.e. either by making it move from under the balance upper limit to over it or if it is already
+   * above the upper limit, by moving any replica load with a positive utilization.
    *
    * @param action Action to be checked for acceptance.
    * @param clusterModel The state of the cluster.
@@ -94,7 +95,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    */
   @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
-    Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
+    Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
+    Replica sourceReplica = sourceBroker.replica(action.topicPartition());
     Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
 
     switch (action.balancingAction()) {
@@ -112,10 +114,11 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
         // Note that (1) if both source and destination brokers were within the limit before the swap, the corresponding
         // limits cannot be violated after the swap, (2) otherwise, the swap is guaranteed not to increase the utilization
         // difference between brokers.
+        // It is guaranteed that neither source nor destination brokers are excluded for replica moves.
         boolean bothBrokersCurrentlyWithinLimit = sourceUtilizationDelta > 0
                                                   ? (isLoadAboveBalanceLowerLimit(destinationBroker)
-                                                     && isLoadUnderBalanceUpperLimit(sourceReplica.broker()))
-                                                  : (isLoadAboveBalanceLowerLimit(sourceReplica.broker())
+                                                     && isLoadUnderBalanceUpperLimit(sourceBroker))
+                                                  : (isLoadAboveBalanceLowerLimit(sourceBroker)
                                                      && isLoadUnderBalanceUpperLimit(destinationBroker));
 
         if (bothBrokersCurrentlyWithinLimit) {
@@ -126,12 +129,18 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
         return isSelfSatisfiedAfterSwap(sourceReplica, destinationReplica) ? ACCEPT : REPLICA_REJECT;
       case INTER_BROKER_REPLICA_MOVEMENT:
       case LEADERSHIP_MOVEMENT:
-        if (isLoadAboveBalanceLowerLimit(sourceReplica.broker())
+        boolean sourceBrokerExcludedForReplicaMove = isExcludedForReplicaMove(sourceBroker);
+        if ((sourceBrokerExcludedForReplicaMove || isLoadAboveBalanceLowerLimit(sourceBroker))
             && isLoadUnderBalanceUpperLimit(destinationBroker)) {
           // Already satisfied balance limits cannot be violated due to balancing action.
           return (isLoadUnderBalanceUpperLimitAfterChange(sourceReplica.load(), destinationBroker, ADD) &&
-                  isLoadAboveBalanceLowerLimitAfterChange(sourceReplica.load(), sourceReplica.broker(), REMOVE))
+                  (sourceBrokerExcludedForReplicaMove
+                   || isLoadAboveBalanceLowerLimitAfterChange(sourceReplica.load(), sourceBroker, REMOVE)))
                  ? ACCEPT : REPLICA_REJECT;
+        } else if (sourceBrokerExcludedForReplicaMove) {
+          // We know that the destination broker load is not under balance upper limit. Hence moving load to it from a
+          // source broker that is excluded for replica moves is acceptable only if the replica load is 0.
+          return sourceReplica.load().expectedUtilizationFor(resource()) == 0.0 ? ACCEPT : REPLICA_REJECT;
         }
 
         // Check that current destination would not become more unbalanced.
@@ -221,18 +230,20 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
+  protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
+      throws OptimizationFailureException {
+    _brokersAllowedReplicaMove = GoalUtils.aliveBrokersNotExcludedForReplicaMove(clusterModel, optimizationOptions);
+    if (_brokersAllowedReplicaMove.isEmpty()) {
+      // Handle the case when all alive brokers are excluded from replica moves.
+      throw new OptimizationFailureException("Cannot take any action as all alive brokers are excluded from replica moves.");
+    }
     _fixOfflineReplicasOnly = false;
-    _balanceUpperThreshold = computeBalanceUpperThreshold(clusterModel, optimizationOptions);
-    _balanceLowerThreshold = computeBalanceLowerThreshold(clusterModel, optimizationOptions);
-  }
-
-  protected double balanceUpperThreshold() {
-    return _balanceUpperThreshold;
-  }
-
-  protected double balanceLowerThreshold() {
-    return _balanceLowerThreshold;
+    double resourceUtilization = clusterModel.load().expectedUtilizationFor(resource());
+    double capacity = clusterModel.capacityWithAllowedReplicaMovesFor(resource(), optimizationOptions);
+    // Cluster utilization excludes the capacity of brokers excluded for replica moves.
+    double clusterUtilization = resourceUtilization / capacity;
+    _balanceUpperThreshold = computeBalanceUpperThreshold(clusterUtilization, optimizationOptions);
+    _balanceLowerThreshold = computeBalanceLowerThreshold(clusterUtilization, optimizationOptions);
   }
 
   /**
@@ -252,7 +263,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       if (!isLoadUnderBalanceUpperLimit(broker)) {
         brokerIdsAboveBalanceUpperLimit.add(broker.id());
       }
-      if (!isLoadAboveBalanceLowerLimit(broker)) {
+      if (!isExcludedForReplicaMove(broker) && !isLoadAboveBalanceLowerLimit(broker)) {
+        // A broker that is excluded for replica moves cannot be under the balance lower limit.
         brokerIdsUnderBalanceLowerLimit.add(broker.id());
       }
     }
@@ -285,6 +297,17 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   }
 
   /**
+   * Check whether the given broker is excluded for replica moves.
+   * Such a broker cannot receive replicas, but can give them away.
+   *
+   * @param broker Broker to check for exclusion from replica moves.
+   * @return {@code true} if the given broker is excluded for replica moves, {@code false} otherwise.
+   */
+  private boolean isExcludedForReplicaMove(Broker broker) {
+    return !_brokersAllowedReplicaMove.contains(broker.id());
+  }
+
+  /**
    * (1) REBALANCE BY LEADERSHIP MOVEMENT:
    * Perform leadership movement to ensure that the load on brokers for the outbound network and CPU load is under the
    * balance limit.
@@ -308,8 +331,9 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                     OptimizationOptions optimizationOptions) {
     int numOfflineReplicas = broker.currentOfflineReplicas().size();
 
-    boolean requireLessLoad = numOfflineReplicas > 0 || !isLoadUnderBalanceUpperLimit(broker);
-    boolean requireMoreLoad = !isLoadAboveBalanceLowerLimit(broker);
+    boolean isExcludedForReplicaMove = isExcludedForReplicaMove(broker);
+    boolean requireLessLoad = numOfflineReplicas > 0 || isExcludedForReplicaMove || !isLoadUnderBalanceUpperLimit(broker);
+    boolean requireMoreLoad = !isExcludedForReplicaMove && !isLoadAboveBalanceLowerLimit(broker);
     // Cluster has offline replicas, but this broker does not -- move immigrant replicas only (relevant to replica move).
     boolean moveImmigrantsOnly = false;
     if (broker.currentOfflineReplicas().isEmpty()) {
@@ -375,11 +399,10 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     boolean moveFollowersOnly = optimizationOptions.excludedBrokersForLeadership().contains(broker.id());
     PriorityQueue<Broker> candidateBrokerPQ = new PriorityQueue<>(_brokerComparator.reversed());
 
-    double clusterUtilization = clusterModel.load().expectedUtilizationFor(resource()) / clusterModel.capacityFor(resource());
     String replicaSortName = null;
     for (Broker candidate : clusterModel.aliveBrokers()) {
       // Get candidate replicas on candidate broker to try moving load from -- sorted in the order of trial (descending load).
-      if (utilizationPercentage(candidate, resource()) > clusterUtilization) {
+      if (utilization(candidate, resource()) > (isExcludedForReplicaMove(candidate) ? 0.0 : _balanceLowerThreshold)) {
         replicaSortName = sortedCandidateReplicas(candidate,
                                                   excludedTopics,
                                                   0.0,
@@ -417,8 +440,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
 
           // If the source broker has a lower utilization than the next broker in the eligible broker in the queue,
           // we reenqueue the source broker and switch to the next broker.
-          if (!candidateBrokerPQ.isEmpty()
-              && utilizationPercentage(cb, resource()) < utilizationPercentage(candidateBrokerPQ.peek(), resource())) {
+          if (!candidateBrokerPQ.isEmpty() && utilization(cb, resource()) < utilization(candidateBrokerPQ.peek(), resource())) {
             candidateBrokerPQ.add(cb);
             break;
           }
@@ -688,7 +710,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     // Get the eligible brokers.
     SortedSet<Broker> candidateBrokers = new TreeSet<>(
-        Comparator.comparingDouble((Broker b) -> utilizationPercentage(b, resource())).thenComparingInt(Broker::id));
+        Comparator.comparingDouble((Broker b) -> utilization(b, resource())).thenComparingInt(Broker::id));
     if (_fixOfflineReplicasOnly) {
       candidateBrokers.addAll(clusterModel.aliveBrokers());
     } else {
@@ -711,6 +733,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     SortedSet<Replica> replicasToMove = broker.trackedSortedReplicas(replicaSortName(this, true, actionType == LEADERSHIP_MOVEMENT))
                                               .sortedReplicas(true);
 
+    // If the source broker is excluded for replica move, set its upper limit to 0.
+    double balanceUpperThresholdForSourceBroker = isExcludedForReplicaMove(broker) ? 0 : _balanceUpperThreshold;
     // Now let's move things around.
     for (Replica replica : replicasToMove) {
       // It does not make sense to move an online replica without utilization from a live broker.
@@ -721,7 +745,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       // An optimization for leader movements.
       SortedSet<Broker> eligibleBrokers;
       if (actionType == LEADERSHIP_MOVEMENT) {
-        eligibleBrokers = new TreeSet<>(Comparator.comparingDouble((Broker b) -> utilizationPercentage(b, resource()))
+        eligibleBrokers = new TreeSet<>(Comparator.comparingDouble((Broker b) -> utilization(b, resource()))
                                                   .thenComparingInt(Broker::id));
         clusterModel.partition(replica.topicPartition()).onlineFollowerBrokers().forEach(b -> {
           if (candidateBrokers.contains(b)) {
@@ -735,13 +759,14 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       Broker b = maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, actionType, optimizedGoals, optimizationOptions);
       // Only check if we successfully moved something.
       if (b != null) {
-        if (isLoadUnderBalanceUpperLimit(broker) && !(_fixOfflineReplicasOnly && !broker.currentOfflineReplicas().isEmpty())) {
+        if (isLoadUnderBalanceUpperLimit(broker, balanceUpperThresholdForSourceBroker)
+            && !(_fixOfflineReplicasOnly && !broker.currentOfflineReplicas().isEmpty())) {
           broker.clearSortedReplicas();
           return false;
         }
         // Remove and reinsert the broker so the order is correct.
         candidateBrokers.remove(b);
-        if (utilizationPercentage(b, resource()) < _balanceUpperThreshold) {
+        if (utilization(b, resource()) < _balanceUpperThreshold) {
           candidateBrokers.add(b);
         }
       }
@@ -761,6 +786,11 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   private boolean isLoadUnderBalanceUpperLimit(Broker broker) {
     // The action does not matter here because the load is null.
     return isLoadUnderBalanceUpperLimitAfterChange(null, broker, REMOVE);
+  }
+
+  private boolean isLoadUnderBalanceUpperLimit(Broker broker, double balanceUpperThresholdForBroker) {
+    // The action does not matter here because the load is null.
+    return isLoadUnderBalanceUpperLimitAfterChange(null, broker, REMOVE, balanceUpperThresholdForBroker);
   }
 
   private boolean isLoadAboveBalanceLowerLimitAfterChange(Load load,
@@ -789,16 +819,17 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
 
   private boolean isLoadUnderBalanceUpperLimitAfterChange(Load load,
                                                           Broker broker,
-                                                          ChangeType changeType) {
+                                                          ChangeType changeType,
+                                                          double balanceUpperThresholdForBroker) {
     double utilizationDelta = load == null ? 0 : load.expectedUtilizationFor(resource());
 
-    double brokerBalanceUpperLimit = broker.capacityFor(resource()) * _balanceUpperThreshold;
+    double brokerBalanceUpperLimit = broker.capacityFor(resource()) * balanceUpperThresholdForBroker;
     double brokerUtilization = broker.load().expectedUtilizationFor(resource());
     boolean isBrokerUnderUpperLimit = changeType == ADD ? brokerUtilization + utilizationDelta <= brokerBalanceUpperLimit :
                                       brokerUtilization - utilizationDelta <= brokerBalanceUpperLimit;
 
     if (resource().isHostResource()) {
-      double hostBalanceUpperLimit = broker.host().capacityFor(resource()) * _balanceUpperThreshold;
+      double hostBalanceUpperLimit = broker.host().capacityFor(resource()) * balanceUpperThresholdForBroker;
       double hostUtilization = broker.host().load().expectedUtilizationFor(resource());
       boolean isHostUnderUpperLimit = changeType == ADD ? hostUtilization + utilizationDelta <= hostBalanceUpperLimit :
                                       hostUtilization - utilizationDelta <= hostBalanceUpperLimit;
@@ -809,6 +840,12 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     } else {
       return isBrokerUnderUpperLimit;
     }
+  }
+
+  private boolean isLoadUnderBalanceUpperLimitAfterChange(Load load,
+                                                          Broker broker,
+                                                          ChangeType changeType) {
+    return isLoadUnderBalanceUpperLimitAfterChange(load, broker, changeType, _balanceUpperThreshold);
   }
 
   /**
@@ -852,8 +889,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     double sourceBrokerCapacity = sourceBroker.capacityFor(resource());
     double destinationBrokerCapacity = destinationBroker.capacityFor(resource());
 
-    double prevDiff = sourceBrokerUtilization / sourceBrokerCapacity - destinationBrokerUtilization / destinationBrokerCapacity;
-    double nextDiff = prevDiff + sourceUtilizationDelta / sourceBrokerCapacity + sourceUtilizationDelta / destinationBrokerCapacity;
+    double prevDiff = (sourceBrokerUtilization / sourceBrokerCapacity) - (destinationBrokerUtilization / destinationBrokerCapacity);
+    double nextDiff = prevDiff + (sourceUtilizationDelta / sourceBrokerCapacity) + (sourceUtilizationDelta / destinationBrokerCapacity);
 
     return Math.abs(nextDiff) < Math.abs(prevDiff);
   }
@@ -916,25 +953,23 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   }
 
   /**
-   * @param clusterModel the cluster topology and load.
+   * @param clusterUtilization Cluster utilization that excludes the capacity of brokers excluded for replica moves.
    * @param optimizationOptions Options to adjust balance upper limit in case goal optimization is triggered by goal
    * violation detector.
    * @return The utilization upper threshold in percent for the {@link #resource()}
    */
-  private double computeBalanceUpperThreshold(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
-    return (clusterModel.load().expectedUtilizationFor(resource()) / clusterModel.capacityFor(resource()))
-           * (1 + balancePercentageWithMargin(optimizationOptions));
+  private double computeBalanceUpperThreshold(double clusterUtilization, OptimizationOptions optimizationOptions) {
+    return clusterUtilization * (1 + balancePercentageWithMargin(optimizationOptions));
   }
 
   /**
-   * @param clusterModel the cluster topology and load.
+   * @param clusterUtilization Cluster utilization that excludes the capacity of brokers excluded for replica moves.
    * @param optimizationOptions Options to adjust balance lower limit in case goal optimization is triggered by goal
    * violation detector.
    * @return The utilization lower threshold in percent for the {@link #resource()}
    */
-  private double computeBalanceLowerThreshold(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
-    return (clusterModel.load().expectedUtilizationFor(resource()) / clusterModel.capacityFor(resource()))
-           * Math.max(0, (1 - balancePercentageWithMargin(optimizationOptions)));
+  private double computeBalanceLowerThreshold(double clusterUtilization, OptimizationOptions optimizationOptions) {
+    return clusterUtilization * Math.max(0, (1 - balancePercentageWithMargin(optimizationOptions)));
   }
 
   /**
