@@ -136,7 +136,7 @@ public class DeterministicCluster {
     cluster.createReplica(RACK_BY_BROKER.get(0).toString(), 0, pInfoT60, 0, true);
 
     AggregatedMetricValues aggregatedMetricValues =
-        getAggregatedMetricValues(TestConstants.LARGE_BROKER_CAPACITY / 2,
+        getAggregatedMetricValues(TestConstants.TYPICAL_CPU_CAPACITY / 2,
                                   TestConstants.LARGE_BROKER_CAPACITY / 2,
                                   TestConstants.MEDIUM_BROKER_CAPACITY / 2,
                                   TestConstants.LARGE_BROKER_CAPACITY / 2);
@@ -147,6 +147,23 @@ public class DeterministicCluster {
     cluster.setReplicaLoad(RACK_BY_BROKER.get(0).toString(), 0, pInfoT50, aggregatedMetricValues, Collections.singletonList(1L));
     cluster.setReplicaLoad(RACK_BY_BROKER.get(0).toString(), 0, pInfoT60, aggregatedMetricValues, Collections.singletonList(1L));
     return cluster;
+  }
+
+  /**
+   * @return {@link #unbalanced()} cluster with an additional follower for an existing partition.
+   */
+  public static ClusterModel unbalancedWithAFollower() {
+    ClusterModel unbalancedWithAFollower = unbalanced();
+
+    TopicPartition pInfoT10 = new TopicPartition(T1, 0);
+    unbalancedWithAFollower.createReplica(RACK_BY_BROKER.get(2).toString(), 2, pInfoT10, 1, false);
+
+    unbalancedWithAFollower.setReplicaLoad(RACK_BY_BROKER.get(2).toString(), 2, pInfoT10,
+                                           createLoad(TestConstants.TYPICAL_CPU_CAPACITY / 8,
+                                                      TestConstants.LARGE_BROKER_CAPACITY / 2,
+                                                      0.0,
+                                                      TestConstants.LARGE_BROKER_CAPACITY / 2), Collections.singletonList(1L));
+    return unbalancedWithAFollower;
   }
 
   /**

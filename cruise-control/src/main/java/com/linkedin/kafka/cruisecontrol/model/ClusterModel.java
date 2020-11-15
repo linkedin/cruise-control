@@ -699,6 +699,20 @@ public class ClusterModel implements Serializable {
   }
 
   /**
+   * Get cluster capacity for the requested resource over brokers that are allowed to receive replicas.
+   * Contrary to {@link #capacityFor(Resource)}, drops the capacity of brokers that are excluded from replica moves.
+   *
+   * @param resource Resource for which the capacity will be provided.
+   * @param optimizationOptions Options to take into account while retrieving the capacity.
+   * @return Alive cluster capacity of the resource, excluding the capacity of brokers that are excluded from replica moves.
+   */
+  public double capacityWithAllowedReplicaMovesFor(Resource resource, OptimizationOptions optimizationOptions) {
+    Set<Integer> excluded = optimizationOptions.excludedBrokersForReplicaMove();
+    double capacityToDrop = _aliveBrokers.stream().filter(b -> excluded.contains(b.id())).mapToDouble(b -> b.capacityFor(resource)).sum();
+    return _clusterCapacity[resource.id()] - capacityToDrop;
+  }
+
+  /**
    * Set the load for the given replica. This method should be called only once for each replica.
    *
    * @param rackId         Rack id.
