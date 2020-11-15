@@ -149,7 +149,8 @@ public abstract class CapacityGoal extends AbstractGoal {
 
     // While proposals exclude the excludedTopics, the existingUtilization still considers replicas of the excludedTopics.
     double existingUtilization = recentClusterLoad.expectedUtilizationFor(resource());
-    double allowedCapacity = clusterModel.capacityFor(resource()) * _balancingConstraint.capacityThreshold(resource());
+    double capacity = clusterModel.capacityWithAllowedReplicaMovesFor(resource(), optimizationOptions);
+    double allowedCapacity = capacity * _balancingConstraint.capacityThreshold(resource());
 
     if (allowedCapacity < existingUtilization) {
       throw new OptimizationFailureException(

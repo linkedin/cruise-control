@@ -73,6 +73,15 @@ public class OptimizationOptions {
                              boolean isTriggeredByGoalViolation,
                              Set<Integer> requestedDestinationBrokerIds,
                              boolean onlyMoveImmigrantReplicas) {
+    if (excludedTopics == null) {
+      throw new IllegalArgumentException("Excluded topics cannot be null.");
+    } else if (excludedBrokersForLeadership == null) {
+      throw new IllegalArgumentException("Excluded brokers for leadership cannot be null.");
+    } else if (excludedBrokersForReplicaMove == null) {
+      throw new IllegalArgumentException("Excluded brokers for replica move cannot be null.");
+    } else if (requestedDestinationBrokerIds == null) {
+      throw new IllegalArgumentException("Requested destination broker ids cannot be null.");
+    }
     _excludedTopics = excludedTopics;
     _excludedBrokersForLeadership = excludedBrokersForLeadership;
     _excludedBrokersForReplicaMove = excludedBrokersForReplicaMove;

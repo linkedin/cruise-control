@@ -50,6 +50,7 @@ import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbal
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced2;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced3;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced4;
+import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalancedWithAFollower;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
@@ -154,6 +155,8 @@ public class ExcludedBrokersForReplicaMoveTest {
       p.add(params(2, goalClass, excludeAllBrokers, OptimizationFailureException.class, unbalanced(), noDeadBroker, null));
       // Test: With all brokers excluded, one dead broker, not satisfiable (Exception)
       p.add(params(3, goalClass, excludeAllBrokers, OptimizationFailureException.class, unbalanced(), deadBroker0, null));
+      // Test: With single excluded broker, unsatisfiable cluster, no dead brokers (Exception)
+      p.add(params(4, goalClass, excludeB1, OptimizationFailureException.class, unbalanced2(), noDeadBroker, null));
     }
 
     for (Class<? extends Goal> goalClass : Arrays.asList(DiskUsageDistributionGoal.class,
@@ -161,15 +164,14 @@ public class ExcludedBrokersForReplicaMoveTest {
                                                          NetworkOutboundUsageDistributionGoal.class,
                                                          CpuUsageDistributionGoal.class)) {
       // Test: With single excluded broker, balance not satisfiable cluster, no dead broker (No exception, No proposal
-      // for excluded broker, Not expected to look optimized)
-      p.add(params(0, goalClass, excludeB1, null, unbalanced(), noDeadBroker, false));
+      // for excluded broker, Expected to look optimized)
+      p.add(params(0, goalClass, excludeB1, null, unbalanced(), noDeadBroker, true));
       // Test: With single excluded topic, balance not satisfiable cluster, no dead broker (No exception, No proposal
-      // for excluded broker, Not expected to look optimized)
-      p.add(params(1, goalClass, excludeB1, null, unbalanced(), deadBroker0, false));
-      // Test: With all brokers excluded, no dead brokers, balance not satisfiable (No exception, No proposal for
-      // excluded brokers, Not expected to look optimized)
-      p.add(params(2, goalClass, excludeAllBrokers, null, unbalanced(), noDeadBroker, false));
-      // Test: With all brokers excluded, no dead brokers, (Exception)
+      // for excluded broker, Expected to look optimized)
+      p.add(params(1, goalClass, excludeB1, null, unbalanced(), deadBroker0, true));
+      // Test: With all brokers excluded, balance not satisfiable, no dead brokers (Exception)
+      p.add(params(2, goalClass, excludeAllBrokers, OptimizationFailureException.class, unbalanced(), noDeadBroker, null));
+      // Test: With all brokers excluded, one dead broker, (Exception)
       p.add(params(3, goalClass, excludeAllBrokers, OptimizationFailureException.class, unbalanced(), deadBroker0, null));
     }
 
@@ -177,15 +179,16 @@ public class ExcludedBrokersForReplicaMoveTest {
     // Test: With single excluded broker, balance not satisfiable cluster, no dead broker (No exception, No proposal
     // for excluded broker, Not expected to look optimized)
     p.add(params(0, LeaderBytesInDistributionGoal.class, excludeB1, null, unbalanced(), noDeadBroker, false));
-    // Test: With single excluded broker, balance not satisfiable cluster, no dead broker (No exception, No proposal
+    // Test: With single excluded broker, balance not satisfiable cluster, one dead broker (No exception, No proposal
     // for excluded broker, Not expected to look optimized)
     p.add(params(1, LeaderBytesInDistributionGoal.class, excludeB1, null, unbalanced(), deadBroker0, false));
-    // Test: With all brokers excluded, no dead brokers, balance not satisfiable (No exception, No proposal for
-    // excluded brokers, Not expected to look optimized)
-    p.add(params(2, LeaderBytesInDistributionGoal.class, excludeAllBrokers, null, unbalanced(), noDeadBroker, false));
-    // Test: With all brokers excluded, no dead brokers, balance not satisfiable (No exception, No proposal for
-    // excluded brokers, Not expected to look optimized)
-    p.add(params(3, LeaderBytesInDistributionGoal.class, excludeAllBrokers, null, unbalanced(), deadBroker0, false));
+    // Test: With all brokers excluded, no dead broker, (Exception)
+    p.add(params(2, LeaderBytesInDistributionGoal.class, excludeAllBrokers, OptimizationFailureException.class, unbalanced(), noDeadBroker, null));
+    // Test: With all brokers excluded, one dead broker, (Exception)
+    p.add(params(3, LeaderBytesInDistributionGoal.class, excludeAllBrokers, OptimizationFailureException.class, unbalanced(), deadBroker0, null));
+    // Test: With single excluded broker, balance satisfiable cluster, no dead broker (No exception, No proposal
+    // for excluded broker, Expected to look optimized)
+    p.add(params(0, LeaderBytesInDistributionGoal.class, excludeB1, null, unbalancedWithAFollower(), noDeadBroker, true));
 
     // ============PotentialNwOutGoal============
     // Test: With single excluded broker, balance satisfiable cluster, no dead brokers (No exception, No proposal
@@ -216,7 +219,7 @@ public class ExcludedBrokersForReplicaMoveTest {
     // excluded broker, Expected to look optimized)
     p.add(params(0, ReplicaDistributionGoal.class, excludeB1, null, unbalanced2(), noDeadBroker, true));
     // Test: With single excluded broker, satisfiable cluster, one dead broker (No exception, No proposal for
-    // excluded broker, Not expected to look optimized)
+    // excluded broker, Expected to look optimized)
     p.add(params(1, ReplicaDistributionGoal.class, excludeB1, null, unbalanced2(), deadBroker0, true));
     // Test: With all brokers excluded, balance not satisfiable, no dead brokers (Exception)
     p.add(params(2, ReplicaDistributionGoal.class, excludeAllBrokers, OptimizationFailureException.class, unbalanced2(), noDeadBroker, null));
