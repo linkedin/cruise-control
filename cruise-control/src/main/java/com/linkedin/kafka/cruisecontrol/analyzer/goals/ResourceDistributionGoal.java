@@ -969,8 +969,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    * @return The utilization lower threshold in percent for the {@link #resource()}
    */
   private double computeBalanceLowerThreshold(double clusterUtilization, OptimizationOptions optimizationOptions) {
-    return Math.max(clusterUtilization * Math.max(0, (1 - balancePercentageWithMargin(optimizationOptions))),
-                    _balancingConstraint.lowUtilizationThreshold(resource()));
+    return clusterUtilization * Math.max(0, (1 - balancePercentageWithMargin(optimizationOptions)));
   }
 
   /**
