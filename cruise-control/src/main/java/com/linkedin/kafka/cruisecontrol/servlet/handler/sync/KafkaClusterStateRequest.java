@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaClusterStateParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaClusterState;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.Cluster;
 
@@ -48,9 +49,7 @@ public class KafkaClusterStateRequest extends AbstractSyncRequest {
     _topicConfigProvider = _servlet.asyncKafkaCruiseControl().topicConfigProvider();
     _config = _servlet.asyncKafkaCruiseControl().config();
     _adminClient = _servlet.asyncKafkaCruiseControl().adminClient();
-    _parameters = (KafkaClusterStateParameters) configs.get(KAFKA_CLUSTER_STATE_PARAMETER_OBJECT_CONFIG);
-    if (_parameters == null) {
-      throw new IllegalArgumentException("Parameter configuration is missing from the request.");
-    }
+    _parameters = (KafkaClusterStateParameters) Objects.requireNonNull(configs.get(KAFKA_CLUSTER_STATE_PARAMETER_OBJECT_CONFIG),
+            "Parameter configuration is missing from the request.");
   }
 }

@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
@@ -28,12 +29,9 @@ public abstract class AbstractMetricSampler implements MetricSampler {
 
     @Override
     public void configure(Map<String, ?> configs) {
-        BrokerCapacityConfigResolver capacityResolver =
-            (BrokerCapacityConfigResolver) configs.get(BROKER_CAPACITY_CONFIG_RESOLVER_OBJECT_CONFIG);
-        if (capacityResolver == null) {
-            throw new IllegalArgumentException(
-                "Metrics reporter sampler configuration is missing broker capacity config resolver object.");
-        }
+        BrokerCapacityConfigResolver capacityResolver = (BrokerCapacityConfigResolver)
+                Objects.requireNonNull(configs.get(BROKER_CAPACITY_CONFIG_RESOLVER_OBJECT_CONFIG),
+                    "Metrics reporter sampler configuration is missing broker capacity config resolver object.");
         boolean allowCpuCapacityEstimation = (Boolean) configs.get(
             MonitorConfig.SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG);
         _metricsProcessor = new CruiseControlMetricsProcessor(capacityResolver, allowCpuCapacityEstimation);

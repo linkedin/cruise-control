@@ -10,6 +10,7 @@ import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.cruisecontrol.servlet.response.CruiseControlResponse;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -59,9 +60,7 @@ public abstract class AbstractRequest implements Request {
 
   @Override
   public void configure(Map<String, ?> configs) {
-    _servlet = (KafkaCruiseControlServlet) configs.get(KAFKA_CRUISE_CONTROL_SERVLET_OBJECT_CONFIG);
-    if (_servlet == null) {
-      throw new IllegalArgumentException("Kafka Cruise Control servlet configuration is missing from the request.");
-    }
+    _servlet = (KafkaCruiseControlServlet) Objects.requireNonNull(configs.get(KAFKA_CRUISE_CONTROL_SERVLET_OBJECT_CONFIG),
+            "Kafka Cruise Control servlet configuration is missing from the request.");
   }
 }

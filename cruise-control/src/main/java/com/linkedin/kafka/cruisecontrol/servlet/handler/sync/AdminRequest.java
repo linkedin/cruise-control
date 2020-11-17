@@ -16,6 +16,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.UpdateSelfHealingPara
 import com.linkedin.kafka.cruisecontrol.servlet.response.AdminResult;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -213,9 +214,7 @@ public class AdminRequest extends AbstractSyncRequest {
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
     _kafkaCruiseControl = _servlet.asyncKafkaCruiseControl();
-    _parameters = (AdminParameters) configs.get(ADMIN_PARAMETER_OBJECT_CONFIG);
-    if (_parameters == null) {
-      throw new IllegalArgumentException("Parameter configuration is missing from the request.");
-    }
+    _parameters = (AdminParameters) Objects.requireNonNull(configs.get(ADMIN_PARAMETER_OBJECT_CONFIG),
+            "Parameter configuration is missing from the request.");
   }
 }

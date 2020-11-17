@@ -9,6 +9,7 @@ import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.function.Predicate;
@@ -34,12 +35,8 @@ public class AnomalyUtils {
    */
   public static KafkaCruiseControl extractKafkaCruiseControlObjectFromConfig(Map<String, ?> configs,
                                                                             AnomalyType anomalyType) {
-    KafkaCruiseControl kafkaCruiseControl = (KafkaCruiseControl) configs.get(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG);
-    if (kafkaCruiseControl == null) {
-      throw new IllegalArgumentException(String.format("Missing %s when creating anomaly of type %s.",
-                                                       KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, anomalyType));
-    }
-    return kafkaCruiseControl;
+    return (KafkaCruiseControl) Objects.requireNonNull(configs.get(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG),
+            String.format("Missing %s when creating anomaly of type %s.", KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, anomalyType));
   }
 
   /**

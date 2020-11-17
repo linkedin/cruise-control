@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.FixOfflin
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.FixOfflineReplicasParameters;
 import java.util.Map;
+import java.util.Objects;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.FIX_OFFLINE_REPLICAS_PARAMETER_OBJECT_CONFIG;
 
@@ -40,9 +41,7 @@ public class FixOfflineReplicasRequest extends AbstractAsyncRequest {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    _parameters = (FixOfflineReplicasParameters) configs.get(FIX_OFFLINE_REPLICAS_PARAMETER_OBJECT_CONFIG);
-    if (_parameters == null) {
-      throw new IllegalArgumentException("Parameter configuration is missing from the request.");
-    }
+    _parameters = (FixOfflineReplicasParameters) Objects.requireNonNull(configs.get(FIX_OFFLINE_REPLICAS_PARAMETER_OBJECT_CONFIG),
+            "Parameter configuration is missing from the request.");
   }
 }

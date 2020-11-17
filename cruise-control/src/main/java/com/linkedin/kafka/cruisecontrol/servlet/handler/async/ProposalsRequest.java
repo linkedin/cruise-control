@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Proposals
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ProposalsParameters;
 import java.util.Map;
+import java.util.Objects;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.PROPOSALS_PARAMETER_OBJECT_CONFIG;
 
@@ -40,9 +41,7 @@ public class ProposalsRequest extends AbstractAsyncRequest {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    _parameters = (ProposalsParameters) configs.get(PROPOSALS_PARAMETER_OBJECT_CONFIG);
-    if (_parameters == null) {
-      throw new IllegalArgumentException("Parameter configuration is missing from the request.");
-    }
+    _parameters = (ProposalsParameters) Objects.requireNonNull(configs.get(PROPOSALS_PARAMETER_OBJECT_CONFIG),
+            "Parameter configuration is missing from the request.");
   }
 }

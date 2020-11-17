@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.AddBroker
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddBrokerParameters;
 import java.util.Map;
+import java.util.Objects;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.ADD_BROKER_PARAMETER_OBJECT_CONFIG;
 
@@ -40,9 +41,7 @@ public class AddBrokerRequest extends AbstractAsyncRequest {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    _parameters = (AddBrokerParameters) configs.get(ADD_BROKER_PARAMETER_OBJECT_CONFIG);
-    if (_parameters == null) {
-      throw new IllegalArgumentException("Parameter configuration is missing from the request.");
-    }
+    _parameters = (AddBrokerParameters) Objects.requireNonNull(configs.get(ADD_BROKER_PARAMETER_OBJECT_CONFIG),
+            "Parameter configuration is missing from the request.");
   }
 }

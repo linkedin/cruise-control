@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TrainParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.TrainResult;
 import java.util.Map;
+import java.util.Objects;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.TRAIN_PARAMETER_OBJECT_CONFIG;
 
@@ -40,9 +41,7 @@ public class TrainRequest extends AbstractSyncRequest {
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
     _kafkaCruiseControl = _servlet.asyncKafkaCruiseControl();
-    _parameters = (TrainParameters) configs.get(TRAIN_PARAMETER_OBJECT_CONFIG);
-    if (_parameters == null) {
-      throw new IllegalArgumentException("Parameter configuration is missing from the request.");
-    }
+    _parameters = (TrainParameters) Objects.requireNonNull(configs.get(TRAIN_PARAMETER_OBJECT_CONFIG),
+            "Parameter configuration is missing from the request.");
   }
 }
