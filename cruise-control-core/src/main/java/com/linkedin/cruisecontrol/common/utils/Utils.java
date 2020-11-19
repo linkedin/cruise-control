@@ -94,8 +94,9 @@ public class Utils {
    * @throws IllegalArgumentException if obj is null
    */
   public static <T> T validateNotNull(T obj, String errorMsg) {
-    if (obj == null)
+    if (obj == null) {
       throw new IllegalArgumentException(errorMsg);
+    }
     return obj;
    }
 
@@ -109,8 +110,9 @@ public class Utils {
    * @throws IllegalArgumentException if obj is null
    */
   public static <T> T validateNotNull(T obj, Supplier<String> errorMsgSupplier) {
-    if (obj == null)
+    if (obj == null) {
       throw new IllegalArgumentException(errorMsgSupplier.get());
+    }
     return obj;
   }
 }
