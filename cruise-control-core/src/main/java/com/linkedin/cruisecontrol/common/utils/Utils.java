@@ -95,13 +95,10 @@ public class Utils {
    * @throws IllegalArgumentException if obj is null
    */
   public static <T> T validateNotNull(T obj, String errorMsg) {
-    try {
-      Objects.requireNonNull(obj, errorMsg);
-    } catch (NullPointerException npe) {
-      throw new IllegalArgumentException(npe.getMessage());
-    }
+    if (obj == null)
+      throw new IllegalArgumentException(errorMsg);
     return obj;
-  }
+   }
 
   /**
    * Checks that the specified object reference is not null and throws a customized IllegalArgumentException if it is.
@@ -113,11 +110,8 @@ public class Utils {
    * @throws IllegalArgumentException if obj is null
    */
   public static <T> T validateNotNull(T obj, Supplier<String> errorMsgSupplier) {
-    try {
-      Objects.requireNonNull(obj, errorMsgSupplier.get());
-    } catch (NullPointerException npe) {
-      throw new IllegalArgumentException(npe.getMessage());
-    }
+    if (obj == null)
+      throw new IllegalArgumentException(errorMsgSupplier.get());
     return obj;
   }
 }
