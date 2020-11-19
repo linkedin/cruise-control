@@ -86,30 +86,38 @@ public class Utils {
   }
 
   /**
-   * Checks that the specified object reference is not null and throws a customized NullPointerException if it is.
+   * Checks that the specified object reference is not null and throws a customized IllegalArgumentException if it is.
    *
    * @param obj the object reference to check for nullity
-   * @param errorMsg message to be used in the event that a NullPointerException is thrown
+   * @param errorMsg message to be used in the event that a IllegalArgumentException is thrown
    * @param <T> the type of the reference
    * @return obj if not null
-   * @throws NullPointerException if obj is null
+   * @throws IllegalArgumentException if obj is null
    */
   public static <T> T validateNotNull(T obj, String errorMsg) {
-    Objects.requireNonNull(obj, errorMsg);
+    try {
+      Objects.requireNonNull(obj, errorMsg);
+    } catch (NullPointerException npe) {
+      throw new IllegalArgumentException(npe.getMessage());
+    }
     return obj;
   }
 
   /**
-   * Checks that the specified object reference is not null and throws a customized NullPointerException if it is.
+   * Checks that the specified object reference is not null and throws a customized IllegalArgumentException if it is.
    *
    * @param obj the object reference to check for nullity
-   * @param errorMsgSupplier supplier of the message to be used in the event that a NullPointerException is thrown
+   * @param errorMsgSupplier supplier of the message to be used in the event that a IllegalArgumentException is thrown
    * @param <T> the type of the reference
    * @return obj if not null
-   * @throws NullPointerException if obj is null
+   * @throws IllegalArgumentException if obj is null
    */
   public static <T> T validateNotNull(T obj, Supplier<String> errorMsgSupplier) {
-    Objects.requireNonNull(obj, errorMsgSupplier.get());
+    try {
+      Objects.requireNonNull(obj, errorMsgSupplier.get());
+    } catch (NullPointerException npe) {
+      throw new IllegalArgumentException(npe.getMessage());
+    }
     return obj;
   }
 }
