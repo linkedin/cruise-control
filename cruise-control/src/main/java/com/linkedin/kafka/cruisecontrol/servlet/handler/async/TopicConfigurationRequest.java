@@ -8,9 +8,9 @@ import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Operation
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.UpdateTopicConfigurationRunnable;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters;
 import java.util.Map;
-import java.util.Objects;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.TOPIC_CONFIGURATION_PARAMETER_OBJECT_CONFIG;
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 
 public class TopicConfigurationRequest extends AbstractAsyncRequest {
@@ -41,7 +41,7 @@ public class TopicConfigurationRequest extends AbstractAsyncRequest {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    _parameters = (TopicConfigurationParameters) Objects.requireNonNull(configs.get(TOPIC_CONFIGURATION_PARAMETER_OBJECT_CONFIG),
-            "Parameter configuration is missing from the request.");
+    _parameters = (TopicConfigurationParameters) configs.get(TOPIC_CONFIGURATION_PARAMETER_OBJECT_CONFIG);
+    validateNotNull(_parameters, "Parameter configuration is missing from the request.");
   }
 }

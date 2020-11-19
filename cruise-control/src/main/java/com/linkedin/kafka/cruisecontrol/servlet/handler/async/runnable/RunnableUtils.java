@@ -39,6 +39,7 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.NO_T
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.getRackHandleNull;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.STOP_PROPOSAL_EXECUTION;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.FORCE_STOP_PARAM;
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 
 public class RunnableUtils {
@@ -354,9 +355,9 @@ public class RunnableUtils {
     private final Set<Integer> _recentlyDemotedBrokers;
 
     public RecentBrokers(Set<Integer> recentlyRemovedBrokers, Set<Integer> recentlyDemotedBrokers) {
-      if (recentlyRemovedBrokers == null || recentlyDemotedBrokers == null) {
-        throw new IllegalArgumentException("Attempt to set a null value for recent brokers.");
-      }
+      String errorMsg = "Attempt to set a null value for recent brokers.";
+      validateNotNull(recentlyRemovedBrokers, errorMsg);
+      validateNotNull(recentlyDemotedBrokers, errorMsg);
       _recentlyRemovedBrokers = recentlyRemovedBrokers;
       _recentlyDemotedBrokers = recentlyDemotedBrokers;
     }

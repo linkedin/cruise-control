@@ -24,6 +24,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.handleParameterParseException;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.JSON_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.GET_RESPONSE_SCHEMA;
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 
 /**
@@ -102,12 +103,8 @@ public abstract class AbstractParameters implements CruiseControlParameters {
   @Override
   public void configure(Map<String, ?> configs) {
     _request = (HttpServletRequest) configs.get(KAFKA_CRUISE_CONTROL_HTTP_SERVLET_REQUEST_OBJECT_CONFIG);
-    if (_request == null) {
-      throw new IllegalArgumentException("HttpServletRequest configuration is missing from the request.");
-    }
+    validateNotNull(_request, "HttpServletRequest configuration is missing from the request.");
     _config = (KafkaCruiseControlConfig) configs.get(KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG);
-    if (_config == null) {
-      throw new IllegalArgumentException("KafkaCruiseControlConfig configuration is missing from the request.");
-    }
+    validateNotNull(_config, "KafkaCruiseControlConfig configuration is missing from the request.");
   }
 }

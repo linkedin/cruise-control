@@ -9,13 +9,13 @@ import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 /**
  * A util class for anomalies.
@@ -35,8 +35,10 @@ public class AnomalyUtils {
    */
   public static KafkaCruiseControl extractKafkaCruiseControlObjectFromConfig(Map<String, ?> configs,
                                                                             AnomalyType anomalyType) {
-    return (KafkaCruiseControl) Objects.requireNonNull(configs.get(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG),
-            String.format("Missing %s when creating anomaly of type %s.", KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, anomalyType));
+    KafkaCruiseControl kafkaCruiseControl = (KafkaCruiseControl) configs.get(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG);
+    validateNotNull(kafkaCruiseControl, String.format("Missing %s when creating anomaly of type %s.",
+            KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, anomalyType));
+    return kafkaCruiseControl;
   }
 
   /**

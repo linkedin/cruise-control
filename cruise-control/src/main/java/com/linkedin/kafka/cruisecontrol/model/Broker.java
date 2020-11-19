@@ -27,6 +27,8 @@ import java.util.function.Function;
 
 import org.apache.kafka.common.TopicPartition;
 
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
+
 /**
  * A class that holds the information of the broker, including its liveness and load for replicas. A broker object is
  * created as part of a rack structure.
@@ -66,9 +68,7 @@ public class Broker implements Serializable, Comparable<Broker> {
    */
   Broker(Host host, int id, BrokerCapacityInfo brokerCapacityInfo, boolean populateReplicaPlacementInfo) {
     Map<Resource, Double> brokerCapacity = brokerCapacityInfo.capacity();
-    if (brokerCapacity == null) {
-      throw new IllegalArgumentException("Attempt to create broker " + id + " on host " + host.name() + " with null capacity.");
-    }
+    validateNotNull(brokerCapacity, "Attempt to create broker " + id + " on host " + host.name() + " with null capacity.");
     _host = host;
     _id = id;
     _brokerCapacity = new double[Resource.cachedValues().size()];

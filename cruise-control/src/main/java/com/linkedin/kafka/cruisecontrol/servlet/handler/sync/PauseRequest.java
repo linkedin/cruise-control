@@ -8,9 +8,9 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.PauseResumeParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.PauseSamplingResult;
 import java.util.Map;
-import java.util.Objects;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.PAUSE_RESUME_PARAMETER_OBJECT_CONFIG;
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 
 public class PauseRequest extends AbstractSyncRequest {
@@ -41,7 +41,7 @@ public class PauseRequest extends AbstractSyncRequest {
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
     _kafkaCruiseControl = _servlet.asyncKafkaCruiseControl();
-    _parameters = (PauseResumeParameters) Objects.requireNonNull(configs.get(PAUSE_RESUME_PARAMETER_OBJECT_CONFIG),
-            "Parameter configuration is missing from the request.");
+    _parameters = (PauseResumeParameters) configs.get(PAUSE_RESUME_PARAMETER_OBJECT_CONFIG);
+    validateNotNull(_parameters, "Parameter configuration is missing from the request.");
   }
 }

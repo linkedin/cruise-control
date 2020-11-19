@@ -8,9 +8,9 @@ import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.DemoteBro
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameters;
 import java.util.Map;
-import java.util.Objects;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DEMOTE_BROKER_PARAMETER_OBJECT_CONFIG;
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 
 public class DemoteRequest extends AbstractAsyncRequest {
@@ -41,7 +41,7 @@ public class DemoteRequest extends AbstractAsyncRequest {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    _parameters = (DemoteBrokerParameters) Objects.requireNonNull(configs.get(DEMOTE_BROKER_PARAMETER_OBJECT_CONFIG),
-            "Parameter configuration is missing from the request.");
+    _parameters = (DemoteBrokerParameters) configs.get(DEMOTE_BROKER_PARAMETER_OBJECT_CONFIG);
+    validateNotNull(_parameters, "Parameter configuration is missing from the request.");
   }
 }

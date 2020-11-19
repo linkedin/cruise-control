@@ -28,6 +28,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model.Promet
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model.PrometheusResponse;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.SEC_TO_MS;
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 /**
  * This class provides an adapter to make queries to a Prometheus Server to fetch metric values.
@@ -50,9 +51,8 @@ class PrometheusAdapter {
     PrometheusAdapter(CloseableHttpClient httpClient,
                       HttpHost prometheusEndpoint,
                       int samplingIntervalMs) {
-        if (httpClient == null || prometheusEndpoint == null) {
-            throw new IllegalArgumentException("httpClient or prometheusEndpoint cannot be null.");
-        }
+        validateNotNull(httpClient, "httpClient cannot be null.");
+        validateNotNull(prometheusEndpoint, "prometheusEndpoint cannot be null.");
         _httpClient = httpClient;
         _prometheusEndpoint = prometheusEndpoint;
         _samplingIntervalMs = samplingIntervalMs;

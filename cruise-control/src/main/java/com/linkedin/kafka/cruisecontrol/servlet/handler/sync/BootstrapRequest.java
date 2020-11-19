@@ -8,9 +8,9 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.BootstrapParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.BootstrapResult;
 import java.util.Map;
-import java.util.Objects;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.BOOTSTRAP_PARAMETER_OBJECT_CONFIG;
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 
 public class BootstrapRequest extends AbstractSyncRequest {
@@ -45,7 +45,7 @@ public class BootstrapRequest extends AbstractSyncRequest {
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
     _kafkaCruiseControl = _servlet.asyncKafkaCruiseControl();
-    _parameters = (BootstrapParameters) Objects.requireNonNull(configs.get(BOOTSTRAP_PARAMETER_OBJECT_CONFIG),
-            "Parameter configuration is missing from the request.");
+    _parameters = (BootstrapParameters) configs.get(BOOTSTRAP_PARAMETER_OBJECT_CONFIG);
+    validateNotNull(_parameters, "Parameter configuration is missing from the request.");
   }
 }
