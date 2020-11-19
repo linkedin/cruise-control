@@ -7,6 +7,8 @@ package com.linkedin.cruisecontrol.common.utils;
 import com.linkedin.cruisecontrol.exception.CruiseControlException;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.Objects;
+import java.util.function.Supplier;
 
 
 public class Utils {
@@ -81,5 +83,33 @@ public class Utils {
       }
     }
     return sb.toString();
+  }
+
+  /**
+   * Checks that the specified object reference is not null and throws a customized NullPointerException if it is.
+   *
+   * @param obj the object reference to check for nullity
+   * @param errorMsg message to be used in the event that a NullPointerException is thrown
+   * @param <T> the type of the reference
+   * @return obj if not null
+   * @throws NullPointerException if obj is null
+   */
+  public static <T> T validateNotNull(T obj, String errorMsg) {
+    Objects.requireNonNull(obj, errorMsg);
+    return obj;
+  }
+
+  /**
+   * Checks that the specified object reference is not null and throws a customized NullPointerException if it is.
+   *
+   * @param obj the object reference to check for nullity
+   * @param errorMsgSupplier supplier of the message to be used in the event that a NullPointerException is thrown
+   * @param <T> the type of the reference
+   * @return obj if not null
+   * @throws NullPointerException if obj is null
+   */
+  public static <T> T validateNotNull(T obj, Supplier<String> errorMsgSupplier) {
+    Objects.requireNonNull(obj, errorMsgSupplier.get());
+    return obj;
   }
 }
