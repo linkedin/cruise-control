@@ -7,7 +7,6 @@ package com.linkedin.cruisecontrol.common.utils;
 import com.linkedin.cruisecontrol.exception.CruiseControlException;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.Objects;
 import java.util.function.Supplier;
 
 
