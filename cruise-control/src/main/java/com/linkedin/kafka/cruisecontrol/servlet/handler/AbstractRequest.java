@@ -60,7 +60,7 @@ public abstract class AbstractRequest implements Request {
 
   @Override
   public void configure(Map<String, ?> configs) {
-    _servlet = (KafkaCruiseControlServlet) configs.get(KAFKA_CRUISE_CONTROL_SERVLET_OBJECT_CONFIG);
-    validateNotNull(_servlet, "Kafka Cruise Control servlet configuration is missing from the request.");
+    _servlet = (KafkaCruiseControlServlet) validateNotNull(configs.get(KAFKA_CRUISE_CONTROL_SERVLET_OBJECT_CONFIG),
+            "Kafka Cruise Control servlet configuration is missing from the request.");
   }
 }

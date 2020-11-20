@@ -75,15 +75,11 @@ public class OptimizationOptions {
                              boolean isTriggeredByGoalViolation,
                              Set<Integer> requestedDestinationBrokerIds,
                              boolean onlyMoveImmigrantReplicas) {
-    validateNotNull(excludedTopics, "Excluded topics cannot be null.");
-    validateNotNull(excludedBrokersForLeadership, "Excluded brokers for leadership cannot be null.");
-    validateNotNull(excludedBrokersForReplicaMove, "Excluded brokers for replica move cannot be null.");
-    validateNotNull(requestedDestinationBrokerIds, "Requested destination broker ids cannot be null.");
-    _excludedTopics = excludedTopics;
-    _excludedBrokersForLeadership = excludedBrokersForLeadership;
-    _excludedBrokersForReplicaMove = excludedBrokersForReplicaMove;
+    _excludedTopics = validateNotNull(excludedTopics, "Excluded topics cannot be null.");
+    _excludedBrokersForLeadership = validateNotNull(excludedBrokersForLeadership, "Excluded brokers for leadership cannot be null.");
+    _excludedBrokersForReplicaMove = validateNotNull(excludedBrokersForReplicaMove, "Excluded brokers for replica move cannot be null.");
     _isTriggeredByGoalViolation = isTriggeredByGoalViolation;
-    _requestedDestinationBrokerIds = requestedDestinationBrokerIds;
+    _requestedDestinationBrokerIds = validateNotNull(requestedDestinationBrokerIds, "Requested destination broker ids cannot be null.");;
     _onlyMoveImmigrantReplicas = onlyMoveImmigrantReplicas;
   }
 

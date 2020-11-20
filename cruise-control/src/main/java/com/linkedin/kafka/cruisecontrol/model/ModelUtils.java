@@ -160,7 +160,7 @@ public class ModelUtils {
     double result = 0;
     for (MetricInfo info : KafkaMetricDef.resourceToMetricInfo(resource)) {
       MetricValues valuesForId = aggregatedMetricValues.valuesFor(info.id());
-      validateNotNull(valuesForId, String.format("The aggregated metric values does not contain metric %s for resource %s.",
+      validateNotNull(valuesForId, () -> String.format("The aggregated metric values does not contain metric %s for resource %s.",
               info, resource.name()));
       result += resource == Resource.DISK ? valuesForId.latest() : valuesForId.avg();
     }

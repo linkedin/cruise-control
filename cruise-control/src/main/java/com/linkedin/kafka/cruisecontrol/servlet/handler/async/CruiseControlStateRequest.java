@@ -41,7 +41,7 @@ public class CruiseControlStateRequest extends AbstractAsyncRequest {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    _parameters = (CruiseControlStateParameters) configs.get(STATE_PARAMETER_OBJECT_CONFIG);
-    validateNotNull(_parameters, "Parameter configuration is missing from the request.");
+    _parameters = (CruiseControlStateParameters) validateNotNull(configs.get(STATE_PARAMETER_OBJECT_CONFIG),
+            "Parameter configuration is missing from the request.");
   }
 }

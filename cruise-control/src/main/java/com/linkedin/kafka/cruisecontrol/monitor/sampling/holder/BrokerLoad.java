@@ -131,8 +131,8 @@ public class BrokerLoad {
    */
   public double brokerMetric(RawMetricType rawMetricType) {
     sanityCheckMetricScope(rawMetricType, BROKER);
-    ValueHolder valueHolder = _brokerMetrics.metricValue(rawMetricType);
-    validateNotNull(valueHolder, String.format("Broker metric %s does not exist.", rawMetricType));
+    ValueHolder valueHolder = validateNotNull(_brokerMetrics.metricValue(rawMetricType),
+            () -> String.format("Broker metric %s does not exist.", rawMetricType));
     return convertUnit(valueHolder.value(), rawMetricType);
   }
 

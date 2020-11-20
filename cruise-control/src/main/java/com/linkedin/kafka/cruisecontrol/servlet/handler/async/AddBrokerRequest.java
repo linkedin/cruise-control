@@ -41,7 +41,7 @@ public class AddBrokerRequest extends AbstractAsyncRequest {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    _parameters = (AddBrokerParameters) configs.get(ADD_BROKER_PARAMETER_OBJECT_CONFIG);
-    validateNotNull(_parameters, "Parameter configuration is missing from the request.");
+    _parameters = (AddBrokerParameters) validateNotNull(configs.get(ADD_BROKER_PARAMETER_OBJECT_CONFIG),
+            "Parameter configuration is missing from the request.");
   }
 }

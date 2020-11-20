@@ -41,7 +41,7 @@ public class FixOfflineReplicasRequest extends AbstractAsyncRequest {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    _parameters = (FixOfflineReplicasParameters) configs.get(FIX_OFFLINE_REPLICAS_PARAMETER_OBJECT_CONFIG);
-    validateNotNull(_parameters, "Parameter configuration is missing from the request.");
+    _parameters = (FixOfflineReplicasParameters) validateNotNull(configs.get(FIX_OFFLINE_REPLICAS_PARAMETER_OBJECT_CONFIG),
+            "Parameter configuration is missing from the request.");
   }
 }

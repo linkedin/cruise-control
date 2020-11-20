@@ -35,10 +35,8 @@ public class AnomalyUtils {
    */
   public static KafkaCruiseControl extractKafkaCruiseControlObjectFromConfig(Map<String, ?> configs,
                                                                             AnomalyType anomalyType) {
-    KafkaCruiseControl kafkaCruiseControl = (KafkaCruiseControl) configs.get(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG);
-    validateNotNull(kafkaCruiseControl, String.format("Missing %s when creating anomaly of type %s.",
-            KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, anomalyType));
-    return kafkaCruiseControl;
+    return (KafkaCruiseControl) validateNotNull(configs.get(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG),
+            () -> String.format("Missing %s when creating anomaly of type %s.", KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, anomalyType));
   }
 
   /**

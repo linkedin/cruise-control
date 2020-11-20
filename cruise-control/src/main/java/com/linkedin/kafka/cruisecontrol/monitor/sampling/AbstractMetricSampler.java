@@ -30,8 +30,7 @@ public abstract class AbstractMetricSampler implements MetricSampler {
     @Override
     public void configure(Map<String, ?> configs) {
         BrokerCapacityConfigResolver capacityResolver =
-                (BrokerCapacityConfigResolver) configs.get(BROKER_CAPACITY_CONFIG_RESOLVER_OBJECT_CONFIG);
-        validateNotNull(capacityResolver,
+                (BrokerCapacityConfigResolver) validateNotNull(configs.get(BROKER_CAPACITY_CONFIG_RESOLVER_OBJECT_CONFIG),
                 "Metrics reporter sampler configuration is missing broker capacity config resolver object.");
         boolean allowCpuCapacityEstimation = (Boolean) configs.get(
             MonitorConfig.SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG);

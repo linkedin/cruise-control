@@ -49,7 +49,7 @@ public class KafkaClusterStateRequest extends AbstractSyncRequest {
     _topicConfigProvider = _servlet.asyncKafkaCruiseControl().topicConfigProvider();
     _config = _servlet.asyncKafkaCruiseControl().config();
     _adminClient = _servlet.asyncKafkaCruiseControl().adminClient();
-    _parameters = (KafkaClusterStateParameters) configs.get(KAFKA_CLUSTER_STATE_PARAMETER_OBJECT_CONFIG);
-    validateNotNull(_parameters, "Parameter configuration is missing from the request.");
+    _parameters = (KafkaClusterStateParameters) validateNotNull(configs.get(KAFKA_CLUSTER_STATE_PARAMETER_OBJECT_CONFIG),
+            "Parameter configuration is missing from the request.");
   }
 }

@@ -41,7 +41,7 @@ public class TopicConfigurationRequest extends AbstractAsyncRequest {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    _parameters = (TopicConfigurationParameters) configs.get(TOPIC_CONFIGURATION_PARAMETER_OBJECT_CONFIG);
-    validateNotNull(_parameters, "Parameter configuration is missing from the request.");
+    _parameters = (TopicConfigurationParameters) validateNotNull(configs.get(TOPIC_CONFIGURATION_PARAMETER_OBJECT_CONFIG),
+            "Parameter configuration is missing from the request.");
   }
 }

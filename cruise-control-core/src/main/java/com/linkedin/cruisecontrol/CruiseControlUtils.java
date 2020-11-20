@@ -21,7 +21,7 @@ public class CruiseControlUtils {
    * Ensure the string value of the string key is not null or empty.
    */
   public static void ensureValidString(String fieldName, String toCheck) {
-    validateNotNull(toCheck, fieldName + " cannot be null");
+    validateNotNull(toCheck, () -> fieldName + " cannot be null");
     if (toCheck.isEmpty()) {
       throw new IllegalArgumentException(fieldName + " cannot be empty");
     }

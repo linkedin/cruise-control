@@ -41,7 +41,7 @@ public class DemoteRequest extends AbstractAsyncRequest {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    _parameters = (DemoteBrokerParameters) configs.get(DEMOTE_BROKER_PARAMETER_OBJECT_CONFIG);
-    validateNotNull(_parameters, "Parameter configuration is missing from the request.");
+    _parameters = (DemoteBrokerParameters) validateNotNull(configs.get(DEMOTE_BROKER_PARAMETER_OBJECT_CONFIG),
+            "Parameter configuration is missing from the request.");
   }
 }

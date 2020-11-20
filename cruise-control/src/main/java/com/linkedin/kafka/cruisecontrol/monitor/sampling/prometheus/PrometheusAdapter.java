@@ -51,10 +51,8 @@ class PrometheusAdapter {
     PrometheusAdapter(CloseableHttpClient httpClient,
                       HttpHost prometheusEndpoint,
                       int samplingIntervalMs) {
-        validateNotNull(httpClient, "httpClient cannot be null.");
-        validateNotNull(prometheusEndpoint, "prometheusEndpoint cannot be null.");
-        _httpClient = httpClient;
-        _prometheusEndpoint = prometheusEndpoint;
+        _httpClient = validateNotNull(httpClient, "httpClient cannot be null.");
+        _prometheusEndpoint = validateNotNull(prometheusEndpoint, "prometheusEndpoint cannot be null.");
         _samplingIntervalMs = samplingIntervalMs;
     }
 

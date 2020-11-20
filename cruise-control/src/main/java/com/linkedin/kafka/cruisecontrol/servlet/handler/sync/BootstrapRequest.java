@@ -45,7 +45,7 @@ public class BootstrapRequest extends AbstractSyncRequest {
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
     _kafkaCruiseControl = _servlet.asyncKafkaCruiseControl();
-    _parameters = (BootstrapParameters) configs.get(BOOTSTRAP_PARAMETER_OBJECT_CONFIG);
-    validateNotNull(_parameters, "Parameter configuration is missing from the request.");
+    _parameters = (BootstrapParameters) validateNotNull(configs.get(BOOTSTRAP_PARAMETER_OBJECT_CONFIG),
+            "Parameter configuration is missing from the request.");
   }
 }

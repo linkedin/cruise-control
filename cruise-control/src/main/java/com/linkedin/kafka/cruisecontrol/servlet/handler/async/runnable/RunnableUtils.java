@@ -356,10 +356,8 @@ public class RunnableUtils {
 
     public RecentBrokers(Set<Integer> recentlyRemovedBrokers, Set<Integer> recentlyDemotedBrokers) {
       String errorMsg = "Attempt to set a null value for recent brokers.";
-      validateNotNull(recentlyRemovedBrokers, errorMsg);
-      validateNotNull(recentlyDemotedBrokers, errorMsg);
-      _recentlyRemovedBrokers = recentlyRemovedBrokers;
-      _recentlyDemotedBrokers = recentlyDemotedBrokers;
+      _recentlyRemovedBrokers = validateNotNull(recentlyRemovedBrokers, errorMsg);
+      _recentlyDemotedBrokers = validateNotNull(recentlyDemotedBrokers, errorMsg);
     }
 
     public Set<Integer> recentlyRemovedBrokers() {

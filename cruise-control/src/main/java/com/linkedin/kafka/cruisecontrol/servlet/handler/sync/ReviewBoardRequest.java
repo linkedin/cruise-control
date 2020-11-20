@@ -40,7 +40,7 @@ public class ReviewBoardRequest extends AbstractSyncRequest {
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
     _purgatory = _servlet.purgatory();
-    _parameters = (ReviewBoardParameters) configs.get(REVIEW_BOARD_PARAMETER_OBJECT_CONFIG);
-    validateNotNull(_parameters, "Parameter configuration is missing from the request.");
+    _parameters = (ReviewBoardParameters) validateNotNull(configs.get(REVIEW_BOARD_PARAMETER_OBJECT_CONFIG),
+            "Parameter configuration is missing from the request.");
   }
 }
