@@ -260,6 +260,10 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     // Log broker Ids over balancing limit.
     // While proposals exclude the excludedTopics, the balance still considers utilization of the excludedTopic replicas.
     for (Broker broker : clusterModel.aliveBrokers()) {
+      if (isLoadUnderLowUtilizationThreshold(broker)) {
+        continue;
+      }
+
       if (!isLoadUnderBalanceUpperLimit(broker)) {
         brokerIdsAboveBalanceUpperLimit.add(broker.id());
       }
@@ -329,6 +333,11 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
                                     OptimizationOptions optimizationOptions) {
+
+    if (clusterModel.deadBrokers().isEmpty() && allAliveBrokersBalanced(clusterModel, optimizationOptions)) {
+      return;
+    }
+
     int numOfflineReplicas = broker.currentOfflineReplicas().size();
 
     boolean isExcludedForReplicaMove = isExcludedForReplicaMove(broker);
@@ -380,6 +389,14 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     if (!unbalanced) {
       LOG.debug("Successfully balanced {} for broker {} by moving leaders and replicas.", resource(), broker.id());
     }
+  }
+
+  private boolean allAliveBrokersBalanced(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
+    int balancedBrokers = clusterModel
+                          .getClusterStats(_balancingConstraint, optimizationOptions)
+                          .numBalancedBrokersByResource()
+                          .get(resource());
+    return balancedBrokers == clusterModel.aliveBrokers().size();
   }
 
   private boolean rebalanceByMovingLoadIn(Broker broker,
@@ -815,6 +832,14 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     } else {
       return isBrokerAboveLowerLimit;
     }
+  }
+
+  private boolean isLoadUnderLowUtilizationThreshold(Broker broker) {
+    double utilization = resource().isHostResource() ? broker.host().load().expectedUtilizationFor(resource())
+                                                     : broker.load().expectedUtilizationFor(resource());
+    double resourceCapacity = resource().isHostResource() ? broker.host().capacityFor(resource())
+                                                          : broker.capacityFor(resource());
+    return utilization / resourceCapacity < _balancingConstraint.lowUtilizationThreshold(resource());
   }
 
   private boolean isLoadUnderBalanceUpperLimitAfterChange(Load load,
