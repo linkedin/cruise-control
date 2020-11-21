@@ -10,6 +10,8 @@ import org.apache.kafka.common.TopicPartition;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
+
 
 /**
  * Represents the load balancing operation over a replica for Kafka Load GoalOptimizer.
@@ -127,41 +129,29 @@ public class BalancingAction {
   private void validate() {
     switch (_actionType) {
       case REPLICA_ADDITION:
-        if (_destinationBrokerId == null) {
-          throw new IllegalArgumentException("The destination broker cannot be null for balancing action " + this);
-        } else if (_sourceBrokerId != null) {
+        validateNotNull(_destinationBrokerId, () -> "The destination broker cannot be null for balancing action " + this);
+        if (_sourceBrokerId != null) {
           throw new IllegalArgumentException("The source broker should be null for balancing action " + this);
         }
         break;
       case REPLICA_DELETION:
         if (_destinationBrokerId != null) {
           throw new IllegalArgumentException("The destination broker should be null for balancing action " + this);
-        } else if (_sourceBrokerId == null) {
-      throw new IllegalArgumentException("The source broker cannot be null for balancing action " + this);
         }
+        validateNotNull(_sourceBrokerId, () -> "The source broker cannot be null for balancing action " + this);
         break;
       case INTER_BROKER_REPLICA_MOVEMENT:
       case LEADERSHIP_MOVEMENT:
       case INTER_BROKER_REPLICA_SWAP:
-        if (_destinationBrokerId == null) {
-          throw new IllegalArgumentException("The destination broker cannot be null for balancing action " + this);
-        } else if (_sourceBrokerId == null) {
-          throw new IllegalArgumentException("The source broker cannot be null for balancing action " + this);
-        }
+        validateNotNull(_destinationBrokerId, () -> "The destination broker cannot be null for balancing action " + this);
+        validateNotNull(_sourceBrokerId, () -> "The source broker cannot be null for balancing action " + this);
         break;
       case INTRA_BROKER_REPLICA_MOVEMENT:
       case INTRA_BROKER_REPLICA_SWAP:
-        if (_destinationBrokerId == null) {
-          throw new IllegalArgumentException("The destination broker cannot be null for balancing action " + this);
-        } else if (_sourceBrokerId == null) {
-          throw new IllegalArgumentException("The source broker cannot be null for balancing action " + this);
-        }
-        if (_sourceBrokerLogdir == null) {
-          throw new IllegalArgumentException("The source disk cannot be null for balancing action " + this);
-        }
-        if (_destinationBrokerLogdir == null) {
-          throw new IllegalArgumentException("The destination disk cannot be null for balancing action " + this);
-        }
+        validateNotNull(_destinationBrokerId, () -> "The destination broker cannot be null for balancing action " + this);
+        validateNotNull(_sourceBrokerId, () -> "The source broker cannot be null for balancing action " + this);
+        validateNotNull(_sourceBrokerLogdir, () -> "The source disk cannot be null for balancing action " + this);
+        validateNotNull(_destinationBrokerLogdir, () -> "The destination disk cannot be null for balancing action " + this);
         if (!_sourceBrokerId.equals(_destinationBrokerId)) {
           throw new IllegalArgumentException("Replica movement between disks across broker is not supported "
                                              + "for balancing action " + this);

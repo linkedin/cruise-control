@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.RebalanceParameters;
 import java.util.Map;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REBALANCE_PARAMETER_OBJECT_CONFIG;
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 
 public class RebalanceRequest extends AbstractAsyncRequest {
@@ -40,9 +41,7 @@ public class RebalanceRequest extends AbstractAsyncRequest {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    _parameters = (RebalanceParameters) configs.get(REBALANCE_PARAMETER_OBJECT_CONFIG);
-    if (_parameters == null) {
-      throw new IllegalArgumentException("Parameter configuration is missing from the request.");
-    }
+    _parameters = (RebalanceParameters) validateNotNull(configs.get(REBALANCE_PARAMETER_OBJECT_CONFIG),
+            "Parameter configuration is missing from the request.");
   }
 }

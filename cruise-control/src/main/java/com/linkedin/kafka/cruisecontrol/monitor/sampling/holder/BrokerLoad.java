@@ -27,6 +27,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.HolderUti
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.HolderUtils.convertUnit;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.HolderUtils.METRIC_TYPES_TO_SUM;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.HolderUtils.MISSING_BROKER_METRIC_VALUE;
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 
 /**
@@ -130,12 +131,9 @@ public class BrokerLoad {
    */
   public double brokerMetric(RawMetricType rawMetricType) {
     sanityCheckMetricScope(rawMetricType, BROKER);
-    ValueHolder valueHolder = _brokerMetrics.metricValue(rawMetricType);
-    if (valueHolder == null) {
-      throw new IllegalArgumentException(String.format("Broker metric %s does not exist.", rawMetricType));
-    } else {
-      return convertUnit(valueHolder.value(), rawMetricType);
-    }
+    ValueHolder valueHolder = validateNotNull(_brokerMetrics.metricValue(rawMetricType),
+            () -> String.format("Broker metric %s does not exist.", rawMetricType));
+    return convertUnit(valueHolder.value(), rawMetricType);
   }
 
   public double topicMetrics(String dotHandledTopic, RawMetricType rawMetricType) {

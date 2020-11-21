@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.cruisecontrol.CruiseControlUtils.toPrettyTime;
 import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyFinderUtils.isDataSufficient;
 import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyFinderUtils.SIGNIFICANT_METRIC_VALUE_THRESHOLD;
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 
 /**
@@ -136,9 +137,8 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
   public Collection<MetricAnomaly<E>> metricAnomalies(Map<E, ValuesAndExtrapolations> metricsHistoryByEntity,
                                                       Map<E, ValuesAndExtrapolations> currentMetricsByEntity) {
 
-    if (metricsHistoryByEntity == null || currentMetricsByEntity == null) {
-      throw new IllegalArgumentException("Metrics history or current metrics cannot be null.");
-    }
+    validateNotNull(metricsHistoryByEntity, "Metrics history cannot be null.");
+    validateNotNull(currentMetricsByEntity, "Current metrics cannot be null.");
 
     if (metricsHistoryByEntity.isEmpty() ||
         !isDataSufficient(metricsHistoryByEntity.values().iterator().next().metricValues().length(),

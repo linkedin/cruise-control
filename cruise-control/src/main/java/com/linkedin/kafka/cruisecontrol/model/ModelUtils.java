@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static java.lang.Math.max;
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 
 /**
@@ -151,19 +152,16 @@ public class ModelUtils {
    * @return A single representative utilization value on a resource, or {@code 0} if the given aggregatedMetricValues is empty.
    */
   public static double expectedUtilizationFor(Resource resource, AggregatedMetricValues aggregatedMetricValues) {
-    if (resource == null || aggregatedMetricValues == null) {
-      throw new IllegalArgumentException("Resource or aggregatedMetricValues cannot be null.");
-    }
+    validateNotNull(resource, "Resource cannot be null.");
+    validateNotNull(aggregatedMetricValues, "AggregatedMetricValues cannot be null.");
     if (aggregatedMetricValues.isEmpty()) {
       return 0.0;
     }
     double result = 0;
     for (MetricInfo info : KafkaMetricDef.resourceToMetricInfo(resource)) {
       MetricValues valuesForId = aggregatedMetricValues.valuesFor(info.id());
-      if (valuesForId == null) {
-        throw new IllegalArgumentException(String.format("The aggregated metric values does not contain metric %s for resource %s.",
-                                                         info, resource.name()));
-      }
+      validateNotNull(valuesForId, () -> String.format("The aggregated metric values does not contain metric %s for resource %s.",
+              info, resource.name()));
       result += resource == Resource.DISK ? valuesForId.latest() : valuesForId.avg();
     }
     return max(result, 0.0);
