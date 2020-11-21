@@ -15,6 +15,7 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 /**
  * A util class for anomalies.
@@ -34,12 +35,8 @@ public class AnomalyUtils {
    */
   public static KafkaCruiseControl extractKafkaCruiseControlObjectFromConfig(Map<String, ?> configs,
                                                                             AnomalyType anomalyType) {
-    KafkaCruiseControl kafkaCruiseControl = (KafkaCruiseControl) configs.get(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG);
-    if (kafkaCruiseControl == null) {
-      throw new IllegalArgumentException(String.format("Missing %s when creating anomaly of type %s.",
-                                                       KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, anomalyType));
-    }
-    return kafkaCruiseControl;
+    return (KafkaCruiseControl) validateNotNull(configs.get(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG),
+            () -> String.format("Missing %s when creating anomaly of type %s.", KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, anomalyType));
   }
 
   /**

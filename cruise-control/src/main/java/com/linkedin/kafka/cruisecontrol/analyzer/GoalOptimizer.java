@@ -52,6 +52,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.balancedn
 import static com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.BOOTSTRAPPING;
 import static com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.LOADING;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG;
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 
 /**
@@ -369,9 +370,8 @@ public class GoalOptimizer implements Runnable {
                                        List<Goal> goalsByPriority,
                                        OperationProgress operationProgress)
       throws KafkaCruiseControlException {
-    if (clusterModel == null) {
-      throw new IllegalArgumentException("The cluster model cannot be null");
-    } else if (goalsByPriority.isEmpty()) {
+    validateNotNull(clusterModel, "The cluster model cannot be null");
+    if (goalsByPriority.isEmpty()) {
       throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");
     } else if (!clusterModel.isClusterAlive()) {
       throw new IllegalArgumentException("All brokers are dead in the cluster.");

@@ -61,6 +61,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVA
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.SamplingMode.ALL;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.SamplingMode.BROKER_METRICS_ONLY;
 import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.ReplicaLogDirInfo;
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 /**
  * Executor for Kafka GoalOptimizer.
@@ -739,15 +740,9 @@ public class Executor {
     if (currentExecutorState != NO_TASK_IN_PROGRESS) {
       throw new OngoingExecutionException(String.format("Cannot generate proposals while the executor is in %s state.", currentExecutorState));
     }
-    if (uuid == null) {
-      throw new IllegalArgumentException("UUID of the execution cannot be null.");
-    }
-    if (reasonSupplier == null) {
-      throw new IllegalArgumentException("Reason supplier cannot be null.");
-    }
 
-    _uuid = uuid;
-    _reasonSupplier = reasonSupplier;
+    _uuid = validateNotNull(uuid, "UUID of the execution cannot be null.");
+    _reasonSupplier = validateNotNull(reasonSupplier, "Reason supplier cannot be null.");
     _executorState = ExecutorState.generatingProposalsForExecution(_uuid, _reasonSupplier.get(), recentlyDemotedBrokers(),
                                                                    recentlyRemovedBrokers(), isTriggeredByUserRequest);
   }

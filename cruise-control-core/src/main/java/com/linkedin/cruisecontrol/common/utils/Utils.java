@@ -7,6 +7,7 @@ package com.linkedin.cruisecontrol.common.utils;
 import com.linkedin.cruisecontrol.exception.CruiseControlException;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.function.Supplier;
 
 
 public class Utils {
@@ -81,5 +82,37 @@ public class Utils {
       }
     }
     return sb.toString();
+  }
+
+  /**
+   * Checks that the specified object reference is not null and throws a customized IllegalArgumentException if it is.
+   *
+   * @param obj the object reference to check for nullity
+   * @param errorMsg message to be used in the event that a IllegalArgumentException is thrown
+   * @param <T> the type of the reference
+   * @return obj if not null
+   * @throws IllegalArgumentException if obj is null
+   */
+  public static <T> T validateNotNull(T obj, String errorMsg) {
+    if (obj == null) {
+      throw new IllegalArgumentException(errorMsg);
+    }
+    return obj;
+   }
+
+  /**
+   * Checks that the specified object reference is not null and throws a customized IllegalArgumentException if it is.
+   *
+   * @param obj the object reference to check for nullity
+   * @param errorMsgSupplier supplier of the message to be used in the event that a IllegalArgumentException is thrown
+   * @param <T> the type of the reference
+   * @return obj if not null
+   * @throws IllegalArgumentException if obj is null
+   */
+  public static <T> T validateNotNull(T obj, Supplier<String> errorMsgSupplier) {
+    if (obj == null) {
+      throw new IllegalArgumentException(errorMsgSupplier.get());
+    }
+    return obj;
   }
 }

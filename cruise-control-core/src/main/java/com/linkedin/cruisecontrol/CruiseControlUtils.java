@@ -6,6 +6,7 @@ package com.linkedin.cruisecontrol;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 
 /**
@@ -20,8 +21,9 @@ public class CruiseControlUtils {
    * Ensure the string value of the string key is not null or empty.
    */
   public static void ensureValidString(String fieldName, String toCheck) {
-    if (toCheck == null || toCheck.isEmpty()) {
-      throw new IllegalArgumentException(fieldName + " cannot be null");
+    validateNotNull(toCheck, () -> fieldName + " cannot be null");
+    if (toCheck.isEmpty()) {
+      throw new IllegalArgumentException(fieldName + " cannot be empty");
     }
   }
 
