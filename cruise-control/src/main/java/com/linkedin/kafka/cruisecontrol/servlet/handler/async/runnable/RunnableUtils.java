@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.NO_TASK_IN_PROGRESS;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.getRackHandleNull;
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 
 public class RunnableUtils {
@@ -351,11 +352,8 @@ public class RunnableUtils {
     private final Set<Integer> _recentlyDemotedBrokers;
 
     public RecentBrokers(Set<Integer> recentlyRemovedBrokers, Set<Integer> recentlyDemotedBrokers) {
-      if (recentlyRemovedBrokers == null || recentlyDemotedBrokers == null) {
-        throw new IllegalArgumentException("Attempt to set a null value for recent brokers.");
-      }
-      _recentlyRemovedBrokers = recentlyRemovedBrokers;
-      _recentlyDemotedBrokers = recentlyDemotedBrokers;
+      _recentlyRemovedBrokers = validateNotNull(recentlyRemovedBrokers, "Attempt to set a null value for recent removed brokers.");
+      _recentlyDemotedBrokers = validateNotNull(recentlyDemotedBrokers, "Attempt to set a null value for recent demoted brokers.");
     }
 
     public Set<Integer> recentlyRemovedBrokers() {

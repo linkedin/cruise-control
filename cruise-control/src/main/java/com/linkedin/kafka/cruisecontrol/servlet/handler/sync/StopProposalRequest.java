@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.response.StopProposalResult;
 import java.util.Map;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.STOP_PROPOSAL_PARAMETER_OBJECT_CONFIG;
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 
 public class StopProposalRequest extends AbstractSyncRequest {
@@ -40,9 +41,7 @@ public class StopProposalRequest extends AbstractSyncRequest {
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
     _kafkaCruiseControl = _servlet.asyncKafkaCruiseControl();
-    _parameters = (StopProposalParameters) configs.get(STOP_PROPOSAL_PARAMETER_OBJECT_CONFIG);
-    if (_parameters == null) {
-      throw new IllegalArgumentException("Parameter configuration is missing from the request.");
-    }
+    _parameters = (StopProposalParameters) validateNotNull(configs.get(STOP_PROPOSAL_PARAMETER_OBJECT_CONFIG),
+            "Parameter configuration is missing from the request.");
   }
 }
