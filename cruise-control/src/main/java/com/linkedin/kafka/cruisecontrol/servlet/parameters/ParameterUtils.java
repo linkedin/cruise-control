@@ -164,7 +164,7 @@ public class ParameterUtils {
    * @param request The Http request.
    * @return The endpoint specified in the given request.
    */
-  public static CruiseControlEndPoint endPoint(HttpServletRequest request) {
+  public static CruiseControlEndPoint endPoint(HttpServletRequest request, String apiUrlPrefix) {
     List<CruiseControlEndPoint> supportedEndpoints;
     switch (request.getMethod()) {
       case GET_METHOD:
@@ -177,7 +177,7 @@ public class ParameterUtils {
         throw new UserRequestException("Unsupported request method: " + request.getMethod() + ".");
     }
 
-    String path = request.getRequestURI().toUpperCase().replace(REQUEST_URI, "");
+    String path = request.getRequestURI().toUpperCase().replace(apiUrlPrefix, "");
     for (CruiseControlEndPoint endPoint : supportedEndpoints) {
       if (endPoint.toString().equalsIgnoreCase(path)) {
         return endPoint;
