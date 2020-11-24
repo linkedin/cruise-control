@@ -58,29 +58,46 @@ public class DeterministicCluster {
    * @return Cluster model for the tests.
    */
   public static ClusterModel unbalanced4() {
+    return createUnbalanced(Collections.singleton(T1), 8);
+  }
+
+  private static ClusterModel createUnbalanced(Set<String> topics, int numBrokers) {
     Map<Integer, Integer> rackByBrokerId = new HashMap<>(2);
     rackByBrokerId.put(0, 0);
     rackByBrokerId.put(1, 1);
     ClusterModel cluster = getHomogeneousCluster(rackByBrokerId, TestConstants.BROKER_CAPACITY, TestConstants.DISK_CAPACITY);
 
-    for (int i = 0; i < 8; i++) {
-      // Create topic partitions.
-      TopicPartition pInfo = new TopicPartition(T1, i);
+    for (String topic : topics) {
+      for (int i = 0; i < numBrokers; i++) {
+        // Create topic partitions.
+        TopicPartition pInfo = new TopicPartition(topic, i);
 
-      // Create replicas for topic partitions.
-      int brokerId = i > 3 ? 1 : 0;
-      String logdir = i % 4 < 2 ? TestConstants.LOGDIR0 : TestConstants.LOGDIR1;
-      cluster.createReplica(rackByBrokerId.get(brokerId).toString(), brokerId, pInfo, 0, true, false, logdir, false);
+        // Create replicas for topic partitions.
+        int brokerId = i > 3 ? 1 : 0;
+        String logdir = i % 4 < 2 ? TestConstants.LOGDIR0 : TestConstants.LOGDIR1;
+        cluster.createReplica(rackByBrokerId.get(brokerId).toString(), brokerId, pInfo, 0, true, false, logdir, false);
 
-      // Create snapshots for replicas.
-      AggregatedMetricValues aggregatedMetricValues = getAggregatedMetricValues(
-          TestConstants.TYPICAL_CPU_CAPACITY / 5 + TestConstants.TYPICAL_CPU_CAPACITY / 50 * (i / 2.0 - 1.5),
-          TestConstants.LARGE_BROKER_CAPACITY / 5 + TestConstants.LARGE_BROKER_CAPACITY / 50 * (i / 2.0 - 1.5),
-          TestConstants.MEDIUM_BROKER_CAPACITY / 5 + TestConstants.MEDIUM_BROKER_CAPACITY / 50 * (i / 2.0 - 1.5),
-          TestConstants.LARGE_BROKER_CAPACITY / 5 + TestConstants.LARGE_BROKER_CAPACITY / 50 * (i / 2.0 - 1.5));
-      cluster.setReplicaLoad(rackByBrokerId.get(brokerId).toString(), brokerId, pInfo, aggregatedMetricValues, Collections.singletonList(1L));
+        // Create snapshots for replicas.
+        AggregatedMetricValues aggregatedMetricValues = getAggregatedMetricValues(
+            TestConstants.TYPICAL_CPU_CAPACITY / 5 + TestConstants.TYPICAL_CPU_CAPACITY / 50 * (i / 2.0 - 1.5),
+            TestConstants.LARGE_BROKER_CAPACITY / 5 + TestConstants.LARGE_BROKER_CAPACITY / 50 * (i / 2.0 - 1.5),
+            TestConstants.MEDIUM_BROKER_CAPACITY / 5 + TestConstants.MEDIUM_BROKER_CAPACITY / 50 * (i / 2.0 - 1.5),
+            TestConstants.LARGE_BROKER_CAPACITY / 5 + TestConstants.LARGE_BROKER_CAPACITY / 50 * (i / 2.0 - 1.5));
+        cluster.setReplicaLoad(rackByBrokerId.get(brokerId).toString(), brokerId, pInfo, aggregatedMetricValues, Collections.singletonList(1L));
+      }
     }
     return cluster;
+  }
+
+  /**
+   * The same cluster as {@link #unbalanced4()} with an additional topic with fourteen partitions, each has one replica.
+   * @return Cluster model for the tests.
+   */
+  public static ClusterModel unbalanced5() {
+    Set<String> topics = new HashSet<>(2);
+    topics.add(T1);
+    topics.add(T2);
+    return createUnbalanced(topics, 14);
   }
 
   /**
