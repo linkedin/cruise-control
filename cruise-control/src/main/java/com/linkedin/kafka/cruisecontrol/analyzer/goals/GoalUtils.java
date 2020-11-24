@@ -456,7 +456,7 @@ public class GoalUtils {
 
     if (optimizationOptions.onlyMoveImmigrantReplicas()) {
       sb.append(String.format("The optimization is limited to replicas to be added to/removed from brokers. Potential "
-                              + "mitigation: First, rebalance the cluster using %s endpoint with a a superset of "
+                              + "mitigation: First, rebalance the cluster using %s endpoint with a superset of "
                               + "hard-goals defined via %s config.%n", REBALANCE, HARD_GOALS_CONFIG));
     }
     if (!optimizationOptions.requestedDestinationBrokerIds().isEmpty()) {
