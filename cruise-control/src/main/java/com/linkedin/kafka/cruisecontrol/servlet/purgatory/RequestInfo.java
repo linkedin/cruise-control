@@ -60,7 +60,7 @@ public class RequestInfo {
   private volatile String _reason;
   private volatile boolean _accessToAlreadySubmittedRequest;
 
-  public <P extends CruiseControlParameters> RequestInfo(HttpServletRequest request, P parameters) {
+  public <P extends CruiseControlParameters> RequestInfo(HttpServletRequest request, String apiUrlPrefix, P parameters) {
     if (request == null) {
       throw new IllegalArgumentException("Request is missing from the request info.");
     } else if (parameters == null) {
@@ -69,7 +69,7 @@ public class RequestInfo {
     _submitterAddress = getClientIpAddress(request);
     _submissionTimeMs = System.currentTimeMillis();
     _parameterMap = request.getParameterMap();
-    _endPoint = ParameterUtils.endPoint(request);
+    _endPoint = ParameterUtils.endPoint(request, apiUrlPrefix);
     _parameters = parameters;
     _status = PENDING_REVIEW;
     _reason = INIT_REASON;

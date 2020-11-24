@@ -34,8 +34,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.PRO
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.REBALANCE;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.REMOVE_BROKER;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.USER_TASKS;
-import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.GET_METHOD;
-import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.*;
 
 
 public class KafkaCruiseControlServletEndpointTest {
@@ -234,7 +233,7 @@ public class KafkaCruiseControlServletEndpointTest {
     EasyMock.expect(parameters.userTaskIds()).andReturn(ParameterUtils.userTaskIds(answerQueryRequest)).anyTimes();
     EasyMock.expect(parameters.clientIds()).andReturn(ParameterUtils.clientIds(answerQueryRequest)).anyTimes();
     EasyMock.expect(parameters.endPoints()).andReturn(ParameterUtils.endPoints(answerQueryRequest)).anyTimes();
-    EasyMock.expect(parameters.endPoint()).andReturn(ParameterUtils.endPoint(answerQueryRequest)).anyTimes();
+    EasyMock.expect(parameters.endPoint()).andReturn(ParameterUtils.endPoint(answerQueryRequest, REQUEST_URI)).anyTimes();
     EasyMock.expect(parameters.types()).andReturn(ParameterUtils.types(answerQueryRequest)).anyTimes();
     EasyMock.expect(parameters.entries()).andReturn(ParameterUtils.entries(answerQueryRequest)).anyTimes();
 
@@ -260,7 +259,7 @@ public class KafkaCruiseControlServletEndpointTest {
     EasyMock.expect(request.getSession()).andReturn(session).anyTimes();
     EasyMock.expect(request.getSession(false)).andReturn(session).anyTimes();
     EasyMock.expect(request.getMethod()).andReturn(method).anyTimes();
-    EasyMock.expect(request.getRequestURI()).andReturn(KafkaCruiseControlServletUtils.REQUEST_URI + resource).anyTimes();
+    EasyMock.expect(request.getRequestURI()).andReturn(REQUEST_URI + resource).anyTimes();
     EasyMock.expect(request.getParameterMap()).andReturn(params).anyTimes();
     EasyMock.expect(request.getHeader(UserTaskManager.USER_TASK_HEADER_NAME)).andReturn(userTaskId).anyTimes();
     EasyMock.expect(request.getRemoteHost()).andReturn("test-host").anyTimes();

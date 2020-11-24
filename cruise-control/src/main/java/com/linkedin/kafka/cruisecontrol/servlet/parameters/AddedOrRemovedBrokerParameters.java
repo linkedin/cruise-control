@@ -66,7 +66,7 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _brokerIds = ParameterUtils.brokerIds(_request, false);
+    _brokerIds = ParameterUtils.brokerIds(_request, _config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG), false);
     _dryRun = ParameterUtils.getDryRun(_request);
     _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true, false);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false, false);

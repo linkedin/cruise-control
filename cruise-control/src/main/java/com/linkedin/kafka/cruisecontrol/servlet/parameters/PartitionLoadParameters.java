@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
@@ -98,7 +99,7 @@ public class PartitionLoadParameters extends AbstractParameters {
     _entries = ParameterUtils.entries(_request);
     _minValidPartitionRatio = ParameterUtils.minValidPartitionRatio(_request);
     _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_request);
-    _brokerIds = ParameterUtils.brokerIds(_request, true);
+    _brokerIds = ParameterUtils.brokerIds(_request, _config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG), true);
     _startMs = ParameterUtils.startMsOrDefault(_request, ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL);
     _endMs = ParameterUtils.endMsOrDefault(_request, System.currentTimeMillis());
     ParameterUtils.validateTimeRange(_startMs, _endMs);

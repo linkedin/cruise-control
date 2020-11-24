@@ -14,6 +14,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDisk
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
 import com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
@@ -53,7 +54,6 @@ import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.FIX
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.REVIEW;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.GET_METHOD;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
-import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.REQUEST_URI;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.getClientIpAddress;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters.TopicConfigurationType.REPLICATION_FACTOR;
 import static com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus.APPROVED;
@@ -177,7 +177,11 @@ public class ParameterUtils {
         throw new UserRequestException("Unsupported request method: " + request.getMethod() + ".");
     }
 
-    String path = request.getRequestURI().toUpperCase().replace(apiUrlPrefix, "");
+    if (apiUrlPrefix.endsWith("/*")) {
+      // Ignore the last character '*'
+      apiUrlPrefix = apiUrlPrefix.substring(0, apiUrlPrefix.length() - 1);
+    }
+    String path = request.getRequestURI().toUpperCase().replace(apiUrlPrefix.toUpperCase(), "");
     for (CruiseControlEndPoint endPoint : supportedEndpoints) {
       if (endPoint.toString().equalsIgnoreCase(path)) {
         return endPoint;
@@ -209,7 +213,7 @@ public class ParameterUtils {
                                                HttpServletResponse response,
                                                KafkaCruiseControlConfig config,
                                                CruiseControlParameters parameters) throws IOException {
-    CruiseControlEndPoint endPoint = endPoint(request);
+    CruiseControlEndPoint endPoint = endPoint(request, config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG));
     Set<String> validParamNames = parameters.caseInsensitiveParameterNames();
     Set<String> userParams = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     userParams.addAll(request.getParameterMap().keySet());
@@ -881,10 +885,10 @@ public class ParameterUtils {
     return Integer.parseInt(boundaries[isUpperBound ? 1 : 0]);
   }
 
-  static Set<Integer> brokerIds(HttpServletRequest request, boolean isOptional) throws UnsupportedEncodingException {
+  static Set<Integer> brokerIds(HttpServletRequest request, String apiUrlPrefix, boolean isOptional) throws UnsupportedEncodingException {
     Set<Integer> brokerIds = parseParamToIntegerSet(request, BROKER_ID_PARAM);
     if (!isOptional && brokerIds.isEmpty()) {
-      EndPoint endpoint = endPoint(request);
+      EndPoint endpoint = endPoint(request, apiUrlPrefix);
       if (endpoint == DEMOTE_BROKER) {
         // If it is a demote_broker request, either target broker or target disk should be specified in request.
         if (brokerIdAndLogdirs(request).isEmpty()) {
