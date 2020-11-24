@@ -14,11 +14,18 @@ Please do not file reports on Github for security issues.
 Please review the guidelines on at 
 https://www.linkedin.com/help/linkedin/answer/62924/security-vulnerabilities?lang=en
 
-Tips for Getting Your Pull Request Accepted
+Tips for Getting Your Pull Request (PR) Accepted
 ===========================================
 
-1. Make sure all new features are tested and the tests pass.
+1. Make sure all new features are tested and the tests pass -- i.e. a submitted PR should have already been tested for 
+existing and new unit tests.
 2. Bug fixes must include a test case demonstrating the error that it fixes.
-3. Open an issue first and seek advice for your change before submitting
-   a pull request. Large features which have never been discussed are
-   unlikely to be accepted.
+3. Open an issue first and seek advice for your change before submitting a PR. Large features which have never been 
+discussed are unlikely to be accepted.
+4. Do not create a PR with "work-in-progress" (WIP) changes.
+5. Use clear and concise titles for submitted PRs and issues.
+6. Each PR should be linked to an existing issue corresponding to the PR 
+(see [PR template](https://github.com/linkedin/cruise-control/blob/master/docs/pull_request_template.md)).
+7. If there are no existing issues about a PR, create one before submitting the PR.
+8. We strongly encourage the use of recommended code-style for the project 
+(see [code-style.xml](https://github.com/linkedin/cruise-control/blob/master/docs/code-style.xml)).
