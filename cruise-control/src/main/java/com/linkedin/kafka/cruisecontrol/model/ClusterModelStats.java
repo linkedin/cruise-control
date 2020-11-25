@@ -282,7 +282,7 @@ public class ClusterModelStats {
           double capacity = resource.isHostResource() ? broker.host().capacityFor(resource)
                                                       : broker.capacityFor(resource);
           double utilizationPercentage = utilization / capacity;
-          if (utilizationPercentage > lowUtilizationThreshold) {
+          if (utilizationPercentage >= lowUtilizationThreshold) {
             allBrokersBelowLowUtilizationThreshold = false;
           }
 

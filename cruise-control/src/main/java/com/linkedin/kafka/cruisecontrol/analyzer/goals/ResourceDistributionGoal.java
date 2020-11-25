@@ -255,15 +255,17 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   @Override
   protected void updateGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
       throws OptimizationFailureException {
+
+    if (clusterModel.aliveBrokers().stream().allMatch(this::isLoadUnderLowUtilizationThreshold)) {
+      finish();
+      return;
+    }
+
     Set<Integer> brokerIdsAboveBalanceUpperLimit = new HashSet<>();
     Set<Integer> brokerIdsUnderBalanceLowerLimit = new HashSet<>();
     // Log broker Ids over balancing limit.
     // While proposals exclude the excludedTopics, the balance still considers utilization of the excludedTopic replicas.
     for (Broker broker : clusterModel.aliveBrokers()) {
-      if (isLoadUnderLowUtilizationThreshold(broker)) {
-        continue;
-      }
-
       if (!isLoadUnderBalanceUpperLimit(broker)) {
         brokerIdsAboveBalanceUpperLimit.add(broker.id());
       }
@@ -334,7 +336,9 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                     Set<Goal> optimizedGoals,
                                     OptimizationOptions optimizationOptions) {
 
-    if (clusterModel.deadBrokers().isEmpty() && allAliveBrokersBalanced(clusterModel, optimizationOptions)) {
+    if (clusterModel.deadBrokers().isEmpty()
+        && allAliveBrokersBalanced(clusterModel, optimizationOptions)
+        && !hasBadDisksOnBrokers(clusterModel.aliveBrokers())) {
       return;
     }
 
@@ -389,6 +393,10 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     if (!unbalanced) {
       LOG.debug("Successfully balanced {} for broker {} by moving leaders and replicas.", resource(), broker.id());
     }
+  }
+
+  private boolean hasBadDisksOnBrokers(Set<Broker> brokers) {
+    return brokers.stream().anyMatch(Broker::hasBadDisks);
   }
 
   private boolean allAliveBrokersBalanced(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
