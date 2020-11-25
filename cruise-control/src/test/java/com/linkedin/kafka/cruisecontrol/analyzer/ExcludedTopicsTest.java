@@ -23,6 +23,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
@@ -37,6 +38,7 @@ import java.util.HashSet;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Rule;
@@ -51,13 +53,16 @@ import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.T2;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced2;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced3;
+import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced5;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 
 /**
  * Unit test for testing goals with excluded topics under fixed cluster properties.
+ * Generated proposals cannot have the excluded topic.
  */
 @RunWith(Parameterized.class)
 public class ExcludedTopicsTest {
@@ -81,188 +86,166 @@ public class ExcludedTopicsTest {
 
     // ============RackAwareGoal============
     // With excluded topics, rack aware satisfiable cluster, no dead brokers (No exception, No proposal, Expected to look optimized)
-    p.add(params(0, RackAwareGoal.class, excludeT1, null, DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true));
-    // With excluded topics, rack aware satisfiable cluster, one dead brokers (No exception, No proposal, Expected to look optimized)
-    p.add(params(1, RackAwareGoal.class, excludeT1, null, DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true));
-    // Without excluded topics, rack aware satisfiable cluster, no dead brokers (No exception, Proposal expected, Expected to look optimized)
-    p.add(params(2, RackAwareGoal.class, noExclusion, null, DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true));
-    // Without excluded topics, rack aware satisfiable cluster, one dead broker (No exception, Proposal expected, Expected to look optimized)
-    p.add(params(3, RackAwareGoal.class, noExclusion, null, DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true));
+    p.add(params(0, RackAwareGoal.class, excludeT1, null, DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true, false));
+    // With excluded topics, rack aware satisfiable cluster, one dead brokers (No exception, Generates proposals, Expected to look optimized)
+    p.add(params(1, RackAwareGoal.class, excludeT1, null, DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true, true));
+    // Without excluded topics, rack aware satisfiable cluster, no dead brokers (No exception, Generates proposals, Expected to look optimized)
+    p.add(params(2, RackAwareGoal.class, noExclusion, null, DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true, true));
+    // Without excluded topics, rack aware satisfiable cluster, one dead broker (No exception, Generates proposals, Expected to look optimized)
+    p.add(params(3, RackAwareGoal.class, noExclusion, null, DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true, true));
     // With excluded topics, rack aware unsatisfiable cluster, no dead broker (No exception, No proposal, Expected to look optimized)
-    p.add(params(4, RackAwareGoal.class, excludeT1, null, DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, true));
+    p.add(params(4, RackAwareGoal.class, excludeT1, null, DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, true, false));
     // With excluded topics, rack aware unsatisfiable cluster, one dead broker (Exception)
     p.add(params(5, RackAwareGoal.class, excludeT1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(),
-                 deadBroker0, null));
+                 deadBroker0, null, null));
     // Test: Without excluded topics, rack aware unsatisfiable cluster, no dead brokers (Exception expected)
     p.add(params(6, RackAwareGoal.class, noExclusion, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(),
-                 noDeadBroker, null));
+                 noDeadBroker, null, null));
     // Test: Without excluded topics, rack aware unsatisfiable cluster, one dead broker (Exception expected)
     p.add(params(7, RackAwareGoal.class, noExclusion, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(),
-                 deadBroker0, null));
+                 deadBroker0, null, null));
 
     // ============RackAwareDistributionGoal============
     // With excluded topics, rack aware satisfiable cluster, no dead brokers (No exception, No proposal, Expected to look optimized)
-    p.add(params(0, RackAwareDistributionGoal.class, excludeT1, null, DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true));
-    // With excluded topics, rack aware satisfiable cluster, one dead brokers (No exception, No proposal, Expected to look optimized)
-    p.add(params(1, RackAwareDistributionGoal.class, excludeT1, null, DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true));
-    // Without excluded topics, rack aware satisfiable cluster, no dead brokers (No exception, Proposal expected, Expected to look optimized)
-    p.add(params(2, RackAwareDistributionGoal.class, noExclusion, null, DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true));
-    // Without excluded topics, rack aware satisfiable cluster, one dead broker (No exception, Proposal expected, Expected to look optimized)
-    p.add(params(3, RackAwareDistributionGoal.class, noExclusion, null, DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true));
+    p.add(params(0, RackAwareDistributionGoal.class, excludeT1, null, DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true, false));
+    // With excluded topics, rack aware satisfiable cluster, one dead brokers (No exception, Generates proposals, Expected to look optimized)
+    p.add(params(1, RackAwareDistributionGoal.class, excludeT1, null, DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true, true));
+    // Without excluded topics, rack aware satisfiable cluster, no dead brokers (No exception, Generates proposals, Expected to look optimized)
+    p.add(params(2, RackAwareDistributionGoal.class, noExclusion, null, DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true, true));
+    // Without excluded topics, rack aware satisfiable cluster, one dead broker (No exception, Generates proposals, Expected to look optimized)
+    p.add(params(3, RackAwareDistributionGoal.class, noExclusion, null, DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true, true));
     // With excluded topics, rack aware unsatisfiable cluster, no dead broker (No exception, No proposal, Expected to look optimized)
-    p.add(params(4, RackAwareDistributionGoal.class, excludeT1, null, DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, true));
+    p.add(params(4, RackAwareDistributionGoal.class, excludeT1, null, DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, true, false));
     // With excluded topics, rack aware unsatisfiable cluster, one dead broker (Exception)
     p.add(params(5, RackAwareDistributionGoal.class, excludeT1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(),
-                 deadBroker0, null));
-    // Test: Without excluded topics, rack aware unsatisfiable cluster, no dead brokers (No exception, No proposal, Expected to look optimized)
+                 deadBroker0, null, null));
+    // Test: Without excluded topics, rack aware unsatisfiable cluster, no dead brokers (No exception, Generates proposals,
+    // Expected to look optimized)
     p.add(params(6, RackAwareDistributionGoal.class, noExclusion, null, DeterministicCluster.rackAwareUnsatisfiable(),
-                 noDeadBroker, true));
+                 noDeadBroker, true, true));
     // Test: Without excluded topics, rack aware unsatisfiable cluster, one dead broker (Exception expected)
     p.add(params(7, RackAwareDistributionGoal.class, noExclusion, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(),
-                 deadBroker0, null));
+                 deadBroker0, null, null));
 
     // ============ReplicaCapacityGoal============
-    // Test: With single excluded topic, satisfiable cluster, no dead brokers (No exception, No proposal
-    // for excluded topic, Expected to look optimized)
-    p.add(params(0, ReplicaCapacityGoal.class, excludeT1, null, unbalanced(), noDeadBroker, true));
-    // Test: With single excluded topic, satisfiable cluster, one dead brokers (No exception, No proposal
-    // for excluded topic, Expected to look optimized)
-    p.add(params(1, ReplicaCapacityGoal.class, excludeT1, null, unbalanced(), deadBroker0, true));
-    // Test: With all topics excluded, no dead brokers, not satisfiable (No exception, No proposal
-    // for excluded topic, Expected to look optimized)
-    p.add(params(2, ReplicaCapacityGoal.class, excludeAllTopics, null, unbalanced(), noDeadBroker, true));
-    // Test: With all topics excluded, one dead brokers, not satisfiable, no exception.
-    p.add(params(3, ReplicaCapacityGoal.class, excludeAllTopics, null, unbalanced(), deadBroker0, true));
+    // Test: With single excluded topic, satisfiable cluster, no dead brokers (No exception, No proposal, Expected to look optimized)
+    p.add(params(0, ReplicaCapacityGoal.class, excludeT1, null, unbalanced(), noDeadBroker, true, false));
+    // Test: With single excluded topic, satisfiable cluster, one dead brokers (No exception, Generates proposals, Expected to look optimized)
+    p.add(params(1, ReplicaCapacityGoal.class, excludeT1, null, unbalanced(), deadBroker0, true, true));
+    // Test: With all topics excluded, no dead brokers, not satisfiable (No exception, No proposal, Expected to look optimized)
+    p.add(params(2, ReplicaCapacityGoal.class, excludeAllTopics, null, unbalanced(), noDeadBroker, true, false));
+    // Test: With all topics excluded, one dead brokers, Generates proposals, Expected to look optimized
+    p.add(params(3, ReplicaCapacityGoal.class, excludeAllTopics, null, unbalanced(), deadBroker0, true, true));
 
     for (Class<? extends Goal> goalClass : Arrays.asList(CpuCapacityGoal.class,
                                                          DiskCapacityGoal.class,
                                                          NetworkInboundCapacityGoal.class,
                                                          NetworkOutboundCapacityGoal.class)) {
-      // Test: With single excluded topic, satisfiable cluster, no dead brokers (No exception, No proposal
-      // for excluded topic, Expected to look optimized)
-      p.add(params(0, goalClass, excludeT1, null, unbalanced(), noDeadBroker, true));
-      // Test: With single excluded topic, satisfiable cluster, one dead brokers (No exception, No proposal
-      // for excluded topic, Expected to look optimized)
-      p.add(params(1, goalClass, excludeT1, null, unbalanced(), deadBroker0, true));
+      // Test: With single excluded topic, satisfiable cluster, no dead brokers (No exception, Generates proposals, Expected to look optimized)
+      p.add(params(0, goalClass, excludeT1, null, unbalanced(), noDeadBroker, true, true));
+      // Test: With single excluded topic, satisfiable cluster, one dead brokers (No exception, Generates proposals, Expected to look optimized)
+      p.add(params(1, goalClass, excludeT1, null, unbalanced(), deadBroker0, true, true));
       // Test: With all topics excluded, no dead brokers, not satisfiable (Exception)
-      p.add(params(2, goalClass, excludeAllTopics, OptimizationFailureException.class, unbalanced(), noDeadBroker, null));
-      // Test: With all topics excluded, one dead brokers, not satisfiable, no exception.
-      p.add(params(3, goalClass, excludeAllTopics, null, unbalanced(), deadBroker0, true));
+      p.add(params(2, goalClass, excludeAllTopics, OptimizationFailureException.class, unbalanced(), noDeadBroker, null, null));
+      // Test: With all topics excluded, one dead brokers, Generates proposals, Expected to look optimized.
+      p.add(params(3, goalClass, excludeAllTopics, null, unbalanced(), deadBroker0, true, true));
     }
 
     for (Class<? extends Goal> goalClass : Arrays.asList(DiskUsageDistributionGoal.class,
                                                          NetworkInboundUsageDistributionGoal.class,
                                                          NetworkOutboundUsageDistributionGoal.class,
                                                          CpuUsageDistributionGoal.class)) {
-      // Test: With single excluded topic, balance not satisfiable cluster, no dead broker (No exception, No proposal
-      // for excluded topic, Not expected to look optimized)
-      p.add(params(0, goalClass, excludeT1, null, unbalanced(), noDeadBroker, false));
-      // Test: With single excluded topic, balance not satisfiable cluster, no dead broker (No exception, No proposal
-      // for excluded topic, Not expected to look optimized)
-      p.add(params(1, goalClass, excludeT1, null, unbalanced(), deadBroker0, true));
-      // Test: With all topics excluded, no dead brokers, balance not satisfiable (No exception, No proposal for
-      // excluded topics, Not expected to look optimized)
-      p.add(params(2, goalClass, excludeAllTopics, null, unbalanced(), noDeadBroker, false));
-      // Test: With all topics excluded, no dead brokers, balance not satisfiable (No exception, No proposal for
-      // excluded topics, Not expected to look optimized)
-      p.add(params(3, goalClass, excludeAllTopics, null, unbalanced(), deadBroker0, true));
+      // Test: With single excluded topic, balance not satisfiable cluster, no dead broker (No exception, No proposal,
+      // Not expected to look optimized)
+      p.add(params(0, goalClass, excludeT1, null, unbalanced(), noDeadBroker, false, false));
+      // Test: With single excluded topic, balance not satisfiable cluster, no dead broker (No exception, Generates proposals,
+      // Not expected to look optimized)
+      p.add(params(1, goalClass, excludeT1, null, unbalanced(), deadBroker0, true, true));
+      // Test: With all topics excluded, no dead brokers, balance not satisfiable (No exception, No proposal, Not expected to look optimized)
+      p.add(params(2, goalClass, excludeAllTopics, null, unbalanced(), noDeadBroker, false, false));
+      // Test: With all topics excluded, no dead brokers, balance not satisfiable (No exception, Generates proposals, Expected to look optimized)
+      p.add(params(3, goalClass, excludeAllTopics, null, unbalanced(), deadBroker0, true, true));
     }
 
     // ============LeaderBytesInDistributionGoal============
-    // Test: With single excluded topic, balance not satisfiable cluster, no dead broker (No exception, No proposal
-    // for excluded topic, Not expected to look optimized)
-    p.add(params(0, LeaderBytesInDistributionGoal.class, excludeT1, null, unbalanced(), noDeadBroker, false));
-    // Test: With single excluded topic, balance not satisfiable cluster, no dead broker (No exception, No proposal
-    // for excluded topic, Not expected to look optimized)
-    p.add(params(1, LeaderBytesInDistributionGoal.class, excludeT1, null, unbalanced(), deadBroker0, false));
-    // Test: With all topics excluded, no dead brokers, balance not satisfiable (No exception, No proposal for
-    // excluded topics, Not expected to look optimized)
-    p.add(params(2, LeaderBytesInDistributionGoal.class, excludeAllTopics, null, unbalanced(), noDeadBroker, false));
-    // Test: With all topics excluded, no dead brokers, balance not satisfiable (No exception, No proposal for
-    // excluded topics, Not expected to look optimized)
-    p.add(params(3, LeaderBytesInDistributionGoal.class, excludeAllTopics, null, unbalanced(), deadBroker0, false));
+    // Test: With single excluded topic, balance not satisfiable cluster, no dead broker (No exception, No proposal, Not expected to look optimized)
+    p.add(params(0, LeaderBytesInDistributionGoal.class, excludeT1, null, unbalanced(), noDeadBroker, false, false));
+    // Test: With single excluded topic, balance not satisfiable cluster, no dead broker (No exception, No proposal, Not expected to look optimized)
+    p.add(params(1, LeaderBytesInDistributionGoal.class, excludeT1, null, unbalanced(), deadBroker0, false, false));
+    // Test: With all topics excluded, no dead brokers, balance not satisfiable (No exception, No proposal, Not expected to look optimized)
+    p.add(params(2, LeaderBytesInDistributionGoal.class, excludeAllTopics, null, unbalanced(), noDeadBroker, false, false));
+    // Test: With all topics excluded, no dead brokers, balance not satisfiable (No exception, No proposal, Not expected to look optimized)
+    p.add(params(3, LeaderBytesInDistributionGoal.class, excludeAllTopics, null, unbalanced(), deadBroker0, false, false));
 
     // ============PotentialNwOutGoal============
-    // Test: With single excluded topic, balance satisfiable cluster, no dead brokers (No exception, No proposal
-    // for excluded topic, Expected to look optimized)
-    p.add(params(0, PotentialNwOutGoal.class, excludeT1, null, unbalanced(), noDeadBroker, true));
-    // Test: With single excluded topic, balance satisfiable cluster, one dead brokers (No exception, No proposal
-    // for excluded topic, Expected to look optimized)
-    p.add(params(1, PotentialNwOutGoal.class, excludeT1, null, unbalanced(), deadBroker0, true));
-    // Test: With all topics excluded, balance not satisfiable, no dead brokers (No exception, No proposal for
-    // excluded topics, Not expected to look optimized)
-    p.add(params(2, PotentialNwOutGoal.class, excludeAllTopics, null, unbalanced(), noDeadBroker, false));
-    // Test: With all topics excluded, balance not satisfiable, one dead brokers (No exception, No proposal for
-    // excluded topics, expected to look optimized)
-    p.add(params(3, PotentialNwOutGoal.class, excludeAllTopics, null, unbalanced(), deadBroker0, true));
+    // Test: With single excluded topic, balance satisfiable cluster, no dead brokers (No exception, Generates proposals, Expected to look optimized)
+    p.add(params(0, PotentialNwOutGoal.class, excludeT1, null, unbalanced(), noDeadBroker, true, true));
+    // Test: With single excluded topic, balance satisfiable cluster, one dead broker (No exception, Generates proposals, Expected to look optimized)
+    p.add(params(1, PotentialNwOutGoal.class, excludeT1, null, unbalanced(), deadBroker0, true, true));
+    // Test: With all topics excluded, balance not satisfiable, no dead brokers (No exception, No proposal, Not expected to look optimized)
+    p.add(params(2, PotentialNwOutGoal.class, excludeAllTopics, null, unbalanced(), noDeadBroker, false, false));
+    // Test: With all topics excluded, balance not satisfiable, one dead brokers (No exception, Generates proposals, Expected to look optimized)
+    p.add(params(3, PotentialNwOutGoal.class, excludeAllTopics, null, unbalanced(), deadBroker0, true, true));
 
     // ============TopicReplicaDistributionGoal============
-    // Test: With single excluded topic, satisfiable cluster, no dead broker (No exception, No proposal for
-    // excluded topic, Expected to look optimized)
-    p.add(params(0, TopicReplicaDistributionGoal.class, excludeT1, null, unbalanced(), noDeadBroker, true));
-    // Test: With single excluded topic, satisfiable cluster, one dead broker (No exception, No proposal for
-    // excluded topic, Expected to look optimized)
-    p.add(params(1, TopicReplicaDistributionGoal.class, excludeT1, null, unbalanced(), deadBroker0, true));
-    // Test: With all topics excluded, balance not satisfiable, no dead brokers (No exception, No proposal
-    // for excluded topics, Expected to look optimized)
-    p.add(params(2, TopicReplicaDistributionGoal.class, excludeAllTopics, null, unbalanced(), noDeadBroker, true));
-    // Test: With all topics excluded, balance not satisfiable, one dead brokers (No exception, No proposal
-    // for excluded topics, Expected to look optimized)
-    p.add(params(3, TopicReplicaDistributionGoal.class, excludeAllTopics, null, unbalanced(), deadBroker0, true));
+    // Test: With single excluded topic, satisfiable cluster, no dead broker (No exception, No proposal, Large min gap, Expected to look optimized)
+    Properties configOverrides = new Properties();
+    configOverrides.setProperty(AnalyzerConfig.TOPIC_REPLICA_COUNT_BALANCE_MIN_GAP_CONFIG, "40");
+    p.add(params(0, TopicReplicaDistributionGoal.class, excludeT1, null, unbalanced5(), noDeadBroker, true, false, configOverrides));
+    // Test: With single excluded topic, satisfiable cluster, one dead broker (No exception, Generates proposals, Expected to look optimized)
+    p.add(params(1, TopicReplicaDistributionGoal.class, excludeT1, null, unbalanced(), deadBroker0, true, true));
+    // Test: With all topics excluded, balance not satisfiable, no dead brokers (No exception, No proposal, Expected to look optimized)
+    p.add(params(2, TopicReplicaDistributionGoal.class, excludeAllTopics, null, unbalanced(), noDeadBroker, true, false));
+    // Test: With all topics excluded, balance not satisfiable, one dead brokers (No exception, Generates proposals, Expected to look optimized)
+    p.add(params(3, TopicReplicaDistributionGoal.class, excludeAllTopics, null, unbalanced(), deadBroker0, true, true));
+    // Test: With single excluded topic, satisfiable cluster, no dead broker (No exception, Generates proposals, Expected to look optimized)
+    p.add(params(4, TopicReplicaDistributionGoal.class, excludeT1, null, unbalanced5(), noDeadBroker, true, true));
 
     // ============ReplicaDistributionGoal============
-    // Test: With single excluded topic, satisfiable cluster, no dead broker (No exception, No proposal for
-    // excluded topic, Expected to look optimized)
-    p.add(params(0, ReplicaDistributionGoal.class, excludeT1, null, unbalanced2(), noDeadBroker, true));
-    // Test: With single excluded topic, satisfiable cluster, one dead broker (No exception, No proposal for
-    // excluded topic, Expected to look optimized)
-    p.add(params(1, ReplicaDistributionGoal.class, excludeT1, null, unbalanced2(), deadBroker0, true));
-    // Test: With all topics excluded, balance not satisfiable, no dead brokers (No exception, No proposal
-    // for excluded topics, Expected to look optimized)
-    p.add(params(2, ReplicaDistributionGoal.class, excludeAllTopics, null, unbalanced2(), noDeadBroker, false));
-    // Test: With all topics excluded, balance not satisfiable, one dead brokers (No exception, No proposal
-    // for excluded topics, Expected to look optimized)
-    p.add(params(3, ReplicaDistributionGoal.class, excludeAllTopics, null, unbalanced2(), deadBroker0, true));
+    // Test: With single excluded topic, satisfiable cluster, no dead broker (No exception, Generates proposals, Expected to look optimized)
+    p.add(params(0, ReplicaDistributionGoal.class, excludeT1, null, unbalanced2(), noDeadBroker, true, true));
+    // Test: With single excluded topic, satisfiable cluster, one dead broker (No exception, Generates proposals, Expected to look optimized)
+    p.add(params(1, ReplicaDistributionGoal.class, excludeT1, null, unbalanced2(), deadBroker0, true, true));
+    // Test: With all topics excluded, balance not satisfiable, no dead brokers (No exception, No proposal, Expected to look optimized)
+    p.add(params(2, ReplicaDistributionGoal.class, excludeAllTopics, null, unbalanced2(), noDeadBroker, false, false));
+    // Test: With all topics excluded, balance not satisfiable, one dead brokers (No exception, Generates proposals, Expected to look optimized)
+    p.add(params(3, ReplicaDistributionGoal.class, excludeAllTopics, null, unbalanced2(), deadBroker0, true, true));
 
     // ============LeaderReplicaDistributionGoal============
-    // Test: With no topic excluded, satisfiable cluster, no dead broker (No exception, No proposal for
-    // excluded topic, Expected to look optimized)
-    p.add(params(0, LeaderReplicaDistributionGoal.class, noExclusion, null, unbalanced3(), noDeadBroker, true));
-    // Test: With single excluded topic, satisfiable cluster, no dead broker (No exception, No proposal for
-    // excluded topic, Expected to look optimized)
-    p.add(params(1, LeaderReplicaDistributionGoal.class, excludeT1, null, unbalanced3(), noDeadBroker, true));
-    // Test: With all topics excluded, balance not satisfiable, no dead broker (No exception, No proposal
-    // for excluded topics, Not expected to look optimized)
-    p.add(params(2, LeaderReplicaDistributionGoal.class, excludeAllTopics, null, unbalanced3(), noDeadBroker, false));
-    // Test: With no topic excluded, satisfiable cluster, one dead broker (No exception, No proposal
-    // for excluded topics, Expected to look optimized)
-    p.add(params(3, LeaderReplicaDistributionGoal.class, noExclusion, null, unbalanced3(), deadBroker0, true));
+    // Test: With no topic excluded, satisfiable cluster, no dead broker (No exception, Generates proposals, Expected to look optimized)
+    p.add(params(0, LeaderReplicaDistributionGoal.class, noExclusion, null, unbalanced3(), noDeadBroker, true, true));
+    // Test: With single excluded topic, satisfiable cluster, no dead broker (No exception, Generates proposals, Expected to look optimized)
+    p.add(params(1, LeaderReplicaDistributionGoal.class, excludeT1, null, unbalanced3(), noDeadBroker, true, true));
+    // Test: With all topics excluded, balance not satisfiable, no dead broker (No exception, No proposal, Not expected to look optimized)
+    p.add(params(2, LeaderReplicaDistributionGoal.class, excludeAllTopics, null, unbalanced3(), noDeadBroker, false, false));
+    // Test: With no topic excluded, satisfiable cluster, one dead broker (No exception, Generates proposals, Expected to look optimized)
+    p.add(params(3, LeaderReplicaDistributionGoal.class, noExclusion, null, unbalanced3(), deadBroker0, true, true));
 
     // ============KafkaAssignerEvenRackAwareGoal============
     // With excluded topics, rack aware satisfiable cluster, no dead brokers (No exception, No proposal, Expected to look optimized)
     p.add(params(0, KafkaAssignerEvenRackAwareGoal.class, excludeT1, null,
-                 DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true));
-    // With excluded topics, rack aware satisfiable cluster, one dead brokers (No exception, No proposal, Expected to look optimized)
+                 DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true, false));
+    // With excluded topics, rack aware satisfiable cluster, one dead brokers (No exception, Generates proposals, Expected to look optimized)
     p.add(params(1, KafkaAssignerEvenRackAwareGoal.class, excludeT1, null,
-                 DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true));
-    // Without excluded topics, rack aware satisfiable cluster, no dead brokers (No exception, Proposal expected, Expected to look optimized)
+                 DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true, true));
+    // Without excluded topics, rack aware satisfiable cluster, no dead brokers (No exception, Generates proposals, Expected to look optimized)
     p.add(params(2, KafkaAssignerEvenRackAwareGoal.class, noExclusion, null,
-                 DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true));
-    // Without excluded topics, rack aware satisfiable cluster, one dead broker (No exception, Proposal expected, Expected to look optimized)
+                 DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true, true));
+    // Without excluded topics, rack aware satisfiable cluster, one dead broker (No exception, Generates proposals, Expected to look optimized)
     p.add(params(3, KafkaAssignerEvenRackAwareGoal.class, noExclusion, null,
-                 DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true));
+                 DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true, true));
     // With excluded topics, rack aware unsatisfiable cluster, no dead broker (No exception, No proposal, Expected to look optimized)
     p.add(params(4, KafkaAssignerEvenRackAwareGoal.class, excludeT1, null,
-                 DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, true));
+                 DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, true, false));
     // With excluded topics, rack aware unsatisfiable cluster, one dead broker (Exception)
     p.add(params(5, KafkaAssignerEvenRackAwareGoal.class, excludeT1, OptimizationFailureException.class,
-                 DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null));
+                 DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null, null));
     // Test: Without excluded topics, rack aware unsatisfiable cluster, no dead brokers (Exception expected)
     p.add(params(6, KafkaAssignerEvenRackAwareGoal.class, noExclusion, OptimizationFailureException.class,
-                 DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, null));
+                 DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, null, null));
     // Test: Without excluded topics, rack aware unsatisfiable cluster, one dead broker (Exception expected)
     p.add(params(7, KafkaAssignerEvenRackAwareGoal.class, noExclusion, OptimizationFailureException.class,
-                 DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null));
+                 DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null, null));
 
     return p;
   }
@@ -273,6 +256,8 @@ public class ExcludedTopicsTest {
   private final Class<Throwable> _exceptionClass;
   private final ClusterModel _clusterModel;
   private final Boolean _expectedToOptimize;
+  private final Boolean _expectedToGenerateProposals;
+  private static final Properties NO_CONFIG_OVERRIDE = new Properties();
 
   /**
    * Constructor of Excluded Topics Test.
@@ -283,19 +268,23 @@ public class ExcludedTopicsTest {
    * @param exceptionClass Expected exception class (if any).
    * @param clusterModel Cluster model to be used for the test.
    * @param expectedToOptimize The expectation on whether the cluster state will be considered optimized or not.
+   * @param expectedToGenerateProposals The expectation on whether the optimization process will generate proposals or not,
+   *                                   or {@code null} if proposal generation is irrelevant due to exception.
    */
   public ExcludedTopicsTest(int testId,
                             Goal goal,
                             Set<String> excludedTopics,
                             Class<Throwable> exceptionClass,
                             ClusterModel clusterModel,
-                            Boolean expectedToOptimize) {
+                            Boolean expectedToOptimize,
+                            Boolean expectedToGenerateProposals) {
     _testId = testId;
     _goal = goal;
     _optimizationOptions = new OptimizationOptions(excludedTopics);
     _exceptionClass = exceptionClass;
     _clusterModel = clusterModel;
     _expectedToOptimize = expectedToOptimize;
+    _expectedToGenerateProposals = expectedToGenerateProposals;
   }
 
   @Test
@@ -316,7 +305,7 @@ public class ExcludedTopicsTest {
       if (!excludedTopics.isEmpty()) {
         Set<ExecutionProposal> goalProposals =
             AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, _clusterModel);
-
+        assertEquals(_expectedToGenerateProposals, !goalProposals.isEmpty());
         for (ExecutionProposal proposal : goalProposals) {
           if (excludedTopics.contains(proposal.topic())) {
             for (ReplicaPlacementInfo r : proposal.replicasToRemove()) {
@@ -341,8 +330,23 @@ public class ExcludedTopicsTest {
                                  Class<? extends Throwable> exceptionClass,
                                  ClusterModel clusterModel,
                                  Collection<Integer> deadBrokers,
-                                 Boolean expectedToOptimize) throws Exception {
+                                 Boolean expectedToOptimize,
+                                 Boolean expectedToGenerateProposals,
+                                 Properties configOverrides) throws Exception {
     deadBrokers.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
-    return new Object[]{tid, goal(goalClass), excludedTopics, exceptionClass, clusterModel, expectedToOptimize};
+    return new Object[]{tid, goal(goalClass, configOverrides), excludedTopics, exceptionClass, clusterModel, expectedToOptimize,
+                        expectedToGenerateProposals};
+  }
+
+  private static Object[] params(int tid,
+                                 Class<? extends Goal> goalClass,
+                                 Collection<String> excludedTopics,
+                                 Class<? extends Throwable> exceptionClass,
+                                 ClusterModel clusterModel,
+                                 Collection<Integer> deadBrokers,
+                                 Boolean expectedToOptimize,
+                                 Boolean expectedToGenerateProposals) throws Exception {
+    return params(tid, goalClass, excludedTopics, exceptionClass, clusterModel, deadBrokers, expectedToOptimize, expectedToGenerateProposals,
+                  NO_CONFIG_OVERRIDE);
   }
 }

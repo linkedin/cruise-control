@@ -288,6 +288,23 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   }
 
   /**
+   * Sanity check to ensure that
+   * <ul>
+   *   <li>{@link AnalyzerConfig#TOPIC_REPLICA_COUNT_BALANCE_MIN_GAP_CONFIG} <=
+   *   {@link AnalyzerConfig#TOPIC_REPLICA_COUNT_BALANCE_MIN_GAP_CONFIG}</li>
+   * </ul>
+   */
+  private void sanityCheckBalancingConstraints() {
+    int topicReplicaBalanceMinGap = getInt(AnalyzerConfig.TOPIC_REPLICA_COUNT_BALANCE_MIN_GAP_CONFIG);
+    int topicReplicaBalanceMaxGap = getInt(AnalyzerConfig.TOPIC_REPLICA_COUNT_BALANCE_MAX_GAP_CONFIG);
+    if (topicReplicaBalanceMinGap > topicReplicaBalanceMaxGap) {
+      throw new ConfigException(String.format("Maximum gap of topic replica count balance [%d] cannot be smaller than the "
+                                              + "minimum gap of topic replica count balance [%d].",
+                                              topicReplicaBalanceMaxGap, topicReplicaBalanceMinGap));
+    }
+  }
+
+  /**
    * Sanity check to ensure that {@link ExecutorConfig#LEADER_MOVEMENT_TIMEOUT_MS_CONFIG} >
    * {@link ExecutorConfig#TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG}
    */
@@ -462,5 +479,6 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     sanityCheckConcurrency();
     sanityCheckTaskExecutionAlertingThreshold();
     sanityCheckSecurity();
+    sanityCheckBalancingConstraints();
   }
 }

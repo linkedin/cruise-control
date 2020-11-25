@@ -306,8 +306,8 @@ class OptimizationVerifier {
       }
     }
     for (Broker broker : clusterModel.newBrokers()) {
-      // We can only check the first resource.
-      Resource r = constraint.resources().get(0);
+      // We can only check the disk resource.
+      Resource r = Resource.DISK;
       double utilizationLowerThreshold =
           clusterModel.load().expectedUtilizationFor(r) / clusterModel.capacityFor(r) * (2 - constraint.resourceBalancePercentage(r));
       double brokerUtilization = broker.load().expectedUtilizationFor(r) / broker.capacityFor(r);

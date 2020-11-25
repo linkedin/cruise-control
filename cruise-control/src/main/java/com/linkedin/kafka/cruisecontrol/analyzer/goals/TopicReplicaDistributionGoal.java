@@ -48,9 +48,10 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaS
  * <li>Under: (the average number of topic replicas per broker) * (1 + topic replica count balance percentage)</li>
  * <li>Above: (the average number of topic replicas per broker) * Math.max(0, 1 - topic replica count balance percentage)</li>
  * </ul>
- * Also see: {@link com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig#TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG},
- * {@link com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig#GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG},
- * and {@link #balancePercentageWithMargin(OptimizationOptions)}.
+ *
+ * @see com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig#TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG
+ * @see com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig#GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG
+ * @see #balancePercentageWithMargin(OptimizationOptions)
  */
 public class TopicReplicaDistributionGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(TopicReplicaDistributionGoal.class);
@@ -104,14 +105,39 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
   }
 
   /**
+   * Ensure that the given balance limit falls into min/max limits determined by min/max gaps for topic replica balance.
+   * If the computed balance limit is out of these gap-based limits, use the relevant max/min gap-based balance limit.
+   *
+   * @see com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig#TOPIC_REPLICA_COUNT_BALANCE_MIN_GAP_DOC
+   * @see com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig#TOPIC_REPLICA_COUNT_BALANCE_MAX_GAP_DOC
+   *
+   * @param computedLimit Computed balance upper or lower limit
+   * @param average Average topic replicas on broker.
+   * @return A balance limit that falls into [minGap, maxGap] for topic replica balance.
+   */
+  private int gapBasedBalanceLimit(int computedLimit, double average, boolean isLowerLimit) {
+    int minLimit;
+    int maxLimit;
+    if (isLowerLimit) {
+      maxLimit = Math.max(0, (int) (Math.floor(average) - _balancingConstraint.topicReplicaBalanceMinGap()));
+      minLimit = Math.max(0, (int) (Math.floor(average) - _balancingConstraint.topicReplicaBalanceMaxGap()));
+    } else {
+      minLimit = (int) (Math.ceil(average) + _balancingConstraint.topicReplicaBalanceMinGap());
+      maxLimit = (int) (Math.ceil(average) + _balancingConstraint.topicReplicaBalanceMaxGap());
+    }
+    return Math.max(minLimit, Math.min(computedLimit, maxLimit));
+  }
+
+  /**
    * @param topic Topic for which the upper limit is requested.
    * @param optimizationOptions Options to adjust balance upper limit in case goal optimization is triggered by goal
    * violation detector.
    * @return The topic replica balance upper threshold in number of topic replicas.
    */
   private int balanceUpperLimit(String topic, OptimizationOptions optimizationOptions) {
-    return (int) Math.ceil(_avgTopicReplicasOnAliveBroker.get(topic)
-                           * (1 + balancePercentageWithMargin(optimizationOptions)));
+    int computedUpperLimit = (int) Math.ceil(_avgTopicReplicasOnAliveBroker.get(topic)
+                                             * (1 + balancePercentageWithMargin(optimizationOptions)));
+    return gapBasedBalanceLimit(computedUpperLimit, _avgTopicReplicasOnAliveBroker.get(topic), false);
   }
 
   /**
@@ -121,8 +147,9 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    * @return The replica balance lower threshold in number of topic replicas.
    */
   private int balanceLowerLimit(String topic, OptimizationOptions optimizationOptions) {
-    return (int) Math.floor(_avgTopicReplicasOnAliveBroker.get(topic)
-                            * Math.max(0, (1 - balancePercentageWithMargin(optimizationOptions))));
+    int computedLowerLimit = (int) Math.floor(_avgTopicReplicasOnAliveBroker.get(topic)
+                                              * Math.max(0, (1 - balancePercentageWithMargin(optimizationOptions))));
+    return gapBasedBalanceLimit(computedLowerLimit, _avgTopicReplicasOnAliveBroker.get(topic), true);
   }
 
   /**
