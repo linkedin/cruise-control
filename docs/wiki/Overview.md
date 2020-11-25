@@ -11,7 +11,7 @@ The Load Monitor collects standard Kafka metrics from the cluster and derives pe
 #### Load Monitor Workflow
 ![LoadMonitor](https://github.com/linkedin/cruise-control/blob/master/docs/images/loadMonitor.png)
 #### Metric Fetcher Manager
-The metric fetcher manager is responsible for coordinating all the sampling tasks. The metric fetcher manager creates a configurable number of metric fetcher threads to execute each of sampling tasks. It uses a metric sampler partition assignor to distribute the partitions to different metric fetcher threads.
+The metric fetcher manager is responsible for coordinating all the sampling tasks. The metric fetcher manager creates a configurable number of metric fetcher threads to execute each of sampling task. It uses a metric sampler partition assignor to distribute the partitions to different metric fetcher threads.
 
 #### Sampling Tasks
 The Load Monitor has a metric fetcher manager to arrange different sampling tasks. There are three types of sampling tasks: 
@@ -19,7 +19,7 @@ The Load Monitor has a metric fetcher manager to arrange different sampling task
 * Bootstrap Task
 * Linear Model Training Task
 
-Each sampling tasks is carried out by a configured number of Metric Fetcher threads. Each metric fetcher thread uses a pluggable Metric Sampler to fetch samples. 
+Each sampling task is carried out by a configured number of Metric Fetcher threads. Each metric fetcher thread uses a pluggable Metric Sampler to fetch samples. 
 
 #### Metric Sampler Partition Assignor
 Each metric fetcher will be assigned a few number of partitions in the cluster to get the samples. The default partition assigner ensures:
