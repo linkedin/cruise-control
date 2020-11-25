@@ -28,8 +28,8 @@ import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 
 /**
  * Unit test for testing low utilization threshold taking effect to prevent rebalance for resource distribution goals
