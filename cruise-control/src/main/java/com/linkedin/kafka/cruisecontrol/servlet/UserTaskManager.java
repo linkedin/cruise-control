@@ -138,7 +138,7 @@ public class UserTaskManager implements Closeable {
     }
     _sessionExpiryMs = sessionExpiryMs;
     _maxActiveUserTasks = maxActiveUserTasks;
-    _apiUrlPrefix = KafkaCruiseControlServletUtils.REQUEST_URI;
+    _apiUrlPrefix = WebServerConfig.DEFAULT_WEBSERVER_API_URLPREFIX;
     _time = time;
     _uuidGenerator = uuidGenerator;
     _userTaskScannerExecutor.scheduleAtFixedRate(new UserTaskScanner(),

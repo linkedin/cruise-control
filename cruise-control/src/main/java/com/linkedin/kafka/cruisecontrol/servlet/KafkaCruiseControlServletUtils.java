@@ -35,8 +35,6 @@ import static javax.servlet.http.HttpServletResponse.SC_OK;
  * The util class for Kafka Cruise Control servlet.
  */
 public class KafkaCruiseControlServletUtils {
-  // FIXME: Read this from a configuration
-  public static final String REQUEST_URI = "/KAFKACRUISECONTROL/";
   public static final String GET_METHOD = "GET";
   public static final String POST_METHOD = "POST";
   public static final String KAFKA_CRUISE_CONTROL_SERVLET_OBJECT_CONFIG = "kafka.cruise.control.servlet.object";
@@ -282,5 +280,11 @@ public class KafkaCruiseControlServletUtils {
 
   public static String httpServletRequestToString(HttpServletRequest request) {
     return String.format("%s %s", request.getMethod(), request.getRequestURI());
+  }
+
+  public static String getDefaultWebServerApiUrlPrefix() {
+    // Strip off the '*' from the end of the default web server API URL prefix
+    return WebServerConfig.DEFAULT_WEBSERVER_API_URLPREFIX
+        .substring(0, WebServerConfig.DEFAULT_WEBSERVER_API_URLPREFIX.length() - 1);
   }
 }

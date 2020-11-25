@@ -165,6 +165,10 @@ public class ParameterUtils {
    * @return The endpoint specified in the given request.
    */
   public static CruiseControlEndPoint endPoint(HttpServletRequest request, String apiUrlPrefix) {
+    if (!apiUrlPrefix.endsWith("/*")) {
+      throw new IllegalArgumentException("API URL prefix should end with \"/*\". Got: " + apiUrlPrefix);
+    }
+
     List<CruiseControlEndPoint> supportedEndpoints;
     switch (request.getMethod()) {
       case GET_METHOD:
@@ -177,10 +181,8 @@ public class ParameterUtils {
         throw new UserRequestException("Unsupported request method: " + request.getMethod() + ".");
     }
 
-    if (apiUrlPrefix.endsWith("/*")) {
-      // Ignore the last character '*'
-      apiUrlPrefix = apiUrlPrefix.substring(0, apiUrlPrefix.length() - 1);
-    }
+    // Ignore the last character '*' since the API URL prefix must end with "/*",
+    apiUrlPrefix = apiUrlPrefix.substring(0, apiUrlPrefix.length() - 1);
     String path = request.getRequestURI().toUpperCase().replace(apiUrlPrefix.toUpperCase(), "");
     for (CruiseControlEndPoint endPoint : supportedEndpoints) {
       if (endPoint.toString().equalsIgnoreCase(path)) {

@@ -143,10 +143,8 @@ public class ParameterUtilsTest {
 
   @Test
   public void testGetEndpoint() {
-    verifyGetEndpoint("/a/b/c/d/", "/a/b/c/d/");
     verifyGetEndpoint("/a/", "/a/*");
     verifyGetEndpoint("/kafkacruisecontrol/", WebServerConfig.DEFAULT_WEBSERVER_API_URLPREFIX);
-    verifyGetEndpoint("/kafkacruisecontrol/", REQUEST_URI);
   }
 
   /**
