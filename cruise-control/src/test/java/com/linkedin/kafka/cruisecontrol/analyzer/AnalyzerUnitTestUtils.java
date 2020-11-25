@@ -19,15 +19,17 @@ public class AnalyzerUnitTestUtils {
   }
 
   /**
-   * Reflectively create goal object from specified goal class.
+   * Reflectively create goal object from specified goal class and config overrides.
    *
    * @param goalClass The goal class to create object.
+   * @param configOverrides Config overrides.
    * @return New object of specified class.
    */
-  public static Goal goal(Class<? extends Goal> goalClass) throws Exception {
+  public static Goal goal(Class<? extends Goal> goalClass, Properties configOverrides) throws Exception {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(AnalyzerConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(5L));
     props.setProperty(AnalyzerConfig.TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG, Double.toString(1.2));
+    configOverrides.stringPropertyNames().forEach(k -> props.setProperty(k, configOverrides.getProperty(k)));
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     balancingConstraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
@@ -40,5 +42,15 @@ public class AnalyzerUnitTestUtils {
       //Try default constructor
       return goalClass.newInstance();
     }
+  }
+
+  /**
+   * Reflectively create goal object from specified goal class.
+   *
+   * @param goalClass The goal class to create object.
+   * @return New object of specified class.
+   */
+  public static Goal goal(Class<? extends Goal> goalClass) throws Exception {
+    return goal(goalClass, new Properties());
   }
 }
