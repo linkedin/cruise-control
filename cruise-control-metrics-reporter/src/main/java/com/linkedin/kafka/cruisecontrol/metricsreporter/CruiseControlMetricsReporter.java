@@ -61,7 +61,7 @@ import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetr
 public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(CruiseControlMetricsReporter.class);
   private YammerMetricProcessor _yammerMetricProcessor;
-  private Map<org.apache.kafka.common.MetricName, KafkaMetric> _interestedMetrics = new ConcurrentHashMap<>();
+  private final Map<org.apache.kafka.common.MetricName, KafkaMetric> _interestedMetrics = new ConcurrentHashMap<>();
   private KafkaThread _metricsReporterRunner;
   private KafkaProducer<String, CruiseControlMetric> _producer;
   private String _cruiseControlMetricsTopic;
@@ -76,8 +76,9 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   private int _metricsTopicAutoCreateRetries;
   protected static final String CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY = "delete";
   protected static final Duration PRODUCER_CLOSE_TIMEOUT = Duration.ofSeconds(5);
-  protected static final String DEFAULT_BOOTSTRAP_SERVERS_HOST = "localhost:";
   private boolean _kubernetesMode;
+  public static final String DEFAULT_BOOTSTRAP_SERVERS_HOST = "localhost";
+  public static final String DEFAULT_BOOTSTRAP_SERVERS_PORT = "9092";
 
   @Override
   public void init(List<KafkaMetric> metrics) {
@@ -113,19 +114,20 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   }
 
   static String getBootstrapServers(Map<String, ?> configs) {
+    Object port = configs.get(KafkaConfig.PortProp());
     String listeners = String.valueOf(configs.get(KafkaConfig.ListenersProp()));
     if (listeners != null && listeners.length() != 0) {
+      // See https://kafka.apache.org/documentation/#listeners for possible responses. If multiple listeners are configured, this function
+      // picks the first listener in the list of listeners. Hence, users of this config must adjust their order accordingly.
       String firstListener = listeners.split("\\s*,\\s*")[0];
-      String[] allListeners = firstListener.split(":");
-      if (allListeners[1].length() == 2) {
-        return DEFAULT_BOOTSTRAP_SERVERS_HOST + allListeners[allListeners.length - 1];
-      } else {
-        return firstListener.substring(firstListener.indexOf(":") + 3, firstListener.lastIndexOf(":")) + ":" + allListeners[allListeners.length - 1];
-      }
-    } else {
-      String port = String.valueOf(configs.get(KafkaConfig.PortProp()));
-      return DEFAULT_BOOTSTRAP_SERVERS_HOST + port;
+      String[] protocolHostPort = firstListener.split(":");
+      // Use port of listener only if no explicit config specified for KafkaConfig.PortProp().
+      String portToUse = port == null ? protocolHostPort[protocolHostPort.length - 1] : String.valueOf(port);
+      // Use host of listener if one is specified.
+      return ((protocolHostPort[1].length() == 2) ? DEFAULT_BOOTSTRAP_SERVERS_HOST : protocolHostPort[1].substring(2)) + ":" + portToUse;
     }
+
+    return DEFAULT_BOOTSTRAP_SERVERS_HOST + ":" + (port == null ? DEFAULT_BOOTSTRAP_SERVERS_PORT : port);
   }
 
   @Override
