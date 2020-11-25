@@ -119,8 +119,8 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     int minLimit;
     int maxLimit;
     if (isLowerLimit) {
-      minLimit = Math.max(0, (int) (Math.floor(average) - _balancingConstraint.topicReplicaBalanceMinGap()));
-      maxLimit = Math.max(0, (int) (Math.floor(average) - _balancingConstraint.topicReplicaBalanceMaxGap()));
+      maxLimit = Math.max(0, (int) (Math.floor(average) - _balancingConstraint.topicReplicaBalanceMinGap()));
+      minLimit = Math.max(0, (int) (Math.floor(average) - _balancingConstraint.topicReplicaBalanceMaxGap()));
     } else {
       minLimit = (int) (Math.ceil(average) + _balancingConstraint.topicReplicaBalanceMinGap());
       maxLimit = (int) (Math.ceil(average) + _balancingConstraint.topicReplicaBalanceMaxGap());

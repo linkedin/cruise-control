@@ -295,8 +295,8 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    * </ul>
    */
   private void sanityCheckBalancingConstraints() {
-    long topicReplicaBalanceMinGap = getInt(AnalyzerConfig.TOPIC_REPLICA_COUNT_BALANCE_MIN_GAP_CONFIG);
-    long topicReplicaBalanceMaxGap = getInt(AnalyzerConfig.TOPIC_REPLICA_COUNT_BALANCE_MAX_GAP_CONFIG);
+    int topicReplicaBalanceMinGap = getInt(AnalyzerConfig.TOPIC_REPLICA_COUNT_BALANCE_MIN_GAP_CONFIG);
+    int topicReplicaBalanceMaxGap = getInt(AnalyzerConfig.TOPIC_REPLICA_COUNT_BALANCE_MAX_GAP_CONFIG);
     if (topicReplicaBalanceMinGap > topicReplicaBalanceMaxGap) {
       throw new ConfigException(String.format("Maximum gap of topic replica count balance [%d] cannot be smaller than the "
                                               + "minimum gap of topic replica count balance [%d].",
