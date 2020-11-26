@@ -829,14 +829,6 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     }
   }
 
-  private boolean isLoadUnderLowUtilizationThreshold(Broker broker) {
-    double utilization = resource().isHostResource() ? broker.host().load().expectedUtilizationFor(resource())
-                                                     : broker.load().expectedUtilizationFor(resource());
-    double resourceCapacity = resource().isHostResource() ? broker.host().capacityFor(resource())
-                                                          : broker.capacityFor(resource());
-    return utilization / resourceCapacity < _balancingConstraint.lowUtilizationThreshold(resource());
-  }
-
   private boolean isLoadUnderBalanceUpperLimitAfterChange(Load load,
                                                           Broker broker,
                                                           ChangeType changeType,
