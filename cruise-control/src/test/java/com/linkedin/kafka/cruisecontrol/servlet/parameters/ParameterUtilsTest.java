@@ -16,7 +16,8 @@ import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Test;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.*;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.GET_METHOD;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
 
 
 public class ParameterUtilsTest {
@@ -143,19 +144,18 @@ public class ParameterUtilsTest {
 
   @Test
   public void testGetEndpoint() {
-    verifyGetEndpoint("/a/", "/a/*");
-    verifyGetEndpoint("/kafkacruisecontrol/", WebServerConfig.DEFAULT_WEBSERVER_API_URLPREFIX);
+    verifyGetEndpoint("/a/*");
+    verifyGetEndpoint(WebServerConfig.DEFAULT_WEBSERVER_API_URLPREFIX);
   }
 
   /**
    * Verifies that {@link ParameterUtils#endPoint} can parse out all endpoints
    *
-   * @param apiUrlPrefix API URL prefix used to concatenate with "/endpoint_name" to mock the URL in a request
    * @param apiUrlPrefixParam API URL prefix parameter passed to the {@link ParameterUtils#endPoint}
    */
-  private void verifyGetEndpoint(String apiUrlPrefix, String apiUrlPrefixParam) {
+  private void verifyGetEndpoint(String apiUrlPrefixParam) {
     HttpServletRequest mockRequest = EasyMock.mock(HttpServletRequest.class);
-
+    String apiUrlPrefix = apiUrlPrefixParam.substring(0, apiUrlPrefixParam.length() - 1);
     for (CruiseControlEndPoint getEndPoint : CruiseControlEndPoint.getEndpoints()) {
       String mockRequestUri = apiUrlPrefix + getEndPoint;
       EasyMock.expect(mockRequest.getMethod()).andReturn(GET_METHOD).times(1);

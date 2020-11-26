@@ -281,10 +281,4 @@ public class KafkaCruiseControlServletUtils {
   public static String httpServletRequestToString(HttpServletRequest request) {
     return String.format("%s %s", request.getMethod(), request.getRequestURI());
   }
-
-  public static String getDefaultWebServerApiUrlPrefix() {
-    // Strip off the '*' from the end of the default web server API URL prefix
-    return WebServerConfig.DEFAULT_WEBSERVER_API_URLPREFIX
-        .substring(0, WebServerConfig.DEFAULT_WEBSERVER_API_URLPREFIX.length() - 1);
-  }
 }

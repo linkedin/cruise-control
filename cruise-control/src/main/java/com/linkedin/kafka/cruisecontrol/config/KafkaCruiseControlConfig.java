@@ -469,17 +469,17 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    *  <code>webserver.api.urlprefix</code> and <code>webserver.ui.urlprefix</code> must end with "/*"
    */
   void sanityCheckWebServerUrlPrefix() { // visible for testing
-    String expectedUrlPrefixEnd = "/*";
+    String expectedSuffix = "/*";
     String webserverApiUrlPrefix = getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG);
-    if (!webserverApiUrlPrefix.endsWith(expectedUrlPrefixEnd)) {
+    if (!webserverApiUrlPrefix.endsWith(expectedSuffix)) {
       throw new ConfigException(String.format("Expect value to the config %s ends with %s. Got: %s",
-          WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG, expectedUrlPrefixEnd, webserverApiUrlPrefix));
+          WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG, expectedSuffix, webserverApiUrlPrefix));
     }
 
     String webserverUiUrlPrefix = getString(WebServerConfig.WEBSERVER_UI_URLPREFIX_CONFIG);
-    if (!webserverUiUrlPrefix.endsWith(expectedUrlPrefixEnd)) {
+    if (!webserverUiUrlPrefix.endsWith(expectedSuffix)) {
       throw new ConfigException(String.format("Expect value to the config %s ends with %s. Got: %s",
-          WebServerConfig.WEBSERVER_UI_URLPREFIX_CONFIG, expectedUrlPrefixEnd, webserverUiUrlPrefix));
+          WebServerConfig.WEBSERVER_UI_URLPREFIX_CONFIG, expectedSuffix, webserverUiUrlPrefix));
     }
   }
 

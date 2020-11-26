@@ -35,7 +35,8 @@ import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.PRO
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.REBALANCE;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.REMOVE_BROKER;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.USER_TASKS;
-import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.*;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.GET_METHOD;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
 
 
 public class KafkaCruiseControlServletEndpointTest {
@@ -262,7 +263,7 @@ public class KafkaCruiseControlServletEndpointTest {
     EasyMock.expect(request.getSession(false)).andReturn(session).anyTimes();
     EasyMock.expect(request.getMethod()).andReturn(method).anyTimes();
     EasyMock.expect(request.getRequestURI())
-        .andReturn(KafkaCruiseControlServletUtils.getDefaultWebServerApiUrlPrefix() + resource).anyTimes();
+        .andReturn(KafkaCruiseControlServletTestUtils.getDefaultWebServerApiUrlPrefix() + resource).anyTimes();
     EasyMock.expect(request.getParameterMap()).andReturn(params).anyTimes();
     EasyMock.expect(request.getHeader(UserTaskManager.USER_TASK_HEADER_NAME)).andReturn(userTaskId).anyTimes();
     EasyMock.expect(request.getRemoteHost()).andReturn("test-host").anyTimes();

@@ -6,22 +6,22 @@ package com.linkedin.kafka.cruisecontrol.config;
 
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import org.apache.kafka.common.config.ConfigException;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import static org.junit.Assert.assertThrows;
 
-import static org.easymock.EasyMock.*;
+import static org.easymock.EasyMock.partialMockBuilder;
+import static org.easymock.EasyMock.expect;
+import static org.easymock.EasyMock.replay;
+import static org.easymock.EasyMock.verify;
+import static org.easymock.EasyMock.reset;
 
 
-public class WebserverUrlPrefixConfigTest {
-
-  @Rule
-  public ExpectedException _expectedException = ExpectedException.none();
+public class WebserverUrlPrefixConfigTest extends AbstractConfigTest {
 
   @Test
   public void testWebserverUrlPrefixConfigsCorrectSetup() {
     KafkaCruiseControlConfig config = partialMockBuilder(KafkaCruiseControlConfig.class)
-        .addMockedMethod("getString")
+        .addMockedMethod(GET_STRING_METHOD_NAME)
         .createNiceMock();
 
     expect(config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG)).andReturn("a/b/c/d/*");
@@ -34,7 +34,7 @@ public class WebserverUrlPrefixConfigTest {
   @Test
   public void testWebserverUrlPrefixConfigCorrectSetupOnDefault() {
     KafkaCruiseControlConfig config = partialMockBuilder(KafkaCruiseControlConfig.class)
-        .addMockedMethod("getString")
+        .addMockedMethod(GET_STRING_METHOD_NAME)
         .createNiceMock();
 
     expect(config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG)).andReturn(WebServerConfig.DEFAULT_WEBSERVER_API_URLPREFIX);
@@ -47,20 +47,19 @@ public class WebserverUrlPrefixConfigTest {
   @Test
   public void testWebserverUrlPrefixConfigThrowsExceptionOnInvalidValue() {
     KafkaCruiseControlConfig config = partialMockBuilder(KafkaCruiseControlConfig.class)
-        .addMockedMethod("getString")
+        .addMockedMethod(GET_STRING_METHOD_NAME)
         .createNiceMock();
 
     expect(config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG)).andReturn("a/b/c/d");
     replay(config);
-    _expectedException.expect(ConfigException.class);
-    config.sanityCheckWebServerUrlPrefix();
+    assertThrows(ConfigException.class, config::sanityCheckWebServerUrlPrefix);
     verify(config);
     reset(config);
 
-    expect(config.getString(WebServerConfig.WEBSERVER_UI_URLPREFIX_CONFIG)).andReturn("a/b/c/");
+    expect(config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG)).andReturn("a/b/c/d/*"); // Valid value
+    expect(config.getString(WebServerConfig.WEBSERVER_UI_URLPREFIX_CONFIG)).andReturn("a/b/c/");     // Invalid value
     replay(config);
-    _expectedException.expect(ConfigException.class);
-    config.sanityCheckWebServerUrlPrefix();
+    assertThrows(ConfigException.class, config::sanityCheckWebServerUrlPrefix);
     verify(config);
   }
 }
