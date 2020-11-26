@@ -52,7 +52,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ResourceDistributi
  */
 public abstract class ResourceDistributionGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(ResourceDistributionGoal.class);
-  private static final double BALANCE_MARGIN = 0.9;
+  public static final double BALANCE_MARGIN = 0.9;
   private static final long PER_BROKER_SWAP_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(1);
   // Flag to indicate whether the self healing failed to relocate all offline replicas away from dead brokers or broken
   // disks in its initial attempt and currently omitting the resource balance limit to relocate remaining replicas.
@@ -238,12 +238,30 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       throw new OptimizationFailureException("Cannot take any action as all alive brokers are excluded from replica moves.");
     }
     _fixOfflineReplicasOnly = false;
+    /**
+     *
+     */
+
     double resourceUtilization = clusterModel.load().expectedUtilizationFor(resource());
     double capacity = clusterModel.capacityWithAllowedReplicaMovesFor(resource(), optimizationOptions);
     // Cluster utilization excludes the capacity of brokers excluded for replica moves.
-    double clusterUtilization = resourceUtilization / capacity;
-    _balanceUpperThreshold = computeBalanceUpperThreshold(clusterUtilization, optimizationOptions);
-    _balanceLowerThreshold = computeBalanceLowerThreshold(clusterUtilization, optimizationOptions);
+    double avgUtilizationPercentage = resourceUtilization / capacity;
+    _balanceUpperThreshold = computeBalanceUpperThreshold(avgUtilizationPercentage, optimizationOptions);
+    _balanceLowerThreshold = computeBalanceLowerThreshold(avgUtilizationPercentage, optimizationOptions);
+
+//    _balanceUpperThreshold = GoalUtils.computeResourceUtilizationBalanceThreshold(avgUtilizationPercentage,
+//                                                                                  resource(),
+//                                                                                  _balancingConstraint,
+//                                                                                  optimizationOptions.isTriggeredByGoalViolation(),
+//                                                                                  BALANCE_MARGIN,
+//                                                                  false);
+//
+//    _balanceLowerThreshold = GoalUtils.computeResourceUtilizationBalanceThreshold(avgUtilizationPercentage,
+//                                                                                  resource(),
+//                                                                                  _balancingConstraint,
+//                                                                                  optimizationOptions.isTriggeredByGoalViolation(),
+//                                                                                  BALANCE_MARGIN,
+//                                                                  true);
   }
 
   /**
@@ -336,12 +354,6 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                     Set<Goal> optimizedGoals,
                                     OptimizationOptions optimizationOptions) {
 
-    if (clusterModel.deadBrokers().isEmpty()
-        && allAliveBrokersBalanced(clusterModel, optimizationOptions)
-        && !hasBadDisksOnBrokers(clusterModel.aliveBrokers())) {
-      return;
-    }
-
     int numOfflineReplicas = broker.currentOfflineReplicas().size();
 
     boolean isExcludedForReplicaMove = isExcludedForReplicaMove(broker);
@@ -393,18 +405,6 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     if (!unbalanced) {
       LOG.debug("Successfully balanced {} for broker {} by moving leaders and replicas.", resource(), broker.id());
     }
-  }
-
-  private boolean hasBadDisksOnBrokers(Set<Broker> brokers) {
-    return brokers.stream().anyMatch(Broker::hasBadDisks);
-  }
-
-  private boolean allAliveBrokersBalanced(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
-    int balancedBrokers = clusterModel
-                          .getClusterStats(_balancingConstraint, optimizationOptions)
-                          .numBalancedBrokersByResource()
-                          .get(resource());
-    return balancedBrokers == clusterModel.aliveBrokers().size();
   }
 
   private boolean rebalanceByMovingLoadIn(Broker broker,

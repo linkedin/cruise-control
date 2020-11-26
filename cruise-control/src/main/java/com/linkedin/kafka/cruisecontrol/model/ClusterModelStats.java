@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.ResourceDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
@@ -262,15 +263,35 @@ public class ClusterModelStats {
     for (Resource resource : Resource.cachedValues()) {
       double resourceUtilization = clusterModel.load().expectedUtilizationFor(resource);
       double avgUtilizationPercentage = resourceUtilization / clusterModel.capacityWithAllowedReplicaMovesFor(resource, optimizationOptions);
-      double balanceUpperThreshold = avgUtilizationPercentage * _balancingConstraint.resourceBalancePercentage(resource);
-      double balanceLowerThreshold = avgUtilizationPercentage * Math.max(0, (2 - _balancingConstraint.resourceBalancePercentage(resource)));
+
+      double balanceUpperThreshold;
+      double balanceLowerThreshold;
+
+      if (avgUtilizationPercentage <= _balancingConstraint.lowUtilizationThreshold(resource)) {
+        balanceUpperThreshold = _balancingConstraint.lowUtilizationThreshold(resource);
+        balanceLowerThreshold = 0;
+      } else {
+        balanceUpperThreshold = avgUtilizationPercentage * _balancingConstraint.resourceBalancePercentage(resource);
+        balanceLowerThreshold = avgUtilizationPercentage * Math.max(0, (2 - _balancingConstraint.resourceBalancePercentage(resource)));
+      }
+
+//      balanceUpperThreshold = GoalUtils.computeResourceUtilizationBalanceThreshold(avgUtilizationPercentage,
+//          resource,
+//          _balancingConstraint,
+//          optimizationOptions.isTriggeredByGoalViolation(), ResourceDistributionGoal.BALANCE_MARGIN,
+//          false);
+//
+//      balanceLowerThreshold = GoalUtils.computeResourceUtilizationBalanceThreshold(avgUtilizationPercentage,
+//          resource,
+//          _balancingConstraint,
+//          optimizationOptions.isTriggeredByGoalViolation(), ResourceDistributionGoal.BALANCE_MARGIN,
+//          true);
+
       // Maximum, minimum, and standard deviation utilization for the resource.
       double hottestBrokerUtilization = 0.0;
       double coldestBrokerUtilization = Double.MAX_VALUE;
       double varianceSum = 0.0;
       int numBalancedBrokersInBrokersAllowedReplicaMove = 0;
-      boolean allBrokersBelowLowUtilizationThreshold = true;
-      double lowUtilizationThreshold = _balancingConstraint.lowUtilizationThreshold(resource);
 
       for (Broker broker : clusterModel.aliveBrokers()) {
         double utilization = resource.isHostResource() ? broker.host().load().expectedUtilizationFor(resource)
@@ -282,10 +303,6 @@ public class ClusterModelStats {
           double capacity = resource.isHostResource() ? broker.host().capacityFor(resource)
                                                       : broker.capacityFor(resource);
           double utilizationPercentage = utilization / capacity;
-          if (utilizationPercentage >= lowUtilizationThreshold) {
-            allBrokersBelowLowUtilizationThreshold = false;
-          }
-
           if (utilizationPercentage >= balanceLowerThreshold && utilizationPercentage <= balanceUpperThreshold) {
             numBalancedBrokersInBrokersAllowedReplicaMove++;
           }
@@ -293,12 +310,7 @@ public class ClusterModelStats {
         }
       }
 
-      if (allBrokersBelowLowUtilizationThreshold) {
-        // All alive brokers are balanced
-        _numBalancedBrokersByResource.put(resource, clusterModel.aliveBrokers().size());
-      } else {
-        _numBalancedBrokersByResource.put(resource, numBalancedBrokersInBrokersAllowedReplicaMove);
-      }
+      _numBalancedBrokersByResource.put(resource, numBalancedBrokersInBrokersAllowedReplicaMove);
       avgUtilizationByResource.put(resource, resourceUtilization / _brokersAllowedReplicaMove.size());
       maxUtilizationByResource.put(resource, hottestBrokerUtilization);
       minUtilizationByResource.put(resource, coldestBrokerUtilization);
