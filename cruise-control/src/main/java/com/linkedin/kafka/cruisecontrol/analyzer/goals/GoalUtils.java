@@ -507,9 +507,6 @@ public class GoalUtils {
                                                                   double balanceMargin,
                                                                   boolean isLowerThreshold) {
 
-    if (avgUtilizationPercentage >= 1) {
-      throw new IllegalArgumentException("Average resource utilization percentage must be less than 1.0. Got: " + avgUtilizationPercentage);
-    }
     if (balanceMargin >= 1) {
       throw new IllegalArgumentException("Balance margin must be less than 1.0. Got: " + balanceMargin);
     }
@@ -521,7 +518,7 @@ public class GoalUtils {
       }
       double balancePercentageWithMargin =
           balancePercentageWithMargin(isTriggeredByGoalViolation, balancingConstraint, resource, balanceMargin);
-      return avgUtilizationPercentage * Math.max(0, balancePercentageWithMargin);
+      return avgUtilizationPercentage * Math.max(0, (1 - balancePercentageWithMargin));
 
     } else {
       if (isLowUtilization) {

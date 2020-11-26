@@ -238,30 +238,23 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       throw new OptimizationFailureException("Cannot take any action as all alive brokers are excluded from replica moves.");
     }
     _fixOfflineReplicasOnly = false;
-    /**
-     *
-     */
-
     double resourceUtilization = clusterModel.load().expectedUtilizationFor(resource());
     double capacity = clusterModel.capacityWithAllowedReplicaMovesFor(resource(), optimizationOptions);
     // Cluster utilization excludes the capacity of brokers excluded for replica moves.
     double avgUtilizationPercentage = resourceUtilization / capacity;
-    _balanceUpperThreshold = computeBalanceUpperThreshold(avgUtilizationPercentage, optimizationOptions);
-    _balanceLowerThreshold = computeBalanceLowerThreshold(avgUtilizationPercentage, optimizationOptions);
+    _balanceUpperThreshold = GoalUtils.computeResourceUtilizationBalanceThreshold(avgUtilizationPercentage,
+                                                                                  resource(),
+                                                                                  _balancingConstraint,
+                                                                                  optimizationOptions.isTriggeredByGoalViolation(),
+                                                                                  BALANCE_MARGIN,
+                                                                                  false);
 
-//    _balanceUpperThreshold = GoalUtils.computeResourceUtilizationBalanceThreshold(avgUtilizationPercentage,
-//                                                                                  resource(),
-//                                                                                  _balancingConstraint,
-//                                                                                  optimizationOptions.isTriggeredByGoalViolation(),
-//                                                                                  BALANCE_MARGIN,
-//                                                                  false);
-//
-//    _balanceLowerThreshold = GoalUtils.computeResourceUtilizationBalanceThreshold(avgUtilizationPercentage,
-//                                                                                  resource(),
-//                                                                                  _balancingConstraint,
-//                                                                                  optimizationOptions.isTriggeredByGoalViolation(),
-//                                                                                  BALANCE_MARGIN,
-//                                                                  true);
+    _balanceLowerThreshold = GoalUtils.computeResourceUtilizationBalanceThreshold(avgUtilizationPercentage,
+                                                                                  resource(),
+                                                                                  _balancingConstraint,
+                                                                                  optimizationOptions.isTriggeredByGoalViolation(),
+                                                                                  BALANCE_MARGIN,
+                                                                                  true);
   }
 
   /**
@@ -273,12 +266,6 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   @Override
   protected void updateGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
       throws OptimizationFailureException {
-
-    if (clusterModel.aliveBrokers().stream().allMatch(this::isLoadUnderLowUtilizationThreshold)) {
-      finish();
-      return;
-    }
-
     Set<Integer> brokerIdsAboveBalanceUpperLimit = new HashSet<>();
     Set<Integer> brokerIdsUnderBalanceLowerLimit = new HashSet<>();
     // Log broker Ids over balancing limit.
@@ -983,43 +970,6 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     }
 
     return !isContainerAboveLowerLimit;
-  }
-
-  /**
-   * @param clusterUtilization Cluster utilization that excludes the capacity of brokers excluded for replica moves.
-   * @param optimizationOptions Options to adjust balance upper limit in case goal optimization is triggered by goal
-   * violation detector.
-   * @return The utilization upper threshold in percent for the {@link #resource()}
-   */
-  private double computeBalanceUpperThreshold(double clusterUtilization, OptimizationOptions optimizationOptions) {
-    return clusterUtilization * (1 + balancePercentageWithMargin(optimizationOptions));
-  }
-
-  /**
-   * @param clusterUtilization Cluster utilization that excludes the capacity of brokers excluded for replica moves.
-   * @param optimizationOptions Options to adjust balance lower limit in case goal optimization is triggered by goal
-   * violation detector.
-   * @return The utilization lower threshold in percent for the {@link #resource()}
-   */
-  private double computeBalanceLowerThreshold(double clusterUtilization, OptimizationOptions optimizationOptions) {
-    return clusterUtilization * Math.max(0, (1 - balancePercentageWithMargin(optimizationOptions)));
-  }
-
-  /**
-   * To avoid churns, we add a balance margin to the user specified rebalance threshold. e.g. when user sets the
-   * threshold to be resourceBalancePercentage, we use (resourceBalancePercentage-1)*balanceMargin instead.
-   *
-   * @param optimizationOptions Options to adjust balance percentage with margin in case goal optimization is triggered
-   * by goal violation detector.
-   * @return The rebalance threshold with a margin.
-   */
-  private double balancePercentageWithMargin(OptimizationOptions optimizationOptions) {
-    double balancePercentage = optimizationOptions.isTriggeredByGoalViolation()
-                               ? _balancingConstraint.resourceBalancePercentage(resource())
-                                 * _balancingConstraint.goalViolationDistributionThresholdMultiplier()
-                               : _balancingConstraint.resourceBalancePercentage(resource());
-
-    return (balancePercentage - 1) * BALANCE_MARGIN;
   }
 
   private class ResourceDistributionGoalStatsComparator implements ClusterModelStatsComparator {

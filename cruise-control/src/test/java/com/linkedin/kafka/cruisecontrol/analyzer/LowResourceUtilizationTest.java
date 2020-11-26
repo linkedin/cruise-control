@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -79,7 +78,7 @@ public class LowResourceUtilizationTest {
     // Expect no rebalance on CPU usage distribution goal since all brokers' CPU usage is below the low CPU utilization threshold
     clusterModel = createSmallClusterModel();
     goalConfigs = getDefaultGoalConfigs();
-    goalConfigs.put(AnalyzerConfig.CPU_LOW_UTILIZATION_THRESHOLD_CONFIG, 0.3476);
+    goalConfigs.put(AnalyzerConfig.CPU_LOW_UTILIZATION_THRESHOLD_CONFIG, 0.3862);
     p.add(params(clusterModel, new CpuUsageDistributionGoal(), goalConfigs, false));
 
     // Expect rebalance on disk usage distribution goal since one broker's disk usage is above the low disk utilization threshold
@@ -91,7 +90,7 @@ public class LowResourceUtilizationTest {
     // Expect no rebalance on disk usage distribution goal since all brokers' disk usage is below the low disk utilization threshold
     clusterModel = createSmallClusterModel();
     goalConfigs = getDefaultGoalConfigs();
-    goalConfigs.put(AnalyzerConfig.DISK_LOW_UTILIZATION_THRESHOLD_CONFIG, 0.29);
+    goalConfigs.put(AnalyzerConfig.DISK_LOW_UTILIZATION_THRESHOLD_CONFIG, 0.3223);
     p.add(params(clusterModel, new DiskUsageDistributionGoal(), goalConfigs, false));
 
     // Expect rebalance on network inbound usage distribution goal since one broker's network inbound usage is
@@ -105,7 +104,7 @@ public class LowResourceUtilizationTest {
     // below the low network inbound utilization threshold
     clusterModel = createSmallClusterModel();
     goalConfigs = getDefaultGoalConfigs();
-    goalConfigs.put(AnalyzerConfig.NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG, 0.14);
+    goalConfigs.put(AnalyzerConfig.NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG, 0.14445);
     p.add(params(clusterModel, new NetworkInboundUsageDistributionGoal(), goalConfigs, false));
 
 
@@ -120,7 +119,7 @@ public class LowResourceUtilizationTest {
     // below the low network outbound utilization threshold
     clusterModel = createSmallClusterModel();
     goalConfigs = getDefaultGoalConfigs();
-    goalConfigs.put(AnalyzerConfig.NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG, 0.15);
+    goalConfigs.put(AnalyzerConfig.NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG, 0.1639);
     p.add(params(clusterModel, new NetworkOutboundUsageDistributionGoal(), goalConfigs, false));
 
     return p;
@@ -167,7 +166,6 @@ public class LowResourceUtilizationTest {
   }
 
   @Test
-  @Ignore
   public void test() throws OptimizationFailureException {
     Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = _clusterModel.getReplicaDistribution();
     Map<TopicPartition, ReplicaPlacementInfo> initLeaderDistribution = _clusterModel.getLeaderDistribution();

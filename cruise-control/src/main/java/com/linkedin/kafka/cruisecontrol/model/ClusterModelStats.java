@@ -264,28 +264,19 @@ public class ClusterModelStats {
       double resourceUtilization = clusterModel.load().expectedUtilizationFor(resource);
       double avgUtilizationPercentage = resourceUtilization / clusterModel.capacityWithAllowedReplicaMovesFor(resource, optimizationOptions);
 
-      double balanceUpperThreshold;
-      double balanceLowerThreshold;
+      double balanceUpperThreshold = GoalUtils.computeResourceUtilizationBalanceThreshold(avgUtilizationPercentage,
+                                                                                          resource,
+                                                                                          _balancingConstraint,
+                                                                                          optimizationOptions.isTriggeredByGoalViolation(),
+                                                                                          ResourceDistributionGoal.BALANCE_MARGIN,
+                                                                          false);
 
-      if (avgUtilizationPercentage <= _balancingConstraint.lowUtilizationThreshold(resource)) {
-        balanceUpperThreshold = _balancingConstraint.lowUtilizationThreshold(resource);
-        balanceLowerThreshold = 0;
-      } else {
-        balanceUpperThreshold = avgUtilizationPercentage * _balancingConstraint.resourceBalancePercentage(resource);
-        balanceLowerThreshold = avgUtilizationPercentage * Math.max(0, (2 - _balancingConstraint.resourceBalancePercentage(resource)));
-      }
-
-//      balanceUpperThreshold = GoalUtils.computeResourceUtilizationBalanceThreshold(avgUtilizationPercentage,
-//          resource,
-//          _balancingConstraint,
-//          optimizationOptions.isTriggeredByGoalViolation(), ResourceDistributionGoal.BALANCE_MARGIN,
-//          false);
-//
-//      balanceLowerThreshold = GoalUtils.computeResourceUtilizationBalanceThreshold(avgUtilizationPercentage,
-//          resource,
-//          _balancingConstraint,
-//          optimizationOptions.isTriggeredByGoalViolation(), ResourceDistributionGoal.BALANCE_MARGIN,
-//          true);
+      double balanceLowerThreshold = GoalUtils.computeResourceUtilizationBalanceThreshold(avgUtilizationPercentage,
+                                                                                          resource,
+                                                                                          _balancingConstraint,
+                                                                                          optimizationOptions.isTriggeredByGoalViolation(),
+                                                                                          ResourceDistributionGoal.BALANCE_MARGIN,
+                                                                          true);
 
       // Maximum, minimum, and standard deviation utilization for the resource.
       double hottestBrokerUtilization = 0.0;
