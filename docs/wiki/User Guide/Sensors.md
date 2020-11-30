@@ -8,7 +8,6 @@ Cruise Control metrics are useful to monitor the state of Cruise Control itself.
 * AnomalyDetector
 * GoalOptimizer
 * MetricFetcherManager
-* SessionManager
 * KafkaCruiseControlServlet
 
 ### Executor Sensors
@@ -87,13 +86,6 @@ Cruise Control metrics are useful to monitor the state of Cruise Control itself.
 | The time taken by each round of partition sample fetch    | kafka.cruisecontrol:name=MetricFetcherManager.partition-samples-fetcher-timer        |
 | The rate of training sample fetch failures                | kafka.cruisecontrol:name=MetricFetcherManager.training-samples-fetcher-failure-rate  |
 | The time taken by each training sample fetch              | kafka.cruisecontrol:name=MetricFetcherManager.training-samples-fetcher-timer         |
-
-### SessionManager Sensors
-
-| DESCRIPTION                   | MBEAN NAME                                                            |
-|-------------------------------|-----------------------------------------------------------------------|
-| Session lifetime              | kafka.cruisecontrol:name=SessionManager.session-lifetime-timer        |
-| Session creation failure rate | kafka.cruisecontrol:name=SessionManager.session-creation-failure-rate |
 
 ### KafkaCruiseControlServlet Sensors
 
