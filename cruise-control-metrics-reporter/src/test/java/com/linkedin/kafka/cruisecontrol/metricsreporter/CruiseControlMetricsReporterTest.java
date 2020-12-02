@@ -213,15 +213,15 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     Map<String, Object> listenersMap = Collections.singletonMap(KafkaConfig.ListenersProp(), brokerConfig.get(KafkaConfig.ListenersProp()));
     String bootstrapServers = CruiseControlMetricsReporter.getBootstrapServers(listenersMap);
     String urlParse = "\\[?([0-9a-zA-Z\\-%._:]*)]?:(-?[0-9]+)";
-    Pattern compile = Pattern.compile(urlParse);
-    assertTrue(compile.matcher(bootstrapServers).matches());
+    Pattern urlParsePattern = Pattern.compile(urlParse);
+    assertTrue(urlParsePattern.matcher(bootstrapServers).matches());
     assertEquals(HOST, bootstrapServers.split(":")[0]);
 
     // Test with a "listeners" config without a host in the first listener.
     String listeners = "SSL://:1234,PLAINTEXT://myhost:4321";
     listenersMap = Collections.singletonMap(KafkaConfig.ListenersProp(), listeners);
     bootstrapServers = CruiseControlMetricsReporter.getBootstrapServers(listenersMap);
-    assertTrue(compile.matcher(bootstrapServers).matches());
+    assertTrue(urlParsePattern.matcher(bootstrapServers).matches());
     assertEquals(DEFAULT_BOOTSTRAP_SERVERS_HOST, bootstrapServers.split(":")[0]);
     assertEquals("1234", bootstrapServers.split(":")[1]);
 
@@ -230,7 +230,7 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     listenersMap.put(KafkaConfig.ListenersProp(), listeners);
     listenersMap.put(KafkaConfig.PortProp(), "43");
     bootstrapServers = CruiseControlMetricsReporter.getBootstrapServers(listenersMap);
-    assertTrue(compile.matcher(bootstrapServers).matches());
+    assertTrue(urlParsePattern.matcher(bootstrapServers).matches());
     assertEquals(DEFAULT_BOOTSTRAP_SERVERS_HOST, bootstrapServers.split(":")[0]);
     assertEquals("43", bootstrapServers.split(":")[1]);
   }
