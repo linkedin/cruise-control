@@ -32,19 +32,6 @@ public class WebserverUrlPrefixConfigTest extends AbstractConfigTest {
   }
 
   @Test
-  public void testWebserverUrlPrefixConfigCorrectSetupOnDefault() {
-    KafkaCruiseControlConfig config = partialMockBuilder(KafkaCruiseControlConfig.class)
-        .addMockedMethod(GET_STRING_METHOD_NAME)
-        .createNiceMock();
-
-    expect(config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG)).andReturn(WebServerConfig.DEFAULT_WEBSERVER_API_URLPREFIX);
-    expect(config.getString(WebServerConfig.WEBSERVER_UI_URLPREFIX_CONFIG)).andReturn(WebServerConfig.DEFAULT_WEBSERVER_UI_URLPREFIX);
-    replay(config);
-    config.sanityCheckWebServerUrlPrefix();
-    verify(config);
-  }
-
-  @Test
   public void testWebserverUrlPrefixConfigThrowsExceptionOnInvalidValue() {
     KafkaCruiseControlConfig config = partialMockBuilder(KafkaCruiseControlConfig.class)
         .addMockedMethod(GET_STRING_METHOD_NAME)
