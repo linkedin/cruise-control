@@ -5,6 +5,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
@@ -485,5 +486,78 @@ public class GoalUtils {
     }
 
     return sb.toString();
+  }
+
+  /**
+   * Compute the utilization upper/lower threshold in percent for the given type of resource.
+   *  There are two cases described below (note that this description demonstrates the general idea):
+   *
+   *    1. Low utilization case (the average utilization percentage is not greater than the low utilization threshold
+   *      Threshold lower bound = zero
+   *      Threshold upper bound = the low utilization threshold multiplied with the balance margin
+   *
+   *    2. Not low utilization case
+   *      Threshold lower bound = average utilization * (1 - balance percentage * balance margin)
+   *      Threshold upper bound = average utilization * (1 + balance percentage * balance margin)
+   *
+   * @param avgUtilizationPercentage Average cluster utilization that excludes the capacity of brokers excluded for replica moves.
+   * @param resource {@link Resource}
+   * @param balancingConstraint Balancing constraint
+   * @param isTriggeredByGoalViolation whether this computation is triggered by goal violation.
+   * @param balanceMargin resource distribution goal balance margin
+   * @param isLowerThreshold whether this method calculates resource utilization threshold upper bound or lower bound
+   * @return The utilization upper/lower threshold in percent for the given type of resource
+   */
+  public static double computeResourceUtilizationBalanceThreshold(double avgUtilizationPercentage,
+                                                                  Resource resource,
+                                                                  BalancingConstraint balancingConstraint,
+                                                                  boolean isTriggeredByGoalViolation,
+                                                                  double balanceMargin,
+                                                                  boolean isLowerThreshold) {
+
+    if (balanceMargin >= 1) {
+      throw new IllegalArgumentException("Balance margin must be less than 1.0. Got: " + balanceMargin);
+    }
+    boolean isLowUtilization = avgUtilizationPercentage <= balancingConstraint.lowUtilizationThreshold(resource);
+
+    if (isLowerThreshold) {
+      if (isLowUtilization) {
+        return 0.0;
+      }
+      double balancePercentageWithMargin =
+          balancePercentageWithMargin(isTriggeredByGoalViolation, balancingConstraint, resource, balanceMargin);
+      return avgUtilizationPercentage * Math.max(0, (1 - balancePercentageWithMargin));
+
+    } else {
+      if (isLowUtilization) {
+        return balancingConstraint.lowUtilizationThreshold(resource) * balanceMargin;
+      }
+      double balancePercentageWithMargin =
+          balancePercentageWithMargin(isTriggeredByGoalViolation, balancingConstraint, resource, balanceMargin);
+      return avgUtilizationPercentage * (1 + balancePercentageWithMargin);
+    }
+  }
+
+  /**
+   * To avoid churns, we add a balance margin to the user specified rebalance threshold. e.g. when user sets the
+   * threshold to be resourceBalancePercentage, we use (resourceBalancePercentage-1)*balanceMargin instead.
+   *
+   * @param isTriggeredByGoalViolation whether this computation is triggered by goal violation.
+   * @param balancingConstraint Balancing constraint
+   * @param resource Resource for which the balance percentage with margin gets calculated
+   * @param balanceMargin resource distribution goal balance margin
+   * @return The rebalance threshold with a margin.
+   */
+  private static double balancePercentageWithMargin(boolean isTriggeredByGoalViolation,
+                                                    BalancingConstraint balancingConstraint,
+                                                    Resource resource,
+                                                    double balanceMargin) {
+
+    double balancePercentage = balancingConstraint.resourceBalancePercentage(resource);
+    if (isTriggeredByGoalViolation) {
+      // Make the balance threshold percentage more lenient in this case
+      balancePercentage *= balancingConstraint.goalViolationDistributionThresholdMultiplier();
+    }
+    return (balancePercentage - 1) * balanceMargin;
   }
 }
