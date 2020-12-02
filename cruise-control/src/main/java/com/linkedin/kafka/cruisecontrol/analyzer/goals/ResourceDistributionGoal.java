@@ -52,7 +52,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ResourceDistributi
  */
 public abstract class ResourceDistributionGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(ResourceDistributionGoal.class);
-  private static final double BALANCE_MARGIN = 0.9;
+  public static final double BALANCE_MARGIN = 0.9;
   private static final long PER_BROKER_SWAP_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(1);
   // Flag to indicate whether the self healing failed to relocate all offline replicas away from dead brokers or broken
   // disks in its initial attempt and currently omitting the resource balance limit to relocate remaining replicas.
@@ -241,9 +241,20 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     double resourceUtilization = clusterModel.load().expectedUtilizationFor(resource());
     double capacity = clusterModel.capacityWithAllowedReplicaMovesFor(resource(), optimizationOptions);
     // Cluster utilization excludes the capacity of brokers excluded for replica moves.
-    double clusterUtilization = resourceUtilization / capacity;
-    _balanceUpperThreshold = computeBalanceUpperThreshold(clusterUtilization, optimizationOptions);
-    _balanceLowerThreshold = computeBalanceLowerThreshold(clusterUtilization, optimizationOptions);
+    double avgUtilizationPercentage = resourceUtilization / capacity;
+    _balanceUpperThreshold = GoalUtils.computeResourceUtilizationBalanceThreshold(avgUtilizationPercentage,
+                                                                                  resource(),
+                                                                                  _balancingConstraint,
+                                                                                  optimizationOptions.isTriggeredByGoalViolation(),
+                                                                                  BALANCE_MARGIN,
+                                                                                  false);
+
+    _balanceLowerThreshold = GoalUtils.computeResourceUtilizationBalanceThreshold(avgUtilizationPercentage,
+                                                                                  resource(),
+                                                                                  _balancingConstraint,
+                                                                                  optimizationOptions.isTriggeredByGoalViolation(),
+                                                                                  BALANCE_MARGIN,
+                                                                                  true);
   }
 
   /**
@@ -950,43 +961,6 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     }
 
     return !isContainerAboveLowerLimit;
-  }
-
-  /**
-   * @param clusterUtilization Cluster utilization that excludes the capacity of brokers excluded for replica moves.
-   * @param optimizationOptions Options to adjust balance upper limit in case goal optimization is triggered by goal
-   * violation detector.
-   * @return The utilization upper threshold in percent for the {@link #resource()}
-   */
-  private double computeBalanceUpperThreshold(double clusterUtilization, OptimizationOptions optimizationOptions) {
-    return clusterUtilization * (1 + balancePercentageWithMargin(optimizationOptions));
-  }
-
-  /**
-   * @param clusterUtilization Cluster utilization that excludes the capacity of brokers excluded for replica moves.
-   * @param optimizationOptions Options to adjust balance lower limit in case goal optimization is triggered by goal
-   * violation detector.
-   * @return The utilization lower threshold in percent for the {@link #resource()}
-   */
-  private double computeBalanceLowerThreshold(double clusterUtilization, OptimizationOptions optimizationOptions) {
-    return clusterUtilization * Math.max(0, (1 - balancePercentageWithMargin(optimizationOptions)));
-  }
-
-  /**
-   * To avoid churns, we add a balance margin to the user specified rebalance threshold. e.g. when user sets the
-   * threshold to be resourceBalancePercentage, we use (resourceBalancePercentage-1)*balanceMargin instead.
-   *
-   * @param optimizationOptions Options to adjust balance percentage with margin in case goal optimization is triggered
-   * by goal violation detector.
-   * @return The rebalance threshold with a margin.
-   */
-  private double balancePercentageWithMargin(OptimizationOptions optimizationOptions) {
-    double balancePercentage = optimizationOptions.isTriggeredByGoalViolation()
-                               ? _balancingConstraint.resourceBalancePercentage(resource())
-                                 * _balancingConstraint.goalViolationDistributionThresholdMultiplier()
-                               : _balancingConstraint.resourceBalancePercentage(resource());
-
-    return (balancePercentage - 1) * BALANCE_MARGIN;
   }
 
   private class ResourceDistributionGoalStatsComparator implements ClusterModelStatsComparator {
