@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 
 
-public class KafkaCruiseControlServletTestUtils {
+public final class KafkaCruiseControlServletTestUtils {
   private KafkaCruiseControlServletTestUtils() {
 
   }

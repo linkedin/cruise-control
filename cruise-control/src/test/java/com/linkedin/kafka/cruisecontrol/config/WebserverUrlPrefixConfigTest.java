@@ -16,12 +16,12 @@ import static org.easymock.EasyMock.verify;
 import static org.easymock.EasyMock.reset;
 
 
-public class WebserverUrlPrefixConfigTest extends AbstractConfigTest {
+public class WebserverUrlPrefixConfigTest {
 
   @Test
   public void testWebserverUrlPrefixConfigsCorrectSetup() {
     KafkaCruiseControlConfig config = partialMockBuilder(KafkaCruiseControlConfig.class)
-        .addMockedMethod(GET_STRING_METHOD_NAME)
+        .addMockedMethod(ConfigTestUtils.GET_STRING_METHOD_NAME)
         .createNiceMock();
 
     expect(config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG)).andReturn("a/b/c/d/*");
@@ -34,7 +34,7 @@ public class WebserverUrlPrefixConfigTest extends AbstractConfigTest {
   @Test
   public void testWebserverUrlPrefixConfigThrowsExceptionOnInvalidValue() {
     KafkaCruiseControlConfig config = partialMockBuilder(KafkaCruiseControlConfig.class)
-        .addMockedMethod(GET_STRING_METHOD_NAME)
+        .addMockedMethod(ConfigTestUtils.GET_STRING_METHOD_NAME)
         .createNiceMock();
 
     expect(config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG)).andReturn("a/b/c/d");
