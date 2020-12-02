@@ -489,13 +489,21 @@ public class GoalUtils {
   }
 
   /**
-   * Compute the utilization upper/lower threshold in percent for the given type of resource
+   * Compute the utilization upper/lower threshold in percent for the given type of resource.
+   *  There are two cases described below (note that this description demonstrates the general idea):
+   *
+   *    1. Low utilization case (the average utilization percentage is not greater than the low utilization threshold
+   *      Threshold lower bound = zero
+   *      Threshold upper bound = the low utilization threshold multiplied with the balance margin
+   *
+   *    2. Not low utilization case
+   *      Threshold lower bound = average utilization * (1 - balance percentage * balance margin)
+   *      Threshold upper bound = average utilization * (1 + balance percentage * balance margin)
    *
    * @param avgUtilizationPercentage Average cluster utilization that excludes the capacity of brokers excluded for replica moves.
    * @param resource {@link Resource}
-   * @param balancingConstraint balancing contraints
-   * @param isTriggeredByGoalViolation Options to adjust balance percentage with margin in case goal optimization is triggered
-   * by goal violation detector.
+   * @param balancingConstraint Balancing constraint
+   * @param isTriggeredByGoalViolation whether this computation is triggered by goal violation.
    * @param balanceMargin resource distribution goal balance margin
    * @param isLowerThreshold whether this method calculates resource utilization threshold upper bound or lower bound
    * @return The utilization upper/lower threshold in percent for the given type of resource
@@ -534,14 +542,16 @@ public class GoalUtils {
    * To avoid churns, we add a balance margin to the user specified rebalance threshold. e.g. when user sets the
    * threshold to be resourceBalancePercentage, we use (resourceBalancePercentage-1)*balanceMargin instead.
    *
-   * @param isTriggeredByGoalViolation Options to adjust balance percentage with margin in case goal optimization is triggered
-   * by goal violation detector.
+   * @param isTriggeredByGoalViolation whether this computation is triggered by goal violation.
+   * @param balancingConstraint Balancing constraint
+   * @param resource Resource for which the balance percentage with margin gets calculated
+   * @param balanceMargin resource distribution goal balance margin
    * @return The rebalance threshold with a margin.
    */
   private static double balancePercentageWithMargin(boolean isTriggeredByGoalViolation,
-      BalancingConstraint balancingConstraint,
-      Resource resource,
-      double balanceMargin) {
+                                                    BalancingConstraint balancingConstraint,
+                                                    Resource resource,
+                                                    double balanceMargin) {
 
     double balancePercentage = balancingConstraint.resourceBalancePercentage(resource);
     if (isTriggeredByGoalViolation) {

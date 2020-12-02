@@ -5,6 +5,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ResourceDistributionGoal;
@@ -30,6 +31,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
+import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUnitTestUtils.goal;
 
 /**
  * Unit test for testing low utilization threshold taking effect to prevent rebalance for resource distribution goals
@@ -44,17 +46,13 @@ public class LowResourceUtilizationTest {
     put(Resource.NW_OUT, 2000.0);
   }};
 
-  private final ClusterModel _clusterModel;
   private final ResourceDistributionGoal _resourceDistributionGoal;
   private final Map<String, Object> _goalConfigs;
-  private final Boolean _expectRebalance;
+  private final boolean _expectRebalance;
 
-  public LowResourceUtilizationTest(ClusterModel clusterModel,
-                                    ResourceDistributionGoal resourceDistributionGoal,
+  public LowResourceUtilizationTest(ResourceDistributionGoal resourceDistributionGoal,
                                     Map<String, Object> goalConfigs,
-                                    Boolean expectRebalance) {
-
-    _clusterModel = clusterModel;
+                                    boolean expectRebalance) {
     _resourceDistributionGoal = resourceDistributionGoal;
     _goalConfigs = goalConfigs;
     _expectRebalance = expectRebalance;
@@ -66,61 +64,62 @@ public class LowResourceUtilizationTest {
    * @return Parameters to test rebalance with low utilization threshold.
    */
   @Parameterized.Parameters
-  public static Collection<Object[]> data() {
+  public static Collection<Object[]> data() throws Exception {
     Collection<Object[]> p = new ArrayList<>();
+    final double maxCpuUtilizationRatio = 0.3475;
+    final double maxDiskUtilizationRatio = 0.28;
+    final double maxNetworkInUtilizationRatio = 0.13;
+    final double maxNetworkOutUtilizationRatio = 0.1475;
+    final double balanceMargin = 0.9;
 
     // Expect rebalance on CPU usage distribution goal since one broker's CPU usage is above the low CPU utilization threshold
-    ClusterModel clusterModel = createSmallClusterModel();
     Map<String, Object> goalConfigs = getDefaultGoalConfigs();
-    goalConfigs.put(AnalyzerConfig.CPU_LOW_UTILIZATION_THRESHOLD_CONFIG, 0.3474);
-    p.add(params(clusterModel, new CpuUsageDistributionGoal(), goalConfigs, true));
+    goalConfigs.put(AnalyzerConfig.CPU_LOW_UTILIZATION_THRESHOLD_CONFIG, onePercentSmaller(maxCpuUtilizationRatio));
+    p.add(params(goal(CpuUsageDistributionGoal.class), goalConfigs, true));
 
     // Expect no rebalance on CPU usage distribution goal since all brokers' CPU usage is below the low CPU utilization threshold
-    clusterModel = createSmallClusterModel();
     goalConfigs = getDefaultGoalConfigs();
-    goalConfigs.put(AnalyzerConfig.CPU_LOW_UTILIZATION_THRESHOLD_CONFIG, 0.3862);
-    p.add(params(clusterModel, new CpuUsageDistributionGoal(), goalConfigs, false));
+    goalConfigs.put(AnalyzerConfig.CPU_LOW_UTILIZATION_THRESHOLD_CONFIG,
+                    onePercentGreater(maxCpuUtilizationRatio / balanceMargin));
+    p.add(params(goal(CpuUsageDistributionGoal.class), goalConfigs, false));
 
     // Expect rebalance on disk usage distribution goal since one broker's disk usage is above the low disk utilization threshold
-    clusterModel = createSmallClusterModel();
     goalConfigs = getDefaultGoalConfigs();
-    goalConfigs.put(AnalyzerConfig.DISK_LOW_UTILIZATION_THRESHOLD_CONFIG, 0.27);
-    p.add(params(clusterModel, new DiskUsageDistributionGoal(), goalConfigs, true));
+    goalConfigs.put(AnalyzerConfig.DISK_LOW_UTILIZATION_THRESHOLD_CONFIG, onePercentSmaller(maxDiskUtilizationRatio));
+    p.add(params(goal(DiskUsageDistributionGoal.class), goalConfigs, true));
 
     // Expect no rebalance on disk usage distribution goal since all brokers' disk usage is below the low disk utilization threshold
-    clusterModel = createSmallClusterModel();
     goalConfigs = getDefaultGoalConfigs();
-    goalConfigs.put(AnalyzerConfig.DISK_LOW_UTILIZATION_THRESHOLD_CONFIG, 0.3223);
-    p.add(params(clusterModel, new DiskUsageDistributionGoal(), goalConfigs, false));
+    goalConfigs.put(AnalyzerConfig.DISK_LOW_UTILIZATION_THRESHOLD_CONFIG,
+                    onePercentGreater(maxDiskUtilizationRatio / balanceMargin));
+    p.add(params(goal(DiskUsageDistributionGoal.class), goalConfigs, false));
 
     // Expect rebalance on network inbound usage distribution goal since one broker's network inbound usage is
     // above the low network inbound utilization threshold
-    clusterModel = createSmallClusterModel();
     goalConfigs = getDefaultGoalConfigs();
-    goalConfigs.put(AnalyzerConfig.NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG, 0.12);
-    p.add(params(clusterModel, new NetworkInboundUsageDistributionGoal(), goalConfigs, true));
+    goalConfigs.put(AnalyzerConfig.NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG,
+                    onePercentSmaller(maxNetworkInUtilizationRatio));
+    p.add(params(goal(NetworkInboundUsageDistributionGoal.class), goalConfigs, true));
 
     // Expect no rebalance on network inbound usage distribution goal since all brokers' network inbound usage is
     // below the low network inbound utilization threshold
-    clusterModel = createSmallClusterModel();
     goalConfigs = getDefaultGoalConfigs();
-    goalConfigs.put(AnalyzerConfig.NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG, 0.14445);
-    p.add(params(clusterModel, new NetworkInboundUsageDistributionGoal(), goalConfigs, false));
-
+    goalConfigs.put(AnalyzerConfig.NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG,
+                    onePercentGreater(maxNetworkInUtilizationRatio / balanceMargin));
+    p.add(params(goal(NetworkInboundUsageDistributionGoal.class), goalConfigs, false));
 
     // Expect rebalance on network outbound usage distribution goal since one broker's network outbound usage is
     // above the low network outbound utilization threshold
-    clusterModel = createSmallClusterModel();
     goalConfigs = getDefaultGoalConfigs();
-    goalConfigs.put(AnalyzerConfig.NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG, 0.14);
-    p.add(params(clusterModel, new NetworkOutboundUsageDistributionGoal(), goalConfigs, true));
+    goalConfigs.put(AnalyzerConfig.NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG, onePercentSmaller(maxNetworkOutUtilizationRatio));
+    p.add(params(goal(NetworkOutboundUsageDistributionGoal.class), goalConfigs, true));
 
     // Expect no rebalance on network outbound usage distribution goal since all brokers' network outbound usage is
     // below the low network outbound utilization threshold
-    clusterModel = createSmallClusterModel();
     goalConfigs = getDefaultGoalConfigs();
-    goalConfigs.put(AnalyzerConfig.NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG, 0.1639);
-    p.add(params(clusterModel, new NetworkOutboundUsageDistributionGoal(), goalConfigs, false));
+    goalConfigs.put(AnalyzerConfig.NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG,
+                    onePercentGreater(maxNetworkOutUtilizationRatio / balanceMargin));
+    p.add(params(goal(NetworkOutboundUsageDistributionGoal.class), goalConfigs, false));
 
     return p;
   }
@@ -130,6 +129,14 @@ public class LowResourceUtilizationTest {
       put(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, "bootstrap.servers");
       put(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, "connect:1234");
     }};
+  }
+
+  private static double onePercentGreater(double value) {
+    return value * 1.01;
+  }
+
+  private static double onePercentSmaller(double value) {
+    return value * 0.99;
   }
 
   /**
@@ -158,24 +165,24 @@ public class LowResourceUtilizationTest {
     return DeterministicCluster.smallClusterModel(BROKER_CAPACITY);
   }
 
-  private static Object[] params(ClusterModel clusterModel,
-                                 ResourceDistributionGoal resourceDistributionGoal,
+  private static Object[] params(Goal resourceDistributionGoal,
                                  Map<String, Object> goalConfigs,
                                  Boolean expectRebalance) {
-    return new Object[]{clusterModel, resourceDistributionGoal, goalConfigs, expectRebalance};
+    return new Object[]{resourceDistributionGoal, goalConfigs, expectRebalance};
   }
 
   @Test
   public void test() throws OptimizationFailureException {
-    Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = _clusterModel.getReplicaDistribution();
-    Map<TopicPartition, ReplicaPlacementInfo> initLeaderDistribution = _clusterModel.getLeaderDistribution();
-
     _resourceDistributionGoal.configure(_goalConfigs);
+    ClusterModel clusterModel = createSmallClusterModel();
+    Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = clusterModel.getReplicaDistribution();
+    Map<TopicPartition, ReplicaPlacementInfo> initLeaderDistribution = clusterModel.getLeaderDistribution();
+
     assertTrue("Failed to optimize " + _resourceDistributionGoal.name(),
-        _resourceDistributionGoal.optimize(_clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet())));
+        _resourceDistributionGoal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet())));
 
     Set<ExecutionProposal> goalProposals =
-        AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, _clusterModel);
+        AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, clusterModel);
 
     if (_expectRebalance) {
       assertFalse(goalProposals.isEmpty());

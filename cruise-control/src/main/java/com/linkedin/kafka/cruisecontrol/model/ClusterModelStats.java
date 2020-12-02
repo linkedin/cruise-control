@@ -283,7 +283,6 @@ public class ClusterModelStats {
       double coldestBrokerUtilization = Double.MAX_VALUE;
       double varianceSum = 0.0;
       int numBalancedBrokersInBrokersAllowedReplicaMove = 0;
-
       for (Broker broker : clusterModel.aliveBrokers()) {
         double utilization = resource.isHostResource() ? broker.host().load().expectedUtilizationFor(resource)
                                                        : broker.load().expectedUtilizationFor(resource);
@@ -300,7 +299,6 @@ public class ClusterModelStats {
           varianceSum += Math.pow(utilization - avgUtilizationPercentage * capacity, 2);
         }
       }
-
       _numBalancedBrokersByResource.put(resource, numBalancedBrokersInBrokersAllowedReplicaMove);
       avgUtilizationByResource.put(resource, resourceUtilization / _brokersAllowedReplicaMove.size());
       maxUtilizationByResource.put(resource, hottestBrokerUtilization);

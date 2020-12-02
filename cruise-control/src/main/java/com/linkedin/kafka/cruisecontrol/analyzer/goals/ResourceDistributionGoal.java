@@ -340,7 +340,6 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
                                     OptimizationOptions optimizationOptions) {
-
     int numOfflineReplicas = broker.currentOfflineReplicas().size();
 
     boolean isExcludedForReplicaMove = isExcludedForReplicaMove(broker);
