@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.ResourceDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
@@ -262,8 +263,21 @@ public class ClusterModelStats {
     for (Resource resource : Resource.cachedValues()) {
       double resourceUtilization = clusterModel.load().expectedUtilizationFor(resource);
       double avgUtilizationPercentage = resourceUtilization / clusterModel.capacityWithAllowedReplicaMovesFor(resource, optimizationOptions);
-      double balanceUpperThreshold = avgUtilizationPercentage * _balancingConstraint.resourceBalancePercentage(resource);
-      double balanceLowerThreshold = avgUtilizationPercentage * Math.max(0, (2 - _balancingConstraint.resourceBalancePercentage(resource)));
+
+      double balanceUpperThreshold = GoalUtils.computeResourceUtilizationBalanceThreshold(avgUtilizationPercentage,
+                                                                                          resource,
+                                                                                          _balancingConstraint,
+                                                                                          optimizationOptions.isTriggeredByGoalViolation(),
+                                                                                          ResourceDistributionGoal.BALANCE_MARGIN,
+                                                                          false);
+
+      double balanceLowerThreshold = GoalUtils.computeResourceUtilizationBalanceThreshold(avgUtilizationPercentage,
+                                                                                          resource,
+                                                                                          _balancingConstraint,
+                                                                                          optimizationOptions.isTriggeredByGoalViolation(),
+                                                                                          ResourceDistributionGoal.BALANCE_MARGIN,
+                                                                          true);
+
       // Maximum, minimum, and standard deviation utilization for the resource.
       double hottestBrokerUtilization = 0.0;
       double coldestBrokerUtilization = Double.MAX_VALUE;
