@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 import com.linkedin.cruisecontrol.servlet.EndPoint;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Collections;
@@ -57,7 +56,7 @@ public abstract class AbstractParameters implements CruiseControlParameters {
 
   protected void initParameters() throws UnsupportedEncodingException {
     _initialized = true;
-    _endPoint = ParameterUtils.endPoint(_request, _config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG));
+    _endPoint = ParameterUtils.endPoint(_request);
     _json = ParameterUtils.wantJSON(_request);
     _wantResponseSchema = ParameterUtils.wantResponseSchema(_request);
   }

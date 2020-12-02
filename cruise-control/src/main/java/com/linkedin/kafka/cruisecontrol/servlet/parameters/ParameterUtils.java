@@ -14,7 +14,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDisk
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
-import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
 import com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
@@ -164,11 +163,7 @@ public class ParameterUtils {
    * @param request The Http request.
    * @return The endpoint specified in the given request.
    */
-  public static CruiseControlEndPoint endPoint(HttpServletRequest request, String apiUrlPrefix) {
-    if (!apiUrlPrefix.endsWith("/*")) {
-      throw new IllegalArgumentException("API URL prefix should end with \"/*\". Got: " + apiUrlPrefix);
-    }
-
+  public static CruiseControlEndPoint endPoint(HttpServletRequest request) {
     List<CruiseControlEndPoint> supportedEndpoints;
     switch (request.getMethod()) {
       case GET_METHOD:
@@ -181,9 +176,7 @@ public class ParameterUtils {
         throw new UserRequestException("Unsupported request method: " + request.getMethod() + ".");
     }
 
-    // Ignore the last character '*' since the API URL prefix must end with "/*",
-    apiUrlPrefix = apiUrlPrefix.substring(0, apiUrlPrefix.length() - 1);
-    String path = request.getRequestURI().toUpperCase().replace(apiUrlPrefix.toUpperCase(), "");
+    String path = request.getPathInfo().substring(1); // Skip the first character '/'
     for (CruiseControlEndPoint endPoint : supportedEndpoints) {
       if (endPoint.toString().equalsIgnoreCase(path)) {
         return endPoint;
@@ -215,7 +208,7 @@ public class ParameterUtils {
                                                HttpServletResponse response,
                                                KafkaCruiseControlConfig config,
                                                CruiseControlParameters parameters) throws IOException {
-    CruiseControlEndPoint endPoint = endPoint(request, config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG));
+    CruiseControlEndPoint endPoint = endPoint(request);
     Set<String> validParamNames = parameters.caseInsensitiveParameterNames();
     Set<String> userParams = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     userParams.addAll(request.getParameterMap().keySet());
@@ -890,7 +883,7 @@ public class ParameterUtils {
   static Set<Integer> brokerIds(HttpServletRequest request, String apiUrlPrefix, boolean isOptional) throws UnsupportedEncodingException {
     Set<Integer> brokerIds = parseParamToIntegerSet(request, BROKER_ID_PARAM);
     if (!isOptional && brokerIds.isEmpty()) {
-      EndPoint endpoint = endPoint(request, apiUrlPrefix);
+      EndPoint endpoint = endPoint(request);
       if (endpoint == DEMOTE_BROKER) {
         // If it is a demote_broker request, either target broker or target disk should be specified in request.
         if (brokerIdAndLogdirs(request).isEmpty()) {

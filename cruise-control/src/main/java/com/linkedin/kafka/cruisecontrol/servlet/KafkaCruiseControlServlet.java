@@ -74,10 +74,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
   }
 
-  public String apiUrlPrefix() {
-    return _config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG);
-  }
-
   public AsyncKafkaCruiseControl asyncKafkaCruiseControl() {
     return _asyncKafkaCruiseControl;
   }

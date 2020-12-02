@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
-import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.util.Collections;
 import java.util.HashMap;
@@ -144,34 +143,21 @@ public class ParameterUtilsTest {
 
   @Test
   public void testGetEndpoint() {
-    verifyGetEndpoint("/a/*");
-    verifyGetEndpoint(WebServerConfig.DEFAULT_WEBSERVER_API_URLPREFIX);
-  }
-
-  /**
-   * Verifies that {@link ParameterUtils#endPoint} can parse out all endpoints
-   *
-   * @param apiUrlPrefixParam API URL prefix parameter passed to the {@link ParameterUtils#endPoint}
-   */
-  private void verifyGetEndpoint(String apiUrlPrefixParam) {
     HttpServletRequest mockRequest = EasyMock.mock(HttpServletRequest.class);
-    String apiUrlPrefix = apiUrlPrefixParam.substring(0, apiUrlPrefixParam.length() - 1);
     for (CruiseControlEndPoint getEndPoint : CruiseControlEndPoint.getEndpoints()) {
-      String mockRequestUri = apiUrlPrefix + getEndPoint;
       EasyMock.expect(mockRequest.getMethod()).andReturn(GET_METHOD).times(1);
-      EasyMock.expect(mockRequest.getRequestURI()).andReturn(mockRequestUri).times(1);
+      EasyMock.expect(mockRequest.getPathInfo()).andReturn("/" + getEndPoint).times(1);
       EasyMock.replay(mockRequest);
-      CruiseControlEndPoint endPoint = ParameterUtils.endPoint(mockRequest, apiUrlPrefixParam);
+      CruiseControlEndPoint endPoint = ParameterUtils.endPoint(mockRequest);
       Assert.assertEquals(getEndPoint, endPoint);
       EasyMock.reset(mockRequest);
     }
 
     for (CruiseControlEndPoint postEndPoint : CruiseControlEndPoint.postEndpoints()) {
-      String mockRequestUri = apiUrlPrefix + postEndPoint;
       EasyMock.expect(mockRequest.getMethod()).andReturn(POST_METHOD).times(1);
-      EasyMock.expect(mockRequest.getRequestURI()).andReturn(mockRequestUri).times(1);
+      EasyMock.expect(mockRequest.getPathInfo()).andReturn("/" + postEndPoint).times(1);
       EasyMock.replay(mockRequest);
-      CruiseControlEndPoint endPoint = ParameterUtils.endPoint(mockRequest, apiUrlPrefixParam);
+      CruiseControlEndPoint endPoint = ParameterUtils.endPoint(mockRequest);
       Assert.assertEquals(postEndPoint, endPoint);
       EasyMock.reset(mockRequest);
     }

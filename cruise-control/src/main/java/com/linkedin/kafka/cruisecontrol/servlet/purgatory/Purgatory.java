@@ -85,7 +85,7 @@ public class Purgatory implements Closeable {
       throw new IllegalArgumentException(String.format("Purgatory can only contain POST request (Attempted to add: %s).",
                                                        httpServletRequestToString(request)));
     }
-    RequestInfo requestInfo = new RequestInfo(request, _config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG), parameters);
+    RequestInfo requestInfo = new RequestInfo(request, parameters);
     _requestInfoById.put(_requestId, requestInfo);
 
     Map<Integer, RequestInfo> requestInfoById = new HashMap<>();
@@ -178,7 +178,7 @@ public class Purgatory implements Closeable {
     }
 
     // 2. Ensure that the request with the given review id matches the given request.
-    CruiseControlEndPoint endpoint = ParameterUtils.endPoint(request, _config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG));
+    CruiseControlEndPoint endpoint = ParameterUtils.endPoint(request);
     if (requestInfo.endPoint() != endpoint) {
       throw new UserRequestException(
           String.format("Request with review id %d is associated with %s endpoint, but the given request has %s endpoint."

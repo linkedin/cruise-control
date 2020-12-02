@@ -76,7 +76,6 @@ public class UserTaskManager implements Closeable {
   private UserTaskInfo _inExecutionUserTaskInfo;
   private final long _sessionExpiryMs;
   private final int _maxActiveUserTasks;
-  private final String _apiUrlPrefix;
   private final Time _time;
   private final ScheduledExecutorService _userTaskScannerExecutor =
       Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("UserTaskScanner", true, null));
@@ -99,7 +98,6 @@ public class UserTaskManager implements Closeable {
     initCompletedUserTaskRetentionPolicy(config, endpointTypes);
     _sessionExpiryMs = config.getLong(WebServerConfig.WEBSERVER_SESSION_EXPIRY_MS_CONFIG);
     _maxActiveUserTasks = config.getInt(WebServerConfig.MAX_ACTIVE_USER_TASKS_CONFIG);
-    _apiUrlPrefix = config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG);
     _uuidToActiveUserTaskInfoMap = new LinkedHashMap<>(_maxActiveUserTasks);
     _time = Time.SYSTEM;
     _uuidGenerator = new UUIDGenerator();
@@ -138,7 +136,6 @@ public class UserTaskManager implements Closeable {
     }
     _sessionExpiryMs = sessionExpiryMs;
     _maxActiveUserTasks = maxActiveUserTasks;
-    _apiUrlPrefix = WebServerConfig.DEFAULT_WEBSERVER_API_URLPREFIX;
     _time = time;
     _uuidGenerator = uuidGenerator;
     _userTaskScannerExecutor.scheduleAtFixedRate(new UserTaskScanner(),
@@ -500,7 +497,7 @@ public class UserTaskManager implements Closeable {
       }
       UserTaskInfo userTaskInfo =
           new UserTaskInfo(httpServletRequest, new ArrayList<>(Collections.singleton(operation.apply(userTaskId.toString()))),
-                           _time.milliseconds(), userTaskId, TaskState.ACTIVE, parameters, _apiUrlPrefix);
+                           _time.milliseconds(), userTaskId, TaskState.ACTIVE, parameters);
       _uuidToActiveUserTaskInfoMap.put(userTaskId, userTaskInfo);
     }
     return _uuidToActiveUserTaskInfoMap.get(userTaskId);
@@ -648,8 +645,7 @@ public class UserTaskManager implements Closeable {
                         long startMs,
                         UUID userTaskId,
                         TaskState state,
-                        CruiseControlParameters parameters,
-                        String apiUrlPrefix) {
+                        CruiseControlParameters parameters) {
       if (futures == null || futures.isEmpty()) {
         throw new IllegalArgumentException("Invalid OperationFuture list " + futures + " is provided for UserTaskInfo.");
       }
@@ -659,7 +655,7 @@ public class UserTaskManager implements Closeable {
       _startMs = startMs;
       _userTaskId = userTaskId;
       _queryParams = httpServletRequest.getParameterMap();
-      _endPoint = ParameterUtils.endPoint(httpServletRequest, apiUrlPrefix);
+      _endPoint = ParameterUtils.endPoint(httpServletRequest);
       _state = state;
       _parameters = parameters;
     }

@@ -191,7 +191,7 @@ public class KafkaCruiseControlServletUtils {
    */
   static CruiseControlEndPoint getValidEndpoint(HttpServletRequest request, HttpServletResponse response, KafkaCruiseControlConfig config)
       throws IOException {
-    CruiseControlEndPoint endPoint = endPoint(request, config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG));
+    CruiseControlEndPoint endPoint = endPoint(request);
     if (endPoint == null) {
       String method = request.getMethod();
       String errorMessage = String.format("Unrecognized endpoint in request '%s'%nSupported %s endpoints: %s",

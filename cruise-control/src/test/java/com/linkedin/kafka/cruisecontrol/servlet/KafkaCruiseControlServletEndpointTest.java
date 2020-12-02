@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet;
 
-import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.OperationFuture;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
@@ -236,7 +235,7 @@ public class KafkaCruiseControlServletEndpointTest {
     EasyMock.expect(parameters.clientIds()).andReturn(ParameterUtils.clientIds(answerQueryRequest)).anyTimes();
     EasyMock.expect(parameters.endPoints()).andReturn(ParameterUtils.endPoints(answerQueryRequest)).anyTimes();
     EasyMock.expect(parameters.endPoint()).andReturn(ParameterUtils
-        .endPoint(answerQueryRequest, WebServerConfig.DEFAULT_WEBSERVER_API_URLPREFIX)).anyTimes();
+        .endPoint(answerQueryRequest)).anyTimes();
     EasyMock.expect(parameters.types()).andReturn(ParameterUtils.types(answerQueryRequest)).anyTimes();
     EasyMock.expect(parameters.entries()).andReturn(ParameterUtils.entries(answerQueryRequest)).anyTimes();
 
@@ -265,6 +264,7 @@ public class KafkaCruiseControlServletEndpointTest {
     EasyMock.expect(request.getRequestURI())
         .andReturn(KafkaCruiseControlServletTestUtils.getDefaultWebServerApiUrlPrefix() + resource).anyTimes();
     EasyMock.expect(request.getParameterMap()).andReturn(params).anyTimes();
+    EasyMock.expect(request.getPathInfo()).andReturn("/" + resource).anyTimes();
     EasyMock.expect(request.getHeader(UserTaskManager.USER_TASK_HEADER_NAME)).andReturn(userTaskId).anyTimes();
     EasyMock.expect(request.getRemoteHost()).andReturn("test-host").anyTimes();
     for (String headerName : KafkaCruiseControlServletUtils.HEADERS_TO_TRY) {
