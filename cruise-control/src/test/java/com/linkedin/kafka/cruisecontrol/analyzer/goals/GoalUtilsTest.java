@@ -12,9 +12,9 @@ import org.junit.Test;
 
 public class GoalUtilsTest {
 
-  private final static double AVG_UTILIZATION_PERCENTAGE = 0.3;
-  private final static double RESOURCE_BALANCE_THRESHOLD = 1.3;
-  private final static double GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER = 1.2;
+  private static final double AVG_UTILIZATION_PERCENTAGE = 0.3;
+  private static final double RESOURCE_BALANCE_THRESHOLD = 1.3;
+  private static final double GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER = 1.2;
 
   @Test
   public void testComputeResourceUtilizationBalanceThreshold() {
