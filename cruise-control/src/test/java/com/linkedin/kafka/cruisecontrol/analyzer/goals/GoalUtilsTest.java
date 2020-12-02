@@ -12,6 +12,10 @@ import org.junit.Test;
 
 public class GoalUtilsTest {
 
+  private final static double AVG_UTILIZATION_PERCENTAGE = 0.3;
+  private final static double RESOURCE_BALANCE_THRESHOLD = 1.3;
+  private final static double GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER = 1.2;
+
   @Test
   public void testComputeResourceUtilizationBalanceThreshold() {
     Resource resource = Resource.CPU;
@@ -36,12 +40,12 @@ public class GoalUtilsTest {
 
     BalancingConstraint mockBalanceConstraint = EasyMock.mock(BalancingConstraint.class);
     EasyMock.expect(mockBalanceConstraint.lowUtilizationThreshold(resource)).andReturn(lowUtilizationThreshold).anyTimes();
-    EasyMock.expect(mockBalanceConstraint.resourceBalancePercentage(resource)).andReturn(1.3).anyTimes();
+    EasyMock.expect(mockBalanceConstraint.resourceBalancePercentage(resource)).andReturn(RESOURCE_BALANCE_THRESHOLD).anyTimes();
     EasyMock.expect(mockBalanceConstraint.goalViolationDistributionThresholdMultiplier()).
-        andReturn(1.2).anyTimes();
+        andReturn(GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER).anyTimes();
 
     EasyMock.replay(mockBalanceConstraint);
-    double computedBalanceThreshold = GoalUtils.computeResourceUtilizationBalanceThreshold(0.3,
+    double computedBalanceThreshold = GoalUtils.computeResourceUtilizationBalanceThreshold(AVG_UTILIZATION_PERCENTAGE,
         resource,
         mockBalanceConstraint, true, ResourceDistributionGoal.BALANCE_MARGIN,
         isLowerThreshold);
