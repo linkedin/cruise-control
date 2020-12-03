@@ -114,7 +114,7 @@ public class KafkaCruiseControl {
     _anomalyDetectorManager = new AnomalyDetectorManager(this, _time, dropwizardMetricRegistry);
     _executor = new Executor(config, _time, dropwizardMetricRegistry, _anomalyDetectorManager);
     _loadMonitor = new LoadMonitor(config, _time, dropwizardMetricRegistry, KafkaMetricDef.commonMetricDef());
-    _goalOptimizerExecutor = Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("GoalOptimizerExecutor", true, null));
+    _goalOptimizerExecutor = Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("GoalOptimizerExecutor"));
     _goalOptimizer = new GoalOptimizer(config, _loadMonitor, _time, dropwizardMetricRegistry, _executor, _adminClient);
   }
 

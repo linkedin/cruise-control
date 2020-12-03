@@ -113,7 +113,7 @@ public class AnomalyDetectorManager {
     // Add anomaly detector state
     int numCachedRecentAnomalyStates = config.getInt(AnomalyDetectorConfig.NUM_CACHED_RECENT_ANOMALY_STATES_CONFIG);
     _anomalyLoggerExecutor =
-        Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("AnomalyLogger", true, null));
+        Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("AnomalyLogger"));
     _anomalyInProgress = null;
     _numCheckedWithDelay = new AtomicLong();
     _shutdownLock = new Object();
@@ -156,8 +156,7 @@ public class AnomalyDetectorManager {
     _detectorScheduler = detectorScheduler;
     _shutdown = false;
     _selfHealingGoals = Collections.emptyList();
-    _anomalyLoggerExecutor =
-        Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("AnomalyLogger", true, null));
+    _anomalyLoggerExecutor = Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("AnomalyLogger"));
     _anomalyInProgress = null;
     _numCheckedWithDelay = new AtomicLong();
     _shutdownLock = new Object();

@@ -22,6 +22,7 @@ import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.common.config.ConfigDef;
 
+import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
 import static org.apache.kafka.common.config.ConfigDef.Range.between;
 
 
@@ -228,6 +229,31 @@ public class AnomalyDetectorConfig {
   public static final String MAINTENANCE_EVENT_CLASS_DOC = "The name of class that extends maintenance event.";
 
   /**
+   * <code>maintenance.event.enable.idempotence</code>
+   */
+  public static final String MAINTENANCE_EVENT_ENABLE_IDEMPOTENCE_CONFIG = "maintenance.event.enable.idempotence";
+  public static final boolean DEFAULT_MAINTENANCE_EVENT_ENABLE_IDEMPOTENCE = true;
+  public static final String MAINTENANCE_EVENT_ENABLE_IDEMPOTENCE_DOC = "The flag to indicate whether maintenance event detector will drop "
+      + "the duplicate maintenance events detected within the configured retention period.";
+
+  /**
+   * <code>maintenance.event.idempotence.retention.ms</code>
+   */
+  public static final String MAINTENANCE_EVENT_IDEMPOTENCE_RETENTION_MS_CONFIG = "maintenance.event.idempotence.retention.ms";
+  public static final long DEFAULT_MAINTENANCE_EVENT_IDEMPOTENCE_RETENTION_MS = TimeUnit.MINUTES.toMillis(3);
+  public static final String MAINTENANCE_EVENT_IDEMPOTENCE_RETENTION_MS_DOC = "The maximum time in ms to store events retrieved from the"
+      + " MaintenanceEventReader. Relevant only if idempotency is enabled (see " + MAINTENANCE_EVENT_ENABLE_IDEMPOTENCE_CONFIG + ").";
+
+  /**
+   * <code>maintenance.event.max.idempotence.cache.size</code>
+   */
+  public static final String MAINTENANCE_EVENT_MAX_IDEMPOTENCE_CACHE_SIZE_CONFIG = "maintenance.event.max.idempotence.cache.size";
+  public static final int DEFAULT_MAINTENANCE_EVENT_MAX_IDEMPOTENCE_CACHE_SIZE = 25;
+  public static final String MAINTENANCE_EVENT_MAX_IDEMPOTENCE_CACHE_SIZE_DOC = "The maximum number of maintenance events cached by the "
+      + "MaintenanceEventDetector within the past " + MAINTENANCE_EVENT_IDEMPOTENCE_RETENTION_MS_CONFIG + " ms. Relevant only if idempotency"
+      + " is enabled (see " + MAINTENANCE_EVENT_ENABLE_IDEMPOTENCE_CONFIG + ").";
+
+  /**
    * Define configs for Anomaly Detector.
    *
    * @param configDef Config definition.
@@ -354,6 +380,23 @@ public class AnomalyDetectorConfig {
                             ConfigDef.Type.CLASS,
                             DEFAULT_MAINTENANCE_EVENT_CLASS,
                             ConfigDef.Importance.MEDIUM,
-                            MAINTENANCE_EVENT_CLASS_DOC);
+                            MAINTENANCE_EVENT_CLASS_DOC)
+                    .define(MAINTENANCE_EVENT_ENABLE_IDEMPOTENCE_CONFIG,
+                            ConfigDef.Type.BOOLEAN,
+                            DEFAULT_MAINTENANCE_EVENT_ENABLE_IDEMPOTENCE,
+                            ConfigDef.Importance.LOW,
+                            MAINTENANCE_EVENT_ENABLE_IDEMPOTENCE_DOC)
+                    .define(MAINTENANCE_EVENT_IDEMPOTENCE_RETENTION_MS_CONFIG,
+                            ConfigDef.Type.LONG,
+                            DEFAULT_MAINTENANCE_EVENT_IDEMPOTENCE_RETENTION_MS,
+                            atLeast(TimeUnit.SECONDS.toMillis(5)),
+                            ConfigDef.Importance.LOW,
+                            MAINTENANCE_EVENT_IDEMPOTENCE_RETENTION_MS_DOC)
+                    .define(MAINTENANCE_EVENT_MAX_IDEMPOTENCE_CACHE_SIZE_CONFIG,
+                            ConfigDef.Type.INT,
+                            DEFAULT_MAINTENANCE_EVENT_MAX_IDEMPOTENCE_CACHE_SIZE,
+                            atLeast(1),
+                            ConfigDef.Importance.LOW,
+                            MAINTENANCE_EVENT_MAX_IDEMPOTENCE_CACHE_SIZE_DOC);
   }
 }

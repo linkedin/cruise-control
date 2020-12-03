@@ -48,7 +48,7 @@ public class Purgatory implements Closeable {
   private final long _purgatoryRetentionTimeMs;
   private final Map<Integer, RequestInfo> _requestInfoById;
   private final ScheduledExecutorService _purgatoryCleaner =
-      Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("PurgatoryCleaner", true, null));
+      Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("PurgatoryCleaner"));
   private final KafkaCruiseControlConfig _config;
 
   public Purgatory(KafkaCruiseControlConfig config) {
