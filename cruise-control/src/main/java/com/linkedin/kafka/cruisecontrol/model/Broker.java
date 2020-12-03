@@ -217,11 +217,7 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @return The number of leader replicas from the given topic in this broker.
    */
   public int numLeadersOfTopicInBroker(String topic) {
-    Map<Integer, Replica> topicReplicas = _topicReplicas.get(topic);
-    if (topicReplicas == null) {
-      return 0;
-    }
-    return (int) topicReplicas.values().stream().filter(r -> r.isLeader()).count();
+    return leadersOfTopicInBroker(topic).size();
   }
 
   /**
