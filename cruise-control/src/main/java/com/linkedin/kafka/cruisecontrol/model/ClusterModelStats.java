@@ -33,6 +33,7 @@ public class ClusterModelStats {
   private final Map<Statistic, Number> _replicaStats;
   private final Map<Statistic, Number> _leaderReplicaStats;
   private final Map<Statistic, Number> _topicReplicaStats;
+  private final Map<Statistic, Number> _topicLeaderStats;
   private int _numBrokers;
   private int _numAliveBrokers;
   private int _numReplicasInCluster;
@@ -58,6 +59,7 @@ public class ClusterModelStats {
     _replicaStats = new HashMap<>();
     _leaderReplicaStats = new HashMap<>();
     _topicReplicaStats = new HashMap<>();
+    _topicLeaderStats = new HashMap<>();
     _numBrokers = 0;
     _numReplicasInCluster = 0;
     _numPartitionsWithOfflineReplicas = 0;
@@ -85,6 +87,7 @@ public class ClusterModelStats {
     numForReplicas(clusterModel);
     numForLeaderReplicas(clusterModel);
     numForAvgTopicReplicas(clusterModel);
+    numForAvgTopicLeaders(clusterModel);
     _utilizationMatrix = clusterModel.utilizationMatrix();
     _numSnapshotWindows = clusterModel.load().numWindows();
     _monitoredPartitionsRatio = clusterModel.monitoredPartitionsRatio();
@@ -125,6 +128,13 @@ public class ClusterModelStats {
    */
   public Map<Statistic, Number> topicReplicaStats() {
     return _topicReplicaStats;
+  }
+
+  /**
+   * @return Topic leader replica stats for the cluster instance that the object was populated with.
+   */
+  public Map<Statistic, Number> topicLeaderStats() {
+    return _topicLeaderStats;
   }
 
   /**
@@ -429,6 +439,46 @@ public class ClusterModelStats {
 
     _topicReplicaStats.put(Statistic.AVG, _topicReplicaStats.get(Statistic.AVG).doubleValue() / _numTopics);
     _topicReplicaStats.put(Statistic.ST_DEV, _topicReplicaStats.get(Statistic.ST_DEV).doubleValue() / _numTopics);
+  }
+
+  /**
+   * Generate statistics for leader topic replicas in the given cluster.
+   *
+   * @param clusterModel The state of the cluster.
+   */
+  private void numForAvgTopicLeaders(ClusterModel clusterModel) {
+    _topicLeaderStats.put(Statistic.AVG, 0.0);
+    _topicLeaderStats.put(Statistic.MAX, 0);
+    _topicLeaderStats.put(Statistic.MIN, Integer.MAX_VALUE);
+    _topicLeaderStats.put(Statistic.ST_DEV, 0.0);
+    int numAliveBrokers = clusterModel.aliveBrokers().size();
+    for (String topic : clusterModel.topics()) {
+      int maxTopicLeadersInBroker = 0;
+      int minTopicLeadersInBroker = Integer.MAX_VALUE;
+      for (Broker broker : clusterModel.brokers()) {
+        int numTopicLeadersInBroker = broker.numLeadersOfTopicInBroker(topic);
+        maxTopicLeadersInBroker = Math.max(maxTopicLeadersInBroker, numTopicLeadersInBroker);
+        minTopicLeadersInBroker = Math.min(minTopicLeadersInBroker, numTopicLeadersInBroker);
+      }
+      double avgTopicLeaders = ((double) clusterModel.numTopicLeaders(topic)) / numAliveBrokers;
+
+      // Standard deviation of leader replicas in alive brokers.
+      double variance = 0.0;
+      for (Broker broker : clusterModel.aliveBrokers()) {
+        variance += (Math.pow(broker.numLeadersOfTopicInBroker(topic) - avgTopicLeaders, 2)
+                / (double) numAliveBrokers);
+      }
+
+      _topicLeaderStats.put(Statistic.AVG, _topicLeaderStats.get(Statistic.AVG).doubleValue() + avgTopicLeaders);
+      _topicLeaderStats.put(Statistic.MAX,
+              Math.max(_topicLeaderStats.get(Statistic.MAX).intValue(), maxTopicLeadersInBroker));
+      _topicLeaderStats.put(Statistic.MIN,
+              Math.min(_topicLeaderStats.get(Statistic.MIN).intValue(), minTopicLeadersInBroker));
+      _topicLeaderStats.put(Statistic.ST_DEV, (Double) _topicLeaderStats.get(Statistic.ST_DEV) + Math.sqrt(variance));
+    }
+
+    _topicLeaderStats.put(Statistic.AVG, _topicLeaderStats.get(Statistic.AVG).doubleValue() / _numTopics);
+    _topicLeaderStats.put(Statistic.ST_DEV, _topicLeaderStats.get(Statistic.ST_DEV).doubleValue() / _numTopics);
   }
 
   /**

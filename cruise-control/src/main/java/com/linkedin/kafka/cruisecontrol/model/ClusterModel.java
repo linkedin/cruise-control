@@ -631,6 +631,21 @@ public class ClusterModel implements Serializable {
   }
 
   /**
+   * Get the number of leader replicas with the given topic name in cluster.
+   *
+   * @param topic Name of the topic for which the number of leader replicas in cluster will be counted.
+   * @return Number of leader replicas with the given topic name in cluster.
+   */
+  public int numTopicLeaders(String topic) {
+    int numTopicLeaders = 0;
+
+    for (Rack rack : _racksById.values()) {
+      numTopicLeaders += rack.numTopicLeaders(topic);
+    }
+    return numTopicLeaders;
+  }
+
+  /**
    * Get the number of leader replicas in cluster.
    *
    * @return Number of leader replicas in cluster.

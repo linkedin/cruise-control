@@ -25,6 +25,7 @@ public class BalancingConstraint {
   private final Double _replicaBalancePercentage;
   private final Double _leaderReplicaBalancePercentage;
   private final Double _topicReplicaBalancePercentage;
+  private final Double _topicLeaderBalancePercentage;
   private final Double _goalViolationDistributionThresholdMultiplier;
   private final Map<Resource, Double> _capacityThreshold;
   private final Map<Resource, Double> _lowUtilizationThreshold;
@@ -63,6 +64,7 @@ public class BalancingConstraint {
     _replicaBalancePercentage = config.getDouble(AnalyzerConfig.REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG);
     _leaderReplicaBalancePercentage = config.getDouble(AnalyzerConfig.LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG);
     _topicReplicaBalancePercentage = config.getDouble(AnalyzerConfig.TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG);
+    _topicLeaderBalancePercentage = config.getDouble(AnalyzerConfig.TOPIC_LEADER_COUNT_BALANCE_THRESHOLD_CONFIG);
     _goalViolationDistributionThresholdMultiplier = config.getDouble(AnalyzerConfig.GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG);
   }
 
@@ -86,6 +88,7 @@ public class BalancingConstraint {
     props.put(AnalyzerConfig.REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG, _replicaBalancePercentage.toString());
     props.put(AnalyzerConfig.LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG, _leaderReplicaBalancePercentage.toString());
     props.put(AnalyzerConfig.TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG, _topicReplicaBalancePercentage.toString());
+    props.put(AnalyzerConfig.TOPIC_LEADER_COUNT_BALANCE_THRESHOLD_CONFIG, _topicLeaderBalancePercentage.toString());
     props.put(AnalyzerConfig.GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG,
               _goalViolationDistributionThresholdMultiplier.toString());
     return props;
@@ -125,6 +128,14 @@ public class BalancingConstraint {
    */
   public Double topicReplicaBalancePercentage() {
     return _topicReplicaBalancePercentage;
+  }
+
+  /**
+   * @return Topic leader replica balance percentage for
+   * {@link com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicLeaderDistributionGoal}.
+   */
+  public Double topicLeaderBalancePercentage() {
+    return _topicLeaderBalancePercentage;
   }
 
   /**
