@@ -194,16 +194,40 @@ class ReplicationThrottleHelper {
       newThrottledReplicas.addAll(Arrays.asList(currThrottledReplicas.split(",")));
     }
     topicConfigs.setProperty(replicaThrottleConfigKey, String.join(",", newThrottledReplicas));
-    ExecutorUtils.changeTopicConfig(_adminZkClient, topic, topicConfigs);
+    changeTopicConfigs(topic, topicConfigs);
   }
 
-  private Optional<Properties> readTopicConfigs(String topic) {
+  /**
+   * Read topic configuration properties from Zookeeper
+   *
+   * @param topicName topic name
+   * @return Empty optional if topic has no config properties or topic does not exist
+   */
+  private Optional<Properties> readTopicConfigs(String topicName) {
     try {
-      return Optional.ofNullable(_kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic));
+      return Optional.ofNullable(_kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topicName));
     } catch (Exception e) {
-      if (!_kafkaZkClient.topicExists(topic)) {
-        LOG.warn("Got no config for topic {} since it does not exist", topic);
+      if (!_kafkaZkClient.topicExists(topicName)) {
+        LOG.warn("Got no config for topic {} since it does not exist", topicName);
         return Optional.empty();
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Update topic configuration properties if a topic exist. No-op for non-existent topic
+   *
+   * @param topicName topic name
+   * @param topicConfigs configuration properties to update
+   */
+  private void changeTopicConfigs(String topicName, Properties topicConfigs) {
+    try {
+      ExecutorUtils.changeTopicConfig(_adminZkClient, topicName, topicConfigs);
+    } catch (Exception e) {
+      if (!_kafkaZkClient.topicExists(topicName)) {
+        LOG.warn("Change no configs for topic {} since it does not exist", topicName);
+        return;
       }
       throw e;
     }
@@ -285,7 +309,7 @@ class ReplicationThrottleHelper {
     boolean removedFollowerThrottle = removeFollowerThrottledReplicasFromTopic(topicConfigs, topic, replicas);
 
     if (removedLeaderThrottle || removedFollowerThrottle) {
-      ExecutorUtils.changeTopicConfig(_adminZkClient, topic, topicConfigs);
+      changeTopicConfigs(topic, topicConfigs);
     }
   }
 
