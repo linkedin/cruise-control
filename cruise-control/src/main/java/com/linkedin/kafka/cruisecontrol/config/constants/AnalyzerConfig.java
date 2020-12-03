@@ -106,6 +106,15 @@ public class AnalyzerConfig {
       + "should not be above 1.80x of average replica count of all brokers for the same topic.";
 
   /**
+   * <code>topic.leader.count.balance.threshold</code>
+   */
+  public static final String TOPIC_LEADER_COUNT_BALANCE_THRESHOLD_CONFIG = "topic.leader.count.balance.threshold";
+  public static final double DEFAULT_TOPIC_LEADER_COUNT_BALANCE_THRESHOLD = 3.00;
+  public static final String TOPIC_LEADER_COUNT_BALANCE_THRESHOLD_DOC = "The maximum allowed extent of unbalance for "
+          + "leader replica distribution from each topic. For example, 1.80 means the highest topic leader replica count of a broker "
+          + "should not be above 1.80x of average leader replica count of all brokers for the same topic.";
+
+  /**
    * <code>cpu.capacity.threshold</code>
    */
   public static final String CPU_CAPACITY_THRESHOLD_CONFIG = "cpu.capacity.threshold";
@@ -378,6 +387,12 @@ public class AnalyzerConfig {
                             atLeast(1),
                             ConfigDef.Importance.HIGH,
                             TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_DOC)
+                    .define(TOPIC_LEADER_COUNT_BALANCE_THRESHOLD_CONFIG,
+                            ConfigDef.Type.DOUBLE,
+                            DEFAULT_TOPIC_LEADER_COUNT_BALANCE_THRESHOLD,
+                            atLeast(1),
+                            ConfigDef.Importance.HIGH,
+                            TOPIC_LEADER_COUNT_BALANCE_THRESHOLD_DOC)
                     .define(CPU_CAPACITY_THRESHOLD_CONFIG,
                             ConfigDef.Type.DOUBLE,
                             DEFAULT_CPU_CAPACITY_THRESHOLD,

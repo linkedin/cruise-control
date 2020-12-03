@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.TopicPartition;
 
@@ -185,6 +186,20 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
+   * Get leader replicas for topic.
+   *
+   * @param topic Topic of the requested replicas.
+   * @return Leader replicas in this broker sharing the given topic.
+   */
+  public Collection<Replica> leadersOfTopicInBroker(String topic) {
+    Map<Integer, Replica> topicReplicas = _topicReplicas.get(topic);
+    if (topicReplicas == null) {
+      return Collections.emptySet();
+    }
+    return topicReplicas.values().stream().filter(r -> r.isLeader()).collect(Collectors.toList());
+  }
+
+  /**
    * Get number of replicas from the given topic in this broker.
    *
    * @param topic Topic for which the replica count will be returned.
@@ -193,6 +208,16 @@ public class Broker implements Serializable, Comparable<Broker> {
   public int numReplicasOfTopicInBroker(String topic) {
     Map<Integer, Replica> topicReplicas = _topicReplicas.get(topic);
     return topicReplicas == null ? 0 : topicReplicas.size();
+  }
+
+  /**
+   * Get number of leader replicas from the given topic in this broker.
+   *
+   * @param topic Topic for which the leader replica count will be returned.
+   * @return The number of leader replicas from the given topic in this broker.
+   */
+  public int numLeadersOfTopicInBroker(String topic) {
+    return leadersOfTopicInBroker(topic).size();
   }
 
   /**
