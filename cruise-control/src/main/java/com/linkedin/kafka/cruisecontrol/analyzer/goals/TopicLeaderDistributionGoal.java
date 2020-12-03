@@ -192,7 +192,7 @@ public class TopicLeaderDistributionGoal extends AbstractGoal {
 
   @Override
   public ClusterModelStatsComparator clusterModelStatsComparator() {
-    return new TopicReplicaDistrGoalStatsComparator();
+    return new TopicLeaderDistrGoalStatsComparator();
   }
 
   @Override
@@ -498,12 +498,12 @@ public class TopicLeaderDistributionGoal extends AbstractGoal {
     return true;
   }
 
-  private class TopicReplicaDistrGoalStatsComparator implements ClusterModelStatsComparator {
+  private class TopicLeaderDistrGoalStatsComparator implements ClusterModelStatsComparator {
     private String _reasonForLastNegativeResult;
 
     @Override
     public int compare(ClusterModelStats stats1, ClusterModelStats stats2) {
-      // Standard deviation of number of topic replicas over brokers in the current must be less than the
+      // Standard deviation of number of topic leader replicas over brokers in the current must be less than the
       // pre-optimized stats.
       double stdDev1 = stats1.topicLeaderStats().get(Statistic.ST_DEV).doubleValue();
       double stdDev2 = stats2.topicLeaderStats().get(Statistic.ST_DEV).doubleValue();
