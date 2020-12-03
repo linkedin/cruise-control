@@ -53,7 +53,6 @@ import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.FIX
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.REVIEW;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.GET_METHOD;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
-import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.REQUEST_URI;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.getClientIpAddress;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters.TopicConfigurationType.REPLICATION_FACTOR;
 import static com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus.APPROVED;
@@ -176,8 +175,11 @@ public class ParameterUtils {
       default:
         throw new UserRequestException("Unsupported request method: " + request.getMethod() + ".");
     }
-
-    String path = request.getRequestURI().toUpperCase().replace(REQUEST_URI, "");
+    String pathInfo = request.getPathInfo();
+    if (pathInfo == null) { // URL does not have any extra path information
+      return null;
+    }
+    String path = pathInfo.substring(1); // Skip the first character '/'
     for (CruiseControlEndPoint endPoint : supportedEndpoints) {
       if (endPoint.toString().equalsIgnoreCase(path)) {
         return endPoint;
