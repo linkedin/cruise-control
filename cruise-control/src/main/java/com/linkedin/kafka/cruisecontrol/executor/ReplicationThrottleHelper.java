@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
+import java.util.Optional;
 import kafka.log.LogConfig;
 import kafka.server.ConfigType;
 import kafka.zk.AdminZkClient;
@@ -176,9 +177,12 @@ class ReplicationThrottleHelper {
 
   private void setThrottledReplicas(String topic, Set<String> replicas, boolean throttleLeaderReplica) {
     String replicaThrottleConfigKey = throttleLeaderReplica ? LEADER_THROTTLED_REPLICAS : FOLLOWER_THROTTLED_REPLICAS;
-
-    Properties config = _kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic);
-    String currThrottledReplicas = config.getProperty(replicaThrottleConfigKey);
+    Properties topicConfigs = readTopicConfigs(topic).orElse(null);
+    if (topicConfigs == null) {
+      LOG.warn("Skip setting throttled replicas {} for topic {} since no configs can be read", String.join(",", replicas), topic);
+      return;
+    }
+    String currThrottledReplicas = topicConfigs.getProperty(replicaThrottleConfigKey);
     if (currThrottledReplicas != null && currThrottledReplicas.trim().equals(WILDCARD_ASTERISK)) {
       // The existing setup throttles all replica. So, nothing needs to be changed.
       return;
@@ -189,8 +193,20 @@ class ReplicationThrottleHelper {
     if (currThrottledReplicas != null) {
       newThrottledReplicas.addAll(Arrays.asList(currThrottledReplicas.split(",")));
     }
-    config.setProperty(replicaThrottleConfigKey, String.join(",", newThrottledReplicas));
-    ExecutorUtils.changeTopicConfig(_adminZkClient, topic, config);
+    topicConfigs.setProperty(replicaThrottleConfigKey, String.join(",", newThrottledReplicas));
+    ExecutorUtils.changeTopicConfig(_adminZkClient, topic, topicConfigs);
+  }
+
+  private Optional<Properties> readTopicConfigs(String topic) {
+    try {
+      return Optional.ofNullable(_kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic));
+    } catch (Exception e) {
+      if (!_kafkaZkClient.topicExists(topic)) {
+        LOG.warn("Got no config for topic {} since it does not exist", topic);
+        return Optional.empty();
+      }
+      throw e;
+    }
   }
 
   static String removeReplicasFromConfig(String throttleConfig, Set<String> replicas) {
@@ -260,12 +276,16 @@ class ReplicationThrottleHelper {
   }
 
   private void removeThrottledReplicasFromTopic(String topic, Set<String> replicas) {
-    Properties config = _kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic);
-    boolean removedLeaderThrottle = removeLeaderThrottledReplicasFromTopic(config, topic, replicas);
-    boolean removedFollowerThrottle = removeFollowerThrottledReplicasFromTopic(config, topic, replicas);
+    Properties topicConfigs = readTopicConfigs(topic).orElse(null);
+    if (topicConfigs == null) {
+      LOG.warn("Skip removing throttled replicas {} from topic {} since no configs can be read", String.join(",", replicas), topic);
+      return;
+    }
+    boolean removedLeaderThrottle = removeLeaderThrottledReplicasFromTopic(topicConfigs, topic, replicas);
+    boolean removedFollowerThrottle = removeFollowerThrottledReplicasFromTopic(topicConfigs, topic, replicas);
 
     if (removedLeaderThrottle || removedFollowerThrottle) {
-      ExecutorUtils.changeTopicConfig(_adminZkClient, topic, config);
+      ExecutorUtils.changeTopicConfig(_adminZkClient, topic, topicConfigs);
     }
   }
 
