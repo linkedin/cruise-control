@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -13,6 +14,9 @@ import javax.servlet.http.HttpServletRequest;
 import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Test;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.GET_METHOD;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
 
 
 public class ParameterUtilsTest {
@@ -135,5 +139,29 @@ public class ParameterUtilsTest {
 
     EasyMock.verify(mockRequest);
     Assert.assertEquals(Long.valueOf(EXECUTION_PROGRESS_CHECK_INTERVAL_STRING), executionProgressCheckIntervalMs);
+  }
+
+  @Test
+  public void testGetEndpoint() {
+    HttpServletRequest mockRequest = EasyMock.mock(HttpServletRequest.class);
+    for (CruiseControlEndPoint getEndPoint : CruiseControlEndPoint.getEndpoints()) {
+      EasyMock.expect(mockRequest.getMethod()).andReturn(GET_METHOD).once();
+      EasyMock.expect(mockRequest.getPathInfo()).andReturn("/" + getEndPoint).once();
+      EasyMock.replay(mockRequest);
+      CruiseControlEndPoint endPoint = ParameterUtils.endPoint(mockRequest);
+      Assert.assertEquals(getEndPoint, endPoint);
+      EasyMock.verify(mockRequest);
+      EasyMock.reset(mockRequest);
+    }
+
+    for (CruiseControlEndPoint postEndPoint : CruiseControlEndPoint.postEndpoints()) {
+      EasyMock.expect(mockRequest.getMethod()).andReturn(POST_METHOD).once();
+      EasyMock.expect(mockRequest.getPathInfo()).andReturn("/" + postEndPoint).once();
+      EasyMock.replay(mockRequest);
+      CruiseControlEndPoint endPoint = ParameterUtils.endPoint(mockRequest);
+      Assert.assertEquals(postEndPoint, endPoint);
+      EasyMock.verify(mockRequest);
+      EasyMock.reset(mockRequest);
+    }
   }
 }

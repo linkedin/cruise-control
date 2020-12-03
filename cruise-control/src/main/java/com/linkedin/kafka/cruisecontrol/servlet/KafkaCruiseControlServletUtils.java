@@ -35,8 +35,6 @@ import static javax.servlet.http.HttpServletResponse.SC_OK;
  * The util class for Kafka Cruise Control servlet.
  */
 public class KafkaCruiseControlServletUtils {
-  // FIXME: Read this from a configuration
-  public static final String REQUEST_URI = "/KAFKACRUISECONTROL/";
   public static final String GET_METHOD = "GET";
   public static final String POST_METHOD = "POST";
   public static final String KAFKA_CRUISE_CONTROL_SERVLET_OBJECT_CONFIG = "kafka.cruise.control.servlet.object";

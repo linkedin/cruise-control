@@ -24,9 +24,9 @@ public class SecurityAndSslConfigTest {
   @Test
   public void testSslConfigsSetUpThrowsExceptionOnNullKeystoreLocation() {
     KafkaCruiseControlConfig config = partialMockBuilder(KafkaCruiseControlConfig.class)
-        .addMockedMethod("getBoolean")
-        .addMockedMethod("getString")
-        .addMockedMethod("hashCode")
+        .addMockedMethod(ConfigTestUtils.GET_BOOLEAN_METHOD_NAME)
+        .addMockedMethod(ConfigTestUtils.GET_STRING_METHOD_NAME)
+        .addMockedMethod(ConfigTestUtils.HASH_CODE_METHOD_NAME)
         .createNiceMock();
     expect(config.getBoolean(WebServerConfig.WEBSERVER_SSL_ENABLE_CONFIG)).andReturn(true);
     replay(config);
@@ -38,9 +38,9 @@ public class SecurityAndSslConfigTest {
   @Test
   public void testSslConfigsSetUpThrowsExceptionOnNullSslProtocol() {
     KafkaCruiseControlConfig config = partialMockBuilder(KafkaCruiseControlConfig.class)
-        .addMockedMethod("getBoolean")
-        .addMockedMethod("getString")
-        .addMockedMethod("hashCode")
+        .addMockedMethod(ConfigTestUtils.GET_BOOLEAN_METHOD_NAME)
+        .addMockedMethod(ConfigTestUtils.GET_STRING_METHOD_NAME)
+        .addMockedMethod(ConfigTestUtils.HASH_CODE_METHOD_NAME)
         .createNiceMock();
     expect(config.getBoolean(WebServerConfig.WEBSERVER_SSL_ENABLE_CONFIG)).andReturn(true);
     expect(config.getString(WebServerConfig.WEBSERVER_SSL_KEYSTORE_LOCATION_CONFIG))
@@ -56,9 +56,9 @@ public class SecurityAndSslConfigTest {
   @Test
   public void testSslConfigsCorrectSetup() {
     KafkaCruiseControlConfig config = partialMockBuilder(KafkaCruiseControlConfig.class)
-        .addMockedMethod("getBoolean")
-        .addMockedMethod("getString")
-        .addMockedMethod("hashCode")
+        .addMockedMethod(ConfigTestUtils.GET_BOOLEAN_METHOD_NAME)
+        .addMockedMethod(ConfigTestUtils.GET_STRING_METHOD_NAME)
+        .addMockedMethod(ConfigTestUtils.HASH_CODE_METHOD_NAME)
         .createNiceMock();
     expect(config.getBoolean(WebServerConfig.WEBSERVER_SSL_ENABLE_CONFIG)).andReturn(true);
     expect(config.getString(WebServerConfig.WEBSERVER_SSL_KEYSTORE_LOCATION_CONFIG))
@@ -75,9 +75,9 @@ public class SecurityAndSslConfigTest {
   @Test
   public void testAuthConfigThrowsExceptionOnNullSecurityProvider() {
     KafkaCruiseControlConfig config = partialMockBuilder(KafkaCruiseControlConfig.class)
-        .addMockedMethod("getBoolean")
-        .addMockedMethod("getClass")
-        .addMockedMethod("hashCode")
+        .addMockedMethod(ConfigTestUtils.GET_BOOLEAN_METHOD_NAME)
+        .addMockedMethod(ConfigTestUtils.GET_CLASS_METHOD_NAME)
+        .addMockedMethod(ConfigTestUtils.HASH_CODE_METHOD_NAME)
         .createNiceMock();
     expect(config.getBoolean(WebServerConfig.WEBSERVER_SSL_ENABLE_CONFIG)).andReturn(false);
     expect(config.getBoolean(WebServerConfig.WEBSERVER_SECURITY_ENABLE_CONFIG)).andReturn(true);
@@ -91,10 +91,10 @@ public class SecurityAndSslConfigTest {
   @Test
   public void testAuthConfigThrowsExceptionOnNullCredentialsFile() {
     KafkaCruiseControlConfig config = partialMockBuilder(KafkaCruiseControlConfig.class)
-        .addMockedMethod("getBoolean")
-        .addMockedMethod("getString")
-        .addMockedMethod("getClass")
-        .addMockedMethod("hashCode")
+        .addMockedMethod(ConfigTestUtils.GET_BOOLEAN_METHOD_NAME)
+        .addMockedMethod(ConfigTestUtils.GET_STRING_METHOD_NAME)
+        .addMockedMethod(ConfigTestUtils.GET_CLASS_METHOD_NAME)
+        .addMockedMethod(ConfigTestUtils.HASH_CODE_METHOD_NAME)
         .createNiceMock();
     expect(config.getBoolean(WebServerConfig.WEBSERVER_SSL_ENABLE_CONFIG)).andReturn(false);
     expect(config.getBoolean(WebServerConfig.WEBSERVER_SECURITY_ENABLE_CONFIG)).andReturn(true);
@@ -109,10 +109,10 @@ public class SecurityAndSslConfigTest {
   @Test
   public void testAuthConfigCorrectSetup() {
     KafkaCruiseControlConfig config = partialMockBuilder(KafkaCruiseControlConfig.class)
-        .addMockedMethod("getBoolean")
-        .addMockedMethod("getString")
-        .addMockedMethod("getClass")
-        .addMockedMethod("hashCode")
+        .addMockedMethod(ConfigTestUtils.GET_BOOLEAN_METHOD_NAME)
+        .addMockedMethod(ConfigTestUtils.GET_STRING_METHOD_NAME)
+        .addMockedMethod(ConfigTestUtils.GET_CLASS_METHOD_NAME)
+        .addMockedMethod(ConfigTestUtils.HASH_CODE_METHOD_NAME)
         .createNiceMock();
     expect(config.getBoolean(WebServerConfig.WEBSERVER_SSL_ENABLE_CONFIG)).andReturn(false);
     expect(config.getBoolean(WebServerConfig.WEBSERVER_SECURITY_ENABLE_CONFIG)).andReturn(true);

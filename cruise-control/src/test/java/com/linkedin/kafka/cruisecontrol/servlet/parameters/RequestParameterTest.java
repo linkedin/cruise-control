@@ -7,6 +7,7 @@ import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
+import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletTestUtils;
 import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.Paths;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -26,7 +27,6 @@ import java.util.HashMap;
 import java.util.TreeSet;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.OPENAPI_SPEC_PATH;
-import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.REQUEST_URI;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.requestParameterFor;
 
 public class RequestParameterTest {
@@ -39,10 +39,11 @@ public class RequestParameterTest {
   public void setupParameterClasses() throws Exception {
     _endpointToClass = new HashMap<>();
     KafkaCruiseControlConfig defaultConfig = new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties());
+    String webserverApiUrlPrefix = KafkaCruiseControlServletTestUtils.getDefaultWebServerApiUrlPrefix();
     for (CruiseControlEndPoint endpoint : CruiseControlEndPoint.cachedValues()) {
-      _endpointToClass.put((REQUEST_URI + endpoint.toString()).toLowerCase(),
+      _endpointToClass.put((webserverApiUrlPrefix + endpoint.toString()).toLowerCase(),
                            ((CruiseControlParameters) (defaultConfig.getClass(requestParameterFor(endpoint).parametersClass()).newInstance())));
-}
+    }
   }
 
   /**
