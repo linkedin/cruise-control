@@ -294,6 +294,7 @@ class KafkaClusterStateEndpoint(AbstractEndpoint):
     http_method = "GET"
     can_execute_proposal = False
     available_Parameters = (
+        CCParameter.TopicParameter,
         CCParameter.JSONParameter,
         CCParameter.VerboseParameter
     )
