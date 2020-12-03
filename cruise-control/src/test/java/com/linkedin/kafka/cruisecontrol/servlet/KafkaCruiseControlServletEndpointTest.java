@@ -261,8 +261,7 @@ public class KafkaCruiseControlServletEndpointTest {
     EasyMock.expect(request.getSession()).andReturn(session).anyTimes();
     EasyMock.expect(request.getSession(false)).andReturn(session).anyTimes();
     EasyMock.expect(request.getMethod()).andReturn(method).anyTimes();
-    EasyMock.expect(request.getRequestURI())
-        .andReturn(KafkaCruiseControlServletTestUtils.getDefaultWebServerApiUrlPrefix() + resource).anyTimes();
+    EasyMock.expect(request.getRequestURI()).andReturn(KafkaCruiseControlServletTestUtils.getDefaultWebServerApiUrlPrefix() + resource).anyTimes();
     EasyMock.expect(request.getParameterMap()).andReturn(params).anyTimes();
     EasyMock.expect(request.getPathInfo()).andReturn("/" + resource).anyTimes();
     EasyMock.expect(request.getHeader(UserTaskManager.USER_TASK_HEADER_NAME)).andReturn(userTaskId).anyTimes();

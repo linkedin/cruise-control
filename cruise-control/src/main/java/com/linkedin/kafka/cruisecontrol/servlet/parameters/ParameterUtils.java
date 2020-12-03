@@ -175,8 +175,11 @@ public class ParameterUtils {
       default:
         throw new UserRequestException("Unsupported request method: " + request.getMethod() + ".");
     }
-
-    String path = request.getPathInfo().substring(1); // Skip the first character '/'
+    String pathInfo = request.getPathInfo();
+    if (pathInfo == null) { // URL does not have any extra path information
+      return null;
+    }
+    String path = pathInfo.substring(1); // Skip the first character '/'
     for (CruiseControlEndPoint endPoint : supportedEndpoints) {
       if (endPoint.toString().equalsIgnoreCase(path)) {
         return endPoint;
@@ -880,7 +883,7 @@ public class ParameterUtils {
     return Integer.parseInt(boundaries[isUpperBound ? 1 : 0]);
   }
 
-  static Set<Integer> brokerIds(HttpServletRequest request, String apiUrlPrefix, boolean isOptional) throws UnsupportedEncodingException {
+  static Set<Integer> brokerIds(HttpServletRequest request, boolean isOptional) throws UnsupportedEncodingException {
     Set<Integer> brokerIds = parseParamToIntegerSet(request, BROKER_ID_PARAM);
     if (!isOptional && brokerIds.isEmpty()) {
       EndPoint endpoint = endPoint(request);
