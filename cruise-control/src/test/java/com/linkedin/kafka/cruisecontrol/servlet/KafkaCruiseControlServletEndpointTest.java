@@ -234,8 +234,7 @@ public class KafkaCruiseControlServletEndpointTest {
     EasyMock.expect(parameters.userTaskIds()).andReturn(ParameterUtils.userTaskIds(answerQueryRequest)).anyTimes();
     EasyMock.expect(parameters.clientIds()).andReturn(ParameterUtils.clientIds(answerQueryRequest)).anyTimes();
     EasyMock.expect(parameters.endPoints()).andReturn(ParameterUtils.endPoints(answerQueryRequest)).anyTimes();
-    EasyMock.expect(parameters.endPoint()).andReturn(ParameterUtils
-        .endPoint(answerQueryRequest)).anyTimes();
+    EasyMock.expect(parameters.endPoint()).andReturn(ParameterUtils.endPoint(answerQueryRequest)).anyTimes();
     EasyMock.expect(parameters.types()).andReturn(ParameterUtils.types(answerQueryRequest)).anyTimes();
     EasyMock.expect(parameters.entries()).andReturn(ParameterUtils.entries(answerQueryRequest)).anyTimes();
 
