@@ -207,12 +207,12 @@ public class Executor {
     // Support for intra-broker replica movement is pending https://github.com/linkedin/cruise-control/issues/1299.
     _concurrencyAdjusterEnabled.put(ConcurrencyType.INTRA_BROKER_REPLICA, false);
     _concurrencyAdjusterExecutor = Executors.newSingleThreadScheduledExecutor(
-        new KafkaCruiseControlThreadFactory(ConcurrencyAdjuster.class.getSimpleName(), true, null));
+        new KafkaCruiseControlThreadFactory(ConcurrencyAdjuster.class.getSimpleName()));
     long intervalMs = config.getLong(ExecutorConfig.CONCURRENCY_ADJUSTER_INTERVAL_MS_CONFIG);
     _concurrencyAdjuster = new ConcurrencyAdjuster();
     _concurrencyAdjusterExecutor.scheduleAtFixedRate(_concurrencyAdjuster, intervalMs, intervalMs, TimeUnit.MILLISECONDS);
     _executionHistoryScannerExecutor = Executors.newSingleThreadScheduledExecutor(
-        new KafkaCruiseControlThreadFactory(ExecutionHistoryScanner.class.getSimpleName(), true, null));
+        new KafkaCruiseControlThreadFactory(ExecutionHistoryScanner.class.getSimpleName()));
     _executionHistoryScannerExecutor.scheduleAtFixedRate(new ExecutionHistoryScanner(),
                                                          ExecutionUtils.EXECUTION_HISTORY_SCANNER_INITIAL_DELAY_SECONDS,
                                                          ExecutionUtils.EXECUTION_HISTORY_SCANNER_PERIOD_SECONDS,

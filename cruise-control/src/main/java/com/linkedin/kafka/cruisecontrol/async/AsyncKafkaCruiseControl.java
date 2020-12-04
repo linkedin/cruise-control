@@ -33,8 +33,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   public AsyncKafkaCruiseControl(KafkaCruiseControlConfig config, MetricRegistry dropwizardMetricRegistry) {
     super(config, dropwizardMetricRegistry);
     _sessionExecutor = Executors.newFixedThreadPool(NUM_SESSION_EXECUTOR_THREADS,
-                                                    new KafkaCruiseControlThreadFactory("ServletSessionExecutor",
-                                                                                        true, null));
+                                                    new KafkaCruiseControlThreadFactory("ServletSessionExecutor"));
   }
 
   /**

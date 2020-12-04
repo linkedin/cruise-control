@@ -547,4 +547,31 @@ public class MaintenanceEventTest {
   public void testToStringBeforeConfiguration() {
     assertNotNull(new MaintenanceEvent().toString());
   }
+
+  @Test
+  public void testMaintenanceEventEquality() {
+    Set<MaintenanceEvent> maintenanceEvents = new HashSet<>();
+    Map<String, Object> parameterConfigOverrides = new HashMap<>(5);
+    parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _mockKafkaCruiseControl);
+    parameterConfigOverrides.put(BROKERS_OBJECT_CONFIG, MOCK_BROKERS_OBJECT);
+    parameterConfigOverrides.put(TOPICS_WITH_RF_UPDATE_CONFIG, MOCK_TOPICS_WITH_RF_UPDATE);
+
+    int expectedSetSize = 0;
+    for (MaintenanceEventType eventType : MaintenanceEventType.cachedValues()) {
+      parameterConfigOverrides.put(MAINTENANCE_EVENT_TYPE_CONFIG, eventType);
+      // Expect mocks.
+      EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(6);
+      EasyMock.replay(_mockKafkaCruiseControl);
+      for (int i = 1; i <= 3; i++) {
+        parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_TIME_MS * i);
+        boolean notDuplicate = maintenanceEvents.add(_config.getConfiguredInstance(AnomalyDetectorConfig.MAINTENANCE_EVENT_CLASS_CONFIG,
+                                                                                   MaintenanceEvent.class,
+                                                                                   parameterConfigOverrides));
+        assertEquals(i == 1, notDuplicate);
+      }
+      assertEquals(++expectedSetSize, maintenanceEvents.size());
+      EasyMock.verify(_mockKafkaCruiseControl);
+      EasyMock.reset(_mockKafkaCruiseControl);
+    }
+  }
 }
