@@ -18,6 +18,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.UpdateTop
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -95,6 +96,26 @@ public class MaintenanceEvent extends KafkaAnomaly {
     }
     sb.append("}");
     return sb.toString();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof MaintenanceEvent)) {
+      return false;
+    }
+    MaintenanceEvent that = (MaintenanceEvent) o;
+    // Equality check excludes _goalBasedOperationRunnable.
+    return _maintenanceEventType == that._maintenanceEventType && Objects.equals(_brokers, that._brokers)
+           && Objects.equals(_topicsWithRFUpdate, that._topicsWithRFUpdate);
+  }
+
+  @Override
+  public int hashCode() {
+    // Hash code excludes _goalBasedOperationRunnable.
+    return Objects.hash(_maintenanceEventType, _brokers, _topicsWithRFUpdate);
   }
 
   @SuppressWarnings("unchecked")
