@@ -17,9 +17,11 @@ public class KafkaCruiseControlThreadFactory implements ThreadFactory {
   private final AtomicInteger _id = new AtomicInteger(0);
   private final Logger _logger;
 
-  public KafkaCruiseControlThreadFactory(String name,
-                                         boolean daemon,
-                                         Logger logger) {
+  public KafkaCruiseControlThreadFactory(String name) {
+    this(name, true, null);
+  }
+
+  public KafkaCruiseControlThreadFactory(String name, boolean daemon, Logger logger) {
     _name = name;
     _daemon = daemon;
     _logger = logger == null ? LOG : logger;
