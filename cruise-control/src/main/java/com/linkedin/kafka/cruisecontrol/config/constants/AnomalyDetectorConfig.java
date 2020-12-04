@@ -389,7 +389,7 @@ public class AnomalyDetectorConfig {
                     .define(MAINTENANCE_EVENT_IDEMPOTENCE_RETENTION_MS_CONFIG,
                             ConfigDef.Type.LONG,
                             DEFAULT_MAINTENANCE_EVENT_IDEMPOTENCE_RETENTION_MS,
-                            atLeast(TimeUnit.SECONDS.toMillis(5)),
+                            atLeast(1),
                             ConfigDef.Importance.LOW,
                             MAINTENANCE_EVENT_IDEMPOTENCE_RETENTION_MS_DOC)
                     .define(MAINTENANCE_EVENT_MAX_IDEMPOTENCE_CACHE_SIZE_CONFIG,
