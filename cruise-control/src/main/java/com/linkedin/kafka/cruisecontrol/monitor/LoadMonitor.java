@@ -707,11 +707,7 @@ public class LoadMonitor {
   }
 
   private int numTopics() {
-    // Get topic count from the metadata cache in metadata client first. If it's 0 that means the metadata cache has not
-    // bootstrapped yet. In this case, refresh the metadata cache and get topic count. In other words, refreshing
-    // metadata cache only when it is necessary.
-    int topicCount = _metadataClient.metadata().fetch().topics().size();
-    return topicCount == 0 ? _metadataClient.refreshMetadata().cluster().topics().size() : topicCount;
+    return _metadataClient.metadata().fetch().topics().size();
   }
 
   private double getMonitoredPartitionsPercentage() {
