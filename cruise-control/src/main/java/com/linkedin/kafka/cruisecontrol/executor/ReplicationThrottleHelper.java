@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import java.util.Optional;
+import kafka.admin.AdminOperationException;
 import kafka.log.LogConfig;
 import kafka.server.ConfigType;
 import kafka.zk.AdminZkClient;
@@ -179,7 +180,7 @@ class ReplicationThrottleHelper {
     String replicaThrottleConfigKey = throttleLeaderReplica ? LEADER_THROTTLED_REPLICAS : FOLLOWER_THROTTLED_REPLICAS;
     Properties topicConfigs = readTopicConfigs(topic).orElse(null);
     if (topicConfigs == null) {
-      LOG.warn("Skip setting throttled replicas {} for topic {} since no configs can be read", String.join(",", replicas), topic);
+      LOG.debug("Skip setting throttled replicas {} for topic {} since no configs can be read", String.join(",", replicas), topic);
       return;
     }
     String currThrottledReplicas = topicConfigs.getProperty(replicaThrottleConfigKey);
@@ -208,7 +209,7 @@ class ReplicationThrottleHelper {
       return Optional.ofNullable(_kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topicName));
     } catch (Exception e) {
       if (!_kafkaZkClient.topicExists(topicName)) {
-        LOG.warn("Got no config for topic {} since it does not exist", topicName);
+        LOG.debug("Got no config for topic {} since it does not exist", topicName);
         return Optional.empty();
       }
       throw e;
