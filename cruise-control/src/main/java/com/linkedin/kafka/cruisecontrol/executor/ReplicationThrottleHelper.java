@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import java.util.Optional;
-import kafka.admin.AdminOperationException;
 import kafka.log.LogConfig;
 import kafka.server.ConfigType;
 import kafka.zk.AdminZkClient;
