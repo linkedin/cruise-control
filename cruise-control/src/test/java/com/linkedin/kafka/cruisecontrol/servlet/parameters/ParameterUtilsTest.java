@@ -94,7 +94,7 @@ public class ParameterUtilsTest {
 
     Long replicationThrottle = ParameterUtils.replicationThrottle(mockRequest, controlConfig);
     Assert.assertEquals(Long.valueOf(REPLICATION_THROTTLE_STRING), replicationThrottle);
-    EasyMock.verify(mockRequest);
+    EasyMock.verify(mockRequest, controlConfig);
   }
 
   @Test

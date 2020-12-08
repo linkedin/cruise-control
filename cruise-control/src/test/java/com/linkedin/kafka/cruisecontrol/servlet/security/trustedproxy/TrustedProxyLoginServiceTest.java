@@ -20,11 +20,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.util.Collections;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DO_AS;
-import static org.easymock.EasyMock.anyObject;
-import static org.easymock.EasyMock.anyString;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.mock;
-import static org.easymock.EasyMock.replay;
+import static org.easymock.EasyMock.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -73,6 +69,7 @@ public class TrustedProxyLoginServiceTest {
     assertNotNull(doAsIdentity.getUserPrincipal());
     assertEquals(doAsIdentity.getUserPrincipal().getName(), TEST_USER);
     assertEquals(((TrustedProxyPrincipal) doAsIdentity.getUserPrincipal()).servicePrincipal(), servicePrincipal);
+    verify(mockSpnegoLoginService, mockRequest);
   }
 
   @Test
@@ -96,6 +93,7 @@ public class TrustedProxyLoginServiceTest {
     assertNotNull(doAsIdentity.getUserPrincipal());
     assertNull(doAsIdentity.getUserPrincipal().getName());
     assertFalse(((SpnegoUserIdentity) doAsIdentity).isEstablished());
+    verify(mockSpnegoLoginService);
   }
 
   @Test
@@ -112,10 +110,12 @@ public class TrustedProxyLoginServiceTest {
     HttpServletRequest mockRequest = mock(HttpServletRequest.class);
     expect(mockRequest.getParameter(DO_AS)).andReturn(TEST_USER);
     replay(mockSpnegoLoginService);
+    replay(mockRequest);
 
     TrustedProxyLoginService trustedProxyLoginService = new TrustedProxyLoginService(mockSpnegoLoginService, userAuthorizer);
     UserIdentity doAsIdentity = trustedProxyLoginService.login(null, ENCODED_TOKEN, mockRequest);
     assertNotNull(doAsIdentity);
     assertFalse(((SpnegoUserIdentity) doAsIdentity).isEstablished());
+    verify(mockSpnegoLoginService, mockRequest);
   }
 }

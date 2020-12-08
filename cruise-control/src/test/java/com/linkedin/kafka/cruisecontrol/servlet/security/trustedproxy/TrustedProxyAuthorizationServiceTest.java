@@ -10,9 +10,7 @@ import org.junit.Test;
 import javax.servlet.http.HttpServletRequest;
 import java.util.Collections;
 
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.mock;
-import static org.easymock.EasyMock.replay;
+import static org.easymock.EasyMock.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -37,6 +35,7 @@ public class TrustedProxyAuthorizationServiceTest {
     } finally {
       srv.stop();
     }
+    verify(mockRequest);
   }
 
   @Test
@@ -53,6 +52,7 @@ public class TrustedProxyAuthorizationServiceTest {
     } finally {
       srv.stop();
     }
+    verify(mockRequest);
   }
 
   @Test

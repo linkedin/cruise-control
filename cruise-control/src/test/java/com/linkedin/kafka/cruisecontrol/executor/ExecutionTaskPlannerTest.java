@@ -289,6 +289,7 @@ public class ExecutionTaskPlannerTest {
     planner.clear();
     assertEquals(0, planner.remainingLeadershipMovements().size());
     assertEquals(0, planner.remainingIntraBrokerReplicaMovements().size());
+    EasyMock.verify(mockAdminClient);
   }
 
   @Test
