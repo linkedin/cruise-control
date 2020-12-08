@@ -82,6 +82,7 @@ public class LoadMonitor {
   // Metadata TTL is set based on experience -- i.e. a short TTL with large metadata may cause excessive load on brokers.
   private static final long METADATA_TTL = TimeUnit.SECONDS.toMillis(10);
   private static final long METADATA_REFRESH_BACKOFF = TimeUnit.SECONDS.toMillis(5);
+  private static final String LOAD_MONITOR_METRICS_NAME_PREFIX = "LoadMonitor";
   // The maximum time allowed to make a state update. If the state value cannot be updated in time it will be invalidated.
   // TODO: Make this configurable.
   private final long _monitorStateUpdateTimeoutMs;
@@ -177,14 +178,16 @@ public class LoadMonitor {
     _loadMonitorExecutor.scheduleAtFixedRate(new SensorUpdater(), 0, monitorStateUpdateIntervalMs, TimeUnit.MILLISECONDS);
     _loadMonitorExecutor.scheduleAtFixedRate(new PartitionMetricSampleAggregatorCleaner(), 0,
                                              PartitionMetricSampleAggregatorCleaner.CHECK_INTERVAL_MS, TimeUnit.MILLISECONDS);
-    dropwizardMetricRegistry.register(MetricRegistry.name("LoadMonitor", "valid-windows"),
+    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_METRICS_NAME_PREFIX, "valid-windows"),
                                       (Gauge<Integer>) this::numValidSnapshotWindows);
-    dropwizardMetricRegistry.register(MetricRegistry.name("LoadMonitor", "monitored-partitions-percentage"),
+    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_METRICS_NAME_PREFIX, "monitored-partitions-percentage"),
                                       (Gauge<Double>) this::monitoredPartitionsPercentage);
-    dropwizardMetricRegistry.register(MetricRegistry.name("LoadMonitor", "total-monitored-windows"),
+    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_METRICS_NAME_PREFIX, "total-monitored-windows"),
                                       (Gauge<Integer>) this::totalMonitoredSnapshotWindows);
-    dropwizardMetricRegistry.register(MetricRegistry.name("LoadMonitor", "num-partitions-with-extrapolations"),
+    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_METRICS_NAME_PREFIX, "num-partitions-with-extrapolations"),
                                       (Gauge<Integer>) this::numPartitionsWithExtrapolations);
+    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_METRICS_NAME_PREFIX, "num-topics"),
+                                      (Gauge<Integer>) this::numTopics);
   }
 
   /**
@@ -701,6 +704,10 @@ public class LoadMonitor {
    */
   private int numPartitionsWithExtrapolations() {
     return _latestStateUpdateMs + _monitorStateUpdateTimeoutMs > _time.milliseconds() ? _numPartitionsWithExtrapolations : -1;
+  }
+
+  private int numTopics() {
+    return _metadataClient.metadata().fetch().topics().size();
   }
 
   private double getMonitoredPartitionsPercentage() {

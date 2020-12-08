@@ -40,6 +40,7 @@ Cruise Control metrics are useful to monitor the state of Cruise Control itself.
 |-------------------------------------------------------------------|---------------------------------------------------------------------------|
 | The number of monitored windows                                   | kafka.cruisecontrol:name=LoadMonitor.total-monitored-windows              |
 | The number of partitions that is valid but require extrapolations | kafka.cruisecontrol:name=LoadMonitor.num-partitions-with-extrapolations   |
+| The number of topics                                              | kafka.cruisecontrol:name=LoadMonitor.num-topics                           |
 | The number of valid windows                                       | kafka.cruisecontrol:name=LoadMonitor.valid-windows                        |
 | The monitored partition percentage                                | kafka.cruisecontrol:name=LoadMonitor.monitored-partitions-percentage      |
 | Cluster model creation time in ms                                 | kafka.cruisecontrol:name=LoadMonitor.cluster-model-creation-timer         |
