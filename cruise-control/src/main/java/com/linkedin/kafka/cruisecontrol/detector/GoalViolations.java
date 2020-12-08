@@ -125,6 +125,7 @@ public class GoalViolations extends KafkaAnomaly {
                                                _excludeRecentlyDemotedBrokers,
                                                _excludeRecentlyRemovedBrokers,
                                                _anomalyId.toString(),
-                                               reasonSupplier());
+                                               reasonSupplier(),
+                                               stopOngoingExecution());
   }
 }

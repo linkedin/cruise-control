@@ -85,7 +85,7 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
                                           TopicConfigurationParameters parameters) {
     super(kafkaCruiseControl, future, parameters, parameters.dryRun(), parameters.stopOngoingExecution(),
           parameters.topicReplicationFactorChangeParameters() != null
-          && parameters.topicReplicationFactorChangeParameters().skipHardGoalCheck(), uuid, parameters::reason, true);
+          && parameters.topicReplicationFactorChangeParameters().skipHardGoalCheck(), uuid, parameters::reason);
     // Initialize common parameters
     _cluster = null;
     _topicsToChangeByReplicationFactor = null;
@@ -122,9 +122,10 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
                                           boolean excludeRecentlyDemotedBrokers,
                                           boolean excludeRecentlyRemovedBrokers,
                                           String anomalyId,
-                                          Supplier<String> reasonSupplier) {
-    super(kafkaCruiseControl, new OperationFuture("Topic replication factor anomaly self-healing."), selfHealingGoals,
-          allowCapacityEstimation, excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, anomalyId, reasonSupplier, false);
+                                          Supplier<String> reasonSupplier,
+                                          boolean stopOngoingExecution) {
+    super(kafkaCruiseControl, new OperationFuture("Updating Topic Replication Factor for Self-Healing."), selfHealingGoals,
+          allowCapacityEstimation, excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, anomalyId, reasonSupplier, stopOngoingExecution);
     // Initialize common parameters
     _cluster = null;
 

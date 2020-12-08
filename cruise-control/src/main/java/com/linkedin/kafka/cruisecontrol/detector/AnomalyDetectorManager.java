@@ -353,7 +353,7 @@ public class AnomalyDetectorManager {
 
       // We schedule a delayed check if the executor is doing some work.
       ExecutorState.State executionState = _kafkaCruiseControl.executionState();
-      if (executionState != ExecutorState.State.NO_TASK_IN_PROGRESS) {
+      if (executionState != ExecutorState.State.NO_TASK_IN_PROGRESS && !_anomalyInProgress.stopOngoingExecution()) {
         LOG.info("Post processing anomaly {} because executor is in {} state.", _anomalyInProgress, executionState);
         postProcessAnomalyInProgress(_brokerFailureDetectionBackoffMs);
       } else {

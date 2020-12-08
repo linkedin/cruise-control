@@ -114,7 +114,8 @@ public class BrokerFailures extends KafkaAnomaly {
                                                                                 excludeRecentlyDemotedBrokers,
                                                                                 excludeRecentlyRemovedBrokers,
                                                                                 _anomalyId.toString(),
-                                                                                reasonSupplier())
+                                                                                reasonSupplier(),
+                                                                                stopOngoingExecution())
                                                     : null;
     }
 }

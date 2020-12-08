@@ -91,6 +91,7 @@ public class DiskFailures extends KafkaAnomaly {
                                                                  excludeRecentlyDemotedBrokers,
                                                                  excludeRecentlyRemovedBrokers,
                                                                  _anomalyId.toString(),
-                                                                 reasonSupplier());
+                                                                 reasonSupplier(),
+                                                                 stopOngoingExecution());
   }
 }

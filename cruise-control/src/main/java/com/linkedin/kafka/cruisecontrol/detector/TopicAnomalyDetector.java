@@ -37,7 +37,7 @@ public class TopicAnomalyDetector extends AbstractAnomalyDetector implements Run
   @Override
   public void run() {
     try {
-      if (getAnomalyDetectionStatus(_kafkaCruiseControl, true) != AnomalyDetectionStatus.READY) {
+      if (getAnomalyDetectionStatus(_kafkaCruiseControl, true, true) != AnomalyDetectionStatus.READY) {
         return;
       }
       for (TopicAnomalyFinder topicAnomalyFinder : _topicAnomalyFinders) {

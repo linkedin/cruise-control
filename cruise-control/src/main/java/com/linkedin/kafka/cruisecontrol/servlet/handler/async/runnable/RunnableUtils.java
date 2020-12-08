@@ -52,7 +52,6 @@ public class RunnableUtils {
   public static final Integer SELF_HEALING_CONCURRENT_MOVEMENTS = null;
   public static final Long SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS = null;
   public static final boolean SELF_HEALING_SKIP_HARD_GOAL_CHECK = false;
-  public static final boolean SELF_HEALING_STOP_ONGOING_EXECUTION = false;
   public static final ModelCompletenessRequirements SELF_HEALING_MODEL_COMPLETENESS_REQUIREMENTS = null;
   public static final boolean SELF_HEALING_SKIP_URP_DEMOTION = true;
   public static final boolean SELF_HEALING_EXCLUDE_FOLLOWER_DEMOTION = true;

@@ -45,7 +45,7 @@ public class MetricAnomalyDetector extends AbstractAnomalyDetector implements Ru
   @SuppressWarnings("unchecked")
   public void run() {
     try {
-      if (getAnomalyDetectionStatus(_kafkaCruiseControl, true) != AnomalyDetectionStatus.READY) {
+      if (getAnomalyDetectionStatus(_kafkaCruiseControl, true, true) != AnomalyDetectionStatus.READY) {
         return;
       }
 

@@ -50,9 +50,10 @@ public class RebalanceRunnable extends GoalBasedOperationRunnable {
                            boolean excludeRecentlyDemotedBrokers,
                            boolean excludeRecentlyRemovedBrokers,
                            String anomalyId,
-                           Supplier<String> reasonSupplier) {
-    super(kafkaCruiseControl, new OperationFuture("Goal Violation Self-Healing"), selfHealingGoals, allowCapacityEstimation,
-          excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, anomalyId, reasonSupplier, false);
+                           Supplier<String> reasonSupplier,
+                           boolean stopOngoingExecution) {
+    super(kafkaCruiseControl, new OperationFuture("Rebalance for Self-Healing"), selfHealingGoals, allowCapacityEstimation,
+          excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, anomalyId, reasonSupplier, stopOngoingExecution);
     _concurrentInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _concurrentIntraBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _concurrentLeaderMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
@@ -69,7 +70,7 @@ public class RebalanceRunnable extends GoalBasedOperationRunnable {
                            RebalanceParameters parameters,
                            String uuid) {
     super(kafkaCruiseControl, future, parameters, parameters.dryRun(), parameters.stopOngoingExecution(), parameters.skipHardGoalCheck(),
-          uuid, parameters::reason, true);
+          uuid, parameters::reason);
     _concurrentInterBrokerPartitionMovements = parameters.concurrentInterBrokerPartitionMovements();
     _concurrentIntraBrokerPartitionMovements = parameters.concurrentIntraBrokerPartitionMovements();
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();

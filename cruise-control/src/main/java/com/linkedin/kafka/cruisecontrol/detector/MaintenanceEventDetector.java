@@ -57,7 +57,7 @@ public class MaintenanceEventDetector extends AbstractAnomalyDetector implements
   public void run() {
     while (!_shutdown) {
       try {
-        if (getAnomalyDetectionStatus(_kafkaCruiseControl, false) != AnomalyDetectionStatus.READY) {
+        if (getAnomalyDetectionStatus(_kafkaCruiseControl, false, false) != AnomalyDetectionStatus.READY) {
           _kafkaCruiseControl.sleep(DETECTION_NOT_READY_BACKOFF_MS);
         }
 
