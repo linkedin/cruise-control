@@ -439,6 +439,18 @@ public class TopicLeaderDistributionGoal extends AbstractGoal {
     }
   }
 
+  /**
+   * Attempt to decrease the number of topic partitions led by the broker first by moving the leadership to follower
+   * replicas, and second by swapping leader replicas with follower replicas of partitions not hosted by the broker
+   * currently.
+   *
+   * @param broker              Broker that leads too many partitions of the given topic.
+   * @param topic               Topic to rebalance.
+   * @param clusterModel        The state of the cluster.
+   * @param optimizedGoals      Optimized goals.
+   * @param optimizationOptions Options to take into account during optimization.
+   * @return true if rebalancing was not successful.
+   */
   private boolean rebalanceByMovingLeadershipOut(Broker broker,
                                                  String topic,
                                                  ClusterModel clusterModel,
@@ -486,6 +498,18 @@ public class TopicLeaderDistributionGoal extends AbstractGoal {
     return true;
   }
 
+  /**
+   * Attempt to increase the number of topic partitions led by the broker first by moving the leadership to follower
+   * replicas hosted by the broker, and second by swapping follower replicas hosted by the broker with leader replicas
+   * of partitions not currently hosted by the broker.
+   *
+   * @param broker              Broker that leads too few partitions of the given topic.
+   * @param topic               Topic to rebalance.
+   * @param clusterModel        The state of the cluster.
+   * @param optimizedGoals      Optimized goals.
+   * @param optimizationOptions Options to take into account during optimization.
+   * @return true if rebalancing was not successful.
+   */
   private boolean rebalanceByMovingLeadershipIn(Broker broker,
                                                 String topic,
                                                 ClusterModel clusterModel,
