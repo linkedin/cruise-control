@@ -87,7 +87,8 @@ public class SlowBrokers extends KafkaMetricAnomaly {
                                       excludeRecentlyDemotedBrokers,
                                       excludeRecentlyRemovedBrokers,
                                       _anomalyId.toString(),
-                                      reasonSupplier());
+                                      reasonSupplier(),
+                                      stopOngoingExecution());
       } else {
         _demoteBrokerRunnable =
             new DemoteBrokerRunnable(kafkaCruiseControl,
@@ -96,7 +97,8 @@ public class SlowBrokers extends KafkaMetricAnomaly {
                                      allowCapacityEstimation,
                                      excludeRecentlyDemotedBrokers,
                                      _anomalyId.toString(),
-                                     reasonSupplier());
+                                     reasonSupplier(),
+                                     stopOngoingExecution());
       }
     }
   }

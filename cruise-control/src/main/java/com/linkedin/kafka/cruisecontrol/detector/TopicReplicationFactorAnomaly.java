@@ -68,7 +68,8 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
                                                                              excludeRecentlyDemotedBrokers,
                                                                              excludeRecentlyRemovedBrokers,
                                                                              _anomalyId.toString(),
-                                                                             reasonSupplier());
+                                                                             reasonSupplier(),
+                                                                             stopOngoingExecution());
   }
 
   protected Map<Short, Pattern> populateTopicPatternByReplicationFactor() {

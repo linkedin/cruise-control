@@ -54,7 +54,7 @@ public class DiskFailureDetector extends AbstractAnomalyDetector implements Runn
    * <ul>
    *   <li>Cluster model generation has not changed since the last disk failure check.</li>
    *   <li>There are dead brokers in the cluster, {@link BrokerFailureDetector} should take care of the anomaly.</li>
-   *   <li>{@link AnomalyDetectorUtils#getAnomalyDetectionStatus(KafkaCruiseControl, boolean)} is not {@link AnomalyDetectionStatus#READY}.
+   *   <li>{@link AnomalyDetectorUtils#getAnomalyDetectionStatus(KafkaCruiseControl, boolean, boolean)} is not {@link AnomalyDetectionStatus#READY}.
    *   <li>See {@link AnomalyDetectionStatus} for details.</li>
    * </ul>
    *
@@ -77,7 +77,7 @@ public class DiskFailureDetector extends AbstractAnomalyDetector implements Runn
       return AnomalyDetectionStatus.SKIP_HAS_DEAD_BROKERS;
     }
 
-    return getAnomalyDetectionStatus(_kafkaCruiseControl, false);
+    return getAnomalyDetectionStatus(_kafkaCruiseControl, false, true);
   }
 
   @Override

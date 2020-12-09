@@ -93,9 +93,14 @@ public class AnomalyDetectorUtils {
    *
    * <li>See {@link AnomalyDetectionStatus} for details.</li>
    *
+   * @param kafkaCruiseControl The Kafka Cruise Control instance.
+   * @param checkOfflineReplica {@code true} to skip anomaly detection if there are offline replicas, {@code false} otherwise.
+   * @param checkOngoingExecution {@code true} to skip anomaly detection if there is an ongoing execution, {@code false} otherwise.
    * @return The {@link AnomalyDetectionStatus anomaly detection status}, indicating whether the anomaly detector is ready.
    */
-  static AnomalyDetectionStatus getAnomalyDetectionStatus(KafkaCruiseControl kafkaCruiseControl, boolean checkOfflineReplica) {
+  static AnomalyDetectionStatus getAnomalyDetectionStatus(KafkaCruiseControl kafkaCruiseControl,
+                                                          boolean checkOfflineReplica,
+                                                          boolean checkOngoingExecution) {
     if (checkOfflineReplica) {
       Set<Integer> brokersWithOfflineReplicas = kafkaCruiseControl.loadMonitor().brokersWithOfflineReplicas(MAX_METADATA_WAIT_MS);
       if (!brokersWithOfflineReplicas.isEmpty()) {
@@ -110,10 +115,12 @@ public class AnomalyDetectorUtils {
       return AnomalyDetectionStatus.SKIP_LOAD_MONITOR_NOT_READY;
     }
 
-    ExecutorState.State executionState = kafkaCruiseControl.executionState();
-    if (executionState != ExecutorState.State.NO_TASK_IN_PROGRESS) {
-      LOG.info("Skipping anomaly detection because the executor is in {} state.", executionState);
-      return AnomalyDetectionStatus.SKIP_EXECUTOR_NOT_READY;
+    if (checkOngoingExecution) {
+      ExecutorState.State executionState = kafkaCruiseControl.executionState();
+      if (executionState != ExecutorState.State.NO_TASK_IN_PROGRESS) {
+        LOG.info("Skipping anomaly detection because the executor is in {} state.", executionState);
+        return AnomalyDetectionStatus.SKIP_EXECUTOR_NOT_READY;
+      }
     }
 
     return AnomalyDetectionStatus.READY;
