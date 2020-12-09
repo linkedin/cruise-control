@@ -254,6 +254,14 @@ public class AnomalyDetectorConfig {
       + " is enabled (see " + MAINTENANCE_EVENT_ENABLE_IDEMPOTENCE_CONFIG + ").";
 
   /**
+   * <code>maintenance.event.stop.ongoing.execution</code>
+   */
+  public static final String MAINTENANCE_EVENT_STOP_ONGOING_EXECUTION_CONFIG = "maintenance.event.stop.ongoing.execution";
+  public static final boolean DEFAULT_MAINTENANCE_EVENT_STOP_ONGOING_EXECUTION = true;
+  public static final String MAINTENANCE_EVENT_STOP_ONGOING_EXECUTION_DOC = "The flag to indicate whether a maintenance event will gracefully"
+      + " stop the ongoing execution (if any) and wait until the execution stops before starting a fix for the anomaly.";
+
+  /**
    * Define configs for Anomaly Detector.
    *
    * @param configDef Config definition.
@@ -397,6 +405,11 @@ public class AnomalyDetectorConfig {
                             DEFAULT_MAINTENANCE_EVENT_MAX_IDEMPOTENCE_CACHE_SIZE,
                             atLeast(1),
                             ConfigDef.Importance.LOW,
-                            MAINTENANCE_EVENT_MAX_IDEMPOTENCE_CACHE_SIZE_DOC);
+                            MAINTENANCE_EVENT_MAX_IDEMPOTENCE_CACHE_SIZE_DOC)
+                    .define(MAINTENANCE_EVENT_STOP_ONGOING_EXECUTION_CONFIG,
+                            ConfigDef.Type.BOOLEAN,
+                            DEFAULT_MAINTENANCE_EVENT_STOP_ONGOING_EXECUTION,
+                            ConfigDef.Importance.LOW,
+                            MAINTENANCE_EVENT_STOP_ONGOING_EXECUTION_DOC);
   }
 }

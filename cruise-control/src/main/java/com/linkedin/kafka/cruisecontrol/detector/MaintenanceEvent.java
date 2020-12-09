@@ -24,6 +24,7 @@ import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.MAINTENANCE_EVENT_STOP_ONGOING_EXECUTION_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getSelfHealingGoalNames;
@@ -152,6 +153,7 @@ public class MaintenanceEvent extends KafkaAnomaly {
     boolean excludeRecentlyRemovedBrokers = config.getBoolean(SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
     _optimizationResult = null;
     _maintenanceEventType = (MaintenanceEventType) configs.get(MAINTENANCE_EVENT_TYPE_CONFIG);
+    _stopOngoingExecution = (Boolean) configs.get(MAINTENANCE_EVENT_STOP_ONGOING_EXECUTION_CONFIG);
     switch (_maintenanceEventType) {
       case ADD_BROKER:
         initBrokers(configs);
@@ -162,7 +164,8 @@ public class MaintenanceEvent extends KafkaAnomaly {
                                                              excludeRecentlyDemotedBrokers,
                                                              excludeRecentlyRemovedBrokers,
                                                              _anomalyId.toString(),
-                                                             reasonSupplier());
+                                                             reasonSupplier(),
+                                                             stopOngoingExecution());
         break;
       case REMOVE_BROKER:
         initBrokers(configs);
@@ -173,7 +176,8 @@ public class MaintenanceEvent extends KafkaAnomaly {
                                                                 excludeRecentlyDemotedBrokers,
                                                                 excludeRecentlyRemovedBrokers,
                                                                 _anomalyId.toString(),
-                                                                reasonSupplier());
+                                                                reasonSupplier(),
+                                                                stopOngoingExecution());
         break;
       case FIX_OFFLINE_REPLICAS:
         _goalBasedOperationRunnable = new FixOfflineReplicasRunnable(kafkaCruiseControl,
@@ -182,7 +186,8 @@ public class MaintenanceEvent extends KafkaAnomaly {
                                                                      excludeRecentlyDemotedBrokers,
                                                                      excludeRecentlyRemovedBrokers,
                                                                      _anomalyId.toString(),
-                                                                     reasonSupplier());
+                                                                     reasonSupplier(),
+                                                                     stopOngoingExecution());
         break;
       case REBALANCE:
         _goalBasedOperationRunnable = new RebalanceRunnable(kafkaCruiseControl,
@@ -191,7 +196,8 @@ public class MaintenanceEvent extends KafkaAnomaly {
                                                             excludeRecentlyDemotedBrokers,
                                                             excludeRecentlyRemovedBrokers,
                                                             _anomalyId.toString(),
-                                                            reasonSupplier());
+                                                            reasonSupplier(),
+                                                            stopOngoingExecution());
         break;
       case DEMOTE_BROKER:
         initBrokers(configs);
@@ -200,7 +206,8 @@ public class MaintenanceEvent extends KafkaAnomaly {
                                                                allowCapacityEstimation,
                                                                excludeRecentlyDemotedBrokers,
                                                                _anomalyId.toString(),
-                                                               reasonSupplier());
+                                                               reasonSupplier(),
+                                                               stopOngoingExecution());
         break;
       case TOPIC_REPLICATION_FACTOR:
         Map<Short, Pattern> topicPatternByReplicationFactor = topicPatternByReplicationFactor(configs);
@@ -211,7 +218,8 @@ public class MaintenanceEvent extends KafkaAnomaly {
                                                                            excludeRecentlyDemotedBrokers,
                                                                            excludeRecentlyRemovedBrokers,
                                                                            _anomalyId.toString(),
-                                                                           reasonSupplier());
+                                                                           reasonSupplier(),
+                                                                           stopOngoingExecution());
         break;
       default:
         throw new IllegalStateException(String.format("Unsupported maintenance event type %s.", _maintenanceEventType));

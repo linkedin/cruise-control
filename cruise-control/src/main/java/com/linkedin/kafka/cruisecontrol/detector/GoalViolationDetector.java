@@ -110,7 +110,7 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
       return AnomalyDetectionStatus.SKIP_MODEL_GENERATION_NOT_CHANGED;
     }
 
-    AnomalyDetectionStatus detectionStatus = getAnomalyDetectionStatus(_kafkaCruiseControl, true);
+    AnomalyDetectionStatus detectionStatus = getAnomalyDetectionStatus(_kafkaCruiseControl, true, true);
     if (detectionStatus == AnomalyDetectionStatus.SKIP_HAS_OFFLINE_REPLICAS) {
       setBalancednessWithOfflineReplicas();
     }

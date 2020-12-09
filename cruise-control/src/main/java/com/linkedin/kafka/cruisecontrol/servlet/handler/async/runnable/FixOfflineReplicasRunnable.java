@@ -42,9 +42,10 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
                                     boolean excludeRecentlyDemotedBrokers,
                                     boolean excludeRecentlyRemovedBrokers,
                                     String anomalyId,
-                                    Supplier<String> reasonSupplier) {
-    super(kafkaCruiseControl, new OperationFuture("Disk Failure Self-Healing"), selfHealingGoals, allowCapacityEstimation,
-          excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, anomalyId, reasonSupplier, SELF_HEALING_IS_TRIGGERED_BY_USER_REQUEST);
+                                    Supplier<String> reasonSupplier,
+                                    boolean stopOngoingExecution) {
+    super(kafkaCruiseControl, new OperationFuture("Fixing Offline Replicas for Self-Healing"), selfHealingGoals, allowCapacityEstimation,
+          excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, anomalyId, reasonSupplier, stopOngoingExecution);
     _concurrentInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _concurrentLeaderMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
@@ -57,7 +58,7 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
                                     FixOfflineReplicasParameters parameters,
                                     String uuid) {
     super(kafkaCruiseControl, future, parameters, parameters.dryRun(), parameters.stopOngoingExecution(), parameters.skipHardGoalCheck(),
-          uuid, parameters::reason, true);
+          uuid, parameters::reason);
     _concurrentInterBrokerPartitionMovements = parameters.concurrentInterBrokerPartitionMovements();
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
     _executionProgressCheckIntervalMs = parameters.executionProgressCheckIntervalMs();

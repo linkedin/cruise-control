@@ -70,7 +70,7 @@ public class ProposalsRunnable extends GoalBasedOperationRunnable {
 
   public ProposalsRunnable(KafkaCruiseControl kafkaCruiseControl, OperationFuture future, ProposalsParameters parameters) {
     super(kafkaCruiseControl, future, parameters, PROPOSALS_DRYRUN, PROPOSALS_STOP_ONGOING_EXECUTION, PROPOSALS_SKIP_HARD_GOAL_CHECK,
-          PROPOSALS_UUID, PROPOSALS_REASON_SUPPLIER, PROPOSALS_IS_TRIGGERED_BY_USER_REQUEST);
+          PROPOSALS_UUID, PROPOSALS_REASON_SUPPLIER);
     _ignoreProposalCache = parameters.ignoreProposalCache();
     _destinationBrokerIds = parameters.destinationBrokerIds();
     _isRebalanceDiskMode = parameters.isRebalanceDiskMode();

@@ -42,4 +42,10 @@ public interface Anomaly {
    * @return The optimization result of self healing process, or null if no optimization result is available.
    */
   String optimizationResult(boolean isJson);
+
+  /**
+   * @return {@code true} to gracefully stop the ongoing execution (if any) and wait until the execution stops before starting a fix for
+   * this anomaly, {@code false} otherwise.
+   */
+  boolean stopOngoingExecution();
 }
