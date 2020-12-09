@@ -68,19 +68,6 @@ public class KafkaMetricAnomaly extends KafkaAnomaly implements MetricAnomaly<Br
     return String.format("%s anomaly with id: %s. Anomaly description: %s", METRIC_ANOMALY, anomalyId(), _description);
   }
 
-  /**
-   * Get the optimization result of self healing process, or null if no optimization result is available.
-   *
-   * @param isJson True for JSON response, false otherwise.
-   * @return The optimization result of self healing process, or null if no optimization result is available.
-   */
-  public String optimizationResult(boolean isJson) {
-    if (_optimizationResult == null) {
-      return null;
-    }
-    return isJson ? _optimizationResult.cachedJSONResponse() : _optimizationResult.cachedPlaintextResponse();
-  }
-
   @Override
   public Supplier<String> reasonSupplier() {
     return () -> String.format("Self healing for %s: %s", METRIC_ANOMALY, this);
