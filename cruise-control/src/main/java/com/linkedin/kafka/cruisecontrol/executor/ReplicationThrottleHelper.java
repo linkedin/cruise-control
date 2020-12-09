@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
-import java.util.Optional;
 import kafka.log.LogConfig;
 import kafka.server.ConfigType;
 import kafka.zk.AdminZkClient;
@@ -177,8 +176,8 @@ class ReplicationThrottleHelper {
 
   private void setThrottledReplicas(String topic, Set<String> replicas, boolean throttleLeaderReplica) {
     String replicaThrottleConfigKey = throttleLeaderReplica ? LEADER_THROTTLED_REPLICAS : FOLLOWER_THROTTLED_REPLICAS;
-    Properties topicConfigs = readTopicConfigs(topic).orElse(null);
-    if (topicConfigs == null) {
+    Properties topicConfigs = _kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic);
+    if (topicConfigs == null || topicConfigs.isEmpty()) {
       LOG.debug("Skip setting throttled replicas {} for topic {} since no configs can be read", String.join(",", replicas), topic);
       return;
     }
@@ -198,24 +197,6 @@ class ReplicationThrottleHelper {
   }
 
   /**
-   * Read topic configuration properties from Zookeeper
-   *
-   * @param topicName topic name
-   * @return Empty optional if topic has no config properties or topic does not exist
-   */
-  private Optional<Properties> readTopicConfigs(String topicName) {
-    try {
-      return Optional.ofNullable(_kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topicName));
-    } catch (Exception e) {
-      if (!_kafkaZkClient.topicExists(topicName)) {
-        LOG.debug("Got no config for topic {} since it does not exist", topicName);
-        return Optional.empty();
-      }
-      throw e;
-    }
-  }
-
-  /**
    * Update topic configuration properties if a topic exist. No-op for non-existent topic
    *
    * @param topicName topic name
@@ -226,7 +207,7 @@ class ReplicationThrottleHelper {
       ExecutorUtils.changeTopicConfig(_adminZkClient, topicName, topicConfigs);
     } catch (Exception e) {
       if (!_kafkaZkClient.topicExists(topicName)) {
-        LOG.warn("Change no configs for topic {} since it does not exist", topicName);
+        LOG.debug("Change no configs for topic {} since it does not exist", topicName);
         return;
       }
       throw e;
@@ -300,8 +281,8 @@ class ReplicationThrottleHelper {
   }
 
   private void removeThrottledReplicasFromTopic(String topic, Set<String> replicas) {
-    Properties topicConfigs = readTopicConfigs(topic).orElse(null);
-    if (topicConfigs == null) {
+    Properties topicConfigs = _kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic);
+    if (topicConfigs == null || topicConfigs.isEmpty()) {
       LOG.warn("Skip removing throttled replicas {} from topic {} since no configs can be read", String.join(",", replicas), topic);
       return;
     }

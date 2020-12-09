@@ -101,6 +101,25 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     throttleHelper.clearThrottles(Collections.singletonList(task), Collections.emptyList());
   }
 
+  @Test
+  public void testSetThrottleOnNonExistentTopic() {
+
+    final long throttleRate = 100L;
+
+    KafkaZkClient mockKafkaZkClient = EasyMock.mock(KafkaZkClient.class);
+    EasyMock.expect(mockKafkaZkClient.getEntityConfigs(ConfigType.Broker(), String.valueOf(0))).andReturn(new Properties()).once();
+    EasyMock.replay(mockKafkaZkClient);
+    ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockKafkaZkClient, throttleRate);
+    ExecutionProposal proposal = new ExecutionProposal(new TopicPartition("topic", 0),
+        100,
+        new ReplicaPlacementInfo(0),
+        Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(1)),
+        Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(2)));
+
+    throttleHelper.setThrottles(Collections.singletonList(proposal));
+
+  }
+
   private void assertExpectedThrottledRateForBroker(KafkaZkClient kafkaZkClient, int broker, Long expectedRate) {
     Properties brokerConfig = kafkaZkClient.getEntityConfigs(ConfigType.Broker(), String.valueOf(broker));
     String expectedString = expectedRate == null ? null : String.valueOf(expectedRate);
