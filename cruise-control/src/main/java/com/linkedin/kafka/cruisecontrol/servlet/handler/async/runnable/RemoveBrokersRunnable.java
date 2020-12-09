@@ -52,9 +52,10 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
                                boolean excludeRecentlyDemotedBrokers,
                                boolean excludeRecentlyRemovedBrokers,
                                String anomalyId,
-                               Supplier<String> reasonSupplier) {
-    super(kafkaCruiseControl, new OperationFuture("Broker Failure Self-Healing"), selfHealingGoals, allowCapacityEstimation,
-          excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, anomalyId, reasonSupplier, false);
+                               Supplier<String> reasonSupplier,
+                               boolean stopOngoingExecution) {
+    super(kafkaCruiseControl, new OperationFuture("Broker Removal for Self-Healing"), selfHealingGoals, allowCapacityEstimation,
+          excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, anomalyId, reasonSupplier, stopOngoingExecution);
     _removedBrokerIds = removedBrokerIds;
     _throttleRemovedBrokers = false;
     _destinationBrokerIds = SELF_HEALING_DESTINATION_BROKER_IDS;
@@ -70,7 +71,7 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
                                RemoveBrokerParameters parameters,
                                String uuid) {
     super(kafkaCruiseControl, future, parameters, parameters.dryRun(), parameters.stopOngoingExecution(), parameters.skipHardGoalCheck(),
-          uuid, parameters::reason, true);
+          uuid, parameters::reason);
     _removedBrokerIds = parameters.brokerIds();
     _throttleRemovedBrokers = parameters.throttleRemovedBrokers();
     _destinationBrokerIds = parameters.destinationBrokerIds();

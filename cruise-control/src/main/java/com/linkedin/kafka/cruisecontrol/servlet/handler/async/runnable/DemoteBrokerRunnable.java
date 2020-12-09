@@ -33,7 +33,6 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_SKIP_URP_DEMOTION;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXCLUDE_FOLLOWER_DEMOTION;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_IS_TRIGGERED_BY_USER_REQUEST;
-import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_STOP_ONGOING_EXECUTION;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.computeOptimizationOptions;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.maybeStopOngoingExecutionToModifyAndWait;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL;
@@ -72,9 +71,10 @@ public class DemoteBrokerRunnable extends GoalBasedOperationRunnable {
                               boolean allowCapacityEstimation,
                               boolean excludeRecentlyDemotedBrokers,
                               String anomalyId,
-                              Supplier<String> reasonSupplier) {
-    super(kafkaCruiseControl, new OperationFuture("Slow Broker Self-Healing"), SELF_HEALING_DRYRUN, null,
-          SELF_HEALING_STOP_ONGOING_EXECUTION, null, true, null,
+                              Supplier<String> reasonSupplier,
+                              boolean stopOngoingExecution) {
+    super(kafkaCruiseControl, new OperationFuture("Broker Demotion for Self-Healing"), SELF_HEALING_DRYRUN, null,
+          stopOngoingExecution, null, true, null,
           allowCapacityEstimation, excludeRecentlyDemotedBrokers, false, anomalyId, reasonSupplier,
           SELF_HEALING_IS_TRIGGERED_BY_USER_REQUEST);
     _brokerIds = demotedBrokerIds;

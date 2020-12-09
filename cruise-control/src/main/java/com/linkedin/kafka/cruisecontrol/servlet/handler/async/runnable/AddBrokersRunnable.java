@@ -52,9 +52,10 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
                             boolean excludeRecentlyDemotedBrokers,
                             boolean excludeRecentlyRemovedBrokers,
                             String anomalyId,
-                            Supplier<String> reasonSupplier) {
-    super(kafkaCruiseControl, new OperationFuture("Broker Addition Self-Healing"), selfHealingGoals, allowCapacityEstimation,
-          excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, anomalyId, reasonSupplier, false);
+                            Supplier<String> reasonSupplier,
+                            boolean stopOngoingExecution) {
+    super(kafkaCruiseControl, new OperationFuture("Broker Addition for Self-Healing"), selfHealingGoals, allowCapacityEstimation,
+          excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, anomalyId, reasonSupplier, stopOngoingExecution);
     _brokerIds = brokerIds;
     _throttleAddedBrokers = false;
     _concurrentInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
@@ -69,7 +70,7 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
                             AddBrokerParameters parameters,
                             String uuid) {
     super(kafkaCruiseControl, future, parameters, parameters.dryRun(), parameters.stopOngoingExecution(), parameters.skipHardGoalCheck(),
-          uuid, parameters::reason, true);
+          uuid, parameters::reason);
     _brokerIds = parameters.brokerIds();
     _throttleAddedBrokers = parameters.throttleAddedBrokers();
     _concurrentInterBrokerPartitionMovements = parameters.concurrentInterBrokerPartitionMovements();

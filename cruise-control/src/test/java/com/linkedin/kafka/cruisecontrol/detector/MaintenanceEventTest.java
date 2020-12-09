@@ -103,7 +103,8 @@ public class MaintenanceEventTest {
 
     // Expect mocks.
     EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(3);
-    _mockKafkaCruiseControl.sanityCheckDryRun(false, false);
+    _mockKafkaCruiseControl.sanityCheckDryRun(false, true);
+    EasyMock.expect(_mockKafkaCruiseControl.hasOngoingExecution()).andReturn(false).once();
     EasyMock.expect(_mockKafkaCruiseControl.modelCompletenessRequirements(EasyMock.anyObject())).andReturn(
         MonitorUtils.combineLoadRequirementOptions(goalsByPriority(getSelfHealingGoalNames(_config), _config)));
     EasyMock.expect(_mockKafkaCruiseControl.getLoadMonitorTaskRunnerState()).andReturn(
@@ -177,7 +178,8 @@ public class MaintenanceEventTest {
 
     // Expect mocks.
     EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(3);
-    _mockKafkaCruiseControl.sanityCheckDryRun(false, false);
+    _mockKafkaCruiseControl.sanityCheckDryRun(false, true);
+    EasyMock.expect(_mockKafkaCruiseControl.hasOngoingExecution()).andReturn(false).once();
     EasyMock.expect(_mockKafkaCruiseControl.modelCompletenessRequirements(EasyMock.anyObject())).andReturn(
         MonitorUtils.combineLoadRequirementOptions(goalsByPriority(getSelfHealingGoalNames(_config), _config)));
     EasyMock.expect(_mockKafkaCruiseControl.getLoadMonitorTaskRunnerState()).andReturn(
@@ -248,7 +250,8 @@ public class MaintenanceEventTest {
 
     // Expect mocks.
     EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(3);
-    _mockKafkaCruiseControl.sanityCheckDryRun(false, false);
+    _mockKafkaCruiseControl.sanityCheckDryRun(false, true);
+    EasyMock.expect(_mockKafkaCruiseControl.hasOngoingExecution()).andReturn(false).once();
     EasyMock.expect(_mockKafkaCruiseControl.modelCompletenessRequirements(EasyMock.anyObject())).andReturn(
         MonitorUtils.combineLoadRequirementOptions(goalsByPriority(getSelfHealingGoalNames(_config), _config)));
     EasyMock.expect(_mockKafkaCruiseControl.getLoadMonitorTaskRunnerState()).andReturn(
@@ -321,7 +324,8 @@ public class MaintenanceEventTest {
     // Expect mocks.
     EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(3);
     // This is for rebalance runnable
-    _mockKafkaCruiseControl.sanityCheckDryRun(false, false);
+    _mockKafkaCruiseControl.sanityCheckDryRun(false, true);
+    EasyMock.expect(_mockKafkaCruiseControl.hasOngoingExecution()).andReturn(false).once();
     // This is for proposals runnable
     _mockKafkaCruiseControl.sanityCheckDryRun(true, false);
     EasyMock.expect(_mockKafkaCruiseControl.modelCompletenessRequirements(EasyMock.anyObject())).andReturn(
@@ -410,7 +414,8 @@ public class MaintenanceEventTest {
 
     // Expect mocks.
     EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(2);
-    _mockKafkaCruiseControl.sanityCheckDryRun(false, false);
+    _mockKafkaCruiseControl.sanityCheckDryRun(false, true);
+    EasyMock.expect(_mockKafkaCruiseControl.hasOngoingExecution()).andReturn(false).once();
     _mockKafkaCruiseControl.setGeneratingProposalsForExecution(EasyMock.anyString(), EasyMock.anyObject(), EasyMock.eq(false));
     EasyMock.expect(_mockKafkaCruiseControl.acquireForModelGeneration(EasyMock.anyObject())).andReturn(null);
     _mockKafkaCruiseControl.sanityCheckBrokerPresence(MOCK_BROKERS_OBJECT);
@@ -480,7 +485,8 @@ public class MaintenanceEventTest {
 
     // Expect mocks.
     EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(3);
-    _mockKafkaCruiseControl.sanityCheckDryRun(false, false);
+    _mockKafkaCruiseControl.sanityCheckDryRun(false, true);
+    EasyMock.expect(_mockKafkaCruiseControl.hasOngoingExecution()).andReturn(false).once();
     EasyMock.expect(_mockKafkaCruiseControl.modelCompletenessRequirements(EasyMock.anyObject())).andReturn(
         MonitorUtils.combineLoadRequirementOptions(goalsByPriority(getSelfHealingGoalNames(_config), _config)));
     EasyMock.expect(_mockKafkaCruiseControl.getLoadMonitorTaskRunnerState()).andReturn(
