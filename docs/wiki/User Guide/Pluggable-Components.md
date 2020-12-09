@@ -4,7 +4,8 @@ The metric sampler is one of the most important pluggables in Kafka Cruise Contr
 The default implementation of metric sampler is reading the broker metrics produced by `CruiseControlMetricsReporter` on the broker. This is assuming that users are running Kafka brokers by setting the `metric.reporters` configuration on the Kafka brokers to be `com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter`(see [quick start](https://github.com/linkedin/cruise-control#quick-start) on how to do that).
 
 ## Metric Sampler Partition Assignor
-When users have multiple metric sampler threads, the metric sampler partition assignor is responsible for assign the partitions to the metric samplers. This is useful when users have some existing metric system. The default implementation assigns all the partitions of the same topic to the same metric sampler.
+When users have multiple metric sampler threads, the metric sampler partition assignor is responsible for assigning partitions to the metric samplers.
+This is useful when users have some existing metric system. The default implementation assigns all the partitions of the same topic to the same metric sampler.
 
 ## Sample Store
 The Sample Store is used to store the collected metric samples and training samples to external storage. One problem in metric sampling is that we are using some derived data from the raw metrics. And the way we derive the data relies on the metadata of the cluster at that moment. So when we look at the old metrics, if we do not know the metadata at the point the metric was collected the derived data would be inaccurate. Sample Store helps solve this problem by storing the derived data directly to an external storage for later loading.
@@ -57,7 +58,8 @@ The goals in Kafka Cruise Control are pluggable with different priorities.
 * **IntraBrokerDiskUsageDistributionGoal**: Attempt to make the utilization variance among all the disks within same broker are within a certain range. This goal will be pick up if `rebalance_disk` parameter is set to `true` in [rebalance request](https://github.com/linkedin/cruise-control/wiki/REST-APIs#trigger-a-workload-balance). Not available in `kafka_0_11_and_1_0` branch. 
 
 ## Anomaly Notifier
-The anomaly notifier is a communication channel between cruise control and users. It notify the users about the anomaly detected in the cluster and let users make decision on what action to take about the anomaly. The anomalies include:
+The anomaly notifier is a communication channel between Cruise Control and users.
+It notifies users about the anomalies detected in the cluster as well as actions taken about the anomaly. Anomalies include:
 * Broker failure
 * Goal violation
 * Metric Anomaly
@@ -72,9 +74,20 @@ The actions users can take are:
 By default Cruise Control is configured to use `NoopNotifier` which ignores all the anomalies.
 
 ## Replica Movement Strategy
-The strategy determine the execution order for generated proposals. By default `BaseReplicaMovementStrategy` is used, which is totally random. Sometimes this could result in prolonged execution time due to some long tail tasks in each execution batches. Other available strategies includes:
+The strategy to determine the execution order for generated proposals. By default `BaseReplicaMovementStrategy` is used, which is totally random.
+Sometimes this could result in prolonged execution time due to some long tail tasks in each execution batches. Other available strategies includes:
 * **PrioritizeSmallReplicaMovementStrategy**: first move small sized replicas
 * **PrioritizeLargeReplicaMovementStrategy**: first move large sized replicas
 * **PostponeUrpReplicaMovementStrategy**: first move replicas for partition having no out-of-sync replica
 
 The strategies can be chained to use and can be dynamically set using `replica_movement_strategies` in corresponding request(e.g. [rebalance request](https://github.com/linkedin/cruise-control/wiki/REST-APIs#trigger-a-workload-balance)).
+
+## Maintenance Event Reader
+When a system/tool in Kafka Ecosystem has knowledge about an upcoming planned maintenance, such as a switch change, an upcoming VM freeze, 
+or reboot of VMs on cloud deployments, the desired preventative mitigation strategy (i.e. `maintenance event`) can be conveyed to 
+Cruise Control for automated execution of it without human intervention.
+
+Such maintenance events correspond to admin operations that the relevant system/tool submits to Cruise Control via a generic maintenance event store.
+Then, Maintenance Event Reader retrieves the maintenance events from the relevant event store for automated execution.
+
+The default implementation of Maintenance Event Reader (see `MaintenanceEventTopicReader`) consumes maintenance events from a Kafka topic.
