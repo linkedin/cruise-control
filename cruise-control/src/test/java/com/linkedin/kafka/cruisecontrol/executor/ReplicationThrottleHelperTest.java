@@ -102,6 +102,46 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
   }
 
   @Test
+  public void testClearThrottleOnNonExistentTopic() {
+    final long throttleRate = 100L;
+    final int brokerId0 = 0;
+    final int brokerId1 = 1;
+    final int brokerId2 = 2;
+    final int partitionId = 0;
+    // A proposal to move a partition with 2 replicas from broker 0 and 1 to broker 0 and 2
+    ExecutionProposal proposal = new ExecutionProposal(new TopicPartition(TOPIC0, partitionId),
+                                                       100,
+                                                       new ReplicaPlacementInfo(brokerId0),
+                                                       Arrays.asList(new ReplicaPlacementInfo(brokerId0), new ReplicaPlacementInfo(brokerId1)),
+                                                       Arrays.asList(new ReplicaPlacementInfo(brokerId0), new ReplicaPlacementInfo(brokerId2)));
+
+    // Case 1: a situation where Topic0 does not exist. Hence no property is returned upon read.
+    KafkaZkClient mockKafkaZkClient = prepareMockKafkaZkClient(new Properties());
+    ExecutionTask mockCompleteTask = prepareMockCompleteTask(proposal, mockKafkaZkClient);
+    EasyMock.replay(mockCompleteTask, mockKafkaZkClient);
+
+    ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockKafkaZkClient, throttleRate);
+    throttleHelper.clearThrottles(Collections.singletonList(mockCompleteTask), Collections.emptyList());
+    EasyMock.verify(mockKafkaZkClient, mockCompleteTask);
+
+    // Case 2: a situation where Topic0 gets deleted after its configs were read.
+    Properties topicConfigProps = new Properties();
+    String throttledReplicas = brokerId0 + "," + brokerId1;
+    topicConfigProps.put(ReplicationThrottleHelper.LEADER_THROTTLED_REPLICAS, throttledReplicas);
+    topicConfigProps.put(ReplicationThrottleHelper.FOLLOWER_THROTTLED_REPLICAS, throttledReplicas);
+    mockKafkaZkClient = prepareMockKafkaZkClient(topicConfigProps);
+    EasyMock.expect(mockKafkaZkClient.topicExists(TOPIC0)).andReturn(false).times(2);
+
+    mockCompleteTask = prepareMockCompleteTask(proposal, mockKafkaZkClient);
+    EasyMock.replay(mockCompleteTask, mockKafkaZkClient);
+
+    throttleHelper = new ReplicationThrottleHelper(mockKafkaZkClient, throttleRate);
+    // Expect no exception
+    throttleHelper.clearThrottles(Collections.singletonList(mockCompleteTask), Collections.emptyList());
+    EasyMock.verify(mockKafkaZkClient, mockCompleteTask);
+  }
+
+  @Test
   public void testSetThrottleOnNonExistentTopic() {
     final long throttleRate = 100L;
     final int brokerId0 = 0;
@@ -110,16 +150,16 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     final int partitionId = 0;
     // A proposal to move a partition with 2 replicas from broker 0 and 1 to broker 0 and 2
     ExecutionProposal proposal = new ExecutionProposal(new TopicPartition(TOPIC0, partitionId),
-                                           100,
+                                                       100,
                                                        new ReplicaPlacementInfo(brokerId0),
                                                        Arrays.asList(new ReplicaPlacementInfo(brokerId0), new ReplicaPlacementInfo(brokerId1)),
                                                        Arrays.asList(new ReplicaPlacementInfo(brokerId0), new ReplicaPlacementInfo(brokerId2)));
 
     KafkaZkClient mockKafkaZkClient = EasyMock.mock(KafkaZkClient.class);
-    prepareKafkaZkClientMockWithBrokerConfigs(mockKafkaZkClient);
+    prepareKafkaZkClientMockWithBrokerConfigs(mockKafkaZkClient, 2);
     // Case 1: a situation where Topic0 does not exist. Hence no property is returned upon read.
     EasyMock.expect(mockKafkaZkClient.getEntityConfigs(ConfigType.Topic(), TOPIC0)).andReturn(new Properties()).times(2);
-    EasyMock.expect(mockKafkaZkClient.topicExists(TOPIC0)).andReturn(false).times(2);
+    EasyMock.expect(mockKafkaZkClient.topicExists(TOPIC0)).andReturn(false).times(4);
     EasyMock.replay(mockKafkaZkClient);
     ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockKafkaZkClient, throttleRate);
 
@@ -128,7 +168,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
 
     // Case 2: a situation where Topic0 gets deleted after its configs were read. Change configs should not fail.
     EasyMock.reset(mockKafkaZkClient);
-    prepareKafkaZkClientMockWithBrokerConfigs(mockKafkaZkClient);
+    prepareKafkaZkClientMockWithBrokerConfigs(mockKafkaZkClient, 2);
     Properties topicConfigProps = new Properties();
     String throttledReplicas = brokerId0 + "," + brokerId1;
     topicConfigProps.put(ReplicationThrottleHelper.LEADER_THROTTLED_REPLICAS, throttledReplicas);
@@ -136,33 +176,9 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     EasyMock.expect(mockKafkaZkClient.getEntityConfigs(ConfigType.Topic(), TOPIC0)).andReturn(topicConfigProps).times(2);
     EasyMock.expect(mockKafkaZkClient.topicExists(TOPIC0)).andReturn(false).times(4);
     EasyMock.replay(mockKafkaZkClient);
-
+    // Expect no exception
     throttleHelper.setThrottles(Collections.singletonList(proposal));
     EasyMock.verify(mockKafkaZkClient);
-  }
-
-  private void prepareKafkaZkClientMockWithBrokerConfigs(KafkaZkClient mockKafkaZkClient) {
-    // All participating brokers have throttled rate set already
-    Properties brokerThrottledRateProps = new Properties();
-    brokerThrottledRateProps.put(ReplicationThrottleHelper.LEADER_THROTTLED_RATE, String.valueOf(100));
-    brokerThrottledRateProps.put(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE, String.valueOf(100));
-
-    EasyMock.expect(mockKafkaZkClient.getEntityConfigs(ConfigType.Broker(), String.valueOf(0))).andReturn(brokerThrottledRateProps).times(2);
-    EasyMock.expect(mockKafkaZkClient.getEntityConfigs(ConfigType.Broker(), String.valueOf(1))).andReturn(brokerThrottledRateProps).times(2);
-    EasyMock.expect(mockKafkaZkClient.getEntityConfigs(ConfigType.Broker(), String.valueOf(2))).andReturn(brokerThrottledRateProps).times(2);
-  }
-
-  private void assertExpectedThrottledRateForBroker(KafkaZkClient kafkaZkClient, int broker, Long expectedRate) {
-    Properties brokerConfig = kafkaZkClient.getEntityConfigs(ConfigType.Broker(), String.valueOf(broker));
-    String expectedString = expectedRate == null ? null : String.valueOf(expectedRate);
-    assertEquals(expectedString, brokerConfig.getProperty(ReplicationThrottleHelper.LEADER_THROTTLED_RATE));
-    assertEquals(expectedString, brokerConfig.getProperty(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE));
-  }
-
-  private void assertExpectedThrottledReplicas(KafkaZkClient kafkaZkClient, String topic, String expectedReplicas) {
-    Properties topicConfig = kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic);
-    assertEquals(expectedReplicas, topicConfig.getProperty(ReplicationThrottleHelper.LEADER_THROTTLED_REPLICAS));
-    assertEquals(expectedReplicas, topicConfig.getProperty(ReplicationThrottleHelper.FOLLOWER_THROTTLED_REPLICAS));
   }
 
   @Test
@@ -408,5 +424,51 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     String throttleConfig = "foo,bar,qux,qaz,baz";
     String result = ReplicationThrottleHelper.removeReplicasFromConfig(throttleConfig, replicas);
     assertEquals(result, "qux,qaz");
+  }
+
+  private KafkaZkClient prepareMockKafkaZkClient(Properties topicConfigProps) {
+    KafkaZkClient mockKafkaZkClient = EasyMock.mock(KafkaZkClient.class);
+    prepareKafkaZkClientMockWithBrokerConfigs(mockKafkaZkClient, 1);
+    EasyMock.expect(mockKafkaZkClient.getEntityConfigs(ConfigType.Topic(), TOPIC0)).andReturn(topicConfigProps).once();
+    mockKafkaZkClient.setOrCreateEntityConfigs("brokers", "0", new Properties());
+    EasyMock.expectLastCall().anyTimes();
+    mockKafkaZkClient.createConfigChangeNotification("brokers/0");
+    EasyMock.expectLastCall().anyTimes();
+    return mockKafkaZkClient;
+  }
+
+  private ExecutionTask prepareMockCompleteTask(ExecutionProposal proposal, KafkaZkClient kafkaZkClient) {
+    ExecutionTask mockCompleteTask = EasyMock.mock(ExecutionTask.class);
+    EasyMock.expect(mockCompleteTask.state()).andReturn(ExecutionTaskState.COMPLETED).times(2);
+    EasyMock.expect(mockCompleteTask.type()).andReturn(ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION).once();
+    EasyMock.expect(mockCompleteTask.proposal()).andReturn(proposal).once();
+    return mockCompleteTask;
+  }
+
+  private void prepareKafkaZkClientMockWithBrokerConfigs(KafkaZkClient mockKafkaZkClient, int expectInvokeCount) {
+    // All participating brokers have throttled rate set already
+    Properties brokerThrottledRateProps = new Properties();
+    brokerThrottledRateProps.put(ReplicationThrottleHelper.LEADER_THROTTLED_RATE, String.valueOf(100));
+    brokerThrottledRateProps.put(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE, String.valueOf(100));
+
+    EasyMock.expect(mockKafkaZkClient.getEntityConfigs(ConfigType.Broker(), String.valueOf(0))).
+        andReturn(brokerThrottledRateProps).times(expectInvokeCount);
+    EasyMock.expect(mockKafkaZkClient.getEntityConfigs(ConfigType.Broker(), String.valueOf(1))).
+        andReturn(brokerThrottledRateProps).times(expectInvokeCount);
+    EasyMock.expect(mockKafkaZkClient.getEntityConfigs(ConfigType.Broker(), String.valueOf(2))).
+        andReturn(brokerThrottledRateProps).times(expectInvokeCount);
+  }
+
+  private void assertExpectedThrottledRateForBroker(KafkaZkClient kafkaZkClient, int broker, Long expectedRate) {
+    Properties brokerConfig = kafkaZkClient.getEntityConfigs(ConfigType.Broker(), String.valueOf(broker));
+    String expectedString = expectedRate == null ? null : String.valueOf(expectedRate);
+    assertEquals(expectedString, brokerConfig.getProperty(ReplicationThrottleHelper.LEADER_THROTTLED_RATE));
+    assertEquals(expectedString, brokerConfig.getProperty(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE));
+  }
+
+  private void assertExpectedThrottledReplicas(KafkaZkClient kafkaZkClient, String topic, String expectedReplicas) {
+    Properties topicConfig = kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic);
+    assertEquals(expectedReplicas, topicConfig.getProperty(ReplicationThrottleHelper.LEADER_THROTTLED_REPLICAS));
+    assertEquals(expectedReplicas, topicConfig.getProperty(ReplicationThrottleHelper.FOLLOWER_THROTTLED_REPLICAS));
   }
 }

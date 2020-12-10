@@ -177,15 +177,8 @@ class ReplicationThrottleHelper {
   private void setThrottledReplicas(String topic, Set<String> replicas, boolean throttleLeaderReplica) {
     String replicaThrottleConfigKey = throttleLeaderReplica ? LEADER_THROTTLED_REPLICAS : FOLLOWER_THROTTLED_REPLICAS;
     Properties topicConfigs = _kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic);
-    if (topicConfigs == null || topicConfigs.isEmpty()) {
-      // Not assume that no topic config means means topic does not exist. Always check topic existence in this situation
-      if (!_kafkaZkClient.topicExists(topic)) {
-        LOG.debug("Skip setting throttled replicas {} for topic {} since topic does not exist", String.join(",", replicas), topic);
-        return;
-      }
-      if (topicConfigs == null) {
-        topicConfigs = new Properties();
-      }
+    if (topicConfigs == null) {
+      topicConfigs = new Properties();
     }
     String currThrottledReplicas = topicConfigs.getProperty(replicaThrottleConfigKey);
     if (currThrottledReplicas != null && currThrottledReplicas.trim().equals(WILDCARD_ASTERISK)) {
@@ -213,7 +206,7 @@ class ReplicationThrottleHelper {
       ExecutorUtils.changeTopicConfig(_adminZkClient, topicName, topicConfigs);
     } catch (Exception e) {
       if (!_kafkaZkClient.topicExists(topicName)) {
-        LOG.debug("Change no configs for topic {} since it does not exist", topicName);
+        LOG.debug("Failed to change configs for topic {} since it does not exist", topicName);
         return;
       }
       throw e;
@@ -289,7 +282,7 @@ class ReplicationThrottleHelper {
   private void removeThrottledReplicasFromTopic(String topic, Set<String> replicas) {
     Properties topicConfigs = _kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic);
     if (topicConfigs == null || topicConfigs.isEmpty()) {
-      LOG.warn("Skip removing throttled replicas {} from topic {} since no configs can be read", String.join(",", replicas), topic);
+      LOG.debug("Skip removing throttled replicas {} from topic {} since no configs can be read", String.join(",", replicas), topic);
       return;
     }
     boolean removedLeaderThrottle = removeLeaderThrottledReplicasFromTopic(topicConfigs, topic, replicas);
