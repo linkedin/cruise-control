@@ -530,7 +530,10 @@ public class GoalUtils {
 
     } else {
       if (isLowUtilization) {
-        return balancingConstraint.lowUtilizationThreshold(resource) * balanceMargin;
+        double resourceBalanceUtilizationUpperLimit =
+            Math.max(balancingConstraint.resourceBalancePercentage(resource) * avgUtilizationPercentage,
+                     balancingConstraint.lowUtilizationThreshold(resource));
+        return resourceBalanceUtilizationUpperLimit * balanceMargin;
       }
       double balancePercentageWithMargin =
           balancePercentageWithMargin(isTriggeredByGoalViolation, balancingConstraint, resource, balanceMargin);
