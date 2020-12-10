@@ -155,11 +155,11 @@ class ReplicationThrottleHelper {
       throw new IllegalStateException("Throttle rate cannot be null");
     }
     String replicaThrottleRateConfigKey = throttleLeaderReplicaRate ? LEADER_THROTTLED_RATE : FOLLOWER_THROTTLED_RATE;
-    Properties config = _kafkaZkClient.getEntityConfigs(ConfigType.Broker(), String.valueOf(brokerId));
-    Object currThrottleRate = config.setProperty(replicaThrottleRateConfigKey, String.valueOf(_throttleRate));
+    Properties brokerConfigs = _kafkaZkClient.getEntityConfigs(ConfigType.Broker(), String.valueOf(brokerId));
+    Object currThrottleRate = brokerConfigs.setProperty(replicaThrottleRateConfigKey, String.valueOf(_throttleRate));
     if (currThrottleRate == null) {
       LOG.debug("Setting {} to {} bytes/second for broker {}", replicaThrottleRateConfigKey, _throttleRate, brokerId);
-      ExecutorUtils.changeBrokerConfig(_adminZkClient, brokerId, config);
+      ExecutorUtils.changeBrokerConfig(_adminZkClient, brokerId, brokerConfigs);
     } else {
       LOG.debug("Not setting {} for broker {} because pre-existing throttle of {} was already set",
           replicaThrottleRateConfigKey, brokerId, currThrottleRate);
@@ -177,9 +177,6 @@ class ReplicationThrottleHelper {
   private void setThrottledReplicas(String topic, Set<String> replicas, boolean throttleLeaderReplica) {
     String replicaThrottleConfigKey = throttleLeaderReplica ? LEADER_THROTTLED_REPLICAS : FOLLOWER_THROTTLED_REPLICAS;
     Properties topicConfigs = _kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic);
-    if (topicConfigs == null) {
-      topicConfigs = new Properties();
-    }
     String currThrottledReplicas = topicConfigs.getProperty(replicaThrottleConfigKey);
     if (currThrottledReplicas != null && currThrottledReplicas.trim().equals(WILDCARD_ASTERISK)) {
       // The existing setup throttles all replica. So, nothing needs to be changed.
@@ -281,7 +278,7 @@ class ReplicationThrottleHelper {
 
   private void removeThrottledReplicasFromTopic(String topic, Set<String> replicas) {
     Properties topicConfigs = _kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic);
-    if (topicConfigs == null || topicConfigs.isEmpty()) {
+    if (topicConfigs.isEmpty()) {
       LOG.debug("Skip removing throttled replicas {} from topic {} since no configs can be read", String.join(",", replicas), topic);
       return;
     }
@@ -294,9 +291,9 @@ class ReplicationThrottleHelper {
   }
 
   private void removeThrottledRateFromBroker(Integer brokerId) {
-    Properties config = _kafkaZkClient.getEntityConfigs(ConfigType.Broker(), String.valueOf(brokerId));
-    Object currLeaderThrottle = config.get(LEADER_THROTTLED_RATE);
-    Object currFollowerThrottle = config.get(FOLLOWER_THROTTLED_RATE);
+    Properties brokerConfigs = _kafkaZkClient.getEntityConfigs(ConfigType.Broker(), String.valueOf(brokerId));
+    Object currLeaderThrottle = brokerConfigs.get(LEADER_THROTTLED_RATE);
+    Object currFollowerThrottle = brokerConfigs.get(FOLLOWER_THROTTLED_RATE);
     boolean configChange = false;
 
     if (currLeaderThrottle != null) {
@@ -304,7 +301,7 @@ class ReplicationThrottleHelper {
         LOG.debug("Existing config throttles all leader replicas. So, do not remove any leader replica throttle on broker {}", brokerId);
       } else {
         LOG.debug("Removing leader throttle on broker {}", brokerId);
-        config.remove(LEADER_THROTTLED_RATE);
+        brokerConfigs.remove(LEADER_THROTTLED_RATE);
         configChange = true;
       }
     }
@@ -313,12 +310,12 @@ class ReplicationThrottleHelper {
         LOG.debug("Existing config throttles all follower replicas. So, do not remove any follower replica throttle on broker {}", brokerId);
       } else {
         LOG.debug("Removing follower throttle on broker {}", brokerId);
-        config.remove(FOLLOWER_THROTTLED_RATE);
+        brokerConfigs.remove(FOLLOWER_THROTTLED_RATE);
         configChange = true;
       }
     }
     if (configChange) {
-      ExecutorUtils.changeBrokerConfig(_adminZkClient, brokerId, config);
+      ExecutorUtils.changeBrokerConfig(_adminZkClient, brokerId, brokerConfigs);
     }
   }
 }
