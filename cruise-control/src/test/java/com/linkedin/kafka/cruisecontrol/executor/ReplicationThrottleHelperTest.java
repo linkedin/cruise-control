@@ -110,16 +110,16 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     final int partitionId = 0;
     // A proposal to move a partition with 2 replicas from broker 0 and 1 to broker 0 and 2
     ExecutionProposal proposal = new ExecutionProposal(new TopicPartition(TOPIC0, partitionId),
-        100,
-        new ReplicaPlacementInfo(brokerId0),
-        Arrays.asList(new ReplicaPlacementInfo(brokerId0), new ReplicaPlacementInfo(brokerId1)),
-        Arrays.asList(new ReplicaPlacementInfo(brokerId0), new ReplicaPlacementInfo(brokerId2)));
+                                           100,
+                                                       new ReplicaPlacementInfo(brokerId0),
+                                                       Arrays.asList(new ReplicaPlacementInfo(brokerId0), new ReplicaPlacementInfo(brokerId1)),
+                                                       Arrays.asList(new ReplicaPlacementInfo(brokerId0), new ReplicaPlacementInfo(brokerId2)));
 
     KafkaZkClient mockKafkaZkClient = EasyMock.mock(KafkaZkClient.class);
-
     prepareKafkaZkClientMockWithBrokerConfigs(mockKafkaZkClient);
     // Case 1: a situation where Topic0 does not exist. Hence no property is returned upon read.
     EasyMock.expect(mockKafkaZkClient.getEntityConfigs(ConfigType.Topic(), TOPIC0)).andReturn(new Properties()).times(2);
+    EasyMock.expect(mockKafkaZkClient.topicExists(TOPIC0)).andReturn(false).times(2);
     EasyMock.replay(mockKafkaZkClient);
     ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockKafkaZkClient, throttleRate);
 

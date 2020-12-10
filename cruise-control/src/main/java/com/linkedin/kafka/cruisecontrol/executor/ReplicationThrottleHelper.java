@@ -178,8 +178,14 @@ class ReplicationThrottleHelper {
     String replicaThrottleConfigKey = throttleLeaderReplica ? LEADER_THROTTLED_REPLICAS : FOLLOWER_THROTTLED_REPLICAS;
     Properties topicConfigs = _kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic);
     if (topicConfigs == null || topicConfigs.isEmpty()) {
-      LOG.debug("Skip setting throttled replicas {} for topic {} since no configs can be read", String.join(",", replicas), topic);
-      return;
+      // Not assume that no topic config means means topic does not exist. Always check topic existence in this situation
+      if (!_kafkaZkClient.topicExists(topic)) {
+        LOG.debug("Skip setting throttled replicas {} for topic {} since topic does not exist", String.join(",", replicas), topic);
+        return;
+      }
+      if (topicConfigs == null) {
+        topicConfigs = new Properties();
+      }
     }
     String currThrottledReplicas = topicConfigs.getProperty(replicaThrottleConfigKey);
     if (currThrottledReplicas != null && currThrottledReplicas.trim().equals(WILDCARD_ASTERISK)) {
