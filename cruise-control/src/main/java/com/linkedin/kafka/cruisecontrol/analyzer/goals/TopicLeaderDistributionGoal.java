@@ -18,6 +18,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
+import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,9 +26,12 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
@@ -281,12 +285,16 @@ public class TopicLeaderDistributionGoal extends AbstractGoal {
    *
    * @param clusterModel The state of the cluster.
    * @param action Action containing information about potential modification to the given cluster model. Assumed to be
-   * of type {@link ActionType#INTER_BROKER_REPLICA_MOVEMENT}.
+   * of type {@link ActionType#INTER_BROKER_REPLICA_MOVEMENT} or {@link ActionType#INTER_BROKER_REPLICA_SWAP}.
    * @return True if requirements of this goal are not violated if this proposal is applied to the given cluster state,
    * false otherwise.
    */
   @Override
   protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
+    if (action.balancingAction() == ActionType.INTER_BROKER_REPLICA_SWAP) {
+      return true;
+    }
+
     Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
     // The action must be executed if currently fixing offline replicas only and the offline source replica is proposed
     // to be moved to another broker.
@@ -431,6 +439,18 @@ public class TopicLeaderDistributionGoal extends AbstractGoal {
     }
   }
 
+  /**
+   * Attempt to decrease the number of topic partitions led by the broker first by moving the leadership to follower
+   * replicas, and second by swapping leader replicas with follower replicas of partitions not hosted by the broker
+   * currently.
+   *
+   * @param broker              Broker that leads too many partitions of the given topic.
+   * @param topic               Topic to rebalance.
+   * @param clusterModel        The state of the cluster.
+   * @param optimizedGoals      Optimized goals.
+   * @param optimizationOptions Options to take into account during optimization.
+   * @return true if rebalancing was not successful.
+   */
   private boolean rebalanceByMovingLeadershipOut(Broker broker,
                                                  String topic,
                                                  ClusterModel clusterModel,
@@ -439,15 +459,12 @@ public class TopicLeaderDistributionGoal extends AbstractGoal {
     if (!clusterModel.deadBrokers().isEmpty()) {
       return true;
     }
-    int numLeaderReplicas = broker.leadersOfTopicInBroker(topic).size();
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
-    for (Replica leader : new HashSet<>(broker.leadersOfTopicInBroker(topic))) {
-      if (excludedTopics.contains(leader.topicPartition().topic())) {
-        continue;
-      }
 
-      Set<Broker> candidateBrokers = clusterModel.partition(leader.topicPartition()).partitionBrokers().stream()
+    // Try to rebalance by moving leadership to follower replicas.
+    for (Replica leader : broker.leadersOfTopicInBroker(topic)) {
+      final Set<Broker> candidateBrokers = clusterModel.partition(leader.topicPartition()).partitionBrokers().stream()
               .filter(b -> b != broker && !b.replica(leader.topicPartition()).isCurrentOffline())
+              .filter(b -> broker.numLeadersOfTopicInBroker(topic) < _balanceUpperLimitByTopic.get(topic))
               .collect(Collectors.toSet());
       Broker b = maybeApplyBalancingAction(clusterModel,
               leader,
@@ -455,16 +472,45 @@ public class TopicLeaderDistributionGoal extends AbstractGoal {
               ActionType.LEADERSHIP_MOVEMENT,
               optimizedGoals,
               optimizationOptions);
-      // Only check if we successfully moved something.
-      if (b != null) {
-        if (--numLeaderReplicas <= _balanceUpperLimitByTopic.get(topic)) {
+      if (b != null && broker.numLeadersOfTopicInBroker(topic) <= _balanceUpperLimitByTopic.get(topic)) {
+        return false;
+      }
+    }
+
+    // Try to rebalance by swapping one of the broker follower replicas with a leader replica from another broker.
+    Set<TopicPartition> brokerPartitions = broker.replicasOfTopicInBroker(topic).stream()
+            .map(Replica::topicPartition)
+            .collect(Collectors.toSet());;
+    for (Replica leader : broker.leadersOfTopicInBroker(topic)) {
+      Iterable<Broker> candidateBrokers = clusterModel.brokers().stream()
+              .filter(b -> broker.numLeadersOfTopicInBroker(topic) < _balanceUpperLimitByTopic.get(topic))
+              .collect(Collectors.toList());
+      for (Broker candidateBroker : candidateBrokers) {
+        List<Replica> candidateReplicas = candidateBroker.replicasOfTopicInBroker(topic).stream()
+                .filter(r -> !r.isLeader() && !r.isCurrentOffline() && !brokerPartitions.contains(r.topicPartition()))
+                .collect(Collectors.toList());
+        Replica r = maybeApplySwapAction(clusterModel, leader, new TreeSet<>(candidateReplicas), optimizedGoals, optimizationOptions);
+        if (r != null && broker.numLeadersOfTopicInBroker(topic) <= _balanceUpperLimitByTopic.get(topic)) {
           return false;
         }
       }
     }
+
     return true;
   }
 
+  /**
+   * Attempt to increase the number of topic partitions led by the broker first by moving the leadership to follower
+   * replicas hosted by the broker, and second by swapping follower replicas hosted by the broker with leader replicas
+   * of partitions not currently hosted by the broker.
+   *
+   * @param broker              Broker that leads too few partitions of the given topic.
+   * @param topic               Topic to rebalance.
+   * @param clusterModel        The state of the cluster.
+   * @param optimizedGoals      Optimized goals.
+   * @param optimizationOptions Options to take into account during optimization.
+   * @return true if rebalancing was not successful.
+   */
   private boolean rebalanceByMovingLeadershipIn(Broker broker,
                                                 String topic,
                                                 ClusterModel clusterModel,
@@ -475,11 +521,10 @@ public class TopicLeaderDistributionGoal extends AbstractGoal {
       return true;
     }
 
-    int numLeaderReplicas = broker.leadersOfTopicInBroker(topic).size();
-    Set<Broker> candidateBrokers =  Collections.singleton(broker);
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
+    // Try to rebalance by making one of the replicas the broker is already hosting a leader.
+    Set<Broker> candidateBrokers = Collections.singleton(broker);
     for (Replica replica : broker.replicasOfTopicInBroker(topic)) {
-      if (replica.isLeader() || replica.isCurrentOffline() || excludedTopics.contains(replica.topicPartition().topic())) {
+      if (replica.isLeader() || replica.isCurrentOffline()) {
         continue;
       }
       Broker b = maybeApplyBalancingAction(clusterModel,
@@ -488,13 +533,34 @@ public class TopicLeaderDistributionGoal extends AbstractGoal {
               ActionType.LEADERSHIP_MOVEMENT,
               optimizedGoals,
               optimizationOptions);
-      // Only check if we successfully moved something.
-      if (b != null) {
-        if (++numLeaderReplicas >= _balanceLowerLimitByTopic.get(topic)) {
+      if (b != null && broker.numLeadersOfTopicInBroker(topic) >= _balanceLowerLimitByTopic.get(topic)) {
+        return false;
+      }
+    }
+
+    // Try to rebalance by swapping one of the broker non-leader replicas with a leader replica from another broker.
+    Set<TopicPartition> brokerPartitions = broker.replicasOfTopicInBroker(topic).stream()
+            .map(Replica::topicPartition)
+            .collect(Collectors.toSet());
+    candidateBrokers = clusterModel.brokers().stream()
+            .filter(b -> broker.numLeadersOfTopicInBroker(topic) > _balanceLowerLimitByTopic.get(topic))
+            .collect(Collectors.toSet());
+    for (Broker candidateBroker : candidateBrokers) {
+      Iterable<Replica> leaders = candidateBroker.leaderReplicas().stream()
+              .filter(r -> r.topicPartition().topic().equals(topic) && !r.isCurrentOffline())
+              .filter(r -> !brokerPartitions.contains(r.topicPartition()))
+              .collect(Collectors.toList());
+      for (Replica leader : leaders) {
+        List<Replica> candidateReplicas = broker.replicasOfTopicInBroker(topic).stream()
+                .filter(r -> !r.isLeader())
+                .collect(Collectors.toList());
+        Replica r = maybeApplySwapAction(clusterModel, leader, new TreeSet<>(candidateReplicas), optimizedGoals, optimizationOptions);
+        if (r != null && broker.numLeadersOfTopicInBroker(topic) >= _balanceLowerLimitByTopic.get(topic)) {
           return false;
         }
       }
     }
+
     return true;
   }
 
