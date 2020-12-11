@@ -52,9 +52,11 @@ public class GoalUtilsTest {
 
     EasyMock.replay(mockBalanceConstraint);
     double computedBalanceThreshold = GoalUtils.computeResourceUtilizationBalanceThreshold(AVG_UTILIZATION_PERCENTAGE,
-        resource,
-        mockBalanceConstraint, true, ResourceDistributionGoal.BALANCE_MARGIN,
-        isLowerThreshold);
+                                                                                           resource,
+                                                                                           mockBalanceConstraint,
+                                                                                           true,
+                                                                                           ResourceDistributionGoal.BALANCE_MARGIN,
+                                                                                           isLowerThreshold);
     EasyMock.verify(mockBalanceConstraint);
     Assert.assertEquals(expectedComputedBalanceThreshold, computedBalanceThreshold, 0.0);
   }
