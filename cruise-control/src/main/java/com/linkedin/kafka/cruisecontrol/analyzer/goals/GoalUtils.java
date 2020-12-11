@@ -532,11 +532,10 @@ public class GoalUtils {
       double balancePercentageWithMargin =
           balancePercentageWithMargin(isTriggeredByGoalViolation, balancingConstraint, resource, balanceMargin);
       double resourceBalanceThreshold = avgUtilizationPercentage * (1 + balancePercentageWithMargin);
-
-      if (!isLowUtilization) {
-        return resourceBalanceThreshold;
+      if (isLowUtilization) {
+        return Math.max(resourceBalanceThreshold, balancingConstraint.lowUtilizationThreshold(resource) * balanceMargin);
       }
-      return Math.max(resourceBalanceThreshold, balancingConstraint.lowUtilizationThreshold(resource) * balanceMargin);
+      return resourceBalanceThreshold;
     }
   }
 
