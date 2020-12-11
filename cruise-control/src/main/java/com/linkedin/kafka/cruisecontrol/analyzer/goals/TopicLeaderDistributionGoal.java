@@ -464,7 +464,7 @@ public class TopicLeaderDistributionGoal extends AbstractGoal {
     for (Replica leader : broker.leadersOfTopicInBroker(topic)) {
       final Set<Broker> candidateBrokers = clusterModel.partition(leader.topicPartition()).partitionBrokers().stream()
               .filter(b -> b != broker && !b.replica(leader.topicPartition()).isCurrentOffline())
-              .filter(b -> broker.numLeadersOfTopicInBroker(topic) < _balanceUpperLimitByTopic.get(topic))
+              .filter(b -> b.numLeadersOfTopicInBroker(topic) < _balanceUpperLimitByTopic.get(topic))
               .collect(Collectors.toSet());
       Broker b = maybeApplyBalancingAction(clusterModel,
               leader,
@@ -483,7 +483,7 @@ public class TopicLeaderDistributionGoal extends AbstractGoal {
             .collect(Collectors.toSet());;
     for (Replica leader : broker.leadersOfTopicInBroker(topic)) {
       Iterable<Broker> candidateBrokers = clusterModel.brokers().stream()
-              .filter(b -> broker.numLeadersOfTopicInBroker(topic) < _balanceUpperLimitByTopic.get(topic))
+              .filter(b -> b.numLeadersOfTopicInBroker(topic) < _balanceUpperLimitByTopic.get(topic))
               .collect(Collectors.toList());
       for (Broker candidateBroker : candidateBrokers) {
         List<Replica> candidateReplicas = candidateBroker.replicasOfTopicInBroker(topic).stream()
@@ -543,7 +543,7 @@ public class TopicLeaderDistributionGoal extends AbstractGoal {
             .map(Replica::topicPartition)
             .collect(Collectors.toSet());
     candidateBrokers = clusterModel.brokers().stream()
-            .filter(b -> broker.numLeadersOfTopicInBroker(topic) > _balanceLowerLimitByTopic.get(topic))
+            .filter(b -> b.numLeadersOfTopicInBroker(topic) > _balanceLowerLimitByTopic.get(topic))
             .collect(Collectors.toSet());
     for (Broker candidateBroker : candidateBrokers) {
       Iterable<Replica> leaders = candidateBroker.leaderReplicas().stream()
