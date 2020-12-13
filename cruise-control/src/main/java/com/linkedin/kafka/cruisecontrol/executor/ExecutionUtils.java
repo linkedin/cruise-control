@@ -353,33 +353,65 @@ public final class ExecutionUtils {
                                                               Set<TopicPartition> deleted,
                                                               Set<TopicPartition> dead,
                                                               Set<TopicPartition> noReassignmentToCancel) {
-    if (result != null) {
-      for (Map.Entry<TopicPartition, KafkaFuture<Void>> entry: result.values().entrySet()) {
-        TopicPartition tp = entry.getKey();
-        try {
-          entry.getValue().get(EXECUTION_TASK_FUTURE_ERROR_VERIFICATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-          LOG.debug("Replica reassignment for {} has been accepted.", tp);
-        } catch (ExecutionException ee) {
-          if (Errors.INVALID_REPLICA_ASSIGNMENT.exception().getClass() == ee.getCause().getClass()) {
-            dead.add(tp);
-            LOG.debug("Replica reassignment failed for {} due to dead destination broker(s).", tp);
-          } else if (Errors.UNKNOWN_TOPIC_OR_PARTITION.exception().getClass() == ee.getCause().getClass()) {
-            deleted.add(tp);
-            LOG.debug("Replica reassignment failed for {} due to its topic deletion.", tp);
-          } else if (Errors.NO_REASSIGNMENT_IN_PROGRESS.exception().getClass() == ee.getCause().getClass()) {
-            // Attempt to cancel/rollback a reassignment that does not exist.
-            noReassignmentToCancel.add(tp);
-            LOG.debug("Rollback failed for {} due to lack of corresponding ongoing replica reassignment.", tp);
-          } else {
-            // Not expected to happen.
-            throw new IllegalStateException(String.format("%s encountered an unknown execution exception.", tp), ee);
-          }
-        } catch (TimeoutException | InterruptedException e) {
-          // May indicate transient (e.g. network) issues and might require a task re-execution -- i.e. handled in Executor.
-          // If this is observed frequently, we may need to bump up EXECUTION_TASK_FUTURE_ERROR_VERIFICATION_TIMEOUT_MS.
-          LOG.warn("Failed to process AlterPartitionReassignmentsResult of {}.", tp, e);
-        }
+    if (result == null) {
+      return;
+    }
+    Set<KafkaFuture<Void>> waitingToFinishKafkaFutures = new HashSet<>(result.values().values());
+    KafkaFutureResultsIterator<Void> kafkaFutureResultsIterator = new KafkaFutureResultsIterator<>(waitingToFinishKafkaFutures);
+
+    while (kafkaFutureResultsIterator.hasNext()) {
+      KafkaFutureResultsIterator.FutureResult<Void> kafkaFutureResult = kafkaFutureResultsIterator.next();
+      if (kafkaFutureResult.exceptional()) {
+        handleAlterPartitionReassignmentsException(kafkaFutureResult.exception(),
+                                                   kafkaFutureResult.finishedKafkaFuture(),
+                                                   deleted,
+                                                   dead,
+                                                   noReassignmentToCancel,
+                                                   transformToTopicPartitionByKafkaFuture(result.values()));
       }
+    }
+  }
+
+  private static Map<KafkaFuture<Void>, Set<TopicPartition>> transformToTopicPartitionByKafkaFuture(
+      Map<TopicPartition, KafkaFuture<Void>> kafkaFutureByTopicPartition) {
+
+    Map<KafkaFuture<Void>, Set<TopicPartition>> topicPartitionByKafkaFuture = new HashMap<>();
+    kafkaFutureByTopicPartition.forEach((tp, kafkaFuture) -> {
+      topicPartitionByKafkaFuture.computeIfAbsent(kafkaFuture, kf -> new HashSet<>()).add(tp);
+    });
+    return topicPartitionByKafkaFuture;
+  }
+
+  private static void handleAlterPartitionReassignmentsException(Exception exception,
+                                                                 KafkaFuture<Void> finishedKafkaFuture,
+                                                                 Set<TopicPartition> deleted,
+                                                                 Set<TopicPartition> dead,
+                                                                 Set<TopicPartition> noReassignmentToCancel,
+                                                                 Map<KafkaFuture<Void>, Set<TopicPartition>> topicPartitionByKafkaFuture) {
+
+    if (exception instanceof TimeoutException || exception instanceof InterruptedException) {
+      // May indicate transient (e.g. network) issues and might require a task re-execution -- i.e. handled in Executor.
+      // If this is observed frequently, we may need to bump up EXECUTION_TASK_FUTURE_ERROR_VERIFICATION_TIMEOUT_MS.
+      LOG.warn("Failed to process AlterPartitionReassignmentsResult.", exception);
+      return;
+    }
+    if (!(exception instanceof ExecutionException)) {
+      return;
+    }
+    ExecutionException ee = (ExecutionException) exception;
+    if (Errors.INVALID_REPLICA_ASSIGNMENT.exception().getClass() == ee.getCause().getClass()) {
+      dead.addAll(topicPartitionByKafkaFuture.get(finishedKafkaFuture));
+      LOG.debug("Replica reassignment failed due to dead destination broker(s).", ee);
+    } else if (Errors.UNKNOWN_TOPIC_OR_PARTITION.exception().getClass() == ee.getCause().getClass()) {
+      deleted.addAll(topicPartitionByKafkaFuture.get(finishedKafkaFuture));
+      LOG.debug("Replica reassignment failed due to its topic deletion.", ee);
+    } else if (Errors.NO_REASSIGNMENT_IN_PROGRESS.exception().getClass() == ee.getCause().getClass()) {
+      // Attempt to cancel/rollback a reassignment that does not exist.
+      noReassignmentToCancel.addAll(topicPartitionByKafkaFuture.get(finishedKafkaFuture));
+      LOG.debug("Rollback failed due to lack of corresponding ongoing replica reassignment.", ee);
+    } else {
+      // Not expected to happen.
+      throw new IllegalStateException("Encountered an unknown execution exception.", ee);
     }
   }
 

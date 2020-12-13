@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -17,20 +18,21 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.kafka.common.KafkaFuture;
-import org.eclipse.jetty.util.BlockingArrayQueue;
 
 
-class KafkaFuturesWatcher<T> implements Iterator<KafkaFuturesWatcher.ExceptionOrResult<T>> {
+class KafkaFutureResultsIterator<T> implements Iterator<KafkaFutureResultsIterator.FutureResult<T>> {
 
-  static class ExceptionOrResult<T> {
+  static class FutureResult<T> {
     private final T _result;
     private final Exception _exception;
+    private final KafkaFuture<T> _finishedKafkaFuture;
 
-    private ExceptionOrResult(T result, Exception exception) {
+    FutureResult(T result, Exception exception, KafkaFuture<T> finishedKafkaFuture) {
       if (exception != null && result != null) {
         throw new IllegalArgumentException("Cannot have both result and exception. "
             + "Got result " + result + " and exception " + exception);
       }
+      _finishedKafkaFuture = Utils.validateNotNull(finishedKafkaFuture, "Finished Kafka future cannot be null");
       _result = result;
       _exception = exception;
     }
@@ -45,19 +47,22 @@ class KafkaFuturesWatcher<T> implements Iterator<KafkaFuturesWatcher.ExceptionOr
     T result() {
       return _result;
     }
+    KafkaFuture<T> finishedKafkaFuture() {
+      return _finishedKafkaFuture;
+    }
   }
 
   private static final Duration DEFAULT_FUTURE_CHECK_INTERVAL = Duration.ofMillis(20);
   private final Set<KafkaFuture<T>> _waitingKafkaFutures;
-  private final BlockingQueue<ExceptionOrResult<T>> _finishedKafkaFutures;
+  private final BlockingQueue<FutureResult<T>> _finishedKafkaFutures;
   private final Lock _lock;
   private final ScheduledExecutorService _scheduledExecutorService;
 
-  KafkaFuturesWatcher(Set<KafkaFuture<T>> waitingKafkaFutures) {
+  KafkaFutureResultsIterator(Set<KafkaFuture<T>> waitingKafkaFutures) {
     this(waitingKafkaFutures, DEFAULT_FUTURE_CHECK_INTERVAL);
   }
 
-  KafkaFuturesWatcher(Set<KafkaFuture<T>> waitingKafkaFutures, Duration futureCheckInterval) {
+  KafkaFutureResultsIterator(Set<KafkaFuture<T>> waitingKafkaFutures, Duration futureCheckInterval) {
     if (waitingKafkaFutures == null) {
       throw new IllegalArgumentException("Kafka futures cannot be null");
     }
@@ -68,7 +73,7 @@ class KafkaFuturesWatcher<T> implements Iterator<KafkaFuturesWatcher.ExceptionOr
     _waitingKafkaFutures = new HashSet<>(waitingKafkaFutures);
     _lock = new ReentrantLock();
     _scheduledExecutorService = Executors.newScheduledThreadPool(1);
-    _finishedKafkaFutures = new BlockingArrayQueue<>(_waitingKafkaFutures.size());
+    _finishedKafkaFutures = new ArrayBlockingQueue<>(_waitingKafkaFutures.size());
     _scheduledExecutorService.scheduleAtFixedRate(this::checkFutureStatus, 0, futureCheckInterval.toMillis(), TimeUnit.MILLISECONDS);
   }
 
@@ -80,7 +85,7 @@ class KafkaFuturesWatcher<T> implements Iterator<KafkaFuturesWatcher.ExceptionOr
   }
 
   @Override
-  public ExceptionOrResult<T> next() {
+  public FutureResult<T> next() {
     if (!hasNext()) {
       throw new IllegalStateException("All Kafka future(s) have finished");
     }
@@ -93,14 +98,14 @@ class KafkaFuturesWatcher<T> implements Iterator<KafkaFuturesWatcher.ExceptionOr
 
   private void checkFutureStatus() {
     try (AutoCloseableLock autoCloseableLock = new AutoCloseableLock(_lock)) {
-      Iterator<KafkaFuture<T>> iterator = _waitingKafkaFutures.iterator();
-
-      while (iterator.hasNext()) {
-        KafkaFuture<T> kafkaFuture = iterator.next();
+      Iterator<KafkaFuture<T>> waitingFuturesIterator = _waitingKafkaFutures.iterator();
+      System.out.println("Put thread starts");
+      while (waitingFuturesIterator.hasNext()) {
+        KafkaFuture<T> kafkaFuture = waitingFuturesIterator.next();
         if (!kafkaFuture.isDone()) {
           continue;
         }
-        iterator.remove(); // Remove the finished Kafka future from the waiting pool
+        waitingFuturesIterator.remove(); // Remove the finished Kafka future from the waiting pool
         T result = null;
         Exception exception = null;
         try {
@@ -108,7 +113,7 @@ class KafkaFuturesWatcher<T> implements Iterator<KafkaFuturesWatcher.ExceptionOr
         } catch (Exception e) {
           exception = e;
         }
-        enqueueResultOrException(result, exception);
+        enqueueResultOrException(result, exception, kafkaFuture);
       }
       if (_waitingKafkaFutures.isEmpty()) {
         _scheduledExecutorService.shutdown();
@@ -116,17 +121,22 @@ class KafkaFuturesWatcher<T> implements Iterator<KafkaFuturesWatcher.ExceptionOr
     }
   }
 
-  private void enqueueResultOrException(T result, Exception exception) {
-    ExceptionOrResult<T> resultOrException;
+  private void enqueueResultOrException(T result, Exception exception, KafkaFuture<T> finishedKafkaFuture) {
+    FutureResult<T> resultOrException;
     if (exception != null) {
-      resultOrException = new ExceptionOrResult<>(null, exception);
+      resultOrException = new FutureResult<>(null, exception, finishedKafkaFuture);
     } else {
-      resultOrException = new ExceptionOrResult<>(result, null);
+      resultOrException = new FutureResult<>(result, null, finishedKafkaFuture);
     }
     try {
       _finishedKafkaFutures.put(resultOrException);
     } catch (InterruptedException e) {
       throw new IllegalStateException(e);
     }
+  }
+
+  // Visible for testing purpose
+  boolean isShutdown() {
+    return _scheduledExecutorService.isShutdown();
   }
 }
