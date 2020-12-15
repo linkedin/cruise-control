@@ -86,6 +86,10 @@ class KafkaFutureResultsIterator<T> implements Iterator<KafkaFutureResultsIterat
 
   @Override
   public FutureResult<T> next() {
+    return getNext();
+  }
+
+  private synchronized FutureResult<T> getNext() {
     if (!hasNext()) {
       throw new IllegalStateException("All Kafka future(s) have finished");
     }
@@ -99,7 +103,6 @@ class KafkaFutureResultsIterator<T> implements Iterator<KafkaFutureResultsIterat
   private void checkFutureStatus() {
     try (AutoCloseableLock autoCloseableLock = new AutoCloseableLock(_lock)) {
       Iterator<KafkaFuture<T>> waitingFuturesIterator = _waitingKafkaFutures.iterator();
-      System.out.println("Put thread starts");
       while (waitingFuturesIterator.hasNext()) {
         KafkaFuture<T> kafkaFuture = waitingFuturesIterator.next();
         if (!kafkaFuture.isDone()) {
