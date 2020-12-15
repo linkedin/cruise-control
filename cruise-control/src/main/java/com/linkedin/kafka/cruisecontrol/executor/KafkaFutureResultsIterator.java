@@ -15,6 +15,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.kafka.common.KafkaFuture;
@@ -57,6 +58,7 @@ class KafkaFutureResultsIterator<T> implements Iterator<KafkaFutureResultsIterat
   private final BlockingQueue<FutureResult<T>> _finishedKafkaFutures;
   private final Lock _lock;
   private final ScheduledExecutorService _scheduledExecutorService;
+  private final AtomicBoolean _closed;
 
   KafkaFutureResultsIterator(Set<KafkaFuture<T>> waitingKafkaFutures) {
     this(waitingKafkaFutures, DEFAULT_FUTURE_CHECK_INTERVAL);
@@ -74,11 +76,16 @@ class KafkaFutureResultsIterator<T> implements Iterator<KafkaFutureResultsIterat
     _lock = new ReentrantLock();
     _scheduledExecutorService = Executors.newScheduledThreadPool(1);
     _finishedKafkaFutures = new ArrayBlockingQueue<>(_waitingKafkaFutures.size());
+    _closed = new AtomicBoolean(false);
     _scheduledExecutorService.scheduleAtFixedRate(this::checkFutureStatus, 0, futureCheckInterval.toMillis(), TimeUnit.MILLISECONDS);
   }
 
   @Override
   public boolean hasNext() {
+    if (_closed.get()) {
+      throw new IllegalStateException("Iterator has been closed");
+    }
+
     try (AutoCloseableLock autoCloseableLock = new AutoCloseableLock(_lock)) {
       return _waitingKafkaFutures.size() + _finishedKafkaFutures.size() > 0;
     }
@@ -92,6 +99,9 @@ class KafkaFutureResultsIterator<T> implements Iterator<KafkaFutureResultsIterat
   private synchronized FutureResult<T> getNext() {
     if (!hasNext()) {
       throw new IllegalStateException("All Kafka future(s) have finished");
+    }
+    if (_closed.get()) {
+      throw new IllegalStateException("Iterator has been closed");
     }
     try {
       return _finishedKafkaFutures.take();
@@ -139,7 +149,21 @@ class KafkaFutureResultsIterator<T> implements Iterator<KafkaFutureResultsIterat
   }
 
   // Visible for testing purpose
-  boolean isShutdown() {
+  boolean isSchedulerShutdown() {
     return _scheduledExecutorService.isShutdown();
+  }
+
+  /**
+   * Stop the scheduled future-status-checking thread and clear internal data structures. Note that it is not
+   * thread-safe to call this method concurrently with {@link #hasNext()} or {@link #next()}
+   */
+  void close() {
+    if (_closed.compareAndSet(false, true)) {
+      _scheduledExecutorService.shutdown();
+      try (AutoCloseableLock autoCloseableLock = new AutoCloseableLock(_lock)) {
+        _waitingKafkaFutures.clear();
+        _finishedKafkaFutures.clear();
+      }
+    }
   }
 }

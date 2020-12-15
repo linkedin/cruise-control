@@ -74,7 +74,7 @@ public class KafkaFutureResultsIteratorTest {
     assertEquals(new HashSet<>(Arrays.asList(0, 1, 2)),
                  futureResults.stream().map(KafkaFutureResultsIterator.FutureResult::result).collect(Collectors.toSet()));
 
-    assertTrue(futureResultsIterator.isShutdown());
+    assertTrue(futureResultsIterator.isSchedulerShutdown());
     verifyAndResetMocks(mockKafkaFutures);
 
     // Case 2: 3 futures and they all finish and return successfully on the third round of checking
@@ -97,7 +97,7 @@ public class KafkaFutureResultsIteratorTest {
     assertEquals(new HashSet<>(Arrays.asList(0, 1, 2)),
                  futureResults.stream().map(KafkaFutureResultsIterator.FutureResult::result).collect(Collectors.toSet()));
 
-    assertTrue(futureResultsIterator.isShutdown());
+    assertTrue(futureResultsIterator.isSchedulerShutdown());
     verifyAndResetMocks(mockKafkaFutures);
 
     // Case 3: 3 futures and one of them throws exception and other 2 returns results on the first round of checking
@@ -127,7 +127,7 @@ public class KafkaFutureResultsIteratorTest {
 
     assertEquals(new HashSet<>(Arrays.asList(0, 2)), results);
     assertEquals(expectedException, gotException);
-    assertTrue(futureResultsIterator.isShutdown());
+    assertTrue(futureResultsIterator.isSchedulerShutdown());
     verifyAndResetMocks(mockKafkaFutures);
 
     // Case 4: 3 futures and all of them throws exception on the first round of checking
@@ -147,8 +147,28 @@ public class KafkaFutureResultsIteratorTest {
 
     assertEquals(expectedExceptions,
                  futureResults.stream().map(KafkaFutureResultsIterator.FutureResult::exception).collect(Collectors.toSet()));
-    assertTrue(futureResultsIterator.isShutdown());
+    assertTrue(futureResultsIterator.isSchedulerShutdown());
     verifyAndResetMocks(mockKafkaFutures);
+  }
+
+  @Test(expected = IllegalStateException.class)
+  public void testCloseKafkaFutureIterator() {
+    KafkaFuture<Void> mockKafkaFuture = EasyMock.mock(KafkaFuture.class);
+    // A mock Kafka future object that never finishes
+    EasyMock.expect(mockKafkaFuture.isDone()).andReturn(false).anyTimes();
+    EasyMock.replay(mockKafkaFuture);
+
+    KafkaFutureResultsIterator<Void> kafkaFutureResultsIterator = new KafkaFutureResultsIterator<>(Collections.singleton(mockKafkaFuture));
+    kafkaFutureResultsIterator.close();
+    // Verify successful close
+    assertFalse(kafkaFutureResultsIterator.hasNext());
+    assertTrue(kafkaFutureResultsIterator.isSchedulerShutdown());
+
+    // Verify that calling the close method is idempotent
+    kafkaFutureResultsIterator.close();
+
+    // Verify getting an IllegalStateException when try to get next after close
+    kafkaFutureResultsIterator.next();
   }
 
   @Test(expected = IllegalArgumentException.class)
@@ -177,7 +197,7 @@ public class KafkaFutureResultsIteratorTest {
       assertNull(result.exception());
       assertNull(result.result()); // When the future is of type Void, the result is null
     }
-    assertTrue(futureResultsIterator.isShutdown());
+    assertTrue(futureResultsIterator.isSchedulerShutdown());
     EasyMock.verify(mockKafkaFuture);
 
     // This call triggers the exception
