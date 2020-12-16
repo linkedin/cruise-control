@@ -264,6 +264,19 @@ public class ClusterModel implements Serializable {
   }
 
   /**
+   * @return A map from topic names to all replicas of each topic
+   */
+  public Map<String, List<Replica>> allReplicasOfTopics(Set<String> topicNames) {
+    Map<String, List<Replica>> replicasByTopicNames = new HashMap<>(topicNames.size());
+    _partitionsByTopicPartition.forEach((topicPartition, partition) -> {
+      if (topicNames.contains(topicPartition.topic())) {
+        replicasByTopicNames.computeIfAbsent(topicPartition.topic(), topicName -> new ArrayList<>()).addAll(partition.replicas());
+      }
+    });
+    return replicasByTopicNames;
+  }
+
+  /**
    * Set the {@link Broker.State liveness state} of the given broker.
    * <ul>
    * <li>All currently offline replicas of a broker are considered to be self healing eligible.</li>

@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderReplicaDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.MinTopicLeadersPerBrokerGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
@@ -23,6 +24,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
+import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
@@ -128,6 +130,19 @@ public class ExcludedTopicsTest {
     p.add(params(7, RackAwareDistributionGoal.class, noExclusion, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(),
                  deadBroker0, null, null));
 
+    // ============MinTopicLeadersPerBrokerGoal============
+    Properties configOverrides = new Properties();
+    configOverrides.setProperty(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG,
+                                TestConstants.TOPIC_MUST_HAVE_LEADER_REPLICAS_ON_BROKERS);
+    // With one excluded but irrelevant topic, no dead brokers (No exception, No proposal, Expected to look optimized)
+    p.add(params(0, MinTopicLeadersPerBrokerGoal.class, excludeT1, null,
+                 DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable(), noDeadBroker, true, true, configOverrides));
+    // With one excluded and relevant topic, no dead brokers (Expect exception since the excluded topic happens to be the
+    // same topic which this goal interests in)
+    p.add(params(1,  MinTopicLeadersPerBrokerGoal.class, Collections.singleton(TestConstants.TOPIC_MUST_HAVE_LEADER_REPLICAS_ON_BROKERS),
+                 OptimizationFailureException.class, DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable(),
+                 noDeadBroker, null, null, configOverrides));
+
     // ============ReplicaCapacityGoal============
     // Test: With single excluded topic, satisfiable cluster, no dead brokers (No exception, No proposal, Expected to look optimized)
     p.add(params(0, ReplicaCapacityGoal.class, excludeT1, null, unbalanced(), noDeadBroker, true, false));
@@ -190,7 +205,7 @@ public class ExcludedTopicsTest {
 
     // ============TopicReplicaDistributionGoal============
     // Test: With single excluded topic, satisfiable cluster, no dead broker (No exception, No proposal, Large min gap, Expected to look optimized)
-    Properties configOverrides = new Properties();
+    configOverrides = new Properties();
     configOverrides.setProperty(AnalyzerConfig.TOPIC_REPLICA_COUNT_BALANCE_MIN_GAP_CONFIG, "40");
     p.add(params(0, TopicReplicaDistributionGoal.class, excludeT1, null, unbalanced5(), noDeadBroker, true, false, configOverrides));
     // Test: With single excluded topic, satisfiable cluster, one dead broker (No exception, Generates proposals, Expected to look optimized)
@@ -281,7 +296,8 @@ public class ExcludedTopicsTest {
                             Boolean expectedToGenerateProposals) {
     _testId = testId;
     _goal = goal;
-    _optimizationOptions = new OptimizationOptions(excludedTopics);
+    _optimizationOptions = new OptimizationOptions(excludedTopics, Collections.emptySet(),
+                                                   Collections.emptySet(), false);
     _exceptionClass = exceptionClass;
     _clusterModel = clusterModel;
     _expectedToOptimize = expectedToOptimize;

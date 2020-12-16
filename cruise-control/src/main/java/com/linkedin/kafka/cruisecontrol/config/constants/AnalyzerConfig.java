@@ -14,6 +14,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.IntraBrokerDiskCapacityGo
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.IntraBrokerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderReplicaDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.MinTopicLeadersPerBrokerGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
@@ -242,6 +243,7 @@ public class AnalyzerConfig {
   public static final String GOALS_CONFIG = "goals";
   public static final String DEFAULT_GOALS = new StringJoiner(",").add(RackAwareGoal.class.getName())
                                                                   .add(RackAwareDistributionGoal.class.getName())
+                                                                  .add(MinTopicLeadersPerBrokerGoal.class.getName())
                                                                   .add(ReplicaCapacityGoal.class.getName())
                                                                   .add(DiskCapacityGoal.class.getName())
                                                                   .add(NetworkInboundCapacityGoal.class.getName())
@@ -277,6 +279,7 @@ public class AnalyzerConfig {
    */
   public static final String HARD_GOALS_CONFIG = "hard.goals";
   public static final String DEFAULT_HARD_GOALS = new StringJoiner(",").add(RackAwareGoal.class.getName())
+                                                                       .add(MinTopicLeadersPerBrokerGoal.class.getName())
                                                                        .add(ReplicaCapacityGoal.class.getName())
                                                                        .add(DiskCapacityGoal.class.getName())
                                                                        .add(NetworkInboundCapacityGoal.class.getName())
@@ -290,6 +293,7 @@ public class AnalyzerConfig {
    */
   public static final String DEFAULT_GOALS_CONFIG = "default.goals";
   public static final String DEFAULT_DEFAULT_GOALS = new StringJoiner(",").add(RackAwareGoal.class.getName())
+                                                                          .add(MinTopicLeadersPerBrokerGoal.class.getName())
                                                                           .add(ReplicaCapacityGoal.class.getName())
                                                                           .add(DiskCapacityGoal.class.getName())
                                                                           .add(NetworkInboundCapacityGoal.class.getName())
@@ -333,6 +337,23 @@ public class AnalyzerConfig {
   public static final boolean DEFAULT_ALLOW_CAPACITY_ESTIMATION_ON_PROPOSAL_PRECOMPUTE = true;
   public static final String ALLOW_CAPACITY_ESTIMATION_ON_PROPOSAL_PRECOMPUTE_DOC = "The flag to indicate whether to "
       + "allow capacity estimation on proposal precomputation.";
+
+  /**
+   * <code>topics.with.min.leaders.per.broker</code>
+   */
+  public static final String TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG = "topics.with.min.leaders.per.broker";
+  public static final String DEFAULT_TOPICS_WITH_MIN_LEADERS_PER_BROKER = "";
+  public static final String DEFAULT_TOPICS_WITH_MIN_LEADERS_PER_BROKER_DOC = "The topics that should have minimum "
+      + "number of replica on brokers that are not excluded for replica move. It is a regex.";
+
+  /**
+   * <code>min.topic.leaders.per.broker</code>
+   */
+  public static final String MIN_TOPIC_LEADERS_PER_BROKER_CONFIG =
+      "min.topic.leaders.per.broker";
+  public static final int DEFAULT_MIN_TOPIC_LEADERS_PER_BROKER = 1;
+  public static final String MIN_TOPIC_LEADERS_PER_BROKER_DOC = "The minimum required number of leader replica per broker"
+      + " for topics that must have leader replica on brokers that are not excluded for replica move.";
 
   /**
    * <code>topics.excluded.from.partition.movement</code>
@@ -547,6 +568,16 @@ public class AnalyzerConfig {
                             DEFAULT_TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT,
                             ConfigDef.Importance.LOW,
                             TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_DOC)
+                    .define(TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG,
+                            ConfigDef.Type.STRING,
+                            DEFAULT_TOPICS_WITH_MIN_LEADERS_PER_BROKER,
+                            ConfigDef.Importance.LOW,
+                            DEFAULT_TOPICS_WITH_MIN_LEADERS_PER_BROKER_DOC)
+                    .define(MIN_TOPIC_LEADERS_PER_BROKER_CONFIG,
+                            ConfigDef.Type.INT,
+                            DEFAULT_MIN_TOPIC_LEADERS_PER_BROKER,
+                            atLeast(1),
+                            ConfigDef.Importance.LOW, MIN_TOPIC_LEADERS_PER_BROKER_DOC)
                     .define(GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG,
                             ConfigDef.Type.DOUBLE,
                             DEFAULT_GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER,

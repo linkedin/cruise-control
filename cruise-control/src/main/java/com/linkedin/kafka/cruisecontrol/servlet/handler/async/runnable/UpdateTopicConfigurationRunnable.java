@@ -180,7 +180,7 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
                                                                          _dryRun,
                                                                          _excludeRecentlyDemotedBrokers,
                                                                          _excludeRecentlyRemovedBrokers,
-                                                                         _excludedTopics,
+        _excludedTopics,
                                                                          Collections.emptySet(),
                                                                          true);
     populateRackInfoForReplicationFactorChange(_topicsToChangeByReplicationFactor, _cluster,

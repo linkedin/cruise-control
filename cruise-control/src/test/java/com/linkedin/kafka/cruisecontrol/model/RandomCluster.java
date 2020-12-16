@@ -37,6 +37,8 @@ import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.BROKER_CAPAC
  */
 public class RandomCluster {
 
+  public static final String TOPIC_WITH_ONE_LEADER_REPLICA_PER_BROKER = "TopicWithOneLeaderReplicaPerBroker";
+
   private RandomCluster() {
 
   }
@@ -199,6 +201,7 @@ public class RandomCluster {
       randomByResource.put(resource, new Random(seed));
     }
     Random randomForTopicPopularity = new Random(TestConstants.TOPIC_POPULARITY_SEED);
+    metadata.add(new TopicMetadata(TOPIC_WITH_ONE_LEADER_REPLICA_PER_BROKER, 2, numBrokers));
     for (TopicMetadata datum : metadata) {
       double topicPopularity = exponentialRandom(1.0, randomForTopicPopularity);
       String topic = datum.topic();
@@ -522,9 +525,12 @@ public class RandomCluster {
     private int _numTopicLeaders;
 
     TopicMetadata(int topicId) {
-      _topic = "T" + Integer.toString(topicId);
-      _replicationFactor = 1;
-      _numTopicLeaders = 1;
+      this("T" + Integer.toString(topicId), 1, 1);
+    }
+    TopicMetadata(String topicName, int replicationFactor, int numTopicLeaders) {
+      _topic = topicName;
+      _replicationFactor = replicationFactor;
+      _numTopicLeaders = numTopicLeaders;
     }
 
     void incrementNumTopicLeaders() {

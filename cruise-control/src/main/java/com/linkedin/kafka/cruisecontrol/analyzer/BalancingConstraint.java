@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.regex.Pattern;
 
 
 /**
@@ -30,6 +31,8 @@ public class BalancingConstraint {
   private final long _overprovisionedMaxReplicasPerBroker;
   private final int _overprovisionedMinBrokers;
   private final int _overprovisionedMinExtraRacks;
+  private final Pattern _topicsWithMinLeadersPerBrokerPattern;
+  private final int _minTopicLeadersPerBroker;
 
   /**
    * Constructor for Balancing Constraint.
@@ -69,6 +72,12 @@ public class BalancingConstraint {
     _topicReplicaBalanceMinGap = config.getInt(AnalyzerConfig.TOPIC_REPLICA_COUNT_BALANCE_MIN_GAP_CONFIG);
     _topicReplicaBalanceMaxGap = config.getInt(AnalyzerConfig.TOPIC_REPLICA_COUNT_BALANCE_MAX_GAP_CONFIG);
     _goalViolationDistributionThresholdMultiplier = config.getDouble(AnalyzerConfig.GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG);
+    // Set default value for the topics that must have a minimum number of leader replicas on brokers that are not
+    // excluded for replica move.
+    _topicsWithMinLeadersPerBrokerPattern =
+        Pattern.compile(config.getString(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG));
+    _minTopicLeadersPerBroker =
+        config.getInt(AnalyzerConfig.MIN_TOPIC_LEADERS_PER_BROKER_CONFIG);
   }
 
   Properties setProps(Properties props) {
@@ -98,6 +107,10 @@ public class BalancingConstraint {
     props.put(AnalyzerConfig.TOPIC_REPLICA_COUNT_BALANCE_MAX_GAP_CONFIG, Integer.toString(_topicReplicaBalanceMaxGap));
     props.put(AnalyzerConfig.GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG,
               Double.toString(_goalViolationDistributionThresholdMultiplier));
+    props.put(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG,
+              _topicsWithMinLeadersPerBrokerPattern.pattern());
+    props.put(AnalyzerConfig.MIN_TOPIC_LEADERS_PER_BROKER_CONFIG,
+              Integer.toString(_minTopicLeadersPerBroker));
     return props;
   }
 
@@ -205,6 +218,26 @@ public class BalancingConstraint {
   }
 
   /**
+   * Get the regex pattern of names of topics that must have a minimum number of leader replicas on alive brokers that
+   * not excluded for replica move.
+   *
+   * @return regex pattern of topics names
+   */
+  public Pattern topicsWithMinLeadersPerBrokerPattern() {
+    return _topicsWithMinLeadersPerBrokerPattern;
+  }
+
+  /**
+   * Get the minimum required number of leader replica per broker for topics that must have leader replica per broker
+   * that is not excluded for replica move.
+   *
+   * @return topic count
+   */
+  public int minTopicLeadersPerBroker() {
+    return _minTopicLeadersPerBroker;
+  }
+
+  /**
    * Set resource balance percentage for the given resource.
    *
    * @param resource Resource for which the balance percentage will be set.
@@ -262,13 +295,16 @@ public class BalancingConstraint {
                          + "diskCapacityThreshold=%.4f,inboundNwCapacityThreshold=%.4f,outboundNwCapacityThreshold=%.4f,"
                          + "maxReplicasPerBroker=%d,replicaBalancePercentage=%.4f,leaderReplicaBalancePercentage=%.4f,"
                          + "topicReplicaBalancePercentage=%.4f,topicReplicaBalanceGap=[%d,%d],"
-                         + "goalViolationDistributionThresholdMultiplier=%.4f]",
+                         + "goalViolationDistributionThresholdMultiplier=%.4f,"
+                         + "topicsWithMinLeadersPerBrokerPattern=%s,"
+                         + "minTopicLeadersPerBroker=%d]",
                          _resourceBalancePercentage.get(Resource.CPU), _resourceBalancePercentage.get(Resource.DISK),
                          _resourceBalancePercentage.get(Resource.NW_IN), _resourceBalancePercentage.get(Resource.NW_OUT),
                          _capacityThreshold.get(Resource.CPU), _capacityThreshold.get(Resource.DISK),
                          _capacityThreshold.get(Resource.NW_IN), _capacityThreshold.get(Resource.NW_OUT),
                          _maxReplicasPerBroker, _replicaBalancePercentage, _leaderReplicaBalancePercentage,
                          _topicReplicaBalancePercentage, _topicReplicaBalanceMinGap, _topicReplicaBalanceMaxGap,
-                         _goalViolationDistributionThresholdMultiplier);
+                         _goalViolationDistributionThresholdMultiplier,
+                         _topicsWithMinLeadersPerBrokerPattern.pattern(), _minTopicLeadersPerBroker);
   }
 }

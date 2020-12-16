@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderReplicaDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.MinTopicLeadersPerBrokerGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
@@ -23,6 +24,8 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
+import com.linkedin.kafka.cruisecontrol.common.TestConstants;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
@@ -36,6 +39,7 @@ import java.util.Collections;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Rule;
@@ -111,6 +115,38 @@ public class ExcludedBrokersForLeadershipTest {
     // With single excluded broker, (1) rack aware and (2) rack aware distribution unsatisfiable cluster, one dead broker (Exception)
     p.add(params(5, RackAwareDistributionGoal.class, excludeB1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(),
                  deadBroker0, null));
+
+    // ============MinTopicLeadersPerBrokerGoal============
+    Properties configOverrides = new Properties();
+    configOverrides.put(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG, TestConstants.TOPIC_MUST_HAVE_LEADER_REPLICAS_ON_BROKERS);
+
+    // With single excluded broker, no dead brokers (No exception, Expected to look optimized)
+    p.add(params(0, MinTopicLeadersPerBrokerGoal.class, excludeB1, null,
+                 DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable(), noDeadBroker, true, configOverrides));
+    p.add(params(1, MinTopicLeadersPerBrokerGoal.class, excludeB1, null,
+                 DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable2(), noDeadBroker, true, configOverrides));
+
+    // With single excluded broker, one dead broker (Expect optimization failure since offline replicas cannot be moved away from the dead broker)
+    p.add(params(2, MinTopicLeadersPerBrokerGoal.class, excludeB1, OptimizationFailureException.class,
+                 DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable(), deadBroker0, false, configOverrides));
+    p.add(params(3, MinTopicLeadersPerBrokerGoal.class, excludeB1, OptimizationFailureException.class,
+                 DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable2(), deadBroker0, false, configOverrides));
+    p.add(params(4, MinTopicLeadersPerBrokerGoal.class, excludeB1, OptimizationFailureException.class,
+                 DeterministicCluster.leaderReplicaPerBrokerUnsatisfiable(), deadBroker0, true, configOverrides));
+
+    // Without excluded broker, no dead brokers (No exception, Expected to look optimized)
+    p.add(params(5, MinTopicLeadersPerBrokerGoal.class, noExclusion, null,
+                 DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable(), noDeadBroker, true, configOverrides));
+    p.add(params(6, MinTopicLeadersPerBrokerGoal.class, noExclusion, null,
+                 DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable2(), noDeadBroker, true, configOverrides));
+
+    // Without excluded broker, one dead broker (No exception, Expected to look optimized)
+    p.add(params(7, MinTopicLeadersPerBrokerGoal.class, noExclusion, null,
+                 DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable(), deadBroker0, true, configOverrides));
+    p.add(params(8, MinTopicLeadersPerBrokerGoal.class, noExclusion, null,
+                 DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable2(), deadBroker0, true, configOverrides));
+    p.add(params(9, MinTopicLeadersPerBrokerGoal.class, noExclusion, null,
+                 DeterministicCluster.leaderReplicaPerBrokerUnsatisfiable(), deadBroker0, true, configOverrides));
 
     // ============ReplicaCapacityGoal============
     // Test: With single excluded broker, satisfiable cluster, no dead brokers (No exception, No proposal
@@ -265,7 +301,8 @@ public class ExcludedBrokersForLeadershipTest {
                                           Boolean expectedToOptimize) {
     _testId = testId;
     _goal = goal;
-    _optimizationOptions = new OptimizationOptions(Collections.emptySet(), excludedBrokersForLeadership);
+    _optimizationOptions = new OptimizationOptions(Collections.emptySet(), excludedBrokersForLeadership,
+                                                   Collections.emptySet(), false);
     _exceptionClass = exceptionClass;
     _clusterModel = clusterModel;
     _expectedToOptimize = expectedToOptimize;
@@ -316,7 +353,21 @@ public class ExcludedBrokersForLeadershipTest {
                                  ClusterModel clusterModel,
                                  Collection<Integer> deadBrokers,
                                  Boolean expectedToOptimize) throws Exception {
+    return params(tid, goalClass, excludedBrokersForLeadership, exceptionClass, clusterModel,
+                  deadBrokers, expectedToOptimize, null);
+  }
+
+  private static Object[] params(int tid,
+                                 Class<? extends Goal> goalClass,
+                                 Set<Integer> excludedBrokersForLeadership,
+                                 Class<? extends Throwable> exceptionClass,
+                                 ClusterModel clusterModel,
+                                 Collection<Integer> deadBrokers,
+                                 Boolean expectedToOptimize,
+                                 Properties configOverrides) throws Exception {
+
     deadBrokers.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
-    return new Object[]{tid, goal(goalClass), excludedBrokersForLeadership, exceptionClass, clusterModel, expectedToOptimize};
+    Goal goal = configOverrides == null ? goal(goalClass) : goal(goalClass, configOverrides);
+    return new Object[]{tid, goal, excludedBrokersForLeadership, exceptionClass, clusterModel, expectedToOptimize};
   }
 }

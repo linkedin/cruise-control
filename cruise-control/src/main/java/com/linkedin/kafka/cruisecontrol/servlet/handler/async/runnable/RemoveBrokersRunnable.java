@@ -106,7 +106,7 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
                                                                          _dryRun,
                                                                          _excludeRecentlyDemotedBrokers,
                                                                          _excludeRecentlyRemovedBrokers,
-                                                                         _excludedTopics,
+        _excludedTopics,
                                                                          _destinationBrokerIds,
                                                                          false);
 

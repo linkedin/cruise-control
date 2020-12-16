@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderReplicaDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.MinTopicLeadersPerBrokerGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
@@ -84,6 +85,7 @@ public class ReplicationFactorChangeTest {
       for (boolean isSmallCluster: Arrays.asList(true, false)) {
         for (Class<? extends Goal> goalClass : Arrays.asList(RackAwareGoal.class,
                                                              RackAwareDistributionGoal.class,
+                                                             MinTopicLeadersPerBrokerGoal.class,
                                                              ReplicaCapacityGoal.class,
                                                              DiskCapacityGoal.class,
                                                              NetworkInboundCapacityGoal.class,

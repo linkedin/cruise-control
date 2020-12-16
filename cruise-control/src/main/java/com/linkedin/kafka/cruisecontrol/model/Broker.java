@@ -196,6 +196,28 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
+   * Get number of either leader replicas or follower replicas from the given topic in this broker
+   *
+   * @param topic Topic for which the replica count will be returned.
+   * @param countLeaderReplica Count leader replicas if {@code true} and count follower replicas if
+   * {@code false}
+   * @return The number of replicas from the given topic in this broker.
+   */
+  public int numReplicasOfTopicInBroker(String topic, boolean countLeaderReplica) {
+    Map<Integer, Replica> topicReplicas = _topicReplicas.get(topic);
+    if (topicReplicas == null) {
+      return 0;
+    }
+    int replicaCount = 0;
+    for (Replica replica : topicReplicas.values()) {
+      if (replica.isLeader() == countLeaderReplica) {
+        replicaCount++;
+      }
+    }
+    return replicaCount;
+  }
+
+  /**
    * @return True if the broker is not dead, false otherwise.
    */
   public boolean isAlive() {

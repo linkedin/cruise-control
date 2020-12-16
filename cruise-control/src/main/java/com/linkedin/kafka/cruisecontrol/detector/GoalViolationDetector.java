@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.linkedin.kafka.cruisecontrol.common.Utils;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.exception.NotEnoughValidWindowsException;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
@@ -30,7 +31,6 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -246,10 +246,10 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
   }
 
   protected Set<String> excludedTopics(ClusterModel clusterModel) {
-    return clusterModel.topics()
-        .stream()
-        .filter(topic -> _excludedTopics.matcher(topic).matches())
-        .collect(Collectors.toSet());
+    if (_excludedTopics.pattern().isEmpty()) {
+      return Collections.emptySet();
+    }
+    return Utils.getTopicNamesMatchedWithPattern(_excludedTopics, clusterModel.topics());
   }
 
   protected boolean optimizeForGoal(ClusterModel clusterModel,
