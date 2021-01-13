@@ -8,6 +8,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils;
@@ -425,6 +426,12 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
   @Override
   public boolean isHardGoal() {
     return true;
+  }
+
+  @Override
+  public ProvisionStatus provisionStatus() {
+    // Provision status computation is not supported for kafka_assigner goals.
+    return ProvisionStatus.UNDECIDED;
   }
 
   @Override

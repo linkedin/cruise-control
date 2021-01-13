@@ -27,6 +27,9 @@ public class BalancingConstraint {
   private final Map<Resource, Double> _capacityThreshold;
   private final Map<Resource, Double> _lowUtilizationThreshold;
   private final long _maxReplicasPerBroker;
+  private final long _overprovisionedMaxReplicasPerBroker;
+  private final int _overprovisionedMinBrokers;
+  private final int _overprovisionedMinExtraRacks;
 
   /**
    * Constructor for Balancing Constraint.
@@ -56,6 +59,9 @@ public class BalancingConstraint {
     _lowUtilizationThreshold.put(Resource.NW_OUT, config.getDouble(AnalyzerConfig.NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG));
     // Set default value for the maximum number of replicas per broker.
     _maxReplicasPerBroker = config.getLong(AnalyzerConfig.MAX_REPLICAS_PER_BROKER_CONFIG);
+    _overprovisionedMaxReplicasPerBroker = config.getLong(AnalyzerConfig.OVERPROVISIONED_MAX_REPLICAS_PER_BROKER_CONFIG);
+    _overprovisionedMinBrokers = config.getInt(AnalyzerConfig.OVERPROVISIONED_MIN_BROKERS_CONFIG);
+    _overprovisionedMinExtraRacks = config.getInt(AnalyzerConfig.OVERPROVISIONED_MIN_EXTRA_RACKS_CONFIG);
     // Set default value for the balance percentage of (1) replica, (2) leader replica and (3) topic replica distribution.
     _replicaBalancePercentage = config.getDouble(AnalyzerConfig.REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG);
     _leaderReplicaBalancePercentage = config.getDouble(AnalyzerConfig.LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG);
@@ -82,6 +88,9 @@ public class BalancingConstraint {
     props.put(AnalyzerConfig.NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG, _lowUtilizationThreshold.get(Resource.NW_OUT).toString());
 
     props.put(AnalyzerConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(_maxReplicasPerBroker));
+    props.put(AnalyzerConfig.OVERPROVISIONED_MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(_overprovisionedMaxReplicasPerBroker));
+    props.put(AnalyzerConfig.OVERPROVISIONED_MIN_BROKERS_CONFIG, Integer.toString(_overprovisionedMinBrokers));
+    props.put(AnalyzerConfig.OVERPROVISIONED_MIN_EXTRA_RACKS_CONFIG, Integer.toString(_overprovisionedMinExtraRacks));
     props.put(AnalyzerConfig.REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG, Double.toString(_replicaBalancePercentage));
     props.put(AnalyzerConfig.LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG, Double.toString(_leaderReplicaBalancePercentage));
     props.put(AnalyzerConfig.TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG, Double.toString(_topicReplicaBalancePercentage));
@@ -97,6 +106,30 @@ public class BalancingConstraint {
    */
   public long maxReplicasPerBroker() {
     return _maxReplicasPerBroker;
+  }
+
+  /**
+   * @return The maximum number of replicas that should reside on each broker to consider a cluster as overprovisioned after balancing its
+   * replica distribution.
+   */
+  public long overprovisionedMaxReplicasPerBroker() {
+    return _overprovisionedMaxReplicasPerBroker;
+  }
+
+  /**
+   * @return The minimum number of alive brokers for the cluster to be eligible in overprovisioned consideration.
+   */
+  public int overprovisionedMinBrokers() {
+    return _overprovisionedMinBrokers;
+  }
+
+  /**
+   * @return The minimum number of extra racks to consider a cluster as overprovisioned such that the cluster has at least the configured
+   * number of extra alive racks in addition to the number of racks needed to place replica of each partition to a separate rack -- e.g. a
+   * cluster with 6 racks is overprovisioned in terms of its number of racks if the maximum replication factor is 4 and this config is 2.
+   */
+  public int overprovisionedMinExtraRacks() {
+    return _overprovisionedMinExtraRacks;
   }
 
   /**

@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -96,6 +97,9 @@ public class RackAwareGoal extends AbstractRackAwareGoal {
           String.format("[%s] Insufficient number of racks to distribute each replica (Current: %d, Needed: %d).",
                         name(), numAliveRacks, clusterModel.maxReplicationFactor()));
     }
+    if (numAliveRacks - clusterModel.maxReplicationFactor() >= _balancingConstraint.overprovisionedMinExtraRacks()) {
+      _provisionStatus = ProvisionStatus.OVER_PROVISIONED;
+    }
 
     // Filter out some replicas based on optimization options.
     new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
@@ -122,6 +126,9 @@ public class RackAwareGoal extends AbstractRackAwareGoal {
     GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
     // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
     GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
+    if (_provisionStatus != ProvisionStatus.OVER_PROVISIONED) {
+      _provisionStatus = ProvisionStatus.RIGHT_SIZED;
+    }
     finish();
   }
 

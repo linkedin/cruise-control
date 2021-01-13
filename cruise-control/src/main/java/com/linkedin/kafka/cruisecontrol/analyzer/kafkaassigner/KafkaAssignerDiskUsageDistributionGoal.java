@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.internals.BrokerAndSortedReplicas;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
@@ -522,6 +523,12 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
   @Override
   public boolean isHardGoal() {
     return true;
+  }
+
+  @Override
+  public ProvisionStatus provisionStatus() {
+    // Provision status computation is not supported for kafka_assigner goals.
+    return ProvisionStatus.UNDECIDED;
   }
 
   private double diskUsage(BrokerAndSortedReplicas bas) {
