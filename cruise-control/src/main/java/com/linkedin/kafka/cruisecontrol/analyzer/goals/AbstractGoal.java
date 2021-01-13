@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
@@ -28,6 +29,7 @@ import java.util.Collection;
 import java.util.Set;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.BROKER_REJECT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus.*;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.legitMove;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.legitMoveBetweenDisks;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.eligibleBrokers;
@@ -45,13 +47,19 @@ public abstract class AbstractGoal implements Goal {
   protected BalancingConstraint _balancingConstraint;
   protected int _numWindows;
   protected double _minMonitoredPartitionPercentage;
+  protected ProvisionStatus _provisionStatus;
 
   /**
-   * Constructor of Abstract Goal class sets the _finished flag to false to signal that the goal requirements have not
-   * been satisfied, yet.
+   * Constructor of Abstract Goal class sets the
+   * <ul>
+   *   <li>{@link #_finished} flag to {@code false} to signal that the goal has not been optimized, yet.</li>
+   *   <li>{@link #_provisionStatus} to {@link ProvisionStatus#UNDECIDED} to signal that the goal has not identified the cluster as
+   *   under-provisioned, over-provisioned, or right-sized.</li>
+   * </ul>
    */
   public AbstractGoal() {
     _finished = false;
+    _provisionStatus = UNDECIDED;
   }
 
   @Override
@@ -99,7 +107,14 @@ public abstract class AbstractGoal implements Goal {
                                                                name(), comparator.explainLastComparison(), mitigation));
         }
       }
+      // Ensure that a cluster is not identified as over provisioned unless it has the minimum required number of alive brokers.
+      if (_provisionStatus == OVER_PROVISIONED && clusterModel.aliveBrokers().size() < _balancingConstraint.overprovisionedMinBrokers()) {
+        _provisionStatus = RIGHT_SIZED;
+      }
       return _succeeded;
+    } catch (OptimizationFailureException ofe) {
+      _provisionStatus = UNDER_PROVISIONED;
+      throw ofe;
     } finally {
       // Clear any sorted replicas tracked in the process of optimization.
       clusterModel.clearSortedReplicas();
@@ -112,6 +127,11 @@ public abstract class AbstractGoal implements Goal {
   @Override
   public void finish() {
     _finished = true;
+  }
+
+  @Override
+  public ProvisionStatus provisionStatus() {
+    return _provisionStatus;
   }
 
   /**

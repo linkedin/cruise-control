@@ -54,8 +54,9 @@ import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbal
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced2;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced3;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced5;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
@@ -289,6 +290,8 @@ public class ExcludedTopicsTest {
 
   @Test
   public void test() throws Exception {
+    // Before the optimization, goals are expected to be undecided wrt their provision status.
+    assertEquals(ProvisionStatus.UNDECIDED, _goal.provisionStatus());
     if (_exceptionClass == null) {
       Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = _clusterModel.getReplicaDistribution();
       Map<TopicPartition, ReplicaPlacementInfo> initLeaderDistribution = _clusterModel.getLeaderDistribution();
@@ -301,6 +304,8 @@ public class ExcludedTopicsTest {
         assertFalse("Excluded Topics Test optimized " + _goal.name() + " with excluded topics " + excludedTopics,
                     _goal.optimize(_clusterModel, Collections.emptySet(), _optimizationOptions));
       }
+      // The cluster cannot be underprovisioned, because _exceptionClass was null.
+      assertNotEquals(ProvisionStatus.UNDER_PROVISIONED, _goal.provisionStatus());
       // Generated proposals cannot have the excluded topic.
       if (!excludedTopics.isEmpty()) {
         Set<ExecutionProposal> goalProposals =
@@ -321,6 +326,7 @@ public class ExcludedTopicsTest {
       _expected.expect(_exceptionClass);
       assertTrue("Excluded Topics Test failed to optimize with excluded topics.",
           _goal.optimize(_clusterModel, Collections.emptySet(), _optimizationOptions));
+      assertEquals(ProvisionStatus.UNDER_PROVISIONED, _goal.provisionStatus());
     }
   }
 

@@ -38,6 +38,7 @@ OptimizerResult:
     - excludedBrokersForLeadership
     - onDemandBalancednessScoreBefore
     - onDemandBalancednessScoreAfter
+    - provisionStatus
   properties:
     numReplicaMovements:
       type: integer
@@ -80,3 +81,10 @@ OptimizerResult:
     onDemandBalancednessScoreAfter:
       type: number
       format: double
+    provisionStatus:
+      type: string
+      enum:
+        - UNDER_PROVISIONED
+        - RIGHT_SIZED
+        - OVER_PROVISIONED
+        - UNDECIDED

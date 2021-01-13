@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
@@ -70,6 +71,21 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
   @Override
   double balancePercentage() {
     return _balancingConstraint.replicaBalancePercentage();
+  }
+
+  @Override
+  protected void updateGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) throws OptimizationFailureException {
+    super.updateGoalState(clusterModel, optimizationOptions);
+    // Regardless of whether the cluster is balanced or not, it could be overprovisioned in terms of number of replicas per broker.
+    boolean isOverprovisioned = clusterModel.aliveBrokers().stream()
+                                            .noneMatch(broker -> broker.replicas().size()
+                                                                 > _balancingConstraint.overprovisionedMaxReplicasPerBroker());
+    if (isOverprovisioned) {
+      _provisionStatus = ProvisionStatus.OVER_PROVISIONED;
+    } else if (_succeeded) {
+      // The cluster is not overprovisioned and all brokers are within the upper and lower balance limits.
+      _provisionStatus = ProvisionStatus.RIGHT_SIZED;
+    }
   }
 
   /**
