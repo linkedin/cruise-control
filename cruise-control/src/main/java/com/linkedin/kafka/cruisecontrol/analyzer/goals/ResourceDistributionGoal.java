@@ -6,6 +6,7 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
@@ -62,6 +63,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   private final Comparator<Broker> _brokerComparator;
   // This is used to identify brokers not excluded for replica moves.
   private Set<Integer> _brokersAllowedReplicaMove;
+  // This is used to identify the overprovisioned cluster status
+  private boolean _isLowUtilization;
 
   /**
    * Constructor for Resource Distribution Goal.
@@ -255,6 +258,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                                                                   optimizationOptions.isTriggeredByGoalViolation(),
                                                                                   BALANCE_MARGIN,
                                                                                   true);
+    // Identify whether the cluster is in a low utilization state.
+    _isLowUtilization = avgUtilizationPercentage <= _balancingConstraint.lowUtilizationThreshold(resource());
   }
 
   /**
@@ -284,12 +289,18 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                 brokerIdsAboveBalanceUpperLimit, (brokerIdsAboveBalanceUpperLimit.size() > 1) ? "are" : "is", resource(),
                 (clusterModel.selfHealingEligibleReplicas().isEmpty()) ? "rebalance" : "self-healing");
       _succeeded = false;
+    } else if (_isLowUtilization) {
+      // Cluster is under a low utilization state and all brokers are under the corresponding balance upper limit.
+      _provisionStatus = ProvisionStatus.OVER_PROVISIONED;
     }
     if (!brokerIdsUnderBalanceLowerLimit.isEmpty()) {
       LOG.debug("Utilization for broker ids:{} {} under the balance limit for:{} after {}.",
                 brokerIdsUnderBalanceLowerLimit, (brokerIdsUnderBalanceLowerLimit.size() > 1) ? "are" : "is", resource(),
                 (clusterModel.selfHealingEligibleReplicas().isEmpty()) ? "rebalance" : "self-healing");
       _succeeded = false;
+    } else if (brokerIdsAboveBalanceUpperLimit.isEmpty() && !_isLowUtilization) {
+      // All brokers are within the upper and lower balance limits and the cluster is not under a low utilization state.
+      _provisionStatus = ProvisionStatus.RIGHT_SIZED;
     }
     // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
     try {

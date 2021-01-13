@@ -170,36 +170,36 @@ public class AnalyzerConfig {
    */
   public static final String CPU_LOW_UTILIZATION_THRESHOLD_CONFIG = "cpu.low.utilization.threshold";
   public static final double DEFAULT_CPU_LOW_UTILIZATION_THRESHOLD = 0.0;
-  public static final String CPU_LOW_UTILIZATION_THRESHOLD_DOC = "The threshold for Kafka Cruise Control to define the "
-      + "utilization of CPU is low enough that rebalance is not worthwhile. The cluster will only be in a low "
-      + "utilization state when all the brokers are below the low utilization threshold. The threshold is in percentage.";
+  public static final String CPU_LOW_UTILIZATION_THRESHOLD_DOC = "The threshold to define the utilization of CPU is low enough that"
+      + " rebalance is not worthwhile. The cluster will only be in a low utilization state when all the brokers are below the low "
+      + "utilization threshold. Such a cluster is overprovisioned in terms of its CPU utilization. The threshold is in percentage.";
 
   /**
    * <code>disk.low.utilization.threshold</code>
    */
   public static final String DISK_LOW_UTILIZATION_THRESHOLD_CONFIG = "disk.low.utilization.threshold";
   public static final double DEFAULT_DISK_LOW_UTILIZATION_THRESHOLD = 0.0;
-  public static final String DISK_LOW_UTILIZATION_THRESHOLD_DOC = "The threshold for Kafka Cruise Control to define the "
-      + "utilization of DISK is low enough that rebalance is not worthwhile. The cluster will only be in a low "
-      + "utilization state when all the brokers are below the low utilization threshold. The threshold is in percentage.";
+  public static final String DISK_LOW_UTILIZATION_THRESHOLD_DOC = "The threshold to define the utilization of disk is low enough that"
+      + " rebalance is not worthwhile. The cluster will only be in a low utilization state when all the brokers are below the low "
+      + "utilization threshold. Such a cluster is overprovisioned in terms of its disk utilization. The threshold is in percentage.";
 
   /**
    * <code>network.inbound.low.utilization.threshold</code>
    */
   public static final String NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG = "network.inbound.low.utilization.threshold";
   public static final double DEFAULT_NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD = 0.0;
-  public static final String NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD_DOC = "The threshold for Kafka Cruise Control to define the"
-      + " utilization of network inbound rate is low enough that rebalance is not worthwhile. The cluster will only be in "
-      + "a low utilization state when all the brokers are below the low utilization threshold. The threshold is in percentage.";
+  public static final String NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD_DOC = "The threshold to define the utilization of network inbound rate"
+      + " is low enough that rebalance is not worthwhile. The cluster will only be in a low utilization state when all the brokers are below "
+      + "the low utilization threshold. Such a cluster is overprovisioned in terms of its network inbound rate. The threshold is in percentage.";
 
   /**
    * <code>network.outbound.low.utilization.threshold</code>
    */
   public static final String NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG = "network.outbound.low.utilization.threshold";
   public static final double DEFAULT_NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD = 0.0;
-  public static final String NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_DOC = "The threshold for Kafka Cruise Control to define the"
-      + " utilization of network outbound rate is low enough that rebalance is not worthwhile. The cluster will only be in a "
-      + "low utilization state when all the brokers are below the low utilization threshold. The threshold is in percentage.";
+  public static final String NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_DOC = "The threshold to define the utilization of network outbound rate"
+      + " is low enough that rebalance is not worthwhile. The cluster will only be in a low utilization state when all the brokers are below "
+      + "the low utilization threshold. Such a cluster is overprovisioned in terms of its network outbound rate. The threshold is in percentage.";
 
   /**
    * <code>proposal.expiration.ms</code>
@@ -351,6 +351,32 @@ public class AnalyzerConfig {
       + " of distribution goals used for detecting and fixing anomalies. For example, 2.50 means the threshold for each "
       + "distribution goal (i.e. Replica Distribution, Leader Replica Distribution, Resource Distribution, and Topic Replica "
       + "Distribution Goals) will be 2.50x of the value used in manual goal optimization requests (e.g. rebalance).";
+
+  /**
+   * <code>overprovisioned.min.extra.racks</code>
+   */
+  public static final String OVERPROVISIONED_MIN_EXTRA_RACKS_CONFIG = "overprovisioned.min.extra.racks";
+  public static final int DEFAULT_OVERPROVISIONED_MIN_EXTRA_RACKS = 2;
+  public static final String OVERPROVISIONED_MIN_EXTRA_RACKS_DOC = "The minimum number of extra racks to consider a cluster as "
+      + "overprovisioned such that the cluster has at least the configured number of extra alive racks in addition to the number of racks "
+      + "needed to place replica of each partition to a separate rack -- e.g. a cluster with 6 racks is overprovisioned in terms "
+      + "of its number of racks if the maximum replication factor is 4 and this config is 2.";
+
+  /**
+   * <code>overprovisioned.min.brokers</code>
+   */
+  public static final String OVERPROVISIONED_MIN_BROKERS_CONFIG = "overprovisioned.min.brokers";
+  public static final int DEFAULT_OVERPROVISIONED_MIN_BROKERS = 3;
+  public static final String OVERPROVISIONED_MIN_BROKERS_DOC = "The minimum number of alive brokers for the cluster to be "
+      + "eligible in overprovisioned consideration -- i.e. the cluster has at least the configured number of alive brokers.";
+
+  /**
+   * <code>overprovisioned.max.replicas.per.broker</code>
+   */
+  public static final String OVERPROVISIONED_MAX_REPLICAS_PER_BROKER_CONFIG = "overprovisioned.max.replicas.per.broker";
+  public static final long DEFAULT_OVERPROVISIONED_MAX_REPLICAS_PER_BROKER = 800L;
+  public static final String OVERPROVISIONED_MAX_REPLICAS_PER_BROKER_DOC = "The maximum number of replicas that should reside on each "
+      + "broker to consider a cluster as overprovisioned after balancing its replica distribution.";
 
   /**
    * Define configs for Analyzer.
@@ -531,6 +557,24 @@ public class AnalyzerConfig {
                             ConfigDef.Type.CLASS,
                             DEFAULT_OPTIMIZATION_OPTIONS_GENERATOR_CLASS,
                             ConfigDef.Importance.LOW,
-                            OPTIMIZATION_OPTIONS_GENERATOR_CLASS_DOC);
+                            OPTIMIZATION_OPTIONS_GENERATOR_CLASS_DOC)
+                    .define(OVERPROVISIONED_MIN_EXTRA_RACKS_CONFIG,
+                            ConfigDef.Type.INT,
+                            DEFAULT_OVERPROVISIONED_MIN_EXTRA_RACKS,
+                            atLeast(0),
+                            ConfigDef.Importance.LOW,
+                            OVERPROVISIONED_MIN_EXTRA_RACKS_DOC)
+                    .define(OVERPROVISIONED_MIN_BROKERS_CONFIG,
+                            ConfigDef.Type.INT,
+                            DEFAULT_OVERPROVISIONED_MIN_BROKERS,
+                            atLeast(1),
+                            ConfigDef.Importance.LOW,
+                            OVERPROVISIONED_MIN_BROKERS_DOC)
+                    .define(OVERPROVISIONED_MAX_REPLICAS_PER_BROKER_CONFIG,
+                            ConfigDef.Type.LONG,
+                            DEFAULT_OVERPROVISIONED_MAX_REPLICAS_PER_BROKER,
+                            atLeast(1),
+                            ConfigDef.Importance.LOW,
+                            OVERPROVISIONED_MAX_REPLICAS_PER_BROKER_DOC);
   }
 }

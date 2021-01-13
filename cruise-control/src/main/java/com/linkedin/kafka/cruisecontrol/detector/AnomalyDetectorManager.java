@@ -9,6 +9,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
@@ -177,6 +178,17 @@ public class AnomalyDetectorManager {
                                                             String.format("%s-self-healing-enabled", anomalyType.toString().toLowerCase())),
                                         (Gauge<Integer>) () -> _anomalyNotifier.selfHealingEnabled().get(anomalyType) ? 1 : 0);
     }
+
+    // The cluster is identified as under-provisioned, over-provisioned, or right-sized (undecided not reported).
+    dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "under-provisioned"),
+                                      (Gauge<Integer>) () -> (_goalViolationDetector.provisionStatus() == ProvisionStatus.UNDER_PROVISIONED)
+                                                             ? 1 : 0);
+    dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "over-provisioned"),
+                                      (Gauge<Integer>) () -> (_goalViolationDetector.provisionStatus() == ProvisionStatus.OVER_PROVISIONED)
+                                                             ? 1 : 0);
+    dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "right-sized"),
+                                      (Gauge<Integer>) () -> (_goalViolationDetector.provisionStatus() == ProvisionStatus.RIGHT_SIZED)
+                                                             ? 1 : 0);
   }
 
   private void scheduleDetectorAtFixedRate(KafkaAnomalyType anomalyType, Runnable anomalyDetector) {

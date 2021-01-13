@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
@@ -192,6 +193,12 @@ public class PreferredLeaderElectionGoal implements Goal {
   @Override
   public boolean isHardGoal() {
     return false;
+  }
+
+  @Override
+  public ProvisionStatus provisionStatus() {
+    // Provision status computation is not relevant to PLE goal.
+    return ProvisionStatus.UNDECIDED;
   }
 
   @Override

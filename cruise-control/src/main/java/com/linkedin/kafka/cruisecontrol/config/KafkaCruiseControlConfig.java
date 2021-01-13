@@ -292,6 +292,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    * <ul>
    *   <li>{@link AnalyzerConfig#TOPIC_REPLICA_COUNT_BALANCE_MIN_GAP_CONFIG} <=
    *   {@link AnalyzerConfig#TOPIC_REPLICA_COUNT_BALANCE_MIN_GAP_CONFIG}</li>
+   *   <li>{@link AnalyzerConfig#OVERPROVISIONED_MAX_REPLICAS_PER_BROKER_CONFIG} <= {@link AnalyzerConfig#MAX_REPLICAS_PER_BROKER_CONFIG}</li>
    * </ul>
    */
   private void sanityCheckBalancingConstraints() {
@@ -301,6 +302,15 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       throw new ConfigException(String.format("Maximum gap of topic replica count balance [%d] cannot be smaller than the "
                                               + "minimum gap of topic replica count balance [%d].",
                                               topicReplicaBalanceMaxGap, topicReplicaBalanceMinGap));
+    }
+
+    // Ensure that max allowed replicas per broker is not smaller than the limit under which brokers are considered overprovisioned.
+    long maxReplicasPerBroker = getLong(AnalyzerConfig.MAX_REPLICAS_PER_BROKER_CONFIG);
+    long overprovisionedMaxReplicasPerBroker = getLong(AnalyzerConfig.OVERPROVISIONED_MAX_REPLICAS_PER_BROKER_CONFIG);
+    if (overprovisionedMaxReplicasPerBroker > maxReplicasPerBroker) {
+      throw new ConfigException(String.format("Maximum replicas per broker [%d] cannot be smaller than the "
+                                              + "overprovisioned maximum replicas per broker [%d].",
+                                              maxReplicasPerBroker, overprovisionedMaxReplicasPerBroker));
     }
   }
 

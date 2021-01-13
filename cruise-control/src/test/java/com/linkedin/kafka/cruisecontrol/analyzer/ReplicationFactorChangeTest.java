@@ -53,9 +53,12 @@ import org.junit.runners.Parameterized;
 import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUnitTestUtils.goal;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.smallClusterModel;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.mediumClusterModel;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
+
 
 /**
  * Unit test for testing modifying topic replication factor with different requirement under fixed cluster properties.
@@ -180,8 +183,9 @@ public class ReplicationFactorChangeTest {
     Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = _clusterModel.getReplicaDistribution();
     Map<TopicPartition, ReplicaPlacementInfo> initLeaderDistribution = _clusterModel.getLeaderDistribution();
 
-    _clusterModel.createOrDeleteReplicas(Collections.singletonMap(_replicationFactor, _topics), _brokersByRack, _rackByBroker,
-                                         _cluster);
+    _clusterModel.createOrDeleteReplicas(Collections.singletonMap(_replicationFactor, _topics), _brokersByRack, _rackByBroker, _cluster);
+    // Before the optimization, goals are expected to be undecided wrt their provision status.
+    assertEquals(ProvisionStatus.UNDECIDED, _goal.provisionStatus());
     if (_exceptionClass == null) {
       if (_expectedToOptimize) {
         assertTrue("Replication factor change test with goal " + _goal.name() + " failed.",
@@ -190,6 +194,8 @@ public class ReplicationFactorChangeTest {
         assertFalse("Replication factor change test with goal " + _goal.name() + " should not succeed.",
                     _goal.optimize(_clusterModel, Collections.emptySet(), _optimizationOptions));
       }
+      // The cluster cannot be underprovisioned, because _exceptionClass was null.
+      assertNotEquals(ProvisionStatus.UNDER_PROVISIONED, _goal.provisionStatus());
       Set<ExecutionProposal> goalProposals =
           AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, _clusterModel, true);
 

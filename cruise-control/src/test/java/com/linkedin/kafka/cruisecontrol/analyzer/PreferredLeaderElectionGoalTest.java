@@ -61,7 +61,11 @@ public class PreferredLeaderElectionGoalTest {
     ClusterModel clusterModel = createClusterModel(true, false)._clusterModel;
 
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
+    // Before the optimization, goals are expected to be undecided wrt their provision status.
+    assertEquals(ProvisionStatus.UNDECIDED, goal.provisionStatus());
     goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
+    // After the optimization, PreferredLeaderElectionGoal is expected to be undecided wrt its provision status.
+    assertEquals(ProvisionStatus.UNDECIDED, goal.provisionStatus());
 
     for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
       for (int p = 0; p < 3; p++) {
@@ -87,7 +91,11 @@ public class PreferredLeaderElectionGoalTest {
     });
 
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
+    // Before the optimization, goals are expected to be undecided wrt their provision status.
+    assertEquals(ProvisionStatus.UNDECIDED, goal.provisionStatus());
     goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
+    // After the optimization, PreferredLeaderElectionGoal is expected to be undecided wrt its provision status.
+    assertEquals(ProvisionStatus.UNDECIDED, goal.provisionStatus());
 
     for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
       for (int p = 0; p < 3; p++) {
@@ -129,7 +137,11 @@ public class PreferredLeaderElectionGoalTest {
     });
 
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
+    // Before the optimization, goals are expected to be undecided wrt their provision status.
+    assertEquals(ProvisionStatus.UNDECIDED, goal.provisionStatus());
     goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
+    // After the optimization, PreferredLeaderElectionGoal is expected to be undecided wrt its provision status.
+    assertEquals(ProvisionStatus.UNDECIDED, goal.provisionStatus());
 
     for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
       for (int p = 0; p < 3; p++) {
@@ -171,7 +183,11 @@ public class PreferredLeaderElectionGoalTest {
     });
 
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
+    // Before the optimization, goals are expected to be undecided wrt their provision status.
+    assertEquals(ProvisionStatus.UNDECIDED, goal.provisionStatus());
     goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
+    // After the optimization, PreferredLeaderElectionGoal is expected to be undecided wrt its provision status.
+    assertEquals(ProvisionStatus.UNDECIDED, goal.provisionStatus());
 
     for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
       for (int p = 0; p < 3; p++) {
@@ -205,7 +221,11 @@ public class PreferredLeaderElectionGoalTest {
 
     Map<TopicPartition, List<ReplicaPlacementInfo>> originalReplicaDistribution = clusterModel.getReplicaDistribution();
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(true, false, cluster);
+    // Before the optimization, goals are expected to be undecided wrt their provision status.
+    assertEquals(ProvisionStatus.UNDECIDED, goal.provisionStatus());
     goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
+    // After the optimization, PreferredLeaderElectionGoal is expected to be undecided wrt its provision status.
+    assertEquals(ProvisionStatus.UNDECIDED, goal.provisionStatus());
 
     // Operation on under replicated partitions should be skipped.
     for (String t : Arrays.asList(TOPIC1, TOPIC2)) {
@@ -224,7 +244,11 @@ public class PreferredLeaderElectionGoalTest {
     Map<TopicPartition, ReplicaPlacementInfo> originalLeaderDistribution = clusterModel.getLeaderDistribution();
     Map<TopicPartition, List<ReplicaPlacementInfo>> originalReplicaDistribution = clusterModel.getReplicaDistribution();
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, true, null);
+    // Before the optimization, goals are expected to be undecided wrt their provision status.
+    assertEquals(ProvisionStatus.UNDECIDED, goal.provisionStatus());
     goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
+    // After the optimization, PreferredLeaderElectionGoal is expected to be undecided wrt its provision status.
+    assertEquals(ProvisionStatus.UNDECIDED, goal.provisionStatus());
     Map<TopicPartition, List<ReplicaPlacementInfo>> optimizedReplicaDistribution = clusterModel.getReplicaDistribution();
 
     for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
@@ -252,7 +276,11 @@ public class PreferredLeaderElectionGoalTest {
 
     Map<TopicPartition, ReplicaPlacementInfo> originalLeaderDistribution = clusterModel.getLeaderDistribution();
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(true, true, cluster);
+    // Before the optimization, goals are expected to be undecided wrt their provision status.
+    assertEquals(ProvisionStatus.UNDECIDED, goal.provisionStatus());
     goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
+    // After the optimization, PreferredLeaderElectionGoal is expected to be undecided wrt its provision status.
+    assertEquals(ProvisionStatus.UNDECIDED, goal.provisionStatus());
     Map<TopicPartition, ReplicaPlacementInfo> optimizedLeaderDistribution = clusterModel.getLeaderDistribution();
     Map<TopicPartition, List<ReplicaPlacementInfo>> optimizedReplicaDistribution = clusterModel.getReplicaDistribution();
 

@@ -29,6 +29,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUnitTestUtils.goal;
 
@@ -156,8 +157,12 @@ public class LowResourceUtilizationTest {
     Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = clusterModel.getReplicaDistribution();
     Map<TopicPartition, ReplicaPlacementInfo> initLeaderDistribution = clusterModel.getLeaderDistribution();
 
+    // Before the optimization, goals are expected to be undecided wrt their provision status.
+    assertEquals(ProvisionStatus.UNDECIDED, _resourceDistributionGoal.provisionStatus());
     assertTrue("Failed to optimize " + _resourceDistributionGoal.name(),
         _resourceDistributionGoal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet())));
+    // Since all optimizations succeed, it is guaranteed that all brokers have resource utilization under low utilization threshold.
+    assertEquals(ProvisionStatus.OVER_PROVISIONED, _resourceDistributionGoal.provisionStatus());
 
     Set<ExecutionProposal> goalProposals =
         AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, clusterModel);

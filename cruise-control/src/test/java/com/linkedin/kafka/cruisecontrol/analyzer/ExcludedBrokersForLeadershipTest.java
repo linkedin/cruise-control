@@ -50,6 +50,8 @@ import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbal
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced2;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced3;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
@@ -271,6 +273,8 @@ public class ExcludedBrokersForLeadershipTest {
 
   @Test
   public void test() throws Exception {
+    // Before the optimization, goals are expected to be undecided wrt their provision status.
+    assertEquals(ProvisionStatus.UNDECIDED, _goal.provisionStatus());
     if (_exceptionClass == null) {
       Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = _clusterModel.getReplicaDistribution();
       Map<TopicPartition, ReplicaPlacementInfo> initLeaderDistribution = _clusterModel.getLeaderDistribution();
@@ -283,6 +287,8 @@ public class ExcludedBrokersForLeadershipTest {
         assertFalse("Optimized " + _goal.name() + " with excluded brokers for leadership " + excludedBrokersForLeadership,
                     _goal.optimize(_clusterModel, Collections.emptySet(), _optimizationOptions));
       }
+      // The cluster cannot be underprovisioned, because _exceptionClass was null.
+      assertNotEquals(ProvisionStatus.UNDER_PROVISIONED, _goal.provisionStatus());
       // Generated proposals cannot move leadership to the excluded brokers for leadership.
       if (!excludedBrokersForLeadership.isEmpty()) {
         Set<ExecutionProposal> goalProposals =
@@ -299,6 +305,7 @@ public class ExcludedBrokersForLeadershipTest {
       _expected.expect(_exceptionClass);
       assertTrue("Failed to optimize with excluded brokers for leadership.",
                  _goal.optimize(_clusterModel, Collections.emptySet(), _optimizationOptions));
+      assertEquals(ProvisionStatus.UNDER_PROVISIONED, _goal.provisionStatus());
     }
   }
 

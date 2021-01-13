@@ -83,6 +83,7 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
   public void testFindReplicaToSwapWith() {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(AnalyzerConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(10L));
+    props.setProperty(AnalyzerConfig.OVERPROVISIONED_MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(10L));
     props.setProperty(AnalyzerConfig.DISK_BALANCE_THRESHOLD_CONFIG, "1.05");
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     KafkaAssignerDiskUsageDistributionGoal goal = new KafkaAssignerDiskUsageDistributionGoal(balancingConstraint);
@@ -124,6 +125,7 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
   public void testSwapReplicas() {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(AnalyzerConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(10L));
+    props.setProperty(AnalyzerConfig.OVERPROVISIONED_MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(10L));
     props.setProperty(AnalyzerConfig.DISK_BALANCE_THRESHOLD_CONFIG, "1.05");
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     KafkaAssignerDiskUsageDistributionGoal goal = new KafkaAssignerDiskUsageDistributionGoal(balancingConstraint);
