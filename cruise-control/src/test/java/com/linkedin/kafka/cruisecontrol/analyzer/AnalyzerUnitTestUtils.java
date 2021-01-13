@@ -28,6 +28,7 @@ public class AnalyzerUnitTestUtils {
   public static Goal goal(Class<? extends Goal> goalClass, Properties configOverrides) throws Exception {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(AnalyzerConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(5L));
+    props.setProperty(AnalyzerConfig.OVERPROVISIONED_MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(5L));
     props.setProperty(AnalyzerConfig.TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG, Double.toString(1.2));
     configOverrides.stringPropertyNames().forEach(k -> props.setProperty(k, configOverrides.getProperty(k)));
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
