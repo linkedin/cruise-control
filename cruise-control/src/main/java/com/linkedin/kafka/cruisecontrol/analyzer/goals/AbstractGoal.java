@@ -75,6 +75,8 @@ public abstract class AbstractGoal implements Goal {
       throws OptimizationFailureException {
     try {
       _succeeded = true;
+      // Resetting the provision status ensures fresh provision status if the same goal is optimized with different cluster models.
+      _provisionStatus = UNDECIDED;
       LOG.debug("Starting optimization for {}.", name());
       // Initialize pre-optimized stats.
       ClusterModelStats statsBeforeOptimization = clusterModel.getClusterStats(_balancingConstraint, optimizationOptions);
