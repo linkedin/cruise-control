@@ -857,6 +857,19 @@ public class Executor {
   }
 
   /**
+   * List ongoing partition reassignment on Kafka cluster.
+   *
+   * Note that an empty set response does not guarantee lack of an ongoing execution because when there is an ongoing
+   * execution inside Cruise Control, partition reassignment task batches are sent to Kafka periodically. So, there will
+   * be intervals without partition reassignments.
+   *
+   * @return TopicPartitions of the ongoing partition reassignment on Kafka cluster.
+   */
+  public Set<TopicPartition> listPartitionsBeingReassigned() throws InterruptedException, ExecutionException, TimeoutException {
+    return ExecutionUtils.partitionsBeingReassigned(_adminClient);
+  }
+
+  /**
    * Check whether there is an ongoing partition reassignment on Kafka cluster.
    *
    * Note that a {@code false} response does not guarantee lack of an ongoing execution because when there is an ongoing

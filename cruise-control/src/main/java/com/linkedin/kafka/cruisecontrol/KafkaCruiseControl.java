@@ -265,17 +265,17 @@ public class KafkaCruiseControl {
                                                       STOP_ONGOING_EXECUTION_PARAM));
       }
     } else {
-      boolean hasOngoingPartitionReassignments;
+      Set<TopicPartition> partitionsBeingReassigned;
       try {
-        hasOngoingPartitionReassignments = _executor.hasOngoingPartitionReassignments();
+        partitionsBeingReassigned = _executor.listPartitionsBeingReassigned();
       } catch (TimeoutException | InterruptedException | ExecutionException e) {
         // This may indicate transient (e.g. network) issues.
         throw new IllegalStateException("Cannot execute new proposals due to failure to retrieve whether the Kafka cluster has "
                                         + "an already ongoing partition reassignment.", e);
       }
-      if (hasOngoingPartitionReassignments) {
-        throw new IllegalStateException("Cannot execute new proposals while there are ongoing partition reassignments initiated by "
-                                        + "external agent.");
+      if (!partitionsBeingReassigned.isEmpty()) {
+        throw new IllegalStateException(String.format("Cannot execute new proposals while there are ongoing partition reassignments "
+                                                      + "initiated by external agent: %s", partitionsBeingReassigned));
       } else if (_executor.hasOngoingLeaderElection()) {
         throw new IllegalStateException("Cannot execute new proposals while there are ongoing leadership reassignments initiated by "
                                         + "external agent.");
