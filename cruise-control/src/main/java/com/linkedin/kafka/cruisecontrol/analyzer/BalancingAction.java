@@ -128,18 +128,6 @@ public class BalancingAction {
 
   private void validate() {
     switch (_actionType) {
-      case REPLICA_ADDITION:
-        validateNotNull(_destinationBrokerId, () -> "The destination broker cannot be null for balancing action " + this);
-        if (_sourceBrokerId != null) {
-          throw new IllegalArgumentException("The source broker should be null for balancing action " + this);
-        }
-        break;
-      case REPLICA_DELETION:
-        if (_destinationBrokerId != null) {
-          throw new IllegalArgumentException("The destination broker should be null for balancing action " + this);
-        }
-        validateNotNull(_sourceBrokerId, () -> "The source broker cannot be null for balancing action " + this);
-        break;
       case INTER_BROKER_REPLICA_MOVEMENT:
       case LEADERSHIP_MOVEMENT:
       case INTER_BROKER_REPLICA_SWAP:
