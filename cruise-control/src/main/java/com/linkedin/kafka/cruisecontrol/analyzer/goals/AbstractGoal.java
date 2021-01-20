@@ -70,6 +70,11 @@ public abstract class AbstractGoal implements Goal {
     _minMonitoredPartitionPercentage = parsedConfig.getDouble(MonitorConfig.MIN_VALID_PARTITION_RATIO_CONFIG);
   }
 
+  private static boolean hasExcludedBrokersForReplicaMoveWithReplicas(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
+    Set<Integer> excludedBrokers = optimizationOptions.excludedBrokersForReplicaMove();
+    return clusterModel.aliveBrokers().stream().anyMatch(broker -> excludedBrokers.contains(broker.id()) && !broker.replicas().isEmpty());
+  }
+
   @Override
   public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, OptimizationOptions optimizationOptions)
       throws OptimizationFailureException {
@@ -85,7 +90,8 @@ public abstract class AbstractGoal implements Goal {
       long goalStartTime = System.currentTimeMillis();
       initGoalState(clusterModel, optimizationOptions);
       SortedSet<Broker> brokenBrokers = clusterModel.brokenBrokers();
-
+      boolean originallyHasExcludedBrokersForReplicaMoveWithReplicas = hasExcludedBrokersForReplicaMoveWithReplicas(clusterModel,
+                                                                                                                    optimizationOptions);
       while (!_finished) {
         for (Broker broker : brokersToBalance(clusterModel)) {
           rebalanceForBroker(broker, clusterModel, optimizedGoals, optimizationOptions);
@@ -98,8 +104,8 @@ public abstract class AbstractGoal implements Goal {
         LOG.debug("Finished optimization for {} in {}ms.", name(), System.currentTimeMillis() - goalStartTime);
       }
       LOG.trace("Cluster after optimization is {}", clusterModel);
-      // We only ensure the optimization did not make stats worse when it is not self-healing.
-      if (brokenBrokers.isEmpty()) {
+      // The optimization cannot make stats worse unless the cluster has (1) broken brokers or (2) excluded brokers for replica move with replicas.
+      if (brokenBrokers.isEmpty() && !originallyHasExcludedBrokersForReplicaMoveWithReplicas) {
         ClusterModelStatsComparator comparator = clusterModelStatsComparator();
         // Throw exception when the stats before optimization is preferred.
         if (comparator.compare(statsAfterOptimization, statsBeforeOptimization) < 0) {
