@@ -15,6 +15,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -77,7 +80,9 @@ public class CruiseControlMetricsReporterSampler extends AbstractMetricSampler {
       OffsetAndTimestamp offsetAndTimestamp = entry.getValue();
       _metricConsumer.seek(tp, offsetAndTimestamp != null ? offsetAndTimestamp.offset() : endOffsets.get(tp));
     }
-    LOG.debug("Starting consuming from metrics reporter topic partitions {}.", _currentPartitionAssignment);
+    SortedSet<Integer> partitionIds
+        = _currentPartitionAssignment.stream().map(TopicPartition::partition).collect(Collectors.toCollection(TreeSet::new));
+    LOG.debug("Starting consuming from metrics reporter topic {} for partitions {}.", _metricReporterTopic, partitionIds);
     _metricConsumer.resume(_metricConsumer.paused());
     int totalMetricsAdded = 0;
     Set<TopicPartition> partitionsToPause = new HashSet<>();
@@ -111,9 +116,8 @@ public class CruiseControlMetricsReporterSampler extends AbstractMetricSampler {
       }
     } while (!consumptionDone(_metricConsumer, endOffsets) &&
              System.currentTimeMillis() < metricSamplerOptions.timeoutMs());
-    LOG.info("Finished sampling for topic partitions {} in time range [{},{}]. Collected {} metrics.",
-             _currentPartitionAssignment, metricSamplerOptions.startTimeMs(),
-             metricSamplerOptions.endTimeMs(), totalMetricsAdded);
+    LOG.info("Finished sampling from topic {} for partitions {} in time range [{},{}]. Collected {} metrics.",
+             _metricReporterTopic, partitionIds, metricSamplerOptions.startTimeMs(), metricSamplerOptions.endTimeMs(), totalMetricsAdded);
 
     return totalMetricsAdded;
   }
