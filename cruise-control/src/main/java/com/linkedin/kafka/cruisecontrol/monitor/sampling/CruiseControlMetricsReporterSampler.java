@@ -15,6 +15,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -78,7 +80,8 @@ public class CruiseControlMetricsReporterSampler extends AbstractMetricSampler {
       OffsetAndTimestamp offsetAndTimestamp = entry.getValue();
       _metricConsumer.seek(tp, offsetAndTimestamp != null ? offsetAndTimestamp.offset() : endOffsets.get(tp));
     }
-    Set<Integer> partitionIds = _currentPartitionAssignment.stream().map(TopicPartition::partition).collect(Collectors.toSet());
+    SortedSet<Integer> partitionIds
+        = _currentPartitionAssignment.stream().map(TopicPartition::partition).collect(Collectors.toCollection(TreeSet::new));
     LOG.debug("Starting consuming from metrics reporter topic {} for partitions {}.", _metricReporterTopic, partitionIds);
     _metricConsumer.resume(_metricConsumer.paused());
     int totalMetricsAdded = 0;
