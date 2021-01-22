@@ -137,7 +137,7 @@ public class AnalyzerConfig {
       + "of a broker cannot be higher than (broker.cpu.capacity * cpu.capacity.threshold).";
 
   /**
-   * <code>cpu.capacity.threshold</code>
+   * <code>disk.capacity.threshold</code>
    */
   public static final String DISK_CAPACITY_THRESHOLD_CONFIG = "disk.capacity.threshold";
   public static final double DEFAULT_DISK_CAPACITY_THRESHOLD = 0.8;
