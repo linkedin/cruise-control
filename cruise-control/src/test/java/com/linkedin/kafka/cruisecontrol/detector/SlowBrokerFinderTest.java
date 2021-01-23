@@ -204,6 +204,7 @@ public class SlowBrokerFinderTest {
     props.setProperty(AnomalyDetectorConfig.METRIC_ANOMALY_FINDER_CLASSES_CONFIG, SlowBrokerFinder.class.getName());
     props.setProperty(AnomalyDetectorConfig.METRIC_ANOMALY_CLASS_CONFIG, SlowBrokers.class.getName());
     props.setProperty(SlowBrokerFinder.SLOW_BROKER_DEMOTION_SCORE_CONFIG, "0");
+    props.setProperty(SlowBrokerFinder.SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG, "150.0");
     return (SlowBrokerFinder) createMetricAnomalyFinder(props);
   }
 }
