@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.slf4j.Logger;
@@ -83,7 +84,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.ME
  * <ul>
  *   <li>{@link #SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG}: the bytes in rate threshold in unit of kilobytes per second to
  *   determine whether to include broker in slow broker detection. If the broker only serves negligible traffic, its derived metric
- *   wil be abnormally high since bytes in rate is used as divisor in metric calculation. Default value is set to
+ *   will be abnormally high since bytes in rate is used as divisor in metric calculation. Default value is set to
  *   {@link #DEFAULT_SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD}.</li>
  *   <li>{@link #SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG}: the time threshold in unit of millisecond to determine whether the broker's
  *   {@code BROKER_LOG_FLUSH_TIME_MS_999TH} metric value is abnormally high. Default value is set to
@@ -113,7 +114,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   public static final String SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD_CONFIG = "slow.broker.bytes.in.rate.detection.threshold";
   public static final double DEFAULT_SLOW_BROKER_BYTES_IN_RATE_DETECTION_THRESHOLD = 1024.0;
   public static final String SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG = "slow.broker.log.flush.time.threshold.ms";
-  public static final double DEFAULT_SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG = 150.0;
+  public static final double DEFAULT_SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG = TimeUnit.SECONDS.toMillis(1);
   public static final String SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG = "slow.broker.metric.history.percentile.threshold";
   public static final double DEFAULT_SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD = 90.0;
   public static final String SLOW_BROKER_METRIC_HISTORY_MARGIN_CONFIG = "slow.broker.metric.history.margin";
@@ -163,16 +164,17 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     Map<BrokerEntity, List<Double>> historicalPerByteLogFlushTimeMetricValues = new HashMap<>();
     Map<BrokerEntity, Double> currentPerByteLogFlushTimeMetricValues = new HashMap<>();
     Set<Integer> skippedBrokers = new HashSet<>();
-    for (BrokerEntity broker : currentMetricsByBroker.keySet()) {
-      if (!brokerHasNegligibleTraffic(broker, currentMetricsByBroker)) {
+    for (Map.Entry<BrokerEntity, ValuesAndExtrapolations> entry : currentMetricsByBroker.entrySet()) {
+      BrokerEntity broker = entry.getKey();
+      if (!brokerHasNegligibleTraffic(broker, entry.getValue().metricValues())) {
         collectLogFlushTimeMetric(broker,
-                                  metricsHistoryByBroker,
-                                  currentMetricsByBroker,
+                                  metricsHistoryByBroker.get(broker),
+                                  entry.getValue(),
                                   historicalLogFlushTimeMetricValues,
                                   currentLogFlushTimeMetricValues);
         collectPerByteLogFlushTimeMetric(broker,
-                                         metricsHistoryByBroker,
-                                         currentMetricsByBroker,
+                                         metricsHistoryByBroker.get(broker),
+                                         entry.getValue(),
                                          historicalPerByteLogFlushTimeMetricValues,
                                          currentPerByteLogFlushTimeMetricValues);
       } else {
@@ -181,7 +183,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     }
 
     if (!skippedBrokers.isEmpty()) {
-      LOG.info("Skip broker slowness checking for brokers {} because they serve negligible traffic.", skippedBrokers);
+      LOG.info("Skip slowness check for brokers {} because they serve negligible traffic.", skippedBrokers);
     }
 
     Set<BrokerEntity> detectedMetricAnomalies = getMetricAnomalies(historicalLogFlushTimeMetricValues, currentLogFlushTimeMetricValues);
@@ -193,12 +195,10 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   /**
    * Whether broker is currently serving negligible traffic or not.
    * @param broker The broker to check.
-   * @param currentMetricsByBroker The subject broker's latest metrics.
-   * @return True if broker's current traffic is negligible.
+   * @param aggregatedMetricValues The aggregated metric values of the subject broker.
+   * @return {@code true} if broker's current traffic is negligible, {@code false} otherwise.
    */
-  private boolean brokerHasNegligibleTraffic(BrokerEntity broker,
-                                             Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker) {
-    AggregatedMetricValues aggregatedMetricValues = currentMetricsByBroker.get(broker).metricValues();
+  private boolean brokerHasNegligibleTraffic(BrokerEntity broker, AggregatedMetricValues aggregatedMetricValues) {
     double latestTotalBytesIn = aggregatedMetricValues.valuesFor(LEADER_BYTES_IN_ID).latest() +
                                 aggregatedMetricValues.valuesFor(REPLICATION_BYTES_IN_RATE_ID).latest();
     LOG.debug("Broker {}'s total bytes in rate is {} KB/s.", broker.brokerId(), latestTotalBytesIn);
@@ -206,15 +206,15 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   }
 
   private void collectLogFlushTimeMetric(BrokerEntity broker,
-                                         Map<BrokerEntity, ValuesAndExtrapolations> metricsHistoryByBroker,
-                                         Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker,
+                                         ValuesAndExtrapolations metricsHistory,
+                                         ValuesAndExtrapolations currentMetrics,
                                          Map<BrokerEntity, List<Double>> historicalLogFlushTimeMetricValues,
                                          Map<BrokerEntity, Double> currentLogFlushTimeMetricValues) {
-    AggregatedMetricValues aggregatedMetricValues = currentMetricsByBroker.get(broker).metricValues();
+    AggregatedMetricValues aggregatedMetricValues = currentMetrics.metricValues();
     double latestLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH_ID).latest();
     currentLogFlushTimeMetricValues.put(broker, latestLogFlushTime);
-    if (metricsHistoryByBroker.get(broker) != null) {
-      aggregatedMetricValues = metricsHistoryByBroker.get(broker).metricValues();
+    if (metricsHistory != null) {
+      aggregatedMetricValues = metricsHistory.metricValues();
       double[] historicalLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH_ID).doubleArray();
       List<Double> historicalValue = new ArrayList<>(historicalLogFlushTime.length);
       for (int i = 0; i < historicalLogFlushTime.length; i++) {
@@ -230,17 +230,17 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   }
 
   private void collectPerByteLogFlushTimeMetric(BrokerEntity broker,
-                                                Map<BrokerEntity, ValuesAndExtrapolations> metricsHistoryByBroker,
-                                                Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker,
+                                                ValuesAndExtrapolations metricsHistory,
+                                                ValuesAndExtrapolations currentMetrics,
                                                 Map<BrokerEntity, List<Double>> historicalPerByteLogFlushTimeMetricValues,
                                                 Map<BrokerEntity, Double> currentPerByteLogFlushTimeMetricValues) {
-    AggregatedMetricValues aggregatedMetricValues = currentMetricsByBroker.get(broker).metricValues();
+    AggregatedMetricValues aggregatedMetricValues = currentMetrics.metricValues();
     double latestLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH_ID).latest();
     double latestTotalBytesIn = aggregatedMetricValues.valuesFor(LEADER_BYTES_IN_ID).latest() +
                                 aggregatedMetricValues.valuesFor(REPLICATION_BYTES_IN_RATE_ID).latest();
     currentPerByteLogFlushTimeMetricValues.put(broker, latestLogFlushTime / latestTotalBytesIn);
-    if (metricsHistoryByBroker.get(broker) != null) {
-      aggregatedMetricValues = metricsHistoryByBroker.get(broker).metricValues();
+    if (metricsHistory != null) {
+      aggregatedMetricValues = metricsHistory.metricValues();
       double[] historicalBytesIn = aggregatedMetricValues.valuesFor(LEADER_BYTES_IN_ID).doubleArray();
       double[] historicalReplicationBytesIn = aggregatedMetricValues.valuesFor(REPLICATION_BYTES_IN_RATE_ID).doubleArray();
       double[] historicalLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH_ID).doubleArray();
@@ -284,8 +284,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     }
   }
 
-  private void detectMetricAnomaliesFromPeers(Map<BrokerEntity, Double> currentValue,
-                                              Set<BrokerEntity> detectedMetricAnomalies) {
+  private void detectMetricAnomaliesFromPeers(Map<BrokerEntity, Double> currentValue, Set<BrokerEntity> detectedMetricAnomalies) {
     if (isDataSufficient(currentValue.size(), _peerMetricPercentile, _peerMetricPercentile)) {
       double [] data = currentValue.values().stream().mapToDouble(i -> i).toArray();
       _percentile.setData(data);
@@ -301,20 +300,17 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   private Set<BrokerEntity> getLogFlushTimeMetricAnomaliesFromValue(Map<BrokerEntity, Double> currentValue) {
     Set<BrokerEntity> detectedMetricAnomalies = new HashSet<>();
     for (Map.Entry<BrokerEntity, Double> entry : currentValue.entrySet()) {
-      if (currentValue.get(entry.getKey()) > _logFlushTimeThresholdMs) {
+      if (entry.getValue() > _logFlushTimeThresholdMs) {
         detectedMetricAnomalies.add(entry.getKey());
       }
     }
     return detectedMetricAnomalies;
   }
 
-  private SlowBrokers createSlowBrokersAnomaly(Map<BrokerEntity, Long> detectedBrokers,
-                                               boolean fixable,
-                                               boolean removeSlowBroker,
-                                               String description) {
-    Map<String, Object> parameterConfigOverrides = new HashMap<>(5);
+  private SlowBrokers createSlowBrokersAnomaly(Map<BrokerEntity, Long> detectedBrokers, boolean fixable, boolean removeSlowBroker) {
+    Map<String, Object> parameterConfigOverrides = new HashMap<>(6);
     parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl);
-    parameterConfigOverrides.put(METRIC_ANOMALY_DESCRIPTION_OBJECT_CONFIG, description);
+    parameterConfigOverrides.put(METRIC_ANOMALY_DESCRIPTION_OBJECT_CONFIG, getSlowBrokerDescription(detectedBrokers));
     parameterConfigOverrides.put(METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG, detectedBrokers);
     parameterConfigOverrides.put(REMOVE_SLOW_BROKER_CONFIG, removeSlowBroker);
     parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
@@ -326,8 +322,9 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
 
   private String getSlowBrokerDescription(Map<BrokerEntity, Long> detectedBrokers) {
     StringBuilder descriptionSb = new StringBuilder().append("{");
-    detectedBrokers.forEach((key, value) -> {
-      descriptionSb.append("Broker ").append(key.brokerId()).append("'s performance degraded at ").append(toDateString(value)).append(", ");
+    detectedBrokers.forEach((broker, time) -> {
+      descriptionSb.append(String.format("%d is slow (score: %d/%d) since %s, ", broker.brokerId(), _brokerSlownessScore.get(broker),
+                                         _slowBrokerDecommissionScore, toDateString(time)));
     });
     descriptionSb.setLength(descriptionSb.length() - 2);
     descriptionSb.append("}");
@@ -353,7 +350,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   private void updateBrokerSlownessScore(Set<BrokerEntity> detectedMetricAnomalies) {
     for (BrokerEntity broker : detectedMetricAnomalies) {
       // Update slow broker detection time and slowness score.
-      Long currentTimeMs = _kafkaCruiseControl.timeMs();
+      long currentTimeMs = _kafkaCruiseControl.timeMs();
       _detectedSlowBrokers.putIfAbsent(broker, currentTimeMs);
       _brokerSlownessScore.compute(broker, (k, v) -> (v == null) ? 1 : Math.min(v + 1, _slowBrokerDecommissionScore));
     }
@@ -378,8 +375,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     }
   }
 
-  private Set<MetricAnomaly<BrokerEntity>> createSlowBrokerAnomalies(Set<BrokerEntity> detectedMetricAnomalies,
-                                                                     int clusterSize) {
+  private Set<MetricAnomaly<BrokerEntity>> createSlowBrokerAnomalies(Set<BrokerEntity> detectedMetricAnomalies, int clusterSize) {
     Set<MetricAnomaly<BrokerEntity>> detectedSlowBrokers = new HashSet<>();
     Map<BrokerEntity, Long> brokersToDemote = new HashMap<>();
     Map<BrokerEntity, Long> brokersToRemove = new HashMap<>();
@@ -398,16 +394,13 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     // Otherwise report anomaly with brokers to be removed/demoted.
     if (brokersToDemote.size() + brokersToRemove.size() > clusterSize * _selfHealingUnfixableRatio) {
       brokersToRemove.forEach(brokersToDemote::put);
-      detectedSlowBrokers.add(createSlowBrokersAnomaly(brokersToDemote, false, false, getSlowBrokerDescription(brokersToDemote)));
+      detectedSlowBrokers.add(createSlowBrokersAnomaly(brokersToDemote, false, false));
     } else {
       if (!brokersToDemote.isEmpty()) {
-        detectedSlowBrokers.add(createSlowBrokersAnomaly(brokersToDemote, true, false, getSlowBrokerDescription(brokersToDemote)));
+        detectedSlowBrokers.add(createSlowBrokersAnomaly(brokersToDemote, true, false));
       }
       if (!brokersToRemove.isEmpty()) {
-        detectedSlowBrokers.add(createSlowBrokersAnomaly(brokersToRemove,
-                                                         _slowBrokerRemovalEnabled,
-                                                         true,
-                                                         getSlowBrokerDescription(brokersToRemove)));
+        detectedSlowBrokers.add(createSlowBrokersAnomaly(brokersToRemove, _slowBrokerRemovalEnabled, true));
       }
     }
     return detectedSlowBrokers;
