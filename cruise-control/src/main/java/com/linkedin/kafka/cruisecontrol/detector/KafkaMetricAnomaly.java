@@ -65,7 +65,7 @@ public class KafkaMetricAnomaly extends KafkaAnomaly implements MetricAnomaly<Br
 
   @Override
   public String toString() {
-    return String.format("%s anomaly with id: %s. Anomaly description: %s", METRIC_ANOMALY, anomalyId(), _description);
+    return String.format("[%s] %s", anomalyId(), _description);
   }
 
   @Override
