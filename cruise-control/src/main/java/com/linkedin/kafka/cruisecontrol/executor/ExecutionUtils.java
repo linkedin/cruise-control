@@ -70,7 +70,6 @@ public final class ExecutionUtils {
   static final Map<ConcurrencyType, Integer> MAX_CONCURRENCY = new HashMap<>(ConcurrencyType.cachedValues().size());
   static final Map<ConcurrencyType, Integer> MIN_CONCURRENCY = new HashMap<>(ConcurrencyType.cachedValues().size());
   static final Map<String, Double> CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME = new HashMap<>(5);
-  public static final long EXECUTION_TASK_FUTURE_ERROR_VERIFICATION_TIMEOUT_MS = 10000L;
   static long LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS;
   static int LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS;
 
@@ -360,7 +359,7 @@ public final class ExecutionUtils {
     for (Map.Entry<TopicPartition, KafkaFuture<Void>> entry: result.values().entrySet()) {
       TopicPartition tp = entry.getKey();
       try {
-        entry.getValue().get(EXECUTION_TASK_FUTURE_ERROR_VERIFICATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        entry.getValue().get();
         LOG.debug("Replica reassignment for {} has been accepted.", tp);
       } catch (ExecutionException ee) {
         if (Errors.INVALID_REPLICA_ASSIGNMENT.exception().getClass() == ee.getCause().getClass()) {
@@ -379,10 +378,8 @@ public final class ExecutionUtils {
           // Not expected to happen.
           throw new IllegalStateException(String.format("%s encountered an unknown execution exception.", tp), ee);
         }
-      } catch (TimeoutException | InterruptedException e) {
-        // May indicate transient (e.g. network) issues and might require a task re-execution -- i.e. handled in Executor.
-        // If this is observed frequently, we may need to bump up EXECUTION_TASK_FUTURE_ERROR_VERIFICATION_TIMEOUT_MS.
-        LOG.warn("Failed to process AlterPartitionReassignmentsResult of {}.", tp, e);
+      } catch (InterruptedException e) {
+        LOG.warn("Interrupted during the process of AlterPartitionReassignmentsResult on {}.", result.values().keySet(), e);
       }
     }
   }

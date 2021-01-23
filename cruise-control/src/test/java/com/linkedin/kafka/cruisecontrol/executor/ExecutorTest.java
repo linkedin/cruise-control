@@ -187,7 +187,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
 
   @Test
   public void testSubmitReplicaReassignmentTasksWithDeadTaskAndNoReassignmentInProgress()
-      throws InterruptedException, TimeoutException {
+      throws InterruptedException {
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
         AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
 
@@ -213,7 +213,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
 
   @Test
   public void testSubmitReplicaReassignmentTasksWithInProgressTaskAndNonExistingTopic()
-      throws InterruptedException, TimeoutException {
+      throws InterruptedException {
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
         AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
 
@@ -288,13 +288,12 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                                                                                                      Collections.singletonList(task)));
   }
 
-  private static boolean verifyFutureError(Future<?> future, Class<? extends Throwable> exceptionClass)
-      throws TimeoutException, InterruptedException {
+  private static boolean verifyFutureError(Future<?> future, Class<? extends Throwable> exceptionClass) throws InterruptedException {
     if (future == null) {
       return false;
     }
     try {
-      future.get(EXECUTION_TASK_FUTURE_ERROR_VERIFICATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+      future.get();
     } catch (ExecutionException ee) {
       return exceptionClass == ee.getCause().getClass();
     }

@@ -10,8 +10,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import javax.annotation.Nullable;
 import org.apache.kafka.clients.admin.AlterPartitionReassignmentsResult;
 import org.apache.kafka.common.KafkaFuture;
@@ -88,19 +86,10 @@ public class ExecutionUtilsTest {
     EasyMock.verify(result);
     EasyMock.reset(result);
 
-    // Case 7: Handle future wait timeout exception. Expect no side effect.
-    EasyMock.expect(result.values())
-            .andReturn(getKafkaFutureByTopicPartition(topicName, partitionId, new TimeoutException()))
-            .once();
-    EasyMock.replay(result);
-    ExecutionUtils.processAlterPartitionReassignmentsResult(result, Collections.emptySet(), Collections.emptySet(), Collections.emptySet());
-    EasyMock.verify(result);
-    EasyMock.reset(result);
-
-    // Case 8: Handle future wait interrupted exception
+    // Case 7: Handle future wait interrupted exception
     EasyMock.expect(result.values())
             .andReturn(getKafkaFutureByTopicPartition(topicName, partitionId, new InterruptedException()))
-            .once();
+            .times(2);
     EasyMock.replay(result);
     ExecutionUtils.processAlterPartitionReassignmentsResult(result, Collections.emptySet(), Collections.emptySet(), Collections.emptySet());
     EasyMock.verify(result);
@@ -113,10 +102,10 @@ public class ExecutionUtilsTest {
     Map<TopicPartition, KafkaFuture<Void>> futureByTopicPartition = new HashMap<>(1);
     KafkaFuture<Void> kafkaFuture = EasyMock.mock(KafkaFuture.class);
     if (futureException == null) {
-      EasyMock.expect(kafkaFuture.get(ExecutionUtils.EXECUTION_TASK_FUTURE_ERROR_VERIFICATION_TIMEOUT_MS, TimeUnit.MILLISECONDS))
+      EasyMock.expect(kafkaFuture.get())
               .andReturn(null).once();
     } else {
-      EasyMock.expect(kafkaFuture.get(ExecutionUtils.EXECUTION_TASK_FUTURE_ERROR_VERIFICATION_TIMEOUT_MS, TimeUnit.MILLISECONDS))
+      EasyMock.expect(kafkaFuture.get())
               .andThrow(futureException).once();
     }
     EasyMock.replay(kafkaFuture);

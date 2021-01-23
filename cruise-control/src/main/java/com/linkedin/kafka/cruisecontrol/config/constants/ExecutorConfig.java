@@ -468,12 +468,21 @@ public class ExecutorConfig {
                             DEFAULT_EXECUTOR_NOTIFIER_CLASS,
                             ConfigDef.Importance.LOW,
                             EXECUTOR_NOTIFIER_CLASS_DOC)
+<<<<<<< HEAD
                     .define(ADMIN_CLIENT_REQUEST_TIMEOUT_MS_CONFIG,
                             ConfigDef.Type.INT,
                             DEFAULT_ADMIN_CLIENT_REQUEST_TIMEOUT_MS,
                             atLeast(0),
                             ConfigDef.Importance.MEDIUM,
                             ADMIN_CLIENT_REQUEST_TIMEOUT_MS_DOC)
+=======
+                    .define(KAFKA_REQUEST_TIMEOUT_MS_CONFIG,
+                            ConfigDef.Type.INT,
+                            DEFAULT_KAFKA_REQUEST_TIMEOUT_MS,
+                            atLeast(0),
+                            ConfigDef.Importance.MEDIUM,
+                            KAFKA_REQUEST_TIMEOUT_MS_DOC)
+>>>>>>> Handle issue 1449
                     .define(LEADER_MOVEMENT_TIMEOUT_MS_CONFIG,
                             ConfigDef.Type.LONG,
                             DEFAULT_LEADER_MOVEMENT_TIMEOUT_MS,
