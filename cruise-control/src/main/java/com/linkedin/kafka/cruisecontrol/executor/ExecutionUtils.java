@@ -373,11 +373,11 @@ public final class ExecutionUtils {
           noReassignmentToCancelTopicPartitions.add(tp);
           LOG.debug("Rollback failed for {} due to lack of corresponding ongoing replica reassignment.", tp);
         } else if (org.apache.kafka.common.errors.TimeoutException.class == ee.getCause().getClass()) {
-          throw new IllegalStateException(String.format("An alterPartitionReassignments request timed out. This timeout is specified by"
-                                                        + "the \"admin.client.request.timeout.ms\" config. Please consider increasing"
-                                                        + "this timeout or check if there is any issue on the Kafka broker and/or controller"
-                                                        + "side. This alterPartitionReassignments request is for topic partition(s): %s",
-                                                        result.values().keySet()), ee.getCause());
+          throw new IllegalStateException(String.format("alterPartitionReassignments request timed out for partitions: %s. Check for Kafka "
+                                                        + "broker- or controller-side issues and consider increasing the configured timeout "
+                                                        + "(see %s).",
+                                                        result.values().keySet(),
+                                                        ExecutorConfig.ADMIN_CLIENT_REQUEST_TIMEOUT_MS_CONFIG), ee.getCause());
         } else {
           // Not expected to happen.
           throw new IllegalStateException(String.format("%s encountered an unknown execution exception.", tp), ee);
