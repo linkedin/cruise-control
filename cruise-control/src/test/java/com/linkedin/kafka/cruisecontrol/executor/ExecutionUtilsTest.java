@@ -16,9 +16,11 @@ import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.protocol.Errors;
 import org.easymock.EasyMock;
+import org.junit.Assert;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 public class ExecutionUtilsTest {
 
@@ -80,9 +82,12 @@ public class ExecutionUtilsTest {
     org.apache.kafka.common.errors.TimeoutException kafkaTimeoutException = new org.apache.kafka.common.errors.TimeoutException();
     EasyMock.expect(result.values())
             .andReturn(getKafkaFutureByTopicPartition(topicName, partitionId, new ExecutionException(kafkaTimeoutException)))
-            .once();
+            .times(2);
     EasyMock.replay(result);
-    ExecutionUtils.processAlterPartitionReassignmentsResult(result, Collections.emptySet(), Collections.emptySet(), Collections.emptySet());
+    Exception thrownException = assertThrows(IllegalStateException.class, () -> {
+      ExecutionUtils.processAlterPartitionReassignmentsResult(result, Collections.emptySet(), Collections.emptySet(), Collections.emptySet());
+    });
+    Assert.assertEquals(kafkaTimeoutException, thrownException.getCause());
     EasyMock.verify(result);
     EasyMock.reset(result);
 
@@ -102,11 +107,9 @@ public class ExecutionUtilsTest {
     Map<TopicPartition, KafkaFuture<Void>> futureByTopicPartition = new HashMap<>(1);
     KafkaFuture<Void> kafkaFuture = EasyMock.mock(KafkaFuture.class);
     if (futureException == null) {
-      EasyMock.expect(kafkaFuture.get())
-              .andReturn(null).once();
+      EasyMock.expect(kafkaFuture.get()).andReturn(null).once();
     } else {
-      EasyMock.expect(kafkaFuture.get())
-              .andThrow(futureException).once();
+      EasyMock.expect(kafkaFuture.get()).andThrow(futureException).once();
     }
     EasyMock.replay(kafkaFuture);
     futureByTopicPartition.put(new TopicPartition(topicName, partitionId), kafkaFuture);
