@@ -124,6 +124,14 @@ public class ExecutorConfig {
       + "execution finishes or is stopped (by a user or by Cruise Control).";
 
   /**
+   * <code>admin.client.request.timeout.ms</code>
+   */
+  public static final String ADMIN_CLIENT_REQUEST_TIMEOUT_MS_CONFIG = "admin.client.request.timeout.ms";
+  public static final int DEFAULT_ADMIN_CLIENT_REQUEST_TIMEOUT_MS = (int) TimeUnit.MINUTES.toMillis(3);
+  public static final String ADMIN_CLIENT_REQUEST_TIMEOUT_MS_DOC = "The maximum time to wait for the response of an AdminClient request to "
+      + "Kafka server. If the response is not received before this timeout elapses the admin client will fail the request.";
+
+  /**
    * <code>leader.movement.timeout.ms</code>
    */
   public static final String LEADER_MOVEMENT_TIMEOUT_MS_CONFIG = "leader.movement.timeout.ms";
@@ -460,6 +468,12 @@ public class ExecutorConfig {
                             DEFAULT_EXECUTOR_NOTIFIER_CLASS,
                             ConfigDef.Importance.LOW,
                             EXECUTOR_NOTIFIER_CLASS_DOC)
+                    .define(ADMIN_CLIENT_REQUEST_TIMEOUT_MS_CONFIG,
+                            ConfigDef.Type.INT,
+                            DEFAULT_ADMIN_CLIENT_REQUEST_TIMEOUT_MS,
+                            atLeast(0),
+                            ConfigDef.Importance.MEDIUM,
+                            ADMIN_CLIENT_REQUEST_TIMEOUT_MS_DOC)
                     .define(LEADER_MOVEMENT_TIMEOUT_MS_CONFIG,
                             ConfigDef.Type.LONG,
                             DEFAULT_LEADER_MOVEMENT_TIMEOUT_MS,
