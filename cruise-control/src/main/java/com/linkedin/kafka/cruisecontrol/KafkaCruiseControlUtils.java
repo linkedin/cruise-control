@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGo
 import com.linkedin.kafka.cruisecontrol.config.EnvConfigProvider;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
@@ -576,6 +577,7 @@ public class KafkaCruiseControlUtils {
                                                     .replace("[", "")
                                                     .replace("]", "");
     adminClientConfigs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServersString);
+    adminClientConfigs.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, configs.getInt(ExecutorConfig.ADMIN_CLIENT_REQUEST_TIMEOUT_MS_CONFIG));
 
     // Add security protocol (if specified).
     try {
