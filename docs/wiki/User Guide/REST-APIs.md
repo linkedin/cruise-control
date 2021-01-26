@@ -21,6 +21,7 @@
     * [Resume metrics load sampling](#resume-metrics-load-sampling)
     * [Change Kafka topic configuration](#change-kafka-topic-configuration)
     * [Change Cruise Control configuration](#change-cruise-control-configuration)
+    * [2-step Verification](#2-step-verification)
 
 ## Asynchronous Endpoints
 
@@ -578,3 +579,7 @@ To increase/decrease execution concurrency, send POST request like:
 To drop recently removed/demoted brokers, send POST request like:
 
      POSTs /kafkacruisecontrol/admin?drop_recently_removed_brokers=[broker_ids]
+
+### 2-step Verification
+
+2-step verification aims to help users verify the command they (or their peers) intend to run by letting them review requests explicitly to approve or discard them, and enable execution of only the approved requests. Read [2 step verification for POST requests](https://github.com/linkedin/cruise-control/wiki/2-step-verification-for-POST-requests) for more detail.
