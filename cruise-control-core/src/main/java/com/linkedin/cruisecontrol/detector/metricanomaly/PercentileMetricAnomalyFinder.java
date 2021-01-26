@@ -43,9 +43,11 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
   protected Double _anomalyUpperPercentile;
   protected Double _anomalyLowerPercentile;
   protected Set<String> _interestedMetrics;
+  protected int _numRecentAnomalies;
 
   public PercentileMetricAnomalyFinder() {
     _percentile = new Percentile();
+    _numRecentAnomalies = 0;
   }
 
   /**
@@ -170,7 +172,14 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
       }
     }
 
+    _numRecentAnomalies = metricAnomalies.size();
     return metricAnomalies;
+  }
+
+  @Override
+  public int numAnomaliesOfType(MetricAnomalyType type) {
+    // Percentile Metric Anomaly Finder can only report the recent number of metric anomalies.
+    return type != MetricAnomalyType.RECENT ? 0 : _numRecentAnomalies;
   }
 
   @Override
