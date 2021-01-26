@@ -74,6 +74,9 @@ Cruise Control metrics are useful to monitor the state of Cruise Control itself.
 | Metric anomaly rate                                                                                       | kafka.cruisecontrol:name=AnomalyDetector.metric-anomaly-rate                  |
 | Disk failure rate                                                                                         | kafka.cruisecontrol:name=AnomalyDetector.disk-failure-rate                    |
 | Topic anomaly rate                                                                                        | kafka.cruisecontrol:name=AnomalyDetector.topic-anomaly-rate                   |
+| The number of brokers that are metric anomaly suspects, pending more evidence to conclude either way      | kafka.cruisecontrol:name=AnomalyDetector.num-suspect-metric-anomalies         |
+| The number of brokers that have recently been identified with a metric anomaly                            | kafka.cruisecontrol:name=AnomalyDetector.num-recent-metric-anomalies          |
+| The number of brokers that continue to be identified with a metric anomaly for a prolonged period         | kafka.cruisecontrol:name=AnomalyDetector.num-persistent-metric-anomalies      |
 
 ### GoalOptimizer Sensors
 

@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomaly;
 import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyFinder;
+import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyType;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
@@ -140,6 +141,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   private final Map<BrokerEntity, Integer> _brokerSlownessScore;
   private final Map<BrokerEntity, Long> _detectedSlowBrokers;
   private final Percentile _percentile;
+  private final Map<MetricAnomalyType, Integer> _numSlowBrokersByType;
   private double _bytesInRateDetectionThreshold;
   private double _logFlushTimeThresholdMs;
   private double _metricHistoryPercentile;
@@ -154,6 +156,8 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     _brokerSlownessScore = new HashMap<>();
     _detectedSlowBrokers = new HashMap<>();
     _percentile = new Percentile();
+    _numSlowBrokersByType = new HashMap<>(MetricAnomalyType.cachedValues().size());
+    MetricAnomalyType.cachedValues().forEach(type -> _numSlowBrokersByType.put(type, 0));
   }
 
   private Set<BrokerEntity> detectMetricAnomalies(Map<BrokerEntity, ValuesAndExtrapolations> metricsHistoryByBroker,
@@ -347,6 +351,11 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     return Collections.emptySet();
   }
 
+  @Override
+  public int numAnomaliesOfType(MetricAnomalyType type) {
+    return _numSlowBrokersByType.get(type);
+  }
+
   private void updateBrokerSlownessScore(Set<BrokerEntity> detectedMetricAnomalies) {
     for (BrokerEntity broker : detectedMetricAnomalies) {
       // Update slow broker detection time and slowness score.
@@ -389,10 +398,15 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
         brokersToDemote.put(broker, _detectedSlowBrokers.get(broker));
       }
     }
+    // Update number of slow brokers with the given type.
+    int numBrokersToDemoteOrRemove = brokersToDemote.size() + brokersToRemove.size();
+    _numSlowBrokersByType.put(MetricAnomalyType.PERSISTENT, brokersToRemove.size());
+    _numSlowBrokersByType.put(MetricAnomalyType.RECENT, brokersToDemote.size());
+    _numSlowBrokersByType.put(MetricAnomalyType.SUSPECT, _detectedSlowBrokers.size() - numBrokersToDemoteOrRemove);
 
     // If too many brokers in the cluster are detected as slow brokers, report anomaly as not fixable.
     // Otherwise report anomaly with brokers to be removed/demoted.
-    if (brokersToDemote.size() + brokersToRemove.size() > clusterSize * _selfHealingUnfixableRatio) {
+    if (numBrokersToDemoteOrRemove > clusterSize * _selfHealingUnfixableRatio) {
       brokersToRemove.forEach(brokersToDemote::put);
       detectedSlowBrokers.add(createSlowBrokersAnomaly(brokersToDemote, false, false));
     } else {

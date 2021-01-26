@@ -4,6 +4,7 @@
 package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomaly;
+import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyType;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
@@ -54,7 +55,10 @@ public class SlowBrokerFinderTest {
                                      NORMAL_LOG_FLUSH_TIME_MS * METRIC_ANOMALY_MULTIPLIER),
                              CURRENT_METRIC_WINDOW, BROKER_ENTITIES.get(0));
     Collection<MetricAnomaly<BrokerEntity>> anomalies = slowBrokerFinder.metricAnomalies(history, currentMetrics);
-    assertTrue("There should be exactly a single slow broker", anomalies.size() == 1);
+    assertEquals("There should be exactly a single slow broker", 1, anomalies.size());
+    assertEquals("There should be exactly a single recent", 1, slowBrokerFinder.numAnomaliesOfType(MetricAnomalyType.RECENT));
+    assertEquals("There should be no suspect anomaly", 0, slowBrokerFinder.numAnomaliesOfType(MetricAnomalyType.SUSPECT));
+    assertEquals("There should be no persistent anomaly", 0, slowBrokerFinder.numAnomaliesOfType(MetricAnomalyType.PERSISTENT));
     MetricAnomaly<BrokerEntity> anomaly = anomalies.iterator().next();
     assertTrue(anomaly.entities().containsKey(BROKER_ENTITIES.get(0)));
     assertEquals(ANOMALY_DETECTION_TIME_MS, (long) anomaly.entities().get(BROKER_ENTITIES.get(0)));
@@ -88,7 +92,10 @@ public class SlowBrokerFinderTest {
                                    METRIC_HISTORY_WINDOW_SIZE, BROKER_ENTITIES.get(i)));
     }
     Collection<MetricAnomaly<BrokerEntity>> anomalies = slowBrokerFinder.metricAnomalies(history, currentMetrics);
-    assertTrue("There should be exactly a single slow broker", anomalies.size() == 1);
+    assertEquals("There should be exactly a single slow broker", 1, anomalies.size());
+    assertEquals("There should be exactly a single recent", 1, slowBrokerFinder.numAnomaliesOfType(MetricAnomalyType.RECENT));
+    assertEquals("There should be no suspect anomaly", 0, slowBrokerFinder.numAnomaliesOfType(MetricAnomalyType.SUSPECT));
+    assertEquals("There should be no persistent anomaly", 0, slowBrokerFinder.numAnomaliesOfType(MetricAnomalyType.PERSISTENT));
     MetricAnomaly<BrokerEntity> anomaly = anomalies.iterator().next();
     assertTrue(anomaly.entities().containsKey(BROKER_ENTITIES.get(0)));
     assertEquals(ANOMALY_DETECTION_TIME_MS, (long) anomaly.entities().get(BROKER_ENTITIES.get(0)));
@@ -120,6 +127,9 @@ public class SlowBrokerFinderTest {
     }
     Collection<MetricAnomaly<BrokerEntity>> anomalies = slowBrokerFinder.metricAnomalies(history, currentMetrics);
     assertTrue(anomalies.isEmpty());
+    assertEquals("There should be no recent anomaly", 0, slowBrokerFinder.numAnomaliesOfType(MetricAnomalyType.RECENT));
+    assertEquals("There should be no suspect anomaly", 0, slowBrokerFinder.numAnomaliesOfType(MetricAnomalyType.SUSPECT));
+    assertEquals("There should be no persistent anomaly", 0, slowBrokerFinder.numAnomaliesOfType(MetricAnomalyType.PERSISTENT));
   }
 
   /**
@@ -140,6 +150,9 @@ public class SlowBrokerFinderTest {
                              METRIC_HISTORY_WINDOW_SIZE / 2 + 1, BROKER_ENTITIES.get(0));
     Collection<MetricAnomaly<BrokerEntity>> anomalies = slowBrokerFinder.metricAnomalies(history, currentMetrics);
     assertTrue(anomalies.isEmpty());
+    assertEquals("There should be no recent anomaly", 0, slowBrokerFinder.numAnomaliesOfType(MetricAnomalyType.RECENT));
+    assertEquals("There should be no suspect anomaly", 0, slowBrokerFinder.numAnomaliesOfType(MetricAnomalyType.SUSPECT));
+    assertEquals("There should be no persistent anomaly", 0, slowBrokerFinder.numAnomaliesOfType(MetricAnomalyType.PERSISTENT));
   }
 
   /**
@@ -159,6 +172,9 @@ public class SlowBrokerFinderTest {
                              CURRENT_METRIC_WINDOW, BROKER_ENTITIES.get(0));
     Collection<MetricAnomaly<BrokerEntity>> anomalies = slowBrokerFinder.metricAnomalies(history, currentMetrics);
     assertTrue(anomalies.isEmpty());
+    assertEquals("There should be no recent anomaly", 0, slowBrokerFinder.numAnomaliesOfType(MetricAnomalyType.RECENT));
+    assertEquals("There should be no suspect anomaly", 0, slowBrokerFinder.numAnomaliesOfType(MetricAnomalyType.SUSPECT));
+    assertEquals("There should be no persistent anomaly", 0, slowBrokerFinder.numAnomaliesOfType(MetricAnomalyType.PERSISTENT));
   }
 
   /**
@@ -188,7 +204,10 @@ public class SlowBrokerFinderTest {
                                    METRIC_HISTORY_WINDOW_SIZE, BROKER_ENTITIES.get(i)));
     }
     Collection<MetricAnomaly<BrokerEntity>> anomalies = slowBrokerFinder.metricAnomalies(history, currentMetrics);
-    assertEquals(0, anomalies.size());
+    assertTrue(anomalies.isEmpty());
+    assertEquals("There should be no recent anomaly", 0, slowBrokerFinder.numAnomaliesOfType(MetricAnomalyType.RECENT));
+    assertEquals("There should be no suspect anomaly", 0, slowBrokerFinder.numAnomaliesOfType(MetricAnomalyType.SUSPECT));
+    assertEquals("There should be no persistent anomaly", 0, slowBrokerFinder.numAnomaliesOfType(MetricAnomalyType.PERSISTENT));
   }
 
   private Map<Short, Double> populateMetricValues(double leaderBytesInRate, double replicationBytesInRate, double logFlushTimeMs) {

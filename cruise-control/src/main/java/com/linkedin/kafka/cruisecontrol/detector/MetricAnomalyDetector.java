@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyFinder;
+import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyType;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
@@ -30,6 +31,7 @@ public class MetricAnomalyDetector extends AbstractAnomalyDetector implements Ru
   public static final String METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG = "metric.anomaly.broker.entities.object";
   public static final String METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG = "metric.anomaly.fixable.object";
   private final List<MetricAnomalyFinder> _kafkaMetricAnomalyFinders;
+  private boolean _skippedLatestDetection;
 
   public MetricAnomalyDetector(Queue<Anomaly> anomalies, KafkaCruiseControl kafkaCruiseControl) {
     super(anomalies, kafkaCruiseControl);
@@ -39,6 +41,19 @@ public class MetricAnomalyDetector extends AbstractAnomalyDetector implements Ru
         AnomalyDetectorConfig.METRIC_ANOMALY_FINDER_CLASSES_CONFIG,
         MetricAnomalyFinder.class,
         configWithCruiseControlObject);
+    _skippedLatestDetection = true;
+  }
+
+  /**
+   * Get the latest total number of metric anomalies with the given type detected by metric anomaly finders, or {@code 0} if the latest
+   * anomaly detection was skipped.
+   *
+   * @param type Metric anomaly type for which the latest total number of metric anomalies is queried.
+   * @return The latest total number of metric anomalies with the given type detected by metric anomaly finders, or {@code 0} if the latest
+   * anomaly detection was skipped.
+   */
+  int numAnomaliesOfType(MetricAnomalyType type) {
+    return _skippedLatestDetection ? 0 : _kafkaMetricAnomalyFinders.stream().mapToInt(finder -> finder.numAnomaliesOfType(type)).sum();
   }
 
   @Override
@@ -46,6 +61,8 @@ public class MetricAnomalyDetector extends AbstractAnomalyDetector implements Ru
   public void run() {
     try {
       if (getAnomalyDetectionStatus(_kafkaCruiseControl, true, true) != AnomalyDetectionStatus.READY) {
+        // Skip the latest detection because metric anomaly detector is not ready
+        _skippedLatestDetection = true;
         return;
       }
 
@@ -56,8 +73,9 @@ public class MetricAnomalyDetector extends AbstractAnomalyDetector implements Ru
       for (MetricAnomalyFinder<BrokerEntity> kafkaMetricAnomalyFinder : _kafkaMetricAnomalyFinders) {
         _anomalies.addAll(kafkaMetricAnomalyFinder.metricAnomalies(metricsHistoryByBroker, currentMetricsByBroker));
       }
-
+      _skippedLatestDetection = false;
     } catch (Exception e) {
+      _skippedLatestDetection = true;
       LOG.warn("Metric Anomaly Detector encountered exception: ", e);
     } finally {
       LOG.debug("Metric anomaly detection finished.");
