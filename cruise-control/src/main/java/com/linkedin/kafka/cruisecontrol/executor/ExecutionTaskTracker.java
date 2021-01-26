@@ -33,17 +33,17 @@ public class ExecutionTaskTracker {
   private final Time _time;
   private volatile boolean _stopRequested;
 
-  private static final String INTER_BROKER_REPLICA_ACTION = "replica-action";
-  private static final String INTRA_BROKER_REPLICA_ACTION = "intra-broker-replica-action";
-  private static final String LEADERSHIP_ACTION = "leadership-action";
-  private static final String IN_PROGRESS = "in-progress";
-  private static final String PENDING = "pending";
-  private static final String ABORTING = "aborting";
-  private static final String ABORTED = "aborted";
-  private static final String DEAD = "dead";
-  private static final String COMPLETED = "completed";
-  private static final String GAUGE_ONGOING_EXECUTION_IN_KAFKA_ASSIGNER_MODE = "ongoing-execution-kafka_assigner";
-  private static final String GAUGE_ONGOING_EXECUTION_IN_NON_KAFKA_ASSIGNER_MODE = "ongoing-execution-non_kafka_assigner";
+  public static final String INTER_BROKER_REPLICA_ACTION = "replica-action";
+  public static final String INTRA_BROKER_REPLICA_ACTION = "intra-broker-replica-action";
+  public static final String LEADERSHIP_ACTION = "leadership-action";
+  public static final String IN_PROGRESS = "in-progress";
+  public static final String PENDING = "pending";
+  public static final String ABORTING = "aborting";
+  public static final String ABORTED = "aborted";
+  public static final String DEAD = "dead";
+  public static final String COMPLETED = "completed";
+  public static final String GAUGE_ONGOING_EXECUTION_IN_KAFKA_ASSIGNER_MODE = "ongoing-execution-kafka_assigner";
+  public static final String GAUGE_ONGOING_EXECUTION_IN_NON_KAFKA_ASSIGNER_MODE = "ongoing-execution-non_kafka_assigner";
 
   ExecutionTaskTracker(MetricRegistry dropwizardMetricRegistry, Time time) {
     List<ExecutionTaskState> states = ExecutionTaskState.cachedValues();

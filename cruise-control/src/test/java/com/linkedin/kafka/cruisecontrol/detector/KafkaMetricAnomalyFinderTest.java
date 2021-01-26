@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.linkedin.cruisecontrol.config.CruiseControlConfig;
 import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomaly;
 import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyFinder;
+import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyType;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
@@ -50,6 +51,9 @@ public class KafkaMetricAnomalyFinderTest {
         createCurrentMetrics(Collections.singletonMap(METRIC_ID, 40.0), 21, BROKER_ENTITIES.get(0));
     Collection<MetricAnomaly<BrokerEntity>> anomalies = anomalyFinder.metricAnomalies(history, currentMetrics);
     assertEquals("There should be exactly a single metric anomaly", 1, anomalies.size());
+    assertEquals("There should be exactly a single recent", 1, anomalyFinder.numAnomaliesOfType(MetricAnomalyType.RECENT));
+    assertEquals("There should be no suspect anomaly", 0, anomalyFinder.numAnomaliesOfType(MetricAnomalyType.SUSPECT));
+    assertEquals("There should be no persistent anomaly", 0, anomalyFinder.numAnomaliesOfType(MetricAnomalyType.PERSISTENT));
     MetricAnomaly<BrokerEntity> anomaly = anomalies.iterator().next();
     assertTrue(anomaly.entities().containsKey(BROKER_ENTITIES.get(0)));
     assertEquals(ANOMALY_DETECTION_TIME_MS, (long) anomaly.entities().get(BROKER_ENTITIES.get(0)));
@@ -64,6 +68,9 @@ public class KafkaMetricAnomalyFinderTest {
         createCurrentMetrics(Collections.singletonMap(METRIC_ID, 20.0), 20, BROKER_ENTITIES.get(0));
     Collection<MetricAnomaly<BrokerEntity>> anomalies = anomalyFinder.metricAnomalies(history, currentMetrics);
     assertTrue(anomalies.isEmpty());
+    assertEquals("There should be no recent anomaly", 0, anomalyFinder.numAnomaliesOfType(MetricAnomalyType.RECENT));
+    assertEquals("There should be no suspect anomaly", 0, anomalyFinder.numAnomaliesOfType(MetricAnomalyType.SUSPECT));
+    assertEquals("There should be no persistent anomaly", 0, anomalyFinder.numAnomaliesOfType(MetricAnomalyType.PERSISTENT));
   }
 
   private MetricAnomalyFinder<BrokerEntity> createKafkaMetricAnomalyFinder() {

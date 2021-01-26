@@ -82,7 +82,7 @@ public class LoadMonitor {
   // Metadata TTL is set based on experience -- i.e. a short TTL with large metadata may cause excessive load on brokers.
   private static final long METADATA_TTL = TimeUnit.SECONDS.toMillis(10);
   private static final long METADATA_REFRESH_BACKOFF = TimeUnit.SECONDS.toMillis(5);
-  private static final String LOAD_MONITOR_METRICS_NAME_PREFIX = "LoadMonitor";
+  public static final String LOAD_MONITOR_METRICS_NAME_PREFIX = "LoadMonitor";
   // The maximum time allowed to make a state update. If the state value cannot be updated in time it will be invalidated.
   // TODO: Make this configurable.
   private final long _monitorStateUpdateTimeoutMs;
@@ -171,7 +171,7 @@ public class LoadMonitor {
     _loadMonitorTaskRunner =
         new LoadMonitorTaskRunner(config, _partitionMetricSampleAggregator, _brokerMetricSampleAggregator, _metadataClient,
                                   metricDef, time, dropwizardMetricRegistry, _brokerCapacityConfigResolver);
-    _clusterModelCreationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("LoadMonitor",
+    _clusterModelCreationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name(LOAD_MONITOR_METRICS_NAME_PREFIX,
                                                                                     "cluster-model-creation-timer"));
     _loadMonitorExecutor = Executors.newScheduledThreadPool(2,
                                                             new KafkaCruiseControlThreadFactory("LoadMonitorExecutor", true, LOG));

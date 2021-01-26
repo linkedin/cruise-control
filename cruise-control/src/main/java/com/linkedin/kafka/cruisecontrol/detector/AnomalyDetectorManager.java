@@ -8,6 +8,7 @@ import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.detector.AnomalyType;
+import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyType;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -189,6 +190,13 @@ public class AnomalyDetectorManager {
     dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "right-sized"),
                                       (Gauge<Integer>) () -> (_goalViolationDetector.provisionStatus() == ProvisionStatus.RIGHT_SIZED)
                                                              ? 1 : 0);
+
+    // The number of metric anomalies corresponding to each metric anomaly type.
+    for (MetricAnomalyType type : MetricAnomalyType.cachedValues()) {
+      dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME,
+                                                            String.format("num-%s-metric-anomalies", type.toString().toLowerCase())),
+                                        (Gauge<Integer>) () -> _metricAnomalyDetector.numAnomaliesOfType(type));
+    }
   }
 
   private void scheduleDetectorAtFixedRate(KafkaAnomalyType anomalyType, Runnable anomalyDetector) {
