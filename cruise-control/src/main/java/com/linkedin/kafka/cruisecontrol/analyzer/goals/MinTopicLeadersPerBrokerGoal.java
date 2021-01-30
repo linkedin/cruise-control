@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
+import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
@@ -16,13 +17,13 @@ import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
 import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.SortedSet;
@@ -92,8 +93,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
    */
   @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
-    if (!_mustHaveLeaderReplicaPerBrokerTopics.contains(action.topic())) {
-      // Always accept balancing action on topics that are not of the interest of this goal
+    if (!actionAffectsRelevantTopics(action)) {
       return ACCEPT;
     }
     switch (action.balancingAction()) {
@@ -111,14 +111,20 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
   }
 
   private ActionAcceptance acceptReplicaSwap(Replica srcReplicaToSwap, Replica dstReplicaToSwap) {
-    if (srcReplicaToSwap.isLeader() == dstReplicaToSwap.isLeader()) {
+    if (!srcReplicaToSwap.isLeader() && !dstReplicaToSwap.isLeader()) {
+      // Swapping two follower replicas is always accepted
       return ACCEPT;
     }
-    if (srcReplicaToSwap.isLeader()) {
-      return doesLeaderReplicaRemoveViolateOptimizedGoal(srcReplicaToSwap) ? REPLICA_REJECT : ACCEPT;
-    } else { // dstReplicaToSwap.isLeader()
-      return doesLeaderReplicaRemoveViolateOptimizedGoal(dstReplicaToSwap) ? REPLICA_REJECT : ACCEPT;
+    String srcTopicName = srcReplicaToSwap.topicPartition().topic();
+    String dstTopicName = dstReplicaToSwap.topicPartition().topic();
+    if (srcReplicaToSwap.isLeader() && dstReplicaToSwap.isLeader() && Objects.equals(srcTopicName, dstTopicName)) {
+      // Swapping two leader replicas of the same topic is always accepted
+      return ACCEPT;
     }
+    if (doesLeaderReplicaRemoveViolateOptimizedGoal(srcReplicaToSwap) || doesLeaderReplicaRemoveViolateOptimizedGoal(dstReplicaToSwap)) {
+      return REPLICA_REJECT;
+    }
+    return ACCEPT;
   }
 
   /**
@@ -134,8 +140,12 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
       // Moving a follower replica does not violate/affect this goal
       return false;
     }
-    int topicLeaderReplicaCountOnSourceBroker =
-        replicaToBeRemoved.broker().numLeaderReplicasOfTopicInBroker(replicaToBeRemoved.topicPartition().topic());
+    String topicName = replicaToBeRemoved.topicPartition().topic();
+    if (!_mustHaveLeaderReplicaPerBrokerTopics.contains(topicName)) {
+      // Moving a replica of a irrelevant topic does not violate/affect this goal
+      return false;
+    }
+    int topicLeaderReplicaCountOnSourceBroker = replicaToBeRemoved.broker().numLeaderReplicasOfTopicInBroker(topicName);
     return topicLeaderReplicaCountOnSourceBroker <= minTopicLeadersPerBroker();
   }
 
@@ -174,7 +184,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     if (_mustHaveLeaderReplicaPerBrokerTopics.isEmpty() || optimizationOptions.excludedTopics().isEmpty()) {
       return;
     }
-    List<String> shouldNotBeExcludedTopics = new ArrayList<>();
+    Set<String> shouldNotBeExcludedTopics = new HashSet<>();
     _mustHaveLeaderReplicaPerBrokerTopics.forEach(topicName -> {
       if (optimizationOptions.excludedTopics().contains(topicName)) {
         shouldNotBeExcludedTopics.add(topicName);
@@ -238,8 +248,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
    */
   @Override
   protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
-    if (!_mustHaveLeaderReplicaPerBrokerTopics.contains(action.topic())) {
-      // Always self-satisfied on topics that are not of the interest of this goal
+    if (!actionAffectsRelevantTopics(action)) {
       return true;
     }
     switch (action.balancingAction()) {
@@ -252,34 +261,38 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
         }
         return isSelfSatisfiedToMoveOneLeaderReplica(sourceBroker,
                                                      clusterModel.broker(action.destinationBrokerId()),
-                                                     action.topic());
+                                                     replicaToBeMoved);
       case INTER_BROKER_REPLICA_SWAP:
-        Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
-        Replica destinationReplica = clusterModel.broker(action.destinationBrokerId()).replica(action.topicPartition());
-        if (sourceReplica.isLeader() == destinationReplica.isLeader()) {
-          // Swapping either 2 leader replicas or 2 follower replicas has no effect on this goal
-          return true;
-        }
-        // At this point, one replica must be leader and the other must be follower
-        if (sourceReplica.isLeader()) {
-          return isSelfSatisfiedToMoveOneLeaderReplica(clusterModel.broker(action.sourceBrokerId()),
-                                                       clusterModel.broker(action.destinationBrokerId()),
-                                                       action.topic());
-        }
-        // The replica on the destination broker is a leader replica
-        return isSelfSatisfiedToMoveOneLeaderReplica(clusterModel.broker(action.destinationBrokerId()),
-                                                     clusterModel.broker(action.sourceBrokerId()),
-                                                     action.topic());
+        return isSwapActionSelfSatisfied(clusterModel, action);
       default:
         throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
     }
   }
 
-  private boolean topicInterestedByThisGoal(String topicName) {
-    if (_balancingConstraint.topicsWithMinLeadersPerBrokerPattern().pattern().isEmpty()) {
-      return false; // No topic is of this goal's interest
+  private boolean isSwapActionSelfSatisfied(ClusterModel clusterModel, BalancingAction action) {
+    if (action.balancingAction() != ActionType.INTER_BROKER_REPLICA_SWAP) {
+      throw new IllegalArgumentException("Expected INTER_BROKER_REPLICA_SWAP. But got: " + action.balancingAction());
     }
-    return _balancingConstraint.topicsWithMinLeadersPerBrokerPattern().matcher(topicName).matches();
+    Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
+    Replica destinationReplica = clusterModel.broker(action.destinationBrokerId()).replica(action.topicPartition());
+    if (sourceReplica.isLeader() == destinationReplica.isLeader() && Objects.equals(action.topic(), action.destinationTopic())) {
+      // Swapping either 2 leader replicas or 2 follower replicas of the same topic has no effect on this goal
+      return true;
+    }
+    return isSelfSatisfiedToMoveOneLeaderReplica(clusterModel.broker(action.sourceBrokerId()),
+                                                 clusterModel.broker(action.destinationBrokerId()),
+                                                 sourceReplica)
+           && isSelfSatisfiedToMoveOneLeaderReplica(clusterModel.broker(action.destinationBrokerId()),
+                                                    clusterModel.broker(action.sourceBrokerId()),
+                                                    destinationReplica);
+  }
+
+  private boolean actionAffectsRelevantTopics(BalancingAction action) {
+    if (_mustHaveLeaderReplicaPerBrokerTopics.contains(action.topic())) {
+      return true;
+    }
+    return action.balancingAction() == ActionType.INTER_BROKER_REPLICA_SWAP &&
+           _mustHaveLeaderReplicaPerBrokerTopics.contains(action.destinationTopic());
   }
 
   /**
@@ -287,11 +300,18 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
    * broker to the given destination broker
    * @param sourceBroker the broker from which a leader replica is removed
    * @param destinationBroker the broker from which a leader replica is added
-   * @param topicName topic name of the to-be-moved replica
+   * @param replicaToBeMoved replica to be moved from the source broker to the destination broker
    * @return {@code true} if the given replica move would violate the optimized goal (i.e. the move is not acceptable),
    * {@code false} otherwise.
    */
-  private boolean isSelfSatisfiedToMoveOneLeaderReplica(Broker sourceBroker, Broker destinationBroker, String topicName) {
+  private boolean isSelfSatisfiedToMoveOneLeaderReplica(Broker sourceBroker, Broker destinationBroker, Replica replicaToBeMoved) {
+    if (!replicaToBeMoved.isLeader()) {
+      return true;
+    }
+    String topicName = replicaToBeMoved.topicPartition().topic();
+    if (!_mustHaveLeaderReplicaPerBrokerTopics.contains(topicName)) {
+      return true;
+    }
     // Moving a replica leadership from a not-alive broker to an alive broker is self-satisfied
     if (!sourceBroker.isAlive() && destinationBroker.isAlive()) {
       return true;
