@@ -120,7 +120,8 @@ public class ProposalsRunnable extends GoalBasedOperationRunnable {
   @Override
   protected boolean shouldWorkWithClusterModel() {
     return _kafkaCruiseControl.ignoreProposalCache(_goals,
-                                                   _combinedCompletenessRequirements, _excludedTopics,
+                                                   _combinedCompletenessRequirements,
+                                                   _excludedTopics,
                                                    _excludeRecentlyDemotedBrokers || _excludeRecentlyRemovedBrokers,
                                                    _ignoreProposalCache,
                                                    _isTriggeredByGoalViolation,

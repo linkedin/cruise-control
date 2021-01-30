@@ -349,8 +349,7 @@ public class AnalyzerConfig {
   /**
    * <code>min.topic.leaders.per.broker</code>
    */
-  public static final String MIN_TOPIC_LEADERS_PER_BROKER_CONFIG =
-      "min.topic.leaders.per.broker";
+  public static final String MIN_TOPIC_LEADERS_PER_BROKER_CONFIG = "min.topic.leaders.per.broker";
   public static final int DEFAULT_MIN_TOPIC_LEADERS_PER_BROKER = 1;
   public static final String MIN_TOPIC_LEADERS_PER_BROKER_DOC = "The minimum required number of leader replica per broker"
       + " for topics that must have leader replica on brokers that are not excluded for replica move.";
@@ -577,7 +576,8 @@ public class AnalyzerConfig {
                             ConfigDef.Type.INT,
                             DEFAULT_MIN_TOPIC_LEADERS_PER_BROKER,
                             atLeast(1),
-                            ConfigDef.Importance.LOW, MIN_TOPIC_LEADERS_PER_BROKER_DOC)
+                            ConfigDef.Importance.LOW,
+                            MIN_TOPIC_LEADERS_PER_BROKER_DOC)
                     .define(GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG,
                             ConfigDef.Type.DOUBLE,
                             DEFAULT_GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER,

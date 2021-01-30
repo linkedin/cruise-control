@@ -74,10 +74,8 @@ public class BalancingConstraint {
     _goalViolationDistributionThresholdMultiplier = config.getDouble(AnalyzerConfig.GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG);
     // Set default value for the topics that must have a minimum number of leader replicas on brokers that are not
     // excluded for replica move.
-    _topicsWithMinLeadersPerBrokerPattern =
-        Pattern.compile(config.getString(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG));
-    _minTopicLeadersPerBroker =
-        config.getInt(AnalyzerConfig.MIN_TOPIC_LEADERS_PER_BROKER_CONFIG);
+    _topicsWithMinLeadersPerBrokerPattern = Pattern.compile(config.getString(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG));
+    _minTopicLeadersPerBroker = config.getInt(AnalyzerConfig.MIN_TOPIC_LEADERS_PER_BROKER_CONFIG);
   }
 
   Properties setProps(Properties props) {
@@ -105,12 +103,9 @@ public class BalancingConstraint {
     props.put(AnalyzerConfig.TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG, Double.toString(_topicReplicaBalancePercentage));
     props.put(AnalyzerConfig.TOPIC_REPLICA_COUNT_BALANCE_MIN_GAP_CONFIG, Integer.toString(_topicReplicaBalanceMinGap));
     props.put(AnalyzerConfig.TOPIC_REPLICA_COUNT_BALANCE_MAX_GAP_CONFIG, Integer.toString(_topicReplicaBalanceMaxGap));
-    props.put(AnalyzerConfig.GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG,
-              Double.toString(_goalViolationDistributionThresholdMultiplier));
-    props.put(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG,
-              _topicsWithMinLeadersPerBrokerPattern.pattern());
-    props.put(AnalyzerConfig.MIN_TOPIC_LEADERS_PER_BROKER_CONFIG,
-              Integer.toString(_minTopicLeadersPerBroker));
+    props.put(AnalyzerConfig.GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG, Double.toString(_goalViolationDistributionThresholdMultiplier));
+    props.put(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG, _topicsWithMinLeadersPerBrokerPattern.pattern());
+    props.put(AnalyzerConfig.MIN_TOPIC_LEADERS_PER_BROKER_CONFIG, Integer.toString(_minTopicLeadersPerBroker));
     return props;
   }
 

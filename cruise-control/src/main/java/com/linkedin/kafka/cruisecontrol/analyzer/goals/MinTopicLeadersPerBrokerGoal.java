@@ -1,6 +1,5 @@
 /*
- * Copyright 2020 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
- *
+ * Copyright 2021 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
@@ -37,7 +36,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionType.LEADERSHIP_MOVEMENT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionType.INTER_BROKER_REPLICA_MOVEMENT;
-import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.*;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 
 
 /**
@@ -95,7 +94,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
    */
   @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
-    if (!topicOfInterest(action.topic()) || !topicsWithMinLeadersPerBrokerNames(clusterModel).contains(action.topic())) {
+    if (!topicInterestedByThisGoal(action.topic()) || !topicsWithMinLeadersPerBrokerNames(clusterModel).contains(action.topic())) {
       // Always accept balancing action on topics that are not of the interest of this goal
       return ACCEPT;
     }
@@ -138,7 +137,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
       return false;
     }
     int topicLeaderReplicaCountOnSourceBroker =
-        replicaToBeRemoved.broker().numReplicasOfTopicInBroker(replicaToBeRemoved.topicPartition().topic(), true);
+        replicaToBeRemoved.broker().numLeaderReplicasOfTopicInBroker(replicaToBeRemoved.topicPartition().topic());
     return topicLeaderReplicaCountOnSourceBroker <= minTopicLeadersPerBroker();
   }
 
@@ -160,7 +159,6 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     validateTopicsWithMinLeaderReplicaIsNotExcluded(clusterModel, optimizationOptions);
     validateEnoughLeaderReplicaToDistribute(clusterModel, optimizationOptions);
     validateBrokersAllowedReplicaMoveExist(clusterModel, optimizationOptions);
-
     // Sort leader replicas for each broker based on resource utilization.
     new SortedReplicasHelper().addPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants())
                               .trackSortedReplicasFor(replicaSortName(this, false, false), clusterModel);
@@ -253,7 +251,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
    */
   @Override
   protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
-    if (!topicOfInterest(action.topic()) || !topicsWithMinLeadersPerBrokerNames(clusterModel).contains(action.topic())) {
+    if (!topicInterestedByThisGoal(action.topic()) || !topicsWithMinLeadersPerBrokerNames(clusterModel).contains(action.topic())) {
       // Always self-satisfied on topics that are not of the interest of this goal
       return true;
     }
@@ -290,7 +288,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     }
   }
 
-  private boolean topicOfInterest(String topicName) {
+  private boolean topicInterestedByThisGoal(String topicName) {
     if (_balancingConstraint.topicsWithMinLeadersPerBrokerPattern().pattern().isEmpty()) {
       return false; // No topic is of this goal's interest
     }
@@ -312,8 +310,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
       return true;
     }
     // Moving leader replica from more abundant broker could be considered as self-satisfied
-    return sourceBroker.numReplicasOfTopicInBroker(topicName, true) >
-           destinationBroker.numReplicasOfTopicInBroker(topicName, true);
+    return sourceBroker.numLeaderReplicasOfTopicInBroker(topicName) > destinationBroker.numLeaderReplicasOfTopicInBroker(topicName);
   }
 
   /**
@@ -344,7 +341,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
         continue;
       }
       for (String mustHaveLeaderReplicaPerBrokerTopicName : mustHaveLeaderReplicaPerBrokerTopicNames) {
-        int leaderReplicaCount = broker.numReplicasOfTopicInBroker(mustHaveLeaderReplicaPerBrokerTopicName, true);
+        int leaderReplicaCount = broker.numLeaderReplicasOfTopicInBroker(mustHaveLeaderReplicaPerBrokerTopicName);
         if (leaderReplicaCount < minTopicLeadersPerBroker()) {
           throw new OptimizationFailureException(String.format("Broker %d does not have enough leader replica for topic %s. "
               + "Minimum required per-broker leader replica count %d. Actual broker leader replica count %d",
@@ -401,7 +398,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
         LOG.warn("No leader replica for {}", followerReplica.topicPartition());
       } else {
         if (leaderReplica.broker().id() != broker.id()
-            && leaderReplica.broker().numReplicasOfTopicInBroker(topicMustHaveLeaderReplicaPerBroker, true) > minTopicLeadersPerBroker()) {
+            && leaderReplica.broker().numLeaderReplicasOfTopicInBroker(topicMustHaveLeaderReplicaPerBroker) > minTopicLeadersPerBroker()) {
           maybeApplyBalancingAction(clusterModel, leaderReplica, Collections.singleton(broker),
                                     LEADERSHIP_MOVEMENT, optimizedGoals, optimizationOptions);
         }
@@ -452,13 +449,20 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
   }
 
   private boolean brokerHasSufficientLeaderReplicasOfTopic(Broker broker, String topicName) {
-    return broker.numReplicasOfTopicInBroker(topicName, true) >= minTopicLeadersPerBroker();
+    return broker.numLeaderReplicasOfTopicInBroker(topicName) >= minTopicLeadersPerBroker();
   }
 
+  /**
+   * This method creates a priority queue which has the broker with the most number of leader replicas of a given topic at the top of queue
+   * @param topicName name of the given topic
+   * @param clusterModel cluster model
+   * @param originalBroker original broker which needs to be excluded from the priority queue
+   * @return a priority queue which has the broker with the most number of leader replicas of a given topic at the top of queue
+   */
   private PriorityQueue<Broker> getBrokersWithExcessiveLeaderReplicaToMove(String topicName, ClusterModel clusterModel, Broker originalBroker) {
     PriorityQueue<Broker> brokersWithExcessiveLeaderReplicaToMove = new PriorityQueue<>((broker1, broker2) -> {
-      int broker1LeaderReplicaCount = broker1.numReplicasOfTopicInBroker(topicName, true);
-      int broker2LeaderReplicaCount = broker2.numReplicasOfTopicInBroker(topicName, true);
+      int broker1LeaderReplicaCount = broker1.numLeaderReplicasOfTopicInBroker(topicName);
+      int broker2LeaderReplicaCount = broker2.numLeaderReplicasOfTopicInBroker(topicName);
       int leaderReplicaCountCompareResult = Integer.compare(broker2LeaderReplicaCount, broker1LeaderReplicaCount);
       return leaderReplicaCountCompareResult == 0 ? Integer.compare(broker1.id(), broker2.id()) : leaderReplicaCountCompareResult;
     });
@@ -471,7 +475,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
   }
 
   private boolean brokerHasExcessiveLeaderReplicasOfTopic(String topicName, Broker broker) {
-    return broker.numReplicasOfTopicInBroker(topicName, true) > minTopicLeadersPerBroker();
+    return broker.numLeaderReplicasOfTopicInBroker(topicName) > minTopicLeadersPerBroker();
   }
 
   @Nullable
