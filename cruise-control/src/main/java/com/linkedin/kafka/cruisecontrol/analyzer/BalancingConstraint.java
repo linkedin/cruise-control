@@ -213,8 +213,7 @@ public class BalancingConstraint {
   }
 
   /**
-   * Get the regex pattern of names of topics that must have a minimum number of leader replicas on alive brokers that
-   * not excluded for replica move.
+   * Get the regex pattern of topics with a minimum number of leaders on brokers that are not excluded for replica move.
    *
    * @return regex pattern of topics names
    */
