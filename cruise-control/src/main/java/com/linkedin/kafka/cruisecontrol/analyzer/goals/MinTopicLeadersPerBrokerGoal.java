@@ -41,12 +41,13 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaS
 
 /**
  * HARD GOAL: Generate leadership movement and leader replica movement proposals to ensure that each alive broker that
- * is not excluded for replica leadership moves has at minimum number (specified by "min.topic.leaders.per.broker" config
+ * is not excluded for replica leadership moves has at least the minimum number (specified by "min.topic.leaders.per.broker" config
  * property) of leader replica of each topic in a configured set of topics (specified by "topics.with.min.leaders.per.broker"
  * config property).
  */
 public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(MinTopicLeadersPerBrokerGoal.class);
+  private Set<String> _mustHaveLeaderReplicaPerBrokerTopics;
 
   /**
    * This constructor is required for unit test
@@ -84,7 +85,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
 
   /**
    * Check whether given action is acceptable by this goal. An action is acceptable by a goal if it satisfies
-   * requirements of the goal. Requirements(hard goal): A configured set of topics that should have a minimum number
+   * requirements of the goal. Requirements(hard goal): A configured set of topics that should have at least a minimum number
    * of leader replicas on each alive broker that is not excluded for replica leadership moves
    *
    * @param action Action to be checked for acceptance.
@@ -94,7 +95,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
    */
   @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
-    if (!topicInterestedByThisGoal(action.topic()) || !topicsWithMinLeadersPerBrokerNames(clusterModel).contains(action.topic())) {
+    if (!_mustHaveLeaderReplicaPerBrokerTopics.contains(action.topic())) {
       // Always accept balancing action on topics that are not of the interest of this goal
       return ACCEPT;
     }
@@ -152,9 +153,12 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
   @Override
   protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
       throws OptimizationFailureException {
-    if (!hasTopicsWithMinLeadersPerBrokerPattern()) {
+    if (_balancingConstraint.topicsWithMinLeadersPerBrokerPattern().pattern().isEmpty()) {
+      _mustHaveLeaderReplicaPerBrokerTopics = Collections.emptySet();
       return;
     }
+    _mustHaveLeaderReplicaPerBrokerTopics = Collections.unmodifiableSet(
+        Utils.getTopicNamesMatchedWithPattern(_balancingConstraint.topicsWithMinLeadersPerBrokerPattern(), clusterModel.topics()));
     // Sanity checks
     validateTopicsWithMinLeaderReplicaIsNotExcluded(clusterModel, optimizationOptions);
     validateEnoughLeaderReplicaToDistribute(clusterModel, optimizationOptions);
@@ -164,29 +168,17 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
                               .trackSortedReplicasFor(replicaSortName(this, false, false), clusterModel);
   }
 
-  private Set<String> topicsWithMinLeadersPerBrokerNames(ClusterModel clusterModel) {
-    if (!hasTopicsWithMinLeadersPerBrokerPattern()) {
-      return Collections.emptySet(); // Avoid running unnecessary regex pattern matching to save CPU cycles
-    }
-    return Utils.getTopicNamesMatchedWithPattern(_balancingConstraint.topicsWithMinLeadersPerBrokerPattern(), clusterModel.topics());
-  }
-
-  private boolean hasTopicsWithMinLeadersPerBrokerPattern() {
-    return !_balancingConstraint.topicsWithMinLeadersPerBrokerPattern().pattern().isEmpty();
-  }
-
   private int minTopicLeadersPerBroker() {
     return _balancingConstraint.minTopicLeadersPerBroker();
   }
 
   private void validateTopicsWithMinLeaderReplicaIsNotExcluded(ClusterModel clusterModel,
                                                                OptimizationOptions optimizationOptions) throws OptimizationFailureException {
-    Set<String> mustHaveLeaderReplicaPerBrokerTopicNames = topicsWithMinLeadersPerBrokerNames(clusterModel);
-    if (mustHaveLeaderReplicaPerBrokerTopicNames.isEmpty() || optimizationOptions.excludedTopics().isEmpty()) {
+    if (_mustHaveLeaderReplicaPerBrokerTopics.isEmpty() || optimizationOptions.excludedTopics().isEmpty()) {
       return;
     }
     List<String> shouldNotBeExcludedTopics = new ArrayList<>();
-    mustHaveLeaderReplicaPerBrokerTopicNames.forEach(topicName -> {
+    _mustHaveLeaderReplicaPerBrokerTopics.forEach(topicName -> {
       if (optimizationOptions.excludedTopics().contains(topicName)) {
         shouldNotBeExcludedTopics.add(topicName);
       }
@@ -200,11 +192,10 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
 
   private void validateEnoughLeaderReplicaToDistribute(ClusterModel clusterModel,
                                                        OptimizationOptions optimizationOptions) throws OptimizationFailureException {
-    Set<String> mustHaveLeaderReplicaPerBrokerTopics = topicsWithMinLeadersPerBrokerNames(clusterModel);
-    if (mustHaveLeaderReplicaPerBrokerTopics.isEmpty()) {
+    if (_mustHaveLeaderReplicaPerBrokerTopics.isEmpty()) {
       return;
     }
-    Map<String, Set<Replica>> replicasByTopicNames = clusterModel.replicasOf(mustHaveLeaderReplicaPerBrokerTopics);
+    Map<String, Set<Replica>> replicasByTopicNames = clusterModel.replicasOf(_mustHaveLeaderReplicaPerBrokerTopics);
     Set<Broker> eligibleBrokersForLeadership = eligibleToHaveLeaderReplicaBrokers(clusterModel, optimizationOptions);
     int totalMinimumLeaderReplicaCount = eligibleBrokersForLeadership.size() * minTopicLeadersPerBroker();
 
@@ -250,7 +241,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
    */
   @Override
   protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
-    if (!topicInterestedByThisGoal(action.topic()) || !topicsWithMinLeadersPerBrokerNames(clusterModel).contains(action.topic())) {
+    if (!_mustHaveLeaderReplicaPerBrokerTopics.contains(action.topic())) {
       // Always self-satisfied on topics that are not of the interest of this goal
       return true;
     }
@@ -331,15 +322,14 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
 
   private void ensureBrokersAllHaveEnoughLeaderReplicaOfTopics(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
       throws OptimizationFailureException {
-    Set<String> mustHaveLeaderReplicaPerBrokerTopicNames = topicsWithMinLeadersPerBrokerNames(clusterModel);
-    if (mustHaveLeaderReplicaPerBrokerTopicNames.isEmpty()) {
+    if (_mustHaveLeaderReplicaPerBrokerTopics.isEmpty()) {
       return; // Early termination to avoid some unnecessary computation
     }
     for (Broker broker : clusterModel.brokers()) {
       if (!brokerIsEligibleToHaveAnyLeaderReplica(broker, optimizationOptions)) {
         continue;
       }
-      for (String mustHaveLeaderReplicaPerBrokerTopicName : mustHaveLeaderReplicaPerBrokerTopicNames) {
+      for (String mustHaveLeaderReplicaPerBrokerTopicName : _mustHaveLeaderReplicaPerBrokerTopics) {
         int leaderReplicaCount = broker.numLeaderReplicasOfTopicInBroker(mustHaveLeaderReplicaPerBrokerTopicName);
         if (leaderReplicaCount < minTopicLeadersPerBroker()) {
           throw new OptimizationFailureException(String.format("Broker %d does not have enough leader replica for topic %s. "
@@ -364,14 +354,13 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
                                     OptimizationOptions optimizationOptions) throws OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
     moveAwayOfflineReplicas(broker, clusterModel, optimizedGoals, optimizationOptions);
-    Set<String> mustHaveLeaderReplicaPerBrokerTopicNames = topicsWithMinLeadersPerBrokerNames(clusterModel);
-    if (mustHaveLeaderReplicaPerBrokerTopicNames.isEmpty()) {
+    if (_mustHaveLeaderReplicaPerBrokerTopics.isEmpty()) {
       return; // Early termination to avoid some unnecessary computation
     }
     if (!brokerIsEligibleToHaveAnyLeaderReplica(broker, optimizationOptions)) {
       return;
     }
-    for (String topicMustHaveLeaderReplicaPerBroker : mustHaveLeaderReplicaPerBrokerTopicNames) {
+    for (String topicMustHaveLeaderReplicaPerBroker : _mustHaveLeaderReplicaPerBrokerTopics) {
       maybeMoveLeaderReplicaOfTopicToBroker(topicMustHaveLeaderReplicaPerBroker, broker, clusterModel, optimizedGoals, optimizationOptions);
     }
   }
