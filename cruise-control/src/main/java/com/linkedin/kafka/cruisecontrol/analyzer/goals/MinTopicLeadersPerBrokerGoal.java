@@ -168,8 +168,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     if (!hasTopicsWithMinLeadersPerBrokerPattern()) {
       return Collections.emptySet(); // Avoid running unnecessary regex pattern matching to save CPU cycles
     }
-    return Utils.getTopicNamesMatchedWithPattern(_balancingConstraint.topicsWithMinLeadersPerBrokerPattern(),
-                                                 clusterModel.topics());
+    return Utils.getTopicNamesMatchedWithPattern(_balancingConstraint.topicsWithMinLeadersPerBrokerPattern(), clusterModel.topics());
   }
 
   private boolean hasTopicsWithMinLeadersPerBrokerPattern() {

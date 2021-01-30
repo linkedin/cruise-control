@@ -300,6 +300,7 @@ public class BalancingConstraint {
                          _maxReplicasPerBroker, _replicaBalancePercentage, _leaderReplicaBalancePercentage,
                          _topicReplicaBalancePercentage, _topicReplicaBalanceMinGap, _topicReplicaBalanceMaxGap,
                          _goalViolationDistributionThresholdMultiplier,
-                         _topicsWithMinLeadersPerBrokerPattern.pattern(), _minTopicLeadersPerBroker);
+                         _topicsWithMinLeadersPerBrokerPattern.pattern(),
+                         _minTopicLeadersPerBroker);
   }
 }
