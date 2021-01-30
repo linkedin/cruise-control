@@ -165,7 +165,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
       return;
     }
     _mustHaveLeaderReplicaPerBrokerTopics = Collections.unmodifiableSet(
-        Utils.getTopicNamesMatchedWithPattern(_balancingConstraint.topicsWithMinLeadersPerBrokerPattern(), clusterModel.topics()));
+        Utils.getTopicNamesMatchedWithPattern(_balancingConstraint.topicsWithMinLeadersPerBrokerPattern(), clusterModel::topics));
     // Sanity checks
     validateTopicsWithMinLeaderReplicaIsNotExcluded(clusterModel, optimizationOptions);
     validateEnoughLeaderReplicaToDistribute(clusterModel, optimizationOptions);

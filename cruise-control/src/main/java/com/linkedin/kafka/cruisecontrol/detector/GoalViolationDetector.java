@@ -246,10 +246,7 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
   }
 
   protected Set<String> excludedTopics(ClusterModel clusterModel) {
-    if (_excludedTopics.pattern().isEmpty()) {
-      return Collections.emptySet();
-    }
-    return Utils.getTopicNamesMatchedWithPattern(_excludedTopics, clusterModel.topics());
+    return Utils.getTopicNamesMatchedWithPattern(_excludedTopics, clusterModel::topics);
   }
 
   protected boolean optimizeForGoal(ClusterModel clusterModel,

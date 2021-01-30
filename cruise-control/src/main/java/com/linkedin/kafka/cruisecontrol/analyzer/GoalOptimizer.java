@@ -25,7 +25,6 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -498,10 +497,7 @@ public class GoalOptimizer implements Runnable {
    */
   public Set<String> excludedTopics(ClusterModel clusterModel, Pattern requestedExcludedTopics) {
     Pattern topicsToExclude = requestedExcludedTopics != null ? requestedExcludedTopics : _defaultExcludedTopics;
-    if (topicsToExclude.pattern().isEmpty()) {
-      return Collections.emptySet();
-    }
-    return Utils.getTopicNamesMatchedWithPattern(topicsToExclude, clusterModel.topics());
+    return Utils.getTopicNamesMatchedWithPattern(topicsToExclude, clusterModel::topics);
   }
 
   /**
