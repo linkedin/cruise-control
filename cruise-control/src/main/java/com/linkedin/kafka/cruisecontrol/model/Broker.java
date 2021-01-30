@@ -187,7 +187,7 @@ public class Broker implements Serializable, Comparable<Broker> {
   /**
    * Get number of replicas from the given topic in this broker.
    *
-   * @param topic Topic for which the replica count will be returned.
+   * @param topic Topic for which both the leader and follower replica count will be returned.
    * @return The number of replicas from the given topic in this broker.
    */
   public int numReplicasOfTopicInBroker(String topic) {
@@ -216,9 +216,9 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
-   * Get number of either leader replicas or follower replicas from the given topic in this broker
+   * Get number of either leader or follower replicas from the given topic in this broker
    *
-   * @param topic Topic for which the replica count will be returned.
+   * @param topic Topic for which either the leader or the follower replica count will be returned.
    * @param countLeaderReplica Count leader replicas if {@code true} and count follower replicas if
    * {@code false}
    * @return The number of replicas from the given topic in this broker.

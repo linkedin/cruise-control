@@ -264,13 +264,15 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * @return A map from topic names to all replicas of each topic
+   * Return a map from topic names to a set of replicas of each topic
+   * @param topicNames a set of topic names
+   * @return A map from topic names to a set of replicas of each topic
    */
-  public Map<String, List<Replica>> allReplicasOfTopics(Set<String> topicNames) {
-    Map<String, List<Replica>> replicasByTopicNames = new HashMap<>(topicNames.size());
+  public Map<String, Set<Replica>> replicasOf(Set<String> topicNames) {
+    Map<String, Set<Replica>> replicasByTopicNames = new HashMap<>(topicNames.size());
     _partitionsByTopicPartition.forEach((topicPartition, partition) -> {
       if (topicNames.contains(topicPartition.topic())) {
-        replicasByTopicNames.computeIfAbsent(topicPartition.topic(), topicName -> new ArrayList<>()).addAll(partition.replicas());
+        replicasByTopicNames.computeIfAbsent(topicPartition.topic(), topicName -> new HashSet<>()).addAll(partition.replicas());
       }
     });
     return replicasByTopicNames;

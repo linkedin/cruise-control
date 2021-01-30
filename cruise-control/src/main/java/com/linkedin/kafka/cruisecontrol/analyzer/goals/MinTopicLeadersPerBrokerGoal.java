@@ -204,11 +204,11 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     if (mustHaveLeaderReplicaPerBrokerTopics.isEmpty()) {
       return;
     }
-    Map<String, List<Replica>> replicasByTopicNames = clusterModel.allReplicasOfTopics(mustHaveLeaderReplicaPerBrokerTopics);
+    Map<String, Set<Replica>> replicasByTopicNames = clusterModel.replicasOf(mustHaveLeaderReplicaPerBrokerTopics);
     Set<Broker> eligibleBrokersForLeadership = eligibleToHaveLeaderReplicaBrokers(clusterModel, optimizationOptions);
     int totalMinimumLeaderReplicaCount = eligibleBrokersForLeadership.size() * minTopicLeadersPerBroker();
 
-    for (Map.Entry<String, List<Replica>> replicasByTopicName : replicasByTopicNames.entrySet()) {
+    for (Map.Entry<String, Set<Replica>> replicasByTopicName : replicasByTopicNames.entrySet()) {
       int totalLeaderReplicaCountForTopic = countLeaderReplicas(replicasByTopicName.getValue());
       if (totalLeaderReplicaCountForTopic < totalMinimumLeaderReplicaCount) {
         throw new OptimizationFailureException(
