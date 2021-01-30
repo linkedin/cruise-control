@@ -160,12 +160,11 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
   @Override
   protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
       throws OptimizationFailureException {
-    if (_balancingConstraint.topicsWithMinLeadersPerBrokerPattern().pattern().isEmpty()) {
-      _mustHaveLeaderReplicaPerBrokerTopics = Collections.emptySet();
-      return;
-    }
     _mustHaveLeaderReplicaPerBrokerTopics = Collections.unmodifiableSet(
         Utils.getTopicNamesMatchedWithPattern(_balancingConstraint.topicsWithMinLeadersPerBrokerPattern(), clusterModel::topics));
+    if (_mustHaveLeaderReplicaPerBrokerTopics.isEmpty()) {
+      return;
+    }
     // Sanity checks
     validateTopicsWithMinLeaderReplicaIsNotExcluded(clusterModel, optimizationOptions);
     validateEnoughLeaderReplicaToDistribute(clusterModel, optimizationOptions);
