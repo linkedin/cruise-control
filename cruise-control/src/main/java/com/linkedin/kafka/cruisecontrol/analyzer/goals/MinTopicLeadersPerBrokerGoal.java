@@ -49,9 +49,6 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(MinTopicLeadersPerBrokerGoal.class);
   private Set<String> _mustHaveLeaderReplicaPerBrokerTopics;
 
-  /**
-   * This constructor is required for unit test
-   */
   public MinTopicLeadersPerBrokerGoal() {
 
   }

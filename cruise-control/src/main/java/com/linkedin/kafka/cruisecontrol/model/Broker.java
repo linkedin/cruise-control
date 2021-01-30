@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -24,7 +23,6 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.Function;
-
 import org.apache.kafka.common.TopicPartition;
 
 import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
@@ -206,16 +204,6 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
-   * Get number of only follower replicas from the given topic in this broker.
-   *
-   * @param topicName Topic for which the replica count will be returned.
-   * @return The number of replicas from the given topic in this broker.
-   */
-  public int numFollowerReplicasOfTopicInBroker(String topicName) {
-    return numReplicasOfTopicInBroker(topicName, false);
-  }
-
-  /**
    * Get number of either leader or follower replicas from the given topic in this broker
    *
    * @param topic Topic for which either the leader or the follower replica count will be returned.
@@ -224,17 +212,7 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @return The number of replicas from the given topic in this broker.
    */
   private int numReplicasOfTopicInBroker(String topic, boolean countLeaderReplica) {
-    Map<Integer, Replica> topicReplicas = _topicReplicas.get(topic);
-    if (topicReplicas == null) {
-      return 0;
-    }
-    int replicaCount = 0;
-    for (Replica replica : topicReplicas.values()) {
-      if (replica.isLeader() == countLeaderReplica) {
-        replicaCount++;
-      }
-    }
-    return replicaCount;
+    return (int) replicasOfTopicInBroker(topic).stream().filter(r -> r.isLeader() == countLeaderReplica).count();
   }
 
   /**
