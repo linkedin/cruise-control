@@ -215,7 +215,7 @@ public class BalancingConstraint {
   /**
    * Get the regex pattern of topics with a minimum number of leaders on brokers that are not excluded for replica move.
    *
-   * @return regex pattern of topics names
+   * @return Regex pattern of topic names
    */
   public Pattern topicsWithMinLeadersPerBrokerPattern() {
     return _topicsWithMinLeadersPerBrokerPattern;
@@ -225,7 +225,7 @@ public class BalancingConstraint {
    * Get the minimum required number of leader replica per broker for topics that must have leader replica per broker
    * that is not excluded for replica move.
    *
-   * @return topic count
+   * @return Topic count
    */
   public int minTopicLeadersPerBroker() {
     return _minTopicLeadersPerBroker;
