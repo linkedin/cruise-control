@@ -268,15 +268,14 @@ public class ClusterModel implements Serializable {
    * @param topics a set of topic names
    * @return A map from topic names to the number of leader replicas of each topic
    */
-  public Map<String, Long> numLeadersPerTopic(Set<String> topics) {
-    Map<String, Long> leaderCountByTopicNames = new HashMap<>(topics.size());
-    _partitionsByTopicPartition.forEach((topicPartition, partition) -> {
-      String topicName = topicPartition.topic();
+  public Map<String, Integer> numLeadersPerTopic(Set<String> topics) {
+    Map<String, Integer> leaderCountByTopicNames = new HashMap<>(topics.size());
+    for (TopicPartition tp : _partitionsByTopicPartition.keySet()) {
+      String topicName = tp.topic();
       if (topics.contains(topicName)) {
-        long leaderReplicaCount = partition.replicas().stream().filter(Replica::isLeader).count();
-        leaderCountByTopicNames.put(topicName, leaderCountByTopicNames.getOrDefault(topicName, 0L) + leaderReplicaCount);
+        leaderCountByTopicNames.merge(topicName, 1, Integer::sum);
       }
-    });
+    }
     return leaderCountByTopicNames;
   }
 

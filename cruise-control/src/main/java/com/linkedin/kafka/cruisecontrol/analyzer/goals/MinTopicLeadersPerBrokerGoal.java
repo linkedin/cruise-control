@@ -42,9 +42,9 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaS
 
 /**
  * HARD GOAL: Generate leadership movement and leader replica movement proposals to ensure that each alive broker that
- * is not excluded for replica leadership moves has at least the minimum number (specified by "min.topic.leaders.per.broker" config
- * property) of leader replica of each topic in a configured set of topics (specified by "topics.with.min.leaders.per.broker"
- * config property).
+ * is not excluded for replica leadership moves has at least the minimum number (specified by
+ * {@link AnalyzerConfig#MIN_TOPIC_LEADERS_PER_BROKER_CONFIG}) of leader replica of each topic in a configured set of topics
+ * (specified by {@link AnalyzerConfig#TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG}).
  */
 public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(MinTopicLeadersPerBrokerGoal.class);
@@ -166,14 +166,13 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
       return;
     }
     // Sanity checks
-    validateTopicsWithMinLeaderReplicaIsNotExcluded(clusterModel, optimizationOptions);
+    validateTopicsWithMinLeaderReplicaIsNotExcluded(optimizationOptions);
     validateEnoughLeaderReplicaToDistribute(clusterModel, optimizationOptions);
     validateBrokersAllowedReplicaMoveExist(clusterModel, optimizationOptions);
     boolean onlyMoveImmigrantReplicas = optimizationOptions.onlyMoveImmigrantReplicas();
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectLeaders())
                               .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(), onlyMoveImmigrantReplicas)
-                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
+                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnIncludedTopics(_mustHaveTopicLeadersPerBroker))
                               .maybeAddPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants(), !onlyMoveImmigrantReplicas)
                               .trackSortedReplicasFor(replicaSortName(this, true, true), clusterModel);
   }
@@ -182,8 +181,8 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     return _balancingConstraint.minTopicLeadersPerBroker();
   }
 
-  private void validateTopicsWithMinLeaderReplicaIsNotExcluded(ClusterModel clusterModel,
-                                                               OptimizationOptions optimizationOptions) throws OptimizationFailureException {
+  private void validateTopicsWithMinLeaderReplicaIsNotExcluded(OptimizationOptions optimizationOptions)
+      throws OptimizationFailureException {
     if (optimizationOptions.excludedTopics().isEmpty()) {
       return;
     }
@@ -204,11 +203,11 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
 
   private void validateEnoughLeaderReplicaToDistribute(ClusterModel clusterModel,
                                                        OptimizationOptions optimizationOptions) throws OptimizationFailureException {
-    Map<String, Long> numLeadersByTopicNames = clusterModel.numLeadersPerTopic(_mustHaveTopicLeadersPerBroker);
+    Map<String, Integer> numLeadersByTopicNames = clusterModel.numLeadersPerTopic(_mustHaveTopicLeadersPerBroker);
     Set<Broker> eligibleBrokersForLeadership = eligibleBrokersForLeadership(clusterModel, optimizationOptions);
     int totalMinimumLeaderReplicaCount = eligibleBrokersForLeadership.size() * minTopicLeadersPerBroker();
 
-    for (Map.Entry<String, Long> numLeadersPerTopic : numLeadersByTopicNames.entrySet()) {
+    for (Map.Entry<String, Integer> numLeadersPerTopic : numLeadersByTopicNames.entrySet()) {
       if (numLeadersPerTopic.getValue() < totalMinimumLeaderReplicaCount) {
         throw new OptimizationFailureException(
             String.format("Cannot distribute %d leader replica(s) over %d broker(s) with total minimum required leader count %d for topic %s.",
