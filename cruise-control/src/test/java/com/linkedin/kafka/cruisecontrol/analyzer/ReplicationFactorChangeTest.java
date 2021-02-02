@@ -54,7 +54,8 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUnitTestUtils.*;
+import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUnitTestUtils.goal;
+import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUnitTestUtils.goalWithConfigOverrides;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.smallClusterModel;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.mediumClusterModel;
 import static org.junit.Assert.assertEquals;
@@ -279,7 +280,13 @@ public class ReplicationFactorChangeTest {
     if (goalClass == MinTopicLeadersPerBrokerGoal.class) {
       Properties configOverrides = new Properties();
       configOverrides.put(AnalyzerConfig.MIN_TOPIC_LEADERS_PER_BROKER_CONFIG, "1");
-      configOverrides.put(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG, DeterministicCluster.T2);
+      if (topics.contains(DeterministicCluster.TOPIC_A)) { // It implies the cluster model is the medium cluster model
+        configOverrides.put(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG, DeterministicCluster.TOPIC_A);
+      } else if (topics.contains(DeterministicCluster.T2)) { // It implies the cluster model is the small cluster model
+        configOverrides.put(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG, DeterministicCluster.T2);
+      } else {
+        fail("Cannot figure out which topic to use to test the MinTopicLeadersPerBrokerGoal with model: " + clusterModel);
+      }
       goal = goalWithConfigOverrides(goalClass, configOverrides);
     } else {
       goal = goal(goalClass);
