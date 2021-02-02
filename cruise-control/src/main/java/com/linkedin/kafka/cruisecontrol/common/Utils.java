@@ -27,8 +27,7 @@ public class Utils {
     if (topicNamePattern.pattern().isEmpty()) {
       return Collections.emptySet();
     }
-    return topicNamesSupplier
-        .get()
+    return topicNamesSupplier.get()
         .stream()
         .filter(topicName -> topicNamePattern.matcher(topicName).matches())
         .collect(Collectors.toSet());
