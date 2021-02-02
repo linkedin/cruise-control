@@ -380,13 +380,10 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
         }
       }
     }
-
-    if (topicLeaderCountOnReceiverBroker < minTopicLeadersPerBroker()) {
-      throw new OptimizationFailureException(String.format("Cannot make broker %d have at least %d leader replica(s) of topic %s",
-                                                           broker.id(),
-                                                           minTopicLeadersPerBroker(),
-                                                           topicMustHaveLeaderPerBroker));
-    }
+    throw new OptimizationFailureException(String.format("Cannot make broker %d have at least %d leader replica(s) of topic %s",
+                                                         broker.id(),
+                                                         minTopicLeadersPerBroker(),
+                                                         topicMustHaveLeaderPerBroker));
   }
 
   /**
