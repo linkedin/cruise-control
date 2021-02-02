@@ -199,20 +199,8 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @param topicName Topic for which the replica count will be returned.
    * @return The number of leader replicas from the given topic in this broker.
    */
-  public int numLeaderReplicasOfTopicInBroker(String topicName) {
-    return numReplicasOfTopicInBroker(topicName, true);
-  }
-
-  /**
-   * Get number of either leader or follower replicas from the given topic in this broker
-   *
-   * @param topic Topic for which either the leader or the follower replica count will be returned.
-   * @param countLeaderReplica Count leader replicas if {@code true} and count follower replicas if
-   * {@code false}
-   * @return The number of replicas from the given topic in this broker.
-   */
-  private int numReplicasOfTopicInBroker(String topic, boolean countLeaderReplica) {
-    return (int) replicasOfTopicInBroker(topic).stream().filter(r -> r.isLeader() == countLeaderReplica).count();
+  public int numLeadersFor(String topicName) {
+    return (int) replicasOfTopicInBroker(topicName).stream().filter(Replica::isLeader).count();
   }
 
   /**

@@ -145,7 +145,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
       // Moving a replica of a irrelevant topic does not violate/affect this goal
       return false;
     }
-    int topicLeaderReplicaCountOnSourceBroker = replicaToBeRemoved.broker().numLeaderReplicasOfTopicInBroker(topicName);
+    int topicLeaderReplicaCountOnSourceBroker = replicaToBeRemoved.broker().numLeadersFor(topicName);
     return topicLeaderReplicaCountOnSourceBroker <= minTopicLeadersPerBroker();
   }
 
@@ -237,43 +237,14 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
    */
   @Override
   protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
-    if (!actionAffectsRelevantTopics(action)) {
-      return true;
-    }
-    switch (action.balancingAction()) {
-      case LEADERSHIP_MOVEMENT:
-      case INTER_BROKER_REPLICA_MOVEMENT:
-        Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
-        Replica replicaToBeMoved = sourceBroker.replica(action.topicPartition());
-        if (!replicaToBeMoved.isLeader()) {
-          return true; // Move a follower replica of a topic of this goal's interest is always self-satisfied since it does not matter
-        }
-        return isSelfSatisfiedToMoveOneLeaderReplica(sourceBroker,
-                                                     clusterModel.broker(action.destinationBrokerId()),
-                                                     replicaToBeMoved);
-      case INTER_BROKER_REPLICA_SWAP:
-        return isSwapActionSelfSatisfied(clusterModel, action);
-      default:
-        throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
-    }
-  }
+    Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
+    Replica replicaToBeMoved = sourceBroker.replica(action.topicPartition());
 
-  private boolean isSwapActionSelfSatisfied(ClusterModel clusterModel, BalancingAction action) {
-    if (action.balancingAction() != ActionType.INTER_BROKER_REPLICA_SWAP) {
-      throw new IllegalArgumentException("Expected INTER_BROKER_REPLICA_SWAP. But got: " + action.balancingAction());
+    if (replicaToBeMoved.broker().replica(action.topicPartition()).isCurrentOffline()) {
+      return action.balancingAction() == ActionType.INTER_BROKER_REPLICA_MOVEMENT;
     }
-    Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
-    Replica destinationReplica = clusterModel.broker(action.destinationBrokerId()).replica(action.topicPartition());
-    if (sourceReplica.isLeader() == destinationReplica.isLeader() && Objects.equals(action.topic(), action.destinationTopic())) {
-      // Swapping either 2 leader replicas or 2 follower replicas of the same topic has no effect on this goal
-      return true;
-    }
-    return isSelfSatisfiedToMoveOneLeaderReplica(clusterModel.broker(action.sourceBrokerId()),
-                                                 clusterModel.broker(action.destinationBrokerId()),
-                                                 sourceReplica)
-           && isSelfSatisfiedToMoveOneLeaderReplica(clusterModel.broker(action.destinationBrokerId()),
-                                                    clusterModel.broker(action.sourceBrokerId()),
-                                                    destinationReplica);
+    // Moving leader replica from more abundant broker is considered as self-satisfied
+    return sourceBroker.numLeadersFor(replicaToBeMoved.topicPartition().topic()) > minTopicLeadersPerBroker();
   }
 
   private boolean actionAffectsRelevantTopics(BalancingAction action) {
@@ -282,31 +253,6 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     }
     return action.balancingAction() == ActionType.INTER_BROKER_REPLICA_SWAP &&
            _mustHaveTopicLeadersPerBroker.contains(action.destinationTopic());
-  }
-
-  /**
-   * Check whether it is self-satisfied to move a leader replica of a topic with the given name from a the given source
-   * broker to the given destination broker
-   * @param sourceBroker the broker from which a leader replica is removed
-   * @param destinationBroker the broker from which a leader replica is added
-   * @param replicaToBeMoved replica to be moved from the source broker to the destination broker
-   * @return {@code true} if the given replica move would violate the optimized goal (i.e. the move is not acceptable),
-   * {@code false} otherwise.
-   */
-  private boolean isSelfSatisfiedToMoveOneLeaderReplica(Broker sourceBroker, Broker destinationBroker, Replica replicaToBeMoved) {
-    if (!replicaToBeMoved.isLeader()) {
-      return true;
-    }
-    String topicName = replicaToBeMoved.topicPartition().topic();
-    if (!_mustHaveTopicLeadersPerBroker.contains(topicName)) {
-      return true;
-    }
-    // Moving a replica leadership from a not-alive broker to an alive broker is self-satisfied
-    if (!sourceBroker.isAlive() && destinationBroker.isAlive()) {
-      return true;
-    }
-    // Moving leader replica from more abundant broker could be considered as self-satisfied
-    return sourceBroker.numLeaderReplicasOfTopicInBroker(topicName) > destinationBroker.numLeaderReplicasOfTopicInBroker(topicName);
   }
 
   /**
@@ -331,12 +277,12 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     if (_mustHaveTopicLeadersPerBroker.isEmpty()) {
       return; // Early termination to avoid some unnecessary computation
     }
-    for (Broker broker : clusterModel.brokers()) {
+    for (Broker broker : clusterModel.aliveBrokers()) {
       if (!isEligibleToHaveLeaders(broker, optimizationOptions)) {
         continue;
       }
       for (String mustHaveLeaderReplicaPerBrokerTopicName : _mustHaveTopicLeadersPerBroker) {
-        int leaderReplicaCount = broker.numLeaderReplicasOfTopicInBroker(mustHaveLeaderReplicaPerBrokerTopicName);
+        int leaderReplicaCount = broker.numLeadersFor(mustHaveLeaderReplicaPerBrokerTopicName);
         if (leaderReplicaCount < minTopicLeadersPerBroker()) {
           throw new OptimizationFailureException(String.format("Broker %d does not have enough leader replica for topic %s. "
               + "Minimum required per-broker leader replica count %d. Actual broker leader replica count %d",
@@ -392,7 +338,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
         LOG.warn("No leader replica for {}", followerReplica.topicPartition());
       } else {
         if (leaderReplica.broker().id() != broker.id()
-            && leaderReplica.broker().numLeaderReplicasOfTopicInBroker(topicMustHaveLeaderReplicaPerBroker) > minTopicLeadersPerBroker()) {
+            && leaderReplica.broker().numLeadersFor(topicMustHaveLeaderReplicaPerBroker) > minTopicLeadersPerBroker()) {
           maybeApplyBalancingAction(clusterModel, leaderReplica, Collections.singleton(broker),
                                     LEADERSHIP_MOVEMENT, optimizedGoals, optimizationOptions);
         }
@@ -443,7 +389,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
   }
 
   private boolean brokerHasSufficientLeaderReplicasOfTopic(Broker broker, String topicName) {
-    return broker.numLeaderReplicasOfTopicInBroker(topicName) >= minTopicLeadersPerBroker();
+    return broker.numLeadersFor(topicName) >= minTopicLeadersPerBroker();
   }
 
   /**
@@ -455,8 +401,8 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
    */
   private PriorityQueue<Broker> getBrokersWithExcessiveLeaderReplicaToMove(String topicName, ClusterModel clusterModel, Broker originalBroker) {
     PriorityQueue<Broker> brokersWithExcessiveLeaderReplicaToMove = new PriorityQueue<>((broker1, broker2) -> {
-      int broker1LeaderReplicaCount = broker1.numLeaderReplicasOfTopicInBroker(topicName);
-      int broker2LeaderReplicaCount = broker2.numLeaderReplicasOfTopicInBroker(topicName);
+      int broker1LeaderReplicaCount = broker1.numLeadersFor(topicName);
+      int broker2LeaderReplicaCount = broker2.numLeadersFor(topicName);
       int leaderReplicaCountCompareResult = Integer.compare(broker2LeaderReplicaCount, broker1LeaderReplicaCount);
       return leaderReplicaCountCompareResult == 0 ? Integer.compare(broker1.id(), broker2.id()) : leaderReplicaCountCompareResult;
     });
@@ -469,7 +415,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
   }
 
   private boolean brokerHasExcessiveLeaderReplicasOfTopic(String topicName, Broker broker) {
-    return broker.numLeaderReplicasOfTopicInBroker(topicName) > minTopicLeadersPerBroker();
+    return broker.numLeadersFor(topicName) > minTopicLeadersPerBroker();
   }
 
   @Nullable
