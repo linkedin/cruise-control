@@ -48,6 +48,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaS
  */
 public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(MinTopicLeadersPerBrokerGoal.class);
+  private final String _replicaSortName = replicaSortName(this, true, false);
   private Set<String> _mustHaveTopicLeadersPerBroker;
 
   public MinTopicLeadersPerBrokerGoal() {
@@ -170,11 +171,10 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     validateEnoughLeaderReplicaToDistribute(clusterModel, optimizationOptions);
     validateBrokersAllowedReplicaMoveExist(clusterModel, optimizationOptions);
     boolean onlyMoveImmigrantReplicas = optimizationOptions.onlyMoveImmigrantReplicas();
-    new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectLeaders())
-                              .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(), onlyMoveImmigrantReplicas)
+    new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(), onlyMoveImmigrantReplicas)
                               .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnIncludedTopics(_mustHaveTopicLeadersPerBroker))
                               .maybeAddPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants(), !onlyMoveImmigrantReplicas)
-                              .trackSortedReplicasFor(replicaSortName(this, true, true), clusterModel);
+                              .trackSortedReplicasFor(_replicaSortName, clusterModel);
   }
 
   private int minTopicLeadersPerBroker() {
@@ -269,6 +269,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
     GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
     ensureBrokersAllHaveEnoughLeaderReplicaOfTopics(clusterModel, optimizationOptions);
+    clusterModel.brokers().forEach(broker -> broker.untrackSortedReplicas(_replicaSortName));
     finish();
   }
 
@@ -326,8 +327,8 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
       return; // This broker has enough leader replica(s)
     }
     // Try to elect follower replica(s) of the interested topic on this broker to be leader
-    Set<Replica> followerReplicas = broker.replicas().stream()
-                                          .filter(
+    Set<Replica> followerReplicas = broker.trackedSortedReplicas(_replicaSortName)
+                                          .sortedReplicas(false).stream().filter(
                                               replica -> !replica.isLeader()
                                                          && replica.topicPartition().topic().equals(topicMustHaveLeaderReplicaPerBroker))
                                           .collect(Collectors.toSet());
@@ -344,6 +345,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
         }
       }
       if (brokerHasSufficientLeaderReplicasOfTopic(broker, topicMustHaveLeaderReplicaPerBroker)) {
+        broker.untrackSortedReplicas(_replicaSortName);
         return; // This broker satisfies this goal
       }
     }
@@ -354,7 +356,8 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
 
     while (!brokersWithExcessiveLeaderReplicaToMove.isEmpty()) {
       Broker brokerWithExcessiveLeaderReplicaToMove = brokersWithExcessiveLeaderReplicaToMove.poll();
-      List<Replica> leaderReplicasOfTopic = brokerWithExcessiveLeaderReplicaToMove.replicas().stream()
+      List<Replica> leaderReplicasOfTopic = brokerWithExcessiveLeaderReplicaToMove.trackedSortedReplicas(_replicaSortName)
+                                                                                  .sortedReplicas(false).stream()
                                                                                   .filter(replica ->
                                                                                               replica.isLeader()
                                                                                               && replica.topicPartition()
@@ -372,6 +375,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
       }
       if (leaderReplicaMoved) {
         if (brokerHasSufficientLeaderReplicasOfTopic(broker, topicMustHaveLeaderReplicaPerBroker)) {
+          broker.untrackSortedReplicas(_replicaSortName);
           return; // This broker satisfies this goal
         }
         if (brokerHasExcessiveLeaderReplicasOfTopic(topicMustHaveLeaderReplicaPerBroker, brokerWithExcessiveLeaderReplicaToMove)) {
@@ -427,7 +431,6 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     }
     return null;
   }
-
 
   private Set<Broker> eligibleBrokersForLeadership(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
     return clusterModel.brokers()
