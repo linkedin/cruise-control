@@ -28,8 +28,8 @@ public class Utils {
       return Collections.emptySet();
     }
     return topicNamesSupplier.get()
-        .stream()
-        .filter(topicName -> topicNamePattern.matcher(topicName).matches())
-        .collect(Collectors.toSet());
+                             .stream()
+                             .filter(topicName -> topicNamePattern.matcher(topicName).matches())
+                             .collect(Collectors.toSet());
   }
 }

@@ -139,12 +139,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
       // Moving a follower replica does not violate/affect this goal
       return false;
     }
-    String topicName = replicaToBeRemoved.topicPartition().topic();
-    if (!_mustHaveTopicLeadersPerBroker.contains(topicName)) {
-      // Moving a replica of a irrelevant topic does not violate/affect this goal
-      return false;
-    }
-    int topicLeaderCountOnSourceBroker = replicaToBeRemoved.broker().numLeadersFor(topicName);
+    int topicLeaderCountOnSourceBroker = replicaToBeRemoved.broker().numLeadersFor(replicaToBeRemoved.topicPartition().topic());
     return topicLeaderCountOnSourceBroker <= minTopicLeadersPerBroker();
   }
 
@@ -215,8 +210,8 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     }
   }
 
-  private void validateBrokersAllowedReplicaMoveExist(ClusterModel clusterModel,
-                                                      OptimizationOptions optimizationOptions) throws OptimizationFailureException {
+  private static void validateBrokersAllowedReplicaMoveExist(ClusterModel clusterModel,
+                                                             OptimizationOptions optimizationOptions) throws OptimizationFailureException {
     Set<Integer> brokersAllowedReplicaMove = GoalUtils.aliveBrokersNotExcludedForReplicaMove(clusterModel, optimizationOptions);
     if (brokersAllowedReplicaMove.isEmpty()) {
       // Handle the case when all alive brokers are excluded from replica moves.
@@ -307,7 +302,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     if (_mustHaveTopicLeadersPerBroker.isEmpty()) {
       return; // Early termination to avoid some unnecessary computation
     }
-    if (!isEligibleToHaveLeaders(broker, optimizationOptions)) {
+    if (!(broker.isAlive() && isEligibleToHaveLeaders(broker, optimizationOptions))) {
       return;
     }
     for (String topicMustHaveLeaderPerBroker : _mustHaveTopicLeadersPerBroker) {
@@ -408,15 +403,14 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
   }
 
   private Set<Broker> eligibleBrokersForLeadership(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
-    return clusterModel.brokers()
+    return clusterModel.aliveBrokers()
                        .stream()
                        .filter(broker -> isEligibleToHaveLeaders(broker, optimizationOptions))
                        .collect(Collectors.toSet());
   }
 
   private boolean isEligibleToHaveLeaders(Broker broker, OptimizationOptions optimizationOptions) {
-    return broker.isAlive()
-           && !optimizationOptions.excludedBrokersForLeadership().contains(broker.id())
+    return !optimizationOptions.excludedBrokersForLeadership().contains(broker.id())
            && !optimizationOptions.excludedBrokersForReplicaMove().contains(broker.id());
   }
 
