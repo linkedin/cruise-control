@@ -22,7 +22,9 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
@@ -40,6 +42,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
@@ -51,7 +54,7 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUnitTestUtils.goal;
+import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUnitTestUtils.*;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.smallClusterModel;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.mediumClusterModel;
 import static org.junit.Assert.assertEquals;
@@ -272,6 +275,15 @@ public class ReplicationFactorChangeTest {
                                  Class<? extends Throwable> exceptionClass,
                                  ClusterModel clusterModel,
                                  Boolean expectedToOptimize) throws Exception {
-    return new Object[]{tid, topics, replicationFactor, goal(goalClass), exceptionClass, clusterModel, expectedToOptimize};
+    Goal goal;
+    if (goalClass == MinTopicLeadersPerBrokerGoal.class) {
+      Properties configOverrides = new Properties();
+      configOverrides.put(AnalyzerConfig.MIN_TOPIC_LEADERS_PER_BROKER_CONFIG, "1");
+      configOverrides.put(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG, DeterministicCluster.T2);
+      goal = goalWithConfigOverrides(goalClass, configOverrides);
+    } else {
+      goal = goal(goalClass);
+    }
+    return new Object[]{tid, topics, replicationFactor, goal, exceptionClass, clusterModel, expectedToOptimize};
   }
 }
