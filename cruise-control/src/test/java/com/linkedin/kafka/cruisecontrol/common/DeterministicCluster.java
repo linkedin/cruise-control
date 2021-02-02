@@ -24,6 +24,8 @@ import org.apache.kafka.common.TopicPartition;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.getAggregatedMetricValues;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC_MUST_HAVE_LEADER_REPLICAS_ON_BROKERS;
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
 
 
 public class DeterministicCluster {
@@ -386,6 +388,71 @@ public class DeterministicCluster {
 
     cluster.setReplicaLoad(RACK_BY_BROKER2.get(2).toString(), 2, pInfoT2, aggregatedMetricValues, Collections.singletonList(1L));
     cluster.setReplicaLoad(RACK_BY_BROKER2.get(0).toString(), 0, pInfoT2, aggregatedMetricValues, Collections.singletonList(1L));
+    return cluster;
+  }
+
+  /**
+   * Three brokers, two topics, each topic has three partitions, each partition has 2 replicas.
+   * <p>
+   * <h3>Replica Distribution</h3>
+   * <li>B0: T0_P0_leader, T0_P1_leader, T0_P2_leader, T1_P0_leader, T1_P1_leader, T1_P2_leader</li>
+   * <li>B1: T0_P0_follower, T0_P1_follower, T0_P2_follower, T1_P0_follower, T1_P1_follower, T1_P2_follower</li>
+   * <li>B2: N/A</li>
+   * </p>
+   *
+   * @return Cluster model for the tests.
+   */
+  public static ClusterModel minLeaderReplicaPerBrokerSatisfiable4() {
+    ClusterModel cluster = getHomogeneousCluster(RACK_BY_BROKER2, TestConstants.BROKER_CAPACITY, null);
+
+    // Create topic partitions.
+    TopicPartition topic0Partition0 = new TopicPartition(TOPIC0, 0);
+    TopicPartition topic0Partition1 = new TopicPartition(TOPIC0, 1);
+    TopicPartition topic0Partition2 = new TopicPartition(TOPIC0, 2);
+
+    TopicPartition topic1Partition0 = new TopicPartition(TOPIC1, 0);
+    TopicPartition topic1Partition1 = new TopicPartition(TOPIC1, 1);
+    TopicPartition topic1Partition2 = new TopicPartition(TOPIC1, 2);
+
+    // Create replicas for topics.
+    cluster.createReplica(RACK_BY_BROKER2.get(0).toString(), 0, topic0Partition0, 0, true);  // T0_P0_leader
+    cluster.createReplica(RACK_BY_BROKER2.get(0).toString(), 0, topic0Partition1, 0, true);  // T0_P1_leader
+    cluster.createReplica(RACK_BY_BROKER2.get(0).toString(), 0, topic0Partition2, 0, true);  // T0_P2_leader
+    cluster.createReplica(RACK_BY_BROKER2.get(0).toString(), 0, topic1Partition0, 0, true);  // T1_P0_leader
+    cluster.createReplica(RACK_BY_BROKER2.get(0).toString(), 0, topic1Partition1, 0, true);  // T1_P1_leader
+    cluster.createReplica(RACK_BY_BROKER2.get(0).toString(), 0, topic1Partition2, 0, true);  // T1_P2_leader
+
+    cluster.createReplica(RACK_BY_BROKER2.get(1).toString(), 1, topic0Partition0, 1, false); // T0_P0_follower
+    cluster.createReplica(RACK_BY_BROKER2.get(1).toString(), 1, topic0Partition1, 1, false); // T0_P1_follower
+    cluster.createReplica(RACK_BY_BROKER2.get(1).toString(), 1, topic0Partition2, 1, false); // T0_P2_follower
+    cluster.createReplica(RACK_BY_BROKER2.get(1).toString(), 1, topic1Partition0, 1, false); // T1_P0_follower
+    cluster.createReplica(RACK_BY_BROKER2.get(1).toString(), 1, topic1Partition1, 1, false); // T1_P1_follower
+    cluster.createReplica(RACK_BY_BROKER2.get(1).toString(), 1, topic1Partition2, 1, false); // T1_P2_follower
+
+    AggregatedMetricValues aggregatedMetricValues =
+        getAggregatedMetricValues(TestConstants.TYPICAL_CPU_CAPACITY / 2,
+                                  TestConstants.LARGE_BROKER_CAPACITY / 2,
+                                  TestConstants.MEDIUM_BROKER_CAPACITY / 2,
+                                  TestConstants.LARGE_BROKER_CAPACITY / 2);
+
+    // Create snapshots and push them to the cluster.
+    cluster.setReplicaLoad(RACK_BY_BROKER2.get(0).toString(), 0, topic0Partition0, aggregatedMetricValues, Collections.singletonList(1L));
+    cluster.setReplicaLoad(RACK_BY_BROKER2.get(1).toString(), 1, topic0Partition0, aggregatedMetricValues, Collections.singletonList(1L));
+
+    cluster.setReplicaLoad(RACK_BY_BROKER2.get(0).toString(), 0, topic0Partition1, aggregatedMetricValues, Collections.singletonList(1L));
+    cluster.setReplicaLoad(RACK_BY_BROKER2.get(1).toString(), 1, topic0Partition1, aggregatedMetricValues, Collections.singletonList(1L));
+
+    cluster.setReplicaLoad(RACK_BY_BROKER2.get(0).toString(), 0, topic0Partition2, aggregatedMetricValues, Collections.singletonList(1L));
+    cluster.setReplicaLoad(RACK_BY_BROKER2.get(1).toString(), 1, topic0Partition2, aggregatedMetricValues, Collections.singletonList(1L));
+
+    cluster.setReplicaLoad(RACK_BY_BROKER2.get(0).toString(), 0, topic1Partition0, aggregatedMetricValues, Collections.singletonList(1L));
+    cluster.setReplicaLoad(RACK_BY_BROKER2.get(1).toString(), 1, topic1Partition0, aggregatedMetricValues, Collections.singletonList(1L));
+
+    cluster.setReplicaLoad(RACK_BY_BROKER2.get(0).toString(), 0, topic1Partition1, aggregatedMetricValues, Collections.singletonList(1L));
+    cluster.setReplicaLoad(RACK_BY_BROKER2.get(1).toString(), 1, topic1Partition1, aggregatedMetricValues, Collections.singletonList(1L));
+
+    cluster.setReplicaLoad(RACK_BY_BROKER2.get(0).toString(), 0, topic1Partition2, aggregatedMetricValues, Collections.singletonList(1L));
+    cluster.setReplicaLoad(RACK_BY_BROKER2.get(1).toString(), 1, topic1Partition2, aggregatedMetricValues, Collections.singletonList(1L));
     return cluster;
   }
 
