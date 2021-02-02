@@ -449,11 +449,9 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     if (srcBroker.currentOfflineReplicas().isEmpty()) {
       return;
     }
-    SortedSet<Broker> eligibleBrokersToMoveOfflineReplicasTo = findEligibleBrokersToMoveOfflineReplicasTo(clusterModel, optimizationOptions);
-    eligibleBrokersToMoveOfflineReplicasTo.removeIf(broker -> broker.id() == srcBroker.id());
-    if (eligibleBrokersToMoveOfflineReplicasTo.isEmpty()) {
-      throw new OptimizationFailureException("Cannot move all replicas away from broker " + srcBroker);
-    }
+    SortedSet<Broker> eligibleBrokersToMoveOfflineReplicasTo = new TreeSet<>(
+        Comparator.comparingInt((Broker broker) -> broker.replicas().size()).thenComparingInt(Broker::id));
+    eligibleBrokersToMoveOfflineReplicasTo.addAll(clusterModel.aliveBrokers());
     Set<Replica> offlineReplicas = new HashSet<>(srcBroker.currentOfflineReplicas());
     for (Replica offlineReplica : offlineReplicas) {
       if (maybeApplyBalancingAction(clusterModel, offlineReplica, eligibleBrokersToMoveOfflineReplicasTo,
@@ -462,19 +460,6 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
                                                              offlineReplica, eligibleBrokersToMoveOfflineReplicasTo));
       }
     }
-  }
-
-  private SortedSet<Broker> findEligibleBrokersToMoveOfflineReplicasTo(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
-    Set<Broker> candidateBrokers = clusterModel.brokers()
-                                               .stream()
-                                               .filter(broker -> broker.isAlive()
-                                                                 && !optimizationOptions.excludedBrokersForReplicaMove().contains(broker.id()))
-                                               .collect(Collectors.toSet());
-
-    SortedSet<Broker> sortedBrokers = new TreeSet<>(
-        Comparator.comparingInt((Broker broker) -> broker.replicas().size()).thenComparingInt(Broker::id));
-    sortedBrokers.addAll(candidateBrokers);
-    return sortedBrokers;
   }
 
   @Override
