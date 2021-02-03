@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -24,7 +23,6 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.Function;
-
 import org.apache.kafka.common.TopicPartition;
 
 import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
@@ -187,12 +185,22 @@ public class Broker implements Serializable, Comparable<Broker> {
   /**
    * Get number of replicas from the given topic in this broker.
    *
-   * @param topic Topic for which the replica count will be returned.
+   * @param topic Topic for which both the leader and follower replica count will be returned.
    * @return The number of replicas from the given topic in this broker.
    */
   public int numReplicasOfTopicInBroker(String topic) {
     Map<Integer, Replica> topicReplicas = _topicReplicas.get(topic);
     return topicReplicas == null ? 0 : topicReplicas.size();
+  }
+
+  /**
+   * Get number of only leader replicas from the given topic in this broker.
+   *
+   * @param topicName Topic for which the replica count will be returned.
+   * @return The number of leader replicas from the given topic in this broker.
+   */
+  public int numLeadersFor(String topicName) {
+    return (int) replicasOfTopicInBroker(topicName).stream().filter(Replica::isLeader).count();
   }
 
   /**

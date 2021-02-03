@@ -155,6 +155,7 @@ The goals in Cruise Control are pluggable with different priorities. The default
  each partition resides in the same rack.
  * **RackAwareDistributionGoal** - A relaxed version of `RackAwareGoal`. Contrary to `RackAwareGoal`, as long as replicas of each partition
  can achieve a perfectly even distribution across the racks, this goal lets placement of multiple replicas of a partition into a single rack.
+ * **MinTopicLeadersPerBrokerGoal** - Ensures that each alive broker has at least a certain number of leader replica of each topic in a configured set of topics
  * **ReplicaCapacityGoal** - Ensures that the maximum number of replicas per broker is under the specified maximum limit.
  * **DiskCapacityGoal** - Ensures that Disk space usage of each broker is below a given threshold.
  * **NetworkInboundCapacityGoal** - Ensures that inbound network utilization of each broker is below a given threshold.

@@ -148,6 +148,15 @@ public class ReplicaSortFunctionFactory {
   }
 
   /**
+   * @param includedTopics Topics included for partition movements.
+   *
+   * @return A selection function that filters out replicas which are not from topics which should be included.
+   */
+  public static Function<Replica, Boolean> selectReplicasBasedOnIncludedTopics(Set<String> includedTopics) {
+    return r -> includedTopics.contains(r.topicPartition().topic());
+  }
+
+  /**
    * @param resource The resource to check.
    * @param limit The resource limit used to filter replicas.
    *
