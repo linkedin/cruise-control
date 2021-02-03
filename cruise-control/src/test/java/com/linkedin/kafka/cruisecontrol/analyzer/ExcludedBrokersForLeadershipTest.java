@@ -301,8 +301,7 @@ public class ExcludedBrokersForLeadershipTest {
                                           Boolean expectedToOptimize) {
     _testId = testId;
     _goal = goal;
-    _optimizationOptions = new OptimizationOptions(Collections.emptySet(), excludedBrokersForLeadership,
-                                                   Collections.emptySet(), false);
+    _optimizationOptions = new OptimizationOptions(Collections.emptySet(), excludedBrokersForLeadership);
     _exceptionClass = exceptionClass;
     _clusterModel = clusterModel;
     _expectedToOptimize = expectedToOptimize;

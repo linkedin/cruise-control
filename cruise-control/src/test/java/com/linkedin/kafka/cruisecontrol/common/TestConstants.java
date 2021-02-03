@@ -18,7 +18,6 @@ public final class TestConstants {
   public static final String TOPIC2 = "topic2";
   public static final String TOPIC3 = "topic3";
   public static final String TOPIC_MUST_HAVE_LEADER_REPLICAS_ON_BROKERS = "must_have_leader_replica_on_broker_topic";
-
   public static final long SEED_BASE = 3140;
   public static final long REPLICATION_SEED = 5234;
   public static final long LEADER_SEED = 72033;

@@ -296,8 +296,7 @@ public class ExcludedTopicsTest {
                             Boolean expectedToGenerateProposals) {
     _testId = testId;
     _goal = goal;
-    _optimizationOptions = new OptimizationOptions(excludedTopics, Collections.emptySet(),
-                                                   Collections.emptySet(), false);
+    _optimizationOptions = new OptimizationOptions(excludedTopics);
     _exceptionClass = exceptionClass;
     _clusterModel = clusterModel;
     _expectedToOptimize = expectedToOptimize;

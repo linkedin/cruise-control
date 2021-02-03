@@ -279,21 +279,15 @@ public class ReplicationFactorChangeTest {
                                  Class<? extends Throwable> exceptionClass,
                                  ClusterModel clusterModel,
                                  Boolean expectedToOptimize) throws Exception {
-    Goal goal;
-    if (goalClass == MinTopicLeadersPerBrokerGoal.class) {
-      Properties configOverrides = new Properties();
-      configOverrides.put(AnalyzerConfig.MIN_TOPIC_LEADERS_PER_BROKER_CONFIG, "1");
-      if (topics.contains(DeterministicCluster.TOPIC_A)) { // It implies the cluster model is the medium cluster model
-        configOverrides.put(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG, DeterministicCluster.TOPIC_A);
-      } else if (topics.contains(DeterministicCluster.T2)) { // It implies the cluster model is the small cluster model
-        configOverrides.put(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG, DeterministicCluster.T2);
-      } else {
-        fail("Cannot figure out which topic to use to test the MinTopicLeadersPerBrokerGoal with model: " + clusterModel);
-      }
-      goal = goal(goalClass, configOverrides);
+    Properties configOverrides = new Properties();
+    configOverrides.put(AnalyzerConfig.MIN_TOPIC_LEADERS_PER_BROKER_CONFIG, "1");
+    if (topics.contains(DeterministicCluster.TOPIC_A)) { // It implies the cluster model is the medium cluster model
+      configOverrides.put(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG, DeterministicCluster.TOPIC_A);
+    } else if (topics.contains(DeterministicCluster.T2)) { // It implies the cluster model is the small cluster model
+      configOverrides.put(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG, DeterministicCluster.T2);
     } else {
-      goal = goal(goalClass);
+      fail("Cannot figure out which topic to use to test the MinTopicLeadersPerBrokerGoal with model: " + clusterModel);
     }
-    return new Object[]{tid, topics, replicationFactor, goal, exceptionClass, clusterModel, expectedToOptimize};
+    return new Object[]{tid, topics, replicationFactor, goal(goalClass, configOverrides), exceptionClass, clusterModel, expectedToOptimize};
   }
 }

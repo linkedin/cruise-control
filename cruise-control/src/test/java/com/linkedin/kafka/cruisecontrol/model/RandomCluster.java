@@ -37,7 +37,9 @@ import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.BROKER_CAPAC
  */
 public class RandomCluster {
 
-  public static final String TOPIC_WITH_ONE_LEADER_REPLICA_PER_BROKER = "TopicWithOneLeaderReplicaPerBroker";
+  // The randomly generated cluster always has this topic and the partition count of this topic
+  // equals the broker count in the cluster.
+  public static final String TOPIC_WITH_ONE_LEADER_REPLICA_PER_BROKER = "TopicWithOneLeaderPerBroker";
 
   private RandomCluster() {
 
@@ -525,7 +527,7 @@ public class RandomCluster {
     private int _numTopicLeaders;
 
     TopicMetadata(int topicId) {
-      this("T" + Integer.toString(topicId), 1, 1);
+      this("T" + topicId, 1, 1);
     }
     TopicMetadata(String topicName, int replicationFactor, int numTopicLeaders) {
       _topic = topicName;

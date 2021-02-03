@@ -337,8 +337,7 @@ public class ExcludedBrokersForReplicaMoveTest {
                                            Boolean expectedToGenerateProposals) {
     _testId = testId;
     _goal = goal;
-    _optimizationOptions = new OptimizationOptions(Collections.emptySet(), Collections.emptySet(),
-                                                   excludedBrokersForReplicaMove, false);
+    _optimizationOptions = new OptimizationOptions(Collections.emptySet(), Collections.emptySet(), excludedBrokersForReplicaMove);
     _exceptionClass = exceptionClass;
     _clusterModel = clusterModel;
     _expectedToOptimize = expectedToOptimize;
@@ -423,7 +422,6 @@ public class ExcludedBrokersForReplicaMoveTest {
       Properties configOverrides) throws Exception {
     deadBrokers.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
     Goal goal = configOverrides == null ? goal(goalClass) : goal(goalClass, configOverrides);
-    return new Object[]{tid, goal, excludedBrokersForReplicaMove, exceptionClass, clusterModel, expectedToOptimize,
-        expectedToGenerateProposals};
+    return new Object[]{tid, goal, excludedBrokersForReplicaMove, exceptionClass, clusterModel, expectedToOptimize, expectedToGenerateProposals};
   }
 }
