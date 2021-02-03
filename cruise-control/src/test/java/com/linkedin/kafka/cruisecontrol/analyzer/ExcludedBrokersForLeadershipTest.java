@@ -129,37 +129,37 @@ public class ExcludedBrokersForLeadershipTest {
                  DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable2(), noDeadBroker, true, configOverrides));
 
     // Without excluded broker, no dead brokers (not satisfiable (Exception))
-    p.add(params(0, MinTopicLeadersPerBrokerGoal.class, noExclusion, OptimizationFailureException.class,
+    p.add(params(2, MinTopicLeadersPerBrokerGoal.class, noExclusion, OptimizationFailureException.class,
                  DeterministicCluster.minLeaderReplicaPerBrokerUnsatisfiable(), noDeadBroker, null, configOverrides));
 
     // With single excluded broker, no dead brokers (not satisfiable (Exception))
-    p.add(params(0, MinTopicLeadersPerBrokerGoal.class, excludeB0, OptimizationFailureException.class,
+    p.add(params(3, MinTopicLeadersPerBrokerGoal.class, excludeB0, OptimizationFailureException.class,
                  DeterministicCluster.minLeaderReplicaPerBrokerUnsatisfiable(), noDeadBroker, null, configOverrides));
 
     // With two excluded brokers, no dead brokers (No exception, Expected to look optimized)
-    p.add(params(0, MinTopicLeadersPerBrokerGoal.class, excludeB0B1, null,
+    p.add(params(4, MinTopicLeadersPerBrokerGoal.class, excludeB0B1, null,
                  DeterministicCluster.minLeaderReplicaPerBrokerUnsatisfiable(), noDeadBroker, true, configOverrides));
 
     // With single excluded broker, one dead broker (Expect optimization failure since offline replicas cannot be moved away from the dead broker)
-    p.add(params(2, MinTopicLeadersPerBrokerGoal.class, excludeB1, OptimizationFailureException.class,
+    p.add(params(5, MinTopicLeadersPerBrokerGoal.class, excludeB1, OptimizationFailureException.class,
                  DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable(), deadBroker0, false, configOverrides));
-    p.add(params(3, MinTopicLeadersPerBrokerGoal.class, excludeB1, OptimizationFailureException.class,
+    p.add(params(6, MinTopicLeadersPerBrokerGoal.class, excludeB1, OptimizationFailureException.class,
                  DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable2(), deadBroker0, false, configOverrides));
-    p.add(params(4, MinTopicLeadersPerBrokerGoal.class, excludeB1, OptimizationFailureException.class,
+    p.add(params(7, MinTopicLeadersPerBrokerGoal.class, excludeB1, OptimizationFailureException.class,
                  DeterministicCluster.leaderReplicaPerBrokerUnsatisfiable(), deadBroker0, true, configOverrides));
 
     // Without excluded broker, no dead brokers (No exception, Expected to look optimized)
-    p.add(params(5, MinTopicLeadersPerBrokerGoal.class, noExclusion, null,
+    p.add(params(8, MinTopicLeadersPerBrokerGoal.class, noExclusion, null,
                  DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable(), noDeadBroker, true, configOverrides));
-    p.add(params(6, MinTopicLeadersPerBrokerGoal.class, noExclusion, null,
+    p.add(params(9, MinTopicLeadersPerBrokerGoal.class, noExclusion, null,
                  DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable2(), noDeadBroker, true, configOverrides));
 
     // Without excluded broker, one dead broker (No exception, Expected to look optimized)
-    p.add(params(7, MinTopicLeadersPerBrokerGoal.class, noExclusion, null,
+    p.add(params(10, MinTopicLeadersPerBrokerGoal.class, noExclusion, null,
                  DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable(), deadBroker0, true, configOverrides));
-    p.add(params(8, MinTopicLeadersPerBrokerGoal.class, noExclusion, null,
+    p.add(params(11, MinTopicLeadersPerBrokerGoal.class, noExclusion, null,
                  DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable2(), deadBroker0, true, configOverrides));
-    p.add(params(9, MinTopicLeadersPerBrokerGoal.class, noExclusion, null,
+    p.add(params(12, MinTopicLeadersPerBrokerGoal.class, noExclusion, null,
                  DeterministicCluster.leaderReplicaPerBrokerUnsatisfiable(), deadBroker0, true, configOverrides));
 
     // ============ReplicaCapacityGoal============
