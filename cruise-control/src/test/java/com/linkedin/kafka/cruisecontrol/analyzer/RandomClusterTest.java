@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderReplicaDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.MinTopicLeadersPerBrokerGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
@@ -73,6 +74,7 @@ public class RandomClusterTest {
     // Sorted by priority.
     List<String> goalNameByPriority = Arrays.asList(RackAwareGoal.class.getName(),
                                                     RackAwareDistributionGoal.class.getName(),
+                                                    MinTopicLeadersPerBrokerGoal.class.getName(),
                                                     ReplicaCapacityGoal.class.getName(),
                                                     DiskCapacityGoal.class.getName(),
                                                     NetworkInboundCapacityGoal.class.getName(),

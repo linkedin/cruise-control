@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.MinTopicLeadersPerBrokerGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
@@ -63,6 +64,7 @@ public class FixOfflineReplicaTest {
 
     List<String> goalNameByPriority = Arrays.asList(RackAwareGoal.class.getName(),
                                                     RackAwareDistributionGoal.class.getName(),
+                                                    MinTopicLeadersPerBrokerGoal.class.getName(),
                                                     ReplicaCapacityGoal.class.getName(),
                                                     DiskCapacityGoal.class.getName(),
                                                     NetworkInboundCapacityGoal.class.getName(),
@@ -78,6 +80,7 @@ public class FixOfflineReplicaTest {
 
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(AnalyzerConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(2000L));
+    props.setProperty(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG, RandomCluster.TOPIC_WITH_ONE_LEADER_REPLICA_PER_BROKER);
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     balancingConstraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);

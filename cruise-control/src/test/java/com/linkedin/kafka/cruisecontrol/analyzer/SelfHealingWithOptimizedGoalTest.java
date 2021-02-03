@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderReplicaDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.MinTopicLeadersPerBrokerGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
@@ -70,7 +71,8 @@ public class SelfHealingWithOptimizedGoalTest {
   @Parameterized.Parameters
   public static Collection<Object[]> data() {
     Collection<Object[]> p = new ArrayList<>();
-    List<String> goalNameByPriority = Arrays.asList(ReplicaCapacityGoal.class.getName(),
+    List<String> goalNameByPriority = Arrays.asList(MinTopicLeadersPerBrokerGoal.class.getName(),
+                                                    ReplicaCapacityGoal.class.getName(),
                                                     DiskCapacityGoal.class.getName(),
                                                     NetworkInboundCapacityGoal.class.getName(),
                                                     NetworkOutboundCapacityGoal.class.getName(),

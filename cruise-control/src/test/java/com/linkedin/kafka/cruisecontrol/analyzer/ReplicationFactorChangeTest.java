@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderReplicaDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.MinTopicLeadersPerBrokerGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
@@ -21,7 +22,9 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
@@ -39,6 +42,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
@@ -84,6 +88,7 @@ public class ReplicationFactorChangeTest {
       for (boolean isSmallCluster: Arrays.asList(true, false)) {
         for (Class<? extends Goal> goalClass : Arrays.asList(RackAwareGoal.class,
                                                              RackAwareDistributionGoal.class,
+                                                             MinTopicLeadersPerBrokerGoal.class,
                                                              ReplicaCapacityGoal.class,
                                                              DiskCapacityGoal.class,
                                                              NetworkInboundCapacityGoal.class,
@@ -113,7 +118,9 @@ public class ReplicationFactorChangeTest {
                                                                    Class<? extends Goal> goalClass,
                                                                    boolean smallCluster) {
     if ((replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == RackAwareGoal.class) ||
-        (replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == ReplicaCapacityGoal.class && !smallCluster)) {
+        (replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == ReplicaCapacityGoal.class && !smallCluster) ||
+        (replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == MinTopicLeadersPerBrokerGoal.class) ||
+        (replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == MinTopicLeadersPerBrokerGoal.class && !smallCluster)) {
       return OptimizationFailureException.class;
     }
     return null;
@@ -130,7 +137,9 @@ public class ReplicationFactorChangeTest {
         (goalClass == LeaderBytesInDistributionGoal.class && (replicationFactor == SMALL_REPLICATION_FACTOR || smallCluster)) ||
         (replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == DiskUsageDistributionGoal.class && !smallCluster) ||
         (replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == NetworkInboundUsageDistributionGoal.class && !smallCluster) ||
-        (replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == CpuUsageDistributionGoal.class)) {
+        (replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == CpuUsageDistributionGoal.class) ||
+        (replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == MinTopicLeadersPerBrokerGoal.class) ||
+        (replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == MinTopicLeadersPerBrokerGoal.class && !smallCluster)) {
       return false;
     }
     return true;
@@ -270,6 +279,15 @@ public class ReplicationFactorChangeTest {
                                  Class<? extends Throwable> exceptionClass,
                                  ClusterModel clusterModel,
                                  Boolean expectedToOptimize) throws Exception {
-    return new Object[]{tid, topics, replicationFactor, goal(goalClass), exceptionClass, clusterModel, expectedToOptimize};
+    Properties configOverrides = new Properties();
+    configOverrides.put(AnalyzerConfig.MIN_TOPIC_LEADERS_PER_BROKER_CONFIG, "1");
+    if (topics.contains(DeterministicCluster.TOPIC_A)) { // It implies the cluster model is the medium cluster model
+      configOverrides.put(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG, DeterministicCluster.TOPIC_A);
+    } else if (topics.contains(DeterministicCluster.T2)) { // It implies the cluster model is the small cluster model
+      configOverrides.put(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG, DeterministicCluster.T2);
+    } else {
+      fail("Cannot figure out which topic to use to test the MinTopicLeadersPerBrokerGoal with model: " + clusterModel);
+    }
+    return new Object[]{tid, topics, replicationFactor, goal(goalClass, configOverrides), exceptionClass, clusterModel, expectedToOptimize};
   }
 }

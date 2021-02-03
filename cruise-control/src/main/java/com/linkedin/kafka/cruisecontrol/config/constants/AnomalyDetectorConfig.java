@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.config.constants;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.MinTopicLeadersPerBrokerGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
@@ -101,6 +102,7 @@ public class AnomalyDetectorConfig {
    */
   public static final String ANOMALY_DETECTION_GOALS_CONFIG = "anomaly.detection.goals";
   public static final String DEFAULT_ANOMALY_DETECTION_GOALS = new StringJoiner(",").add(RackAwareGoal.class.getName())
+                                                                                    .add(MinTopicLeadersPerBrokerGoal.class.getName())
                                                                                     .add(ReplicaCapacityGoal.class.getName())
                                                                                     .add(DiskCapacityGoal.class.getName()).toString();
   public static final String ANOMALY_DETECTION_GOALS_DOC = "The goals that anomaly detector should detect if they are violated.";

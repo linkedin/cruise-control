@@ -264,6 +264,22 @@ public class ClusterModel implements Serializable {
   }
 
   /**
+   * Return a map from topic names to the number of leader replicas of each topic
+   * @param topics a set of topic names
+   * @return A map from topic names to the number of leader replicas of each topic
+   */
+  public Map<String, Integer> numLeadersPerTopic(Set<String> topics) {
+    Map<String, Integer> leaderCountByTopicNames = new HashMap<>(topics.size());
+    for (TopicPartition tp : _partitionsByTopicPartition.keySet()) {
+      String topicName = tp.topic();
+      if (topics.contains(topicName)) {
+        leaderCountByTopicNames.merge(topicName, 1, Integer::sum);
+      }
+    }
+    return leaderCountByTopicNames;
+  }
+
+  /**
    * Set the {@link Broker.State liveness state} of the given broker.
    * <ul>
    * <li>All currently offline replicas of a broker are considered to be self healing eligible.</li>
