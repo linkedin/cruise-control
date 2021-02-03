@@ -54,15 +54,4 @@ public class AnalyzerUnitTestUtils {
   public static Goal goal(Class<? extends Goal> goalClass) throws Exception {
     return goal(goalClass, new Properties());
   }
-
-  /**
-   * Reflectively create goal object from specified goal class and a set of config overrides.
-   *
-   * @param goalClass The goal class to create object.
-   * @param configOverrides A set of config properties to override.
-   * @return New object of specified class.
-   */
-  public static Goal goalWithConfigOverrides(Class<? extends Goal> goalClass, Properties configOverrides) throws Exception {
-    return goal(goalClass, configOverrides);
-  }
 }

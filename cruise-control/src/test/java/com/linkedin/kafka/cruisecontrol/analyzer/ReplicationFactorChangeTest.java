@@ -55,7 +55,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUnitTestUtils.goal;
-import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUnitTestUtils.goalWithConfigOverrides;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.smallClusterModel;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.mediumClusterModel;
 import static org.junit.Assert.assertEquals;
@@ -291,7 +290,7 @@ public class ReplicationFactorChangeTest {
       } else {
         fail("Cannot figure out which topic to use to test the MinTopicLeadersPerBrokerGoal with model: " + clusterModel);
       }
-      goal = goalWithConfigOverrides(goalClass, configOverrides);
+      goal = goal(goalClass, configOverrides);
     } else {
       goal = goal(goalClass);
     }

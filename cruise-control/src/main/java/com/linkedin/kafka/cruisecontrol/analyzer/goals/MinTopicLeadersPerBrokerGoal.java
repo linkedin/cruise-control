@@ -320,11 +320,11 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
       return; // This broker has enough leader replica(s) for the given topic
     }
     // Try to elect follower replica(s) of the interested topic on this broker to be leader
-    Set<Replica> followerReplicas = broker.trackedSortedReplicas(_replicaSortName)
+    List<Replica> followerReplicas = broker.trackedSortedReplicas(_replicaSortName)
                                           .sortedReplicas(false).stream().filter(
                                               replica -> !replica.isLeader()
                                                          && replica.topicPartition().topic().equals(topicMustHaveLeaderPerBroker))
-                                          .collect(Collectors.toSet());
+                                          .collect(Collectors.toList());
 
     for (Replica followerReplica : followerReplicas) {
       Replica leader = clusterModel.partition(followerReplica.topicPartition()).leader();
@@ -375,7 +375,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
         }
       }
     }
-    throw new OptimizationFailureException(String.format("Cannot make broker %d have at least %d leader replica(s) of topic %s",
+    throw new OptimizationFailureException(String.format("Cannot make broker %d have at least %d leader replica(s) of topic %s.",
                                                          broker.id(),
                                                          minTopicLeadersPerBroker(),
                                                          topicMustHaveLeaderPerBroker));
