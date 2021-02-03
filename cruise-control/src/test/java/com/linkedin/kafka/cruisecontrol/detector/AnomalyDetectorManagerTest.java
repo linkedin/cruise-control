@@ -173,7 +173,7 @@ public class AnomalyDetectorManagerTest {
     EasyMock.expect(mockAnomalyNotifier.selfHealingEnabledRatio()).andReturn(MOCK_SELF_HEALING_ENABLED_RATIO);
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
-    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).times(1, 2);
+    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).times(1, 4);
     startRunnableDetectors(mockDetectorScheduler, mockGoalViolationDetector, mockMetricAnomalyDetector, mockDiskFailureDetector,
                            mockTopicAnomalyDetector, mockMaintenanceEventDetector, executorService);
     // Schedule a delayed check
@@ -272,12 +272,12 @@ public class AnomalyDetectorManagerTest {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(AnomalyDetectorConfig.METRIC_ANOMALY_CLASS_CONFIG, SlowBrokers.class.getName());
     KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
-    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).times(1, 10);
+    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).times(1, 17);
     mockKafkaCruiseControl.sanityCheckDryRun(EasyMock.eq(SELF_HEALING_DRYRUN), EasyMock.eq(false));
     EasyMock.expect(mockKafkaCruiseControl.modelCompletenessRequirements(EasyMock.anyObject()))
             .andReturn(mockModelCompletenessRequirements).times(0, 2);
     EasyMock.expect(mockKafkaCruiseControl.getLoadMonitorTaskRunnerState())
-            .andReturn(LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING).times(1, 4);
+            .andReturn(LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING).times(1, 2);
 
     startRunnableDetectors(mockDetectorScheduler, mockGoalViolationDetector, mockMetricAnomalyDetector, mockDiskFailureDetector,
                            mockTopicAnomalyDetector, mockMaintenanceEventDetector, executorService);

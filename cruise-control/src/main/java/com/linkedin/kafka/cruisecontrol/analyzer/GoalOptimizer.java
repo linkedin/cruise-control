@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
+import com.linkedin.kafka.cruisecontrol.common.Utils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
@@ -39,7 +40,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
@@ -497,10 +497,7 @@ public class GoalOptimizer implements Runnable {
    */
   public Set<String> excludedTopics(ClusterModel clusterModel, Pattern requestedExcludedTopics) {
     Pattern topicsToExclude = requestedExcludedTopics != null ? requestedExcludedTopics : _defaultExcludedTopics;
-    return clusterModel.topics()
-                       .stream()
-                       .filter(topic -> topicsToExclude.matcher(topic).matches())
-                       .collect(Collectors.toSet());
+    return Utils.getTopicNamesMatchedWithPattern(topicsToExclude, clusterModel::topics);
   }
 
   /**
