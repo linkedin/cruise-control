@@ -375,7 +375,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
         }
       }
     }
-    throw new OptimizationFailureException(String.format("Cannot make broker %d have at least %d leader replica(s) of topic %s.",
+    throw new OptimizationFailureException(String.format("Cannot make broker %d have at least %d leader(s) from topic %s.",
                                                          broker.id(),
                                                          minTopicLeadersPerBroker(),
                                                          topicMustHaveLeaderPerBroker));
@@ -402,14 +402,14 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     return brokersWithExcessiveLeaderToMove;
   }
 
-  private Set<Broker> eligibleBrokersForLeadership(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
+  private static Set<Broker> eligibleBrokersForLeadership(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
     return clusterModel.aliveBrokers()
                        .stream()
                        .filter(broker -> isEligibleToHaveLeaders(broker, optimizationOptions))
                        .collect(Collectors.toSet());
   }
 
-  private boolean isEligibleToHaveLeaders(Broker broker, OptimizationOptions optimizationOptions) {
+  private static boolean isEligibleToHaveLeaders(Broker broker, OptimizationOptions optimizationOptions) {
     return !optimizationOptions.excludedBrokersForLeadership().contains(broker.id())
            && !optimizationOptions.excludedBrokersForReplicaMove().contains(broker.id());
   }

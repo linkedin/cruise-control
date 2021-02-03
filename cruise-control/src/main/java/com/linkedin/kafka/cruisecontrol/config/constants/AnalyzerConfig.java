@@ -344,7 +344,7 @@ public class AnalyzerConfig {
   public static final String TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG = "topics.with.min.leaders.per.broker";
   public static final String DEFAULT_TOPICS_WITH_MIN_LEADERS_PER_BROKER = "";
   public static final String DEFAULT_TOPICS_WITH_MIN_LEADERS_PER_BROKER_DOC = "The topics that should have a minimum "
-      + "number of replica on brokers that are not excluded for replica move. It is a regex.";
+      + "number of leader on brokers that are not excluded for replica move. It is a regex.";
 
   /**
    * <code>min.topic.leaders.per.broker</code>

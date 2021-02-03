@@ -301,6 +301,39 @@ public class DeterministicCluster {
   }
 
   /**
+   * Three brokers, one topic, one partition, each partition has two replicas.
+   * <p>
+   * <h3>Replica Distribution</h3>
+   * <li>B0: T_P0_leader</li>
+   * <li>B1: T_P0_follower</li>
+   * <li>B2: N/A</li>
+   * </p>
+   *
+   * @return Cluster model for the tests.
+   */
+  public static ClusterModel minLeaderReplicaPerBrokerUnsatisfiable() {
+    ClusterModel cluster = getHomogeneousCluster(RACK_BY_BROKER2, TestConstants.BROKER_CAPACITY, null);
+
+    // Create the only one topic partition.
+    TopicPartition topicPartition = new TopicPartition(TOPIC_MUST_HAVE_LEADER_REPLICAS_ON_BROKERS, 0);
+
+    // Create replicas for topics.
+    cluster.createReplica(RACK_BY_BROKER2.get(0).toString(), 0, topicPartition, 0, true);  // T_P0_leader
+    cluster.createReplica(RACK_BY_BROKER2.get(1).toString(), 1, topicPartition, 1, false); // T_P0_follower
+
+    AggregatedMetricValues aggregatedMetricValues =
+        getAggregatedMetricValues(TestConstants.TYPICAL_CPU_CAPACITY / 2,
+                                  TestConstants.LARGE_BROKER_CAPACITY / 2,
+                                  TestConstants.MEDIUM_BROKER_CAPACITY / 2,
+                                  TestConstants.LARGE_BROKER_CAPACITY / 2);
+
+    // Create snapshots and push them to the cluster.
+    cluster.setReplicaLoad(RACK_BY_BROKER2.get(0).toString(), 0, topicPartition, aggregatedMetricValues, Collections.singletonList(1L));
+    cluster.setReplicaLoad(RACK_BY_BROKER2.get(1).toString(), 1, topicPartition, aggregatedMetricValues, Collections.singletonList(1L));
+    return cluster;
+  }
+
+  /**
    * Three brokers, one topic, three partitions, each partition has two replicas.
    * <p>
    * <h3>Replica Distribution</h3>

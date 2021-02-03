@@ -37,6 +37,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -80,6 +81,7 @@ public class ExcludedBrokersForLeadershipTest {
     Set<Integer> noExclusion = Collections.emptySet();
     Set<Integer> excludeB1 = Collections.unmodifiableSet(Collections.singleton(1));
     Set<Integer> excludeB0 = Collections.unmodifiableSet(Collections.singleton(0));
+    Set<Integer> excludeB0B1 = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(0, 1, 2)));
     Set<Integer> excludeAllBrokers = Collections.unmodifiableSet(RACK_BY_BROKER.keySet());
     Set<Integer> noDeadBroker = Collections.emptySet();
     Set<Integer> deadBroker0 = Collections.unmodifiableSet(Collections.singleton(0));
@@ -125,6 +127,18 @@ public class ExcludedBrokersForLeadershipTest {
                  DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable(), noDeadBroker, true, configOverrides));
     p.add(params(1, MinTopicLeadersPerBrokerGoal.class, excludeB1, null,
                  DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable2(), noDeadBroker, true, configOverrides));
+
+    // Without excluded broker, no dead brokers (not satisfiable (Exception))
+    p.add(params(0, MinTopicLeadersPerBrokerGoal.class, noExclusion, OptimizationFailureException.class,
+                 DeterministicCluster.minLeaderReplicaPerBrokerUnsatisfiable(), noDeadBroker, null, configOverrides));
+
+    // With single excluded broker, no dead brokers (not satisfiable (Exception))
+    p.add(params(0, MinTopicLeadersPerBrokerGoal.class, excludeB0, OptimizationFailureException.class,
+                 DeterministicCluster.minLeaderReplicaPerBrokerUnsatisfiable(), noDeadBroker, null, configOverrides));
+
+    // With two excluded brokers, no dead brokers (No exception, Expected to look optimized)
+    p.add(params(0, MinTopicLeadersPerBrokerGoal.class, excludeB0B1, null,
+                 DeterministicCluster.minLeaderReplicaPerBrokerUnsatisfiable(), noDeadBroker, true, configOverrides));
 
     // With single excluded broker, one dead broker (Expect optimization failure since offline replicas cannot be moved away from the dead broker)
     p.add(params(2, MinTopicLeadersPerBrokerGoal.class, excludeB1, OptimizationFailureException.class,
