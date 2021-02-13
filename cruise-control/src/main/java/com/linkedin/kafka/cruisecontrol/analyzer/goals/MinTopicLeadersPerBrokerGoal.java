@@ -186,16 +186,15 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
       }
     });
     if (!shouldNotBeExcludedTopics.isEmpty()) {
-      throw new OptimizationFailureException(String.format("Topics that must have a minimum number of leader replicas "
-          + "per alive broker that is not excluded for leadership moves should not be excluded. This error implies "
-          + "a config error. Topics should not be excluded=[%s] and it is defined as a regex by the config property: %s",
-                                                           String.join(", ", shouldNotBeExcludedTopics),
+      throw new OptimizationFailureException(String.format("[%s] Topics that must have a minimum number of leaders per broker cannot be excluded."
+                                                           + " This error implies a config error. Topics should not be excluded=[%s] (see %s).",
+                                                           name(), String.join(", ", shouldNotBeExcludedTopics),
                                                            AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG));
     }
   }
 
-  private void validateEnoughLeaderToDistribute(ClusterModel clusterModel,
-                                                OptimizationOptions optimizationOptions) throws OptimizationFailureException {
+  private void validateEnoughLeaderToDistribute(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
+      throws OptimizationFailureException {
     Map<String, Integer> numLeadersByTopicNames = clusterModel.numLeadersPerTopic(_mustHaveTopicLeadersPerBroker);
     Set<Broker> eligibleBrokersForLeadership = eligibleBrokersForLeadership(clusterModel, optimizationOptions);
     int totalMinimumLeaderCount = eligibleBrokersForLeadership.size() * minTopicLeadersPerBroker();
@@ -203,19 +202,21 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     for (Map.Entry<String, Integer> numLeadersPerTopic : numLeadersByTopicNames.entrySet()) {
       if (numLeadersPerTopic.getValue() < totalMinimumLeaderCount) {
         throw new OptimizationFailureException(
-            String.format("Cannot distribute %d leader replica(s) over %d broker(s) with total minimum required leader count %d for topic %s.",
-                          numLeadersPerTopic.getValue(), eligibleBrokersForLeadership.size(),
-                          minTopicLeadersPerBroker(), numLeadersPerTopic.getKey()));
+            String.format("[%s] Cannot distribute %d leaders over %d broker(s) with minimum required per broker leader count %d for topic %s.",
+                          name(), numLeadersPerTopic.getValue(), eligibleBrokersForLeadership.size(), minTopicLeadersPerBroker(),
+                          numLeadersPerTopic.getKey()),
+            String.format("Increase the partition count of topic %s to at least %d.", numLeadersPerTopic.getKey(), totalMinimumLeaderCount));
       }
     }
   }
 
-  private static void validateBrokersAllowedReplicaMoveExist(ClusterModel clusterModel,
-                                                             OptimizationOptions optimizationOptions) throws OptimizationFailureException {
+  private void validateBrokersAllowedReplicaMoveExist(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
+      throws OptimizationFailureException {
     Set<Integer> brokersAllowedReplicaMove = GoalUtils.aliveBrokersNotExcludedForReplicaMove(clusterModel, optimizationOptions);
     if (brokersAllowedReplicaMove.isEmpty()) {
       // Handle the case when all alive brokers are excluded from replica moves.
-      throw new OptimizationFailureException("Cannot take any action as all alive brokers are excluded from replica moves.");
+      throw new OptimizationFailureException(String.format("[%s] All alive brokers are excluded from replica moves.", name()),
+                                             String.format("Add at least %d brokers.", clusterModel.maxReplicationFactor()));
     }
   }
 
@@ -277,9 +278,9 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
       for (String mustHaveLeaderPerBrokerTopicName : _mustHaveTopicLeadersPerBroker) {
         int leaderCount = broker.numLeadersFor(mustHaveLeaderPerBrokerTopicName);
         if (leaderCount < minTopicLeadersPerBroker()) {
-          throw new OptimizationFailureException(String.format("Broker %d does not have enough leader replica for topic %s. "
-              + "Minimum required per-broker leader replica count %d. Actual broker leader replica count %d",
-              broker.id(), mustHaveLeaderPerBrokerTopicName, minTopicLeadersPerBroker(), leaderCount));
+          throw new OptimizationFailureException(String.format("[%s] Broker %d has insufficient per-broker leaders for topic %s (required: %d "
+                                                               + "current: %d).", name(), broker.id(), mustHaveLeaderPerBrokerTopicName,
+                                                               minTopicLeadersPerBroker(), leaderCount));
         }
       }
     }
@@ -375,10 +376,8 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
         }
       }
     }
-    throw new OptimizationFailureException(String.format("Cannot make broker %d have at least %d leader(s) from topic %s.",
-                                                         broker.id(),
-                                                         minTopicLeadersPerBroker(),
-                                                         topicMustHaveLeaderPerBroker));
+    throw new OptimizationFailureException(String.format("[%s] Cannot make broker %d have at least %d leaders from topic %s.",
+                                                         name(), broker.id(), minTopicLeadersPerBroker(), topicMustHaveLeaderPerBroker));
   }
 
   /**
@@ -428,8 +427,9 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     for (Replica offlineReplica : offlineReplicas) {
       if (maybeApplyBalancingAction(clusterModel, offlineReplica, eligibleBrokersToMoveOfflineReplicasTo,
                                     INTER_BROKER_REPLICA_MOVEMENT, optimizedGoals, optimizationOptions) == null) {
-        throw new OptimizationFailureException(String.format("Cannot move offline replica %s to any broker in %s",
-                                                             offlineReplica, eligibleBrokersToMoveOfflineReplicasTo));
+        throw new OptimizationFailureException(String.format("[%s] Cannot remove %s from %s broker %d (has %d replicas).", name(),
+                                                             offlineReplica, srcBroker.state(), srcBroker.id(), srcBroker.replicas().size()),
+                                               "Add at least one broker.");
       }
     }
   }

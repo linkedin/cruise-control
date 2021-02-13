@@ -76,8 +76,10 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
       double existingUtilization = broker.load().expectedUtilizationFor(RESOURCE);
       double allowedCapacity = broker.capacityFor(RESOURCE) * _balancingConstraint.capacityThreshold(RESOURCE);
       if (allowedCapacity < existingUtilization) {
-        throw new OptimizationFailureException("Insufficient disk capacity at broker " + broker.id() + ", existing broker utilization "
-                                               + existingUtilization + " exceeds allowed capacity " + allowedCapacity);
+        double requiredCapacity = existingUtilization * _balancingConstraint.capacityThreshold(RESOURCE);
+        throw new OptimizationFailureException(String.format("[%s] Insufficient disk capacity at broker %d (Utilization %.2f, Allowed "
+                                                             + "Capacity %.2f).", name(), broker.id(), existingUtilization, allowedCapacity),
+                                               String.format("Add at least one broker with capacity %.2f.", requiredCapacity));
       }
     }
 
@@ -208,10 +210,10 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
       for (Disk disk : broker.disks()) {
         if (disk.isAlive() && isUtilizationOverLimit(disk)) {
           // The utilization of the host for the resource is over the capacity limit.
-          String mitigation = GoalUtils.mitigationForOptimizationFailures(optimizationOptions);
-          throw new OptimizationFailureException(String.format(
-              "Optimization for goal %s failed because utilization for disk %s on broker %d is still above capacity limit. %s",
-              name(), disk, broker.id(), mitigation));
+          double requiredCapacity = disk.utilization() / _balancingConstraint.capacityThreshold(RESOURCE);
+          throw new OptimizationFailureException(String.format("[%s] Utilization (%.2f) for disk %s on broker %d is above capacity limit.",
+                                                               name(), disk.utilization(), disk, broker.id()),
+                                                 String.format("Add at least one disk with capacity %.2f.", requiredCapacity));
         }
       }
     }

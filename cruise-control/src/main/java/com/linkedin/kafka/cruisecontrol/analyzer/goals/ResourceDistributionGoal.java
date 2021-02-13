@@ -6,6 +6,7 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
@@ -65,6 +66,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   private Set<Integer> _brokersAllowedReplicaMove;
   // This is used to identify the overprovisioned cluster status
   private boolean _isLowUtilization;
+  // The recommendation to be used in case the cluster is overprovisioned
+  private String _overProvisionedRecommendation;
 
   /**
    * Constructor for Resource Distribution Goal.
@@ -238,7 +241,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     _brokersAllowedReplicaMove = GoalUtils.aliveBrokersNotExcludedForReplicaMove(clusterModel, optimizationOptions);
     if (_brokersAllowedReplicaMove.isEmpty()) {
       // Handle the case when all alive brokers are excluded from replica moves.
-      throw new OptimizationFailureException("Cannot take any action as all alive brokers are excluded from replica moves.");
+      throw new OptimizationFailureException(String.format("[%s] All alive brokers are excluded from replica moves.", name()),
+                                             String.format("Add at least %d brokers.", clusterModel.maxReplicationFactor()));
     }
     _fixOfflineReplicasOnly = false;
     double resourceUtilization = clusterModel.load().expectedUtilizationFor(resource());
@@ -260,6 +264,18 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                                                                   true);
     // Identify whether the cluster is in a low utilization state.
     _isLowUtilization = avgUtilizationPercentage <= _balancingConstraint.lowUtilizationThreshold(resource());
+    if (_isLowUtilization) {
+      // Identify a typical broker capacity to be used in recommendations in case the cluster is over-provisioned.
+      int typicalBrokerId = _brokersAllowedReplicaMove.iterator().next();
+      double typicalCapacity = clusterModel.broker(typicalBrokerId).capacityFor(resource());
+
+      // Any capacity greater than the allowed capacity may yield over-provisioning.
+      double allowedCapacity = resourceUtilization / _balancingConstraint.lowUtilizationThreshold(resource());
+      int allowedNumBrokers = (int) (allowedCapacity / typicalCapacity);
+      int numBrokersToDrop = _brokersAllowedReplicaMove.size() - allowedNumBrokers;
+      _overProvisionedRecommendation = String.format("[%s] Remove at least %d brokers with the same capacity (%.2f) as broker-%d.",
+                                                     name(), numBrokersToDrop, typicalCapacity, typicalBrokerId);
+    }
   }
 
   /**
@@ -291,7 +307,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       _succeeded = false;
     } else if (_isLowUtilization) {
       // Cluster is under a low utilization state and all brokers are under the corresponding balance upper limit.
-      _provisionStatus = ProvisionStatus.OVER_PROVISIONED;
+      _provisionResponse = new ProvisionResponse(ProvisionStatus.OVER_PROVISIONED, _overProvisionedRecommendation);
     }
     if (!brokerIdsUnderBalanceLowerLimit.isEmpty()) {
       LOG.debug("Utilization for broker ids:{} {} under the balance limit for:{} after {}.",
@@ -300,7 +316,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       _succeeded = false;
     } else if (brokerIdsAboveBalanceUpperLimit.isEmpty() && !_isLowUtilization) {
       // All brokers are within the upper and lower balance limits and the cluster is not under a low utilization state.
-      _provisionStatus = ProvisionStatus.RIGHT_SIZED;
+      _provisionResponse = new ProvisionResponse(ProvisionStatus.RIGHT_SIZED);
     }
     // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
     try {

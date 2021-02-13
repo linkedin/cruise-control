@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
@@ -139,12 +140,15 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
     _brokersAllowedReplicaMove = GoalUtils.aliveBrokersNotExcludedForReplicaMove(clusterModel, optimizationOptions);
     if (_brokersAllowedReplicaMove.isEmpty()) {
       // Handle the case when all alive brokers are excluded from replica moves.
-      throw new OptimizationFailureException("Cannot take any action as all alive brokers are excluded from replica moves.");
+      throw new OptimizationFailureException(String.format("[%s] All alive brokers are excluded from replica moves.", name()),
+                                             String.format("Add at least %d brokers.", clusterModel.maxReplicationFactor()));
     }
     _balanceLimit = new BalanceLimit(clusterModel, optimizationOptions);
-    if (_balanceLimit.numAliveRacksAllowedReplicaMoves() - clusterModel.maxReplicationFactor()
-        >= _balancingConstraint.overprovisionedMinExtraRacks()) {
-      _provisionStatus = ProvisionStatus.OVER_PROVISIONED;
+    int numExtraRacks = _balanceLimit.numAliveRacksAllowedReplicaMoves() - clusterModel.maxReplicationFactor();
+    if (numExtraRacks >= _balancingConstraint.overprovisionedMinExtraRacks()) {
+      int numRacksToDrop = numExtraRacks - _balancingConstraint.overprovisionedMinExtraRacks() - 1;
+      String recommendation = String.format("[%s] Reduce rack diversity by at least %d racks.", name(), numRacksToDrop);
+      _provisionResponse = new ProvisionResponse(ProvisionStatus.OVER_PROVISIONED, recommendation);
     }
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
 
@@ -173,8 +177,8 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
     ensureRackAwareDistribution(clusterModel, optimizationOptions);
     // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
     GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
-    if (_provisionStatus != ProvisionStatus.OVER_PROVISIONED) {
-      _provisionStatus = ProvisionStatus.RIGHT_SIZED;
+    if (_provisionResponse.status() != ProvisionStatus.OVER_PROVISIONED) {
+      _provisionResponse = new ProvisionResponse(ProvisionStatus.RIGHT_SIZED);
     }
     finish();
   }
@@ -318,11 +322,10 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
         // alive racks allowed replica moves or (2) more replicas that they could have been placed into other racks.
         boolean someAliveRacksHaveNoReplicas = numReplicasByRack.size() < _balanceLimit.numAliveRacksAllowedReplicaMoves();
         if (someAliveRacksHaveNoReplicas || maxNumReplicasInARack - min(numReplicasByRack.values()) > 1) {
-          String mitigation = GoalUtils.mitigationForOptimizationFailures(optimizationOptions);
-          throw new OptimizationFailureException(String.format("Optimization for goal %s failed for rack-aware distribution of "
-                                                               + "partition %s. Brokers (%s) and replicas per rack (%s). %s",
-                                                               name(), leader.topicPartition(), partitionBrokers,
-                                                               numReplicasByRack, mitigation));
+          throw new OptimizationFailureException(String.format("[%s] Partition %s is not rack-aware. Brokers (%s) and replicas per rack (%s).",
+                                                               name(), leader.topicPartition(), partitionBrokers, numReplicasByRack),
+                                                 String.format("Add at least one broker to a rack containing fewer replicas per rack: %s",
+                                                               numReplicasByRack));
         }
       }
     }
@@ -354,7 +357,8 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
       _numAliveRacksAllowedReplicaMoves = clusterModel.numAliveRacksAllowedReplicaMoves(optimizationOptions);
       if (_numAliveRacksAllowedReplicaMoves == 0) {
         // Handle the case when all alive racks are excluded from replica moves.
-        throw new OptimizationFailureException("Cannot take any action as all alive racks are excluded from replica moves.");
+        throw new OptimizationFailureException("All alive racks are excluded from replica moves.",
+                                               String.format("Add at least %d brokers to different racks.", clusterModel.maxReplicationFactor()));
       }
       int maxReplicationFactor = clusterModel.maxReplicationFactor();
       _baseLimitByRF = new HashMap<>(maxReplicationFactor);

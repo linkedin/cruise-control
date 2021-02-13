@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
@@ -43,23 +44,24 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.eligible
 public abstract class AbstractGoal implements Goal {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractGoal.class);
   protected boolean _finished;
-  protected boolean _succeeded = true;
+  protected boolean _succeeded;
   protected BalancingConstraint _balancingConstraint;
   protected int _numWindows;
   protected double _minMonitoredPartitionPercentage;
-  protected ProvisionStatus _provisionStatus;
+  protected ProvisionResponse _provisionResponse;
 
   /**
    * Constructor of Abstract Goal class sets the
    * <ul>
    *   <li>{@link #_finished} flag to {@code false} to signal that the goal has not been optimized, yet.</li>
-   *   <li>{@link #_provisionStatus} to {@link ProvisionStatus#UNDECIDED} to signal that the goal has not identified the cluster as
-   *   under-provisioned, over-provisioned, or right-sized.</li>
+   *   <li>{@link #_provisionResponse} with {@link ProvisionStatus#UNDECIDED} status to signal that the goal has not identified the
+   *   cluster as under-provisioned, over-provisioned, or right-sized.</li>
    * </ul>
    */
   public AbstractGoal() {
     _finished = false;
-    _provisionStatus = UNDECIDED;
+    _succeeded = true;
+    _provisionResponse = new ProvisionResponse(UNDECIDED);
   }
 
   @Override
@@ -80,8 +82,8 @@ public abstract class AbstractGoal implements Goal {
       throws OptimizationFailureException {
     try {
       _succeeded = true;
-      // Resetting the provision status ensures fresh provision status if the same goal is optimized with different cluster models.
-      _provisionStatus = UNDECIDED;
+      // Resetting the provision response ensures fresh provision response if the same goal is optimized multiple times.
+      _provisionResponse = new ProvisionResponse(UNDECIDED);
       LOG.debug("Starting optimization for {}.", name());
       // Initialize pre-optimized stats.
       ClusterModelStats statsBeforeOptimization = clusterModel.getClusterStats(_balancingConstraint, optimizationOptions);
@@ -109,20 +111,22 @@ public abstract class AbstractGoal implements Goal {
         ClusterModelStatsComparator comparator = clusterModelStatsComparator();
         // Throw exception when the stats before optimization is preferred.
         if (comparator.compare(statsAfterOptimization, statsBeforeOptimization) < 0) {
-          String mitigation = GoalUtils.mitigationForOptimizationFailures(optimizationOptions);
-          throw new OptimizationFailureException(String.format("Optimization for goal %s failed because the optimized "
-                                                               + "result is worse than before. Detailed reason: %s. %s",
-                                                               name(), comparator.explainLastComparison(), mitigation));
+          // If a goal provides worse stats after optimization, that indicates an implementation error with the goal.
+          throw new IllegalStateException(String.format("Optimization for goal %s failed because the optimized result is worse than before."
+                                                        + " Reason: %s.", name(), comparator.explainLastComparison()));
         }
       }
       // Ensure that a cluster is not identified as over provisioned unless it has the minimum required number of alive brokers.
-      if (_provisionStatus == OVER_PROVISIONED && clusterModel.aliveBrokers().size() < _balancingConstraint.overprovisionedMinBrokers()) {
-        _provisionStatus = RIGHT_SIZED;
+      if (_provisionResponse.status() == OVER_PROVISIONED && clusterModel.aliveBrokers().size() < _balancingConstraint.overprovisionedMinBrokers()) {
+        _provisionResponse = new ProvisionResponse(RIGHT_SIZED);
       }
       return _succeeded;
     } catch (OptimizationFailureException ofe) {
-      _provisionStatus = UNDER_PROVISIONED;
-      throw ofe;
+      _provisionResponse = new ProvisionResponse(UNDER_PROVISIONED, String.format("[%s] %s.", name(), ofe.recommendation()));
+      // Mitigation (if relevant) is reported as part of exception message to provide helpful tips concerning the used optimizationOptions.
+      String mitigation = GoalUtils.mitigationForOptimizationFailures(optimizationOptions);
+      String message = String.format("%s%s", ofe.getMessage(), mitigation.isEmpty() ? "" : String.format(" || Tips: %s", mitigation));
+      throw new OptimizationFailureException(message, ofe.recommendation());
     } finally {
       // Clear any sorted replicas tracked in the process of optimization.
       clusterModel.clearSortedReplicas();
@@ -139,7 +143,12 @@ public abstract class AbstractGoal implements Goal {
 
   @Override
   public ProvisionStatus provisionStatus() {
-    return _provisionStatus;
+    return provisionResponse().status();
+  }
+
+  @Override
+  public ProvisionResponse provisionResponse() {
+    return _provisionResponse;
   }
 
   /**

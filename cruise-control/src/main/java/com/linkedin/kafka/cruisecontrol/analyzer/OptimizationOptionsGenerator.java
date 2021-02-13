@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
-import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import java.util.Set;
 import org.apache.kafka.common.annotation.InterfaceStability;
@@ -27,13 +26,11 @@ public interface OptimizationOptionsGenerator extends CruiseControlConfigurable 
    * @param excludedBrokersForReplicaMove The brokers to be specified to not considered for replica movement in
    *                                      generated optimization options.
    * @return An object of {@link OptimizationOptions}.
-   * @throws KafkaCruiseControlException If anything goes wrong.
    */
   OptimizationOptions optimizationOptionsForGoalViolationDetection(ClusterModel clusterModel,
                                                                    Set<String> excludedTopics,
                                                                    Set<Integer> excludedBrokersForLeadership,
-                                                                   Set<Integer> excludedBrokersForReplicaMove)
-      throws KafkaCruiseControlException;
+                                                                   Set<Integer> excludedBrokersForReplicaMove);
 
   /**
    * Generate optimization options used to calculate cached optimization proposal.
@@ -41,9 +38,7 @@ public interface OptimizationOptionsGenerator extends CruiseControlConfigurable 
    * @param clusterModel The cluster model used to generate optimization options.
    * @param excludedTopics The topics to be specified to exclude in generated optimization options.
    * @return An object of {@link OptimizationOptions}.
-   * @throws KafkaCruiseControlException If anything goes wrong.
    */
   OptimizationOptions optimizationOptionsForCachedProposalCalculation(ClusterModel clusterModel,
-                                                                      Set<String> excludedTopics)
-      throws KafkaCruiseControlException;
+                                                                      Set<String> excludedTopics);
 }

@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.internals.BrokerAndSortedReplicas;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
@@ -51,11 +52,12 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
   private static final double USAGE_EQUALITY_DELTA = 0.0001;
   // Ensure that each convergence step due to replica swap is over REPLICA_CONVERGENCE_DELTA.
   private static final double REPLICA_CONVERGENCE_DELTA = 0.4;
+  private final ProvisionResponse _provisionResponse;
   private BalancingConstraint _balancingConstraint;
   private double _minMonitoredPartitionPercentage = 0.995;
 
   public KafkaAssignerDiskUsageDistributionGoal() {
-
+    _provisionResponse = new ProvisionResponse(ProvisionStatus.UNDECIDED);
   }
 
   /**
@@ -63,6 +65,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
    * @param constraint the balancing constraint.
    */
   KafkaAssignerDiskUsageDistributionGoal(BalancingConstraint constraint) {
+    this();
     _balancingConstraint = constraint;
   }
 
@@ -528,7 +531,12 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
   @Override
   public ProvisionStatus provisionStatus() {
     // Provision status computation is not supported for kafka_assigner goals.
-    return ProvisionStatus.UNDECIDED;
+    return provisionResponse().status();
+  }
+
+  @Override
+  public ProvisionResponse provisionResponse() {
+    return _provisionResponse;
   }
 
   private double diskUsage(BrokerAndSortedReplicas bas) {

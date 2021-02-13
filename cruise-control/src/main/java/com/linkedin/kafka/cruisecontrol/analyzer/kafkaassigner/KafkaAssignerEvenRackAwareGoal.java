@@ -8,6 +8,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
@@ -40,12 +41,14 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_
 
 public class KafkaAssignerEvenRackAwareGoal implements Goal {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaAssignerEvenRackAwareGoal.class);
+  private final ProvisionResponse _provisionResponse;
   private final Map<Integer, SortedSet<BrokerReplicaCount>> _aliveBrokerReplicaCountByPosition;
   private Map<String, List<Partition>> _partitionsByTopic;
 
   public KafkaAssignerEvenRackAwareGoal() {
     _partitionsByTopic = null;
     _aliveBrokerReplicaCountByPosition = new HashMap<>();
+    _provisionResponse = new ProvisionResponse(ProvisionStatus.UNDECIDED);
   }
 
   /**
@@ -431,7 +434,12 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
   @Override
   public ProvisionStatus provisionStatus() {
     // Provision status computation is not supported for kafka_assigner goals.
-    return ProvisionStatus.UNDECIDED;
+    return provisionResponse().status();
+  }
+
+  @Override
+  public ProvisionResponse provisionResponse() {
+    return _provisionResponse;
   }
 
   @Override

@@ -433,7 +433,7 @@ public class GoalOptimizer implements Runnable {
     Map<TopicPartition, List<ReplicaPlacementInfo>> preOptimizedReplicaDistribution = null;
     Map<TopicPartition, ReplicaPlacementInfo> preOptimizedLeaderDistribution = null;
 
-    ProvisionStatus provisionStatus = ProvisionStatus.UNDECIDED;
+    ProvisionResponse provisionResponse = new ProvisionResponse(ProvisionStatus.UNDECIDED);
     for (Goal goal : goalsByPriority) {
       preOptimizedReplicaDistribution = preOptimizedReplicaDistribution == null ? initReplicaDistribution : clusterModel.getReplicaDistribution();
       preOptimizedLeaderDistribution = preOptimizedLeaderDistribution == null ? initLeaderDistribution : clusterModel.getLeaderDistribution();
@@ -458,7 +458,7 @@ public class GoalOptimizer implements Runnable {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Broker level stats after optimization: {}", clusterModel.brokerStats(null));
       }
-      provisionStatus = AnalyzerUtils.aggregateProvisionStatus(provisionStatus, goal.provisionStatus());
+      provisionResponse.aggregate(goal.provisionResponse());
     }
 
     // Broker level stats in the final cluster state.
@@ -485,7 +485,7 @@ public class GoalOptimizer implements Runnable {
                                clusterModel.capacityEstimationInfoByBrokerId(),
                                optimizationOptions,
                                balancednessCostByGoal(goalsByPriority, _priorityWeight, _strictnessWeight),
-                               provisionStatus);
+                               provisionResponse);
   }
 
   /**
