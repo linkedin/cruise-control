@@ -35,11 +35,14 @@ public class KafkaNetworkClientProvider implements NetworkClientProvider {
                                            int socketSendBuffer,
                                            int socketReceiveBuffer,
                                            int defaultRequestTimeoutMs,
+                                           long connectionSetupTimeoutMs,
+                                           long connectionSetupTimeoutMaxMs,
                                            boolean discoverBrokerVersions,
                                            ApiVersions apiVersions) {
     return new NetworkClient(new Selector(connectionMaxIdleMS, metrics, time, metricGrpPrefix, channelBuilder, new LogContext()),
                              metadata, clientId, maxInFlightRequestsPerConnection, reconnectBackoffMs,
                              reconnectBackoffMax, socketSendBuffer, socketReceiveBuffer, defaultRequestTimeoutMs,
-                             ClientDnsLookup.DEFAULT, time, discoverBrokerVersions, apiVersions, new LogContext());
+                             connectionSetupTimeoutMs, connectionSetupTimeoutMaxMs, ClientDnsLookup.DEFAULT,
+                             time, discoverBrokerVersions, apiVersions, new LogContext());
   }
 }

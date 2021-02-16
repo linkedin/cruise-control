@@ -73,6 +73,8 @@ public class MetadataClient {
                                                   config.getInt(MonitorConfig.SEND_BUFFER_CONFIG),
                                                   config.getInt(MonitorConfig.RECEIVE_BUFFER_CONFIG),
                                                   config.getInt(MonitorConfig.REQUEST_TIMEOUT_MS_CONFIG),
+                                                  config.getLong(MonitorConfig.SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG),
+                                                  config.getLong(MonitorConfig.SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_CONFIG),
                                                   true,
                                                   new ApiVersions());
     _metadataTTL = metadataTTL;

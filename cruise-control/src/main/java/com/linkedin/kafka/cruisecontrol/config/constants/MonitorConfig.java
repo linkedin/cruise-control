@@ -62,6 +62,26 @@ public class MonitorConfig {
   public static final String SEND_BUFFER_DOC = CommonClientConfigs.SEND_BUFFER_DOC;
 
   /**
+   * <code>socket.connection.setup.timeout.ms</code>
+   */
+  public static final String SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG =
+          CommonClientConfigs.SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG;
+  public static final long DEFAULT_SOCKET_CONNECTION_SETUP_TIMEOUT_MS =
+          CommonClientConfigs.DEFAULT_SOCKET_CONNECTION_SETUP_TIMEOUT_MS;
+  public static final String SOCKET_CONNECTION_SETUP_TIMEOUT_MS_DOC =
+          CommonClientConfigs.SOCKET_CONNECTION_SETUP_TIMEOUT_MS_DOC;
+
+  /**
+   * <code>socket.connection.setup.timeout.max.ms</code>
+   */
+  public static final String SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_CONFIG =
+          CommonClientConfigs.SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_CONFIG;
+  public static final long DEFAULT_SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS =
+          CommonClientConfigs.DEFAULT_SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS;
+  public static final String SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_DOC =
+          CommonClientConfigs.SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_DOC;
+
+  /**
    * <code>receive.buffer.bytes</code>
    */
   public static final String RECEIVE_BUFFER_CONFIG = CommonClientConfigs.RECEIVE_BUFFER_CONFIG;
@@ -554,6 +574,16 @@ public class MonitorConfig {
                             ConfigDef.Type.LONG,
                             DEFAULT_MONITOR_STATE_UPDATE_INTERVAL_MS,
                             ConfigDef.Importance.LOW,
-                            MONITOR_STATE_UPDATE_INTERVAL_MS_DOC);
+                            MONITOR_STATE_UPDATE_INTERVAL_MS_DOC)
+                    .define(SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG,
+                            ConfigDef.Type.LONG,
+                            DEFAULT_SOCKET_CONNECTION_SETUP_TIMEOUT_MS,
+                            ConfigDef.Importance.MEDIUM,
+                            SOCKET_CONNECTION_SETUP_TIMEOUT_MS_DOC)
+                    .define(SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_CONFIG,
+                            ConfigDef.Type.LONG,
+                            DEFAULT_SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS,
+                            ConfigDef.Importance.MEDIUM,
+                            SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_DOC);
   }
 }
