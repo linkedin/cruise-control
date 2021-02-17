@@ -122,7 +122,7 @@ public abstract class AbstractGoal implements Goal {
       }
       return _succeeded;
     } catch (OptimizationFailureException ofe) {
-      _provisionResponse = new ProvisionResponse(UNDER_PROVISIONED, String.format("[%s] %s.", name(), ofe.recommendation()));
+      _provisionResponse = new ProvisionResponse(UNDER_PROVISIONED, ofe.recommendation(), name());
       // Mitigation (if relevant) is reported as part of exception message to provide helpful tips concerning the used optimizationOptions.
       String mitigation = GoalUtils.mitigationForOptimizationFailures(optimizationOptions);
       String message = String.format("%s%s", ofe.getMessage(), mitigation.isEmpty() ? "" : String.format(" || Tips: %s", mitigation));

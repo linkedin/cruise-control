@@ -96,8 +96,8 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
     super.updateGoalState(clusterModel, optimizationOptions);
     Integer numBrokersToDrop = numBrokersToDrop(clusterModel);
     if (numBrokersToDrop != null) {
-      String recommendation = String.format("[%s] Remove at least %d brokers.", name(), numBrokersToDrop);
-      _provisionResponse = new ProvisionResponse(ProvisionStatus.OVER_PROVISIONED, recommendation);
+      String recommendation = String.format("Remove at least %d brokers.", numBrokersToDrop);
+      _provisionResponse = new ProvisionResponse(ProvisionStatus.OVER_PROVISIONED, recommendation, name());
     } else if (_succeeded) {
       // The cluster is not overprovisioned and all brokers are within the upper and lower balance limits.
       _provisionResponse = new ProvisionResponse(ProvisionStatus.RIGHT_SIZED);

@@ -17,14 +17,20 @@ public class ProvisionResponse {
 
   /**
    * Constructor to be used for provision statuses, for which the recommendations are relevant.
+   * Recommendation and recommender are expected to be human-readable strings.
+   *
+   * @param status The current provision status.
+   * @param recommendation Recommended action regarding the given provision status.
+   * @param recommender The source of the recommended action to be used in aggregate recommendation.
    */
-  public ProvisionResponse(ProvisionStatus status, String recommendation) {
+  public ProvisionResponse(ProvisionStatus status, String recommendation, String recommender) {
     this(status);
     if (!(status == ProvisionStatus.UNDER_PROVISIONED || status == ProvisionStatus.OVER_PROVISIONED)) {
       throw new IllegalArgumentException(String.format("Recommendation is irrelevant for provision status %s.", status));
     }
     validateNotNull(recommendation, "The recommendation cannot be null.");
-    _recommendation.append(recommendation);
+    validateNotNull(recommender, "The recommender cannot be null.");
+    _recommendation.append(String.format("[%s] %s", recommender, recommendation));
   }
 
   /**
@@ -44,7 +50,7 @@ public class ProvisionResponse {
   }
 
   /**
-   * @return Recommended action regarding the current provision status.
+   * @return Recommended actions regarding the current provision status along with the recommender of each action.
    */
   public String recommendation() {
     return _recommendation.toString();

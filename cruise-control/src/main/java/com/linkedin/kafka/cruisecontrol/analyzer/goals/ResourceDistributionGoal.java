@@ -273,8 +273,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       double allowedCapacity = resourceUtilization / _balancingConstraint.lowUtilizationThreshold(resource());
       int allowedNumBrokers = (int) (allowedCapacity / typicalCapacity);
       int numBrokersToDrop = _brokersAllowedReplicaMove.size() - allowedNumBrokers;
-      _overProvisionedRecommendation = String.format("[%s] Remove at least %d brokers with the same capacity (%.2f) as broker-%d.",
-                                                     name(), numBrokersToDrop, typicalCapacity, typicalBrokerId);
+      _overProvisionedRecommendation = String.format("Remove at least %d brokers with the same capacity (%.2f) as broker-%d.",
+                                                     numBrokersToDrop, typicalCapacity, typicalBrokerId);
     }
   }
 
@@ -307,7 +307,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       _succeeded = false;
     } else if (_isLowUtilization) {
       // Cluster is under a low utilization state and all brokers are under the corresponding balance upper limit.
-      _provisionResponse = new ProvisionResponse(ProvisionStatus.OVER_PROVISIONED, _overProvisionedRecommendation);
+      _provisionResponse = new ProvisionResponse(ProvisionStatus.OVER_PROVISIONED, _overProvisionedRecommendation, name());
     }
     if (!brokerIdsUnderBalanceLowerLimit.isEmpty()) {
       LOG.debug("Utilization for broker ids:{} {} under the balance limit for:{} after {}.",
