@@ -8,11 +8,14 @@ import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorManager;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
+import java.util.Collections;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
 import org.junit.After;
@@ -20,12 +23,15 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.CLIENT_REQUEST_TIMEOUT_MS;
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertNotNull;
 
 
 public class KafkaCruiseControlTest extends CruiseControlIntegrationTestHarness {
+  private static final TopicPartition DUMMY_TOPIC_PARTITION = new TopicPartition(TOPIC0, 0);
+  private static final Set<TopicPartition> DUMMY_ONGOING_PARTITION_REASSIGNMENTS = Collections.singleton(DUMMY_TOPIC_PARTITION);
 
   @Before
   public void setup() throws Exception {
@@ -50,18 +56,18 @@ public class KafkaCruiseControlTest extends CruiseControlIntegrationTestHarness 
     EasyMock.expect(executor.hasOngoingExecution()).andReturn(true).times(2);
     // For sanityCheckDryRun(false, XXX) (see #3 below)
     EasyMock.expect(executor.hasOngoingExecution()).andReturn(false).once();
-    EasyMock.expect(executor.hasOngoingPartitionReassignments()).andReturn(true);
+    EasyMock.expect(executor.listPartitionsBeingReassigned()).andReturn(DUMMY_ONGOING_PARTITION_REASSIGNMENTS);
     // For sanityCheckDryRun(false, XXX) (see #4 below)
     EasyMock.expect(executor.hasOngoingExecution()).andReturn(false).once();
-    EasyMock.expect(executor.hasOngoingPartitionReassignments()).andReturn(false);
+    EasyMock.expect(executor.listPartitionsBeingReassigned()).andReturn(Collections.emptySet());
     EasyMock.expect(executor.hasOngoingLeaderElection()).andReturn(true);
     // For sanityCheckDryRun(false, XXX) (see #5 below)
     EasyMock.expect(executor.hasOngoingExecution()).andReturn(false).once();
-    EasyMock.expect(executor.hasOngoingPartitionReassignments()).andReturn(false);
+    EasyMock.expect(executor.listPartitionsBeingReassigned()).andReturn(Collections.emptySet());
     EasyMock.expect(executor.hasOngoingLeaderElection()).andReturn(false);
     // For sanityCheckDryRun(false, XXX) (see #6 below)
     EasyMock.expect(executor.hasOngoingExecution()).andReturn(false).once();
-    EasyMock.expect(executor.hasOngoingPartitionReassignments()).andThrow(new TimeoutException()).once();
+    EasyMock.expect(executor.listPartitionsBeingReassigned()).andThrow(new TimeoutException()).once();
 
     EasyMock.replay(time, anomalyDetectorManager, executor, loadMonitor, goalOptimizerExecutor, goalOptimizer);
     KafkaCruiseControl kafkaCruiseControl = new KafkaCruiseControl(_config, time, anomalyDetectorManager, executor,
