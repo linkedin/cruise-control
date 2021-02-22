@@ -101,8 +101,8 @@ public class AnalyzerUtils {
         finalReplicas.set(leaderPos, finalReplicas.get(0));
         finalReplicas.set(0, finalLeaderPlacementInfo);
       }
-      Double partitionSize = optimizedClusterModel.partition(tp).leader().load().expectedUtilizationFor(Resource.DISK);
-      diff.add(new ExecutionProposal(tp, partitionSize.intValue(), initialLeaderDistribution.get(tp), initialReplicas, finalReplicas));
+      double partitionSize = optimizedClusterModel.partition(tp).leader().load().expectedUtilizationFor(Resource.DISK);
+      diff.add(new ExecutionProposal(tp, (int) partitionSize, initialLeaderDistribution.get(tp), initialReplicas, finalReplicas));
     }
     return diff;
   }
@@ -126,41 +126,6 @@ public class AnalyzerUtils {
       }
     }
     return ACCEPT;
-  }
-
-  /**
-   * Retrieve the aggregate of the given provision statuses using the following rules: Aggregating ...
-   * <ul>
-   *   <li>any provision status with {@link ProvisionStatus#UNDER_PROVISIONED} is {@link ProvisionStatus#UNDER_PROVISIONED}.</li>
-   *   <li>a provision status {@code P} with {@link ProvisionStatus#UNDECIDED} is {@code P}.</li>
-   *   <li>{@link ProvisionStatus#RIGHT_SIZED} with {@link ProvisionStatus#RIGHT_SIZED} or {@link ProvisionStatus#OVER_PROVISIONED}
-   *   is {@link ProvisionStatus#RIGHT_SIZED}.</li>
-   *   <li>{@link ProvisionStatus#OVER_PROVISIONED} with {@link ProvisionStatus#OVER_PROVISIONED} yields itself.</li>
-   * </ul>
-   *
-   * @param status1 The first provision status to aggregate.
-   * @param status2 The second provision status to aggregate.
-   * @return The aggregate of the given provision statuses.
-   */
-  public static ProvisionStatus aggregateProvisionStatus(ProvisionStatus status1, ProvisionStatus status2) {
-    if (status1 == ProvisionStatus.UNDER_PROVISIONED) {
-      return ProvisionStatus.UNDER_PROVISIONED;
-    }
-    switch (status2) {
-      case UNDER_PROVISIONED:
-        return ProvisionStatus.UNDER_PROVISIONED;
-      case RIGHT_SIZED:
-        return ProvisionStatus.RIGHT_SIZED;
-      case OVER_PROVISIONED:
-        if (status1 == ProvisionStatus.RIGHT_SIZED) {
-          return ProvisionStatus.RIGHT_SIZED;
-        }
-        return ProvisionStatus.OVER_PROVISIONED;
-      case UNDECIDED:
-        return status1;
-      default:
-        throw new IllegalArgumentException("Unsupported provision status " + status2 + " is provided.");
-    }
   }
 
   /**

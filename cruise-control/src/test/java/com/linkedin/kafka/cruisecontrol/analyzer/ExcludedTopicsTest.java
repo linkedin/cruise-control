@@ -306,7 +306,7 @@ public class ExcludedTopicsTest {
   @Test
   public void test() throws Exception {
     // Before the optimization, goals are expected to be undecided wrt their provision status.
-    assertEquals(ProvisionStatus.UNDECIDED, _goal.provisionStatus());
+    assertEquals(ProvisionStatus.UNDECIDED, _goal.provisionResponse().status());
     if (_exceptionClass == null) {
       Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = _clusterModel.getReplicaDistribution();
       Map<TopicPartition, ReplicaPlacementInfo> initLeaderDistribution = _clusterModel.getLeaderDistribution();
@@ -320,7 +320,7 @@ public class ExcludedTopicsTest {
                     _goal.optimize(_clusterModel, Collections.emptySet(), _optimizationOptions));
       }
       // The cluster cannot be underprovisioned, because _exceptionClass was null.
-      assertNotEquals(ProvisionStatus.UNDER_PROVISIONED, _goal.provisionStatus());
+      assertNotEquals(ProvisionStatus.UNDER_PROVISIONED, _goal.provisionResponse().status());
       // Generated proposals cannot have the excluded topic.
       if (!excludedTopics.isEmpty()) {
         Set<ExecutionProposal> goalProposals =
@@ -341,7 +341,7 @@ public class ExcludedTopicsTest {
       _expected.expect(_exceptionClass);
       assertTrue("Excluded Topics Test failed to optimize with excluded topics.",
           _goal.optimize(_clusterModel, Collections.emptySet(), _optimizationOptions));
-      assertEquals(ProvisionStatus.UNDER_PROVISIONED, _goal.provisionStatus());
+      assertEquals(ProvisionStatus.UNDER_PROVISIONED, _goal.provisionResponse().status());
     }
   }
 

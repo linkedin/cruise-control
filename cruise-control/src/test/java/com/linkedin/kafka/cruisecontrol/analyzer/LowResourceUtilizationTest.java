@@ -158,11 +158,11 @@ public class LowResourceUtilizationTest {
     Map<TopicPartition, ReplicaPlacementInfo> initLeaderDistribution = clusterModel.getLeaderDistribution();
 
     // Before the optimization, goals are expected to be undecided wrt their provision status.
-    assertEquals(ProvisionStatus.UNDECIDED, _resourceDistributionGoal.provisionStatus());
+    assertEquals(ProvisionStatus.UNDECIDED, _resourceDistributionGoal.provisionResponse().status());
     assertTrue("Failed to optimize " + _resourceDistributionGoal.name(),
         _resourceDistributionGoal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet())));
     // Since all optimizations succeed, it is guaranteed that all brokers have resource utilization under low utilization threshold.
-    assertEquals(ProvisionStatus.OVER_PROVISIONED, _resourceDistributionGoal.provisionStatus());
+    assertEquals(ProvisionStatus.OVER_PROVISIONED, _resourceDistributionGoal.provisionResponse().status());
 
     Set<ExecutionProposal> goalProposals =
         AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, clusterModel);

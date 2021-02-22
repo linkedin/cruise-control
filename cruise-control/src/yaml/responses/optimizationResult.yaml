@@ -39,6 +39,7 @@ OptimizerResult:
     - onDemandBalancednessScoreBefore
     - onDemandBalancednessScoreAfter
     - provisionStatus
+    - provisionRecommendation
   properties:
     numReplicaMovements:
       type: integer
@@ -88,3 +89,5 @@ OptimizerResult:
         - RIGHT_SIZED
         - OVER_PROVISIONED
         - UNDECIDED
+    provisionRecommendation:
+      type: string

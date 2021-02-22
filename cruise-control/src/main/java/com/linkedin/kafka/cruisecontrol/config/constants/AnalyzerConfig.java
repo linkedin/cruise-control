@@ -394,7 +394,7 @@ public class AnalyzerConfig {
    * <code>overprovisioned.max.replicas.per.broker</code>
    */
   public static final String OVERPROVISIONED_MAX_REPLICAS_PER_BROKER_CONFIG = "overprovisioned.max.replicas.per.broker";
-  public static final long DEFAULT_OVERPROVISIONED_MAX_REPLICAS_PER_BROKER = 800L;
+  public static final long DEFAULT_OVERPROVISIONED_MAX_REPLICAS_PER_BROKER = 1500L;
   public static final String OVERPROVISIONED_MAX_REPLICAS_PER_BROKER_DOC = "The maximum number of replicas that should reside on each "
       + "broker to consider a cluster as overprovisioned after balancing its replica distribution.";
 

@@ -194,7 +194,7 @@ public class ReplicationFactorChangeTest {
 
     _clusterModel.createOrDeleteReplicas(Collections.singletonMap(_replicationFactor, _topics), _brokersByRack, _rackByBroker, _cluster);
     // Before the optimization, goals are expected to be undecided wrt their provision status.
-    assertEquals(ProvisionStatus.UNDECIDED, _goal.provisionStatus());
+    assertEquals(ProvisionStatus.UNDECIDED, _goal.provisionResponse().status());
     if (_exceptionClass == null) {
       if (_expectedToOptimize) {
         assertTrue("Replication factor change test with goal " + _goal.name() + " failed.",
@@ -204,7 +204,7 @@ public class ReplicationFactorChangeTest {
                     _goal.optimize(_clusterModel, Collections.emptySet(), _optimizationOptions));
       }
       // The cluster cannot be underprovisioned, because _exceptionClass was null.
-      assertNotEquals(ProvisionStatus.UNDER_PROVISIONED, _goal.provisionStatus());
+      assertNotEquals(ProvisionStatus.UNDER_PROVISIONED, _goal.provisionResponse().status());
       Set<ExecutionProposal> goalProposals =
           AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, _clusterModel, true);
 

@@ -260,7 +260,8 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     _brokersAllowedReplicaMove = GoalUtils.aliveBrokersNotExcludedForReplicaMove(clusterModel, optimizationOptions);
     if (_brokersAllowedReplicaMove.isEmpty()) {
       // Handle the case when all alive brokers are excluded from replica moves.
-      throw new OptimizationFailureException("Cannot take any action as all alive brokers are excluded from replica moves.");
+      throw new OptimizationFailureException(String.format("[%s] All alive brokers are excluded from replica moves.", name()),
+                                             String.format("Add at least %d brokers.", clusterModel.maxReplicationFactor()));
     }
     // Initialize the average replicas on an alive broker.
     for (String topic : clusterModel.topics()) {

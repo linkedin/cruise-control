@@ -324,7 +324,7 @@ public class ExcludedBrokersForLeadershipTest {
   @Test
   public void test() throws Exception {
     // Before the optimization, goals are expected to be undecided wrt their provision status.
-    assertEquals(ProvisionStatus.UNDECIDED, _goal.provisionStatus());
+    assertEquals(ProvisionStatus.UNDECIDED, _goal.provisionResponse().status());
     if (_exceptionClass == null) {
       Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = _clusterModel.getReplicaDistribution();
       Map<TopicPartition, ReplicaPlacementInfo> initLeaderDistribution = _clusterModel.getLeaderDistribution();
@@ -338,7 +338,7 @@ public class ExcludedBrokersForLeadershipTest {
                     _goal.optimize(_clusterModel, Collections.emptySet(), _optimizationOptions));
       }
       // The cluster cannot be underprovisioned, because _exceptionClass was null.
-      assertNotEquals(ProvisionStatus.UNDER_PROVISIONED, _goal.provisionStatus());
+      assertNotEquals(ProvisionStatus.UNDER_PROVISIONED, _goal.provisionResponse().status());
       // Generated proposals cannot move leadership to the excluded brokers for leadership.
       if (!excludedBrokersForLeadership.isEmpty()) {
         Set<ExecutionProposal> goalProposals =
@@ -355,7 +355,7 @@ public class ExcludedBrokersForLeadershipTest {
       _expected.expect(_exceptionClass);
       assertTrue("Failed to optimize with excluded brokers for leadership.",
                  _goal.optimize(_clusterModel, Collections.emptySet(), _optimizationOptions));
-      assertEquals(ProvisionStatus.UNDER_PROVISIONED, _goal.provisionStatus());
+      assertEquals(ProvisionStatus.UNDER_PROVISIONED, _goal.provisionResponse().status());
     }
   }
 

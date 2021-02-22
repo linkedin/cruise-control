@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.common.Utils;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.exception.NotEnoughValidWindowsException;
@@ -58,7 +59,7 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
   private final boolean _excludeRecentlyRemovedBrokers;
   private final Map<String, Double> _balancednessCostByGoal;
   private volatile double _balancednessScore;
-  private volatile ProvisionStatus _provisionStatus;
+  private volatile ProvisionResponse _provisionResponse;
   private final OptimizationOptionsGenerator _optimizationOptionsGenerator;
   protected static final double BALANCEDNESS_SCORE_WITH_OFFLINE_REPLICAS = -1.0;
 
@@ -75,7 +76,7 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
                                                      config.getDouble(AnalyzerConfig.GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG),
                                                      config.getDouble(AnalyzerConfig.GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_CONFIG));
     _balancednessScore = MAX_BALANCEDNESS_SCORE;
-    _provisionStatus = ProvisionStatus.UNDECIDED;
+    _provisionResponse = new ProvisionResponse(ProvisionStatus.UNDECIDED);
     Map<String, Object> overrideConfigs = new HashMap<>(2);
     overrideConfigs.put(KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG, config);
     overrideConfigs.put(ADMIN_CLIENT_CONFIG, _kafkaCruiseControl.adminClient());
@@ -95,7 +96,7 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
    * @return Provision status of the cluster based on the latest goal violation check.
    */
   public ProvisionStatus provisionStatus() {
-    return _provisionStatus;
+    return _provisionResponse.status();
   }
 
   /**
@@ -125,7 +126,7 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
       setBalancednessWithOfflineReplicas();
     } else if (detectionStatus == AnomalyDetectionStatus.SKIP_EXECUTOR_NOT_READY) {
       // An ongoing execution might indicate a cluster expansion/shrinking. Hence, the detector avoids reporting a stale provision status.
-      _provisionStatus = ProvisionStatus.UNDECIDED;
+      _provisionResponse = new ProvisionResponse(ProvisionStatus.UNDECIDED);
     }
 
     return detectionStatus;
@@ -160,7 +161,7 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
       Set<Integer> excludedBrokersForReplicaMove = _excludeRecentlyRemovedBrokers ? executorState.recentlyRemovedBrokers()
                                                                                   : Collections.emptySet();
 
-      ProvisionStatus provisionStatus = ProvisionStatus.UNDECIDED;
+      ProvisionResponse provisionResponse = new ProvisionResponse(ProvisionStatus.UNDECIDED);
       for (Goal goal : _detectionGoals) {
         if (_kafkaCruiseControl.loadMonitor().meetCompletenessRequirements(goal.clusterModelCompletenessRequirements())) {
           LOG.debug("Detecting if {} is violated.", goal.name());
@@ -187,14 +188,15 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
         } else {
           LOG.warn("Skipping goal violation detection for {} because load completeness requirement is not met.", goal);
         }
-        provisionStatus = AnalyzerUtils.aggregateProvisionStatus(provisionStatus, goal.provisionStatus());
+        provisionResponse.aggregate(goal.provisionResponse());
       }
+      _provisionResponse = provisionResponse;
       Map<Boolean, List<String>> violatedGoalsByFixability = goalViolations.violatedGoalsByFixability();
       if (!violatedGoalsByFixability.isEmpty()) {
+        goalViolations.setProvisionResponse(_provisionResponse);
         _anomalies.add(goalViolations);
       }
       refreshBalancednessScore(violatedGoalsByFixability);
-      _provisionStatus = provisionStatus;
     } catch (NotEnoughValidWindowsException nevwe) {
       LOG.debug("Skipping goal violation detection because there are not enough valid windows.", nevwe);
     } catch (KafkaCruiseControlException kcce) {
@@ -235,7 +237,7 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
 
   protected void setBalancednessWithOfflineReplicas() {
     _balancednessScore = BALANCEDNESS_SCORE_WITH_OFFLINE_REPLICAS;
-    _provisionStatus = ProvisionStatus.UNDECIDED;
+    _provisionResponse = new ProvisionResponse(ProvisionStatus.UNDECIDED);
   }
 
   protected void refreshBalancednessScore(Map<Boolean, List<String>> violatedGoalsByFixability) {

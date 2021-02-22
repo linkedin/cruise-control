@@ -55,6 +55,8 @@ public class OptimizerResult {
   private static final String ON_DEMAND_BALANCEDNESS_SCORE_BEFORE = "onDemandBalancednessScoreBefore";
   @JsonResponseField
   private static final String PROVISION_STATUS = "provisionStatus";
+  @JsonResponseField
+  private static final String PROVISION_RECOMMENDATION = "provisionRecommendation";
   private static final String VIOLATED = "VIOLATED";
   private static final String FIXED = "FIXED";
   private static final String NO_ACTION = "NO-ACTION";
@@ -71,7 +73,7 @@ public class OptimizerResult {
   private final OptimizationOptions _optimizationOptions;
   private final double _onDemandBalancednessScoreBefore;
   private final double _onDemandBalancednessScoreAfter;
-  private final ProvisionStatus _provisionStatus;
+  private final ProvisionResponse _provisionResponse;
 
   OptimizerResult(LinkedHashMap<Goal, ClusterModelStats> statsByGoalPriority,
                   Set<String> violatedGoalNamesBeforeOptimization,
@@ -84,7 +86,7 @@ public class OptimizerResult {
                   Map<Integer, String> capacityEstimationInfoByBrokerId,
                   OptimizationOptions optimizationOptions,
                   Map<String, Double> balancednessCostByGoal,
-                  ProvisionStatus provisionStatus) {
+                  ProvisionResponse provisionResponse) {
     _clusterModelStatsComparatorByGoalName = new LinkedHashMap<>(statsByGoalPriority.size());
     _statsByGoalName = new LinkedHashMap<>(statsByGoalPriority.size());
     for (Map.Entry<Goal, ClusterModelStats> entry : statsByGoalPriority.entrySet()) {
@@ -106,7 +108,7 @@ public class OptimizerResult {
     // Populate on-demand balancedness score before and after.
     _onDemandBalancednessScoreBefore = onDemandBalancednessScore(balancednessCostByGoal, _violatedGoalNamesBeforeOptimization);
     _onDemandBalancednessScoreAfter = onDemandBalancednessScore(balancednessCostByGoal, _violatedGoalNamesAfterOptimization);
-    _provisionStatus = provisionStatus;
+    _provisionResponse = provisionResponse;
   }
 
   private double onDemandBalancednessScore(Map<String, Double> balancednessCostByGoal, Set<String> violatedGoals) {
@@ -261,15 +263,17 @@ public class OptimizerResult {
    */
   public String getProposalSummary() {
     List<Number> moveStats = getMovementStats();
+    String recommendation = _provisionResponse.recommendation();
     return String.format("%n%nOptimization has %d inter-broker replica(%d MB) moves, %d intra-broker replica(%d MB) moves"
                          + " and %d leadership moves with a cluster model of %d recent windows and %.3f%% of the partitions"
                          + " covered.%nExcluded Topics: %s.%nExcluded Brokers For Leadership: %s.%nExcluded Brokers For "
-                         + "Replica Move: %s.%nCounts: %s%nOn-demand Balancedness Score Before (%.3f) After(%.3f).%nProvision Status: %s.",
+                         + "Replica Move: %s.%nCounts: %s%nOn-demand Balancedness Score Before (%.3f) After(%.3f).%nProvision Status: %s.%s",
                          moveStats.get(0).intValue(), moveStats.get(1).longValue(), moveStats.get(2).intValue(),
                          moveStats.get(3).longValue(), moveStats.get(4).intValue(), _clusterModelStats.numWindows(),
                          _clusterModelStats.monitoredPartitionsPercentage(), excludedTopics(),
                          excludedBrokersForLeadership(), excludedBrokersForReplicaMove(), _clusterModelStats.toStringCounts(),
-                         _onDemandBalancednessScoreBefore, _onDemandBalancednessScoreAfter, _provisionStatus);
+                         _onDemandBalancednessScoreBefore, _onDemandBalancednessScoreAfter, _provisionResponse.status(),
+                         recommendation.isEmpty() ? "" : String.format("%nProvision Recommendation: %s.", recommendation));
   }
 
   /**
@@ -290,7 +294,8 @@ public class OptimizerResult {
     ret.put(EXCLUDED_BROKERS_FOR_REPLICA_MOVE, excludedBrokersForReplicaMove());
     ret.put(ON_DEMAND_BALANCEDNESS_SCORE_BEFORE, _onDemandBalancednessScoreBefore);
     ret.put(ON_DEMAND_BALANCEDNESS_SCORE_AFTER, _onDemandBalancednessScoreAfter);
-    ret.put(PROVISION_STATUS, _provisionStatus);
+    ret.put(PROVISION_STATUS, _provisionResponse.status());
+    ret.put(PROVISION_RECOMMENDATION, _provisionResponse.recommendation());
     return ret;
   }
 }
