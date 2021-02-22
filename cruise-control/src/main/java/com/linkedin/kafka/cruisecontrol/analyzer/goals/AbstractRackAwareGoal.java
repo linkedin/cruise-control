@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -130,7 +131,11 @@ public abstract class AbstractRackAwareGoal extends AbstractGoal {
       if (maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers,
                                     ActionType.INTER_BROKER_REPLICA_MOVEMENT, optimizedGoals, optimizationOptions) == null) {
         if (throwExceptionIfCannotMove) {
-          throw new OptimizationFailureException(String.format("Cannot move replica %s to any broker in %s", replica, eligibleBrokers));
+          Set<String> partitionRackIds = clusterModel.partition(replica.topicPartition()).partitionBrokers()
+                                                     .stream().map(partitionBroker -> partitionBroker.rack().id()).collect(Collectors.toSet());
+
+          throw new OptimizationFailureException(String.format("[%s] Cannot move %s to %s.", name(), replica, eligibleBrokers),
+                                                 String.format("Add a broker to a rack other than %s.", partitionRackIds));
         }
         LOG.debug("Cannot move replica {} to any broker in {}", replica, eligibleBrokers);
       }

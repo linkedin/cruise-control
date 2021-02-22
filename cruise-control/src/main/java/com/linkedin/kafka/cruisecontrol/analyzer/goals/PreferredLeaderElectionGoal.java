@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -34,6 +35,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_
  */
 public class PreferredLeaderElectionGoal implements Goal {
   private static final Logger LOG = LoggerFactory.getLogger(PreferredLeaderElectionGoal.class);
+  private final ProvisionResponse _provisionResponse;
   private final boolean _skipUrpDemotion;
   private final boolean _excludeFollowerDemotion;
   private Cluster _kafkaCluster;
@@ -48,6 +50,7 @@ public class PreferredLeaderElectionGoal implements Goal {
     if (skipUrpDemotion && kafkaCluster == null) {
       throw new IllegalArgumentException("Cluster information is not provided.");
     }
+    _provisionResponse = new ProvisionResponse(ProvisionStatus.UNDECIDED);
     _skipUrpDemotion = skipUrpDemotion;
     _excludeFollowerDemotion = excludeFollowerDemotion;
     _kafkaCluster = kafkaCluster;
@@ -198,7 +201,12 @@ public class PreferredLeaderElectionGoal implements Goal {
   @Override
   public ProvisionStatus provisionStatus() {
     // Provision status computation is not relevant to PLE goal.
-    return ProvisionStatus.UNDECIDED;
+    return provisionResponse().status();
+  }
+
+  @Override
+  public ProvisionResponse provisionResponse() {
+    return _provisionResponse;
   }
 
   @Override

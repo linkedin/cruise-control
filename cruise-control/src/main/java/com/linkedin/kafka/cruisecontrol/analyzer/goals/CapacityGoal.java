@@ -153,10 +153,23 @@ public abstract class CapacityGoal extends AbstractGoal {
     double allowedCapacity = capacity * _balancingConstraint.capacityThreshold(resource());
 
     if (allowedCapacity < existingUtilization) {
+      Set<Integer> brokersAllowedReplicaMove = GoalUtils.aliveBrokersNotExcludedForReplicaMove(clusterModel, optimizationOptions);
+      if (brokersAllowedReplicaMove.isEmpty()) {
+        // Handle the case when all alive brokers are excluded from replica moves.
+        throw new OptimizationFailureException(String.format("[%s] All alive brokers are excluded from replica moves.", name()),
+                                               String.format("Add at least %d brokers.", clusterModel.maxReplicationFactor()));
+      }
+
+      // Identify a typical broker capacity to be used in recommendations in case the cluster is under-provisioned.
+      int typicalBrokerId = brokersAllowedReplicaMove.iterator().next();
+      double typicalCapacity = clusterModel.broker(typicalBrokerId).capacityFor(resource());
+      double missingCapacity = existingUtilization - allowedCapacity;
+      int numBrokersToAdd = (int) (missingCapacity / (typicalCapacity * _balancingConstraint.capacityThreshold(resource())));
+
       throw new OptimizationFailureException(
-          String.format("[%s] Insufficient healthy cluster capacity for resource: %s existing cluster utilization %f allowed "
-                            + "capacity %f (capacity threshold: %f).", name(), resource(), existingUtilization, allowedCapacity,
-                        _balancingConstraint.capacityThreshold(resource())));
+          String.format("[%s] Insufficient capacity for %s (Utilization %.2f, Allowed Capacity %.2f, Threshold: %.2f).", name(), resource(),
+                        existingUtilization, allowedCapacity, _balancingConstraint.capacityThreshold(resource())),
+          String.format("Add at least %d brokers with the same capacity (%.2f) as broker-%d.", numBrokersToAdd, typicalCapacity, typicalBrokerId));
     }
 
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
@@ -219,11 +232,9 @@ public abstract class CapacityGoal extends AbstractGoal {
 
         if (!broker.host().replicas().isEmpty() && utilization > capacityLimit) {
           // The utilization of the host for the resource is over the capacity limit.
-          String mitigation = GoalUtils.mitigationForOptimizationFailures(optimizationOptions);
-          throw new OptimizationFailureException(String.format("Optimization for goal %s failed because %s utilization "
-                                                               + "for host %s is %f which is above capacity limit %f. %s",
-                                                               name(), resource, broker.host().name(), utilization,
-                                                               capacityLimit, mitigation));
+          throw new OptimizationFailureException(String.format("[%s] %s utilization for host %s (%.2f) is above capacity limit (%.2f).",
+                                                               name(), resource, broker.host().name(), utilization, capacityLimit),
+                                                 "Add at least one broker.");
         }
       }
       // Broker-level violation check.
@@ -233,11 +244,9 @@ public abstract class CapacityGoal extends AbstractGoal {
 
         if (!broker.replicas().isEmpty() && utilization > capacityLimit) {
           // The utilization of the broker for the resource is over the capacity limit.
-          String mitigation = GoalUtils.mitigationForOptimizationFailures(optimizationOptions);
-          throw new OptimizationFailureException(String.format("Optimization for goal %s failed because %s utilization "
-                                                               + "for broker %d is %f which is above capacity limit %f. %s",
-                                                               name(), resource, broker.id(), utilization, capacityLimit,
-                                                               mitigation));
+          throw new OptimizationFailureException(String.format("[%s] %s utilization for broker %d (%.2f) is above capacity limit (%.2f).",
+                                                               name(), resource, broker.id(), utilization, capacityLimit),
+                                                 "Add at least one broker.");
         }
       }
     }
@@ -345,23 +354,23 @@ public abstract class CapacityGoal extends AbstractGoal {
     // 1. Capacity violation check -- note that this check also ensures that no replica resides on dead brokers.
     if (utilizationOverLimit) {
       Resource currentResource = resource();
-      String mitigation = GoalUtils.mitigationForOptimizationFailures(optimizationOptions);
       if (!currentResource.isHostResource()) {
         // Utilization is above the capacity limit after all replicas in the given source broker were checked.
-        throw new OptimizationFailureException(
-            String.format("[%s] Violated capacity limit of %f via broker utilization of %f with broker %d for resource %s. %s",
-                          name(), brokerCapacityLimit, broker.load().expectedUtilizationFor(currentResource),
-                          broker.id(), currentResource, mitigation));
+        throw new OptimizationFailureException(String.format("[%s] Utilization (%.2f) of broker %d violated capacity limit (%.2f) for resource %s.",
+                                                             name(), broker.load().expectedUtilizationFor(currentResource), broker.id(),
+                                                             brokerCapacityLimit, currentResource),
+                                               "Add at least one broker.");
       } else {
-        throw new OptimizationFailureException(
-            String.format("[%s] Violated capacity limit of %f via host utilization of %f with hostname %s for resource %s. %s",
-                          name(), hostCapacityLimit, broker.host().load().expectedUtilizationFor(currentResource),
-                          broker.host().name(), currentResource, mitigation));
+        throw new OptimizationFailureException(String.format("[%s] Utilization (%.2f) of host %s violated capacity limit (%.2f) for resource %s.",
+                                                             name(), broker.host().load().expectedUtilizationFor(currentResource),
+                                                             broker.host().name(), hostCapacityLimit, currentResource),
+                                               "Add at least one host.");
       }
     }
     // 2. Ensure that no offline replicas remain in the broker.
     if (!broker.currentOfflineReplicas().isEmpty()) {
-      throw new OptimizationFailureException("Failed to remove offline replicas from broker " + broker.id() + ".");
+      throw new OptimizationFailureException(String.format("[%s] Cannot remove offline replicas from broker %d.", name(), broker.id()),
+                                             "Add at least one broker.");
     }
   }
 

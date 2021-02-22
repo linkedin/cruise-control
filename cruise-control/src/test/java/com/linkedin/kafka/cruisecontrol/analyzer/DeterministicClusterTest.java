@@ -268,7 +268,7 @@ public class DeterministicClusterTest {
           OptimizationVerifier.executeGoalsFor(_balancingConstraint, _cluster, _goalNameByPriority, _verifications));
     } catch (OptimizationFailureException optimizationFailureException) {
       // This exception is thrown if rebalance fails due to alive brokers having insufficient capacity.
-      if (!optimizationFailureException.getMessage().contains("Insufficient healthy cluster capacity for resource")) {
+      if (!optimizationFailureException.getMessage().contains("Insufficient capacity for ")) {
         throw optimizationFailureException;
       }
     }

@@ -148,8 +148,8 @@ public class ExcludedBrokersForReplicaMoveTest {
     p.add(params(0, ReplicaCapacityGoal.class, excludeB1, null, unbalanced(), noDeadBroker, true, false));
     // Test: With single excluded broker, satisfiable cluster, one dead broker (No exception, Generates proposals, Expected to look optimized)
     p.add(params(1, ReplicaCapacityGoal.class, excludeB1, null, unbalanced(), deadBroker0, true, true));
-    // Test: With all brokers excluded, no dead brokers, not satisfiable (No exception, No proposal, Expected to look optimized)
-    p.add(params(2, ReplicaCapacityGoal.class, excludeAllBrokers, null, unbalanced(), noDeadBroker, true, false));
+    // Test: With all brokers excluded, no dead brokers, not satisfiable (Exception)
+    p.add(params(2, ReplicaCapacityGoal.class, excludeAllBrokers, OptimizationFailureException.class, unbalanced(), noDeadBroker, null, null));
     // Test: With all brokers excluded, one dead broker, not satisfiable (Exception)
     p.add(params(3, ReplicaCapacityGoal.class, excludeAllBrokers, OptimizationFailureException.class, unbalanced(), deadBroker0, null, null));
 
@@ -364,7 +364,7 @@ public class ExcludedBrokersForReplicaMoveTest {
   @Test
   public void test() throws Exception {
     // Before the optimization, goals are expected to be undecided wrt their provision status.
-    assertEquals(ProvisionStatus.UNDECIDED, _goal.provisionStatus());
+    assertEquals(ProvisionStatus.UNDECIDED, _goal.provisionResponse().status());
     if (_exceptionClass == null) {
       Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = _clusterModel.getReplicaDistribution();
       Map<TopicPartition, ReplicaPlacementInfo> initLeaderDistribution = _clusterModel.getLeaderDistribution();
@@ -378,7 +378,7 @@ public class ExcludedBrokersForReplicaMoveTest {
                     _goal.optimize(_clusterModel, Collections.emptySet(), _optimizationOptions));
       }
       // The cluster cannot be underprovisioned, because _exceptionClass was null.
-      assertNotEquals(ProvisionStatus.UNDER_PROVISIONED, _goal.provisionStatus());
+      assertNotEquals(ProvisionStatus.UNDER_PROVISIONED, _goal.provisionResponse().status());
       // Generated proposals cannot move replicas to the excluded brokers for replica move.
       if (!excludedBrokersForReplicaMove.isEmpty()) {
         Set<ExecutionProposal> goalProposals =
@@ -395,7 +395,7 @@ public class ExcludedBrokersForReplicaMoveTest {
       _expected.expect(_exceptionClass);
       assertTrue("Failed to optimize with excluded brokers for replica move.",
                  _goal.optimize(_clusterModel, Collections.emptySet(), _optimizationOptions));
-      assertEquals(ProvisionStatus.UNDER_PROVISIONED, _goal.provisionStatus());
+      assertEquals(ProvisionStatus.UNDER_PROVISIONED, _goal.provisionResponse().status());
     }
   }
 

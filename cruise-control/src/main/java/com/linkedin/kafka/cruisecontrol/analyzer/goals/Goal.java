@@ -6,6 +6,7 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
@@ -124,9 +125,16 @@ public interface Goal extends CruiseControlConfigurable {
   boolean isHardGoal();
 
   /**
+   * @deprecated Will be removed in a future release -- please use {@link #provisionResponse()}.
    * @return The {@link ProvisionStatus} of this goal.
    */
+  @Deprecated
   ProvisionStatus provisionStatus();
+
+  /**
+   * @return The {@link ProvisionResponse} of this goal.
+   */
+  ProvisionResponse provisionResponse();
 
   /**
    * A comparator that compares two cluster model stats.

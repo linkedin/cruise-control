@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
@@ -73,18 +74,33 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
     return _balancingConstraint.replicaBalancePercentage();
   }
 
+  /**
+   * Get the number of brokers that can be dropped if the given cluster is over-provisioned, {@code null} otherwise.
+   *
+   * @param clusterModel The state of the cluster.
+   * @return Number of brokers that can be dropped if the given cluster is over-provisioned, {@code null} otherwise.
+   */
+  private Integer numBrokersToDrop(ClusterModel clusterModel) {
+    int allowedNumBrokers = (int) (numInterestedReplicas(clusterModel) / _balancingConstraint.overprovisionedMaxReplicasPerBroker());
+    int numBrokersToDrop = _brokersAllowedReplicaMove.size() - allowedNumBrokers;
+
+    // Regardless of whether the cluster is balanced or not, it could be overprovisioned in terms of number of replicas per broker.
+    boolean isOverprovisioned = numBrokersToDrop > 0
+                                && clusterModel.aliveBrokers().stream().noneMatch(
+                                    b -> b.replicas().size() > _balancingConstraint.overprovisionedMaxReplicasPerBroker());
+    return isOverprovisioned ? numBrokersToDrop : null;
+  }
+
   @Override
   protected void updateGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) throws OptimizationFailureException {
     super.updateGoalState(clusterModel, optimizationOptions);
-    // Regardless of whether the cluster is balanced or not, it could be overprovisioned in terms of number of replicas per broker.
-    boolean isOverprovisioned = clusterModel.aliveBrokers().stream()
-                                            .noneMatch(broker -> broker.replicas().size()
-                                                                 > _balancingConstraint.overprovisionedMaxReplicasPerBroker());
-    if (isOverprovisioned) {
-      _provisionStatus = ProvisionStatus.OVER_PROVISIONED;
+    Integer numBrokersToDrop = numBrokersToDrop(clusterModel);
+    if (numBrokersToDrop != null) {
+      String recommendation = String.format("Remove at least %d brokers.", numBrokersToDrop);
+      _provisionResponse = new ProvisionResponse(ProvisionStatus.OVER_PROVISIONED, recommendation, name());
     } else if (_succeeded) {
       // The cluster is not overprovisioned and all brokers are within the upper and lower balance limits.
-      _provisionStatus = ProvisionStatus.RIGHT_SIZED;
+      _provisionResponse = new ProvisionResponse(ProvisionStatus.RIGHT_SIZED);
     }
   }
 

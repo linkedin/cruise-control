@@ -34,7 +34,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 /**
  * A util class for goals.
  */
-public class GoalUtils {
+public final class GoalUtils {
   // Intra-broker goals require a minimum number of valid windows to start self-healing. Goals that rely on topology or
   // just the latest window, require at least MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING valid windows. Whereas, if goals
   // rely on historical resource utilization, then they require at least Math.max(MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING,
@@ -272,9 +272,10 @@ public class GoalUtils {
     // Sanity check: No self-healing eligible replica should remain at a decommissioned broker or on broken disk.
     for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
       if (replica.isCurrentOffline()) {
-        throw new OptimizationFailureException(String.format(
-            "[%s] Self healing failed to move the replica %s from %s broker %d (contains %d replicas).",
-            goalName, replica, replica.broker().state(), replica.broker().id(), replica.broker().replicas().size()));
+        Broker broker = replica.broker();
+        throw new OptimizationFailureException(String.format("[%s] Cannot remove %s from %s broker %d (has %d replicas).", goalName,
+                                                             replica, broker.state(), broker.id(), broker.replicas().size()),
+                                               "Add at least one broker.");
       }
     }
   }
@@ -292,9 +293,9 @@ public class GoalUtils {
     for (Broker broker : clusterModel.brokersWithBadDisks()) {
       for (Replica replica : broker.replicas()) {
         if (!clusterModel.partition(replica.topicPartition()).canAssignReplicaToBroker(broker)) {
-          throw new OptimizationFailureException(String.format(
-              "[%s] A replica of partition %s has been moved back to broker %d, where it was originally hosted on a "
-              + "broken disk.", goalName, clusterModel.partition(replica.topicPartition()), replica.broker().id()));
+          throw new OptimizationFailureException(String.format("[%s] A replica of %s was moved back to broker %d with broken disk.", goalName,
+                                                               clusterModel.partition(replica.topicPartition()), replica.broker().id()),
+                                                 "Add at least one broker.");
         }
       }
     }
@@ -454,35 +455,36 @@ public class GoalUtils {
    */
   public static String mitigationForOptimizationFailures(OptimizationOptions optimizationOptions) {
     StringBuilder sb = new StringBuilder();
+    int mitigationId = 0;
 
     if (optimizationOptions.onlyMoveImmigrantReplicas()) {
-      sb.append(String.format("The optimization is limited to replicas to be added to/removed from brokers. Potential "
+      sb.append(String.format("[%d] The optimization is limited to replicas to be added to/removed from brokers. Potential "
                               + "mitigation: First, rebalance the cluster using %s endpoint with a superset of "
-                              + "hard-goals defined via %s config.%n", REBALANCE, HARD_GOALS_CONFIG));
+                              + "hard-goals defined via %s config.", ++mitigationId, REBALANCE, HARD_GOALS_CONFIG));
     }
     if (!optimizationOptions.requestedDestinationBrokerIds().isEmpty()) {
-      sb.append(String.format("The destination brokers are limited to %s. Potential mitigation: Relax the constraint "
-                              + "on destination brokers using %s parameter.%n",
+      sb.append(String.format("[%d] The destination brokers are limited to %s. Potential mitigation: Relax the constraint "
+                              + "on destination brokers using %s parameter.", ++mitigationId,
                               optimizationOptions.requestedDestinationBrokerIds(), DESTINATION_BROKER_IDS_PARAM));
     }
     if (!optimizationOptions.excludedBrokersForReplicaMove().isEmpty()) {
-      sb.append(String.format("The following brokers are excluded from replica moves %s. Potential mitigation:"
-                              + " Drop brokers from exclusion for replica move using %s endpoint.%n",
+      sb.append(String.format("[%d] The following brokers are excluded from replica moves %s. Potential mitigation:"
+                              + " Drop excluded brokers using %s endpoint.", ++mitigationId,
                               optimizationOptions.excludedBrokersForReplicaMove(), ADMIN));
     }
     if (!optimizationOptions.excludedBrokersForLeadership().isEmpty()) {
-      sb.append(String.format("The following brokers are excluded from leadership moves %s. Potential mitigation:"
-                              + " Drop brokers from exclusion for leadership move using %s endpoint.%n",
+      sb.append(String.format("[%d] The following brokers are excluded from leadership moves %s. Potential mitigation:"
+                              + " Drop brokers from exclusion for leadership move using %s endpoint.", ++mitigationId,
                               optimizationOptions.excludedBrokersForReplicaMove(), ADMIN));
     }
     if (!optimizationOptions.excludedTopics().isEmpty()) {
-      sb.append(String.format("There are %d topics excluded from replica move. Potential mitigation: Remove selected "
-                              + "topics from exclusion using %s parameter.%n", optimizationOptions.excludedTopics().size(),
+      sb.append(String.format("[%d] There are %d topics excluded from replica move. Potential mitigation: Remove selected "
+                              + "topics from exclusion using %s parameter.", ++mitigationId, optimizationOptions.excludedTopics().size(),
                               EXCLUDED_TOPICS_PARAM));
     }
 
     if (sb.length() > 0) {
-      sb.append(String.format("Then, re-run your original request.%n"));
+      sb.append("Then, re-run your original request.");
     }
 
     return sb.toString();
