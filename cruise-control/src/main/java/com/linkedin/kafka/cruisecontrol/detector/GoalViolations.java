@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RebalanceRunnable;
@@ -40,6 +41,7 @@ public class GoalViolations extends KafkaAnomaly {
   protected boolean _excludeRecentlyDemotedBrokers;
   protected boolean _excludeRecentlyRemovedBrokers;
   protected RebalanceRunnable _rebalanceRunnable;
+  protected ProvisionResponse _provisionResponse;
 
   /**
    * An anomaly to indicate goal violation(s).
@@ -55,6 +57,20 @@ public class GoalViolations extends KafkaAnomaly {
    */
   void addViolation(String goalName, boolean fixable) {
     _violatedGoalsByFixability.computeIfAbsent(fixable, k -> new ArrayList<>()).add(goalName);
+  }
+
+  /**
+   * @param provisionResponse Aggregated provision response corresponding to this goal violation.
+   */
+  public void setProvisionResponse(ProvisionResponse provisionResponse) {
+    _provisionResponse = provisionResponse;
+  }
+
+  /**
+   * @return Aggregated provision response corresponding to this goal violation.
+   */
+  public ProvisionResponse provisionResponse() {
+    return _provisionResponse;
   }
 
   /**
@@ -104,8 +120,9 @@ public class GoalViolations extends KafkaAnomaly {
     joiner = new StringJoiner(",");
     _violatedGoalsByFixability.getOrDefault(true, Collections.emptyList()).forEach(joiner::add);
     sb.append(joiner.toString());
-    sb.append(String.format("}, Exclude brokers recently (removed: %s demoted: %s)}",
-                            _excludeRecentlyRemovedBrokers, _excludeRecentlyDemotedBrokers));
+    sb.append(String.format("}, Exclude brokers recently (removed: %s demoted: %s)%s}",
+                            _excludeRecentlyRemovedBrokers, _excludeRecentlyDemotedBrokers,
+                            _provisionResponse == null ? "" : String.format(", Provision: %s", _provisionResponse)));
     return sb.toString();
   }
 

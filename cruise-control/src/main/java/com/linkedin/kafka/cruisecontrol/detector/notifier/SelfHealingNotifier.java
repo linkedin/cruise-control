@@ -113,7 +113,8 @@ public class SelfHealingNotifier implements AnomalyNotifier {
         return AnomalyNotificationResult.fix();
       }
       // If there are unfixable goals, do not self heal even when it is enabled and selfHealing goals include the unfixable goal.
-      LOG.warn("Skip self healing due to unfixable goals: {}", goalViolations.violatedGoalsByFixability().get(false));
+      LOG.warn("Self-healing is not possible due to unfixable goals: {}{}.", goalViolations.violatedGoalsByFixability().get(false),
+               goalViolations.provisionResponse() == null ? "" : String.format(", Provision: %s.", goalViolations.provisionResponse()));
     }
 
     return AnomalyNotificationResult.ignore();
