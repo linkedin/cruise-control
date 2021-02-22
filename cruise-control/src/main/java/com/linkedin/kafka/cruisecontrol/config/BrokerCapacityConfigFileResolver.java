@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -251,7 +252,7 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
   @SuppressWarnings("unchecked")
   private static Map<String, Double> getDiskCapacityByLogDir(Map<Resource, Object> brokerCapacity) {
     if (!isJBOD(brokerCapacity)) {
-      return null;
+      return Collections.emptyMap();
     }
 
     Map<String, String> stringDiskCapacityByLogDir = (Map<String, String>) brokerCapacity.get(Resource.DISK);
