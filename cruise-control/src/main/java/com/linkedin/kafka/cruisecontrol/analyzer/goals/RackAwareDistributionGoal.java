@@ -146,7 +146,7 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
     _balanceLimit = new BalanceLimit(clusterModel, optimizationOptions);
     int numExtraRacks = _balanceLimit.numAliveRacksAllowedReplicaMoves() - clusterModel.maxReplicationFactor();
     if (numExtraRacks >= _balancingConstraint.overprovisionedMinExtraRacks()) {
-      int numRacksToDrop = numExtraRacks - _balancingConstraint.overprovisionedMinExtraRacks() - 1;
+      int numRacksToDrop = numExtraRacks - _balancingConstraint.overprovisionedMinExtraRacks() + 1;
       String recommendation = String.format("Reduce rack diversity by at least %d racks.", numRacksToDrop);
       _provisionResponse = new ProvisionResponse(ProvisionStatus.OVER_PROVISIONED, recommendation, name());
     }
