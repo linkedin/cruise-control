@@ -273,7 +273,7 @@ public class OptimizerResult {
                          _clusterModelStats.monitoredPartitionsPercentage(), excludedTopics(),
                          excludedBrokersForLeadership(), excludedBrokersForReplicaMove(), _clusterModelStats.toStringCounts(),
                          _onDemandBalancednessScoreBefore, _onDemandBalancednessScoreAfter, _provisionResponse.status(),
-                         recommendation.isEmpty() ? "" : String.format("%nProvision Recommendation: %s.", recommendation));
+                         recommendation.isEmpty() ? "" : String.format("%nProvision Recommendation: %s", recommendation));
   }
 
   /**
