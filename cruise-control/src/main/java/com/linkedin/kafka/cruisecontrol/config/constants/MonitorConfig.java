@@ -578,11 +578,13 @@ public class MonitorConfig {
                     .define(SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG,
                             ConfigDef.Type.LONG,
                             DEFAULT_SOCKET_CONNECTION_SETUP_TIMEOUT_MS,
+                            atLeast(0),
                             ConfigDef.Importance.MEDIUM,
                             SOCKET_CONNECTION_SETUP_TIMEOUT_MS_DOC)
                     .define(SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_CONFIG,
                             ConfigDef.Type.LONG,
                             DEFAULT_SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS,
+                            atLeast(0),
                             ConfigDef.Importance.MEDIUM,
                             SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_DOC);
   }

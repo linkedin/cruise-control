@@ -24,8 +24,6 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampleStore;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionEntity;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -36,10 +34,10 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DescribeLogDirsResult;
-import org.apache.kafka.clients.admin.LogDirDescription;
-import org.apache.kafka.clients.admin.ReplicaInfo;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.protocol.Errors;
+import org.apache.kafka.common.requests.DescribeLogDirsResponse;
 import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
@@ -528,13 +526,20 @@ public class LoadMonitorTest {
             .anyTimes();
     EasyMock.replay(mockMetadataClient);
 
+    // Create mock DescribeLogDirsResult
+    DescribeLogDirsResult mockDescribeLogDirsResult = EasyMock.mock(DescribeLogDirsResult.class);
+    EasyMock.expect(mockDescribeLogDirsResult.values())
+            .andReturn(getDescribeLogDirsResultValues())
+            .anyTimes();
+    EasyMock.replay(mockDescribeLogDirsResult);
+
     // Create mock admin client.
     AdminClient mockAdminClient = EasyMock.mock(AdminClient.class);
     EasyMock.expect(mockAdminClient.describeLogDirs(Arrays.asList(0, 1)))
-            .andReturn(getDescribeLogDirsResult())
+            .andReturn(mockDescribeLogDirsResult)
             .anyTimes();
     EasyMock.expect(mockAdminClient.describeLogDirs(Arrays.asList(1, 0)))
-            .andReturn(getDescribeLogDirsResult())
+            .andReturn(mockDescribeLogDirsResult)
             .anyTimes();
     EasyMock.replay(mockAdminClient);
 
@@ -574,38 +579,30 @@ public class LoadMonitorTest {
                   "Load monitor state did not get updated within the time limit", WAIT_DEADLINE_MS, CHECK_MS);
   }
 
-  private DescribeLogDirsResult getDescribeLogDirsResult() {
-    try {
-      // Reflectively set DescribeLogDirsResult's constructor from package private to public.
-      Constructor<DescribeLogDirsResult> constructor = DescribeLogDirsResult.class.getDeclaredConstructor(Map.class);
-      constructor.setAccessible(true);
+  private Map<Integer, KafkaFuture<Map<String, DescribeLogDirsResponse.LogDirInfo>>> getDescribeLogDirsResultValues() {
 
-      Map<Integer, KafkaFuture<Map<String, LogDirDescription>>> futureByBroker = new HashMap<>();
-      Map<String, LogDirDescription> logdirInfoBylogdir =  new HashMap<>();
-      Map<TopicPartition, ReplicaInfo> replicaInfoByPartition = new HashMap<>();
-      replicaInfoByPartition.put(T0P0, new ReplicaInfo(0, 0, false));
-      replicaInfoByPartition.put(T0P1, new ReplicaInfo(0, 0, false));
-      replicaInfoByPartition.put(T1P0, new ReplicaInfo(0, 0, false));
-      replicaInfoByPartition.put(T1P1, new ReplicaInfo(0, 0, false));
-      logdirInfoBylogdir.put("/tmp/kafka-logs", new LogDirDescription(null, replicaInfoByPartition));
-      futureByBroker.put(0, completedFuture(logdirInfoBylogdir));
+    Map<Integer, KafkaFuture<Map<String, DescribeLogDirsResponse.LogDirInfo>>> futureByBroker = new HashMap<>();
+    Map<String, DescribeLogDirsResponse.LogDirInfo> logdirInfoBylogdir =  new HashMap<>();
+    Map<TopicPartition, DescribeLogDirsResponse.ReplicaInfo> replicaInfoByPartition = new HashMap<>();
+    replicaInfoByPartition.put(T0P0, new DescribeLogDirsResponse.ReplicaInfo(0, 0, false));
+    replicaInfoByPartition.put(T0P1, new DescribeLogDirsResponse.ReplicaInfo(0, 0, false));
+    replicaInfoByPartition.put(T1P0, new DescribeLogDirsResponse.ReplicaInfo(0, 0, false));
+    replicaInfoByPartition.put(T1P1, new DescribeLogDirsResponse.ReplicaInfo(0, 0, false));
+    logdirInfoBylogdir.put("/tmp/kafka-logs", new DescribeLogDirsResponse.LogDirInfo(Errors.NONE, replicaInfoByPartition));
+    futureByBroker.put(0, completedFuture(logdirInfoBylogdir));
 
-      logdirInfoBylogdir =  new HashMap<>();
-      replicaInfoByPartition = new HashMap<>();
-      replicaInfoByPartition.put(T0P0, new ReplicaInfo(0, 0, false));
-      replicaInfoByPartition.put(T0P1, new ReplicaInfo(0, 0, false));
-      replicaInfoByPartition.put(T1P0, new ReplicaInfo(0, 0, false));
-      logdirInfoBylogdir.put("/tmp/kafka-logs-1", new LogDirDescription(null, replicaInfoByPartition));
-      logdirInfoBylogdir.put("/tmp/kafka-logs-2",
-                             new LogDirDescription(null,
-                                                                    Collections.singletonMap(T1P1,
-                                                                                             new ReplicaInfo(0, 0, false))));
-      futureByBroker.put(1, completedFuture(logdirInfoBylogdir));
-      return constructor.newInstance(futureByBroker);
-    } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-      // Let it go.
-    }
-    return null;
+    logdirInfoBylogdir =  new HashMap<>();
+    replicaInfoByPartition = new HashMap<>();
+    replicaInfoByPartition.put(T0P0, new DescribeLogDirsResponse.ReplicaInfo(0, 0, false));
+    replicaInfoByPartition.put(T0P1, new DescribeLogDirsResponse.ReplicaInfo(0, 0, false));
+    replicaInfoByPartition.put(T1P0, new DescribeLogDirsResponse.ReplicaInfo(0, 0, false));
+    logdirInfoBylogdir.put("/tmp/kafka-logs-1", new DescribeLogDirsResponse.LogDirInfo(Errors.NONE, replicaInfoByPartition));
+    logdirInfoBylogdir.put("/tmp/kafka-logs-2",
+            new DescribeLogDirsResponse.LogDirInfo(Errors.NONE,
+                    Collections.singletonMap(T1P1,
+                            new DescribeLogDirsResponse.ReplicaInfo(0, 0, false))));
+    futureByBroker.put(1, completedFuture(logdirInfoBylogdir));
+    return futureByBroker;
   }
 
   private static class TestContext {
