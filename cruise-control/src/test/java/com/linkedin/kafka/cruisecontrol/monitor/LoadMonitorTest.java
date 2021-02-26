@@ -598,9 +598,9 @@ public class LoadMonitorTest {
     replicaInfoByPartition.put(T1P0, new DescribeLogDirsResponse.ReplicaInfo(0, 0, false));
     logdirInfoBylogdir.put("/tmp/kafka-logs-1", new DescribeLogDirsResponse.LogDirInfo(Errors.NONE, replicaInfoByPartition));
     logdirInfoBylogdir.put("/tmp/kafka-logs-2",
-            new DescribeLogDirsResponse.LogDirInfo(Errors.NONE,
-                    Collections.singletonMap(T1P1,
-                            new DescribeLogDirsResponse.ReplicaInfo(0, 0, false))));
+                           new DescribeLogDirsResponse.LogDirInfo(Errors.NONE,
+                                                                  Collections.singletonMap(T1P1,
+                                                                                           new DescribeLogDirsResponse.ReplicaInfo(0, 0, false))));
     futureByBroker.put(1, completedFuture(logdirInfoBylogdir));
     return futureByBroker;
   }
