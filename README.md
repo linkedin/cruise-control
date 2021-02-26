@@ -5,7 +5,7 @@ Cruise Control for Apache Kafka
 
 ### Introduction ###
   Cruise Control is a product that helps run Apache Kafka clusters at large scale. Due to the popularity of 
-  Apache Kafka, many companies have bigger and bigger Kafka clusters. At LinkedIn, we have 2.6K+ Kafka brokers, 
+  Apache Kafka, many companies have bigger and bigger Kafka clusters. At LinkedIn, we have ~7K+ Kafka brokers, 
   which means broker deaths are an almost daily occurrence and balancing the workload of Kafka also becomes a big overhead. 
   
   Kafka Cruise Control is designed to address this operation scalability issue.
@@ -34,21 +34,24 @@ Cruise Control for Apache Kafka
     * Broker failure detection
     * Metric anomaly detection
     * Disk failure detection (not available in `kafka_0_11_and_1_0` branch)
+    * Slow broker detection (not available in `kafka_0_11_and_1_0` branch)
   
   * Admin operations, including:
     * Add brokers
-    * Decommission brokers
+    * Remove brokers
     * Demote brokers
     * Rebalance the cluster
     * Fix offline replicas (not available in `kafka_0_11_and_1_0` branch)
     * Perform preferred leader election (PLE)
     * Fix offline replicas
+    * Adjust replication factor
 
 ### Environment Requirements
 * The current `master` branch of Cruise Control is compatible with Apache Kafka `2.0`, `2.1`, `2.2`, and `2.3` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.0.*`)
 * The `kafka_0_11_and_1_0` branch of Cruise Control is compatible with Apache Kafka `0.11.0.0`, `1.0`, and `1.1` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `0.1.*`)
 * The `migrate_to_kafka_2_4` (development) branch of Cruise Control is compatible with Apache Kafka `2.4` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.4.*`)
-* The `migrate_to_kafka_2_5` (development) branch of Cruise Control is compatible with Apache Kafka `2.5` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.*`) and `2.6` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.11+`)
+* The `migrate_to_kafka_2_5` (development) branch of Cruise Control is compatible with Apache Kafka `2.5` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.*`),
+  `2.6` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.11+`), and `2.7` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.36+`)
 * `message.format.version` `0.10.0` and above is needed
 * The `master` and `kafka_0_11_and_1_0` branch compile with `Scala 2.11`
 * The development branches `migrate_to_kafka_2_4` and `migrate_to_kafka_2_5` compile with `Scala 2.12`
@@ -185,6 +188,7 @@ The anomaly notifier allows users to be notified when an anomaly is detected. An
  * Slow brokers (not available in `kafka_0_11_and_1_0` branch)
  * Topic replication factor anomaly (not available in `kafka_0_11_and_1_0` branch)
  * Topic partition size anomaly (not available in `kafka_0_11_and_1_0` branch)
+ * Maintenance Events (not available in `kafka_0_11_and_1_0` branch)
  
 In addition to anomaly notifications, users can enable actions to be taken in response to an anomaly by turning self-healing
 on for the relevant anomaly detectors. Multiple anomaly detectors work in harmony using distinct mitigation mechanisms.
