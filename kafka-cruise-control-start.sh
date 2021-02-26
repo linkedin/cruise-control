@@ -82,7 +82,7 @@ if [ -z "$KAFKA_LOG4J_OPTS" ]; then
   LOG4J_DIR="$base_dir/config/log4j.properties"
   # If Cygwin is detected, LOG4J_DIR is converted to Windows format.
   (( CYGWIN )) && LOG4J_DIR=$(cygpath --path --mixed "${LOG4J_DIR}")
-  KAFKA_LOG4J_OPTS="-Dlog4j.configuration=file:${LOG4J_DIR}"
+  KAFKA_LOG4J_OPTS="-Dlog4j.configurationFile=file:${LOG4J_DIR}"
 else
   # create logs directory
   if [ ! -d "$LOG_DIR" ]; then
