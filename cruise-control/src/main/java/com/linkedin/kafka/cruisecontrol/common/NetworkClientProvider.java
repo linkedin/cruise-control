@@ -33,6 +33,8 @@ public interface NetworkClientProvider {
                                     int socketSendBuffer,
                                     int socketReceiveBuffer,
                                     int defaultRequestTimeoutMs,
+                                    long connectionSetupTimeoutMs,
+                                    long connectionSetupTimeoutMaxMs,
                                     boolean discoverBrokerVersions,
                                     ApiVersions apiVersions);
 }
