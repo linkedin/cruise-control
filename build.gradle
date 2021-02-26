@@ -157,7 +157,7 @@ project(':cruise-control-core') {
     }
     compile "org.slf4j:slf4j-api:1.7.30"
     compile "org.apache.logging.log4j:log4j-slf4j-impl:2.14.0"
-    compile 'junit:junit:4.13'
+    compile 'junit:junit:4.13.1'
     compile 'org.apache.commons:commons-math3:3.6.1'
     compile 'org.eclipse.jetty:jetty-servlet:9.4.35.v20201120'
     implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'
@@ -240,16 +240,16 @@ project(':cruise-control') {
     compile "org.apache.kafka:kafka_2.12:$kafkaVersion"
     compile "org.apache.kafka:kafka-clients:$kafkaVersion"
     compile "org.scala-lang:scala-library:2.12.10"
-    compile 'junit:junit:4.13'
+    compile 'junit:junit:4.13.1'
     compile 'org.apache.commons:commons-math3:3.6.1'
     compile 'org.apache.httpcomponents:httpclient:4.5.12'
     compile 'com.google.code.gson:gson:2.8.6'
     compile 'org.eclipse.jetty:jetty-server:9.4.35.v20201120'
     compile 'io.dropwizard.metrics:metrics-core:3.2.6'
-    compile 'com.nimbusds:nimbus-jose-jwt:9.4.1'
+    compile 'com.nimbusds:nimbus-jose-jwt:9.7'
     compile 'com.101tec:zkclient:0.11'
     compile 'io.swagger.parser.v3:swagger-parser-v3:2.0.24'
-    compile 'io.github.classgraph:classgraph:4.8.98'
+    compile 'io.github.classgraph:classgraph:4.8.102'
 
     testCompile project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
     testCompile project(path: ':cruise-control-core', configuration: 'testOutput')
@@ -365,7 +365,7 @@ project(':cruise-control-metrics-reporter') {
     compile "org.apache.logging.log4j:log4j-slf4j-impl:2.14.0"
     compile "org.apache.kafka:kafka_2.12:$kafkaVersion"
     compile "org.apache.kafka:kafka-clients:$kafkaVersion"
-    compile 'junit:junit:4.13'
+    compile 'junit:junit:4.13.1'
     compile 'org.apache.commons:commons-math3:3.6.1'
 
     testCompile 'org.bouncycastle:bcpkix-jdk15on:1.68'
