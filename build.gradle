@@ -151,7 +151,12 @@ project(':cruise-control-core') {
   }
 
   dependencies {
+    configurations.all {
+      exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+      exclude group: 'log4j', module: 'log4j'
+    }
     compile "org.slf4j:slf4j-api:1.7.30"
+    compile "org.apache.logging.log4j:log4j-slf4j-impl:2.14.0"
     compile 'junit:junit:4.13'
     compile 'org.apache.commons:commons-math3:3.6.1'
     compile 'org.eclipse.jetty:jetty-servlet:9.4.35.v20201120'
@@ -223,9 +228,14 @@ project(':cruise-control') {
   }
 
   dependencies {
+    configurations.all {
+      exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+      exclude group: 'log4j', module: 'log4j'
+    }
     compile project(':cruise-control-metrics-reporter')
     compile project(':cruise-control-core')
     compile "org.slf4j:slf4j-api:1.7.30" // TODO: Upgrade log4j to log4j2 to use async logger.
+    compile "org.apache.logging.log4j:log4j-slf4j-impl:2.14.0"
     compile "org.apache.zookeeper:zookeeper:${zookeeperVersion}"
     compile "org.apache.kafka:kafka_2.12:$kafkaVersion"
     compile "org.apache.kafka:kafka-clients:$kafkaVersion"
@@ -277,7 +287,7 @@ project(':cruise-control') {
 
   tasks.create(name: "copyDependantLibs", type: Copy) {
     from (configurations.testRuntime) {
-      include('slf4j-log4j12*')
+      include('log4j-slf4j-impl*')
     }
     from (configurations.runtime) {
 
@@ -347,7 +357,12 @@ project(':cruise-control-metrics-reporter') {
   }
 
   dependencies {
+    configurations.all {
+      exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+      exclude group: 'log4j', module: 'log4j'
+    }
     compile "org.slf4j:slf4j-api:1.7.30"
+    compile "org.apache.logging.log4j:log4j-slf4j-impl:2.14.0"
     compile "org.apache.kafka:kafka_2.12:$kafkaVersion"
     compile "org.apache.kafka:kafka-clients:$kafkaVersion"
     compile 'junit:junit:4.13'
