@@ -338,6 +338,14 @@ public class MonitorConfig {
   public static final String MONITOR_STATE_UPDATE_INTERVAL_MS_DOC = "The load monitor interval to refresh the monitor state.";
 
   /**
+   * <code>metadata.factor.exponent</code>
+   */
+  public static final String METADATA_FACTOR_EXPONENT_CONFIG = "metadata.factor.exponent";
+  public static final double DEFAULT_METADATA_FACTOR_EXPONENT = 1.0;
+  public static final String METADATA_FACTOR_EXPONENT_DOC = "The exponent for the metadata factor, which corresponds to "
+      + "(number of replicas) * (number of brokers with replicas) ^ exponent.";
+
+  /**
    * Define configs for Monitor.
    *
    * @param configDef Config definition.
@@ -554,6 +562,12 @@ public class MonitorConfig {
                             ConfigDef.Type.LONG,
                             DEFAULT_MONITOR_STATE_UPDATE_INTERVAL_MS,
                             ConfigDef.Importance.LOW,
-                            MONITOR_STATE_UPDATE_INTERVAL_MS_DOC);
+                            MONITOR_STATE_UPDATE_INTERVAL_MS_DOC)
+                    .define(METADATA_FACTOR_EXPONENT_CONFIG,
+                            ConfigDef.Type.DOUBLE,
+                            DEFAULT_METADATA_FACTOR_EXPONENT,
+                            atLeast(1.0),
+                            ConfigDef.Importance.LOW,
+                            METADATA_FACTOR_EXPONENT_DOC);
   }
 }
