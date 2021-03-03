@@ -55,29 +55,30 @@ Cruise Control metrics are useful to monitor the state of Cruise Control itself.
 
 ### AnomalyDetector Sensors
 
-| DESCRIPTION                                                                                               | MBEAN NAME                                        				            |
-|-----------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
-| The number of self healing started                                                                        | kafka.cruisecontrol:name=AnomalyDetector.number-of-self-healing-started       |
-| The ongoing anomaly duration in ms                                                                        | kafka.cruisecontrol:name=AnomalyDetector.ongoing-anomaly-duration-ms          |
-| Whether broker failure self-healing is enabled or not                                                     | kafka.cruisecontrol:name=AnomalyDetector.broker_failure-self-healing-enabled  |
-| Whether goal violation self-healing is enabled or not                                                     | kafka.cruisecontrol:name=AnomalyDetector.goal_violation-self-healing-enabled  |
-| Whether disk failure self-healing is enabled or not                                                       | kafka.cruisecontrol:name=AnomalyDetector.disk_failure-self-healing-enabled    |
-| Whether metric anomaly self-healing is enabled or not                                                     | kafka.cruisecontrol:name=AnomalyDetector.metric_anomaly-self-healing-enabled  |
-| Whether topic anomaly self-healing is enabled or not                                                      | kafka.cruisecontrol:name=AnomalyDetector.topic_anomaly-self-healing-enabled   |
-| Whether goal violation detector identified goals that require human intervention (e.g. cluster expansion) | kafka.cruisecontrol:name=AnomalyDetector.GOAL_VIOLATION-has-unfixable-goals   |
-| Balancedness score (100 = fully-balanced, 0 = fully-unbalanced, -1 = has dead-brokers / disks in cluster) | kafka.cruisecontrol:name=AnomalyDetector.balancedness-score                   |
-| Whether the cluster is under-provisioned or not                                                           | kafka.cruisecontrol:name=AnomalyDetector.under-provisioned                    |
-| Whether the cluster is over-provisioned or not                                                            | kafka.cruisecontrol:name=AnomalyDetector.over-provisioned                     |
-| Whether the cluster is right-sized or not                                                                 | kafka.cruisecontrol:name=AnomalyDetector.right-sized                          |
-| Mean time to start a self-healing fix                                                                     | kafka.cruisecontrol:name=AnomalyDetector.mean-time-to-start-fix-ms            |
-| Broker failure rate                                                                                       | kafka.cruisecontrol:name=AnomalyDetector.broker-failure-rate                  |
-| Goal violation rate                                                                                       | kafka.cruisecontrol:name=AnomalyDetector.goal-violation-rate                  |
-| Metric anomaly rate                                                                                       | kafka.cruisecontrol:name=AnomalyDetector.metric-anomaly-rate                  |
-| Disk failure rate                                                                                         | kafka.cruisecontrol:name=AnomalyDetector.disk-failure-rate                    |
-| Topic anomaly rate                                                                                        | kafka.cruisecontrol:name=AnomalyDetector.topic-anomaly-rate                   |
-| The number of brokers that are metric anomaly suspects, pending more evidence to conclude either way      | kafka.cruisecontrol:name=AnomalyDetector.num-suspect-metric-anomalies         |
-| The number of brokers that have recently been identified with a metric anomaly                            | kafka.cruisecontrol:name=AnomalyDetector.num-recent-metric-anomalies          |
-| The number of brokers that continue to be identified with a metric anomaly for a prolonged period         | kafka.cruisecontrol:name=AnomalyDetector.num-persistent-metric-anomalies      |
+| DESCRIPTION                                                                                                       | MBEAN NAME                                        				                                        |
+|-------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
+| The number of self healing started                                                                                | kafka.cruisecontrol:name=AnomalyDetector.number-of-self-healing-started                                   |
+| The ongoing anomaly duration in ms                                                                                | kafka.cruisecontrol:name=AnomalyDetector.ongoing-anomaly-duration-ms                                      |
+| Whether broker failure self-healing is enabled or not                                                             | kafka.cruisecontrol:name=AnomalyDetector.broker_failure-self-healing-enabled                              |
+| Whether goal violation self-healing is enabled or not                                                             | kafka.cruisecontrol:name=AnomalyDetector.goal_violation-self-healing-enabled                              |
+| Whether disk failure self-healing is enabled or not                                                               | kafka.cruisecontrol:name=AnomalyDetector.disk_failure-self-healing-enabled                                |
+| Whether metric anomaly self-healing is enabled or not                                                             | kafka.cruisecontrol:name=AnomalyDetector.metric_anomaly-self-healing-enabled                              |
+| Whether topic anomaly self-healing is enabled or not                                                              | kafka.cruisecontrol:name=AnomalyDetector.topic_anomaly-self-healing-enabled                               |
+| Whether goal violation detector identified goals that require human intervention (e.g. cluster expansion)         | kafka.cruisecontrol:name=AnomalyDetector.GOAL_VIOLATION-has-unfixable-goals                               |
+| Balancedness score (100 = fully-balanced, 0 = fully-unbalanced, -1 = has dead-brokers / disks in cluster)         | kafka.cruisecontrol:name=AnomalyDetector.balancedness-score                                               |
+| Whether the cluster is under-provisioned or not                                                                   | kafka.cruisecontrol:name=AnomalyDetector.under-provisioned                                                |
+| Whether the cluster is over-provisioned or not                                                                    | kafka.cruisecontrol:name=AnomalyDetector.over-provisioned                                                 |
+| Whether the cluster is right-sized or not                                                                         | kafka.cruisecontrol:name=AnomalyDetector.right-sized                                                      |
+| Mean time to start a self-healing fix                                                                             | kafka.cruisecontrol:name=AnomalyDetector.mean-time-to-start-fix-ms                                        |
+| Broker failure rate                                                                                               | kafka.cruisecontrol:name=AnomalyDetector.broker-failure-rate                                              |
+| Goal violation rate                                                                                               | kafka.cruisecontrol:name=AnomalyDetector.goal-violation-rate                                              |
+| Metric anomaly rate                                                                                               | kafka.cruisecontrol:name=AnomalyDetector.metric-anomaly-rate                                              |
+| Disk failure rate                                                                                                 | kafka.cruisecontrol:name=AnomalyDetector.disk-failure-rate                                                |
+| Topic anomaly rate                                                                                                | kafka.cruisecontrol:name=AnomalyDetector.topic-anomaly-rate                                               |
+| The number of brokers that are metric anomaly suspects, pending more evidence to conclude either way              | kafka.cruisecontrol:name=AnomalyDetector.num-suspect-metric-anomalies                                     |
+| The number of brokers that have recently been identified with a metric anomaly                                    | kafka.cruisecontrol:name=AnomalyDetector.num-recent-metric-anomalies                                      |
+| The number of brokers that continue to be identified with a metric anomaly for a prolonged period                 | kafka.cruisecontrol:name=AnomalyDetector.num-persistent-metric-anomalies                                  |
+| The cluster has partitions with RF > the number of eligible racks (0: No such partitions, 1: Has such partitions) | kafka.cruisecontrol:name=AnomalyDetector.has-partitions-with-replication-factor-greater-than-num-racks    |
 
 ### GoalOptimizer Sensors
 
