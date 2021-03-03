@@ -197,6 +197,9 @@ public class AnomalyDetectorManager {
                                                             String.format("num-%s-metric-anomalies", type.toString().toLowerCase())),
                                         (Gauge<Integer>) () -> _metricAnomalyDetector.numAnomaliesOfType(type));
     }
+    // The cluster has partitions with RF > the number of eligible racks (0: No such partitions, 1: Has such partitions)
+    dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "has-partitions-with-replication-factor-greater-than-num-racks"),
+                                      (Gauge<Integer>) () -> _goalViolationDetector.hasPartitionsWithRFGreaterThanNumRacks() ? 1 : 0);
   }
 
   private void scheduleDetectorAtFixedRate(KafkaAnomalyType anomalyType, Runnable anomalyDetector) {
