@@ -188,6 +188,9 @@ public class LoadMonitor {
                                       (Gauge<Integer>) this::numPartitionsWithExtrapolations);
     dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_METRICS_NAME_PREFIX, "num-topics"),
                                       (Gauge<Integer>) this::numTopics);
+    double metadataFactorExponent = config.getDouble(MonitorConfig.METADATA_FACTOR_EXPONENT_CONFIG);
+    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_METRICS_NAME_PREFIX, "metadata-factor"),
+                                      (Gauge<Double>) () -> metadataFactor(metadataFactorExponent));
   }
 
   /**
@@ -646,7 +649,7 @@ public class LoadMonitor {
    * @return All the available broker level metrics. Null is returned if nothing is available.
    */
   public MetricSampleAggregationResult<String, BrokerEntity> brokerMetrics() {
-    List<Node> nodes = _metadataClient.cluster().nodes();
+    List<Node> nodes = kafkaCluster().nodes();
     Set<BrokerEntity> brokerEntities = new HashSet<>(nodes.size());
     for (Node node : nodes) {
       brokerEntities.add(new BrokerEntity(node.host(), node.id()));
@@ -707,7 +710,26 @@ public class LoadMonitor {
   }
 
   private int numTopics() {
-    return _metadataClient.metadata().fetch().topics().size();
+    return kafkaCluster().topics().size();
+  }
+
+  /**
+   * Metadata factor corresponds to
+   * <pre><code>
+   *   metadata factor = (number of replicas) * (number of brokers with replicas) ^ exponent
+   * </code></pre>
+   *
+   * It is an indication of growing scale and pressure on the centralized Kafka controller. Tracking the historical change of this metric
+   * helps quantifying the impact of the growing scale.
+   *
+   * @param exponent The exponent for the metadata factor.
+   * @return Metadata factor of the cluster.
+   */
+  private double metadataFactor(double exponent) {
+    Cluster kafkaCluster = kafkaCluster();
+    int numReplicas = MonitorUtils.numReplicas(kafkaCluster);
+    int numBrokersWithReplicas = MonitorUtils.brokersWithReplicas(kafkaCluster).size();
+    return numReplicas * Math.pow(numBrokersWithReplicas, exponent);
   }
 
   private double getMonitoredPartitionsPercentage() {
