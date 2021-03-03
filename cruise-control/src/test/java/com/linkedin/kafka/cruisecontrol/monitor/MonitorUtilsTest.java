@@ -43,50 +43,63 @@ public class MonitorUtilsTest {
     Cluster cluster1 = new Cluster("cluster", Arrays.asList(node0, node1, node2), partitions1,
                                    Collections.emptySet(), Collections.emptySet());
 
-    // Verify number of replicas in the cluster
+    Set<Integer> brokersWithReplicas = new HashSet<>();
+    brokersWithReplicas.add(0);
+    brokersWithReplicas.add(1);
+
+    // Verify number of replicas and brokers with replicas in the cluster
     assertEquals(8, MonitorUtils.numReplicas(cluster1));
+    assertEquals(brokersWithReplicas, MonitorUtils.brokersWithReplicas(cluster1));
 
     // Cluster2 has a new topic
     PartitionInfo t2p0 = new PartitionInfo(topic2, 0, node1, nodesWithOrder1, nodesWithOrder2);
     Cluster cluster2 = cluster1.withPartitions(Collections.singletonMap(new TopicPartition(topic2, 0), t2p0));
 
-    // Verify number of replicas in the cluster
+    // Verify number of replicas and brokers with replicas in the cluster
     assertEquals(10, MonitorUtils.numReplicas(cluster2));
+    assertEquals(brokersWithReplicas, MonitorUtils.brokersWithReplicas(cluster2));
 
     // A new partition.
     PartitionInfo t0p2 = new PartitionInfo(topic0, 2, node1, nodesWithOrder1, nodesWithOrder2);
     Cluster cluster3 = cluster1.withPartitions(Collections.singletonMap(new TopicPartition(topic2, 2), t0p2));
 
-    // Verify number of replicas in the cluster
+    // Verify number of replicas and brokers with replicas in the cluster
     assertEquals(10, MonitorUtils.numReplicas(cluster3));
+    assertEquals(brokersWithReplicas, MonitorUtils.brokersWithReplicas(cluster3));
 
     // An existing partition with different replica orders
     PartitionInfo t0p0DifferentOrder = new PartitionInfo(topic0, 0, node0, nodesWithOrder2, nodesWithOrder2);
     Cluster cluster4 = cluster1.withPartitions(Collections.singletonMap(new TopicPartition(topic0, 0), t0p0DifferentOrder));
 
-    // Verify number of replicas in the cluster
+    // Verify number of replicas and brokers with replicas in the cluster
     assertEquals(8, MonitorUtils.numReplicas(cluster4));
+    assertEquals(brokersWithReplicas, MonitorUtils.brokersWithReplicas(cluster4));
 
     // An existing partition with a different replica assignment
     PartitionInfo t0p0DifferentAssignment = new PartitionInfo(topic0, 0, node0, nodes2, nodesWithOrder2);
     Cluster cluster5 = cluster1.withPartitions(Collections.singletonMap(new TopicPartition(topic0, 0), t0p0DifferentAssignment));
 
-    // Verify number of replicas in the cluster
+    // Verify number of replicas and brokers with replicas in the cluster
+    brokersWithReplicas.add(2);
     assertEquals(8, MonitorUtils.numReplicas(cluster5));
+    assertEquals(brokersWithReplicas, MonitorUtils.brokersWithReplicas(cluster5));
 
     // An existing partition with a different leader
     PartitionInfo t0p0DifferentLeader = new PartitionInfo(topic0, 0, node1, nodesWithOrder1, nodesWithOrder2);
     Cluster cluster6 = cluster1.withPartitions(Collections.singletonMap(new TopicPartition(topic0, 0), t0p0DifferentLeader));
 
-    // Verify number of replicas in the cluster
+    // Verify number of replicas and brokers with replicas in the cluster
+    brokersWithReplicas.remove(2);
     assertEquals(8, MonitorUtils.numReplicas(cluster6));
+    assertEquals(brokersWithReplicas, MonitorUtils.brokersWithReplicas(cluster6));
 
     // An existing partition with the same cluster but different ISR
     PartitionInfo t0p0DifferentIsr = new PartitionInfo(topic0, 0, node0, nodesWithOrder1, new Node[]{node0});
     Cluster cluster7 = cluster1.withPartitions(Collections.singletonMap(new TopicPartition(topic0, 0), t0p0DifferentIsr));
 
-    // Verify number of replicas in the cluster
+    // Verify number of replicas and brokers with replicas in the cluster
     assertEquals(8, MonitorUtils.numReplicas(cluster7));
+    assertEquals(brokersWithReplicas, MonitorUtils.brokersWithReplicas(cluster7));
 
     assertTrue(MonitorUtils.metadataChanged(cluster1, cluster2));
     assertTrue(MonitorUtils.metadataChanged(cluster1, cluster3));
