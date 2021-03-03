@@ -279,6 +279,20 @@ public class MonitorUtils {
 
   /**
    * @param cluster Kafka cluster.
+   * @return Number of replicas in the cluster.
+   */
+  static int numReplicas(Cluster cluster) {
+    int numReplicas = 0;
+    for (String topic : cluster.topics()) {
+      for (PartitionInfo partition : cluster.partitionsForTopic(topic)) {
+        numReplicas += (partition.replicas() == null ? 0 : partition.replicas().length);
+      }
+    }
+    return numReplicas;
+  }
+
+  /**
+   * @param cluster Kafka cluster.
    * @return All the dead brokers in the cluster that host at least one replica.
    */
   static Set<Integer> deadBrokersWithReplicas(Cluster cluster) {

@@ -101,7 +101,7 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
                                      new LogContext(),
                                      new ClusterResourceListeners());
     MetadataClient metadataClient = new MetadataClient(config, metadata, -1L, TIME);
-    assertNotNull(metadataClient.metadata().fetch().clusterResource().clusterId());
+    assertNotNull(metadataClient.cluster().clusterResource().clusterId());
     MockPartitionMetricSampleAggregator mockPartitionMetricSampleAggregator =
         new MockPartitionMetricSampleAggregator(config, metadata);
     KafkaBrokerMetricSampleAggregator mockBrokerMetricSampleAggregator =
@@ -151,7 +151,7 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
                                      new LogContext(),
                                      new ClusterResourceListeners());
     MetadataClient metadataClient = new MetadataClient(config, metadata, -1L, TIME);
-    assertNotNull(metadataClient.metadata().fetch().clusterResource().clusterId());
+    assertNotNull(metadataClient.cluster().clusterResource().clusterId());
     MockPartitionMetricSampleAggregator mockMetricSampleAggregator =
         new MockPartitionMetricSampleAggregator(config, metadata);
     KafkaBrokerMetricSampleAggregator mockBrokerMetricSampleAggregator =
