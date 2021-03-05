@@ -13,7 +13,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
+import static com.linkedin.cruisecontrol.CruiseControlUtils.utcDateFor;
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG;
@@ -64,7 +64,7 @@ public class DiskFailures extends KafkaAnomaly {
     StringBuilder sb = new StringBuilder().append("{\n");
     _failedDisksByBroker.forEach((brokerId, failures) -> {
       failures.forEach((logdir, eventTime) -> {
-        sb.append(String.format("\tDisk %s on broker %d failed at %s%n ", logdir, brokerId, toDateString(eventTime)));
+        sb.append(String.format("\tDisk %s on broker %d failed at %s%n ", logdir, brokerId, utcDateFor(eventTime)));
       });
     });
     sb.append("}");

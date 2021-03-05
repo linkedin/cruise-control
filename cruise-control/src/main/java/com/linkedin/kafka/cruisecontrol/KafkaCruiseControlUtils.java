@@ -57,16 +57,12 @@ import scala.Option;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_HARD_GOAL_CHECK_PARAM;
@@ -86,9 +82,6 @@ public class KafkaCruiseControlUtils {
   public static final int ZK_CONNECTION_TIMEOUT = (int) TimeUnit.MINUTES.toMillis(2);
   public static final long KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
   public static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
-  public static final String DATE_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
-  public static final String DATE_FORMAT2 = "dd/MM/yyyy HH:mm:ss";
-  public static final String TIME_ZONE = "UTC";
   public static final int SEC_TO_MS = (int) TimeUnit.SECONDS.toMillis(1);
   private static final int MIN_TO_MS = SEC_TO_MS * 60;
   private static final int HOUR_TO_MS = MIN_TO_MS * 60;
@@ -103,49 +96,6 @@ public class KafkaCruiseControlUtils {
 
   private KafkaCruiseControlUtils() {
 
-  }
-
-  /**
-   * @return The current UTC date.
-   */
-  public static String currentUtcDate() {
-    return utcDateFor(System.currentTimeMillis());
-  }
-
-  /**
-   * @param timeMs Time in milliseconds.
-   * @return The date for the given time in {@link #TIME_ZONE}.
-   */
-  public static String utcDateFor(long timeMs) {
-    Date date = new Date(timeMs);
-    DateFormat formatter = new SimpleDateFormat(DATE_FORMAT);
-    formatter.setTimeZone(TimeZone.getTimeZone(TIME_ZONE));
-    return formatter.format(date);
-  }
-
-  /**
-   * @return Formatted timestamp from long to a human readable string.
-   */
-  public static String toDateString(long time) {
-    return toDateString(time, DATE_FORMAT2, "");
-  }
-
-  /**
-   * Format the timestamp from long to human readable string. Allow customization of date format and time zone.
-   * @param time time in milliseconds
-   * @param dateFormat see formats above
-   * @param timeZone will use default if timeZone is set to empty string
-   * @return String representation of date
-   */
-  public static String toDateString(long time, String dateFormat, String timeZone) {
-    if (time < 0) {
-      throw new IllegalArgumentException(String.format("Attempt to convert negative time %d to date.", time));
-    }
-    DateFormat formatter = new SimpleDateFormat(dateFormat);
-    if (!timeZone.isEmpty()) {
-      formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
-    }
-    return formatter.format(new Date(time));
   }
 
   /**
