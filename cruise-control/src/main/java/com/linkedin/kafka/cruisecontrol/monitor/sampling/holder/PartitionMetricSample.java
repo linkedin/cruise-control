@@ -10,10 +10,9 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersion
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import java.nio.ByteBuffer;
 import org.apache.kafka.common.TopicPartition;
-
-import java.util.Date;
 import java.util.Map;
 
+import static com.linkedin.cruisecontrol.CruiseControlUtils.utcDateFor;
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.CPU_USAGE;
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.DISK_USAGE;
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.FETCH_RATE;
@@ -119,8 +118,8 @@ public class PartitionMetricSample extends MetricSample<String, PartitionEntity>
           .append(", ");
     }
     builder.delete(builder.length() - 2, builder.length()).append("}");
-    return String.format("[brokerId: %d, Partition: %s, time: %s, metrics: %s]", _brokerId, entity().tp(),
-        new Date(_sampleTime), builder.toString());
+    return String.format("[brokerId: %d, Partition: %s, time: %s, metrics: %s]", _brokerId, entity().tp(), utcDateFor(_sampleTime),
+                         builder.toString());
   }
 
   private static PartitionMetricSample readV0(ByteBuffer buffer) {
