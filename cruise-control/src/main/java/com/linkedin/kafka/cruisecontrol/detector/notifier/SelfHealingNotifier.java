@@ -19,7 +19,7 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
+import static com.linkedin.cruisecontrol.CruiseControlUtils.utcDateFor;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.hasUnfixableGoals;
 
 
@@ -266,7 +266,7 @@ public class SelfHealingNotifier implements AnomalyNotifier {
    */
   public void alert(Object anomaly, boolean autoFixTriggered, long selfHealingStartTime, AnomalyType anomalyType) {
     LOG.warn("{} detected {}. Self healing {}.", anomalyType, anomaly,
-             _selfHealingEnabled.get(anomalyType) ? String.format("start time %s", toDateString(selfHealingStartTime)) : "is disabled");
+             _selfHealingEnabled.get(anomalyType) ? String.format("start time %s", utcDateFor(selfHealingStartTime)) : "is disabled");
 
     if (autoFixTriggered) {
       LOG.warn("Self-healing has been triggered.");

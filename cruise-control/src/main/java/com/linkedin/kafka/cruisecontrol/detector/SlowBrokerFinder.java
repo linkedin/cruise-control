@@ -28,7 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyFinderUtils.isDataSufficient;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
+import static com.linkedin.cruisecontrol.CruiseControlUtils.utcDateFor;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyUtils.parseAndGetConfig;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
@@ -328,7 +328,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     StringBuilder descriptionSb = new StringBuilder().append("{");
     detectedBrokers.forEach((broker, time) -> {
       descriptionSb.append(String.format("%d is slow (score: %d/%d) since %s, ", broker.brokerId(), _brokerSlownessScore.get(broker),
-                                         _slowBrokerDecommissionScore, toDateString(time)));
+                                         _slowBrokerDecommissionScore, utcDateFor(time)));
     });
     descriptionSb.setLength(descriptionSb.length() - 2);
     descriptionSb.append("}");

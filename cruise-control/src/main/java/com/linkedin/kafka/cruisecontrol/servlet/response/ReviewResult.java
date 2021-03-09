@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.RequestInfo;
@@ -15,8 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.DATE_FORMAT;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.TIME_ZONE;
+import static com.linkedin.cruisecontrol.CruiseControlUtils.utcDateFor;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 
@@ -59,7 +57,7 @@ public class ReviewResult extends AbstractCruiseControlResponse {
         // SUBMITTER_ADDRESS
         submitterAddressLabelSize = Math.max(submitterAddressLabelSize, requestInfo.submitterAddress().length());
         // SUBMISSION_TIME_MS
-        String dateFormatted = KafkaCruiseControlUtils.toDateString(requestInfo.submissionTimeMs(), DATE_FORMAT, TIME_ZONE);
+        String dateFormatted = utcDateFor(requestInfo.submissionTimeMs());
         submissionTimeLabelSize = Math.max(submissionTimeLabelSize, dateFormatted.length());
         // STATUS
         statusLabelSize = Math.max(statusLabelSize, requestInfo.status().toString().length());
@@ -91,7 +89,7 @@ public class ReviewResult extends AbstractCruiseControlResponse {
     for (Map.Entry<Integer, RequestInfo> entry : _requestInfoById.entrySet()) {
       if (_filteredRequestIds.contains(entry.getKey())) {
         RequestInfo requestInfo = entry.getValue();
-        String dateFormatted = KafkaCruiseControlUtils.toDateString(requestInfo.submissionTimeMs(), DATE_FORMAT, TIME_ZONE);
+        String dateFormatted = utcDateFor(requestInfo.submissionTimeMs());
         sb.append(String.format(formattingStringBuilder.toString(), entry.getKey(), requestInfo.submitterAddress(),
                                 dateFormatted, requestInfo.status(), requestInfo.endpointWithParams(), requestInfo.reason()));
       }

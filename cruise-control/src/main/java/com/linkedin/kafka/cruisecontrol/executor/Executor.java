@@ -49,11 +49,9 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.List;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.currentUtcDate;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
+import static com.linkedin.cruisecontrol.CruiseControlUtils.currentUtcDate;
+import static com.linkedin.cruisecontrol.CruiseControlUtils.utcDateFor;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION_LOGGER;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.TIME_ZONE;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.DATE_FORMAT;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.ExecutionTasksSummary;
@@ -1627,8 +1625,7 @@ public class Executor {
         StringBuilder sb = new StringBuilder();
         sb.append("Slow tasks are detected:\n");
         for (ExecutionTask task: slowTasksToReport) {
-          sb.append(String.format("\tID: %s\tstart_time:%s\tdetail:%s%n", task.executionId(),
-                                  toDateString(task.startTimeMs(), DATE_FORMAT, TIME_ZONE), task));
+          sb.append(String.format("\tID: %s\tstart_time:%s\tdetail:%s%n", task.executionId(), utcDateFor(task.startTimeMs()), task));
         }
         _executorNotifier.sendAlert(sb.toString());
         _lastSlowTaskReportingTimeMs = _time.milliseconds();
