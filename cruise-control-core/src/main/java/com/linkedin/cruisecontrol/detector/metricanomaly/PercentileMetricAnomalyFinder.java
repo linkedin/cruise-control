@@ -19,7 +19,7 @@ import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.cruisecontrol.CruiseControlUtils.toPrettyTime;
+import static com.linkedin.cruisecontrol.CruiseControlUtils.utcDateFor;
 import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyFinderUtils.isDataSufficient;
 import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyFinderUtils.SIGNIFICANT_METRIC_VALUE_THRESHOLD;
 import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
@@ -113,10 +113,10 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
     int numHistoryWindows = historyWindows.size();
     return String.format("Metric value %.3f of %s for %s in window %s is out of the normal range for percentile: [%.2f, %.2f] "
                          + "(value: [%.3f, %.3f] with margins (lower: %.3f, upper: %.3f)) in %d history windows from %s to %s.",
-                         currentMetricValue, toMetricName(metricId), entity, toPrettyTime(currentWindow),
+                         currentMetricValue, toMetricName(metricId), entity, utcDateFor(currentWindow),
                          _anomalyLowerPercentile, _anomalyUpperPercentile, lowerThreshold, upperThreshold,
                          _anomalyLowerMargin, _anomalyUpperMargin, numHistoryWindows,
-                         toPrettyTime(historyWindows.get(0)), toPrettyTime(historyWindows.get(numHistoryWindows - 1)));
+                         utcDateFor(historyWindows.get(0)), utcDateFor(historyWindows.get(numHistoryWindows - 1)));
   }
 
   /**

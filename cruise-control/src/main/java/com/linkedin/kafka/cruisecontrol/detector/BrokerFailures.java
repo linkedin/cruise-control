@@ -13,7 +13,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
+import static com.linkedin.cruisecontrol.CruiseControlUtils.utcDateFor;
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG;
@@ -84,7 +84,7 @@ public class BrokerFailures extends KafkaAnomaly {
     sb.append("broker failures detected: {");
     if (_failedBrokers != null) {
       _failedBrokers.forEach((key, value) -> {
-        sb.append("Broker ").append(key).append(" failed at ").append(toDateString(value)).append(",\t");
+        sb.append("Broker ").append(key).append(" failed at ").append(utcDateFor(value)).append(",\t");
       });
       sb.setLength(sb.length() - 2);
     }

@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Map;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
+import static com.linkedin.cruisecontrol.CruiseControlUtils.utcDateFor;
 
 public class SlackSelfHealingNotifier extends SelfHealingNotifier {
 
@@ -67,7 +67,7 @@ public class SlackSelfHealingNotifier extends SelfHealingNotifier {
         }
 
         String text = String.format("%s detected %s. Self healing %s.%s", anomalyType, anomaly,
-                _selfHealingEnabled.get(anomalyType) ? String.format("start time %s", toDateString(selfHealingStartTime))
+                _selfHealingEnabled.get(anomalyType) ? String.format("start time %s", utcDateFor(selfHealingStartTime))
                         : "is disabled",
                 autoFixTriggered ? "%nSelf-healing has been triggered." : "");
 

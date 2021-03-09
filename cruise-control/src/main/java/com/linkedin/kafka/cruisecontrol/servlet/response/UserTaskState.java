@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
 import com.linkedin.cruisecontrol.servlet.response.CruiseControlResponse;
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
@@ -23,8 +22,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.DATE_FORMAT;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.TIME_ZONE;
+import static com.linkedin.cruisecontrol.CruiseControlUtils.utcDateFor;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 import static java.lang.Math.max;
@@ -122,7 +120,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     for (UserTaskManager.UserTaskInfo userTaskInfo : taskInfoList) {
       userTaskIdLabelSize = max(userTaskIdLabelSize, userTaskInfo.userTaskId().toString().length());
       clientAddressLabelSize = max(clientAddressLabelSize, userTaskInfo.clientIdentity().length());
-      String dateFormatted = KafkaCruiseControlUtils.toDateString(userTaskInfo.startMs(), DATE_FORMAT, TIME_ZONE);
+      String dateFormatted = utcDateFor(userTaskInfo.startMs());
       startMsLabelSize = max(startMsLabelSize, dateFormatted.length());
       statusLabelSize = max(statusLabelSize, userTaskInfo.state().toString().length());
       requestURLLabelSize = max(requestURLLabelSize, userTaskInfo.requestWithParams().length());
@@ -143,7 +141,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     sb.append(String.format(formattingStringBuilder.toString(), "USER TASK ID", "CLIENT ADDRESS", "START TIME", "STATUS",
                             "REQUEST URL")); // header
     for (UserTaskManager.UserTaskInfo userTaskInfo : taskInfoList) {
-      String dateFormatted = KafkaCruiseControlUtils.toDateString(userTaskInfo.startMs(), DATE_FORMAT, TIME_ZONE);
+      String dateFormatted = utcDateFor(userTaskInfo.startMs());
       sb.append(String.format(formattingStringBuilder.toString(), userTaskInfo.userTaskId().toString(), userTaskInfo.clientIdentity(),
                               dateFormatted, userTaskInfo.state(), userTaskInfo.requestWithParams())); // values
     }
