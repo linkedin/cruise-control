@@ -8,6 +8,8 @@ import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -134,8 +136,9 @@ public abstract class AbstractRackAwareGoal extends AbstractGoal {
           Set<String> partitionRackIds = clusterModel.partition(replica.topicPartition()).partitionBrokers()
                                                      .stream().map(partitionBroker -> partitionBroker.rack().id()).collect(Collectors.toSet());
 
-          throw new OptimizationFailureException(String.format("[%s] Cannot move %s to %s.", name(), replica, eligibleBrokers),
-                                                 String.format("Add a broker to a rack other than %s.", partitionRackIds));
+          ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
+              .numBrokers(1).excludedRackIds(partitionRackIds).build();
+          throw new OptimizationFailureException(String.format("[%s] Cannot move %s to %s.", name(), replica, eligibleBrokers), recommendation);
         }
         LOG.debug("Cannot move replica {} to any broker in {}", replica, eligibleBrokers);
       }

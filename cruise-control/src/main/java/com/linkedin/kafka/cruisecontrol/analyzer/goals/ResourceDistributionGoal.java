@@ -6,6 +6,7 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
@@ -67,7 +68,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   // This is used to identify the overprovisioned cluster status
   private boolean _isLowUtilization;
   // The recommendation to be used in case the cluster is overprovisioned
-  private String _overProvisionedRecommendation;
+  private ProvisionRecommendation _overProvisionedRecommendation;
 
   /**
    * Constructor for Resource Distribution Goal.
@@ -241,8 +242,9 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     _brokersAllowedReplicaMove = GoalUtils.aliveBrokersNotExcludedForReplicaMove(clusterModel, optimizationOptions);
     if (_brokersAllowedReplicaMove.isEmpty()) {
       // Handle the case when all alive brokers are excluded from replica moves.
-      throw new OptimizationFailureException(String.format("[%s] All alive brokers are excluded from replica moves.", name()),
-                                             String.format("Add at least %d brokers.", clusterModel.maxReplicationFactor()));
+      ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
+          .numBrokers(clusterModel.maxReplicationFactor()).build();
+      throw new OptimizationFailureException(String.format("[%s] All alive brokers are excluded from replica moves.", name()), recommendation);
     }
     _fixOfflineReplicasOnly = false;
     double resourceUtilization = clusterModel.load().expectedUtilizationFor(resource());
@@ -273,8 +275,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       double allowedCapacity = resourceUtilization / _balancingConstraint.lowUtilizationThreshold(resource());
       int allowedNumBrokers = (int) (allowedCapacity / typicalCapacity);
       int numBrokersToDrop = _brokersAllowedReplicaMove.size() - allowedNumBrokers;
-      _overProvisionedRecommendation = String.format("Remove at least %d brokers with the same capacity (%.2f) as broker-%d.",
-                                                     numBrokersToDrop, typicalCapacity, typicalBrokerId);
+      _overProvisionedRecommendation = new ProvisionRecommendation.Builder(ProvisionStatus.OVER_PROVISIONED)
+          .numBrokers(numBrokersToDrop).typicalBrokerCapacity(typicalCapacity).typicalBrokerId(typicalBrokerId).resource(resource()).build();
     }
   }
 

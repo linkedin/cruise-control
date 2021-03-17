@@ -4,6 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 
@@ -12,25 +15,33 @@ import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
  * Recommendations are only relevant to {@link ProvisionStatus#UNDER_PROVISIONED} and {@link ProvisionStatus#OVER_PROVISIONED}.
  */
 public class ProvisionResponse {
+  public static final String DEFAULT_RECOMMENDATION = "N/A";
   private ProvisionStatus _status;
   private final StringBuilder _recommendation;
+  private final Map<String, ProvisionRecommendation> _recommendationByRecommender;
 
   /**
    * Constructor to be used for provision statuses, for which the recommendations are relevant.
-   * Recommendation and recommender are expected to be human-readable strings.
+   * Recommender is expected to be a human-readable string.
    *
    * @param status The current provision status.
    * @param recommendation Recommended action regarding the given provision status.
    * @param recommender The source of the recommended action to be used in aggregate recommendation.
    */
-  public ProvisionResponse(ProvisionStatus status, String recommendation, String recommender) {
+  public ProvisionResponse(ProvisionStatus status, ProvisionRecommendation recommendation, String recommender) {
     this(status);
     if (!(status == ProvisionStatus.UNDER_PROVISIONED || status == ProvisionStatus.OVER_PROVISIONED)) {
       throw new IllegalArgumentException(String.format("Recommendation is irrelevant for provision status %s.", status));
     }
-    validateNotNull(recommendation, "The recommendation cannot be null.");
     validateNotNull(recommender, "The recommender cannot be null.");
-    _recommendation.append(String.format("[%s] %s", recommender, recommendation));
+    if (recommendation == null) {
+      // The recommendation can be null if the recommender has no recommendation.
+      _recommendation.append(String.format("[%s] %s", recommender, DEFAULT_RECOMMENDATION));
+
+    } else {
+      _recommendation.append(String.format("[%s] %s", recommender, recommendation));
+      _recommendationByRecommender.put(recommender, recommendation);
+    }
   }
 
   /**
@@ -40,6 +51,7 @@ public class ProvisionResponse {
     validateNotNull(status, "The provision status cannot be null.");
     _status = status;
     _recommendation = new StringBuilder();
+    _recommendationByRecommender = new HashMap<>();
   }
 
   /**
@@ -54,6 +66,13 @@ public class ProvisionResponse {
    */
   public String recommendation() {
     return _recommendation.toString();
+  }
+
+  /**
+   * @return Provision recommendation by the recommender.
+   */
+  public Map<String, ProvisionRecommendation> recommendationByRecommender() {
+    return _recommendationByRecommender;
   }
 
   /**
@@ -111,6 +130,7 @@ public class ProvisionResponse {
     if (_recommendation.length() > 0) {
       _recommendation.setLength(0);
     }
+    _recommendationByRecommender.clear();
   }
 
   private void aggregateRecommendations(ProvisionResponse other) {
@@ -118,6 +138,7 @@ public class ProvisionResponse {
     if (!otherRecommendation.isEmpty()) {
       _recommendation.append(_recommendation.length() == 0 ? "" : " ").append(otherRecommendation);
     }
+    _recommendationByRecommender.putAll(other.recommendationByRecommender());
   }
 
   @Override

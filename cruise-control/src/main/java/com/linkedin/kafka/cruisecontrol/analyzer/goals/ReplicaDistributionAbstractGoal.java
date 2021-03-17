@@ -7,6 +7,8 @@ package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -124,8 +126,9 @@ public abstract class ReplicaDistributionAbstractGoal extends AbstractGoal {
     _brokersAllowedReplicaMove = GoalUtils.aliveBrokersNotExcludedForReplicaMove(clusterModel, optimizationOptions);
     if (_brokersAllowedReplicaMove.isEmpty()) {
       // Handle the case when all alive brokers are excluded from replica moves.
-      throw new OptimizationFailureException(String.format("[%s] All alive brokers are excluded from replica moves.", name()),
-                                             String.format("Add at least %d brokers.", clusterModel.maxReplicationFactor()));
+      ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
+          .numBrokers(clusterModel.maxReplicationFactor()).build();
+      throw new OptimizationFailureException(String.format("[%s] All alive brokers are excluded from replica moves.", name()), recommendation);
     }
     // Initialize the average replicas on an alive broker.
     _avgReplicasOnAliveBroker = numInterestedReplicas(clusterModel) / (double) _brokersAllowedReplicaMove.size();

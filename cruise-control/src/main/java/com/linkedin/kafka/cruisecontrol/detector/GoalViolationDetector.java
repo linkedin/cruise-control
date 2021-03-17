@@ -63,6 +63,7 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
   private volatile boolean _hasPartitionsWithRFGreaterThanNumRacks;
   private final OptimizationOptionsGenerator _optimizationOptionsGenerator;
   protected static final double BALANCEDNESS_SCORE_WITH_OFFLINE_REPLICAS = -1.0;
+  protected final Provisioner _provisioner;
 
   public GoalViolationDetector(Queue<Anomaly> anomalies, KafkaCruiseControl kafkaCruiseControl) {
     super(anomalies, kafkaCruiseControl);
@@ -85,6 +86,10 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
     _optimizationOptionsGenerator = config.getConfiguredInstance(AnalyzerConfig.OPTIMIZATION_OPTIONS_GENERATOR_CLASS_CONFIG,
                                                                  OptimizationOptionsGenerator.class,
                                                                  overrideConfigs);
+    overrideConfigs = Collections.singletonMap(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, kafkaCruiseControl);
+    _provisioner = config.getConfiguredInstance(AnomalyDetectorConfig.PROVISIONER_CLASS_CONFIG,
+                                                Provisioner.class,
+                                                overrideConfigs);
   }
 
   /**
@@ -208,6 +213,11 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
         provisionResponse.aggregate(goal.provisionResponse());
       }
       _provisionResponse = provisionResponse;
+      // Right-size the cluster (if needed)
+      boolean isRightsized = _provisioner.rightsize(_provisionResponse.recommendationByRecommender());
+      if (isRightsized) {
+        LOG.info("Actions have been taken on the cluster towards rightsizing.");
+      }
       Map<Boolean, List<String>> violatedGoalsByFixability = goalViolations.violatedGoalsByFixability();
       if (!violatedGoalsByFixability.isEmpty()) {
         goalViolations.setProvisionResponse(_provisionResponse);

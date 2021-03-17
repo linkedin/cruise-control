@@ -10,6 +10,8 @@ import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -147,12 +149,13 @@ public class ReplicaCapacityGoal extends AbstractGoal {
     if (totalReplicasInCluster > maxReplicasInCluster) {
       int minRequiredBrokers = (int) Math.ceil(totalReplicasInCluster / (double) _balancingConstraint.maxReplicasPerBroker());
       int numBrokersToAdd = minRequiredBrokers - brokersAllowedReplicaMove.size();
+      ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
+          .numBrokers(numBrokersToAdd).build();
       throw new OptimizationFailureException(
           String.format("[%s] Total replicas in cluster: %d exceeds the maximum allowed replicas in cluster: %d (Alive "
                             + "brokers: %d, Allowed number of replicas per broker: %d).",
                         name(), totalReplicasInCluster, maxReplicasInCluster, clusterModel.aliveBrokers().size(),
-                        _balancingConstraint.maxReplicasPerBroker()),
-          String.format("Add at least %d brokers.", numBrokersToAdd));
+                        _balancingConstraint.maxReplicasPerBroker()), recommendation);
     }
 
     // Filter out some replicas based on optimization options.
@@ -203,10 +206,10 @@ public class ReplicaCapacityGoal extends AbstractGoal {
     for (Broker broker : brokersToBalance(clusterModel)) {
       int numBrokerReplicas = broker.replicas().size();
       if (numBrokerReplicas > _balancingConstraint.maxReplicasPerBroker()) {
+        ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).numBrokers(1).build();
         throw new OptimizationFailureException(
             String.format("[%s] Replica count in broker %d exceeds the maximum allowed number of replicas per broker: %d.",
-                          name(), numBrokerReplicas, _balancingConstraint.maxReplicasPerBroker()),
-            "Add at least one broker.");
+                          name(), numBrokerReplicas, _balancingConstraint.maxReplicasPerBroker()), recommendation);
       }
     }
   }
@@ -242,18 +245,18 @@ public class ReplicaCapacityGoal extends AbstractGoal {
       if (b == null) {
         if (!broker.isAlive()) {
           // If the replica resides in a dead broker, throw an exception!
+          ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).numBrokers(1).build();
           throw new OptimizationFailureException(
               String.format("[%s] Failed to move dead broker replica %s of partition %s to a broker in %s. Per broker limit: "
                             + "%d for brokers: %s", name(), replica, clusterModel.partition(replica.topicPartition()),
-                            eligibleBrokers, _balancingConstraint.maxReplicasPerBroker(), clusterModel.brokers()),
-              "Add at least one broker.");
+                            eligibleBrokers, _balancingConstraint.maxReplicasPerBroker(), clusterModel.brokers()), recommendation);
         } else if (isReplicaOffline) {
           // If the replica is offline on a broker with bad disk, throw an exception!
+          ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).numBrokers(1).build();
           throw new OptimizationFailureException(
               String.format("[%s] Failed to move offline replica %s of partition %s to a broker in %s. Per broker limit: "
                             + "%d for brokers: %s", name(), replica, clusterModel.partition(replica.topicPartition()),
-                            eligibleBrokers, _balancingConstraint.maxReplicasPerBroker(), clusterModel.brokers()),
-              "Add at least one broker.");
+                            eligibleBrokers, _balancingConstraint.maxReplicasPerBroker(), clusterModel.brokers()), recommendation);
         }
         LOG.debug("Failed to move replica {} to any broker in {}.", replica, eligibleBrokers);
       }
