@@ -184,43 +184,24 @@ public class PrometheusMetricSamplerTest {
         Map<String, Object> config = new HashMap<>();
         config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "http://kafka-cluster-1.org:9090");
         addCapacityConfig(config);
-        _prometheusMetricSampler.configure(config);
 
-        MetricSamplerOptions metricSamplerOptions = buildMetricSamplerOptions(TEST_TOPIC);
-        _prometheusMetricSampler._prometheusAdapter = _prometheusAdapter;
+        Set<String> topics = new HashSet<String>(Arrays.asList(TEST_TOPIC, TEST_TOPIC_WITH_DOT));
+        for (String topic: topics) {
+            setUp();
+            _prometheusMetricSampler.configure(config);
+            MetricSamplerOptions metricSamplerOptions = buildMetricSamplerOptions(topic);
+            _prometheusMetricSampler._prometheusAdapter = _prometheusAdapter;
 
-        for (RawMetricType rawMetricType : _prometheusQueryMap.keySet()) {
-            setupPrometheusAdapterMock(rawMetricType, buildBrokerResults(),
-                buildTopicResults(TEST_TOPIC), buildPartitionResults(TEST_TOPIC));
+            for (RawMetricType rawMetricType : _prometheusQueryMap.keySet()) {
+                setupPrometheusAdapterMock(rawMetricType, buildBrokerResults(),
+                    buildTopicResults(topic), buildPartitionResults(topic));
+            }
+            replay(_prometheusAdapter);
+            MetricSampler.Samples samples = _prometheusMetricSampler.getSamples(metricSamplerOptions);
+
+            assertSamplesValid(samples, topic);
+            verify(_prometheusAdapter);
         }
-
-        replay(_prometheusAdapter);
-        MetricSampler.Samples samples = _prometheusMetricSampler.getSamples(metricSamplerOptions);
-
-        assertSamplesValid(samples, TEST_TOPIC);
-        verify(_prometheusAdapter);
-    }
-
-    @Test
-    public void testGetSamplesDotHandledTopic() throws Exception {
-        Map<String, Object> config = new HashMap<>();
-        config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "http://kafka-cluster-1.org:9090");
-        addCapacityConfig(config);
-        _prometheusMetricSampler.configure(config);
-
-        MetricSamplerOptions metricSamplerOptions = buildMetricSamplerOptions(TEST_TOPIC_WITH_DOT);
-        _prometheusMetricSampler._prometheusAdapter = _prometheusAdapter;
-
-        for (RawMetricType rawMetricType : _prometheusQueryMap.keySet()) {
-            setupPrometheusAdapterMock(rawMetricType, buildBrokerResults(),
-                buildTopicResults(TEST_TOPIC_WITH_DOT), buildPartitionResults(TEST_TOPIC_WITH_DOT));
-        }
-
-        replay(_prometheusAdapter);
-        MetricSampler.Samples samples = _prometheusMetricSampler.getSamples(metricSamplerOptions);
-
-        assertSamplesValid(samples, TEST_TOPIC_WITH_DOT);
-        verify(_prometheusAdapter);
     }
 
     @Test
