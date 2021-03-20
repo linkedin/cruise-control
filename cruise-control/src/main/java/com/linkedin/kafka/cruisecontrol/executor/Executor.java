@@ -836,14 +836,14 @@ public class Executor {
       LOG.warn("Shutdown executor may take long because execution is still in progress.");
       stopExecution(false);
     }
-    _flipOngoingExecutionMutex.release();
-
     try {
       // Wait until ongoing execution stopped completely. Block new execution from proceeding.
       _noOngoingExecutionSemaphore.acquire();
     } catch (InterruptedException e) {
       LOG.warn("Interrupted while waiting for ongoing execution to stop.");
     }
+    _flipOngoingExecutionMutex.release();
+
     _proposalExecutor.shutdown();
 
     try {
@@ -940,12 +940,8 @@ public class Executor {
       _executionException = null;
       if (isTriggeredByUserRequest && _userTaskManager == null) {
         processExecuteProposalsFailure();
-
-        _flipOngoingExecutionMutex.acquireUninterruptibly();
         _hasOngoingExecution = false;
         _noOngoingExecutionSemaphore.release();
-        _flipOngoingExecutionMutex.release();
-
         _stopSignal.set(NO_STOP_EXECUTION);
         _executionStoppedByUser.set(false);
         LOG.error("Failed to initialize proposal execution.");
@@ -1144,12 +1140,8 @@ public class Executor {
       _uuid = null;
       _reasonSupplier = null;
       _executorState = ExecutorState.noTaskInProgress(_recentlyDemotedBrokers, _recentlyRemovedBrokers);
-
-      _flipOngoingExecutionMutex.acquireUninterruptibly();
       _hasOngoingExecution = false;
       _noOngoingExecutionSemaphore.release();
-      _flipOngoingExecutionMutex.release();
-
       _stopSignal.set(NO_STOP_EXECUTION);
       _executionStoppedByUser.set(false);
       // Ensure that sampling mode is adjusted properly to continue collecting partition metrics after execution.
