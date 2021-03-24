@@ -61,6 +61,7 @@ public class PrometheusMetricSamplerTest {
     private static final int TOTAL_PARTITIONS = 3;
 
     private static final String TEST_TOPIC = "test-topic";
+    private static final String TEST_TOPIC_WITH_DOT = "test.topic";
 
     private PrometheusMetricSampler _prometheusMetricSampler;
     private PrometheusAdapter _prometheusAdapter;
@@ -114,7 +115,7 @@ public class PrometheusMetricSamplerTest {
         addCapacityConfig(config);
         _prometheusMetricSampler.configure(config);
 
-        MetricSamplerOptions metricSamplerOptions = buildMetricSamplerOptions();
+        MetricSamplerOptions metricSamplerOptions = buildMetricSamplerOptions(TEST_TOPIC);
         _prometheusMetricSampler._prometheusAdapter = _prometheusAdapter;
         expect(_prometheusAdapter.queryMetric(anyString(), anyLong(), anyLong()))
             .andThrow(new IOException("Exception in fetching metrics"));
@@ -135,7 +136,7 @@ public class PrometheusMetricSamplerTest {
         config.put(PROMETHEUS_QUERY_SUPPLIER_CONFIG, TestQuerySupplier.class.getName());
         _prometheusMetricSampler.configure(config);
 
-        MetricSamplerOptions metricSamplerOptions = buildMetricSamplerOptions();
+        MetricSamplerOptions metricSamplerOptions = buildMetricSamplerOptions(TEST_TOPIC);
         _prometheusMetricSampler._prometheusAdapter = _prometheusAdapter;
 
         expect(_prometheusAdapter.queryMetric(eq(TestQuerySupplier.TEST_QUERY), anyLong(), anyLong()))
@@ -165,10 +166,11 @@ public class PrometheusMetricSamplerTest {
         _prometheusMetricSampler.configure(config);
     }
 
-    private static MetricSamplerOptions buildMetricSamplerOptions() {
+    private static MetricSamplerOptions buildMetricSamplerOptions(String topic) {
+
         return new MetricSamplerOptions(
-            generateCluster(),
-            generatePartitions(),
+            generateCluster(topic),
+            generatePartitions(topic),
             START_TIME_MS,
             END_TIME_MS,
             MetricSampler.SamplingMode.ALL,
@@ -182,21 +184,24 @@ public class PrometheusMetricSamplerTest {
         Map<String, Object> config = new HashMap<>();
         config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "http://kafka-cluster-1.org:9090");
         addCapacityConfig(config);
-        _prometheusMetricSampler.configure(config);
 
-        MetricSamplerOptions metricSamplerOptions = buildMetricSamplerOptions();
-        _prometheusMetricSampler._prometheusAdapter = _prometheusAdapter;
+        Set<String> topics = new HashSet<String>(Arrays.asList(TEST_TOPIC, TEST_TOPIC_WITH_DOT));
+        for (String topic: topics) {
+            setUp();
+            _prometheusMetricSampler.configure(config);
+            MetricSamplerOptions metricSamplerOptions = buildMetricSamplerOptions(topic);
+            _prometheusMetricSampler._prometheusAdapter = _prometheusAdapter;
 
-        for (RawMetricType rawMetricType : _prometheusQueryMap.keySet()) {
-            setupPrometheusAdapterMock(rawMetricType, buildBrokerResults(),
-                buildTopicResults(), buildPartitionResults());
+            for (RawMetricType rawMetricType : _prometheusQueryMap.keySet()) {
+                setupPrometheusAdapterMock(rawMetricType, buildBrokerResults(),
+                    buildTopicResults(topic), buildPartitionResults(topic));
+            }
+            replay(_prometheusAdapter);
+            MetricSampler.Samples samples = _prometheusMetricSampler.getSamples(metricSamplerOptions);
+
+            assertSamplesValid(samples, topic);
+            verify(_prometheusAdapter);
         }
-
-        replay(_prometheusAdapter);
-        MetricSampler.Samples samples = _prometheusMetricSampler.getSamples(metricSamplerOptions);
-
-        assertSamplesValid(samples);
-        verify(_prometheusAdapter);
     }
 
     @Test
@@ -230,31 +235,31 @@ public class PrometheusMetricSamplerTest {
     @Test
     public void testPrometheusQueryReturnsBadHostname() throws Exception {
         testPrometheusQueryReturnsInvalidResults(buildBrokerResultsWithBadHostname(),
-                                             buildTopicResults(), buildPartitionResults());
+                                             buildTopicResults(TEST_TOPIC), buildPartitionResults(TEST_TOPIC));
     }
 
     @Test
     public void testPrometheusQueryReturnsNullHostPort() throws Exception {
         testPrometheusQueryReturnsInvalidResults(buildBrokerResultsWithNullHostPort(),
-            buildTopicResults(), buildPartitionResults());
+            buildTopicResults(TEST_TOPIC), buildPartitionResults(TEST_TOPIC));
     }
 
     @Test
     public void testPrometheusQueryReturnsNullTopic() throws Exception {
         testPrometheusQueryReturnsInvalidResults(buildBrokerResults(),
-            buildTopicResultsWithNullTopic(), buildPartitionResults());
+            buildTopicResultsWithNullTopic(), buildPartitionResults(TEST_TOPIC));
     }
 
     @Test
     public void testPrometheusQueryReturnsNullPartition() throws Exception {
         testPrometheusQueryReturnsInvalidResults(buildBrokerResults(),
-            buildTopicResults(), buildPartitionResultsWithNullPartition());
+            buildTopicResults(TEST_TOPIC), buildPartitionResultsWithNullPartition());
     }
 
     @Test
     public void testPrometheusQueryReturnsMalformedPartition() throws Exception {
         testPrometheusQueryReturnsInvalidResults(buildBrokerResults(),
-            buildTopicResults(), buildPartitionResultsWithMalformedPartition());
+            buildTopicResults(TEST_TOPIC), buildPartitionResultsWithMalformedPartition());
     }
 
     public void testPrometheusQueryReturnsInvalidResults(
@@ -266,7 +271,7 @@ public class PrometheusMetricSamplerTest {
         addCapacityConfig(config);
         _prometheusMetricSampler.configure(config);
 
-        MetricSamplerOptions metricSamplerOptions = buildMetricSamplerOptions();
+        MetricSamplerOptions metricSamplerOptions = buildMetricSamplerOptions(TEST_TOPIC);
         _prometheusMetricSampler._prometheusAdapter = _prometheusAdapter;
         for (RawMetricType rawMetricType : _prometheusQueryMap.keySet()) {
             setupPrometheusAdapterMock(rawMetricType, brokerResults,
@@ -277,7 +282,7 @@ public class PrometheusMetricSamplerTest {
         _prometheusMetricSampler.getSamples(metricSamplerOptions);
     }
 
-    private void assertSamplesValid(MetricSampler.Samples samples) {
+    private void assertSamplesValid(MetricSampler.Samples samples, String topic) {
         assertEquals(TOTAL_BROKERS, samples.brokerMetricSamples().size());
         assertEquals(
             new HashSet<>(Arrays.asList(0, 1, 2)),
@@ -303,7 +308,7 @@ public class PrometheusMetricSamplerTest {
                 .collect(Collectors.toSet()));
 
         samples.partitionMetricSamples().forEach(partitionMetricSample -> {
-            assertEquals(TEST_TOPIC, partitionMetricSample.entity().tp().topic());
+            assertEquals(topic, partitionMetricSample.entity().tp().topic());
             assertEquals(FIXED_VALUE,
                          partitionMetricSample.metricValue(
                              KafkaMetricDef.commonMetricDefId(KafkaMetricDef.MESSAGE_IN_RATE)),
@@ -373,12 +378,12 @@ public class PrometheusMetricSamplerTest {
         return resultList;
     }
 
-    private static List<PrometheusQueryResult> buildTopicResults() {
+    private static List<PrometheusQueryResult> buildTopicResults(String topic) {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
         for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             resultList.add(new PrometheusQueryResult(new PrometheusMetric(
                 "broker-" + brokerId + ".test-cluster.org:11001",
-                TEST_TOPIC,
+                topic,
                 null
             ), Collections.singletonList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
         }
@@ -421,13 +426,13 @@ public class PrometheusMetricSamplerTest {
         return resultList;
     }
 
-    private static List<PrometheusQueryResult> buildPartitionResults() {
+    private static List<PrometheusQueryResult> buildPartitionResults(String topic) {
         List<PrometheusQueryResult> resultList = new ArrayList<>();
         for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             for (int partition = 0; partition < TOTAL_PARTITIONS; partition++) {
                 resultList.add(new PrometheusQueryResult(new PrometheusMetric(
                     "broker-" + brokerId + ".test-cluster.org:11001",
-                    TEST_TOPIC,
+                    topic,
                     String.valueOf(partition)
                 ), Collections.singletonList(new PrometheusValue(START_EPOCH_SECONDS, FIXED_VALUE))));
             }
@@ -460,23 +465,23 @@ public class PrometheusMetricSamplerTest {
         brokerCapacityConfigResolver.configure(config);
     }
 
-    private static Set<TopicPartition> generatePartitions() {
+    private static Set<TopicPartition> generatePartitions(String topic) {
         Set<TopicPartition> set = new HashSet<>();
         for (int partition = 0; partition < TOTAL_PARTITIONS; partition++) {
-            TopicPartition topicPartition = new TopicPartition(TEST_TOPIC, partition);
+            TopicPartition topicPartition = new TopicPartition(topic, partition);
             set.add(topicPartition);
         }
         return set;
     }
 
-    private static Cluster generateCluster() {
+    private static Cluster generateCluster(String topic) {
         Node[] allNodes = new Node[TOTAL_BROKERS];
         Set<PartitionInfo> partitionInfo = new HashSet<>(TOTAL_BROKERS);
         for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             allNodes[brokerId] = new Node(brokerId, "broker-" + brokerId + ".test-cluster.org", 9092);
         }
         for (int partitionId = 0; partitionId < TOTAL_PARTITIONS; partitionId++) {
-            partitionInfo.add(new PartitionInfo(TEST_TOPIC, partitionId, allNodes[partitionId], allNodes, allNodes));
+            partitionInfo.add(new PartitionInfo(topic, partitionId, allNodes[partitionId], allNodes, allNodes));
         }
         return new Cluster("cluster_id", Arrays.asList(allNodes),
                            partitionInfo, Collections.emptySet(), Collections.emptySet());

@@ -33,6 +33,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model.Promet
 
 import static com.linkedin.cruisecontrol.common.config.ConfigDef.Type.CLASS;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.SEC_TO_MS;
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.replaceDotsWithUnderscores;
 
 /**
  * Metric sampler that fetches Kafka metrics from a Prometheus server and converts them to samples.
@@ -272,7 +273,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
         if (topic == null) {
             throw new InvalidPrometheusResultException("Topic was not returned as part of Prometheus API response.");
         }
-        return topic;
+        return replaceDotsWithUnderscores(topic);
     }
 
     private int getPartition(PrometheusQueryResult queryResult) throws InvalidPrometheusResultException {
