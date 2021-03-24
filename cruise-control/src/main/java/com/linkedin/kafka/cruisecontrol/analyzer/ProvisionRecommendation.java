@@ -133,7 +133,7 @@ public class ProvisionRecommendation {
      */
     public Builder topic(String topic) {
       if (topic == null || topic.isEmpty()) {
-        throw new IllegalArgumentException(String.format("Number of partitions must be positive (%s).", topic));
+        throw new IllegalArgumentException("The name of the topic must be specified");
       }
       _topic = topic;
       return this;
