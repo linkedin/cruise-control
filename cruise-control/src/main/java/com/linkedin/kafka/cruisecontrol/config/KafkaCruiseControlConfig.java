@@ -112,9 +112,8 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    *   <li>{@link AnalyzerConfig#DEFAULT_GOALS_CONFIG} is non-empty.</li>
    *   <li>{@link AnalyzerConfig#DEFAULT_GOALS_CONFIG} is a subset of {@link AnalyzerConfig#GOALS_CONFIG}.</li>
    *   <li>{@link AnalyzerConfig#HARD_GOALS_CONFIG} is a subset of {@link AnalyzerConfig#DEFAULT_GOALS_CONFIG}.</li>
-   *   <li>{@link AnomalyDetectorConfig#ANOMALY_DETECTION_GOALS_CONFIG} is a sublist of
-   *   (1) {@link AnomalyDetectorConfig#SELF_HEALING_GOALS_CONFIG} if it is not empty,
-   *   (2) {@link AnalyzerConfig#DEFAULT_GOALS_CONFIG} otherwise.</li>
+   *   <li>{@link AnomalyDetectorConfig#SELF_HEALING_GOALS_CONFIG} is a subset of {@link AnalyzerConfig#DEFAULT_GOALS_CONFIG}.</li>
+   *   <li>{@link AnomalyDetectorConfig#ANOMALY_DETECTION_GOALS_CONFIG} is a sublist of {@link AnalyzerConfig#DEFAULT_GOALS_CONFIG} otherwise.</li>
    * </ul>
    */
   private void sanityCheckGoalNames() {
