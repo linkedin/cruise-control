@@ -113,9 +113,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    *   <li>{@link AnalyzerConfig#DEFAULT_GOALS_CONFIG} is a subset of {@link AnalyzerConfig#GOALS_CONFIG}.</li>
    *   <li>{@link AnalyzerConfig#HARD_GOALS_CONFIG} is a subset of {@link AnalyzerConfig#DEFAULT_GOALS_CONFIG}.</li>
    *   <li>{@link AnomalyDetectorConfig#SELF_HEALING_GOALS_CONFIG} is a subset of {@link AnalyzerConfig#DEFAULT_GOALS_CONFIG}.</li>
-   *   <li>{@link AnomalyDetectorConfig#ANOMALY_DETECTION_GOALS_CONFIG} is a sublist of
-   *   (1) {@link AnomalyDetectorConfig#SELF_HEALING_GOALS_CONFIG} if it is not empty,
-   *   (2) {@link AnalyzerConfig#DEFAULT_GOALS_CONFIG} otherwise.</li>
+   *   <li>{@link AnomalyDetectorConfig#ANOMALY_DETECTION_GOALS_CONFIG} is a sublist of {@link AnalyzerConfig#DEFAULT_GOALS_CONFIG} otherwise.</li>
    * </ul>
    */
   private void sanityCheckGoalNames() {
@@ -180,13 +178,6 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       throw new ConfigException(String.format("Attempt to configure self healing goals with unsupported goals (%s:%s and %s:%s).",
                                               AnomalyDetectorConfig.SELF_HEALING_GOALS_CONFIG, selfHealingGoalNames,
                                               AnalyzerConfig.DEFAULT_GOALS_CONFIG, defaultGoalNames));
-    }
-
-    // Ensure that goals used for anomaly detection are a subset of goals used for fixing the anomaly.
-    List<String> anomalyDetectionGoalNames = getList(AnomalyDetectorConfig.ANOMALY_DETECTION_GOALS_CONFIG);
-    if (anomalyDetectionGoalNames.stream().anyMatch(g -> selfHealingGoalNames.isEmpty() ? !defaultGoalNames.contains(g)
-                                                                                        : !selfHealingGoalNames.contains(g))) {
-      throw new ConfigException("Attempt to configure anomaly detection goals as a superset of self healing goals.");
     }
   }
 
