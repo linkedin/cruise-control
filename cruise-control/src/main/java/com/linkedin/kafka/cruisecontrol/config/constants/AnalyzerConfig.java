@@ -272,7 +272,7 @@ public class AnalyzerConfig {
                                                                                .add(IntraBrokerDiskUsageDistributionGoal.class.getName()).toString();
   public static final String INTRA_BROKER_GOALS_DOC = "A list of case insensitive intra-broker goals in the order of priority. "
       + "The high priority goals will be executed first. The intra-broker goals are only relevant if intra-broker operation is "
-      + "supported(i.e. in  Cruise Control versions above 2.*), otherwise this list should be empty.";
+      + "supported (i.e. in  Cruise Control versions above 2.*), otherwise this list should be empty.";
 
   /**
    * <code>hard.goals</code>
