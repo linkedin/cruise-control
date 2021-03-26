@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -83,7 +84,7 @@ public class ExecutionProposal {
     }
   }
 
-  private boolean brokerOrderMatched(Node[] currentOrderedReplicas, List<ReplicaPlacementInfo> replicas) {
+  private static boolean brokerOrderMatched(Node[] currentOrderedReplicas, List<ReplicaPlacementInfo> replicas) {
     if (replicas.size() != currentOrderedReplicas.length) {
       return false;
     }
@@ -97,6 +98,19 @@ public class ExecutionProposal {
   }
 
   /**
+   * Package private for unit test.
+   * Check whether all replicas of the given partition state are in-sync. This check is resilient against partitions with
+   * {@code ISR set > replica set}. Hence, even if the given partition has extra broker ids in the in-sync replica set, as long as all the
+   * replicas of the partition are in the in-sync replica set, this function will return {@code true}.
+   *
+   * @param partitionInfo Current partition state.
+   * @return {@code true} if all replicas of the given partition state are in-sync, {@code false} otherwise.
+   */
+  static boolean areAllReplicasInSync(PartitionInfo partitionInfo) {
+    return Arrays.asList(partitionInfo.inSyncReplicas()).containsAll(Arrays.asList(partitionInfo.replicas()));
+  }
+
+  /**
    * Check whether the successful completion of inter-broker replica movement from this proposal is reflected in the current
    * ordered replicas in the given cluster and all replicas are in-sync.
    *
@@ -104,8 +118,7 @@ public class ExecutionProposal {
    * @return True if successfully completed, false otherwise.
    */
   public boolean isInterBrokerMovementCompleted(PartitionInfo partitionInfo) {
-    return brokerOrderMatched(partitionInfo.replicas(), _newReplicas)
-           && partitionInfo.replicas().length == partitionInfo.inSyncReplicas().length;
+    return brokerOrderMatched(partitionInfo.replicas(), _newReplicas) && areAllReplicasInSync(partitionInfo);
   }
 
   /**
