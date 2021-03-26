@@ -7,9 +7,15 @@ package com.linkedin.kafka.cruisecontrol.executor;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import java.util.Arrays;
 import java.util.Collections;
+import org.apache.kafka.common.Node;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Assert;
 import org.junit.Test;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 
 /**
  * Unit test for execution proposals.
@@ -23,6 +29,10 @@ public class ExecutionProposalTest {
   private final ReplicaPlacementInfo _r0d0 =  new ReplicaPlacementInfo(0, "tmp0");
   private final ReplicaPlacementInfo _r0d1 =  new ReplicaPlacementInfo(0, "tmp1");
   private final ReplicaPlacementInfo _r1d1 =  new ReplicaPlacementInfo(1, "tmp1");
+
+  private static final Node NODE_0 = new Node(0, "host0", 100);
+  private static final Node NODE_1 = new Node(1, "host1", 200);
+  private static final Node NODE_2 = new Node(2, "host2", 300);
 
   @Test (expected = IllegalArgumentException.class)
   public void testNullNewReplicaList() {
@@ -53,5 +63,40 @@ public class ExecutionProposalTest {
   @Test (expected = IllegalArgumentException.class)
   public void testMingleReplicaMovements() {
     new ExecutionProposal(TP, 0, _r0d0, Arrays.asList(_r0d0, _r1), Arrays.asList(_r0d1, _r2));
+  }
+
+  @Test
+  public void testAreAllReplicasInSync() {
+    // Verify: If isr is the same as replicas, all replicas are in-sync
+    Node[] replicas = new Node[2];
+    replicas[0] = NODE_0;
+    replicas[1] = NODE_1;
+
+    Node[] isr = new Node[2];
+    isr[0] = NODE_0;
+    isr[1] = NODE_1;
+    PartitionInfo partitionInfo = new PartitionInfo(TP.topic(), TP.partition(), NODE_1, replicas, isr);
+    assertTrue(ExecutionProposal.areAllReplicasInSync(partitionInfo));
+
+    // Verify: If isr is smaller than replicas, not all replicas are in-sync
+    Node[] smallIsr = new Node[1];
+    smallIsr[0] = NODE_0;
+    partitionInfo = new PartitionInfo(TP.topic(), TP.partition(), NODE_1, replicas, smallIsr);
+    assertFalse(ExecutionProposal.areAllReplicasInSync(partitionInfo));
+
+    // Verify: If isr is greater than replicas, all replicas are in-sync
+    Node[] greaterIsr = new Node[3];
+    greaterIsr[0] = NODE_0;
+    greaterIsr[1] = NODE_1;
+    greaterIsr[2] = NODE_2;
+    partitionInfo = new PartitionInfo(TP.topic(), TP.partition(), NODE_1, replicas, greaterIsr);
+    assertTrue(ExecutionProposal.areAllReplicasInSync(partitionInfo));
+
+    // Verify: If isr has the same size as replicas, but replicas are not same as in-sync replicas, then not all replicas are in-sync.
+    Node[] isrWithDifferentBrokerIds = new Node[2];
+    isrWithDifferentBrokerIds[0] = NODE_0;
+    isrWithDifferentBrokerIds[1] = NODE_2;
+    partitionInfo = new PartitionInfo(TP.topic(), TP.partition(), NODE_1, replicas, isrWithDifferentBrokerIds);
+    assertFalse(ExecutionProposal.areAllReplicasInSync(partitionInfo));
   }
 }
