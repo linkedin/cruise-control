@@ -103,10 +103,15 @@ public class ProvisionResponseTest {
     assertEquals(NUM_BROKERS_UP, nullRecommendationUp.recommendationByRecommender().get(RECOMMENDER_UP).numBrokers());
     assertEquals(TYPICAL_BROKER_ID_UP, nullRecommendationUp.recommendationByRecommender().get(RECOMMENDER_UP).typicalBrokerId());
     assertEquals(TYPICAL_BROKER_CAPACITY_UP, nullRecommendationUp.recommendationByRecommender().get(RECOMMENDER_UP).typicalBrokerCapacity(), DELTA);
+    assertEquals(NUM_BROKERS_OP, nullRecommendationOp.recommendationByRecommender().get(RECOMMENDER_OP).numBrokers());
+    assertEquals(TYPICAL_BROKER_ID_OP, nullRecommendationOp.recommendationByRecommender().get(RECOMMENDER_OP).typicalBrokerId());
+    assertEquals(TYPICAL_BROKER_CAPACITY_OP, nullRecommendationOp.recommendationByRecommender().get(RECOMMENDER_OP).typicalBrokerCapacity(), DELTA);
 
     // Verify string representation
     assertEquals(String.format("%s (%s)", ProvisionStatus.UNDER_PROVISIONED, nullRecommendationUp.recommendation()),
                  nullRecommendationUp.toString());
+    assertEquals(String.format("%s (%s)", ProvisionStatus.OVER_PROVISIONED, nullRecommendationOp.recommendation()),
+                 nullRecommendationOp.toString());
   }
 
   @Test

@@ -25,7 +25,7 @@ public interface Provisioner extends CruiseControlConfigurable {
    *   <li>For {@link ProvisionStatus#UNDER_PROVISIONED} clusters, each recommender (e.g. goal name) indicates requested resources
    *   (e.g. number of brokers) along with relevant constraints (e.g. racks for which brokers should not be added). Typically, aggregating
    *   different recommendations for the same resource type requires considering the maximum value over all recommendations.</li>
-   *   <li>For {@link ProvisionStatus#UNDER_PROVISIONED} clusters, each recommender (e.g. goal name) indicates resources that can be
+   *   <li>For {@link ProvisionStatus#OVER_PROVISIONED} clusters, each recommender (e.g. goal name) indicates resources that can be
    *   released (e.g. number of brokers) along with relevant constraints (e.g. expected broker capacity). Typically, aggregating
    *   different recommendations for the same resource type requires considering the minimum value over all recommendations.</li>
    * </ul>

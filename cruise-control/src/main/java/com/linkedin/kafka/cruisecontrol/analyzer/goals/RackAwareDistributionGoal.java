@@ -376,7 +376,7 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
       if (_numAliveRacksAllowedReplicaMoves == 0) {
         // Handle the case when all alive racks are excluded from replica moves.
         ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
-            .numBrokers(clusterModel.maxReplicationFactor()).build();
+            .numRacks(clusterModel.maxReplicationFactor()).build();
         throw new OptimizationFailureException("All alive racks are excluded from replica moves.", recommendation);
       }
       int maxReplicationFactor = clusterModel.maxReplicationFactor();

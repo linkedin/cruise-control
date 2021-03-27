@@ -35,7 +35,7 @@ public class ProvisionRecommendation {
   public static final double DEFAULT_OPTIONAL_DOUBLE = -1.0;
   // Provisions status to identify whether resources will be added or removed.
   protected final ProvisionStatus _status;
-  // Number of resources recommended to be added or removed.
+  // Number of resources recommended to be added or removed. For number of partitions, the value indicates the target number of partitions.
   protected final int _numBrokers;
   protected final int _numRacks;
   protected final int _numDisks;
@@ -115,7 +115,7 @@ public class ProvisionRecommendation {
 
     /**
      * (Optional) Set number of partitions
-     * @param numPartitions Number of partitions to add or remove
+     * @param numPartitions The recommended number of partitions.
      * @return this builder.
      */
     public Builder numPartitions(int numPartitions) {
@@ -374,7 +374,8 @@ public class ProvisionRecommendation {
     } else if (_numDisks != DEFAULT_OPTIONAL_INT) {
       sb.append(String.format("%d disk%s", _numDisks, _numDisks > 1 ? "s" : ""));
     } else if (_numPartitions != DEFAULT_OPTIONAL_INT) {
-      sb.append(String.format("%d partition%s to topic %s", _numPartitions, _numPartitions > 1 ? "s" : "", _topic));
+      sb.append(String.format("the minimum number of partitions so that the topic %s has %d partition%s",
+                              _topic, _numPartitions, _numPartitions > 1 ? "s" : ""));
     }
     // 3. (optional) Typical broker id, its capacity, and resource
     if (_typicalBrokerId != DEFAULT_OPTIONAL_INT) {
