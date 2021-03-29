@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
@@ -88,24 +89,27 @@ public class RackAwareGoal extends AbstractRackAwareGoal {
               Math.max(maxReplicationFactorOfIncludedTopics, replicationFactorByTopicEntry.getValue());
           if (maxReplicationFactorOfIncludedTopics > numAliveRacks) {
             int missingRacks = maxReplicationFactorOfIncludedTopics - numAliveRacks;
+            ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
+                .numRacks(missingRacks).build();
             throw new OptimizationFailureException(
                 String.format("[%s] Insufficient number of racks to distribute included replicas (Current: %d, Needed: %d).",
-                              name(), numAliveRacks, maxReplicationFactorOfIncludedTopics),
-                String.format("Add at least %d racks with brokers.", missingRacks));
+                              name(), numAliveRacks, maxReplicationFactorOfIncludedTopics), recommendation);
           }
         }
       }
     } else if (clusterModel.maxReplicationFactor() > numAliveRacks) {
       int missingRacks = clusterModel.maxReplicationFactor() - numAliveRacks;
+      ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
+          .numRacks(missingRacks).build();
       throw new OptimizationFailureException(
           String.format("[%s] Insufficient number of racks to distribute each replica (Current: %d, Needed: %d).",
-                        name(), numAliveRacks, clusterModel.maxReplicationFactor()),
-          String.format("Add at least %d racks with brokers.", missingRacks));
+                        name(), numAliveRacks, clusterModel.maxReplicationFactor()), recommendation);
     }
     int numExtraRacks = numAliveRacks - clusterModel.maxReplicationFactor();
     if (numExtraRacks >= _balancingConstraint.overprovisionedMinExtraRacks()) {
       int numRacksToDrop = numExtraRacks - _balancingConstraint.overprovisionedMinExtraRacks() + 1;
-      String recommendation = String.format("Reduce rack diversity by at least %d racks.", numRacksToDrop);
+      ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.OVER_PROVISIONED)
+          .numRacks(numRacksToDrop).build();
       _provisionResponse = new ProvisionResponse(ProvisionStatus.OVER_PROVISIONED, recommendation, name());
     }
 
@@ -176,9 +180,11 @@ public class RackAwareGoal extends AbstractRackAwareGoal {
       replicaBrokersRackIds.add(leader.broker().rack().id());
       if (replicaBrokersRackIds.size() != (followerBrokers.size() + 1)) {
         int missingRacks = (followerBrokers.size() + 1) - replicaBrokersRackIds.size();
+        ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
+            .numRacks(missingRacks).build();
         throw new OptimizationFailureException(String.format("[%s] Partition %s is not rack-aware. Leader (%s) and follower brokers (%s).",
                                                              name(), leader.topicPartition(), leader.broker(), followerBrokers),
-                                               String.format("Add at least %d racks with brokers.", missingRacks));
+                                               recommendation);
       }
     }
   }

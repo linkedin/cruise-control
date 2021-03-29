@@ -4,6 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 
@@ -12,25 +15,33 @@ import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
  * Recommendations are only relevant to {@link ProvisionStatus#UNDER_PROVISIONED} and {@link ProvisionStatus#OVER_PROVISIONED}.
  */
 public class ProvisionResponse {
+  public static final String DEFAULT_RECOMMENDATION = "N/A";
   private ProvisionStatus _status;
-  private final StringBuilder _recommendation;
+  private final StringBuilder _humanReadableRecommendation;
+  private final Map<String, ProvisionRecommendation> _recommendationByRecommender;
 
   /**
    * Constructor to be used for provision statuses, for which the recommendations are relevant.
-   * Recommendation and recommender are expected to be human-readable strings.
+   * Recommender is expected to be a human-readable string.
    *
    * @param status The current provision status.
-   * @param recommendation Recommended action regarding the given provision status.
+   * @param provisionRecommendation Recommended action regarding the given provision status.
    * @param recommender The source of the recommended action to be used in aggregate recommendation.
    */
-  public ProvisionResponse(ProvisionStatus status, String recommendation, String recommender) {
+  public ProvisionResponse(ProvisionStatus status, ProvisionRecommendation provisionRecommendation, String recommender) {
     this(status);
     if (!(status == ProvisionStatus.UNDER_PROVISIONED || status == ProvisionStatus.OVER_PROVISIONED)) {
       throw new IllegalArgumentException(String.format("Recommendation is irrelevant for provision status %s.", status));
     }
-    validateNotNull(recommendation, "The recommendation cannot be null.");
     validateNotNull(recommender, "The recommender cannot be null.");
-    _recommendation.append(String.format("[%s] %s", recommender, recommendation));
+    if (provisionRecommendation == null) {
+      // The recommendation can be null if the recommender has no recommendation.
+      _humanReadableRecommendation.append(String.format("[%s] %s", recommender, DEFAULT_RECOMMENDATION));
+
+    } else {
+      _humanReadableRecommendation.append(String.format("[%s] %s", recommender, provisionRecommendation));
+      _recommendationByRecommender.put(recommender, provisionRecommendation);
+    }
   }
 
   /**
@@ -39,7 +50,8 @@ public class ProvisionResponse {
   public ProvisionResponse(ProvisionStatus status) {
     validateNotNull(status, "The provision status cannot be null.");
     _status = status;
-    _recommendation = new StringBuilder();
+    _humanReadableRecommendation = new StringBuilder();
+    _recommendationByRecommender = new HashMap<>();
   }
 
   /**
@@ -50,10 +62,18 @@ public class ProvisionResponse {
   }
 
   /**
-   * @return Recommended actions regarding the current provision status along with the recommender of each action.
+   * @return Human-readable recommended actions regarding the current provision status along with the recommender of each action.
+   * If there is no recommended action from a specific recommender, the action will default to {@link #DEFAULT_RECOMMENDATION}.
    */
   public String recommendation() {
-    return _recommendation.toString();
+    return _humanReadableRecommendation.toString();
+  }
+
+  /**
+   * @return Provision recommendation by the recommender in a programmatically readable format.
+   */
+  public Map<String, ProvisionRecommendation> recommendationByRecommender() {
+    return _recommendationByRecommender;
   }
 
   /**
@@ -68,7 +88,7 @@ public class ProvisionResponse {
    *
    * Note that these rules enforce that once a state changes from {@link ProvisionStatus#OVER_PROVISIONED} to another state, it cannot go
    * back to this state. Similarly, once a state goes into {@link ProvisionStatus#UNDER_PROVISIONED}, no other followup state is possible.
-   * Hence, {@link #_recommendation} for over- or under-provisioned status can be updated without losing relevant information.
+   * Hence, {@link #_humanReadableRecommendation} for over- or under-provisioned status can be updated without losing relevant information.
    *
    * @param other Provision response to aggregate into this response.
    * @return This provision response after the aggregation.
@@ -108,20 +128,22 @@ public class ProvisionResponse {
   }
 
   private void clearRecommendation() {
-    if (_recommendation.length() > 0) {
-      _recommendation.setLength(0);
+    if (_humanReadableRecommendation.length() > 0) {
+      _humanReadableRecommendation.setLength(0);
     }
+    _recommendationByRecommender.clear();
   }
 
   private void aggregateRecommendations(ProvisionResponse other) {
     String otherRecommendation = other.recommendation();
     if (!otherRecommendation.isEmpty()) {
-      _recommendation.append(_recommendation.length() == 0 ? "" : " ").append(otherRecommendation);
+      _humanReadableRecommendation.append(_humanReadableRecommendation.length() == 0 ? "" : " ").append(otherRecommendation);
     }
+    _recommendationByRecommender.putAll(other.recommendationByRecommender());
   }
 
   @Override
   public String toString() {
-    return String.format("%s%s", _status, _recommendation.length() == 0 ? "" : String.format(" (%s)", recommendation()));
+    return String.format("%s%s", _status, _humanReadableRecommendation.length() == 0 ? "" : String.format(" (%s)", recommendation()));
   }
 }

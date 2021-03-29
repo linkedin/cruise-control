@@ -91,3 +91,19 @@ Such maintenance events correspond to admin operations that the relevant system/
 Then, Maintenance Event Reader retrieves the maintenance events from the relevant event store for automated execution.
 
 The default implementation of Maintenance Event Reader (see `MaintenanceEventTopicReader`) consumes maintenance events from a Kafka topic.
+
+## Provisioner
+This component provides the means for adding or removing resources to / from the cluster.
+
+Resources include:
+* Brokers that can host replicas 
+* Racks containing brokers that can host replicas
+* Disks (i.e. relevant to JBOD deployments)
+* Partitions of a topic (can only be added)
+
+Constraints include:
+* Topic name: If the resource is partition, the name of the topic must be specified.
+* A typical broker id and its capacity (one cannot be specified without the other)
+* Specific resource, such as {@link Resource#DISK}.
+* Excluded racks -- i.e. racks for which brokers should not be added to or removed from
+* Total resource capacity required to add or remove

@@ -4,25 +4,29 @@
 
 package com.linkedin.kafka.cruisecontrol.exception;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
+
+
 /**
  * An exception thrown when goal optimization failed.
  */
 public class OptimizationFailureException extends KafkaCruiseControlException {
-  private final String _recommendation;
+  private final ProvisionRecommendation _recommendation;
 
   /**
    * @param message The detail message, which can be retrieved by the {@link #getMessage()}.
    */
   public OptimizationFailureException(String message) {
-    this(message, "");
+    super(message);
+    _recommendation = null;
   }
 
   /**
    * @param message The detail message. The given recommendation will be appended to it, which can be retrieved by the {@link #getMessage()}.
    * @param recommendation Recommendation regarding the fix for this exception.
    */
-  public OptimizationFailureException(String message, String recommendation) {
-    super(String.format("%s %s", message, recommendation == null ? "" : recommendation));
+  public OptimizationFailureException(String message, ProvisionRecommendation recommendation) {
+    super(String.format("%s%s", message, recommendation == null ? "" : String.format(" %s", recommendation)));
     _recommendation = recommendation;
   }
 
@@ -30,6 +34,13 @@ public class OptimizationFailureException extends KafkaCruiseControlException {
    * @return Recommendation regarding the fix for this exception.
    */
   public String recommendation() {
-    return _recommendation == null ? "" : _recommendation;
+    return _recommendation == null ? "" : _recommendation.toString();
+  }
+
+  /**
+   * @return Provision recommendation if any, {@code null} otherwise.
+   */
+  public ProvisionRecommendation provisionRecommendation() {
+    return _recommendation;
   }
 }
