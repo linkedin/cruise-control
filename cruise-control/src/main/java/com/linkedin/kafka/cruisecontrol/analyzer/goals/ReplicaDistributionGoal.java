@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
@@ -96,7 +97,8 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
     super.updateGoalState(clusterModel, optimizationOptions);
     Integer numBrokersToDrop = numBrokersToDrop(clusterModel);
     if (numBrokersToDrop != null) {
-      String recommendation = String.format("Remove at least %d brokers.", numBrokersToDrop);
+      ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.OVER_PROVISIONED)
+          .numBrokers(numBrokersToDrop).build();
       _provisionResponse = new ProvisionResponse(ProvisionStatus.OVER_PROVISIONED, recommendation, name());
     } else if (_succeeded) {
       // The cluster is not overprovisioned and all brokers are within the upper and lower balance limits.
