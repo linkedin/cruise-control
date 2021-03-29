@@ -6,6 +6,8 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
@@ -156,20 +158,22 @@ public abstract class CapacityGoal extends AbstractGoal {
       Set<Integer> brokersAllowedReplicaMove = GoalUtils.aliveBrokersNotExcludedForReplicaMove(clusterModel, optimizationOptions);
       if (brokersAllowedReplicaMove.isEmpty()) {
         // Handle the case when all alive brokers are excluded from replica moves.
-        throw new OptimizationFailureException(String.format("[%s] All alive brokers are excluded from replica moves.", name()),
-                                               String.format("Add at least %d brokers.", clusterModel.maxReplicationFactor()));
+        ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
+            .numBrokers(clusterModel.maxReplicationFactor()).build();
+        throw new OptimizationFailureException(String.format("[%s] All alive brokers are excluded from replica moves.", name()), recommendation);
       }
 
       // Identify a typical broker capacity to be used in recommendations in case the cluster is under-provisioned.
       int typicalBrokerId = brokersAllowedReplicaMove.iterator().next();
       double typicalCapacity = clusterModel.broker(typicalBrokerId).capacityFor(resource());
       double missingCapacity = existingUtilization - allowedCapacity;
-      int numBrokersToAdd = (int) (missingCapacity / (typicalCapacity * _balancingConstraint.capacityThreshold(resource())));
+      int numBrokersToAdd = (int) Math.ceil(missingCapacity / (typicalCapacity * _balancingConstraint.capacityThreshold(resource())));
 
+      ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
+          .numBrokers(numBrokersToAdd).typicalBrokerCapacity(typicalCapacity).typicalBrokerId(typicalBrokerId).resource(resource()).build();
       throw new OptimizationFailureException(
           String.format("[%s] Insufficient capacity for %s (Utilization %.2f, Allowed Capacity %.2f, Threshold: %.2f).", name(), resource(),
-                        existingUtilization, allowedCapacity, _balancingConstraint.capacityThreshold(resource())),
-          String.format("Add at least %d brokers with the same capacity (%.2f) as broker-%d.", numBrokersToAdd, typicalCapacity, typicalBrokerId));
+                        existingUtilization, allowedCapacity, _balancingConstraint.capacityThreshold(resource())), recommendation);
     }
 
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
@@ -204,7 +208,7 @@ public abstract class CapacityGoal extends AbstractGoal {
       throws OptimizationFailureException {
     // Ensure the resource utilization is under capacity limit.
     // While proposals exclude the excludedTopics, the utilization still considers replicas of the excludedTopics.
-    ensureUtilizationUnderCapacity(clusterModel, optimizationOptions);
+    ensureUtilizationUnderCapacity(clusterModel);
     // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
     GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
     // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
@@ -217,10 +221,8 @@ public abstract class CapacityGoal extends AbstractGoal {
    * {@link Resource#isBrokerResource()} and {@link Resource#isHostResource()} determines the level of checks this
    * function performs.
    * @param clusterModel Cluster model.
-   * @param optimizationOptions Options to take into account during optimization.
    */
-  private void ensureUtilizationUnderCapacity(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
-      throws OptimizationFailureException {
+  private void ensureUtilizationUnderCapacity(ClusterModel clusterModel) throws OptimizationFailureException {
     Resource resource = resource();
     double capacityThreshold = _balancingConstraint.capacityThreshold(resource);
 
@@ -232,9 +234,10 @@ public abstract class CapacityGoal extends AbstractGoal {
 
         if (!broker.host().replicas().isEmpty() && utilization > capacityLimit) {
           // The utilization of the host for the resource is over the capacity limit.
+          ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
+              .numBrokers(1).resource(resource()).build();
           throw new OptimizationFailureException(String.format("[%s] %s utilization for host %s (%.2f) is above capacity limit (%.2f).",
-                                                               name(), resource, broker.host().name(), utilization, capacityLimit),
-                                                 "Add at least one broker.");
+                                                               name(), resource, broker.host().name(), utilization, capacityLimit), recommendation);
         }
       }
       // Broker-level violation check.
@@ -244,9 +247,10 @@ public abstract class CapacityGoal extends AbstractGoal {
 
         if (!broker.replicas().isEmpty() && utilization > capacityLimit) {
           // The utilization of the broker for the resource is over the capacity limit.
+          ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
+              .numBrokers(1).resource(resource()).build();
           throw new OptimizationFailureException(String.format("[%s] %s utilization for broker %d (%.2f) is above capacity limit (%.2f).",
-                                                               name(), resource, broker.id(), utilization, capacityLimit),
-                                                 "Add at least one broker.");
+                                                               name(), resource, broker.id(), utilization, capacityLimit), recommendation);
         }
       }
     }
@@ -342,35 +346,33 @@ public abstract class CapacityGoal extends AbstractGoal {
     }
 
     // Ensure that the requirements of the capacity goal are satisfied after the balance.
-    postSanityCheck(isUtilizationOverLimit, broker, brokerCapacityLimit, hostCapacityLimit, optimizationOptions);
+    postSanityCheck(isUtilizationOverLimit, broker, brokerCapacityLimit, hostCapacityLimit);
   }
 
-  private void postSanityCheck(boolean utilizationOverLimit,
-                               Broker broker,
-                               double brokerCapacityLimit,
-                               double hostCapacityLimit,
-                               OptimizationOptions optimizationOptions)
+  private void postSanityCheck(boolean utilizationOverLimit, Broker broker, double brokerCapacityLimit, double hostCapacityLimit)
       throws OptimizationFailureException {
     // 1. Capacity violation check -- note that this check also ensures that no replica resides on dead brokers.
     if (utilizationOverLimit) {
       Resource currentResource = resource();
+      ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
+          .numBrokers(1).resource(currentResource).build();
       if (!currentResource.isHostResource()) {
         // Utilization is above the capacity limit after all replicas in the given source broker were checked.
         throw new OptimizationFailureException(String.format("[%s] Utilization (%.2f) of broker %d violated capacity limit (%.2f) for resource %s.",
                                                              name(), broker.load().expectedUtilizationFor(currentResource), broker.id(),
-                                                             brokerCapacityLimit, currentResource),
-                                               "Add at least one broker.");
+                                                             brokerCapacityLimit, currentResource), recommendation);
       } else {
         throw new OptimizationFailureException(String.format("[%s] Utilization (%.2f) of host %s violated capacity limit (%.2f) for resource %s.",
                                                              name(), broker.host().load().expectedUtilizationFor(currentResource),
-                                                             broker.host().name(), hostCapacityLimit, currentResource),
-                                               "Add at least one host.");
+                                                             broker.host().name(), hostCapacityLimit, currentResource), recommendation);
       }
     }
     // 2. Ensure that no offline replicas remain in the broker.
     if (!broker.currentOfflineReplicas().isEmpty()) {
+      ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
+          .numBrokers(1).resource(resource()).build();
       throw new OptimizationFailureException(String.format("[%s] Cannot remove offline replicas from broker %d.", name(), broker.id()),
-                                             "Add at least one broker.");
+                                             recommendation);
     }
   }
 

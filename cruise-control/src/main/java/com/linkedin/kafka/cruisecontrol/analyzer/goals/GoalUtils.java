@@ -8,6 +8,8 @@ package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
@@ -272,10 +274,10 @@ public final class GoalUtils {
     // Sanity check: No self-healing eligible replica should remain at a decommissioned broker or on broken disk.
     for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
       if (replica.isCurrentOffline()) {
+        ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).numBrokers(1).build();
         Broker broker = replica.broker();
         throw new OptimizationFailureException(String.format("[%s] Cannot remove %s from %s broker %d (has %d replicas).", goalName,
-                                                             replica, broker.state(), broker.id(), broker.replicas().size()),
-                                               "Add at least one broker.");
+                                                             replica, broker.state(), broker.id(), broker.replicas().size()), recommendation);
       }
     }
   }
@@ -293,9 +295,10 @@ public final class GoalUtils {
     for (Broker broker : clusterModel.brokersWithBadDisks()) {
       for (Replica replica : broker.replicas()) {
         if (!clusterModel.partition(replica.topicPartition()).canAssignReplicaToBroker(broker)) {
+          ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).numBrokers(1).build();
           throw new OptimizationFailureException(String.format("[%s] A replica of %s was moved back to broker %d with broken disk.", goalName,
                                                                clusterModel.partition(replica.topicPartition()), replica.broker().id()),
-                                                 "Add at least one broker.");
+                                                 recommendation);
         }
       }
     }

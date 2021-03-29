@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
@@ -16,6 +17,7 @@ import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
 import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
@@ -140,14 +142,16 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
     _brokersAllowedReplicaMove = GoalUtils.aliveBrokersNotExcludedForReplicaMove(clusterModel, optimizationOptions);
     if (_brokersAllowedReplicaMove.isEmpty()) {
       // Handle the case when all alive brokers are excluded from replica moves.
-      throw new OptimizationFailureException(String.format("[%s] All alive brokers are excluded from replica moves.", name()),
-                                             String.format("Add at least %d brokers.", clusterModel.maxReplicationFactor()));
+      ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
+          .numBrokers(clusterModel.maxReplicationFactor()).build();
+      throw new OptimizationFailureException(String.format("[%s] All alive brokers are excluded from replica moves.", name()), recommendation);
     }
     _balanceLimit = new BalanceLimit(clusterModel, optimizationOptions);
     int numExtraRacks = _balanceLimit.numAliveRacksAllowedReplicaMoves() - clusterModel.maxReplicationFactor();
     if (numExtraRacks >= _balancingConstraint.overprovisionedMinExtraRacks()) {
       int numRacksToDrop = numExtraRacks - _balancingConstraint.overprovisionedMinExtraRacks() + 1;
-      String recommendation = String.format("Reduce rack diversity by at least %d racks.", numRacksToDrop);
+      ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.OVER_PROVISIONED)
+          .numRacks(numRacksToDrop).build();
       _provisionResponse = new ProvisionResponse(ProvisionStatus.OVER_PROVISIONED, recommendation, name());
     }
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
@@ -322,10 +326,24 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
         // alive racks allowed replica moves or (2) more replicas that they could have been placed into other racks.
         boolean someAliveRacksHaveNoReplicas = numReplicasByRack.size() < _balanceLimit.numAliveRacksAllowedReplicaMoves();
         if (someAliveRacksHaveNoReplicas || maxNumReplicasInARack - min(numReplicasByRack.values()) > 1) {
+          Set<String> excludedRackIds = new HashSet<>(numReplicasByRack.size());
+          if (someAliveRacksHaveNoReplicas) {
+             // Exclude all racks containing replicas of this partition.
+            excludedRackIds.addAll(numReplicasByRack.keySet());
+          } else {
+            for (Map.Entry<String, Integer> entry : numReplicasByRack.entrySet()) {
+              if (entry.getValue() == maxNumReplicasInARack) {
+                // Racks except for the one that hosts the maximum number of replicas are available for hosting more replicas.
+                excludedRackIds.add(entry.getKey());
+              }
+            }
+          }
+
+          ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
+              .numBrokers(1).excludedRackIds(excludedRackIds).build();
           throw new OptimizationFailureException(String.format("[%s] Partition %s is not rack-aware. Brokers (%s) and replicas per rack (%s).",
                                                                name(), leader.topicPartition(), partitionBrokers, numReplicasByRack),
-                                                 String.format("Add at least one broker to a rack containing fewer replicas per rack: %s",
-                                                               numReplicasByRack));
+                                                 recommendation);
         }
       }
     }
@@ -357,8 +375,9 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
       _numAliveRacksAllowedReplicaMoves = clusterModel.numAliveRacksAllowedReplicaMoves(optimizationOptions);
       if (_numAliveRacksAllowedReplicaMoves == 0) {
         // Handle the case when all alive racks are excluded from replica moves.
-        throw new OptimizationFailureException("All alive racks are excluded from replica moves.",
-                                               String.format("Add at least %d brokers to different racks.", clusterModel.maxReplicationFactor()));
+        ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
+            .numRacks(clusterModel.maxReplicationFactor()).build();
+        throw new OptimizationFailureException("All alive racks are excluded from replica moves.", recommendation);
       }
       int maxReplicationFactor = clusterModel.maxReplicationFactor();
       _baseLimitByRF = new HashMap<>(maxReplicationFactor);

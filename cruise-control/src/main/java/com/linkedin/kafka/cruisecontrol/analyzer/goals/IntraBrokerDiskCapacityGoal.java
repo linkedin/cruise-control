@@ -6,6 +6,8 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
@@ -76,10 +78,12 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
       double existingUtilization = broker.load().expectedUtilizationFor(RESOURCE);
       double allowedCapacity = broker.capacityFor(RESOURCE) * _balancingConstraint.capacityThreshold(RESOURCE);
       if (allowedCapacity < existingUtilization) {
-        double requiredCapacity = existingUtilization * _balancingConstraint.capacityThreshold(RESOURCE);
+        double requiredCapacity = existingUtilization / _balancingConstraint.capacityThreshold(RESOURCE);
+        ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
+            .numBrokers(1).totalCapacity(requiredCapacity).build();
         throw new OptimizationFailureException(String.format("[%s] Insufficient disk capacity at broker %d (Utilization %.2f, Allowed "
                                                              + "Capacity %.2f).", name(), broker.id(), existingUtilization, allowedCapacity),
-                                               String.format("Add at least one broker with capacity %.2f.", requiredCapacity));
+                                               recommendation);
       }
     }
 
@@ -211,9 +215,10 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
         if (disk.isAlive() && isUtilizationOverLimit(disk)) {
           // The utilization of the host for the resource is over the capacity limit.
           double requiredCapacity = disk.utilization() / _balancingConstraint.capacityThreshold(RESOURCE);
+          ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
+              .numDisks(1).totalCapacity(requiredCapacity).build();
           throw new OptimizationFailureException(String.format("[%s] Utilization (%.2f) for disk %s on broker %d is above capacity limit.",
-                                                               name(), disk.utilization(), disk, broker.id()),
-                                                 String.format("Add at least one disk with capacity %.2f.", requiredCapacity));
+                                                               name(), disk.utilization(), disk, broker.id()), recommendation);
         }
       }
     }

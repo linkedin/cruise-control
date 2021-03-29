@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
 import com.linkedin.kafka.cruisecontrol.detector.MaintenanceEvent;
 import com.linkedin.kafka.cruisecontrol.detector.NoopMaintenanceEventReader;
 import com.linkedin.kafka.cruisecontrol.detector.NoopMetricAnomalyFinder;
+import com.linkedin.kafka.cruisecontrol.detector.NoopProvisioner;
 import com.linkedin.kafka.cruisecontrol.detector.NoopTopicAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.NoopNotifier;
 import java.util.Collections;
@@ -264,6 +265,14 @@ public class AnomalyDetectorConfig {
       + " stop the ongoing execution (if any) and wait until the execution stops before starting a fix for the anomaly.";
 
   /**
+   * <code>provisioner.class</code>
+   */
+  public static final String PROVISIONER_CLASS_CONFIG = "provisioner.class";
+  public static final String DEFAULT_PROVISIONER_CLASS = NoopProvisioner.class.getName();
+  public static final String PROVISIONER_CLASS_DOC = "A provisioner class for adding / removing resources to / from the cluster. Different"
+      + " platforms (e.g. Azure) should implement their own custom provisioners.";
+
+  /**
    * Define configs for Anomaly Detector.
    *
    * @param configDef Config definition.
@@ -412,6 +421,11 @@ public class AnomalyDetectorConfig {
                             ConfigDef.Type.BOOLEAN,
                             DEFAULT_MAINTENANCE_EVENT_STOP_ONGOING_EXECUTION,
                             ConfigDef.Importance.LOW,
-                            MAINTENANCE_EVENT_STOP_ONGOING_EXECUTION_DOC);
+                            MAINTENANCE_EVENT_STOP_ONGOING_EXECUTION_DOC)
+                    .define(PROVISIONER_CLASS_CONFIG,
+                            ConfigDef.Type.CLASS,
+                            DEFAULT_PROVISIONER_CLASS,
+                            ConfigDef.Importance.MEDIUM,
+                            PROVISIONER_CLASS_DOC);
   }
 }
