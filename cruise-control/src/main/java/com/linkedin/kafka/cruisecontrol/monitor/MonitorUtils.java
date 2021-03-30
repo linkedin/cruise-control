@@ -293,6 +293,22 @@ public class MonitorUtils {
 
   /**
    * @param cluster Kafka cluster.
+   * @return {@code true} if the cluster has partitions with ISR greater than replicas, {@code false} otherwise.
+   */
+  static boolean hasPartitionsWithIsrGreaterThanReplicas(Cluster cluster) {
+    for (String topic : cluster.topics()) {
+      for (PartitionInfo partitionInfo : cluster.partitionsForTopic(topic)) {
+        int numISR = partitionInfo.inSyncReplicas().length;
+        if (numISR > partitionInfo.replicas().length) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * @param cluster Kafka cluster.
    * @return All the dead brokers in the cluster that host at least one replica.
    */
   static Set<Integer> deadBrokersWithReplicas(Cluster cluster) {
