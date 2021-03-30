@@ -34,6 +34,7 @@ public class MonitorUnitTestUtils {
   public static final long METADATA_EXPIRY_MS = 10L;
   public static final Node NODE_0 = new Node(0, "localhost", 100, "rack0");
   public static final Node NODE_1 = new Node(1, "localhost", 100, "rack1");
+  public static final Node NODE_2 = new Node(2, "localhost", 100, "rack2");
   private static final Node[] NODES = {NODE_0, NODE_1};
 
   private MonitorUnitTestUtils() {

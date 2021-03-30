@@ -191,6 +191,9 @@ public class LoadMonitor {
     double metadataFactorExponent = config.getDouble(MonitorConfig.METADATA_FACTOR_EXPONENT_CONFIG);
     dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_METRICS_NAME_PREFIX, "metadata-factor"),
                                       (Gauge<Double>) () -> metadataFactor(metadataFactorExponent));
+    // The cluster has partitions with ISR > replicas (0: No such partitions, 1: Has such partitions)
+    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_METRICS_NAME_PREFIX, "has-partitions-with-isr-greater-than-replicas"),
+                                      (Gauge<Integer>) () -> MonitorUtils.hasPartitionsWithIsrGreaterThanReplicas(kafkaCluster()) ? 1 : 0);
   }
 
   /**
