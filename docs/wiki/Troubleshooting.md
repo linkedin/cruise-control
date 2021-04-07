@@ -1,7 +1,7 @@
 
 This document contains some common exceptions, warnings and issues that might surface in the logs when trying to use Cruise Control (CC).
 
-## Contents
+## Common Issues
 
 - [ERROR _metricConsumer  returned null for _metricReporterTopic  __CruiseControlMetrics](#error-_metricconsumer-returned-null-for-_metricreportertopic-__cruisecontrolmetrics)
   - [Resolution](#resolution)
