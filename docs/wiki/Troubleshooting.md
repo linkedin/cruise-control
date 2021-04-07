@@ -26,7 +26,7 @@ This means that Cruise Control could not find the `__CruiseControlMetrics` topic
 
 2. Create the topic manually
 
- If you do not want to set the `auto.create.topics.enable` config, then creating this topic manually is also an option. It is recommended to create the topic with the default replication factor of the cluster. Having this topic be a single-partition suffices.
+ If you do not want to set the `auto.create.topics.enable` config, then creating this topic manually is also an option. It is recommended to create the topic with the default replication factor of the cluster. Having this topic be a single-partition topic suffices.
  
 ### Timeout during partition metric sampling
 
@@ -41,7 +41,7 @@ Cruise Control generates its cluster model using metrics in the `__CruiseControl
 
 #### Resolution
 
-1. If converting the mentioned UNIX timestamp results in a date in the past or a very future date, verify that the system clock is showing the right time, try restarting CC and by using the latest version of Cruise Control.
+1. If converting the mentioned UNIX timestamp results in a date in the very past or the very future, verify that the system clock is showing the right time, try restarting CC, and ensure that you are using the latest version of Cruise Control compatible with your version of Kafka (see [Environment Requirements](https://github.com/linkedin/cruise-control#environment-requirements)).
 2. Ensure that the brokers are able to write to the `__CruiseControlMetrics` topic and that the partition(s) for this topic is/are not offline.
 3. Try increasing the lookback window so that CC is able to find data older than the configured window range. The values of `num.partition.metrics.windows`, `partition.metrics.window.ms`, and `metric.sampling.interval.ms` can be increased to achieve this. An example [recommended](https://github.com/linkedin/cruise-control/issues/1472#issuecomment-783813331) config that collects 1-week history for partitions would be (1) `metric.sampling.interval.ms=300000`, (2) `partition.metrics.window.ms=3600000`, (3) `num.partition.metrics.windows=168`.
 
@@ -60,7 +60,7 @@ Caused by: com.linkedin.cruisecontrol.exception.NotEnoughValidWindowsException: 
 
 #### Resolution
 
-This could be happening due to three reasons:
+This could be happening due to any of the following reasons:
 
 1. Cruise Control instance has just been started up the first time (i.e. a cold start), and it hasn't had enough time to collect samples to generate a cluster model. If this is the case, give the CC instance some time (e.g. 5 - 10 minutes), or
 2. A broker-side issue with producing metrics by Cruise Control metrics reporter to the relevant internal topic, or
@@ -75,7 +75,7 @@ ERROR Error processing POST request '/remove_broker' due to: 'com.linkedin.kafka
 
 #### Resolution
 
-This error means that self-healing tried to move some replicas from the given broker(s) but could not do so. One reason for this might be that the replication factor of the topic is greater than the number of available brokers in the cluster. E.g. if the number of brokers in the cluster were 3 and the RF for this topic was also 3 and one of the brokers went down, then Cruise Control won't be able to move the replica to a dead brokers from the broker being decommissioned. That is, self-healing won't work in that case and we would have to ensure that we have enough brokers in the cluster to be able to satisfy the replication factor for the given partition.
+This error means that self-healing tried to move some replicas from the given broker(s) but could not do so. One reason for this might be that the replication factor of the topic is greater than the number of available brokers in the cluster. E.g. if the number of brokers in the cluster were 3 and the RF for this topic was also 3 and one of the brokers went down, then Cruise Control won't be able to move the replica to a dead brokers from the broker being decommissioned. That is, self-healing won't work in that case and we would have to ensure that we have enough brokers in the cluster to be able to satisfy the replication factor for the given partition at all times.
 
 Another solution might be to reduce the replication factor for the topic but this should not be done without proper consideration.
 
@@ -101,4 +101,4 @@ This warning means that Cruise Control could not find broker metrics for the men
 The general resolution is to ensure that the brokers with the missing metrics are able to produce metrics to the `__CruiseControlTopic`. Checking the following might help:
 
 1. Ensure that the Cruise Control metrics reporter jar is present on the brokers
-2. Ensure that you are using a version of Cruise Compatible with the version of Kafka. For more information on version compatibility, see the [Environment Requirements](https://github.com/linkedin/cruise-control#environment-requirements) section
+2. Ensure that you are using a version of Cruise Control compatible with the version of Kafka. For more information on version compatibility, see the [Environment Requirements](https://github.com/linkedin/cruise-control#environment-requirements) section
