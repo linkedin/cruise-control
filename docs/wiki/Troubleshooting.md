@@ -102,3 +102,7 @@ The general resolution is to ensure that the brokers with the missing metrics ar
 
 1. Ensure that the Cruise Control metrics reporter jar is present on the brokers
 2. Ensure that you are using a version of Cruise Control compatible with the version of Kafka. For more information on version compatibility, see the [Environment Requirements](https://github.com/linkedin/cruise-control#environment-requirements) section
+
+## Contributing
+
+Found an error/interesting behaviour of Cruise Control and have a resolution for it? Consider adding that to this guide by following the [contributing guidelines](https://github.com/linkedin/cruise-control/blob/f8d272c4e3ea87b3ff7a66450957d60153af9e02/CONTRIBUTING.md) for the project.
