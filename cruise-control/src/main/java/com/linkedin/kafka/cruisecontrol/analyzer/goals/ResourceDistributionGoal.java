@@ -268,16 +268,33 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     _isLowUtilization = avgUtilizationPercentage <= _balancingConstraint.lowUtilizationThreshold(resource());
     if (_isLowUtilization) {
       // Identify a typical broker capacity to be used in recommendations in case the cluster is over-provisioned.
-      int typicalBrokerId = _brokersAllowedReplicaMove.iterator().next();
+      // To make sure that the recommended brokers to drop in an heterogeneous cluster is a positive number, the typical broker must have
+      // the max capacity.
+      int typicalBrokerId = brokerIdWithMaxCapacity(clusterModel);
       double typicalCapacity = clusterModel.broker(typicalBrokerId).capacityFor(resource());
 
       // Any capacity greater than the allowed capacity may yield over-provisioning.
       double allowedCapacity = resourceUtilization / _balancingConstraint.lowUtilizationThreshold(resource());
       int allowedNumBrokers = (int) (allowedCapacity / typicalCapacity);
-      int numBrokersToDrop = _brokersAllowedReplicaMove.size() - allowedNumBrokers;
+      int numBrokersToDrop = Math.max(_brokersAllowedReplicaMove.size() - allowedNumBrokers, 1);
       _overProvisionedRecommendation = new ProvisionRecommendation.Builder(ProvisionStatus.OVER_PROVISIONED)
           .numBrokers(numBrokersToDrop).typicalBrokerCapacity(typicalCapacity).typicalBrokerId(typicalBrokerId).resource(resource()).build();
     }
+  }
+
+  private int brokerIdWithMaxCapacity(ClusterModel clusterModel) {
+    int brokerIdWithMaxCapacity = -1;
+    double maxCapacity = 0.0;
+
+    for (int brokerId : _brokersAllowedReplicaMove) {
+      double brokerCapacity = clusterModel.broker(brokerId).capacityFor(resource());
+      if (brokerCapacity > maxCapacity) {
+        brokerIdWithMaxCapacity = brokerId;
+        maxCapacity = brokerCapacity;
+      }
+    }
+
+    return brokerIdWithMaxCapacity;
   }
 
   /**
