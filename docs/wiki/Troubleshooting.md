@@ -105,4 +105,4 @@ The general resolution is to ensure that the brokers with the missing metrics ar
 
 ## Contributing
 
-Found an error/interesting behaviour of Cruise Control and have a resolution for it? Consider adding that to this guide by following the [contributing guidelines](https://github.com/linkedin/cruise-control/blob/f8d272c4e3ea87b3ff7a66450957d60153af9e02/CONTRIBUTING.md) for the project.
+Found an error/interesting behaviour of Cruise Control and have a resolution for it? Consider adding that to this guide by following the [contributing guidelines](https://github.com/linkedin/cruise-control/blob/master/CONTRIBUTING.md) for the project.
