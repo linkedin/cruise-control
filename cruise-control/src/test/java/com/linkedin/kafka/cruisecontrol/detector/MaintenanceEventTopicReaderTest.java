@@ -65,9 +65,9 @@ public class MaintenanceEventTopicReaderTest extends CruiseControlIntegrationTes
   }};
   private static final Duration TEST_TIMEOUT = Duration.ofSeconds(5);
   private static final SortedMap<Short, String> TEST_TOPIC_REGEX_WITH_RF_UPDATE = new TreeMap<Short, String>() {{
-      put((short) 2, "T2");
-      put((short) 3, "T3");
-    }};
+    put((short) 2, "T2");
+    put((short) 3, "T3");
+  }};
   private TopicDescription _topicDescription;
   private Config _topicConfig;
 
