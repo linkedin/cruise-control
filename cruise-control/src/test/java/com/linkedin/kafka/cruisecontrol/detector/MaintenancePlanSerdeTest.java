@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ * Copyright 2021 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.detector;
@@ -20,9 +20,9 @@ public class MaintenancePlanSerdeTest {
     add(24);
   }};
   private static final SortedMap<Short, String> TEST_TOPIC_REGEX_WITH_RF_UPDATE = new TreeMap<Short, String>() {{
-        put((short) 2, "T2");
-        put((short) 3, "T3");
-      }};
+    put((short) 2, "T2");
+    put((short) 3, "T3");
+  }};
 
   @Test
   public void testDemotePlanSerde() {
