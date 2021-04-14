@@ -6,19 +6,22 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import java.nio.ByteBuffer;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import org.apache.kafka.common.utils.Crc32C;
 
 
 public abstract class MaintenancePlanWithBrokers extends MaintenancePlan {
-  protected final Set<Integer> _brokers;
+  protected final SortedSet<Integer> _brokers;
 
-  public MaintenancePlanWithBrokers(MaintenanceEventType maintenanceEventType, long timeMs, int brokerId, byte planVersion,  Set<Integer> brokers) {
+  public MaintenancePlanWithBrokers(MaintenanceEventType maintenanceEventType, long timeMs, int brokerId,
+      byte planVersion, SortedSet<Integer> brokers) {
     super(maintenanceEventType, timeMs, brokerId, planVersion);
 
     if (brokers == null || brokers.isEmpty()) {
       throw new IllegalArgumentException("Missing brokers for the plan.");
     }
-    _brokers = brokers;
+    _brokers = new TreeSet<>(brokers);
   }
 
   protected long getCrc() {
