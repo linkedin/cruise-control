@@ -7,6 +7,8 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import org.apache.kafka.common.utils.Crc32C;
 
 
@@ -18,9 +20,9 @@ import org.apache.kafka.common.utils.Crc32C;
 public class TopicReplicationFactorPlan extends MaintenancePlan {
   public static final byte LATEST_SUPPORTED_VERSION = 0;
   // A map containing the regex of topics by the corresponding desired replication factor
-  private final Map<Short, String> _topicRegexWithRFUpdate;
+  private final SortedMap<Short, String> _topicRegexWithRFUpdate;
 
-  public TopicReplicationFactorPlan(long timeMs, int brokerId, Map<Short, String> topicRegexWithRFUpdate) {
+  public TopicReplicationFactorPlan(long timeMs, int brokerId, SortedMap<Short, String> topicRegexWithRFUpdate) {
     super(MaintenanceEventType.TOPIC_REPLICATION_FACTOR, timeMs, brokerId, LATEST_SUPPORTED_VERSION);
     if (topicRegexWithRFUpdate == null || topicRegexWithRFUpdate.isEmpty()) {
       throw new IllegalArgumentException("Missing replication factor updates for the plan.");
@@ -36,7 +38,7 @@ public class TopicReplicationFactorPlan extends MaintenancePlan {
         throw new IllegalArgumentException("Missing topics of the replication factor update for the plan.");
       }
     }
-    _topicRegexWithRFUpdate = topicRegexWithRFUpdate;
+    _topicRegexWithRFUpdate = new TreeMap<>(topicRegexWithRFUpdate);
   }
 
   public Map<Short, String> topicRegexWithRFUpdate() {
