@@ -15,6 +15,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.SortedSet;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -47,16 +51,23 @@ import static org.junit.Assert.fail;
 
 
 public class MaintenanceEventTopicReaderTest extends CruiseControlIntegrationTestHarness {
-  public static final String TEST_TOPIC = "__CloudMaintenanceEvent";
-  public static final String TEST_TOPIC_REPLICATION_FACTOR = "1";
-  public static final String TEST_TOPIC_PARTITION_COUNT = "8";
-  public static final String TEST_TOPIC_RETENTION_TIME_MS = Long.toString(TimeUnit.HOURS.toMillis(1));
-  public static final String RETENTION_MS_CONFIG = "retention.ms";
-  public static final long TEST_REBALANCE_PLAN_TIME = 1601089200000L;
-  public static final long TEST_EXPIRED_PLAN_TIME = TEST_REBALANCE_PLAN_TIME - 1L;
-  public static final int TEST_BROKER_ID = 42;
-  public static final Duration TEST_TIMEOUT = Duration.ofSeconds(5);
-  public static final Map<Short, String> TEST_TOPIC_REGEX_WITH_RF_UPDATE = Collections.singletonMap((short) 2, "T1");
+  private static final String TEST_TOPIC = "__CloudMaintenanceEvent";
+  private static final String TEST_TOPIC_REPLICATION_FACTOR = "1";
+  private static final String TEST_TOPIC_PARTITION_COUNT = "8";
+  private static final String TEST_TOPIC_RETENTION_TIME_MS = Long.toString(TimeUnit.HOURS.toMillis(1));
+  private static final String RETENTION_MS_CONFIG = "retention.ms";
+  private static final long TEST_REBALANCE_PLAN_TIME = 1601089200000L;
+  private static final long TEST_EXPIRED_PLAN_TIME = TEST_REBALANCE_PLAN_TIME - 1L;
+  private static final int TEST_BROKER_ID = 42;
+  private static final SortedSet<Integer> BROKERS_IN_PLAN = new TreeSet<Integer>() {{
+    add(42);
+    add(24);
+  }};
+  private static final Duration TEST_TIMEOUT = Duration.ofSeconds(5);
+  private static final SortedMap<Short, String> TEST_TOPIC_REGEX_WITH_RF_UPDATE = new TreeMap<Short, String>() {{
+    put((short) 2, "T2");
+    put((short) 3, "T3");
+  }};
   private TopicDescription _topicDescription;
   private Config _topicConfig;
 
@@ -79,9 +90,9 @@ public class MaintenanceEventTopicReaderTest extends CruiseControlIntegrationTes
     try (Producer<String, MaintenancePlan> producer = createMaintenancePlanProducer(props)) {
       sendPlan(producer, new RebalancePlan(TEST_REBALANCE_PLAN_TIME, TEST_BROKER_ID));
       sendPlan(producer, new FixOfflineReplicasPlan(TEST_EXPIRED_PLAN_TIME, TEST_BROKER_ID));
-      sendPlan(producer, new DemoteBrokerPlan(TEST_EXPIRED_PLAN_TIME, TEST_BROKER_ID, Collections.singleton(TEST_BROKER_ID)));
-      sendPlan(producer, new AddBrokerPlan(TEST_EXPIRED_PLAN_TIME, TEST_BROKER_ID, Collections.singleton(TEST_BROKER_ID)));
-      sendPlan(producer, new RemoveBrokerPlan(TEST_EXPIRED_PLAN_TIME, TEST_BROKER_ID, Collections.singleton(TEST_BROKER_ID)));
+      sendPlan(producer, new DemoteBrokerPlan(TEST_EXPIRED_PLAN_TIME, TEST_BROKER_ID, BROKERS_IN_PLAN));
+      sendPlan(producer, new AddBrokerPlan(TEST_EXPIRED_PLAN_TIME, TEST_BROKER_ID, BROKERS_IN_PLAN));
+      sendPlan(producer, new RemoveBrokerPlan(TEST_EXPIRED_PLAN_TIME, TEST_BROKER_ID, BROKERS_IN_PLAN));
       sendPlan(producer, new TopicReplicationFactorPlan(TEST_EXPIRED_PLAN_TIME, TEST_BROKER_ID, TEST_TOPIC_REGEX_WITH_RF_UPDATE));
     }
   }
