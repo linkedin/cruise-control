@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
-import java.util.Set;
+import java.util.SortedSet;
 
 
 /**
@@ -15,7 +15,7 @@ import java.util.Set;
 public class AddBrokerPlan extends MaintenancePlanWithBrokers {
   public static final byte LATEST_SUPPORTED_VERSION = 0;
 
-  public AddBrokerPlan(long timeMs, int brokerId, Set<Integer> brokers) {
+  public AddBrokerPlan(long timeMs, int brokerId, SortedSet<Integer> brokers) {
     super(MaintenanceEventType.ADD_BROKER, timeMs, brokerId, LATEST_SUPPORTED_VERSION, brokers);
   }
 }
