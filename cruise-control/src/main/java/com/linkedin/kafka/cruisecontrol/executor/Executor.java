@@ -95,8 +95,8 @@ public class Executor {
   private final AtomicInteger _stopSignal;
   private final Time _time;
   private volatile boolean _hasOngoingExecution;
-  private volatile Semaphore _flipOngoingExecutionMutex;
-  private volatile Semaphore _noOngoingExecutionSemaphore;
+  private final Semaphore _flipOngoingExecutionMutex;
+  private final Semaphore _noOngoingExecutionSemaphore;
   private volatile ExecutorState _executorState;
   private volatile String _uuid;
   private volatile Supplier<String> _reasonSupplier;
@@ -687,13 +687,27 @@ public class Executor {
     _executionStoppedByUser.set(false);
     sanityCheckOngoingMovement();
 
-    _flipOngoingExecutionMutex.acquireUninterruptibly();
-    _hasOngoingExecution = true;
-    _stopSignal.set(NO_STOP_EXECUTION);
-    // Wait if Executor is shutting down.
-    _noOngoingExecutionSemaphore.acquireUninterruptibly();
-    // Block shut down until execution stopped.
-    _flipOngoingExecutionMutex.release();
+    try {
+      _flipOngoingExecutionMutex.acquire();
+      try {
+        _hasOngoingExecution = true;
+        _stopSignal.set(NO_STOP_EXECUTION);
+        try {
+          // Wait if Executor is shutting down.
+          _noOngoingExecutionSemaphore.acquire();
+          // Block Executor from shutting down until ongoing execution stopped.
+        } catch (final InterruptedException ie) {
+          _hasOngoingExecution = false;
+          throw new OngoingExecutionException("Interrupted while shutting down executor.");
+        }
+      } finally {
+        _flipOngoingExecutionMutex.release();
+      }
+    } catch (final InterruptedException ie) {
+      // handle acquire failure for _flipOngoingExecutionMutex here
+      _hasOngoingExecution = false;
+      throw new OngoingExecutionException("Interrupted while shutting down executor.");
+    }
 
     _anomalyDetectorManager.maybeClearOngoingAnomalyDetectionTimeMs();
     _anomalyDetectorManager.resetHasUnfixableGoals();
@@ -831,18 +845,27 @@ public class Executor {
   public synchronized void shutdown() {
     LOG.info("Shutting down executor.");
 
-    _flipOngoingExecutionMutex.acquireUninterruptibly();
-    if (_hasOngoingExecution) {
-      LOG.warn("Shutdown executor may take long because execution is still in progress.");
-      stopExecution(false);
-    }
     try {
-      // Wait until ongoing execution stopped completely. Block new execution from proceeding.
-      _noOngoingExecutionSemaphore.acquire();
-    } catch (InterruptedException e) {
-      LOG.warn("Interrupted while waiting for ongoing execution to stop.");
+      _flipOngoingExecutionMutex.acquire();
+      try {
+        if (_hasOngoingExecution) {
+          LOG.warn("Shutdown executor may take long because execution is still in progress.");
+          stopExecution(false);
+        }
+        try {
+          LOG.info("Waiting for ongoing execution to stop completely if any.");
+          _noOngoingExecutionSemaphore.acquire();
+          LOG.info("Blocking new execution from proceeding.");
+        } catch (final InterruptedException ie) {
+          LOG.warn("Interrupted while waiting for ongoing execution to stop.");
+        }
+      } finally {
+        _flipOngoingExecutionMutex.release();
+      }
+    } catch (final InterruptedException ie) {
+      // handle acquire failure for _flipOngoingExecutionMutex
+      LOG.warn("Interrupted while checking if there is ongoing execution to stop.");
     }
-    _flipOngoingExecutionMutex.release();
 
     _proposalExecutor.shutdown();
 
