@@ -698,7 +698,7 @@ public class Executor {
           // Block Executor from shutting down until ongoing execution stopped.
         } catch (final InterruptedException ie) {
           _hasOngoingExecution = false;
-          throw new OngoingExecutionException("Interrupted while shutting down executor.");
+          throw new IllegalStateException("Interrupted while shutting down executor.");
         }
       } finally {
         _flipOngoingExecutionMutex.release();
@@ -706,7 +706,7 @@ public class Executor {
     } catch (final InterruptedException ie) {
       // handle acquire failure for _flipOngoingExecutionMutex here
       _hasOngoingExecution = false;
-      throw new OngoingExecutionException("Interrupted while shutting down executor.");
+      throw new IllegalStateException("Interrupted while shutting down executor.");
     }
 
     _anomalyDetectorManager.maybeClearOngoingAnomalyDetectionTimeMs();
