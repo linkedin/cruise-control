@@ -28,6 +28,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -92,6 +93,8 @@ public class Executor {
   private final AtomicInteger _stopSignal;
   private final Time _time;
   private volatile boolean _hasOngoingExecution;
+  private final Semaphore _flipOngoingExecutionMutex;
+  private final Semaphore _noOngoingExecutionSemaphore;
   private volatile ExecutorState _executorState;
   private volatile String _uuid;
   private volatile Supplier<String> _reasonSupplier;
@@ -182,6 +185,8 @@ public class Executor {
     _executorState = ExecutorState.noTaskInProgress(recentlyDemotedBrokers(), recentlyRemovedBrokers());
     _stopSignal = new AtomicInteger(NO_STOP_EXECUTION);
     _hasOngoingExecution = false;
+    _flipOngoingExecutionMutex = new Semaphore(1);
+    _noOngoingExecutionSemaphore = new Semaphore(1);
     _uuid = null;
     _reasonSupplier = null;
     _executorNotifier = executorNotifier != null ? executorNotifier
@@ -679,10 +684,31 @@ public class Executor {
                               boolean isTriggeredByUserRequest) throws OngoingExecutionException {
     _executionStoppedByUser.set(false);
     sanityCheckOngoingMovement();
-    _hasOngoingExecution = true;
+
+    try {
+      _flipOngoingExecutionMutex.acquire();
+      try {
+        _hasOngoingExecution = true;
+        _stopSignal.set(NO_STOP_EXECUTION);
+        try {
+          // Wait if Executor is shutting down.
+          _noOngoingExecutionSemaphore.acquire();
+          // Block Executor from shutting down until ongoing execution stopped.
+        } catch (final InterruptedException ie) {
+          _hasOngoingExecution = false;
+          throw new IllegalStateException("Interrupted while shutting down executor.");
+        }
+      } finally {
+        _flipOngoingExecutionMutex.release();
+      }
+    } catch (final InterruptedException ie) {
+      // handle acquire failure for _flipOngoingExecutionMutex here
+      _hasOngoingExecution = false;
+      throw new IllegalStateException("Interrupted while shutting down executor.");
+    }
+
     _anomalyDetectorManager.maybeClearOngoingAnomalyDetectionTimeMs();
     _anomalyDetectorManager.resetHasUnfixableGoals();
-    _stopSignal.set(NO_STOP_EXECUTION);
     _executionStoppedByUser.set(false);
     if (_isKafkaAssignerMode) {
       _numExecutionStartedInKafkaAssignerMode.incrementAndGet();
@@ -816,9 +842,29 @@ public class Executor {
    */
   public synchronized void shutdown() {
     LOG.info("Shutting down executor.");
-    if (_hasOngoingExecution) {
-      LOG.warn("Shutdown executor may take long because execution is still in progress.");
+
+    try {
+      _flipOngoingExecutionMutex.acquire();
+      try {
+        if (_hasOngoingExecution) {
+          LOG.warn("Shutdown executor may take long because execution is still in progress.");
+          stopExecution(false);
+        }
+        try {
+          LOG.info("Waiting for ongoing execution to stop completely if any.");
+          _noOngoingExecutionSemaphore.acquire();
+          LOG.info("Blocking new execution from proceeding.");
+        } catch (final InterruptedException ie) {
+          LOG.warn("Interrupted while waiting for ongoing execution to stop.");
+        }
+      } finally {
+        _flipOngoingExecutionMutex.release();
+      }
+    } catch (final InterruptedException ie) {
+      // handle acquire failure for _flipOngoingExecutionMutex
+      LOG.warn("Interrupted while checking if there is ongoing execution to stop.");
     }
+
     _proposalExecutor.shutdown();
 
     try {
@@ -916,6 +962,7 @@ public class Executor {
       if (isTriggeredByUserRequest && _userTaskManager == null) {
         processExecuteProposalsFailure();
         _hasOngoingExecution = false;
+        _noOngoingExecutionSemaphore.release();
         _stopSignal.set(NO_STOP_EXECUTION);
         _executionStoppedByUser.set(false);
         LOG.error("Failed to initialize proposal execution.");
@@ -1115,6 +1162,7 @@ public class Executor {
       _reasonSupplier = null;
       _executorState = ExecutorState.noTaskInProgress(_recentlyDemotedBrokers, _recentlyRemovedBrokers);
       _hasOngoingExecution = false;
+      _noOngoingExecutionSemaphore.release();
       _stopSignal.set(NO_STOP_EXECUTION);
       _executionStoppedByUser.set(false);
       // Ensure that sampling mode is adjusted properly to continue collecting partition metrics after execution.
