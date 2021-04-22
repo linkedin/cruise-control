@@ -43,7 +43,7 @@ jobs:
       - restore_cache:
           key: dependency-cache-{{ checksum "build.gradle" }}
       - run:
-          command: ./gradlew distributeBuild
+          command: ./gradlew :artifactoryPublish :cruise-control:artifactoryPublish :cruise-control-core:artifactoryPublish :cruise-control-metrics-reporter:artifactoryPublish
 
 workflows:
   version: 2
