@@ -14,8 +14,8 @@ dependencies {
   compile localGroovy()
 
   compile 'org.ajoberstar:gradle-git:1.7.2'
-  compile group: 'org.apache.httpcomponents', name: 'fluent-hc', version: '4.5.8'
-  compile('org.jfrog.buildinfo:build-info-extractor-gradle:4.9.5') {
+  compile 'org.apache.httpcomponents:fluent-hc:4.5.13'
+  compile('org.jfrog.buildinfo:build-info-extractor-gradle:4.21.0') {
     exclude module: 'groovy-all'
   }
 }
