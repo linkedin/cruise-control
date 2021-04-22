@@ -840,7 +840,7 @@ public class ClusterModel implements Serializable {
           if (isOffline) {
             disk = broker.addDeadDisk(logdir);
           } else {
-            throw new IllegalStateException("Missing disk information for disk " + logdir + " on broker " + this);
+            throw new IllegalStateException("Missing disk information for disk " + logdir + " on broker " + broker);
           }
         }
       }
