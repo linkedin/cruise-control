@@ -7,25 +7,38 @@ package com.linkedin.kafka.cruisecontrol.executor;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.SystemTime;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
 
 public class ExecutionTaskManagerTest {
+  private static final Map<ConcurrencyType, Integer> MOCK_DEFAULT_CONCURRENCY;
+  static {
+    Map<ConcurrencyType, Integer> mockDefaultConcurrency = new HashMap<>(ConcurrencyType.cachedValues().size());
+    mockDefaultConcurrency.put(ConcurrencyType.INTER_BROKER_REPLICA, 4);
+    mockDefaultConcurrency.put(ConcurrencyType.LEADERSHIP, 500);
+    mockDefaultConcurrency.put(ConcurrencyType.INTRA_BROKER_REPLICA, 2);
+    MOCK_DEFAULT_CONCURRENCY = Collections.unmodifiableMap(mockDefaultConcurrency);
+  }
+  private static ExecutionTaskManager TASK_MANAGER;
 
   private Cluster generateExpectedCluster(ExecutionProposal proposal, TopicPartition tp) {
     List<Node> expectedReplicas = new ArrayList<>(proposal.oldReplicas().size());
@@ -41,11 +54,25 @@ public class ExecutionTaskManagerTest {
     return new Cluster(null, expectedReplicas, partitions, Collections.emptySet(), Collections.emptySet());
   }
 
+  /**
+   * Setup the test.
+   */
+  @BeforeClass
+  public static void setup() {
+    Properties properties = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
+    properties.put(ExecutorConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG,
+                   Integer.toString(MOCK_DEFAULT_CONCURRENCY.get(ConcurrencyType.INTER_BROKER_REPLICA)));
+    properties.put(ExecutorConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG,
+                   Integer.toString(MOCK_DEFAULT_CONCURRENCY.get(ConcurrencyType.LEADERSHIP)));
+    properties.put(ExecutorConfig.NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG,
+                   Integer.toString(MOCK_DEFAULT_CONCURRENCY.get(ConcurrencyType.INTRA_BROKER_REPLICA)));
+    TASK_MANAGER = new ExecutionTaskManager(null, new MetricRegistry(), new SystemTime(),
+                                            new KafkaCruiseControlConfig(properties));
+  }
+
   @Test
   public void testStateChangeSequences() {
     TopicPartition tp = new TopicPartition("topic", 0);
-    ExecutionTaskManager taskManager = new ExecutionTaskManager(null, new MetricRegistry(), new SystemTime(),
-            new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
 
     List<List<ExecutionTaskState>> testSequences = new ArrayList<>();
     // Completed successfully.
@@ -61,23 +88,27 @@ public class ExecutionTaskManagerTest {
     ReplicaPlacementInfo r1 = new ReplicaPlacementInfo(1);
     ReplicaPlacementInfo r2 = new ReplicaPlacementInfo(2);
     for (List<ExecutionTaskState> sequence : testSequences) {
-      taskManager.clear();
+      TASK_MANAGER.clear();
       // Make sure the proposal does not involve leader movement.
-      ExecutionProposal proposal =
-          new ExecutionProposal(tp, 10, r2, Arrays.asList(r0, r2), Arrays.asList(r2, r1));
+      ExecutionProposal proposal = new ExecutionProposal(tp, 10, r2, Arrays.asList(r0, r2), Arrays.asList(r2, r1));
 
-      taskManager.setExecutionModeForTaskTracker(false);
-      taskManager.addExecutionProposals(Collections.singletonList(proposal),
-                                        Collections.emptySet(),
-                                        generateExpectedCluster(proposal, tp),
-                                        null);
-      taskManager.setRequestedInterBrokerPartitionMovementConcurrency(null);
-      taskManager.setRequestedIntraBrokerPartitionMovementConcurrency(null);
-      taskManager.setRequestedLeadershipMovementConcurrency(null);
-      List<ExecutionTask> tasks = taskManager.getInterBrokerReplicaMovementTasks();
+      TASK_MANAGER.setExecutionModeForTaskTracker(false);
+      TASK_MANAGER.addExecutionProposals(Collections.singletonList(proposal),
+                                         Collections.emptySet(),
+                                         generateExpectedCluster(proposal, tp),
+                                         null);
+      TASK_MANAGER.setRequestedInterBrokerPartitionMovementConcurrency(null);
+      TASK_MANAGER.setRequestedIntraBrokerPartitionMovementConcurrency(null);
+      TASK_MANAGER.setRequestedLeadershipMovementConcurrency(null);
+      List<ExecutionTask> tasks = TASK_MANAGER.getInterBrokerReplicaMovementTasks();
       assertEquals(1, tasks.size());
       ExecutionTask task  = tasks.get(0);
-      verifyStateChangeSequence(sequence, task, taskManager);
+      verifyStateChangeSequence(sequence, task, TASK_MANAGER);
+    }
+
+    // Verify that the movement concurrency matches the default configuration
+    for (ConcurrencyType concurrencyType : ConcurrencyType.cachedValues()) {
+      assertEquals(MOCK_DEFAULT_CONCURRENCY.get(concurrencyType).intValue(), TASK_MANAGER.movementConcurrency(concurrencyType));
     }
   }
 

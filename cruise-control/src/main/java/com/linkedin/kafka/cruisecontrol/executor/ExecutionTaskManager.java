@@ -155,6 +155,25 @@ public class ExecutionTaskManager {
   }
 
   /**
+   * Retrieve the movement concurrency of the given concurrency type.
+   *
+   * @param concurrencyType The type of concurrency for which the allowed movement concurrency is requested.
+   * @return The movement concurrency of the given concurrency type.
+   */
+  public synchronized int movementConcurrency(ConcurrencyType concurrencyType) {
+    switch (concurrencyType) {
+      case INTER_BROKER_REPLICA:
+        return interBrokerPartitionMovementConcurrency();
+      case INTRA_BROKER_REPLICA:
+        return intraBrokerPartitionMovementConcurrency();
+      case LEADERSHIP:
+        return leadershipMovementConcurrency();
+      default:
+        throw new IllegalArgumentException("Unsupported concurrency type " + concurrencyType + " is provided.");
+    }
+  }
+
+  /**
    * @return A list of execution tasks that move the replicas cross brokers.
    */
   public synchronized List<ExecutionTask> getInterBrokerReplicaMovementTasks() {

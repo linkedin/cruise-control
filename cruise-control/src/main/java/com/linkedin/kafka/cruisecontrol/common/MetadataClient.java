@@ -89,7 +89,7 @@ public class MetadataClient {
   private void doRefreshMetadata(long timeout) {
     int updateVersion = _metadata.requestUpdate();
     long remaining = timeout;
-    Cluster beforeUpdate = _metadata.fetch();
+    Cluster beforeUpdate = cluster();
     boolean isMetadataUpdated = _metadata.updateVersion() > updateVersion;
     while (!isMetadataUpdated && remaining > 0) {
       _metadata.requestUpdate();
@@ -100,9 +100,9 @@ public class MetadataClient {
     }
     if (isMetadataUpdated) {
       if (LOG.isDebugEnabled()) {
-        LOG.debug("Updated metadata {}", _metadata.fetch());
+        LOG.debug("Updated metadata {}", cluster());
       }
-      if (MonitorUtils.metadataChanged(beforeUpdate, _metadata.fetch())) {
+      if (MonitorUtils.metadataChanged(beforeUpdate, cluster())) {
         _metadataGeneration.incrementAndGet();
       }
     } else {
@@ -120,7 +120,7 @@ public class MetadataClient {
     if (_time.milliseconds() >= _metadata.lastSuccessfulUpdate() + _metadataTTL) {
       doRefreshMetadata(timeout);
     }
-    return new ClusterAndGeneration(_metadata.fetch(), _metadataGeneration.get());
+    return clusterAndGeneration();
   }
 
   /**
