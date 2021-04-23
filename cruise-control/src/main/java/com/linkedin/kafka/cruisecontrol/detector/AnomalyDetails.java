@@ -4,8 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
-import static com.linkedin.cruisecontrol.CruiseControlUtils.utcDateFor;
-import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.GOAL_VIOLATION;
 import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
@@ -14,6 +12,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static com.linkedin.cruisecontrol.CruiseControlUtils.utcDateFor;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.GOAL_VIOLATION;
 
 @JsonResponseClass
 public class AnomalyDetails {
