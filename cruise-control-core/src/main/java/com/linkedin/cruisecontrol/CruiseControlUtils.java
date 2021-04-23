@@ -6,6 +6,7 @@ package com.linkedin.cruisecontrol;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+
 import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 

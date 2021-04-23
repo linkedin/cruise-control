@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.config;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import org.apache.kafka.common.config.ConfigException;
 import org.junit.Test;
+
 import static org.junit.Assert.assertThrows;
 
 import static org.easymock.EasyMock.partialMockBuilder;

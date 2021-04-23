@@ -8,6 +8,8 @@ import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
 import java.util.Map;
 import java.util.HashMap;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toPrettyDuration;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.GOAL_VIOLATION;
@@ -15,8 +17,6 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyTyp
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.BROKER_FAILURE;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.DISK_FAILURE;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.TOPIC_ANOMALY;
-import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
-import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
 
 @JsonResponseClass
 public class AnomalyMetrics {
