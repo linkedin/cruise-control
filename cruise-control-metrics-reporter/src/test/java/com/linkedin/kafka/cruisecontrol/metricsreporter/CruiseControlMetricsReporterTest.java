@@ -18,6 +18,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaTestUtils;
 import kafka.server.KafkaConfig;
@@ -47,7 +48,6 @@ import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetr
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import java.util.regex.Pattern;
 
 public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationTestHarness {
   protected static final String TOPIC = "CruiseControlMetricsReporterTest";
