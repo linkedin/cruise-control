@@ -12,11 +12,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.HashMap;
 import java.util.Map;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
+import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.ExecutionTasksSummary;
-import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
-import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 
 @JsonResponseClass
 public class ExecutorState {
