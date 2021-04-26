@@ -3,7 +3,7 @@
 # See License in the project root for license information.
 
 SIGNAL=${SIGNAL:-TERM}
-PIDS=$(ps ax | grep -i 'cruise-control' | grep java | grep -v grep | awk '{print $1}')
+PIDS=$(ps ax | grep 'java.*KafkaCruiseControlMain' | grep -v grep | awk '{print $1}')
 
 if [ -z "$PIDS" ]; then
   echo "No cruise-control to stop"
