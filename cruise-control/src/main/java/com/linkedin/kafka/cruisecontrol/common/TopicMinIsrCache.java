@@ -68,7 +68,7 @@ public class TopicMinIsrCache {
   }
 
   /**
-   * @return An unmodifiable view of cache , containing minIsr with time by topic name.
+   * @return An unmodifiable view of cache, containing minIsr with time by topic name.
    */
   public Map<String, MinIsrWithTime> minIsrWithTimeByTopic() {
     return Collections.unmodifiableMap(_minIsrWithTimeByTopic);
