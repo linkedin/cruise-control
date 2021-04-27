@@ -171,7 +171,7 @@ public class ConcurrencyAdjusterTest {
     assertEquals(MOCK_MAX_LEADERSHIP_MOVEMENTS / MOCK_MD_LEADERSHIP, recommendedConcurrency.intValue());
 
     // 1.3. Inter-broker replica reassignment (capped)
-    int currentMovementConcurrency = (MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER * MOCK_MD_INTER_BROKER_REPLICA + 1) - 1;
+    int currentMovementConcurrency = MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER * MOCK_MD_INTER_BROKER_REPLICA;
     recommendedConcurrency = ExecutionUtils.recommendedConcurrency(cluster,
                                                                    minIsrWithTimeByTopic,
                                                                    currentMovementConcurrency,
@@ -303,8 +303,8 @@ public class ConcurrencyAdjusterTest {
 
 
     // 3.3. Inter-broker replica reassignment (capped)
-    currentMovementConcurrency = (MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER * MOCK_MD_INTER_BROKER_REPLICA + 1) - 1;
-                                 recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
+    currentMovementConcurrency = MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER * MOCK_MD_INTER_BROKER_REPLICA;
+    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
                                                                    currentMovementConcurrency,
                                                                    ConcurrencyType.INTER_BROKER_REPLICA);
     assertEquals(MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER, recommendedConcurrency.intValue());
