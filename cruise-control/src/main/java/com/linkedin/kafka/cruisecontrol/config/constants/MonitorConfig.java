@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaTopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.DefaultMetricSamplerPartitionAssignor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaWriteOnlySampleStore;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.common.config.ConfigDef;
@@ -315,6 +316,15 @@ public class MonitorConfig {
       + "persisted samples can be reloaded from the sample store to Kafka Cruise Control.";
 
   /**
+   * <code>sample.partition.metrics.store.during.execution.class</code>
+   */
+  public static final String SAMPLE_PARTITION_METRICS_STORE_DURING_EXECUTION_CLASS_CONFIG = "sample.partition.metrics.store.during.execution.class";
+  public static final String DEFAULT_SAMPLE_PARTITION_METRICS_STORE_DURING_EXECUTION_CLASS = KafkaWriteOnlySampleStore.class.getName();
+  public static final String SAMPLE_PARTITION_METRICS_STORE_DURING_EXECUTION_CLASS_DOC = "The sample store class name. "
+      + "User may configure a sample store that persist the partition metric samples collected when Kafka Cruise "
+      + "Control is in progress.";
+
+  /**
    * <code>topic.config.provider.class</code>
    */
   public static final String TOPIC_CONFIG_PROVIDER_CLASS_CONFIG = "topic.config.provider.class";
@@ -548,6 +558,11 @@ public class MonitorConfig {
                             DEFAULT_SAMPLE_STORE_CLASS,
                             ConfigDef.Importance.LOW,
                             SAMPLE_STORE_CLASS_DOC)
+                    .define(SAMPLE_PARTITION_METRICS_STORE_DURING_EXECUTION_CLASS_CONFIG,
+                            ConfigDef.Type.CLASS,
+                            DEFAULT_SAMPLE_PARTITION_METRICS_STORE_DURING_EXECUTION_CLASS,
+                            ConfigDef.Importance.LOW,
+                            SAMPLE_PARTITION_METRICS_STORE_DURING_EXECUTION_CLASS_DOC)
                     .define(TOPIC_CONFIG_PROVIDER_CLASS_CONFIG,
                             ConfigDef.Type.CLASS,
                             DEFAULT_TOPIC_CONFIG_PROVIDER_CLASS,

@@ -10,6 +10,7 @@ import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionMetricSample;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import org.apache.kafka.common.Cluster;
@@ -26,6 +27,7 @@ abstract class MetricFetcher implements Callable<Boolean> {
   protected final MetricSampler _metricSampler;
   protected final Cluster _cluster;
   protected final SampleStore _sampleStore;
+  protected final SampleStore _sampleStoreForPartitionMetricsDuringExecution;
   protected final Set<TopicPartition> _assignedPartitions;
   protected final long _startTimeMs;
   protected final long _endTimeMs;
@@ -57,9 +59,38 @@ abstract class MetricFetcher implements Callable<Boolean> {
                 Timer fetchTimer,
                 Meter fetchFailureRate,
                 MetricSampler.SamplingMode samplingMode) {
+    this(metricSampler, cluster, sampleStore, null, assignedPartitions, startTimeMs,
+        endTimeMs, metricDef, fetchTimer, fetchFailureRate, samplingMode);
+  }
+
+  /**
+   * @param metricSampler The sampler used to retrieve metrics.
+   * @param cluster The Kafka cluster.
+   * @param sampleStore Sample store to persist the fetched samples, or skip storing samples if {@code null}.
+   * @param sampleStoreForPartitionMetricsDuringExecution Sample store to persist the fetched partition samples during execution
+   * @param assignedPartitions Partitions to fetch samples from.
+   * @param startTimeMs The start time of the sampling period.
+   * @param endTimeMs The end time of the sampling period.
+   * @param metricDef The metric definitions.
+   * @param fetchTimer The timer to keep track of metric fetch time.
+   * @param fetchFailureRate The meter to keep track of failure rate while fetching metrics.
+   * @param samplingMode The mode of sampling to indicate the sample type of interest.
+   */
+  MetricFetcher(MetricSampler metricSampler,
+      Cluster cluster,
+      SampleStore sampleStore,
+      SampleStore sampleStoreForPartitionMetricsDuringExecution,
+      Set<TopicPartition> assignedPartitions,
+      long startTimeMs,
+      long endTimeMs,
+      MetricDef metricDef,
+      Timer fetchTimer,
+      Meter fetchFailureRate,
+      MetricSampler.SamplingMode samplingMode) {
     _metricSampler = metricSampler;
     _cluster = cluster;
     _sampleStore = sampleStore;
+    _sampleStoreForPartitionMetricsDuringExecution = sampleStoreForPartitionMetricsDuringExecution;
     _assignedPartitions = assignedPartitions;
     _startTimeMs = startTimeMs;
     _endTimeMs = endTimeMs;
@@ -96,7 +127,18 @@ abstract class MetricFetcher implements Callable<Boolean> {
     try {
       MetricSampler.Samples samples = fetchSamples();
       if (_sampleStore != null) {
-        _sampleStore.storeSamples(samples);
+        if (_samplingMode == MetricSampler.SamplingMode.ONGOING_EXECUTION) {
+          _sampleStore.storeSamples(new MetricSampler.Samples(new HashSet<>(), samples.brokerMetricSamples()));
+        } else {
+          _sampleStore.storeSamples(samples);
+        }
+      }
+
+      //replace _sampleStore
+      if (_samplingMode == MetricSampler.SamplingMode.ONGOING_EXECUTION && _sampleStoreForPartitionMetricsDuringExecution
+          != null) {
+        _sampleStoreForPartitionMetricsDuringExecution.storeSamples(new MetricSampler.Samples(samples.partitionMetricSamples(),
+            new HashSet<>()));
       }
       // TODO: evolve sample store interface to allow independent eviction time for different type of metric samples.
       // We are not calling sampleStore.evictSamplesBefore() because the broker metric samples and partition metric
@@ -124,7 +166,9 @@ abstract class MetricFetcher implements Callable<Boolean> {
     if (_samplingMode == MetricSampler.SamplingMode.ALL || _samplingMode == MetricSampler.SamplingMode.PARTITION_METRICS_ONLY) {
       usePartitionMetricSamples(samples.partitionMetricSamples());
     }
-    if (_samplingMode == MetricSampler.SamplingMode.ALL || _samplingMode == MetricSampler.SamplingMode.BROKER_METRICS_ONLY) {
+    if (_samplingMode == MetricSampler.SamplingMode.ALL ||
+        _samplingMode == MetricSampler.SamplingMode.BROKER_METRICS_ONLY ||
+        _samplingMode == MetricSampler.SamplingMode.ONGOING_EXECUTION) {
       useBrokerMetricSamples(samples.brokerMetricSamples());
     }
 

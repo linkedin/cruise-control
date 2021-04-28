@@ -86,7 +86,7 @@ public interface MetricSampler extends CruiseControlConfigurable, AutoCloseable 
    * The sampling mode to indicate which type of samples is interested.
    */
   enum SamplingMode {
-    PARTITION_METRICS_ONLY, BROKER_METRICS_ONLY, ALL
+    PARTITION_METRICS_ONLY, BROKER_METRICS_ONLY, ONGOING_EXECUTION, ALL
   }
 
   /**
