@@ -155,13 +155,15 @@ public class KafkaCruiseControlUtils {
    */
   public static boolean createTopic(AdminClient adminClient, NewTopic topicToBeCreated) {
     try {
+      Set<String> allTopics = adminClient.listTopics().names().get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+      if (allTopics.contains(topicToBeCreated.name())) {
+        LOG.info("Topic {} has already been created.", topicToBeCreated.name());
+        return false;
+      }
       CreateTopicsResult createTopicsResult = adminClient.createTopics(Collections.singletonList(topicToBeCreated));
       createTopicsResult.values().get(topicToBeCreated.name()).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
       LOG.info("Topic {} has been created.", topicToBeCreated.name());
     } catch (InterruptedException | ExecutionException | TimeoutException e) {
-      if (e.getCause() instanceof TopicExistsException) {
-        return false;
-      }
       throw new IllegalStateException(String.format("Unable to create topic %s.", topicToBeCreated.name()), e);
     }
     return true;
