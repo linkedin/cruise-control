@@ -16,7 +16,6 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
-import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -507,8 +506,12 @@ public class LoadMonitor {
       try {
         brokerCapacity = _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id(), BROKER_CAPACITY_FETCH_TIMEOUT_MS,
                                                                          allowCapacityEstimation);
-        LOG.debug("Get capacity info for broker {}: total capacity {}, capacity by logdir {}.", node.id(),
-                  brokerCapacity.capacity().get(Resource.DISK), brokerCapacity.diskCapacityByLogDir());
+        LOG.debug("Capacity of broker {}: {}, (LogDir: {}, Cores: {}).", node.id(), brokerCapacity.capacity(),
+                  brokerCapacity.diskCapacityByLogDir(), brokerCapacity.numCpuCores());
+        if (populateReplicaPlacementInfo && brokerCapacity.diskCapacityByLogDir() == null) {
+          throw new IllegalStateException(String.format("Missing disk capacity information for logDirs on broker %d. "
+                                                        + "Are you trying to use a JBOD feature on a non-JBOD Kafka deployment?", node.id()));
+        }
       } catch (TimeoutException | BrokerCapacityResolutionException e) {
         String errorMessage = String.format("Unable to retrieve capacity for broker %d. This may be caused by churn in "
                                             + "the cluster, please retry.", node.id());
