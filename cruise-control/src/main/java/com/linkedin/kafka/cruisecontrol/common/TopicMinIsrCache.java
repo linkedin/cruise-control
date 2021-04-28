@@ -89,10 +89,11 @@ public class TopicMinIsrCache {
    *
    * @param describeConfigsResult DescribeConfigsResult containing the topic names and the corresponding
    * {@link TopicConfig#MIN_IN_SYNC_REPLICAS_CONFIG} values to update the cache with.
+   * @return Number of entries in the cache after the put operation.
    */
-  public synchronized void putTopicMinIsr(DescribeConfigsResult describeConfigsResult) {
+  public synchronized int putTopicMinIsr(DescribeConfigsResult describeConfigsResult) {
     if (describeConfigsResult == null) {
-      return;
+      return _minIsrWithTimeByTopic.size();
     }
 
     long updateTimeMs = _time.milliseconds();
@@ -106,7 +107,7 @@ public class TopicMinIsrCache {
           LOG.warn("Failed to retrieve value of config {} for {} topics due to describeConfigs request time out. Check for Kafka-side issues"
                    + " and consider increasing the configured timeout (see {}).", TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG,
                    describeConfigsResult.values().size(), ExecutorConfig.ADMIN_CLIENT_REQUEST_TIMEOUT_MS_CONFIG, ee.getCause());
-          return;
+          return _minIsrWithTimeByTopic.size();
         }
         // e.g. could be UnknownTopicOrPartitionException due to topic deletion or InvalidTopicException
         LOG.debug("Cannot retrieve value of config {} for topic {}.", TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, entry.getKey().name(), ee);
@@ -114,6 +115,7 @@ public class TopicMinIsrCache {
         LOG.debug("Interrupted while getting value of config {} for topic {}.", TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, entry.getKey().name(), ie);
       }
     }
+    return _minIsrWithTimeByTopic.size();
   }
 
   /**

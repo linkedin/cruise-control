@@ -5,8 +5,10 @@
 package com.linkedin.kafka.cruisecontrol.common;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import org.apache.kafka.clients.admin.Config;
@@ -26,8 +28,10 @@ import static org.junit.Assert.*;
 
 public class TopicMinIsrCacheTest {
   private static final Duration MOCK_CONCURRENCY_ADJUSTER_MIN_ISR_RETENTION_MS = Duration.ofMillis(2);
+  private static final Duration MOCK_CONCURRENCY_ADJUSTER_EXPIRED_MIN_ISR_RETENTION_MS = Duration.ofMillis(-1);
   private static final int MOCK_CONCURRENCY_ADJUSTER_MIN_ISR_CACHE_SIZE = 3;
   private static final Duration MOCK_CACHE_CLEANER_PERIOD = Duration.ofMillis(200);
+  private static final Duration MOCK_CACHE_CLEANER_FAST_PERIOD = Duration.ofMillis(10);
   private static final Duration MOCK_CACHE_CLEANER_INITIAL_DELAY = Duration.ofSeconds(0);
   private static final long MOCK_TIME_MS = 100L;
   private static final String MOCK_TOPIC = "mock-topic";
@@ -51,6 +55,62 @@ public class TopicMinIsrCacheTest {
   @Before
   public void setup() {
     _mockTime = EasyMock.mock(Time.class);
+  }
+
+  @Test
+  public void testCacheExpiration() throws ExecutionException, InterruptedException {
+    EasyMock.expect(_mockTime.milliseconds()).andReturn(MOCK_TIME_MS).anyTimes();
+    EasyMock.replay(_mockTime);
+
+    // Emulate cache expiration with (1) a current time equals to updateTimeMs and (2) a negative retention time.
+    TopicMinIsrCache topicMinIsrCache = new TopicMinIsrCache(MOCK_CONCURRENCY_ADJUSTER_EXPIRED_MIN_ISR_RETENTION_MS,
+                                                             MOCK_CONCURRENCY_ADJUSTER_MIN_ISR_CACHE_SIZE,
+                                                             MOCK_CACHE_CLEANER_FAST_PERIOD,
+                                                             MOCK_CACHE_CLEANER_INITIAL_DELAY,
+                                                             _mockTime);
+
+    DescribeConfigsResult describeConfigsResult = EasyMock.mock(DescribeConfigsResult.class);
+
+    List<KafkaFuture<Config>> describedConfigsFutures = new ArrayList<>(3);
+    List<Config> topicConfigs = new ArrayList<>(3);
+    for (int i = 0; i < 3; i++) {
+      describedConfigsFutures.add(EasyMock.createMock(KafkaFuture.class));
+      topicConfigs.add(EasyMock.createMock(Config.class));
+    }
+
+    Map<ConfigResource, KafkaFuture<Config>> describeConfigsValues = new LinkedHashMap<>(3);
+    describeConfigsValues.put(MOCK_TOPIC_RESOURCE, describedConfigsFutures.get(0));
+    describeConfigsValues.put(MOCK_TOPIC_RESOURCE_2, describedConfigsFutures.get(1));
+    describeConfigsValues.put(MOCK_TOPIC_RESOURCE_3, describedConfigsFutures.get(2));
+
+    EasyMock.expect(describeConfigsResult.values()).andReturn(describeConfigsValues);
+    for (int i = 0; i < 3; i++) {
+      EasyMock.expect(describedConfigsFutures.get(i).get()).andReturn(topicConfigs.get(i));
+    }
+    EasyMock.expect(topicConfigs.get(0).get(EasyMock.eq(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG)))
+            .andReturn(new ConfigEntry(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, MIN_IN_SYNC_REPLICAS_VALUE));
+    EasyMock.expect(topicConfigs.get(1).get(EasyMock.eq(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG)))
+            .andReturn(new ConfigEntry(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, MIN_IN_SYNC_REPLICAS_VALUE_2));
+    EasyMock.expect(topicConfigs.get(2).get(EasyMock.eq(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG)))
+            .andReturn(new ConfigEntry(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, MIN_IN_SYNC_REPLICAS_VALUE_3));
+
+    for (int i = 0; i < 3; i++) {
+      EasyMock.replay(describedConfigsFutures.get(i), topicConfigs.get(i));
+    }
+    EasyMock.replay(describeConfigsResult);
+    int sizeAfterPut = topicMinIsrCache.putTopicMinIsr(describeConfigsResult);
+    assertEquals(3, sizeAfterPut);
+
+    long startMs = System.currentTimeMillis();
+    long deadlineMs = startMs + (10 * MOCK_CACHE_CLEANER_FAST_PERIOD.toMillis());
+    long cacheWaitMs = MOCK_CACHE_CLEANER_FAST_PERIOD.toMillis() / 2;
+    while (!topicMinIsrCache.minIsrWithTimeByTopic().isEmpty() && System.currentTimeMillis() < deadlineMs) {
+      // wait for the cache to be cleaned.
+      Thread.sleep(cacheWaitMs);
+    }
+    // The cache is expected to be empty upon cleanup.
+    assertTrue(topicMinIsrCache.minIsrWithTimeByTopic().isEmpty());
+    EasyMock.verify(describeConfigsResult);
   }
 
   @Test
@@ -102,7 +162,7 @@ public class TopicMinIsrCacheTest {
     KafkaFuture<Config> describedConfigsFuture2 = EasyMock.createMock(KafkaFuture.class);
     Config topicConfig2 = EasyMock.createMock(Config.class);
 
-    Map<ConfigResource, KafkaFuture<Config>> describeConfigsWithMultipleValues = new HashMap<>(2);
+    Map<ConfigResource, KafkaFuture<Config>> describeConfigsWithMultipleValues = new LinkedHashMap<>(2);
     describeConfigsWithMultipleValues.put(MOCK_TOPIC_RESOURCE_2, describedConfigsFuture2);
     describeConfigsWithMultipleValues.put(MOCK_TOPIC_RESOURCE_3, describedConfigsFuture);
 
@@ -130,7 +190,7 @@ public class TopicMinIsrCacheTest {
     KafkaFuture<Config> describedConfigsFuture3 = EasyMock.createMock(KafkaFuture.class);
     Config topicConfig3 = EasyMock.createMock(Config.class);
 
-    describeConfigsWithMultipleValues = new HashMap<>(2);
+    describeConfigsWithMultipleValues = new LinkedHashMap<>(2);
     describeConfigsWithMultipleValues.put(MOCK_TOPIC_RESOURCE_2, describedConfigsFuture);
     describeConfigsWithMultipleValues.put(MOCK_TOPIC_RESOURCE_3, describedConfigsFuture3);
 
