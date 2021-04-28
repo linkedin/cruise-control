@@ -8,6 +8,7 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricVa
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
+import com.linkedin.kafka.cruisecontrol.common.TopicMinIsrCache.MinIsrWithTime;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
@@ -16,11 +17,17 @@ import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
+import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.Node;
+import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -42,6 +49,9 @@ public class ConcurrencyAdjusterTest {
   private static final int MOCK_MAX_LEADERSHIP_MOVEMENTS = 1000;
   private static final int MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER = 1;
   private static final int MOCK_MIN_LEADERSHIP_MOVEMENTS_CONFIG = 50;
+  private static final long MOCK_TIME_MS = 100L;
+  private static final String TOPIC1 = "topic1";
+  private static final TopicPartition TP1 = new TopicPartition(TOPIC1, 0);
 
   /**
    * Setup the test.
@@ -90,6 +100,140 @@ public class ConcurrencyAdjusterTest {
     }
 
     return currentMetrics;
+  }
+
+  /**
+   * A cluster that contains a single partition {@link #TP1} with two replicas on Nodes 0 and 1.
+   * Staring from node-0, given number of replicas are in-sync.
+   * Out of sync replicas are offline if isOutOfSyncOffline is {@code true}, they are online otherwise.
+   *
+   * @param numInSync Number of in-sync replicas.
+   * @param isOutOfSyncOffline {@code true} if out of sync replicas are offline, {@code false} otherwise.
+   * @return A cluster that contains a single partition with two replicas, containing given number of in-sync replicas.
+   */
+  private static Cluster getClusterWithOutOfSyncPartition(int numInSync, boolean isOutOfSyncOffline) {
+    if (numInSync > 2 || numInSync < 0) {
+      throw new IllegalArgumentException(String.format("numInSync must be in [0,2] (Given: %d).", numInSync));
+    }
+
+    Node node0 = new Node(0, "host0", 100);
+    Node node1 = new Node(1, "host1", 100);
+    Node[] replicas = new Node[2];
+    replicas[0] = node0;
+    replicas[1] = node1;
+    Node[] inSyncReplicas = new Node[numInSync];
+    if (numInSync > 0) {
+      inSyncReplicas[0] = node0;
+      if (numInSync > 1) {
+        inSyncReplicas[1] = node1;
+      }
+    }
+    PartitionInfo partitionInfo;
+    if (!isOutOfSyncOffline) {
+      partitionInfo = new PartitionInfo(TP1.topic(), TP1.partition(), node0, replicas, inSyncReplicas);
+    } else {
+      Node[] offlineReplicas = new Node[2 - numInSync];
+      if (numInSync == 1) {
+        offlineReplicas[0] = node1;
+      } else if (numInSync == 0) {
+        offlineReplicas[0] = node0;
+        offlineReplicas[1] = node1;
+      }
+
+      partitionInfo = new PartitionInfo(TP1.topic(), TP1.partition(), node0, replicas, inSyncReplicas, offlineReplicas);
+    }
+    return new Cluster("id", Arrays.asList(node0, node1), Collections.singleton(partitionInfo),
+                       Collections.emptySet(), Collections.emptySet());
+
+  }
+
+  @Test
+  public void testRecommendedMinIsrBasedConcurrency() {
+    // Cluster with an online out of sync partition.
+    Cluster cluster = getClusterWithOutOfSyncPartition(1, false);
+
+    // 1. Verify a recommended decrease in concurrency for different concurrency types due to AtMinISR partitions without offline replicas.
+    // Cache with a single entry that makes the TP1 in cluster AtMinISR.
+    Map<String, MinIsrWithTime> minIsrWithTimeByTopic = Collections.singletonMap(TOPIC1, new MinIsrWithTime((short) 1, MOCK_TIME_MS));
+
+    // 1.1. Inter-broker replica reassignment (non-capped)
+    Integer recommendedConcurrency = ExecutionUtils.recommendedConcurrency(cluster,
+                                                                           minIsrWithTimeByTopic,
+                                                                           MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER,
+                                                                           ConcurrencyType.INTER_BROKER_REPLICA);
+    assertEquals(MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER / MOCK_MD_INTER_BROKER_REPLICA, recommendedConcurrency.intValue());
+
+    // 1.2. Leadership reassignment (non-capped)
+    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(cluster,
+                                                                   minIsrWithTimeByTopic,
+                                                                   MOCK_MAX_LEADERSHIP_MOVEMENTS,
+                                                                   ConcurrencyType.LEADERSHIP);
+    assertEquals(MOCK_MAX_LEADERSHIP_MOVEMENTS / MOCK_MD_LEADERSHIP, recommendedConcurrency.intValue());
+
+    // 1.3. Inter-broker replica reassignment (capped)
+    int currentMovementConcurrency = MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER * MOCK_MD_INTER_BROKER_REPLICA;
+    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(cluster,
+                                                                   minIsrWithTimeByTopic,
+                                                                   currentMovementConcurrency,
+                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
+    assertEquals(MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER, recommendedConcurrency.intValue());
+
+    // 1.4. Leadership reassignment (capped)
+    currentMovementConcurrency = (MOCK_MIN_LEADERSHIP_MOVEMENTS_CONFIG * MOCK_MD_LEADERSHIP) - 1;
+    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(cluster,
+                                                                   minIsrWithTimeByTopic,
+                                                                   currentMovementConcurrency,
+                                                                   ConcurrencyType.LEADERSHIP);
+    assertEquals(MOCK_MIN_LEADERSHIP_MOVEMENTS_CONFIG, recommendedConcurrency.intValue());
+
+    // 2. Verify a recommended cancellation of the execution (i.e. concurrency types is irrelevant) due to UnderMinISR partitions without
+    // offline replicas.
+    // Cache with a single entry that makes the TP1 in cluster UnderMinISR.
+    minIsrWithTimeByTopic = Collections.singletonMap(TOPIC1, new MinIsrWithTime((short) 2, MOCK_TIME_MS));
+    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(cluster,
+                                                                   minIsrWithTimeByTopic,
+                                                                   MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER,
+                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
+    assertEquals(ExecutionUtils.CANCEL_THE_EXECUTION, recommendedConcurrency.intValue());
+
+    // 3. Verify that if the minISR value for topics containing (At/Under)MinISR partitions in the given Kafka cluster is missing from the
+    // given cache, then no change in concurrency is recommended.
+    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(cluster,
+                                                                   Collections.emptyMap(),
+                                                                   MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER,
+                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
+    assertNull(recommendedConcurrency);
+
+    // 4. Verify no change in concurrency due to lack of (At/Under)MinISR partitions (i.e. concurrency types is irrelevant)
+    // Cluster with an all in-sync partition.
+    cluster = getClusterWithOutOfSyncPartition(2, false);
+    // Cache with a single entry that makes the TP1 in cluster not (At/Under)MinISR.
+    minIsrWithTimeByTopic = Collections.singletonMap(TOPIC1, new MinIsrWithTime((short) 1, MOCK_TIME_MS));
+
+    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(cluster,
+                                                                   minIsrWithTimeByTopic,
+                                                                   MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER,
+                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
+    assertNull(recommendedConcurrency);
+
+    // 5. Verify no change in concurrency due to (At/Under)MinISR partitions with an offline replica (i.e. concurrency types is irrelevant)
+    // Cluster with an offline out of sync partition.
+    cluster = getClusterWithOutOfSyncPartition(1, true);
+    // 5.1. Recommendation with AtMinISR partition containing an offline replica.
+    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(cluster,
+                                                                   minIsrWithTimeByTopic,
+                                                                   MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER,
+                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
+    assertNull(recommendedConcurrency);
+
+    // 5.2. Recommendation with UnderMinISR partition containing an offline replica.
+    // Cache with a single entry that makes the TP1 in cluster UnderMinISR.
+    minIsrWithTimeByTopic = Collections.singletonMap(TOPIC1, new MinIsrWithTime((short) 2, MOCK_TIME_MS));
+    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(cluster,
+                                                                   minIsrWithTimeByTopic,
+                                                                   MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER,
+                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
+    assertNull(recommendedConcurrency);
   }
 
   @Test
@@ -159,8 +303,8 @@ public class ConcurrencyAdjusterTest {
 
 
     // 3.3. Inter-broker replica reassignment (capped)
-    currentMovementConcurrency = (MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER * MOCK_MD_INTER_BROKER_REPLICA + 1) - 1;
-                                 recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
+    currentMovementConcurrency = MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER * MOCK_MD_INTER_BROKER_REPLICA;
+    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
                                                                    currentMovementConcurrency,
                                                                    ConcurrencyType.INTER_BROKER_REPLICA);
     assertEquals(MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER, recommendedConcurrency.intValue());
@@ -243,6 +387,7 @@ public class ConcurrencyAdjusterTest {
                       Integer.toString(MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER));
     props.setProperty(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_CONFIG,
                       Integer.toString(MOCK_MIN_LEADERSHIP_MOVEMENTS_CONFIG));
+
     return props;
   }
 }
