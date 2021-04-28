@@ -43,7 +43,6 @@ import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.errors.ReassignmentInProgressException;
-import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.message.MetadataResponseData;
 import org.apache.kafka.common.record.RecordBatch;
 import org.apache.kafka.common.requests.AbstractResponse;
