@@ -17,16 +17,20 @@ import org.apache.kafka.clients.admin.ListPartitionReassignmentsResult;
 import org.apache.kafka.clients.admin.NewPartitionReassignment;
 import org.apache.kafka.clients.admin.PartitionReassignment;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
+import com.linkedin.kafka.cruisecontrol.common.TopicMinIsrCache.MinIsrWithTime;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import kafka.zk.KafkaZkClient;
 import kafka.zk.ZkVersion;
 import org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult;
@@ -51,6 +55,9 @@ public final class ExecutionUtils {
   public static final int DEFAULT_RETRY_BACKOFF_BASE = 2;
   public static final long METADATA_REFRESH_BACKOFF = 100L;
   public static final long METADATA_EXPIRY_MS = Long.MAX_VALUE;
+  public static final Duration MIN_ISR_CACHE_CLEANER_PERIOD = Duration.ofMinutes(10);
+  public static final Duration MIN_ISR_CACHE_CLEANER_INITIAL_DELAY = Duration.ofMinutes(0);
+  public static final int CANCEL_THE_EXECUTION = 0;
   // A special timestamp to indicate that a broker is a permanent part of recently removed or demoted broker set.
   public static final long PERMANENT_TIMESTAMP = 0L;
   public static final String EXECUTION_STARTED = "execution-started";
@@ -167,6 +174,87 @@ public final class ExecutionUtils {
     }
 
     return withinLimit;
+  }
+
+  /**
+   * Provide a recommended concurrency for the ongoing movements of the given concurrency type using (At/Under)MinISR status of partitions.
+   * If the cluster has partitions that are
+   * <ul>
+   *   <li>UnderMinISR without offline replicas, recommend cancelling the execution</li>
+   *   <li>AtMinISR without offline replicas, apply multiplicative-decrease to concurrency</li>
+   * </ul>
+   *
+   * @param cluster Kafka cluster.
+   * @param minIsrWithTimeByTopic Value and capture time of {@link org.apache.kafka.common.config.TopicConfig#MIN_IN_SYNC_REPLICAS_CONFIG} by topic.
+   * @param currentMovementConcurrency The effective allowed movement concurrency.
+   * @param concurrencyType The type of concurrency for which the recommendation is requested.
+   * @return {@code null} to indicate recommendation for no change in allowed movement concurrency, {@code 0} to indicate recommendation to
+   * cancel the execution, or a positive integer to indicate the recommended movement concurrency.
+   */
+  static Integer recommendedConcurrency(Cluster cluster,
+                                        Map<String, MinIsrWithTime> minIsrWithTimeByTopic,
+                                        int currentMovementConcurrency,
+                                        ConcurrencyType concurrencyType) {
+    Comparator<PartitionInfo> comparator = Comparator.comparing(PartitionInfo::topic).thenComparingInt(PartitionInfo::partition);
+    Set<PartitionInfo> atMinIsr = new TreeSet<>(comparator);
+    Set<PartitionInfo> underMinIsr = new TreeSet<>(comparator);
+    populateMinIsrState(cluster, minIsrWithTimeByTopic, atMinIsr, underMinIsr);
+
+    Integer recommendedConcurrency = null;
+    if (!underMinIsr.isEmpty()) {
+      LOG.info("Concurrency adjuster recommended cancelling the execution due to UnderMinISR without offline replicas in {}.", underMinIsr);
+      recommendedConcurrency = CANCEL_THE_EXECUTION;
+    } else if (!atMinIsr.isEmpty()) {
+      int minMovementsConcurrency = MIN_CONCURRENCY.get(concurrencyType);
+      // Multiplicative-decrease reassignment concurrency (MIN: minMovementsConcurrency).
+      if (currentMovementConcurrency > minMovementsConcurrency) {
+        recommendedConcurrency = Math.max(minMovementsConcurrency, currentMovementConcurrency / MULTIPLICATIVE_DECREASE.get(concurrencyType));
+        LOG.info("Concurrency adjuster recommended a decrease in {} movement concurrency to {} due to AtMinISR without offline replicas in {}.",
+                 concurrencyType, recommendedConcurrency, atMinIsr);
+      }
+    }
+
+    return recommendedConcurrency;
+  }
+
+  /**
+   * Populates the given sets for partitions that are (1) UnderMinISR without offline replicas and (2) AtMinISR without offline replicas
+   * using the topics from the given Kafka cluster and {@link org.apache.kafka.common.config.TopicConfig#MIN_IN_SYNC_REPLICAS_CONFIG} from
+   * the given {@code minIsrWithTimeByTopic}.
+   *
+   * If the minISR value for a topic in the given Kafka cluster is missing from the given {@code minIsrWithTimeByTopic}, this function skips
+   * populating minIsr state for partitions of that topic.
+   *
+   * @param cluster Kafka cluster.
+   * @param minIsrWithTimeByTopic Value and capture time of {@link org.apache.kafka.common.config.TopicConfig#MIN_IN_SYNC_REPLICAS_CONFIG} by topic.
+   * @param atMinIsrWithoutOfflineReplicas AtMinISR partitions without offline replicas.
+   * @param underMinIsrWithoutOfflineReplicas UnderMinISR without offline replicas.
+   */
+  private static void populateMinIsrState(Cluster cluster,
+                                          Map<String, MinIsrWithTime> minIsrWithTimeByTopic,
+                                          Set<PartitionInfo> atMinIsrWithoutOfflineReplicas,
+                                          Set<PartitionInfo> underMinIsrWithoutOfflineReplicas) {
+    for (String topic : cluster.topics()) {
+      MinIsrWithTime minIsrWithTime = minIsrWithTimeByTopic.get(topic);
+      if (minIsrWithTime == null) {
+        continue;
+      }
+
+      int minISR = minIsrWithTime.minISR();
+      for (PartitionInfo partitionInfo : cluster.partitionsForTopic(topic)) {
+        boolean hasOfflineReplica = partitionInfo.offlineReplicas().length != 0;
+        if (hasOfflineReplica) {
+          continue;
+        }
+
+        int numInSyncReplicas = partitionInfo.inSyncReplicas().length;
+        if (numInSyncReplicas < minISR) {
+          underMinIsrWithoutOfflineReplicas.add(partitionInfo);
+        } else if (numInSyncReplicas == minISR) {
+          atMinIsrWithoutOfflineReplicas.add(partitionInfo);
+        }
+      }
+    }
   }
 
   /**

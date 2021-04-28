@@ -403,6 +403,41 @@ public class ExecutorConfig {
       + "helps bundling slow tasks to report rather than individually reporting them upon detection.";
 
   /**
+   * <code>concurrency.adjuster.num.min.isr.check</code>
+   */
+  public static final String CONCURRENCY_ADJUSTER_NUM_MIN_ISR_CHECK_CONFIG = "concurrency.adjuster.num.min.isr.check";
+  public static final int DEFAULT_CONCURRENCY_ADJUSTER_NUM_MIN_ISR_CHECK = 5;
+  public static final String CONCURRENCY_ADJUSTER_NUM_MIN_ISR_CHECK_DOC = "The number of times that (At/Under)MinISR status of partitions in "
+      + "the cluster will be checked during each concurrency auto adjustment interval. For example, if the concurrency auto adjustment interval "
+      + "is 6 minutes and this config is 5, then (At/Under)MinISR status of partitions in the cluster will be checked once in every 72 seconds.";
+
+  /**
+   * <code>concurrency.adjuster.min.isr.check.enabled</code>
+   */
+  public static final String CONCURRENCY_ADJUSTER_MIN_ISR_CHECK_ENABLED_CONFIG = "concurrency.adjuster.min.isr.check.enabled";
+  public static final boolean DEFAULT_CONCURRENCY_ADJUSTER_MIN_ISR_CHECK_ENABLED = false;
+  public static final String CONCURRENCY_ADJUSTER_MIN_ISR_CHECK_ENABLED_DOC = "Enable concurrency adjustment based on (At/Under)MinISR status"
+      + " of partitions. This check is in addition to the metric-based concurrency adjustment and is relevant only if concurrency adjuster "
+      + "itself is enabled.";
+
+  /**
+   * <code>concurrency.adjuster.min.isr.cache.size</code>
+   */
+  public static final String CONCURRENCY_ADJUSTER_MIN_ISR_CACHE_SIZE_CONFIG = "concurrency.adjuster.min.isr.cache.size";
+  public static final int DEFAULT_CONCURRENCY_ADJUSTER_MIN_ISR_CACHE_SIZE = 200000;
+  public static final String CONCURRENCY_ADJUSTER_MIN_ISR_CACHE_SIZE_DOC = "The concurrency adjuster is enabled based on (At/Under)MinISR "
+      + "status of partitions, it caches the min.insync.replicas of topics for fast query. This configuration configures the maximum number"
+      + " of cache slot to maintain.";
+
+  /**
+   * <code>concurrency.adjuster.min.isr.retention.ms</code>
+   */
+  public static final String CONCURRENCY_ADJUSTER_MIN_ISR_RETENTION_MS_CONFIG = "concurrency.adjuster.min.isr.retention.ms";
+  public static final long DEFAULT_CONCURRENCY_ADJUSTER_MIN_ISR_RETENTION_MS = TimeUnit.HOURS.toMillis(12);
+  public static final String CONCURRENCY_ADJUSTER_MIN_ISR_RETENTION_MS_DOC = "The maximum time in ms to cache min.insync.replicas of topics."
+      + " Relevant only if concurrency adjuster is enabled based on (At/Under)MinISR status of partitions.";
+
+  /**
    * Define configs for Executor.
    *
    * @param configDef Config definition.
@@ -638,6 +673,29 @@ public class ExecutorConfig {
                             DEFAULT_SLOW_TASK_ALERTING_BACKOFF_TIME_MS,
                             atLeast(0),
                             ConfigDef.Importance.MEDIUM,
-                            SLOW_TASK_ALERTING_BACKOFF_TIME_MS_DOC);
+                            SLOW_TASK_ALERTING_BACKOFF_TIME_MS_DOC)
+                    .define(CONCURRENCY_ADJUSTER_NUM_MIN_ISR_CHECK_CONFIG,
+                            ConfigDef.Type.INT,
+                            DEFAULT_CONCURRENCY_ADJUSTER_NUM_MIN_ISR_CHECK,
+                            atLeast(1),
+                            ConfigDef.Importance.MEDIUM,
+                            CONCURRENCY_ADJUSTER_NUM_MIN_ISR_CHECK_DOC)
+                    .define(CONCURRENCY_ADJUSTER_MIN_ISR_CHECK_ENABLED_CONFIG,
+                            ConfigDef.Type.BOOLEAN,
+                            DEFAULT_CONCURRENCY_ADJUSTER_MIN_ISR_CHECK_ENABLED,
+                            ConfigDef.Importance.HIGH,
+                            CONCURRENCY_ADJUSTER_MIN_ISR_CHECK_ENABLED_DOC)
+                    .define(CONCURRENCY_ADJUSTER_MIN_ISR_CACHE_SIZE_CONFIG,
+                            ConfigDef.Type.INT,
+                            DEFAULT_CONCURRENCY_ADJUSTER_MIN_ISR_CACHE_SIZE,
+                            atLeast(1),
+                            ConfigDef.Importance.LOW,
+                            CONCURRENCY_ADJUSTER_MIN_ISR_CACHE_SIZE_DOC)
+                    .define(CONCURRENCY_ADJUSTER_MIN_ISR_RETENTION_MS_CONFIG,
+                            ConfigDef.Type.LONG,
+                            DEFAULT_CONCURRENCY_ADJUSTER_MIN_ISR_RETENTION_MS,
+                            atLeast(1),
+                            ConfigDef.Importance.LOW,
+                            CONCURRENCY_ADJUSTER_MIN_ISR_RETENTION_MS_DOC);
   }
 }
