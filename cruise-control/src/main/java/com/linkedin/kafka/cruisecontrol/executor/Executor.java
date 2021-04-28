@@ -119,7 +119,7 @@ public class Executor {
   private final ConcurrencyAdjuster _concurrencyAdjuster;
   private final ScheduledExecutorService _concurrencyAdjusterExecutor;
   private final ConcurrentMap<ConcurrencyType, Boolean> _concurrencyAdjusterEnabled;
-  private final boolean _concurrencyAdjusterMinIsrCheckEnabled;
+  private volatile boolean _concurrencyAdjusterMinIsrCheckEnabled;
   private final TopicMinIsrCache _topicMinIsrCache;
   private final long _minExecutionProgressCheckIntervalMs;
   public final long _slowTaskAlertingBackoffTimeMs;
@@ -517,6 +517,18 @@ public class Executor {
       throw new IllegalArgumentException(String.format("Concurrency adjuster for %s is not yet supported.", concurrencyType));
     }
     return _concurrencyAdjusterEnabled.put(concurrencyType, isConcurrencyAdjusterEnabled);
+  }
+
+  /**
+   * Enable or disable (At/Under)MinISR-based concurrency adjustment.
+   *
+   * @param isMinIsrBasedConcurrencyAdjustmentEnabled {@code true} to enable (At/Under)MinISR-based concurrency adjustment, {@code false} otherwise.
+   * @return {@code true} if (At/Under)MinISR-based concurrency adjustment was enabled before, {@code false} otherwise.
+   */
+  public boolean setConcurrencyAdjusterMinIsrCheck(boolean isMinIsrBasedConcurrencyAdjustmentEnabled) {
+    boolean oldValue = _concurrencyAdjusterMinIsrCheckEnabled;
+    _concurrencyAdjusterMinIsrCheckEnabled = isMinIsrBasedConcurrencyAdjustmentEnabled;
+    return oldValue;
   }
 
   /**
