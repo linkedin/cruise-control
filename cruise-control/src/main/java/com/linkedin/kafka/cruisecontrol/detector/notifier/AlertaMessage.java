@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ * Copyright 2021 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.detector.notifier;
@@ -54,138 +54,138 @@ public final class AlertaMessage implements Serializable {
     private String _rawData;
 
     public AlertaMessage(String resource, String event) {
-      this._event = event;
-      this._resource = resource;
+        this._event = event;
+        this._resource = resource;
     }
 
     public String getResource() {
-      return _resource;
+        return _resource;
     }
 
     public void setResource(String resource) {
-      this._resource = resource;
+        this._resource = resource;
     }
 
     public String getEvent() {
-      return _event;
+        return _event;
     }
 
     public void setEvent(String event) {
-      this._event = event;
+        this._event = event;
     }
 
     public String getEnvironment() {
-      return _environment;
+        return _environment;
     }
 
     public void setEnvironment(String environment) {
-      this._environment = environment;
+        this._environment = environment;
     }
 
     public String getSeverity() {
-      return _severity;
+        return _severity;
     }
 
     public void setSeverity(String severity) {
-      this._severity = severity;
+        this._severity = severity;
     }
 
     public List<String> getCorrelate() {
-      return _correlate;
+        return _correlate;
     }
 
     public void setCorrelate(List<String> correlate) {
-      this._correlate = correlate;
+        this._correlate = correlate;
     }
 
     public List<String> getService() {
-      return _service;
+        return _service;
     }
 
     public void setService(List<String> service) {
-      this._service = service;
+        this._service = service;
     }
 
     public String getGroup() {
-      return _group;
+        return _group;
     }
 
     public void setGroup(String group) {
-      this._group = group;
+        this._group = group;
     }
 
     public String getValue() {
-      return _value;
+        return _value;
     }
 
     public void setValue(String value) {
-      this._value = value;
+        this._value = value;
     }
 
     public String getText() {
-      return _text;
+        return _text;
     }
 
     public void setText(String text) {
-      this._text = text;
+        this._text = text;
     }
 
     public List<String> getTags() {
-      return _tags;
+        return _tags;
     }
 
     public void setTags(List<String> tags) {
-      this._tags = tags;
+        this._tags = tags;
     }
 
     public String getOrigin() {
-      return _origin;
+        return _origin;
     }
 
     public void setOrigin(String origin) {
-      this._origin = origin;
+        this._origin = origin;
     }
 
     public String getType() {
-      return _type;
+        return _type;
     }
 
     public void setType(String type) {
-      this._type = type;
+        this._type = type;
     }
 
     public String getCreateTime() {
-      return _createTime;
+        return _createTime;
     }
 
     public void setCreateTime(String createTime) {
-      this._createTime = createTime;
+        this._createTime = createTime;
     }
 
     public String getTimeout() {
-      return _timeout;
+        return _timeout;
     }
 
     public void setTimeout(String timeout) {
-      this._timeout = timeout;
+        this._timeout = timeout;
     }
 
     public String getRawData() {
-      return _rawData;
+        return _rawData;
     }
 
     public void setRawData(String rawData) {
-      this._rawData = rawData;
+        this._rawData = rawData;
     }
 
     @Override
     public String toString() {
-      try {
-        return new ObjectMapper().configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true)
-            .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
-            .setSerializationInclusion(Include.NON_NULL).writeValueAsString(this);
-      } catch (JsonProcessingException e) {
-        return "AlertaMassage Object parsing error : " + e.getMessage();
-      }
+        try {
+            return new ObjectMapper().configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true)
+                .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
+                .setSerializationInclusion(Include.NON_NULL).writeValueAsString(this);
+        } catch (JsonProcessingException e) {
+            return "AlertaMassage Object parsing error : " + e.getMessage();
+        }
     }
 }
