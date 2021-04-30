@@ -116,6 +116,7 @@ public class ParameterUtils {
   public static final String ENABLE_SELF_HEALING_FOR_PARAM = "enable_self_healing_for";
   public static final String DISABLE_CONCURRENCY_ADJUSTER_FOR_PARAM = "disable_concurrency_adjuster_for";
   public static final String ENABLE_CONCURRENCY_ADJUSTER_FOR_PARAM = "enable_concurrency_adjuster_for";
+  public static final String MIN_ISR_BASED_CONCURRENCY_ADJUSTMENT_PARAM = "min_isr_based_concurrency_adjustment";
   public static final String EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM = "exclude_recently_demoted_brokers";
   public static final String EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM = "exclude_recently_removed_brokers";
   public static final String REPLICA_MOVEMENT_STRATEGIES_PARAM = "replica_movement_strategies";
@@ -662,6 +663,18 @@ public class ParameterUtils {
     concurrencyAdjusterFor.put(false, disableConcurrencyAdjusterFor);
 
     return concurrencyAdjusterFor;
+  }
+
+  /**
+   * @param request The http request.
+   * @return {@code true}: enable or {@code false}: disable MinISR-based concurrency adjustment, {@code null} if the request parameter is unset.
+   */
+  @Nullable static Boolean minIsrBasedConcurrencyAdjustment(HttpServletRequest request) {
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), MIN_ISR_BASED_CONCURRENCY_ADJUSTMENT_PARAM);
+    if (parameterString == null) {
+      return null;
+    }
+    return Boolean.parseBoolean(request.getParameter(parameterString));
   }
 
   /**

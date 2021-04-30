@@ -58,6 +58,35 @@ public class ParameterUtilsTest {
   }
 
   @Test
+  public void testMinIsrBasedConcurrencyAdjustment() {
+    String firstResponse = Boolean.TRUE.toString();
+    String secondResponse = Boolean.FALSE.toString();
+
+    // Mock for (1) default response (2) response for valid input with true/false.
+    HttpServletRequest mockRequest = EasyMock.mock(HttpServletRequest.class);
+    EasyMock.expect(mockRequest.getParameterMap()).andReturn(Collections.emptyMap())
+            .andReturn(Collections.singletonMap(ParameterUtils.MIN_ISR_BASED_CONCURRENCY_ADJUSTMENT_PARAM, new String[]{firstResponse}))
+            .andReturn(Collections.singletonMap(ParameterUtils.MIN_ISR_BASED_CONCURRENCY_ADJUSTMENT_PARAM, new String[]{secondResponse}));
+    EasyMock.expect(mockRequest.getParameter(ParameterUtils.MIN_ISR_BASED_CONCURRENCY_ADJUSTMENT_PARAM))
+            .andReturn(firstResponse).andReturn(secondResponse);
+
+    // Verify default response.
+    EasyMock.replay(mockRequest);
+    Boolean minIsrBasedConcurrencyAdjustment = ParameterUtils.minIsrBasedConcurrencyAdjustment(mockRequest);
+    Assert.assertNull(minIsrBasedConcurrencyAdjustment);
+
+    // Verify response for valid input.
+    minIsrBasedConcurrencyAdjustment = ParameterUtils.minIsrBasedConcurrencyAdjustment(mockRequest);
+    Assert.assertNotNull(minIsrBasedConcurrencyAdjustment);
+    Assert.assertTrue(minIsrBasedConcurrencyAdjustment);
+    minIsrBasedConcurrencyAdjustment = ParameterUtils.minIsrBasedConcurrencyAdjustment(mockRequest);
+    Assert.assertNotNull(minIsrBasedConcurrencyAdjustment);
+    Assert.assertFalse(minIsrBasedConcurrencyAdjustment);
+
+    EasyMock.verify(mockRequest);
+  }
+
+  @Test
   public void testParseTimeRangeNotSet() {
     HttpServletRequest mockRequest = EasyMock.mock(HttpServletRequest.class);
     // Mock the request so that it does not contain start/end time

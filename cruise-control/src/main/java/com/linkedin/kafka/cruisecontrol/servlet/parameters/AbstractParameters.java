@@ -103,8 +103,8 @@ public abstract class AbstractParameters implements CruiseControlParameters {
   @Override
   public void configure(Map<String, ?> configs) {
     _request = (HttpServletRequest) validateNotNull(configs.get(KAFKA_CRUISE_CONTROL_HTTP_SERVLET_REQUEST_OBJECT_CONFIG),
-            "HttpServletRequest configuration is missing from the request.");
+                                                    "HttpServletRequest configuration is missing from the request.");
     _config = (KafkaCruiseControlConfig) validateNotNull(configs.get(KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG),
-            "KafkaCruiseControlConfig configuration is missing from the request.");
+                                                         "KafkaCruiseControlConfig configuration is missing from the request.");
   }
 }

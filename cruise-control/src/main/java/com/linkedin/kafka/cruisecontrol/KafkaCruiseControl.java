@@ -420,6 +420,16 @@ public class KafkaCruiseControl {
   }
 
   /**
+   * Enable or disable (At/Under)MinISR-based concurrency adjustment.
+   *
+   * @param isMinIsrBasedConcurrencyAdjustmentEnabled {@code true} to enable (At/Under)MinISR-based concurrency adjustment, {@code false} otherwise.
+   * @return {@code true} if (At/Under)MinISR-based concurrency adjustment was enabled before, {@code false} otherwise.
+   */
+  public boolean setConcurrencyAdjusterMinIsrCheck(boolean isMinIsrBasedConcurrencyAdjustmentEnabled) {
+    return _executor.setConcurrencyAdjusterMinIsrCheck(isMinIsrBasedConcurrencyAdjustmentEnabled);
+  }
+
+  /**
    * Drop the given brokers from the recently removed/demoted brokers.
    *
    * @param brokersToDrop Brokers to drop from the recently removed or demoted brokers.
