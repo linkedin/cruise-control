@@ -80,7 +80,7 @@ AdminEndpoint:
           minimum: 5000
       - name: review_id
         in: query
-        description: Review id for 2FA
+        description: Review id for 2-step verification.
         schema:
           type: integer
           format: int32
@@ -93,7 +93,7 @@ AdminEndpoint:
           default: false
       - name: get_response_schema
         in: query
-        description: Whether to return in JSON schema in response header or not.
+        description: Whether to return JSON schema in response header or not.
         schema:
           type: boolean
           default: false
@@ -104,7 +104,7 @@ AdminEndpoint:
           type: string
       - name: disable_concurrency_adjuster_for
         in: query
-        description: Disable concurrency adjuster for certain concurrency types.
+        description: Disable concurrency adjuster for given concurrency types.
         schema:
           type: array
           items:
@@ -116,7 +116,7 @@ AdminEndpoint:
           example: ["INTER_BROKER_REPLICA"]
       - name: enable_concurrency_adjuster_for
         in: query
-        description: Enable concurrency adjuster for certain concurrency types.
+        description: Enable concurrency adjuster for given concurrency types.
         schema:
           type: array
           items:
@@ -126,6 +126,11 @@ AdminEndpoint:
               - LEADERSHIP
               - INTRA_BROKER_REPLICA
           example: ["INTER_BROKER_REPLICA"]
+      - name: min_isr_based_concurrency_adjustment
+        in: query
+        description: Whether to enable (true) or disable (false) MinISR-based concurrency adjustment
+        schema:
+          type: boolean
     responses:
       '200':
         description: Successful admin response.
