@@ -667,7 +667,7 @@ public class ParameterUtils {
 
   /**
    * @param request The http request.
-   * @return {@code true}: enable or {@code false} disable MinISR-based concurrency adjustment, {@code null} if the request parameter is unset.
+   * @return {@code true}: enable or {@code false}: disable MinISR-based concurrency adjustment, {@code null} if the request parameter is unset.
    */
   @Nullable static Boolean minIsrBasedConcurrencyAdjustment(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), MIN_ISR_BASED_CONCURRENCY_ADJUSTMENT_PARAM);
