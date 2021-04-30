@@ -19,6 +19,7 @@ StateEndpoint:
         description: Whether to return in JSON format or not.
         schema:
           type: boolean
+          default: false
       - name: verbose
         in: query
         description: Return detailed state information.
@@ -33,7 +34,7 @@ StateEndpoint:
           default: false
       - name: get_response_schema
         in: query
-        description: Whether to return in JSON schema in response header or not.
+        description: Whether to return JSON schema in response header or not.
         schema:
           type: boolean
           default: false

@@ -23,6 +23,8 @@ AdminResult:
       type: object
       additionalProperties:
         type: boolean
+    minIsrBasedConcurrencyAdjustmentRequest:
+      type: string
     version:
       type: integer
       format: int32

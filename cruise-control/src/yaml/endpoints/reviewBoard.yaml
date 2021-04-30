@@ -20,7 +20,7 @@ ReviewBoardEndpoint:
           default: false
       - name: get_response_schema
         in: query
-        description: Whether to return in JSON schema in response header or not.
+        description: Whether to return JSON schema in response header or not.
         schema:
           type: boolean
           default: false

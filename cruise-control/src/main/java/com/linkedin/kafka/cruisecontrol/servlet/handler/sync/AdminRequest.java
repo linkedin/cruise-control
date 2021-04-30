@@ -39,8 +39,10 @@ public class AdminRequest extends AbstractSyncRequest {
    * <li>Dynamically change the partition and leadership concurrency and the interval between checking and updating
    * (if needed) the progress of an ongoing execution. Has no effect if Executor is in
    * {@link com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State#NO_TASK_IN_PROGRESS} state.</li>
-   * <li>Enable/disable the specified anomaly detectors.</li>
+   * <li>Enable/disable self-healing for the specified anomaly types.</li>
    * <li>Drop selected recently removed/demoted brokers.</li>
+   * <li>Enable/disable the specified concurrency adjusters.</li>
+   * <li>Enable/disable the (At/Under)MinISR-based concurrency adjustment.</li>
    * </ul>
    *
    * @return Admin response.
@@ -50,7 +52,7 @@ public class AdminRequest extends AbstractSyncRequest {
     // 1. Increase/decrease the specified proposal execution concurrency.
     String ongoingConcurrencyChangeRequest = processChangeExecutionConcurrencyRequest();
 
-    // 2. Enable/disable the specified anomaly detectors.
+    // 2. Enable/disable self-healing for the specified anomaly types.
     Map<AnomalyType, Boolean> selfHealingBefore = new HashMap<>(KafkaAnomalyType.cachedValues().size());
     Map<AnomalyType, Boolean> selfHealingAfter = new HashMap<>(KafkaAnomalyType.cachedValues().size());
     processUpdateSelfHealingRequest(selfHealingBefore, selfHealingAfter);
@@ -58,10 +60,11 @@ public class AdminRequest extends AbstractSyncRequest {
     // 3. Drop selected recently removed/demoted brokers.
     String dropRecentBrokersRequest = processDropRecentBrokersRequest();
 
-    // 4. Enable/disable the specified concurrency adjusters.
+    // 4. Enable/disable (1) the specified concurrency adjusters and/or (2) the MinISR-based concurrency adjustment.
     Map<ConcurrencyType, Boolean> concurrencyAdjusterBefore = new HashMap<>(ConcurrencyType.cachedValues().size());
     Map<ConcurrencyType, Boolean> concurrencyAdjusterAfter = new HashMap<>(ConcurrencyType.cachedValues().size());
-    processUpdateConcurrencyAdjusterRequest(concurrencyAdjusterBefore, concurrencyAdjusterAfter);
+    StringBuilder minIsrBasedConcurrencyAdjustmentRequest = new StringBuilder();
+    processUpdateConcurrencyAdjusterRequest(concurrencyAdjusterBefore, concurrencyAdjusterAfter, minIsrBasedConcurrencyAdjustmentRequest);
 
     return new AdminResult(selfHealingBefore,
                            selfHealingAfter,
@@ -69,15 +72,24 @@ public class AdminRequest extends AbstractSyncRequest {
                            dropRecentBrokersRequest,
                            concurrencyAdjusterBefore,
                            concurrencyAdjusterAfter,
+                           minIsrBasedConcurrencyAdjustmentRequest.toString(),
                            _kafkaCruiseControl.config());
   }
 
   protected void processUpdateConcurrencyAdjusterRequest(Map<ConcurrencyType, Boolean> concurrencyAdjusterBefore,
-                                                           Map<ConcurrencyType, Boolean> concurrencyAdjusterAfter) {
+                                                         Map<ConcurrencyType, Boolean> concurrencyAdjusterAfter,
+                                                         StringBuilder minIsrBasedConcurrencyAdjustmentRequest) {
     UpdateConcurrencyAdjusterParameters updateConcurrencyAdjusterParameters = _parameters.updateConcurrencyAdjusterParameters();
     if (updateConcurrencyAdjusterParameters != null) {
       Set<ConcurrencyType> disableConcurrencyAdjusterFor = updateConcurrencyAdjusterParameters.disableConcurrencyAdjusterFor();
       Set<ConcurrencyType> enableConcurrencyAdjusterFor = updateConcurrencyAdjusterParameters.enableConcurrencyAdjusterFor();
+      Boolean minIsrBasedConcurrencyAdjustment = updateConcurrencyAdjusterParameters.minIsrBasedConcurrencyAdjustment();
+      if (minIsrBasedConcurrencyAdjustment != null) {
+        boolean oldValue = _kafkaCruiseControl.setConcurrencyAdjusterMinIsrCheck(minIsrBasedConcurrencyAdjustment);
+        minIsrBasedConcurrencyAdjustmentRequest.append(String.format("MinISR-based concurrency adjustment is modified (before: %s after: %s).",
+                                                                     oldValue, minIsrBasedConcurrencyAdjustment));
+        LOG.info("MinISR-based concurrency adjustment is modified by user (before: {} after: {}).", oldValue, minIsrBasedConcurrencyAdjustment);
+      }
 
       for (ConcurrencyType type : disableConcurrencyAdjusterFor) {
         concurrencyAdjusterBefore.put(type, _kafkaCruiseControl.setConcurrencyAdjusterFor(type, false));
@@ -215,6 +227,6 @@ public class AdminRequest extends AbstractSyncRequest {
     super.configure(configs);
     _kafkaCruiseControl = _servlet.asyncKafkaCruiseControl();
     _parameters = (AdminParameters) validateNotNull(configs.get(ADMIN_PARAMETER_OBJECT_CONFIG),
-            "Parameter configuration is missing from the request.");
+                                                    "Parameter configuration is missing from the request.");
   }
 }
