@@ -22,7 +22,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Random;
 import java.util.Set;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -35,6 +34,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.RANDOM;
 import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.RECONNECT_BACKOFF_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.*;
@@ -45,7 +45,6 @@ public class SamplingUtils {
   private static final Logger LOG = LoggerFactory.getLogger(SamplingUtils.class);
   private static final String SKIP_BUILDING_SAMPLE_PREFIX = "Skip generating metric sample for ";
   public static final int UNRECOGNIZED_BROKER_ID = -1;
-  public static final Random RANDOM = new Random();
 
   private SamplingUtils() {
   }
