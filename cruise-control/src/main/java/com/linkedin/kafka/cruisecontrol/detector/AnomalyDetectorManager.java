@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -37,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION_LOGGER;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.RANDOM;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckGoals;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.anomalyComparator;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getSelfHealingGoalNames;
@@ -203,7 +203,7 @@ public class AnomalyDetectorManager {
   }
 
   private void scheduleDetectorAtFixedRate(KafkaAnomalyType anomalyType, Runnable anomalyDetector) {
-    int jitter = new Random().nextInt(INIT_JITTER_BOUND);
+    int jitter = RANDOM.nextInt(INIT_JITTER_BOUND);
     long anomalyDetectionIntervalMs = _anomalyDetectionIntervalMsByType.get(anomalyType);
     LOG.debug("Starting {} detector with delay of {} ms", anomalyType, jitter);
     _detectorScheduler.scheduleAtFixedRate(anomalyDetector,

@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.Collections;
+import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -92,6 +93,7 @@ public class KafkaCruiseControlUtils {
   public static final String ENV_CONFIG_PROVIDER_CLASS_CONFIG = ".env.class";
   public static final long CLIENT_REQUEST_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(30);
   public static final String DEFAULT_CLEANUP_POLICY = "delete";
+  public static final Random RANDOM = new Random();
 
   private KafkaCruiseControlUtils() {
 
