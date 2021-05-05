@@ -83,7 +83,14 @@ public interface MetricSampler extends CruiseControlConfigurable, AutoCloseable 
   Samples getSamples(MetricSamplerOptions metricSamplerOptions) throws SamplingException;
 
   /**
-   * The sampling mode to indicate which type of samples is interested.
+   * The sampling mode to indicate which type of samples is interested in.
+   *
+   * <ul>
+   *   <li>{@link #PARTITION_METRICS_ONLY}: Sample partition metrics only</li>
+   *   <li>{@link #BROKER_METRICS_ONLY}: Sample broker metrics only</li>
+   *   <li>{@link #ONGOING_EXECUTION}: Sample broker metrics and partition metrics (in a separate store) during ongoing execution</li>
+   *   <li>{@link #ALL}: Sample partition and broker metrics</li>
+   * </ul>
    */
   enum SamplingMode {
     PARTITION_METRICS_ONLY, BROKER_METRICS_ONLY, ONGOING_EXECUTION, ALL
