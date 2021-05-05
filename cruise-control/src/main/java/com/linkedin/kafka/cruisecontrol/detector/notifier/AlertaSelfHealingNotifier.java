@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector.notifier;
 
+import com.linkedin.cruisecontrol.CruiseControlUtils;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
@@ -19,11 +20,9 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -35,23 +34,22 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.cruisecontrol.CruiseControlUtils.utcDateFor;
 
+/**
+ * This class implements the Alerta notification functionality.
+ * @see <a href="https://alerta.io">https://alerta.io</a>
+ *
+ * <ul>
+ * <li>{@link #ALERTA_SELF_HEALING_NOTIFIER_API_URL}: Alerta API url. This is the URL to which will be post the different alerts.</li>
+ * <li>{@link #ALERTA_SELF_HEALING_NOTIFIER_API_KEY}: Alerta API key used to authenticate.</li>
+ * <li>{@link #ALERTA_SELF_HEALING_NOTIFIER_ENVIRONMENT}: Environment attribute used to namespace the Alerta alert resource.</li>
+ * </ul>
+ */
 public class AlertaSelfHealingNotifier extends SelfHealingNotifier {
 
     private static final Logger LOG = LoggerFactory.getLogger(AlertaSelfHealingNotifier.class);
 
-    /**
-     * Alerta.io API url. This is the URL to which will be post the different alerts
-     */
-    public static final String ALERTA_SELF_HEALING_NOTIFIER_API_URL = "alerta.self.healing.notifier.api_url";
-
-    /**
-     * Alerta.io API key used to authenticate
-     */
-    public static final String ALERTA_SELF_HEALING_NOTIFIER_API_KEY = "alerta.self.healing.notifier.api_key";
-
-    /**
-     * Environment attribute used to namespace the Alerta.io alert resource
-     */
+    public static final String ALERTA_SELF_HEALING_NOTIFIER_API_URL = "alerta.self.healing.notifier.api.url";
+    public static final String ALERTA_SELF_HEALING_NOTIFIER_API_KEY = "alerta.self.healing.notifier.api.key";
     public static final String ALERTA_SELF_HEALING_NOTIFIER_ENVIRONMENT = "alerta.self.healing.notifier.environment";
 
     public static final String ALERT_MESSAGE_PREFIX_TOPIC_PARTITION_SIZE_ANOMALY = "TOPIC_PARTITION_SIZE_ANOMALY - ";
@@ -85,17 +83,17 @@ public class AlertaSelfHealingNotifier extends SelfHealingNotifier {
         super.alert(anomaly, autoFixTriggered, selfHealingStartTime, anomalyType);
 
         if (_alertaApiUrl == null) {
-            LOG.warn("Alerta.io API URL is null, can't send Alerta.io self healing notification");
+            LOG.warn("Alerta API URL is null, can't send Alerta.io self healing notification");
             return;
         }
 
         if (_alertaApiKey == null) {
-            LOG.warn("Alerta.io API key is null, can't send Alerta.io self healing notification");
+            LOG.warn("Alerta API key is null, can't send Alerta.io self healing notification");
             return;
         }
 
         String text = String.format("%s detected %s. Self healing %s.%s", anomalyType, anomaly,
-                _selfHealingEnabled.get(anomalyType) ? String.format("start time %s", utcDateFor(selfHealingStartTime))
+                _selfHealingEnabled.get(anomalyType).booleanValue() ? String.format("start time %s", utcDateFor(selfHealingStartTime))
                         : "is disabled",
                 autoFixTriggered ? "%nSelf-healing has been triggered." : "");
 
@@ -104,40 +102,36 @@ public class AlertaSelfHealingNotifier extends SelfHealingNotifier {
           tmpLocalHostname = InetAddress.getLocalHost().getCanonicalHostName();
         } catch (UnknownHostException e1) {
           LOG.warn("Unable to get the hostname of the Cruise Control server");
-          tmpLocalHostname = "Cruise Control";
+          tmpLocalHostname = ALERT_CRUISE_CONTROL;
         }
         final String localHostname = tmpLocalHostname;
-
-        DateTimeFormatter outFormatter = DateTimeFormatter
-            .ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSX") // millisecond precision
-            .withZone(ZoneId.of("UTC"));
 
         List<AlertaMessage> alertaMessages = new ArrayList<>();
 
         switch ((KafkaAnomalyType) anomalyType) {
           case GOAL_VIOLATION:
             GoalViolations goalViolations = (GoalViolations) anomaly;
-            alertGoalViolation(anomalyType, localHostname, outFormatter, alertaMessages, goalViolations);
+            alertGoalViolation(anomalyType, localHostname, alertaMessages, goalViolations);
             break;
           case BROKER_FAILURE:
             BrokerFailures brokerFailures = (BrokerFailures) anomaly;
-            alertBrokerFailure(anomalyType, localHostname, outFormatter, alertaMessages, brokerFailures);
+            alertBrokerFailure(anomalyType, localHostname, alertaMessages, brokerFailures);
             break;
           case METRIC_ANOMALY:
             KafkaMetricAnomaly metricAnomaly = (KafkaMetricAnomaly) anomaly;
-            alertMetricAnomaly(anomalyType, localHostname, outFormatter, alertaMessages, metricAnomaly);
+            alertMetricAnomaly(anomalyType, localHostname, alertaMessages, metricAnomaly);
             break;
           case DISK_FAILURE:
             DiskFailures diskFailures = (DiskFailures) anomaly;
-            alertDiskFailure(anomalyType, localHostname, outFormatter, alertaMessages, diskFailures);
+            alertDiskFailure(anomalyType, localHostname, alertaMessages, diskFailures);
             break;
           case TOPIC_ANOMALY:
             TopicAnomaly topicAnomaly = (TopicAnomaly) anomaly;
-            alertTopicAnomaly(anomalyType, localHostname, outFormatter, alertaMessages, topicAnomaly);
+            alertTopicAnomaly(anomalyType, localHostname, alertaMessages, topicAnomaly);
             break;
           case MAINTENANCE_EVENT:
             MaintenanceEvent maintenanceEvent = (MaintenanceEvent) anomaly;
-            alertMaintenanceEvent(anomalyType, localHostname, outFormatter, alertaMessages, maintenanceEvent);
+            alertMaintenanceEvent(anomalyType, localHostname, alertaMessages, maintenanceEvent);
             break;
           default:
             throw new IllegalStateException("Unrecognized anomaly type.");
@@ -145,12 +139,12 @@ public class AlertaSelfHealingNotifier extends SelfHealingNotifier {
 
         for (AlertaMessage alertaMessage : alertaMessages) {
           alertaMessage.setEnvironment(_alertaEnvironment);
-          alertaMessage.setService(Arrays.asList(ALERT_CRUISE_CONTROL));
+          alertaMessage.setService(Collections.singletonList(ALERT_CRUISE_CONTROL));
           alertaMessage.setText(text);
           alertaMessage.setOrigin(ALERT_CRUISE_CONTROL + "/" + localHostname);
           alertaMessage.setType(ALERT_CRUISE_CONTROL_ALARM);
           alertaMessage.setRawData(anomaly.toString());
-          alertaMessage.setTags(Arrays.asList(ALERT_ALARM_ID_TAG_KEY + ":" + anomaly.anomalyId()));
+          alertaMessage.setTags(Collections.singletonList(ALERT_ALARM_ID_TAG_KEY + ":" + anomaly.anomalyId()));
           try {
               sendAlertaMessage(alertaMessage);
           } catch (IOException e) {
@@ -160,25 +154,25 @@ public class AlertaSelfHealingNotifier extends SelfHealingNotifier {
     }
 
     private void alertMaintenanceEvent(AnomalyType anomalyType, final String localHostname,
-            DateTimeFormatter outFormatter, List<AlertaMessage> alertaMessages, MaintenanceEvent maintenanceEvent) {
+            List<AlertaMessage> alertaMessages, MaintenanceEvent maintenanceEvent) {
         AlertaMessage alertaMessage = new AlertaMessage(localHostname, anomalyType.toString() + " - " + maintenanceEvent.reasonSupplier());
-        alertaMessage.setSeverity(severityFromPriority(anomalyType.priority()));
-        alertaMessage.setGroup(AlertaAlertGroup.Performance.toString());
-        alertaMessage.setCreateTime(outFormatter.format(Instant.ofEpochMilli(maintenanceEvent.detectionTimeMs())));
+        alertaMessage.setSeverity(NotifierUtils.getAlertSeverity(anomalyType).toString());
+        alertaMessage.setGroup(AlertaAlertGroup.PERFORMANCE.toString());
+        alertaMessage.setCreateTime(CruiseControlUtils.utcDateFor(maintenanceEvent.detectionTimeMs(), 3, ChronoUnit.SECONDS));
         alertaMessages.add(alertaMessage);
     }
 
-    private void alertTopicAnomaly(AnomalyType anomalyType, final String localHostname, DateTimeFormatter outFormatter,
+    private void alertTopicAnomaly(AnomalyType anomalyType, final String localHostname,
             List<AlertaMessage> alertaMessages, TopicAnomaly topicAnomaly) {
         if (topicAnomaly instanceof TopicPartitionSizeAnomaly) {
           TopicPartitionSizeAnomaly topicPartitionSizeAnomaly = (TopicPartitionSizeAnomaly) topicAnomaly;
           for (Map.Entry<TopicPartition, Double> entry : topicPartitionSizeAnomaly.getSizeByPartition().entrySet()) {
             AlertaMessage alertaMessage = new AlertaMessage(localHostname,
                 ALERT_MESSAGE_PREFIX_TOPIC_PARTITION_SIZE_ANOMALY + entry.getKey().toString());
-            alertaMessage.setSeverity(severityFromPriority(anomalyType.priority()));
-            alertaMessage.setGroup(AlertaAlertGroup.Performance.toString());
+            alertaMessage.setSeverity(NotifierUtils.getAlertSeverity(anomalyType).toString());
+            alertaMessage.setGroup(AlertaAlertGroup.PERFORMANCE.toString());
             alertaMessage.setValue(String.format("%f MB", entry.getValue()));
-            alertaMessage.setCreateTime(outFormatter.format(Instant.ofEpochMilli(topicAnomaly.detectionTimeMs())));
+            alertaMessage.setCreateTime(CruiseControlUtils.utcDateFor(topicAnomaly.detectionTimeMs(), 3, ChronoUnit.SECONDS));
             alertaMessages.add(alertaMessage);
           }
         } else if (topicAnomaly instanceof TopicReplicationFactorAnomaly) {
@@ -188,95 +182,80 @@ public class AlertaSelfHealingNotifier extends SelfHealingNotifier {
             entry.getValue().forEach(topicReplicationFactorAnomalyEntry -> {
               AlertaMessage alertaMessage = new AlertaMessage(localHostname,
                ALERT_MESSAGE_PREFIX_TOPIC_REPLICATION_FACTOR_ANOMALY + topicReplicationFactorAnomalyEntry.topicName());
-              alertaMessage.setSeverity(severityFromPriority(anomalyType.priority()));
-              alertaMessage.setGroup(AlertaAlertGroup.Performance.toString());
+              alertaMessage.setSeverity(NotifierUtils.getAlertSeverity(anomalyType).toString());
+              alertaMessage.setGroup(AlertaAlertGroup.PERFORMANCE.toString());
               alertaMessage.setValue(String.format("%.2f", topicReplicationFactorAnomalyEntry.violationRatio()));
-              alertaMessage.setCreateTime(outFormatter.format(Instant.ofEpochMilli(topicAnomaly.detectionTimeMs())));
+              alertaMessage.setCreateTime(CruiseControlUtils.utcDateFor(topicAnomaly.detectionTimeMs(), 3, ChronoUnit.SECONDS));
               alertaMessages.add(alertaMessage);
             });
           }
         } else {
           AlertaMessage alertaMessage = new AlertaMessage(localHostname,
               anomalyType.toString());
-          alertaMessage.setSeverity(severityFromPriority(anomalyType.priority()));
-          alertaMessage.setGroup(AlertaAlertGroup.Performance.toString());
-          alertaMessage.setCreateTime(outFormatter.format(Instant.ofEpochMilli(topicAnomaly.detectionTimeMs())));
+          alertaMessage.setSeverity(NotifierUtils.getAlertSeverity(anomalyType).toString());
+          alertaMessage.setGroup(AlertaAlertGroup.PERFORMANCE.toString());
+          alertaMessage.setCreateTime(CruiseControlUtils.utcDateFor(topicAnomaly.detectionTimeMs(), 3, ChronoUnit.SECONDS));
           alertaMessages.add(alertaMessage);
         }
     }
 
-    private void alertDiskFailure(AnomalyType anomalyType, final String localHostname, DateTimeFormatter outFormatter,
+    private void alertDiskFailure(AnomalyType anomalyType, final String localHostname,
             List<AlertaMessage> alertaMessages, DiskFailures diskFailures) {
         Map<Integer, Map<String, Long>> failedDisks = diskFailures.failedDisks();
         failedDisks.forEach((brokerId, failures) -> {
           failures.forEach((logdir, eventTime) -> {
             AlertaMessage alertaMessage = new AlertaMessage(localHostname + " - " + ALERT_MESSAGE_BROKER + brokerId,
                 anomalyType.toString() + " - " + logdir);
-            alertaMessage.setSeverity(severityFromPriority(anomalyType.priority()));
-            alertaMessage.setGroup(AlertaAlertGroup.Storage.toString());
-            alertaMessage.setCreateTime(outFormatter.format(Instant.ofEpochMilli(eventTime)));
+            alertaMessage.setSeverity(NotifierUtils.getAlertSeverity(anomalyType).toString());
+            alertaMessage.setGroup(AlertaAlertGroup.STORAGE.toString());
+            alertaMessage.setCreateTime(CruiseControlUtils.utcDateFor(eventTime, 3, ChronoUnit.SECONDS));
             alertaMessage.setValue(logdir);
             alertaMessages.add(alertaMessage);
           });
         });
     }
 
-    private void alertMetricAnomaly(AnomalyType anomalyType, final String localHostname, DateTimeFormatter outFormatter,
+    private void alertMetricAnomaly(AnomalyType anomalyType, final String localHostname,
             List<AlertaMessage> alertaMessages, KafkaMetricAnomaly metricAnomaly) {
         Map<BrokerEntity, Long> brokersEntitiesValues = metricAnomaly.entities();
         for (Entry<BrokerEntity, Long> entry : brokersEntitiesValues.entrySet()) {
           AlertaMessage alertaMessage = new AlertaMessage(localHostname + " - Broker " + entry.getKey().brokerId(),
               anomalyType.toString());
-          alertaMessage.setSeverity(severityFromPriority(anomalyType.priority()));
-          alertaMessage.setGroup(AlertaAlertGroup.Performance.toString());
-          alertaMessage.setCreateTime(outFormatter.format(Instant.ofEpochMilli(entry.getValue())));
+          alertaMessage.setSeverity(NotifierUtils.getAlertSeverity(anomalyType).toString());
+          alertaMessage.setGroup(AlertaAlertGroup.PERFORMANCE.toString());
+          alertaMessage.setCreateTime(CruiseControlUtils.utcDateFor(entry.getValue(), 3, ChronoUnit.SECONDS));
           alertaMessages.add(alertaMessage);
         }
     }
 
-    private void alertBrokerFailure(AnomalyType anomalyType, final String localHostname, DateTimeFormatter outFormatter,
+    private void alertBrokerFailure(AnomalyType anomalyType, final String localHostname,
             List<AlertaMessage> alertaMessages, BrokerFailures brokerFailures) {
         Map<Integer, Long> failedBrokers = brokerFailures.failedBrokers();
         for (Entry<Integer, Long> entry : failedBrokers.entrySet()) {
           AlertaMessage alertaMessage = new AlertaMessage(localHostname + " - Broker " + entry.getKey(),
               anomalyType.toString());
-          alertaMessage.setSeverity(severityFromPriority(anomalyType.priority()));
-          alertaMessage.setGroup(AlertaAlertGroup.Performance.toString());
-          alertaMessage.setCreateTime(outFormatter.format(Instant.ofEpochMilli(entry.getValue())));
+          alertaMessage.setSeverity(NotifierUtils.getAlertSeverity(anomalyType).toString());
+          alertaMessage.setGroup(AlertaAlertGroup.PERFORMANCE.toString());
+          alertaMessage.setCreateTime(CruiseControlUtils.utcDateFor(entry.getValue(), 3, ChronoUnit.SECONDS));
           alertaMessages.add(alertaMessage);
         }
     }
 
-    private void alertGoalViolation(AnomalyType anomalyType, final String localHostname, DateTimeFormatter outFormatter,
+    private void alertGoalViolation(AnomalyType anomalyType, final String localHostname,
             List<AlertaMessage> alertaMessages, GoalViolations goalViolations) {
         Map<Boolean, List<String>> violations = goalViolations.violatedGoalsByFixability();
         for (Entry<Boolean, List<String>> entry : violations.entrySet()) {
           entry.getValue().forEach(goal -> { 
             AlertaMessage alertaMessage = new AlertaMessage(localHostname, anomalyType.toString() + " - " + goal);
-            alertaMessage.setSeverity(severityFromPriority(anomalyType.priority()));
-            alertaMessage.setGroup(AlertaAlertGroup.Performance.toString());
-            alertaMessage.setCreateTime(outFormatter.format(Instant.ofEpochMilli(goalViolations.detectionTimeMs())));
+            alertaMessage.setSeverity(NotifierUtils.getAlertSeverity(anomalyType).toString());
+            alertaMessage.setGroup(AlertaAlertGroup.PERFORMANCE.toString());
+            alertaMessage.setCreateTime(CruiseControlUtils.utcDateFor(goalViolations.detectionTimeMs(), 3, ChronoUnit.SECONDS));
             alertaMessages.add(alertaMessage);
           });
         }
     }
 
     protected void sendAlertaMessage(AlertaMessage alertaMessage) throws IOException {
-      NotifierUtils.sendMessage(alertaMessage.toString(), _alertaApiUrl + "/alert", _alertaApiKey);
-    }
-
-    protected String severityFromPriority(int priority) {
-      switch (priority) {
-        case 0:
-          return AlertaAlertSeverity.critical.toString();
-        case 1:
-        case 2:
-          return AlertaAlertSeverity.major.toString();
-        case 3:
-        case 4:
-          return AlertaAlertSeverity.minor.toString();
-        default:
-          return AlertaAlertSeverity.warning.toString();
-      }
+        NotifierUtils.sendMessage(alertaMessage.toString(), _alertaApiUrl + "/alert", _alertaApiKey);
     }
 }

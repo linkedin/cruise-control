@@ -24,15 +24,15 @@ To enable Slack notification, set `anomaly.notifier.class=com.linkedin.kafka.cru
 
 -- Excerpt from [PR#1510](https://github.com/linkedin/cruise-control/pull/1510) by [jrevillard](https://github.com/jrevillard)
 
-**Changelog**: The AlertaSelfHealingNotifier extends SelfHealingNotifier and merely override the alerts method to send the notification to [Alerta.io](https://alerta.io).
+**Changelog**: The AlertaSelfHealingNotifier extends SelfHealingNotifier and merely override the alerts method to send the notification to [Alerta](https://alerta.io).
 
 **Configuration**: The following property requires to be configured on `cruisecontrol.properties`
 
-`alerta.self.healing.notifier.api_url` (Required)
-Alerta.io API base url (see: https://docs.alerta.io/en/latest/api/reference.html)
-`alerta.self.healing.notifier.api_key` (Required)
-Alerta.io API key used to authenticate, (see: https://docs.alerta.io/en/latest/authentication.html#api-keys)
+`alerta.self.healing.notifier.api.url` (Required)
+Alerta API base url (see: https://docs.alerta.io/en/latest/api/reference.html)
+`alerta.self.healing.notifier.api.key` (Required)
+API key used to authenticate, (see: https://docs.alerta.io/en/latest/authentication.html#api-keys)
 `alerta.self.healing.notifier.environment` (Optional)
-Environment attribute used to namespace the alert resource. (See: https://docs.alerta.io/en/latest/conventions.html#environments-services) (default: Alerta.io API default value)
+Environment attribute used to namespace the alert resource. (See: https://docs.alerta.io/en/latest/conventions.html#environments-services) (default: Alerta API default value)
 
-To enable Slack notification, set `anomaly.notifier.class=com.linkedin.kafka.cruisecontrol.detector.notifier.AlertaSelfHealingNotifier`
+To enable Alerta notification, set `anomaly.notifier.class=com.linkedin.kafka.cruisecontrol.detector.notifier.AlertaSelfHealingNotifier`

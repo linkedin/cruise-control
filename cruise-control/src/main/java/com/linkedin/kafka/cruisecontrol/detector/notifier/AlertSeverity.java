@@ -5,14 +5,14 @@
 package com.linkedin.kafka.cruisecontrol.detector.notifier;
 
 /**
- * @see <a href="https://docs.alerta.io/en/latest/conventions.html#event-groups">the Alerta event groups conventions</a>
+ * Alert severity representation based on standard wording 
  */
-public enum AlertaAlertGroup {
-    PERFORMANCE("Performance"), STORAGE("Storage");
-
+public enum AlertSeverity {
+    CRITICAL("critical"), MAJOR("major"), MINOR("minor"), WARNING("warning");
+    
     private final String _value;
 
-    AlertaAlertGroup(String value) {
+    AlertSeverity(String value) {
         this._value = value;
     }
 

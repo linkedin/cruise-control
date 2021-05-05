@@ -6,6 +6,8 @@ package com.linkedin.kafka.cruisecontrol.detector.notifier;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
+
 import javax.validation.constraints.NotNull;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -18,6 +20,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
  * Alerta.io data to create alert: https://docs.alerta.io/en/latest/api/reference.html#create-an-alert
  */
 public final class AlertaMessage implements Serializable {
+    private static final long serialVersionUID = -7290861136323903837L;
 
     @NotNull
     @JsonProperty("resource")
@@ -32,6 +35,8 @@ public final class AlertaMessage implements Serializable {
     private String _severity;
     @JsonProperty("correlate")
     private List<String> _correlate;
+    @JsonProperty("status")
+    private List<String> _status;
     @JsonProperty("service")
     private List<String> _service;
     @JsonProperty("group")
@@ -42,6 +47,8 @@ public final class AlertaMessage implements Serializable {
     private String _text;
     @JsonProperty("tags")
     private List<String> _tags;
+    @JsonProperty("attributes")
+    private Map<String, String> _attributes;
     @JsonProperty("origin")
     private String _origin;
     @JsonProperty("type")
@@ -176,6 +183,22 @@ public final class AlertaMessage implements Serializable {
 
     public void setRawData(String rawData) {
         this._rawData = rawData;
+    }
+
+    public List<String> getStatus() {
+        return _status;
+    }
+
+    public void setStatus(List<String> status) {
+        this._status = status;
+    }
+
+    public Map<String, String> getAttributes() {
+        return _attributes;
+    }
+
+    public void setAttributes(Map<String, String> attributes) {
+        this._attributes = attributes;
     }
 
     @Override

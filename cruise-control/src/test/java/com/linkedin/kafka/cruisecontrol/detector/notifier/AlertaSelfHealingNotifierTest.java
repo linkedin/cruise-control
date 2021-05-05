@@ -72,14 +72,14 @@ public class AlertaSelfHealingNotifierTest {
     }
 
     @Test
-    public void testSlackAlertWithNoWebhook() {
+    public void testAlertaAlertWithNoWebhook() {
         _notifier = new MockAlertaSelfHealingNotifier(MOCK_TIME);
         _notifier.alert(FAILURES, false, 1L, KafkaAnomalyType.BROKER_FAILURE);
         assertEquals(0, _notifier.getAlertaMessageList().size());
     }
 
     @Test
-    public void testSlackAlertWithNoApiKey() {
+    public void testAlertaAlertWithNoApiKey() {
         _notifier = new MockAlertaSelfHealingNotifier(MOCK_TIME);
         _notifier._alertaApiUrl = DUMMY_ALERTA_API_URL;
         _notifier.alert(FAILURES, false, 1L, KafkaAnomalyType.BROKER_FAILURE);
@@ -87,7 +87,7 @@ public class AlertaSelfHealingNotifierTest {
     }
 
     @Test
-    public void testSlackAlertWithDefaultOptions() {
+    public void testAlertaAlertWithDefaultOptions() {
         _notifier = new MockAlertaSelfHealingNotifier(MOCK_TIME);
         _notifier._alertaApiUrl = DUMMY_ALERTA_API_URL;
         _notifier._alertaApiKey = DUMMY_ALERTA_API_KEY;
@@ -96,7 +96,7 @@ public class AlertaSelfHealingNotifierTest {
     }
 
     @Test
-    public void testSlackAlertWithEnvironment() throws ParseException {
+    public void testAlertaAlertWithEnvironment() throws ParseException {
         _notifier = new MockAlertaSelfHealingNotifier(MOCK_TIME);
         _notifier._alertaApiUrl = DUMMY_ALERTA_API_URL;
         _notifier._alertaApiKey = DUMMY_ALERTA_API_KEY;
