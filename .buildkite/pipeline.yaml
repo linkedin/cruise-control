@@ -1,4 +1,6 @@
 ---
+env:
+  ARTIFACTORY_REGION: prod
 steps:
   - label: Determine and create build steps
     commands: 
