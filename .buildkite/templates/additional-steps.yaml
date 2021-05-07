@@ -3,25 +3,34 @@
 #@ load("funcs.star", "utils" )
 ---
 
-#@ deployment_build = data.values.branch == "main"
-#@ json_data = json.decode(data.values.changed_folders)
-#@ targets = json_data["folders"]
+#@ mainline_build = data.values.branch == "main"
+#@ changes = json.decode(data.values.changed_folders)
+#@ triggers = data.values.build_triggers
+#@ build_type = utils.get_build_type(changes, triggers)
 
 env:
   ARTIFACTORY_REGION: prod
 
 steps: 
 
-#@ if len(targets) == 0:
+#@ if build_type == "ignore":
   - label: "Nothing of consequence has changed, so doing nothing"
     commands:
       - echo "done"
 #@ else:
-  #@ for target in targets:
-  - label: #@ utils.get_message(deployment_build, target)
-    env:
-      EKS_CLUSTER_NAME: platform-staging-uk-01
-      ARTIFACTORY_REGION: uk
+  #@ if build_type == "helm" or build_type == "both":
+  - label: Building and publishing Helm chart
+    commands:
+      - make lint
+      - make helm
+    agents:
+      queue: build.linux
+  #@ end
+  #@ if build_type == "code" or build_type == "both":
+  - label: Building and publishing Cruise-Control container
+    commands:
+      - make image
+      - make publish
     agents:
       queue: build.linux
   #@ end

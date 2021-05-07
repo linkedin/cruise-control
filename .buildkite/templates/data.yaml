@@ -16,3 +16,4 @@ build_triggers:
     - cruise-control-client
     - cruise-control-core
     - cruise-control-metrics-reporter
+    - Dockerfile

@@ -12,12 +12,12 @@ array_contains () {
     return $in
 }
 
-git fetch origin main
+git fetch origin master
 
 if [[ "${BUILDKITE_BRANCH}" == "master" ]]; then
   changes=$(git diff "${BUILDKITE_COMMIT}"^ "${BUILDKITE_COMMIT}" --name-only)
 else
-    changes=$(git diff origin/main...HEAD --name-only)
+  changes=$(git diff origin/master...HEAD --name-only)
 fi
 
 
