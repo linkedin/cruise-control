@@ -5,8 +5,9 @@ services:
   cruise-control:
     image: iress-cruise-control
     build:
+      args:
+        - DEFAULT_DOCKER_REPO=${DEFAULT_DOCKER_REPO}
       context: .
       dockerfile: Dockerfile
     user: ${USER_ID}:${GROUP_ID}
     userns_mode: host
-    network_mode: host

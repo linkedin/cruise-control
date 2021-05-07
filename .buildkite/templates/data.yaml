@@ -1,0 +1,18 @@
+#@ load("@ytt:overlay", "overlay")
+#@data/values
+---
+#@overlay/match missing_ok=True
+branch: notset
+
+#@overlay/match missing_ok=True
+changed_folders: ~
+
+#@overlay/match missing_ok=True
+build_triggers:
+  helm_build:
+    - helm
+  container_build:
+    - cruise-control
+    - cruise-control-client
+    - cruise-control-core
+    - cruise-control-metrics-reporter

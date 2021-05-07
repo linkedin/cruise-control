@@ -56,3 +56,6 @@ available:
 	docker rmi $(IMAGE_NAME) -f || true
 	docker rmi $(DEFAULT_DOCKER_REPO)/$(IMAGE_NAME) -f || true
 
+
+local:
+	docker-compose run cruise-control

@@ -1,0 +1,28 @@
+#@ load("@ytt:data", "data")
+#@ load("@ytt:json", "json")
+#@ load("funcs.star", "utils" )
+---
+
+#@ deployment_build = data.values.branch == "main"
+#@ json_data = json.decode(data.values.changed_folders)
+#@ targets = json_data["folders"]
+
+env:
+  ARTIFACTORY_REGION: prod
+
+steps: 
+
+#@ if len(targets) == 0:
+  - label: "Nothing of consequence has changed, so doing nothing"
+    commands:
+      - echo "done"
+#@ else:
+  #@ for target in targets:
+  - label: #@ utils.get_message(deployment_build, target)
+    env:
+      EKS_CLUSTER_NAME: platform-staging-uk-01
+      ARTIFACTORY_REGION: uk
+    agents:
+      queue: build.linux
+  #@ end
+#@ end
