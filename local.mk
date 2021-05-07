@@ -1,5 +1,6 @@
 export DEFAULT_DOCKER_REPO=artifactory.jfrog.iress.online/iress-docker
 export BOOTSTRAP_SERVERS=localhost:9092
+export IMAGE_TAG:dev
 
 
 .PHONY: authenticate

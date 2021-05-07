@@ -17,19 +17,34 @@ steps:
   - label: "Nothing of consequence has changed, so doing nothing"
     commands:
       - echo "done"
+
 #@ else:
+
   #@ if build_type == "helm" or build_type == "both":
+    #@ if/end mainline_build:
   - label: Building and publishing Helm chart
+    #@ if/end not mainline_build:
+  - label: Building Helm chart
+    env:
+      HELM_VERSION: ${BUILDKITE_BUILD_NUMBER}
     commands:
       - make lint
+    #@ if/end mainline_build:
       - make helm
     agents:
       queue: build.linux
   #@ end
+
   #@ if build_type == "code" or build_type == "both":
+    #@ if/end mainline_build:
   - label: Building and publishing Cruise-Control container
+    #@ if/end not mainline_build:
+  - label: Building Cruise-Control container
+    env:
+      IMAGE_TAG: ${BUILDKITE_BUILD_NUMBER}
     commands:
       - make image
+    #@ if/end mainline_build:
       - make available
     agents:
       queue: build.linux
