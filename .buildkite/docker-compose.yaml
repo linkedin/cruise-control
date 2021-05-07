@@ -2,7 +2,7 @@ version: '3.2'
 
 services:
   alpine:
-    image: ${DEFAULT_DOCKER_REPO}/alpine
+    image: alpine
     user: ${USER_ID}:${GROUP_ID}
     userns_mode: host
     working_dir: /app
@@ -10,7 +10,7 @@ services:
     - .:/app
         
   k14s:
-    image: ${DEFAULT_DOCKER_REPO}/k14s/image:kbld-rand-1591920752754379000-1908418319647
+    image: k14s/image:kbld-rand-1591920752754379000-1908418319647
     user: ${USER_ID}:${GROUP_ID}
     userns_mode: host
     working_dir: /app/.buildkite

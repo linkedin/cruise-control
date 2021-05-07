@@ -1,6 +1,7 @@
 ---
 env:
   ARTIFACTORY_REGION: prod
+  EXTERNAL_CREDENTIALS: all
 
 steps:
   - label: Determine and create build steps
