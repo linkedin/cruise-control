@@ -30,7 +30,7 @@ steps:
   - label: Building and publishing Cruise-Control container
     commands:
       - make image
-      - make publish
+      - make available
     agents:
       queue: build.linux
   #@ end
