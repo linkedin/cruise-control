@@ -4,7 +4,11 @@ FROM ${DEFAULT_DOCKER_REPO}/gradle:jdk15 AS build
 COPY --chown=gradle:gradle . /workspace
 WORKDIR /workspace
 
-RUN ./gradlew jar copyDependantLibs --info
+RUN ./gradlew jar copyDependantLibs --info \
+		&& ls /workspace/cruise-control/build/dependant-libs/ -lah \
+		&& ls /workspace/cruise-control/build/libs/ -lah \
+		&& ls /workspace/config/ -lah \
+		&& ls /workspace/*.sh -lah
 
 FROM ${DEFAULT_DOCKER_REPO}/openjdk:15-slim
 COPY --from=build /workspace/cruise-control/build/dependant-libs/ /app/cruise-control/build/dependant-libs/

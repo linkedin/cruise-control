@@ -9,3 +9,5 @@ services:
         - DEFAULT_DOCKER_REPO=${DEFAULT_DOCKER_REPO}
       context: .
       dockerfile: Dockerfile
+    user: ${USER_ID}:${GROUP_ID}
+    userns_mode: host
