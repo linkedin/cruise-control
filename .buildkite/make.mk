@@ -6,6 +6,7 @@ export USER_ID=$(shell id -u)
 export GROUP_ID=$(shell id -g)
 endif
 
+export DEFAULT_DOCKER_REPO=artifactory.jfrog.iress.online/iress-docker
 
 build_script:
 	./scripts/what-changed.sh

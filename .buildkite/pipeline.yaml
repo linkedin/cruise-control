@@ -5,5 +5,5 @@ env:
 steps:
   - label: Determine and create build steps
     commands: 
-    - ${MAKE} --directory .buildkite -f make.mk build_script
+    - make --directory .buildkite -f make.mk build_script
     - buildkite-agent pipeline upload .buildkite/.out/additional-steps.yaml 
