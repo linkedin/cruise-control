@@ -1,10 +1,9 @@
 ---
 env:
   ARTIFACTORY_REGION: prod
+
 steps:
   - label: Determine and create build steps
-    env:
-      DEFAULT_DOCKER_REPO:
     commands: 
-    - make --directory .buildkite -f make.mk build_script
+    - ${MAKE} --directory .buildkite -f make.mk build_script
     - buildkite-agent pipeline upload .buildkite/.out/additional-steps.yaml 
