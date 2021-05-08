@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.kafka.common.TopicPartition;
@@ -22,6 +23,13 @@ import static com.linkedin.kafka.cruisecontrol.detector.PartitionSizeAnomalyFind
  */
 public class TopicPartitionSizeAnomaly extends TopicAnomaly {
   protected Map<TopicPartition, Double> _sizeByPartition;
+
+  /**
+   * @return An unmodifiable version of the actual bad topic partitions size
+   */
+  public Map<TopicPartition, Double> getSizeByPartition() {
+    return Collections.unmodifiableMap(_sizeByPartition);
+  }
 
   /**
    * Fix the anomaly.

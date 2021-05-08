@@ -16,3 +16,4 @@ logs
 target/
 access.log
 *.egg
+/bin/

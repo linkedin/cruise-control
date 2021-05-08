@@ -37,6 +37,7 @@ public class CruiseControlUtilsTest {
     long difference = currentUtcDate.minus(currentUtcDateFor.getEpochSecond(), ChronoUnit.SECONDS).getEpochSecond();
 
     // Maximum difference accounts for a potential GC pause -- ideally (1) currentUtcDateFor and (2) currentUtcDate should be the same.
-    assertTrue(difference >= 0 && difference < MAX_ESTIMATED_PAUSE);
+    assertTrue(difference >= 0);
+    assertTrue(difference < MAX_ESTIMATED_PAUSE);
   }
 }
