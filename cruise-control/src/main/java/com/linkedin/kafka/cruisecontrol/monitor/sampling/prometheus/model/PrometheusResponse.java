@@ -45,8 +45,7 @@ public class PrometheusResponse {
             return false;
         }
         PrometheusResponse response = (PrometheusResponse) o;
-        return Objects.equals(_status, response._status) &&
-            Objects.equals(_data, response._data);
+        return Objects.equals(_status, response._status) && Objects.equals(_data, response._data);
     }
 
     @Override public int hashCode() {

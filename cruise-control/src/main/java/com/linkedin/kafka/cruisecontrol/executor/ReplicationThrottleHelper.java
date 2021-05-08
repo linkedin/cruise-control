@@ -60,19 +60,17 @@ class ReplicationThrottleHelper {
   boolean shouldRemoveThrottleForTask(ExecutionTask task) {
     return
       // the task should not be in progress
-      task.state() != ExecutionTaskState.IN_PROGRESS &&
-        // the task should not be pending
-        task.state() != ExecutionTaskState.PENDING &&
-        // replica throttles only apply to inter-broker replica movement
-        task.type() == ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION;
+      task.state() != ExecutionTaskState.IN_PROGRESS
+      // the task should not be pending
+      && task.state() != ExecutionTaskState.PENDING
+      // replica throttles only apply to inter-broker replica movement
+      && task.type() == ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION;
   }
 
   // determines if a candidate task is in progress and related to inter-broker
   // replica movement.
   boolean taskIsInProgress(ExecutionTask task) {
-    return
-      task.state() == ExecutionTaskState.IN_PROGRESS &&
-        task.type() == ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION;
+    return task.state() == ExecutionTaskState.IN_PROGRESS && task.type() == ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION;
   }
 
   // clear throttles for a specific list of execution tasks

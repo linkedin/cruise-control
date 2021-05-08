@@ -140,9 +140,9 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
         if ((sourceBrokerExcludedForReplicaMove || isLoadAboveBalanceLowerLimit(sourceBroker))
             && isLoadUnderBalanceUpperLimit(destinationBroker)) {
           // Already satisfied balance limits cannot be violated due to balancing action.
-          return (isLoadUnderBalanceUpperLimitAfterChange(sourceReplica.load(), destinationBroker, ADD) &&
-                  (sourceBrokerExcludedForReplicaMove
-                   || isLoadAboveBalanceLowerLimitAfterChange(sourceReplica.load(), sourceBroker, REMOVE)))
+          return (isLoadUnderBalanceUpperLimitAfterChange(sourceReplica.load(), destinationBroker, ADD)
+                  && (sourceBrokerExcludedForReplicaMove
+                      || isLoadAboveBalanceLowerLimitAfterChange(sourceReplica.load(), sourceBroker, REMOVE)))
                  ? ACCEPT : REPLICA_REJECT;
         } else if (sourceBrokerExcludedForReplicaMove) {
           // We know that the destination broker load is not under balance upper limit. Hence moving load to it from a
@@ -221,8 +221,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       case INTER_BROKER_REPLICA_MOVEMENT:
       case LEADERSHIP_MOVEMENT:
         //Check that current destination would not become more unbalanced.
-        return isLoadUnderBalanceUpperLimitAfterChange(sourceReplica.load(), destinationBroker, ADD) &&
-               isLoadAboveBalanceLowerLimitAfterChange(sourceReplica.load(), sourceReplica.broker(), REMOVE);
+        return isLoadUnderBalanceUpperLimitAfterChange(sourceReplica.load(), destinationBroker, ADD)
+               && isLoadAboveBalanceLowerLimitAfterChange(sourceReplica.load(), sourceReplica.broker(), REMOVE);
       default:
         throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
     }
@@ -473,8 +473,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
 
     // Stop when all the replicas are leaders for leader movement or there is no replicas can be moved in anymore
     // for replica movement.
-    while (!candidateBrokerPQ.isEmpty() && (actionType == INTER_BROKER_REPLICA_MOVEMENT ||
-        (actionType == LEADERSHIP_MOVEMENT && broker.leaderReplicas().size() != broker.replicas().size()))) {
+    while (!candidateBrokerPQ.isEmpty() && (actionType == INTER_BROKER_REPLICA_MOVEMENT
+                                            || (actionType == LEADERSHIP_MOVEMENT && broker.leaderReplicas().size() != broker.replicas().size()))) {
       Broker cb = candidateBrokerPQ.poll();
       SortedSet<Replica> candidateReplicasToReceive = cb.trackedSortedReplicas(replicaSortName).sortedReplicas(true);
 
@@ -857,14 +857,14 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
 
     double brokerBalanceLowerLimit = broker.capacityFor(resource()) * _balanceLowerThreshold;
     double brokerUtilization = broker.load().expectedUtilizationFor(resource());
-    boolean isBrokerAboveLowerLimit = changeType == ADD ? brokerUtilization + utilizationDelta >= brokerBalanceLowerLimit :
-                                      brokerUtilization - utilizationDelta >= brokerBalanceLowerLimit;
+    boolean isBrokerAboveLowerLimit = changeType == ADD ? brokerUtilization + utilizationDelta >= brokerBalanceLowerLimit
+                                                        : brokerUtilization - utilizationDelta >= brokerBalanceLowerLimit;
 
     if (resource().isHostResource()) {
       double hostBalanceLowerLimit = broker.host().capacityFor(resource()) * _balanceLowerThreshold;
       double hostUtilization = broker.host().load().expectedUtilizationFor(resource());
-      boolean isHostAboveLowerLimit = changeType == ADD ? hostUtilization + utilizationDelta >= hostBalanceLowerLimit :
-                                      hostUtilization - utilizationDelta >= hostBalanceLowerLimit;
+      boolean isHostAboveLowerLimit = changeType == ADD ? hostUtilization + utilizationDelta >= hostBalanceLowerLimit
+                                                        : hostUtilization - utilizationDelta >= hostBalanceLowerLimit;
       // As long as either the host or the broker is above the limit, we claim the host resource utilization is
       // above the limit. If the host is below limit, there must be at least one broker below limit. We should just
       // bring more load to that broker.
@@ -882,14 +882,14 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
 
     double brokerBalanceUpperLimit = broker.capacityFor(resource()) * balanceUpperThresholdForBroker;
     double brokerUtilization = broker.load().expectedUtilizationFor(resource());
-    boolean isBrokerUnderUpperLimit = changeType == ADD ? brokerUtilization + utilizationDelta <= brokerBalanceUpperLimit :
-                                      brokerUtilization - utilizationDelta <= brokerBalanceUpperLimit;
+    boolean isBrokerUnderUpperLimit = changeType == ADD ? brokerUtilization + utilizationDelta <= brokerBalanceUpperLimit
+                                                        : brokerUtilization - utilizationDelta <= brokerBalanceUpperLimit;
 
     if (resource().isHostResource()) {
       double hostBalanceUpperLimit = broker.host().capacityFor(resource()) * balanceUpperThresholdForBroker;
       double hostUtilization = broker.host().load().expectedUtilizationFor(resource());
-      boolean isHostUnderUpperLimit = changeType == ADD ? hostUtilization + utilizationDelta <= hostBalanceUpperLimit :
-                                      hostUtilization - utilizationDelta <= hostBalanceUpperLimit;
+      boolean isHostUnderUpperLimit = changeType == ADD ? hostUtilization + utilizationDelta <= hostBalanceUpperLimit
+                                                        : hostUtilization - utilizationDelta <= hostBalanceUpperLimit;
       // As long as either the host or the broker is under the limit, we claim the host resource utilization is
       // under the limit. If the host is above limit, there must be at least one broker above limit. We should just
       // move load off that broker.
@@ -1017,22 +1017,22 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       // Number of balanced brokers in the highest priority resource cannot be more than the pre-optimized
       // stats. This constraint is applicable for the rest of the resources, if their higher priority resources
       // have the same number of balanced brokers in their corresponding pre- and post-optimized stats.
-        int numBalancedBroker1 = stats1.numBalancedBrokersByResource().get(resource());
-        int numBalancedBroker2 = stats2.numBalancedBrokersByResource().get(resource());
-        // First compare the number of balanced brokers
-        if (numBalancedBroker2 > numBalancedBroker1) {
-          // If the number of balanced brokers has increased, the standard deviation of utilization for the resource
-          // must decrease. Otherwise, the goal is producing a worse cluster state.
-          double afterUtilizationStd = stats1.resourceUtilizationStats().get(Statistic.ST_DEV).get(resource());
-          double beforeUtilizationStd = stats2.resourceUtilizationStats().get(Statistic.ST_DEV).get(resource());
-          if (Double.compare(beforeUtilizationStd, afterUtilizationStd) < 0) {
-            _reasonForLastNegativeResult = String.format(
-                "Violated %s. [Number of Balanced Brokers] for resource %s. post-optimization:%d pre-optimization:%d "
-                + "without improving the standard dev. of utilization. post-optimization:%.2f pre-optimization:%.2f",
-                name(), resource(), numBalancedBroker1, numBalancedBroker2, afterUtilizationStd, beforeUtilizationStd);
-            return -1;
-          }
+      int numBalancedBroker1 = stats1.numBalancedBrokersByResource().get(resource());
+      int numBalancedBroker2 = stats2.numBalancedBrokersByResource().get(resource());
+      // First compare the number of balanced brokers
+      if (numBalancedBroker2 > numBalancedBroker1) {
+        // If the number of balanced brokers has increased, the standard deviation of utilization for the resource
+        // must decrease. Otherwise, the goal is producing a worse cluster state.
+        double afterUtilizationStd = stats1.resourceUtilizationStats().get(Statistic.ST_DEV).get(resource());
+        double beforeUtilizationStd = stats2.resourceUtilizationStats().get(Statistic.ST_DEV).get(resource());
+        if (Double.compare(beforeUtilizationStd, afterUtilizationStd) < 0) {
+          _reasonForLastNegativeResult = String.format(
+              "Violated %s. [Number of Balanced Brokers] for resource %s. post-optimization:%d pre-optimization:%d "
+              + "without improving the standard dev. of utilization. post-optimization:%.2f pre-optimization:%.2f",
+              name(), resource(), numBalancedBroker1, numBalancedBroker2, afterUtilizationStd, beforeUtilizationStd);
+          return -1;
         }
+      }
       return 1;
     }
 

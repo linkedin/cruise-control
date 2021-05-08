@@ -129,21 +129,20 @@ public class RandomCluster {
     int numDeadBrokers = properties.get(ClusterProperty.NUM_DEAD_BROKERS).intValue();
     int numBrokersWithBadDisk = properties.get(ClusterProperty.NUM_BROKERS_WITH_BAD_DISK).intValue();
     boolean populateReplicaPlacementInfo = properties.get(ClusterProperty.POPULATE_REPLICA_PLACEMENT_INFO).intValue() > 0;
-    if (numDeadBrokers < 0 ||
-        numBrokersWithBadDisk < 0 ||
-        numBrokers < numDeadBrokers + numBrokersWithBadDisk ||
-        properties.get(ClusterProperty.MEAN_NW_IN).doubleValue() < 0 ||
-        properties.get(ClusterProperty.MEAN_NW_OUT).doubleValue() < 0 ||
-        properties.get(ClusterProperty.MEAN_DISK).doubleValue() < 0 ||
-        properties.get(ClusterProperty.MEAN_CPU).doubleValue() < 0 ||
-        properties.get(ClusterProperty.NUM_TOPICS).intValue() <= 0 ||
-        properties.get(ClusterProperty.MIN_REPLICATION).intValue() > properties.get(ClusterProperty.MAX_REPLICATION)
-                                                                               .intValue() ||
-        (leaderInFirstPosition && properties.get(ClusterProperty.MIN_REPLICATION).intValue() < 2) ||
-        properties.get(ClusterProperty.MAX_REPLICATION).intValue() > numBrokers ||
-        properties.get(ClusterProperty.NUM_TOPICS).intValue() > properties.get(ClusterProperty.NUM_REPLICAS).intValue() ||
-        (properties.get(ClusterProperty.MIN_REPLICATION).intValue() == properties.get(ClusterProperty.MAX_REPLICATION).intValue() &&
-         properties.get(ClusterProperty.NUM_REPLICAS).intValue() % properties.get(ClusterProperty.MIN_REPLICATION).intValue() != 0)) {
+    if (numDeadBrokers < 0
+        || numBrokersWithBadDisk < 0
+        || numBrokers < numDeadBrokers + numBrokersWithBadDisk
+        || properties.get(ClusterProperty.MEAN_NW_IN).doubleValue() < 0
+        || properties.get(ClusterProperty.MEAN_NW_OUT).doubleValue() < 0
+        || properties.get(ClusterProperty.MEAN_DISK).doubleValue() < 0
+        || properties.get(ClusterProperty.MEAN_CPU).doubleValue() < 0
+        || properties.get(ClusterProperty.NUM_TOPICS).intValue() <= 0
+        || properties.get(ClusterProperty.MIN_REPLICATION).intValue() > properties.get(ClusterProperty.MAX_REPLICATION).intValue()
+        || (leaderInFirstPosition && properties.get(ClusterProperty.MIN_REPLICATION).intValue() < 2)
+        || properties.get(ClusterProperty.MAX_REPLICATION).intValue() > numBrokers
+        || properties.get(ClusterProperty.NUM_TOPICS).intValue() > properties.get(ClusterProperty.NUM_REPLICAS).intValue()
+        || (properties.get(ClusterProperty.MIN_REPLICATION).intValue() == properties.get(ClusterProperty.MAX_REPLICATION).intValue()
+            && properties.get(ClusterProperty.NUM_REPLICAS).intValue() % properties.get(ClusterProperty.MIN_REPLICATION).intValue() != 0)) {
       throw new IllegalArgumentException("Random cluster population failed due to bad input.");
     }
 

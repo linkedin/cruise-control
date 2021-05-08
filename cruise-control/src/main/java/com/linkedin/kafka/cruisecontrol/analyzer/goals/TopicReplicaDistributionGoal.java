@@ -313,8 +313,8 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
     String sourceTopic = action.topic();
 
-    return isReplicaCountUnderBalanceUpperLimitAfterChange(sourceTopic, destinationBroker, ADD) &&
-           (isExcludedForReplicaMove(sourceBroker) || isReplicaCountAboveBalanceLowerLimitAfterChange(sourceTopic, sourceBroker, REMOVE));
+    return isReplicaCountUnderBalanceUpperLimitAfterChange(sourceTopic, destinationBroker, ADD)
+           && (isExcludedForReplicaMove(sourceBroker) || isReplicaCountAboveBalanceLowerLimitAfterChange(sourceTopic, sourceBroker, REMOVE));
   }
 
   /**

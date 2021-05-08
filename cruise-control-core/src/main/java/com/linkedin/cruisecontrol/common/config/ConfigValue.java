@@ -73,11 +73,9 @@ public class ConfigValue {
             return false;
         }
         ConfigValue that = (ConfigValue) o;
-        return Objects.equals(_name, that._name) &&
-               Objects.equals(_value, that._value) &&
-               Objects.equals(_recommendedValues, that._recommendedValues) &&
-               Objects.equals(_errorMessages, that._errorMessages) &&
-               Objects.equals(_visible, that._visible);
+        return Objects.equals(_name, that._name) && Objects.equals(_value, that._value)
+               && Objects.equals(_recommendedValues, that._recommendedValues) && Objects.equals(_errorMessages, that._errorMessages)
+               && Objects.equals(_visible, that._visible);
     }
 
     @Override

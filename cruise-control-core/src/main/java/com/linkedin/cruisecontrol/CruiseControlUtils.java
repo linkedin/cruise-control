@@ -45,7 +45,7 @@ public class CruiseControlUtils {
   public static String utcDateFor(long timeMs) {
     return utcDateFor(timeMs, 0, ChronoUnit.SECONDS);
   }
-  
+
   /**
    * @see <a href="https://xkcd.com/1179/">https://xkcd.com/1179/</a>
    * @param timeMs Time in milliseconds.

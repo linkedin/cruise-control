@@ -206,8 +206,7 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
                                                 ClusterModel clusterModel,
                                                 Set<Goal> optimizedGoals,
                                                 OptimizationOptions optimizationOptions) {
-    if (!clusterModel.deadBrokers().isEmpty() ||
-        optimizationOptions.excludedBrokersForLeadership().contains(broker.id())) {
+    if (!clusterModel.deadBrokers().isEmpty() || optimizationOptions.excludedBrokersForLeadership().contains(broker.id())) {
       return true;
     }
 

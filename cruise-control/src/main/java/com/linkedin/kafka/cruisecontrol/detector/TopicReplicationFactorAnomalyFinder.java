@@ -219,8 +219,8 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
             + " provided %d.", SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG, _targetReplicationFactor));
       }
     } catch (NumberFormatException e) {
-      throw new IllegalArgumentException(SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG +
-                                         " is missing or misconfigured for topic replication factor anomaly finder.");
+      throw new IllegalArgumentException(SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG
+                                         + " is missing or misconfigured for topic replication factor anomaly finder.");
     }
     String topicExcludedFromCheck = (String) configs.get(TOPIC_EXCLUDED_FROM_REPLICATION_FACTOR_CHECK);
     _topicExcludedFromCheck = Pattern.compile(topicExcludedFromCheck == null ? DEFAULT_TOPIC_EXCLUDED_FROM_REPLICATION_FACTOR_CHECK

@@ -169,9 +169,9 @@ public class Disk implements Comparable<Disk> {
    *                  order of score.
    */
   void trackSortedReplicas(String sortName,
-                                  Set<Function<Replica, Boolean>> selectionFuncs,
-                                  List<Function<Replica, Integer>> priorityFuncs,
-                                  Function<Replica, Double> scoreFunc) {
+                           Set<Function<Replica, Boolean>> selectionFuncs,
+                           List<Function<Replica, Integer>> priorityFuncs,
+                           Function<Replica, Double> scoreFunc) {
     _sortedReplicas.putIfAbsent(sortName, new SortedReplicas(_broker, this, selectionFuncs, priorityFuncs, scoreFunc, true));
   }
 
@@ -200,8 +200,8 @@ public class Disk implements Comparable<Disk> {
   public SortedReplicas trackedSortedReplicas(String sortName) {
     SortedReplicas sortedReplicas = _sortedReplicas.get(sortName);
     if (sortedReplicas == null) {
-      throw new IllegalStateException("The sort name " + sortName + "  is not found. Make sure trackSortedReplicas() " +
-          "has been called for the sort name");
+      throw new IllegalStateException("The sort name " + sortName + "  is not found. Make sure trackSortedReplicas() has been called for "
+                                      + "the sort name");
     }
     return sortedReplicas;
   }
@@ -251,8 +251,8 @@ public class Disk implements Comparable<Disk> {
    */
   public DiskStats diskStats() {
     return new DiskStats((int) _replicas.stream().filter(Replica::isLeader).count(),
-                          _replicas.size(),
-                          _utilization,
-                          _capacity);
+                         _replicas.size(),
+                         _utilization,
+                         _capacity);
   }
 }

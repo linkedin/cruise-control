@@ -492,8 +492,8 @@ public class UserTaskManager implements Closeable {
       _uuidToActiveUserTaskInfoMap.get(userTaskId).futures().add(operation.apply(userTaskId.toString()));
     } else {
       if (_uuidToActiveUserTaskInfoMap.size() >= _maxActiveUserTasks) {
-        throw new RuntimeException("There are already " + _uuidToActiveUserTaskInfoMap.size() +
-            " active user tasks, which has reached the servlet capacity.");
+        throw new RuntimeException("There are already " + _uuidToActiveUserTaskInfoMap.size()
+                                   + " active user tasks, which has reached the servlet capacity.");
       }
       UserTaskInfo userTaskInfo =
           new UserTaskInfo(httpServletRequest, new ArrayList<>(Collections.singleton(operation.apply(userTaskId.toString()))),

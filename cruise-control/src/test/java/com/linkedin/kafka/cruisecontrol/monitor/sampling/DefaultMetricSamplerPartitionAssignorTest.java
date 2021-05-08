@@ -108,11 +108,11 @@ public class DefaultMetricSamplerPartitionAssignorTest {
         totalNumPartitions, uniqueAssignedPartitions.size());
 
     int avgAssignedPartitionsPerFetcher = totalNumPartitions;
-    assertTrue("In the worst case the max number of partitions assigned to a metric fetchers should not differ by " +
-            "more than the partition number of the biggest topic, which is " + maxNumPartitionsForTopic,
+    assertTrue("In the worst case the max number of partitions assigned to a metric fetchers should not differ by "
+               + "more than the partition number of the biggest topic, which is " + maxNumPartitionsForTopic,
         maxAssignedNumPartitionsForFetcher - avgAssignedPartitionsPerFetcher <= maxNumPartitionsForTopic);
-    assertTrue("In the worst case the min number of partitions assigned to a metric fetchers should not differ by " +
-            "more than the partition number of the biggest topic, which is " + maxNumPartitionsForTopic,
+    assertTrue("In the worst case the min number of partitions assigned to a metric fetchers should not differ by "
+               + "more than the partition number of the biggest topic, which is " + maxNumPartitionsForTopic,
         avgAssignedPartitionsPerFetcher - minAssignedNumPartitionsForFetcher <= maxNumPartitionsForTopic);
   }
 }

@@ -55,12 +55,10 @@ public class ModelCompletenessRequirements {
                                        double minValidPartitionsRatio,
                                        boolean includeAllTopics) {
     if (minNumValidWindows <= 0) {
-      throw new IllegalArgumentException("Invalid minNumValidWindows " + minNumValidWindows +
-                                             ". The minNumValidWindows must be positive.");
+      throw new IllegalArgumentException("Invalid minNumValidWindows " + minNumValidWindows + ". The minNumValidWindows must be positive.");
     }
     if (minValidPartitionsRatio < 0 || minValidPartitionsRatio > 1) {
-      throw new IllegalArgumentException("Invalid minValidPartitionsRatio "
-                                             + minValidPartitionsRatio + ". The value must be between 0 and 1"
+      throw new IllegalArgumentException("Invalid minValidPartitionsRatio " + minValidPartitionsRatio + ". The value must be between 0 and 1"
                                              + ", both inclusive.");
     }
     _minRequiredNumWindows = minNumValidWindows;
