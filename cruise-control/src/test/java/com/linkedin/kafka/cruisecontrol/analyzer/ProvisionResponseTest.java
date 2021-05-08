@@ -5,6 +5,9 @@
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.Map;
 import org.junit.Test;
 
@@ -19,18 +22,22 @@ public class ProvisionResponseTest {
   private static final String RECOMMENDER_UP = "Recommender-Under-Provisioned";
   private static final String RECOMMENDER_OP = "Recommender-Over-Provisioned";
 
-  private static final String UNDER_PROV_REC_STR = "Add at least 6 brokers with the same cpu capacity (3200.00) as broker-0.";
+  private static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("#.00", DecimalFormatSymbols.getInstance());
+
   private static final int NUM_BROKERS_UP = 6;
   private static final int TYPICAL_BROKER_ID_UP = 0;
   private static final double TYPICAL_BROKER_CAPACITY_UP = 3200;
+  private static final String UNDER_PROV_REC_STR = "Add at least 6 brokers with the same cpu capacity ("
+      + DECIMAL_FORMAT.format(TYPICAL_BROKER_CAPACITY_UP) + ") as broker-0.";
   private static final ProvisionRecommendation UNDER_PROV_REC = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
       .numBrokers(NUM_BROKERS_UP).typicalBrokerCapacity(TYPICAL_BROKER_CAPACITY_UP).typicalBrokerId(TYPICAL_BROKER_ID_UP).resource(Resource.CPU)
       .build();
 
-  private static final String OVER_PROV_REC_STR = "Remove at least 4 brokers with the same cpu capacity (1600.00) as broker-1.";
   private static final int NUM_BROKERS_OP = 4;
   private static final int TYPICAL_BROKER_ID_OP = 1;
   private static final double TYPICAL_BROKER_CAPACITY_OP = 1600;
+  private static final String OVER_PROV_REC_STR = "Remove at least 4 brokers with the same cpu capacity ("
+      + DECIMAL_FORMAT.format(TYPICAL_BROKER_CAPACITY_OP) + ") as broker-1.";
   private static final ProvisionRecommendation OVER_PROV_REC = new ProvisionRecommendation.Builder(ProvisionStatus.OVER_PROVISIONED)
       .numBrokers(NUM_BROKERS_OP).typicalBrokerCapacity(TYPICAL_BROKER_CAPACITY_OP).typicalBrokerId(TYPICAL_BROKER_ID_OP).resource(Resource.CPU)
       .build();
