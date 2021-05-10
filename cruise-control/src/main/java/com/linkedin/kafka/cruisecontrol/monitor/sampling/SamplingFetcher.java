@@ -40,7 +40,7 @@ class SamplingFetcher extends MetricFetcher {
                   KafkaPartitionMetricSampleAggregator partitionMetricSampleAggregator,
                   KafkaBrokerMetricSampleAggregator brokerMetricSampleAggregator,
                   SampleStore sampleStore,
-                  SampleStore sampleStoreForPartitionMetricsDuringExecution,
+                  SampleStore sampleStoreForPartitionMetricOngoingExecution,
                   Set<TopicPartition> assignedPartitions,
                   long startTimeMs,
                   long endTimeMs,
@@ -50,7 +50,7 @@ class SamplingFetcher extends MetricFetcher {
                   Timer fetchTimer,
                   Meter fetchFailureRate,
                   MetricSampler.SamplingMode samplingMode) {
-    super(metricSampler, cluster, sampleStore, sampleStoreForPartitionMetricsDuringExecution, assignedPartitions,
+    super(metricSampler, cluster, sampleStore, sampleStoreForPartitionMetricOngoingExecution, assignedPartitions,
         startTimeMs, endTimeMs, metricDef, fetchTimer, fetchFailureRate, samplingMode);
     _partitionMetricSampleAggregator = partitionMetricSampleAggregator;
     _brokerMetricSampleAggregator = brokerMetricSampleAggregator;

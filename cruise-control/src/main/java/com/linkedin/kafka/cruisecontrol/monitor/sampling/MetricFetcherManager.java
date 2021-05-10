@@ -157,7 +157,7 @@ public class MetricFetcherManager {
    * @param endMs the end time of the fetching period.
    * @param timeoutMs the timeout.
    * @param sampleStore the sample store to save the broker and partition metric samples.
-   * @param sampleStoreForPartitionMetricsDuringExecution the sample store to save the partition metrics samples during ongoing execution.
+   * @param sampleStoreForPartitionMetricOngoingExecution the sample store to save the partition metrics samples during ongoing execution.
    * @param samplingMode the sampling mode to indicate which type of samples is interested.
    * @return True if there was no fetching error, false otherwise.
    */
@@ -165,7 +165,7 @@ public class MetricFetcherManager {
                                     long endMs,
                                     long timeoutMs,
                                     SampleStore sampleStore,
-                                    SampleStore sampleStoreForPartitionMetricsDuringExecution,
+                                    SampleStore sampleStoreForPartitionMetricOngoingExecution,
                                     MetricSampler.SamplingMode samplingMode) {
     LOG.info("Kicking off metric sampling for time range [{}, {}], duration {} ms with timeout {} ms.",
              startMs, endMs, endMs - startMs, timeoutMs);
@@ -175,7 +175,7 @@ public class MetricFetcherManager {
                                                         _partitionMetricSampleAggregator,
                                                         _brokerMetricSampleAggregator,
                                                         sampleStore,
-                                                        sampleStoreForPartitionMetricsDuringExecution,
+                                                        sampleStoreForPartitionMetricOngoingExecution,
                                                         partitionAssignment,
                                                         startMs,
                                                         endMs,

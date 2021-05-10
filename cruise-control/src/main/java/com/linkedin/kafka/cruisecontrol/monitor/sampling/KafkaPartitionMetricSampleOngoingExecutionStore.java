@@ -30,10 +30,10 @@ import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.LO
  *   Kafka partition sample store topic, default value is set to {@link #DEFAULT_PARTITION_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS}.</li>
  * </ul>
  */
-public class KafkaPartitionMetricSampleDuringExecutionStore extends AbstractKafkaSampleStore {
-  private static final Logger LOG = LoggerFactory.getLogger(KafkaPartitionMetricSampleDuringExecutionStore.class);
+public class KafkaPartitionMetricSampleOngoingExecutionStore extends AbstractKafkaSampleStore {
+  private static final Logger LOG = LoggerFactory.getLogger(KafkaPartitionMetricSampleOngoingExecutionStore.class);
 
-  protected static final String PRODUCER_CLIENT_ID = "KafkaCruiseControlPartitionMetricSampleDuringExecutionStoreProducer";
+  protected static final String PRODUCER_CLIENT_ID = "KafkaCruiseControlPartitionMetricSampleOnExecutionStoreProducer";
 
   protected String _partitionMetricSampleStoreTopic;
   protected int _partitionSampleStoreTopicPartitionCount;
