@@ -110,8 +110,7 @@ public class LoadMonitorTaskRunner {
     _metadataClient = metadataClient;
     _sampleStore = config.getConfiguredInstance(MonitorConfig.SAMPLE_STORE_CLASS_CONFIG, SampleStore.class);
     _sampleStoreForPartitionMetricOngoingExecution =
-        config.getConfiguredInstance(MonitorConfig.SAMPLE_PARTITION_METRICS_STORE_DURING_EXECUTION_CLASS_CONFIG,
-                                     SampleStore.class);
+        config.getConfiguredInstance(MonitorConfig.SAMPLE_PARTITION_METRIC_STORE_ONGOING_EXECUTION_CLASS_CONFIG, SampleStore.class);
     long samplingIntervalMs = config.getLong(MonitorConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG);
 
     _samplingScheduler =

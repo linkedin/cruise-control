@@ -22,11 +22,11 @@ import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.LO
  * Required configurations for this class.
  * <ul>
  *   <li>{@link #PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_CONFIG}: The config for Kafka topic name to store partition samples.</li>
- *   <li>{@link #SAMPLE_STORE_ON_EXECUTION_TOPIC_REPLICATION_FACTOR_CONFIG}: The config for the replication factor of Kafka sample store topics,
- *   default value is set to {@link #DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR}.</li>
- *   <li>{@link #PARTITION_SAMPLE_STORE_ON_EXECUTION_PARTITION_COUNT_CONFIG}: The config for the number of partition for Kafka
+ *   <li>{@link #PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_REPLICATION_FACTOR_CONFIG}: The config for the replication factor of Kafka
+ *   sample store topics, default value is set to {@link #DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR}.</li>
+ *   <li>{@link #PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_PARTITION_COUNT_CONFIG}: The config for the number of partition for Kafka
  *   partition sample store topic, default value is set to {@link #DEFAULT_PARTITION_SAMPLE_STORE_TOPIC_PARTITION_COUNT}.</li>
- *   <li>{@link #PARTITION_SAMPLE_STORE_ON_EXECUTION_RETENTION_TIME_MS_CONFIG}: The config for the minimal retention time for
+ *   <li>{@link #PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_RETENTION_TIME_MS_CONFIG}: The config for the minimal retention time for
  *   Kafka partition sample store topic, default value is set to {@link #DEFAULT_PARTITION_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS}.</li>
  * </ul>
  */
@@ -40,24 +40,30 @@ public class KafkaPartitionMetricSampleOngoingExecutionStore extends AbstractKaf
   protected long _partitionSampleStoreTopicRetentionTimeMs;
 
   public static final String PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_CONFIG = "partition.metric.sample.store.on.execution.topic";
-  public static final String SAMPLE_STORE_ON_EXECUTION_TOPIC_REPLICATION_FACTOR_CONFIG = "sample.store.on.execution.topic.replication.factor";
-  public static final String PARTITION_SAMPLE_STORE_ON_EXECUTION_PARTITION_COUNT_CONFIG = "partition.sample.store.on.execution.partition.count";
-  public static final String PARTITION_SAMPLE_STORE_ON_EXECUTION_RETENTION_TIME_MS_CONFIG = "partition.sample.store.on.execution.retention.time.ms";
+  public static final String PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_REPLICATION_FACTOR_CONFIG =
+      "partition.metric.sample.store.on.execution.topic.replication.factor";
+  public static final String PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_PARTITION_COUNT_CONFIG =
+      "partition.metric.sample.store.on.execution.topic.partition.count";
+  public static final String PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_RETENTION_TIME_MS_CONFIG =
+      "partition.metric.sample.store.on.execution.topic.retention.time.ms";
 
   @Override
   public void configure(Map<String, ?> config) {
     _partitionMetricSampleStoreTopic = KafkaCruiseControlUtils.getRequiredConfig(config,
                                                                                  PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_CONFIG);
-    String metricSampleStoreTopicReplicationFactorString = (String) config.get(SAMPLE_STORE_ON_EXECUTION_TOPIC_REPLICATION_FACTOR_CONFIG);
+    String metricSampleStoreTopicReplicationFactorString = (String) config.get(
+        PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_REPLICATION_FACTOR_CONFIG);
     _sampleStoreTopicReplicationFactor = metricSampleStoreTopicReplicationFactorString == null
                                          || metricSampleStoreTopicReplicationFactorString.isEmpty()
                                          ? null : Short.parseShort(metricSampleStoreTopicReplicationFactorString);
-    String partitionSampleStoreTopicPartitionCountString = (String) config.get(PARTITION_SAMPLE_STORE_ON_EXECUTION_PARTITION_COUNT_CONFIG);
+    String partitionSampleStoreTopicPartitionCountString = (String) config.get(
+        PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_PARTITION_COUNT_CONFIG);
     _partitionSampleStoreTopicPartitionCount = partitionSampleStoreTopicPartitionCountString == null
                                                || partitionSampleStoreTopicPartitionCountString.isEmpty()
                                                ? DEFAULT_PARTITION_SAMPLE_STORE_TOPIC_PARTITION_COUNT
                                                : Integer.parseInt(partitionSampleStoreTopicPartitionCountString);
-    String sampleStoreTopicRetentionTimeMsString = (String) config.get(PARTITION_SAMPLE_STORE_ON_EXECUTION_RETENTION_TIME_MS_CONFIG);
+    String sampleStoreTopicRetentionTimeMsString = (String) config.get(
+        PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_RETENTION_TIME_MS_CONFIG);
     _partitionSampleStoreTopicRetentionTimeMs = sampleStoreTopicRetentionTimeMsString == null
                                                 || sampleStoreTopicRetentionTimeMsString.isEmpty()
                                                 ? DEFAULT_PARTITION_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS
