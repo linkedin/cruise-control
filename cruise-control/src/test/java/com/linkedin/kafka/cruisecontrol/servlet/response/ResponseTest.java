@@ -170,11 +170,8 @@ public class ResponseTest {
           }
         }
 
-        if (schemaToCheck instanceof StringSchema ||
-            schemaToCheck instanceof IntegerSchema ||
-            schemaToCheck instanceof NumberSchema ||
-            schemaToCheck instanceof ComposedSchema ||
-            schemaToCheck instanceof BooleanSchema) {
+        if (schemaToCheck instanceof StringSchema || schemaToCheck instanceof IntegerSchema || schemaToCheck instanceof NumberSchema
+            || schemaToCheck instanceof ComposedSchema || schemaToCheck instanceof BooleanSchema) {
           return;
         }
         assertNotEquals(schemaToCheck.get$ref(), null);

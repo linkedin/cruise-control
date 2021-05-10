@@ -134,10 +134,8 @@ public class JwtSecurityProviderIntegrationTest extends CruiseControlIntegration
     securityConfigs.put(WebServerConfig.WEBSERVER_SECURITY_ENABLE_CONFIG, true);
     securityConfigs.put(WebServerConfig.WEBSERVER_SECURITY_PROVIDER_CONFIG, JwtSecurityProvider.class);
     securityConfigs.put(WebServerConfig.JWT_AUTHENTICATION_PROVIDER_URL_CONFIG,
-        _tokenProviderServer.getURI().toString() + "?" +
-            TEST_USERNAME_KEY + "=" + TEST_USERNAME +
-            "&" + TEST_PASSWORD_KEY + "=" + TEST_PASSWORD +
-            "&origin=" + JwtAuthenticator.REDIRECT_URL);
+                        _tokenProviderServer.getURI().toString() + "?" + TEST_USERNAME_KEY + "=" + TEST_USERNAME + "&" + TEST_PASSWORD_KEY
+                        + "=" + TEST_PASSWORD + "&origin=" + JwtAuthenticator.REDIRECT_URL);
     securityConfigs.put(WebServerConfig.WEBSERVER_AUTH_CREDENTIALS_FILE_CONFIG,
         Objects.requireNonNull(this.getClass().getClassLoader().getResource(AUTH_CREDENTIALS_FILE)).getPath());
     securityConfigs.put(WebServerConfig.JWT_COOKIE_NAME_CONFIG, JWT_TOKEN_COOKIE_NAME);

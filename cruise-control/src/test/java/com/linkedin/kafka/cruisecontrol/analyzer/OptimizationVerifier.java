@@ -172,8 +172,8 @@ class OptimizationVerifier {
     if (LOG.isTraceEnabled()) {
       LOG.trace("Took {} ms to execute {} to generate {} proposals.", System.currentTimeMillis() - startTime,
                 goalByPriority,
-                (resultOfFirstPass == null ? 0 : resultOfFirstPass.goalProposals().size()) +
-                (resultOfSecondPass == null ? 0 : resultOfSecondPass.goalProposals().size()));
+                (resultOfFirstPass == null ? 0 : resultOfFirstPass.goalProposals().size())
+                + (resultOfSecondPass == null ? 0 : resultOfSecondPass.goalProposals().size()));
     }
 
     for (Verification verification : verifications) {

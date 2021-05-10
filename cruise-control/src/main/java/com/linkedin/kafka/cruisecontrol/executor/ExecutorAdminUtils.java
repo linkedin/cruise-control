@@ -88,8 +88,8 @@ public class ExecutorAdminUtils {
     for (Map.Entry<TopicPartitionReplica, KafkaFuture<Void>> entry: adminClient.alterReplicaLogDirs(replicaAssignment).values().entrySet()) {
       try {
         entry.getValue().get(config.getLong(LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG), TimeUnit.MILLISECONDS);
-      } catch (InterruptedException | ExecutionException | TimeoutException |
-               LogDirNotFoundException | KafkaStorageException | ReplicaNotAvailableException e) {
+      } catch (InterruptedException | ExecutionException | TimeoutException | LogDirNotFoundException | KafkaStorageException
+          | ReplicaNotAvailableException e) {
         LOG.warn("Encounter exception {} when trying to execute task {}, mark task dead.", e.getMessage(), replicaToTask.get(entry.getKey()));
         executionTaskManager.markTaskAborting(replicaToTask.get(entry.getKey()));
         executionTaskManager.markTaskDead(replicaToTask.get(entry.getKey()));

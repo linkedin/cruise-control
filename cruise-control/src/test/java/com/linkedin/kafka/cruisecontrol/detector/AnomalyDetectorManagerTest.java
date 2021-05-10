@@ -446,9 +446,9 @@ public class AnomalyDetectorManagerTest {
       Map<String, Object> parameterConfigOverrides = new HashMap<>(10);
       parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
       parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 100L);
-      if (anomalyType == KafkaAnomalyType.GOAL_VIOLATION ||
-          anomalyType == KafkaAnomalyType.METRIC_ANOMALY ||
-          anomalyType == KafkaAnomalyType.DISK_FAILURE) {
+      if (anomalyType == KafkaAnomalyType.GOAL_VIOLATION
+          || anomalyType == KafkaAnomalyType.METRIC_ANOMALY
+          || anomalyType == KafkaAnomalyType.DISK_FAILURE) {
         GoalViolations violations = kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.GOAL_VIOLATIONS_CLASS_CONFIG,
                                                                                    GoalViolations.class,
                                                                                    parameterConfigOverrides);
@@ -457,8 +457,7 @@ public class AnomalyDetectorManagerTest {
         assertTrue(violations.reasonSupplier().get().contains(String.format("%s: {RackAwareGoal}", GoalViolations.FIXABLE_GOAL_VIOLATIONS)));
         anomalies.add(violations);
       }
-      if (anomalyType == KafkaAnomalyType.METRIC_ANOMALY ||
-          anomalyType == KafkaAnomalyType.DISK_FAILURE) {
+      if (anomalyType == KafkaAnomalyType.METRIC_ANOMALY || anomalyType == KafkaAnomalyType.DISK_FAILURE) {
         Map<BrokerEntity, Long> detectedSlowBrokers = Collections.singletonMap(new BrokerEntity("", 0), 100L);
         parameterConfigOverrides.put(METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG, detectedSlowBrokers);
         parameterConfigOverrides.put(REMOVE_SLOW_BROKER_CONFIG, false);
@@ -476,10 +475,10 @@ public class AnomalyDetectorManagerTest {
                                                                                    parameterConfigOverrides);
         anomalies.add(diskFailures);
       }
-      if (anomalyType == KafkaAnomalyType.GOAL_VIOLATION ||
-          anomalyType == KafkaAnomalyType.METRIC_ANOMALY ||
-          anomalyType == KafkaAnomalyType.DISK_FAILURE ||
-          anomalyType == KafkaAnomalyType.TOPIC_ANOMALY) {
+      if (anomalyType == KafkaAnomalyType.GOAL_VIOLATION
+          || anomalyType == KafkaAnomalyType.METRIC_ANOMALY
+          || anomalyType == KafkaAnomalyType.DISK_FAILURE
+          || anomalyType == KafkaAnomalyType.TOPIC_ANOMALY) {
         parameterConfigOverrides.put(BAD_TOPICS_BY_REPLICATION_FACTOR_CONFIG,
                                      Collections.singletonMap((short) 2, Collections.singleton(TOPIC_REPLICATION_FACTOR_ANOMALY_ENTRY)));
         parameterConfigOverrides.put(SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG, (short) 2);

@@ -179,8 +179,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
   @Override
   protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
     UserTasksParameters userTasksParameters = (UserTasksParameters) parameters;
-    _cachedResponse = userTasksParameters.json() ? getJSONString(userTasksParameters) :
-                                                   getPlaintext(userTasksParameters);
+    _cachedResponse = userTasksParameters.json() ? getJSONString(userTasksParameters) : getPlaintext(userTasksParameters);
     // Discard irrelevant response.
     _userTasks.clear();
   }

@@ -136,9 +136,9 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
       }
       Map<TaskType, Map<ExecutionTaskState, Set<ExecutionTask>>> taskSnapshot = _executorState.executionTasksSummary().filteredTasksByState();
       taskSnapshot.forEach((type, taskMap) -> {
-        String taskTypeString = type == TaskType.INTER_BROKER_REPLICA_ACTION ? INTER_BROKER_PARTITION_MOVEMENTS :
-                                type == TaskType.INTRA_BROKER_REPLICA_ACTION ? INTRA_BROKER_PARTITION_MOVEMENTS :
-                                                                               LEADERSHIP_MOVEMENTS;
+        String taskTypeString = type == TaskType.INTER_BROKER_REPLICA_ACTION
+                                ? INTER_BROKER_PARTITION_MOVEMENTS : type == TaskType.INTRA_BROKER_REPLICA_ACTION
+                                                                     ? INTRA_BROKER_PARTITION_MOVEMENTS : LEADERSHIP_MOVEMENTS;
         sb.append(String.format("%n%n%s %s:%n",
                                 _executorState.state() == ExecutorState.State.STOPPING_EXECUTION ? "Cancelled" : "Pending",
                                 taskTypeString));

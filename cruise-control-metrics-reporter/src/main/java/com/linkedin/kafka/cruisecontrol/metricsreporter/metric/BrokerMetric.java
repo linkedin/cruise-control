@@ -28,9 +28,9 @@ public class BrokerMetric extends CruiseControlMetric {
 
   @Override
   public ByteBuffer toBuffer(int headerPos) {
-    ByteBuffer buffer = ByteBuffer.allocate(headerPos + 1 /* version */ + 1 /* raw metric type */ +
-                                                Long.BYTES /* time */ + Integer.BYTES /* broker id */ +
-                                                Double.BYTES /* value */);
+    ByteBuffer buffer = ByteBuffer.allocate(headerPos + 1 /* version */ + 1 /* raw metric type */
+                                            + Long.BYTES /* time */ + Integer.BYTES /* broker id */
+                                            + Double.BYTES /* value */);
     buffer.position(headerPos);
     buffer.put(METRIC_VERSION);
     buffer.put(rawMetricType().id());

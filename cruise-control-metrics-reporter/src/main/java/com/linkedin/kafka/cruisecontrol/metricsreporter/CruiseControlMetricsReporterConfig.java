@@ -23,13 +23,13 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   private static final String CRUISE_CONTROL_METRICS_TOPIC_DOC = "The topic to which Cruise Control metrics reporter "
       + "should send messages";
   public static final String CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_CONFIG = "cruise.control.metrics.topic.auto.create";
-  private static final String CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_DOC = "Cruise Control metrics reporter will enforce " +
-      " the creation of the topic at launch";
+  private static final String CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_DOC = "Cruise Control metrics reporter will enforce the creation of the"
+      + " topic at launch";
   public static final String CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_TIMEOUT_MS_CONFIG = "cruise.control.metrics.topic.auto.create.timeout.ms";
   private static final String CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_TIMEOUT_MS_DOC = "Timeout on the Cruise Control metrics topic creation";
   public static final String CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_RETRIES_CONFIG = "cruise.control.metrics.topic.auto.create.retries";
-  private static final String CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_RETRIES_DOC = "Number of retries of the" +
-      " Cruise Control metrics reporter for the topic creation";
+  private static final String CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_RETRIES_DOC = "Number of retries of the Cruise Control metrics reporter"
+      + " for the topic creation";
   public static final String CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS_CONFIG = "cruise.control.metrics.topic.num.partitions";
   private static final String CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS_DOC = "The number of partitions of Cruise Control metrics topic";
   public static final String CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_CONFIG = "cruise.control.metrics.topic.replication.factor";
@@ -37,8 +37,8 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   public static final String CRUISE_CONTROL_METRICS_TOPIC_RETENTION_MS_CONFIG = "cruise.control.metrics.topic.retention.ms";
   private static final String CRUISE_CONTROL_METRICS_TOPIC_RETENTION_MS_DOC = "The retention time in milliseconds of Cruise Control metrics topic.";
   public static final String CRUISE_CONTROL_METRICS_TOPIC_MIN_INSYNC_REPLICAS_CONFIG = "cruise.control.metrics.topic.min.insync.replicas";
-  private static final String CRUISE_CONTROL_METRICS_TOPIC_MIN_INSYNC_REPLICAS_DOC = "The minimum number of insync replicas for the " +
-          "Cruise Control metrics topic";
+  private static final String CRUISE_CONTROL_METRICS_TOPIC_MIN_INSYNC_REPLICAS_DOC = "The minimum number of insync replicas for the Cruise "
+      + "Control metrics topic";
   public static final String CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG = PREFIX + "metrics.reporting.interval.ms";
   private static final String CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_DOC = "The interval in milliseconds the "
       + "metrics reporter should report the metrics.";

@@ -134,8 +134,7 @@ public class SamplingUtils {
    */
   private static TopicPartition partitionHandleDotInTopicName(TopicPartition tp) {
     // In the reported metrics, the "." in the topic name will be replaced by "_".
-    return !tp.topic().contains(".") ? tp :
-           new TopicPartition(replaceDotsWithUnderscores(tp.topic()), tp.partition());
+    return !tp.topic().contains(".") ? tp : new TopicPartition(replaceDotsWithUnderscores(tp.topic()), tp.partition());
   }
 
   /**
