@@ -317,8 +317,8 @@ public class PreferredLeaderElectionGoalTest {
     }
     BrokerCapacityInfo commonBrokerCapacityInfo = populateDiskInfo ? new BrokerCapacityInfo(TestConstants.BROKER_CAPACITY,
                                                                                             null,
-                                                                                            TestConstants.DISK_CAPACITY) :
-                                                                     new BrokerCapacityInfo(TestConstants.BROKER_CAPACITY);
+                                                                                            TestConstants.DISK_CAPACITY)
+                                                                   : new BrokerCapacityInfo(TestConstants.BROKER_CAPACITY);
     int i = 0;
     for (; i < 2; i++) {
       clusterModel.createBroker("r0", "h" + i, i, commonBrokerCapacityInfo, populateDiskInfo);
@@ -398,9 +398,7 @@ public class PreferredLeaderElectionGoalTest {
   }
 
   private String logdir(boolean populateDiskInfo, int index, int brokerId) {
-    return !populateDiskInfo ? null :
-           (index + brokerId) % 2 == 0 ? LOGDIR0 :
-                                         LOGDIR1;
+    return !populateDiskInfo ? null : (index + brokerId) % 2 == 0 ? LOGDIR0 : LOGDIR1;
   }
 
   private void createReplicaAndSetLoad(ClusterModel clusterModel,

@@ -321,27 +321,27 @@ public class ExecutorState {
    * @return Number of finished movements, which is the sum of dead, completed, and aborted tasks.
    */
   public int numFinishedMovements(ExecutionTask.TaskType type) {
-    return _executionTasksSummary.taskStat().get(type).get(ExecutionTaskState.DEAD) +
-           _executionTasksSummary.taskStat().get(type).get(ExecutionTaskState.COMPLETED) +
-           _executionTasksSummary.taskStat().get(type).get(ExecutionTaskState.ABORTED);
+    return _executionTasksSummary.taskStat().get(type).get(ExecutionTaskState.DEAD)
+           + _executionTasksSummary.taskStat().get(type).get(ExecutionTaskState.COMPLETED)
+           + _executionTasksSummary.taskStat().get(type).get(ExecutionTaskState.ABORTED);
   }
 
   /**
    * @return Number of MBs for inter broker data to move, which is the sum of in execution, finished, and remaining tasks.
    */
   public long numTotalInterBrokerDataToMove() {
-    return _executionTasksSummary.inExecutionInterBrokerDataMovementInMB() +
-           _executionTasksSummary.finishedInterBrokerDataMovementInMB() +
-           _executionTasksSummary.remainingInterBrokerDataToMoveInMB();
+    return _executionTasksSummary.inExecutionInterBrokerDataMovementInMB()
+           + _executionTasksSummary.finishedInterBrokerDataMovementInMB()
+           + _executionTasksSummary.remainingInterBrokerDataToMoveInMB();
   }
 
   /**
    * @return Number of MBs for intra broker data to move, which is the sum of in execution, finished, and remaining tasks.
    */
   public long numTotalIntraBrokerDataToMove() {
-    return _executionTasksSummary.inExecutionIntraBrokerDataMovementInMB() +
-           _executionTasksSummary.finishedIntraBrokerDataMovementInMB() +
-           _executionTasksSummary.remainingIntraBrokerDataToMoveInMB();
+    return _executionTasksSummary.inExecutionIntraBrokerDataMovementInMB()
+           + _executionTasksSummary.finishedIntraBrokerDataMovementInMB()
+           + _executionTasksSummary.remainingIntraBrokerDataToMoveInMB();
   }
 
   public String uuid() {

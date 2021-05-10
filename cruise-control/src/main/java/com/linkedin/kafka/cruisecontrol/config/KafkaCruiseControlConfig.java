@@ -347,8 +347,8 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     long samplingIntervalMs = getLong(MonitorConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG);
     long metadataTimeoutMs = getLong(MonitorConfig.METADATA_MAX_AGE_MS_CONFIG);
     if (metadataTimeoutMs > samplingIntervalMs) {
-      throw new ConfigException("Attempt to set metadata refresh timeout [" + metadataTimeoutMs +
-                                "] to be longer than sampling period [" + samplingIntervalMs + "].");
+      throw new ConfigException("Attempt to set metadata refresh timeout [" + metadataTimeoutMs
+                                + "] to be longer than sampling period [" + samplingIntervalMs + "].");
     }
 
     // Ensure that the sampling frequency per partition window is within the limits.
@@ -437,29 +437,29 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     if (securityEnabled) {
       Class<?> securityProvider = getClass(WebServerConfig.WEBSERVER_SECURITY_PROVIDER_CONFIG);
       if (securityProvider == null || !SecurityProvider.class.isAssignableFrom(securityProvider)) {
-        throw new ConfigException(String.format("If webserver security is enabled, a valid security provider must be set " +
-            "that is an implementation of %s.", SecurityProvider.class.getName()));
+        throw new ConfigException(String.format("If webserver security is enabled, a valid security provider must be set "
+                                                + "that is an implementation of %s.", SecurityProvider.class.getName()));
       }
       String authCredentialsFile = getString(WebServerConfig.WEBSERVER_AUTH_CREDENTIALS_FILE_CONFIG);
       if (BasicSecurityProvider.class == securityProvider && !fileExists(authCredentialsFile)) {
         throw new ConfigException(String.format("If %s is used, an existing credentials file must be set.",
-            BasicSecurityProvider.class.getName()));
+                                                BasicSecurityProvider.class.getName()));
       }
       if (JwtSecurityProvider.class == securityProvider) {
         String providerUrl = getString(WebServerConfig.JWT_AUTHENTICATION_PROVIDER_URL_CONFIG);
         if (providerUrl == null || providerUrl.isEmpty()) {
           throw new ConfigException(String.format("When %s is used, %s must be set.",
-              JwtSecurityProvider.class.getName(), WebServerConfig.JWT_AUTHENTICATION_PROVIDER_URL_CONFIG));
+                                                  JwtSecurityProvider.class.getName(), WebServerConfig.JWT_AUTHENTICATION_PROVIDER_URL_CONFIG));
         }
         String certificateFile = getString(WebServerConfig.JWT_AUTH_CERTIFICATE_LOCATION_CONFIG);
         if (!fileExists(certificateFile)) {
           throw new ConfigException(String.format("If %s is used, an existing certificate file must be set.",
-              JwtSecurityProvider.class.getName()));
+                                                  JwtSecurityProvider.class.getName()));
         }
         String privilegesFile = getString(WebServerConfig.WEBSERVER_AUTH_CREDENTIALS_FILE_CONFIG);
         if (!fileExists(privilegesFile)) {
           throw new ConfigException(String.format("If %s is used, an existing certificate file must be set.",
-              JwtSecurityProvider.class.getName()));
+                                                  JwtSecurityProvider.class.getName()));
         }
       }
     }
@@ -474,13 +474,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     String webserverApiUrlPrefix = getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG);
     if (!webserverApiUrlPrefix.endsWith(expectedSuffix)) {
       throw new ConfigException(String.format("Expect value to the config %s ends with %s. Got: %s",
-          WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG, expectedSuffix, webserverApiUrlPrefix));
+                                              WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG, expectedSuffix, webserverApiUrlPrefix));
     }
 
     String webserverUiUrlPrefix = getString(WebServerConfig.WEBSERVER_UI_URLPREFIX_CONFIG);
     if (!webserverUiUrlPrefix.endsWith(expectedSuffix)) {
       throw new ConfigException(String.format("Expect value to the config %s ends with %s. Got: %s",
-          WebServerConfig.WEBSERVER_UI_URLPREFIX_CONFIG, expectedSuffix, webserverUiUrlPrefix));
+                                              WebServerConfig.WEBSERVER_UI_URLPREFIX_CONFIG, expectedSuffix, webserverUiUrlPrefix));
     }
   }
 

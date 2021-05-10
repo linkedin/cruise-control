@@ -114,8 +114,7 @@ public class CruiseControlMetricsReporterSampler extends AbstractMetricSampler {
         _metricConsumer.pause(partitionsToPause);
         partitionsToPause.clear();
       }
-    } while (!consumptionDone(_metricConsumer, endOffsets) &&
-             System.currentTimeMillis() < metricSamplerOptions.timeoutMs());
+    } while (!consumptionDone(_metricConsumer, endOffsets) && System.currentTimeMillis() < metricSamplerOptions.timeoutMs());
     LOG.info("Finished sampling from topic {} for partitions {} in time range [{},{}]. Collected {} metrics.",
              _metricReporterTopic, partitionIds, metricSamplerOptions.startTimeMs(), metricSamplerOptions.endTimeMs(), totalMetricsAdded);
 
@@ -159,8 +158,8 @@ public class CruiseControlMetricsReporterSampler extends AbstractMetricSampler {
     super.configure(configs);
     int numSamplers = (Integer) configs.get(MonitorConfig.NUM_METRIC_FETCHERS_CONFIG);
     if (numSamplers != 1) {
-      throw new ConfigException("CruiseControlMetricsReporterSampler is not thread safe. Please change " +
-                                MonitorConfig.NUM_METRIC_FETCHERS_CONFIG + " to 1");
+      throw new ConfigException("CruiseControlMetricsReporterSampler is not thread safe. Please change "
+                                + MonitorConfig.NUM_METRIC_FETCHERS_CONFIG + " to 1");
     }
 
     _metricReporterTopic = (String) configs.get(METRIC_REPORTER_TOPIC);
@@ -168,9 +167,11 @@ public class CruiseControlMetricsReporterSampler extends AbstractMetricSampler {
       _metricReporterTopic = CruiseControlMetricsReporterConfig.DEFAULT_CRUISE_CONTROL_METRICS_TOPIC;
     }
     CruiseControlMetricsReporterConfig reporterConfig = new CruiseControlMetricsReporterConfig(configs, false);
-    _acceptableMetricRecordProduceDelayMs = ACCEPTABLE_NETWORK_DELAY_MS +
-        Math.max(reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_MAX_BLOCK_MS_CONFIG),
-                 reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS_CONFIG));
+    _acceptableMetricRecordProduceDelayMs = ACCEPTABLE_NETWORK_DELAY_MS
+                                            + Math.max(reporterConfig.getLong(CruiseControlMetricsReporterConfig
+                                                                                  .CRUISE_CONTROL_METRICS_REPORTER_MAX_BLOCK_MS_CONFIG),
+                                                       reporterConfig.getLong(CruiseControlMetricsReporterConfig
+                                                                                  .CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS_CONFIG));
     _metricConsumer = createMetricConsumer(configs, CONSUMER_CLIENT_ID_PREFIX);
     _currentPartitionAssignment = Collections.emptySet();
     if (refreshPartitionAssignment()) {

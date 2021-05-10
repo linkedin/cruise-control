@@ -180,8 +180,8 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector {
   }
 
   private boolean tooManyFailedBrokers(int failedBrokerCount, int aliveBrokerCount) {
-    return failedBrokerCount > _fixableFailedBrokerCountThreshold ||
-           (double) failedBrokerCount / (failedBrokerCount + aliveBrokerCount) > _fixableFailedBrokerPercentageThreshold;
+    return failedBrokerCount > _fixableFailedBrokerCountThreshold
+           || (double) failedBrokerCount / (failedBrokerCount + aliveBrokerCount) > _fixableFailedBrokerPercentageThreshold;
   }
 
   private void reportBrokerFailures() {

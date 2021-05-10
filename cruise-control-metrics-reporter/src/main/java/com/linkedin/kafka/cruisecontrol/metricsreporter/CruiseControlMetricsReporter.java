@@ -239,10 +239,9 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
         config.put(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, String.valueOf(cruiseControlMetricsTopicMinInsyncReplicas));
       } else {
         throw new CruiseControlMetricsReporterException(String.format(
-                "The configured topic replication factor (%d) must be greater than or equal to" +
-                "the configured topic minimum insync replicas (%d)",
-                cruiseControlMetricsTopicReplicaFactor,
-                cruiseControlMetricsTopicMinInsyncReplicas));
+            "The configured topic replication factor (%d) must be greater than or equal to the configured topic minimum insync replicas (%d)",
+            cruiseControlMetricsTopicReplicaFactor,
+            cruiseControlMetricsTopicMinInsyncReplicas));
       }
       // If the user does not set the metrics minISR we do not set that config and use the Kafka cluster's default.
     }
@@ -377,8 +376,8 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   public void sendCruiseControlMetric(CruiseControlMetric ccm) {
     // Use topic name as key if existing so that the same sampler will be able to collect all the information
     // of a topic.
-    String key = ccm.metricClassId() == CruiseControlMetric.MetricClassId.TOPIC_METRIC ?
-        ((TopicMetric) ccm).topic() : Integer.toString(ccm.brokerId());
+    String key = ccm.metricClassId() == CruiseControlMetric.MetricClassId.TOPIC_METRIC ? ((TopicMetric) ccm).topic()
+                                                                                       : Integer.toString(ccm.brokerId());
     ProducerRecord<String, CruiseControlMetric> producerRecord =
         new ProducerRecord<>(_cruiseControlMetricsTopic, null, ccm.time(), key, ccm);
     LOG.debug("Sending Cruise Control metric {}.", ccm);

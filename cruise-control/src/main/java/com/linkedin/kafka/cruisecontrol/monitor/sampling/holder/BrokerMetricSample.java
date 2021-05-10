@@ -39,8 +39,8 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
     }
 
     if (deserializationVersion < MIN_SUPPORTED_VERSION || deserializationVersion > LATEST_SUPPORTED_VERSION) {
-      throw new UnknownVersionException("Unsupported serialization version: " + deserializationVersion + " (Latest: " +
-                                        LATEST_SUPPORTED_VERSION + ", Minimum: " + MIN_SUPPORTED_VERSION + ")");
+      throw new UnknownVersionException("Unsupported serialization version: " + deserializationVersion + " (Latest: "
+                                        + LATEST_SUPPORTED_VERSION + ", Minimum: " + MIN_SUPPORTED_VERSION + ")");
     }
 
     _deserializationVersion = deserializationVersion;
@@ -204,8 +204,8 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
       case 5:
         return readV5(buffer);
       default:
-        throw new UnknownVersionException("Unsupported deserialization version: " + version + " (Latest: " +
-                                          LATEST_SUPPORTED_VERSION + ", Minimum: " + MIN_SUPPORTED_VERSION + ")");
+        throw new UnknownVersionException("Unsupported deserialization version: " + version + " (Latest: "
+                                          + LATEST_SUPPORTED_VERSION + ", Minimum: " + MIN_SUPPORTED_VERSION + ")");
     }
   }
 

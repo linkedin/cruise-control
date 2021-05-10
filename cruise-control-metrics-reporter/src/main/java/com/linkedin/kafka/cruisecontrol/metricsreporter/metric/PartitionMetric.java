@@ -43,10 +43,10 @@ public class PartitionMetric extends CruiseControlMetric {
    */
   public ByteBuffer toBuffer(int headerPos) {
     byte[] topic = topic().getBytes(StandardCharsets.UTF_8);
-    ByteBuffer buffer = ByteBuffer.allocate(headerPos + 1 /* version */ + 1 /* metric type */ +
-                                                Long.BYTES /* time */ + Integer.BYTES /* broker id */ +
-                                                Integer.BYTES /* topic length */ + topic.length /* topic */ +
-                                                Integer.BYTES /* partition */ + Double.BYTES /* value */);
+    ByteBuffer buffer = ByteBuffer.allocate(headerPos + 1 /* version */ + 1 /* metric type */
+                                            + Long.BYTES /* time */ + Integer.BYTES /* broker id */
+                                            + Integer.BYTES /* topic length */ + topic.length /* topic */
+                                            + Integer.BYTES /* partition */ + Double.BYTES /* value */);
     buffer.position(headerPos);
     buffer.put(METRIC_VERSION);
     buffer.put(rawMetricType().id());

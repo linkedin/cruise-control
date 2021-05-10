@@ -91,14 +91,13 @@ public class KafkaPartitionMetricSampleAggregatorTest {
       assertEquals((NUM_WINDOWS - i) * WINDOW_MS, result.valuesAndExtrapolations().get(PE).window(i));
       for (Resource resource : Resource.cachedValues()) {
         Collection<Short> metricIds = KafkaMetricDef.resourceToMetricIds(resource);
-        double expectedValue = (resource == Resource.DISK ?
-            (NUM_WINDOWS - 1 - i) * 10 + MIN_SAMPLES_PER_WINDOW - 1 :
-            (NUM_WINDOWS - 1 - i) * 10 + (MIN_SAMPLES_PER_WINDOW - 1) / 2.0)
-            / (resource == Resource.CPU ? UNIT_INTERVAL_TO_PERCENTAGE : 1.0) * metricIds.size();
+        double expectedValue = (resource == Resource.DISK ? (NUM_WINDOWS - 1 - i) * 10 + MIN_SAMPLES_PER_WINDOW - 1
+                                                          : (NUM_WINDOWS - 1 - i) * 10 + (MIN_SAMPLES_PER_WINDOW - 1) / 2.0)
+                               / (resource == Resource.CPU ? UNIT_INTERVAL_TO_PERCENTAGE : 1.0) * metricIds.size();
         assertEquals("The utilization for " + resource + " should be " + expectedValue,
                      expectedValue, partitionValuesAndExtrapolations.metricValues().valuesForGroup(resource.name(),
-                                                                            KafkaMetricDef.commonMetricDef(),
-                                                                            true).get(i), 0.01);
+                                                                                                   KafkaMetricDef.commonMetricDef(),
+                                                                                                   true).get(i), 0.01);
       }
     }
 
@@ -270,16 +269,16 @@ public class KafkaPartitionMetricSampleAggregatorTest {
                                                         NUM_WINDOWS + 2, WINDOW_MS,
                                                         KafkaMetricDef.commonMetricDef());
 
-      MetricSampleAggregationResult<String, PartitionEntity> result =
-          metricSampleAggregator.aggregate(metadata.fetch(), NUM_WINDOWS * WINDOW_MS * 2, new OperationProgress());
-      int numWindows = result.valuesAndExtrapolations().get(PE).metricValues().length();
-      assertEquals(NUM_WINDOWS, numWindows);
-      int numExtrapolations = 0;
-      for (Map.Entry<Integer, Extrapolation> entry : result.valuesAndExtrapolations().get(PE).extrapolations().entrySet()) {
-        assertEquals(Extrapolation.AVG_ADJACENT, entry.getValue());
-        numExtrapolations++;
-      }
-      assertEquals(1, numExtrapolations);
+    MetricSampleAggregationResult<String, PartitionEntity> result =
+        metricSampleAggregator.aggregate(metadata.fetch(), NUM_WINDOWS * WINDOW_MS * 2, new OperationProgress());
+    int numWindows = result.valuesAndExtrapolations().get(PE).metricValues().length();
+    assertEquals(NUM_WINDOWS, numWindows);
+    int numExtrapolations = 0;
+    for (Map.Entry<Integer, Extrapolation> entry : result.valuesAndExtrapolations().get(PE).extrapolations().entrySet()) {
+      assertEquals(Extrapolation.AVG_ADJACENT, entry.getValue());
+      numExtrapolations++;
+    }
+    assertEquals(1, numExtrapolations);
 
 
   }
@@ -297,10 +296,10 @@ public class KafkaPartitionMetricSampleAggregatorTest {
                                                         KafkaMetricDef.commonMetricDef());
 
 
-      MetricSampleAggregationResult<String, PartitionEntity> result =
-          metricSampleAggregator.aggregate(metadata.fetch(), NUM_WINDOWS * WINDOW_MS, new OperationProgress());
-      // Partition "topic-0" is expected to be a valid partition in result, with valid sample values collected for window [1, NUM_WINDOW - 3].
-      assertEquals(NUM_WINDOWS - 3, result.valuesAndExtrapolations().get(PE).windows().size());
+    MetricSampleAggregationResult<String, PartitionEntity> result =
+        metricSampleAggregator.aggregate(metadata.fetch(), NUM_WINDOWS * WINDOW_MS, new OperationProgress());
+    // Partition "topic-0" is expected to be a valid partition in result, with valid sample values collected for window [1, NUM_WINDOW - 3].
+    assertEquals(NUM_WINDOWS - 3, result.valuesAndExtrapolations().get(PE).windows().size());
   }
 
   @Test
@@ -362,8 +361,8 @@ public class KafkaPartitionMetricSampleAggregatorTest {
                              / (resource == Resource.CPU ? UNIT_INTERVAL_TO_PERCENTAGE : 1.0) * metricIds.size();
       assertEquals("The utilization for " + resource + " should be " + expectedValue,
                    expectedValue, partitionValuesAndExtrapolations.metricValues().valuesForGroup(resource.name(),
-                                                                          KafkaMetricDef.commonMetricDef(),
-                                                                          true).get(NUM_WINDOWS - 1), 0.01);
+                                                                                                 KafkaMetricDef.commonMetricDef(),
+                                                                                                 true).get(NUM_WINDOWS - 1), 0.01);
     }
   }
 

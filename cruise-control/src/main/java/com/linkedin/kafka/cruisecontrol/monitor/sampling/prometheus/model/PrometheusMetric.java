@@ -54,11 +54,7 @@ public class PrometheusMetric {
 
     @Override
     public String toString() {
-        return "PrometheusMetric{" +
-            ", _instance='" + _instance + '\'' +
-            ", _topic='" + _topic + '\'' +
-            ", _partition='" + _partition + '\'' +
-            '}';
+        return "PrometheusMetric{_instance='" + _instance + '\'' + ", _topic='" + _topic + '\'' + ", _partition='" + _partition + '\'' + '}';
     }
 
     @Override public boolean equals(Object o) {
@@ -69,9 +65,7 @@ public class PrometheusMetric {
             return false;
         }
         PrometheusMetric that = (PrometheusMetric) o;
-        return Objects.equals(_instance, that._instance) &&
-            Objects.equals(_topic, that._topic) &&
-            Objects.equals(_partition, that._partition);
+        return Objects.equals(_instance, that._instance) && Objects.equals(_topic, that._topic) && Objects.equals(_partition, that._partition);
     }
 
     @Override public int hashCode() {

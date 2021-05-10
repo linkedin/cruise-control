@@ -274,15 +274,15 @@ public class PotentialNwOutGoal extends AbstractGoal {
                                     OptimizationOptions optimizationOptions) {
     double capacityThreshold = _balancingConstraint.capacityThreshold(Resource.NW_OUT);
     double capacityLimit = broker.capacityFor(Resource.NW_OUT) * capacityThreshold;
-    boolean estimatedMaxPossibleNwOutOverLimit = !broker.replicas().isEmpty() &&
-        clusterModel.potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT) > capacityLimit;
+    boolean estimatedMaxPossibleNwOutOverLimit = !broker.replicas().isEmpty()
+                                                 && clusterModel.potentialLeadershipLoadFor(broker.id())
+                                                                .expectedUtilizationFor(Resource.NW_OUT) > capacityLimit;
     if (!estimatedMaxPossibleNwOutOverLimit && !(_fixOfflineReplicasOnly && !broker.currentOfflineReplicas().isEmpty())) {
       // Estimated max possible utilization in broker is under the limit and there is no offline replica on broker.
       return;
     }
     // Get candidate brokers
-    Set<Broker> candidateBrokers = _fixOfflineReplicasOnly ?
-                                   clusterModel.aliveBrokers() : brokersUnderEstimatedMaxPossibleNwOut(clusterModel);
+    Set<Broker> candidateBrokers = _fixOfflineReplicasOnly ? clusterModel.aliveBrokers() : brokersUnderEstimatedMaxPossibleNwOut(clusterModel);
     // Attempt to move replicas to eligible brokers until either the estimated max possible network out
     // limit requirement is satisfied for the broker or all replicas are checked.
     for (Replica replica : broker.trackedSortedReplicas(replicaSortName(this, false, false)).sortedReplicas(true)) {
@@ -298,8 +298,8 @@ public class PotentialNwOutGoal extends AbstractGoal {
       if (destinationBroker != null) {
         int destinationBrokerId = destinationBroker.id();
         // Check if broker capacity limit is satisfied now.
-        estimatedMaxPossibleNwOutOverLimit = !broker.replicas().isEmpty() &&
-            clusterModel.potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT) > capacityLimit;
+        estimatedMaxPossibleNwOutOverLimit = !broker.replicas().isEmpty() && clusterModel.potentialLeadershipLoadFor(broker.id())
+                                                                                         .expectedUtilizationFor(Resource.NW_OUT) > capacityLimit;
         if (!estimatedMaxPossibleNwOutOverLimit && !(_fixOfflineReplicasOnly && !broker.currentOfflineReplicas().isEmpty())) {
           break;
         }

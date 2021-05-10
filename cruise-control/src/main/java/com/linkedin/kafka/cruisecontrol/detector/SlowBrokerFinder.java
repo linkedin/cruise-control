@@ -203,8 +203,8 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
    * @return {@code true} if broker's current traffic is negligible, {@code false} otherwise.
    */
   private boolean brokerHasNegligibleTraffic(BrokerEntity broker, AggregatedMetricValues aggregatedMetricValues) {
-    double latestTotalBytesIn = aggregatedMetricValues.valuesFor(LEADER_BYTES_IN_ID).latest() +
-                                aggregatedMetricValues.valuesFor(REPLICATION_BYTES_IN_RATE_ID).latest();
+    double latestTotalBytesIn = aggregatedMetricValues.valuesFor(LEADER_BYTES_IN_ID).latest()
+                                + aggregatedMetricValues.valuesFor(REPLICATION_BYTES_IN_RATE_ID).latest();
     LOG.debug("Broker {}'s total bytes in rate is {} KB/s.", broker.brokerId(), latestTotalBytesIn);
     return latestTotalBytesIn < _bytesInRateDetectionThreshold;
   }
@@ -240,8 +240,8 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
                                                 Map<BrokerEntity, Double> currentPerByteLogFlushTimeMetricValues) {
     AggregatedMetricValues aggregatedMetricValues = currentMetrics.metricValues();
     double latestLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH_ID).latest();
-    double latestTotalBytesIn = aggregatedMetricValues.valuesFor(LEADER_BYTES_IN_ID).latest() +
-                                aggregatedMetricValues.valuesFor(REPLICATION_BYTES_IN_RATE_ID).latest();
+    double latestTotalBytesIn = aggregatedMetricValues.valuesFor(LEADER_BYTES_IN_ID).latest()
+                                + aggregatedMetricValues.valuesFor(REPLICATION_BYTES_IN_RATE_ID).latest();
     currentPerByteLogFlushTimeMetricValues.put(broker, latestLogFlushTime / latestTotalBytesIn);
     if (metricsHistory != null) {
       aggregatedMetricValues = metricsHistory.metricValues();
@@ -277,8 +277,8 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
                                                 Set<BrokerEntity> detectedMetricAnomalies) {
     for (Map.Entry<BrokerEntity, Double> entry : currentValue.entrySet()) {
       BrokerEntity entity = entry.getKey();
-      if (historicalValue.get(entity) != null &&
-          isDataSufficient(historicalValue.get(entity).size(), _metricHistoryPercentile, _metricHistoryPercentile)) {
+      if (historicalValue.get(entity) != null
+          && isDataSufficient(historicalValue.get(entity).size(), _metricHistoryPercentile, _metricHistoryPercentile)) {
         double [] data = historicalValue.get(entity).stream().mapToDouble(i -> i).toArray();
         _percentile.setData(data);
         if (currentValue.get(entity) > _percentile.evaluate(_metricHistoryPercentile) * _metricHistoryMargin) {
@@ -436,9 +436,9 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
                                                        val -> (val < 0.0));
 
     _logFlushTimeThresholdMs = parseAndGetConfig(originalConfig,
-                                                SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG,
-                                                DEFAULT_SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG,
-                                                val -> (val < 0.0));
+                                                 SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG,
+                                                 DEFAULT_SLOW_BROKER_LOG_FLUSH_TIME_THRESHOLD_MS_CONFIG,
+                                                 val -> (val < 0.0));
 
     _metricHistoryPercentile = parseAndGetConfig(originalConfig,
                                                  SLOW_BROKER_METRIC_HISTORY_PERCENTILE_THRESHOLD_CONFIG,

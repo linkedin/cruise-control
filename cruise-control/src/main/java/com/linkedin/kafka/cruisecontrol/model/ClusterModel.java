@@ -165,10 +165,10 @@ public class ClusterModel implements Serializable {
     for (Map.Entry<TopicPartition, Partition> entry : _partitionsByTopicPartition.entrySet()) {
       TopicPartition tp = entry.getKey();
       Partition partition = entry.getValue();
-      List<ReplicaPlacementInfo> replicaPlacementInfos = partition.replicas().stream()
-                                                                  .map(r -> r.disk() == null ? new ReplicaPlacementInfo(r.broker().id()) :
-                                                                            new ReplicaPlacementInfo(r.broker().id(), r.disk().logDir()))
-                                                                  .collect(Collectors.toList());
+      List<ReplicaPlacementInfo> replicaPlacementInfos
+          = partition.replicas().stream().map(r -> r.disk() == null ? new ReplicaPlacementInfo(r.broker().id())
+                                                                    : new ReplicaPlacementInfo(r.broker().id(), r.disk().logDir()))
+                     .collect(Collectors.toList());
       // Add distribution of replicas in the partition.
       replicaDistribution.put(tp, replicaPlacementInfos);
     }

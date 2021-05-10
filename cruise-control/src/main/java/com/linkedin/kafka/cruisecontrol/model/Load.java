@@ -143,8 +143,8 @@ public class Load implements Serializable {
       case MAX: return max(valuesForId.max(), 0.0);
       case AVG: return max(valuesForId.avg(), 0.0);
       case LATEST: return max(valuesForId.latest(), 0.0);
-      default: throw new IllegalArgumentException("Metric value computing strategy " + metric.valueComputingStrategy() +
-                          " for metric " + metric.name() + " is invalid.");
+      default: throw new IllegalArgumentException("Metric value computing strategy " + metric.valueComputingStrategy()
+                                                  + " for metric " + metric.name() + " is invalid.");
     }
   }
 
@@ -162,8 +162,8 @@ public class Load implements Serializable {
    */
   void setLoad(AggregatedMetricValues loadToSet) {
     if (loadToSet.length() != _metricValues.length()) {
-      throw new IllegalArgumentException("Load to set and load for the resources must have exactly " +
-                                         _metricValues.length() + " entries.");
+      throw new IllegalArgumentException("Load to set and load for the resources must have exactly "
+                                         + _metricValues.length() + " entries.");
     }
     loadToSet.metricIds().forEach(id -> {
       MetricValues valuesToSet = loadToSet.valuesFor(id);
@@ -182,8 +182,8 @@ public class Load implements Serializable {
    */
   void setLoad(short metricId, MetricValues loadToSet) {
     if (loadToSet.length() != _metricValues.length()) {
-      throw new IllegalArgumentException("Load to set and load for the resources must have exactly " +
-                                             _metricValues.length() + " entries.");
+      throw new IllegalArgumentException("Load to set and load for the resources must have exactly "
+                                         + _metricValues.length() + " entries.");
     }
     MetricValues values = _metricValues.valuesFor(metricId);
     for (int i = 0; i < loadToSet.length(); i++) {

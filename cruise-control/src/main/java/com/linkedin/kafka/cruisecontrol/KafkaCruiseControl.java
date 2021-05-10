@@ -845,8 +845,8 @@ public class KafkaCruiseControl {
    * @return Model completeness requirements.
    */
   public ModelCompletenessRequirements modelCompletenessRequirements(Collection<Goal> goals) {
-    return goals == null || goals.isEmpty() ?
-           _goalOptimizer.defaultModelCompletenessRequirements() : MonitorUtils.combineLoadRequirementOptions(goals);
+    return goals == null || goals.isEmpty() ? _goalOptimizer.defaultModelCompletenessRequirements()
+                                            : MonitorUtils.combineLoadRequirementOptions(goals);
   }
 
   /**

@@ -223,8 +223,8 @@ public class OptimizerResult {
    * @return The string describing goal result.
    */
   public String goalResultDescription(String goalName) {
-    return _violatedGoalNamesBeforeOptimization.contains(goalName) ?
-           _violatedGoalNamesAfterOptimization.contains(goalName) ? VIOLATED : FIXED : NO_ACTION;
+    return _violatedGoalNamesBeforeOptimization.contains(goalName) ? _violatedGoalNamesAfterOptimization.contains(goalName) ? VIOLATED
+                                                                                                                            : FIXED : NO_ACTION;
   }
 
   /**
