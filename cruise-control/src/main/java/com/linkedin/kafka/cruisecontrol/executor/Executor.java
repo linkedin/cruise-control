@@ -874,9 +874,9 @@ public class Executor {
    * @return True if the flag to stop the execution is set after the call (i.e. was not set already), false otherwise.
    */
   private synchronized boolean stopExecution(boolean forceExecutionStop) {
-    if ((forceExecutionStop && (_stopSignal.compareAndSet(NO_STOP_EXECUTION, FORCE_STOP_EXECUTION) ||
-                                _stopSignal.compareAndSet(STOP_EXECUTION, FORCE_STOP_EXECUTION))) ||
-        (!forceExecutionStop && _stopSignal.compareAndSet(NO_STOP_EXECUTION, STOP_EXECUTION)))  {
+    if ((forceExecutionStop && (_stopSignal.compareAndSet(NO_STOP_EXECUTION, FORCE_STOP_EXECUTION)
+                                || _stopSignal.compareAndSet(STOP_EXECUTION, FORCE_STOP_EXECUTION)))
+        || (!forceExecutionStop && _stopSignal.compareAndSet(NO_STOP_EXECUTION, STOP_EXECUTION)))  {
       _numExecutionStopped.incrementAndGet();
       _executionTaskManager.setStopRequested();
       return true;

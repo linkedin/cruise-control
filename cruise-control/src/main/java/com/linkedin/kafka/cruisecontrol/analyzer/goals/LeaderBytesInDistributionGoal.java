@@ -166,8 +166,8 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
   @Override
   protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
     if (action.balancingAction() != ActionType.LEADERSHIP_MOVEMENT) {
-      throw new IllegalStateException("Found balancing action " + action.balancingAction() +
-          " but expected leadership movement.");
+      throw new IllegalStateException("Found balancing action " + action.balancingAction()
+                                      + " but expected leadership movement.");
     }
     return actionAcceptance(action, clusterModel) == ACCEPT;
   }

@@ -17,9 +17,9 @@ public class PostponeUrpReplicaMovementStrategy extends AbstractReplicaMovementS
 
   @Override
   public Comparator<ExecutionTask> taskComparator(Cluster cluster) {
-    return (task1, task2) -> isPartitionUnderReplicated(cluster, task1.proposal().topicPartition()) ?
-                             (isPartitionUnderReplicated(cluster, task2.proposal().topicPartition()) ? 0 : 1) :
-                             (isPartitionUnderReplicated(cluster, task2.proposal().topicPartition()) ? -1 : 0);
+    return (task1, task2) -> isPartitionUnderReplicated(cluster, task1.proposal().topicPartition())
+                             ? (isPartitionUnderReplicated(cluster, task2.proposal().topicPartition()) ? 0 : 1)
+                             : (isPartitionUnderReplicated(cluster, task2.proposal().topicPartition()) ? -1 : 0);
   }
 
   /**

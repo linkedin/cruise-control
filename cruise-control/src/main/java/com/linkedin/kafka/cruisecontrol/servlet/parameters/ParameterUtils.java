@@ -856,10 +856,10 @@ public class ParameterUtils {
   static Integer concurrentMovements(HttpServletRequest request,
                                      boolean isInterBrokerPartitionMovement,
                                      boolean isIntraBrokerPartitionMovement) {
-    String parameterString = caseSensitiveParameterName(request.getParameterMap(),
-                                                        isInterBrokerPartitionMovement ? CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM :
-                                                        isIntraBrokerPartitionMovement ? CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM :
-                                                                                         CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    String parameter = isInterBrokerPartitionMovement
+                       ? CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM
+                       : isIntraBrokerPartitionMovement ? CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM : CONCURRENT_LEADER_MOVEMENTS_PARAM;
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), parameter);
     if (parameterString == null) {
       return null;
     }
@@ -1059,8 +1059,7 @@ public class ParameterUtils {
    * Skip hard goal check in kafka_assigner mode.
    */
   static boolean skipHardGoalCheck(HttpServletRequest request) {
-    return isKafkaAssignerMode(request) || isRebalanceDiskMode(request) ||
-           getBooleanParam(request, SKIP_HARD_GOAL_CHECK_PARAM, false);
+    return isKafkaAssignerMode(request) || isRebalanceDiskMode(request) || getBooleanParam(request, SKIP_HARD_GOAL_CHECK_PARAM, false);
   }
 
   static boolean skipUrpDemotion(HttpServletRequest request) {

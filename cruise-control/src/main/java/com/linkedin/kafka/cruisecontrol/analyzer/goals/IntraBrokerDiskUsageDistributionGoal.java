@@ -216,13 +216,13 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
   private boolean isChangeViolatingLimit(double sourceUtilizationDelta, Disk sourceDisk, Disk destinationDisk) {
     double balanceUpperThreshold = _balanceUpperThresholdByBroker.get(sourceDisk.broker());
     double balanceLowerThreshold = _balanceLowerThresholdByBroker.get(sourceDisk.broker());
-    double sourceDiskAllowance = sourceUtilizationDelta > 0 ? sourceDisk.capacity() * balanceUpperThreshold - sourceDisk.utilization() :
-                                                              sourceDisk.utilization() - sourceDisk.capacity() * balanceLowerThreshold;
+    double sourceDiskAllowance = sourceUtilizationDelta > 0 ? sourceDisk.capacity() * balanceUpperThreshold - sourceDisk.utilization()
+                                                            : sourceDisk.utilization() - sourceDisk.capacity() * balanceLowerThreshold;
     double destinationDiskAllowance =
         sourceUtilizationDelta > 0 ? destinationDisk.utilization() - destinationDisk.capacity() * balanceLowerThreshold
                                    : destinationDisk.capacity() * balanceUpperThreshold - destinationDisk.utilization();
-    if ((sourceDiskAllowance >= 0 && sourceDiskAllowance < abs(sourceUtilizationDelta)) ||
-        (destinationDiskAllowance >= 0 && destinationDiskAllowance < abs(sourceUtilizationDelta))) {
+    if ((sourceDiskAllowance >= 0 && sourceDiskAllowance < abs(sourceUtilizationDelta))
+        || (destinationDiskAllowance >= 0 && destinationDiskAllowance < abs(sourceUtilizationDelta))) {
       return true;
     }
     return false;
@@ -492,8 +492,8 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
     return new ClusterModelStatsComparator() {
       @Override
       public int compare(ClusterModelStats stats1, ClusterModelStats stats2) {
-        if (stats1.numUnbalancedDisks() > stats2.numUnbalancedDisks() ||
-            stats1.diskUtilizationStandardDeviation() > stats2.diskUtilizationStandardDeviation()) {
+        if (stats1.numUnbalancedDisks() > stats2.numUnbalancedDisks()
+            || stats1.diskUtilizationStandardDeviation() > stats2.diskUtilizationStandardDeviation()) {
           return -1;
         }
         return 1;

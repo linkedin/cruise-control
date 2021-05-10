@@ -857,11 +857,11 @@ public class DeterministicCluster {
                                                    Map<Resource, Double> brokerCapacity,
                                                    Map<String, Double> diskCapacityByLogDir) {
     // Sanity checks.
-    if (rackByBroker.size() <= 0 ||
-        brokerCapacity.get(Resource.CPU) < 0 ||
-        brokerCapacity.get(Resource.DISK) < 0 ||
-        brokerCapacity.get(Resource.NW_IN) < 0 ||
-        brokerCapacity.get(Resource.NW_OUT) < 0) {
+    if (rackByBroker.size() <= 0
+        || brokerCapacity.get(Resource.CPU) < 0
+        || brokerCapacity.get(Resource.DISK) < 0
+        || brokerCapacity.get(Resource.NW_IN) < 0
+        || brokerCapacity.get(Resource.NW_OUT) < 0) {
       throw new IllegalArgumentException("Deterministic cluster generation failed due to bad input.");
     }
 

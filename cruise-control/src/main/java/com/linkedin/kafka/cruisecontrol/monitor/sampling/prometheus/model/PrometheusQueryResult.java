@@ -42,10 +42,7 @@ public class PrometheusQueryResult {
 
     @Override
     public String toString() {
-        return "PrometheusQueryResult{" +
-            "_metric=" + _metric +
-            ", _values=" + _values +
-            '}';
+        return "PrometheusQueryResult{_metric=" + _metric + ", _values=" + _values + '}';
     }
 
     @Override
@@ -57,8 +54,7 @@ public class PrometheusQueryResult {
             return false;
         }
         PrometheusQueryResult result = (PrometheusQueryResult) o;
-        return Objects.equals(_metric, result._metric) &&
-            Objects.equals(_values, result._values);
+        return Objects.equals(_metric, result._metric) && Objects.equals(_values, result._values);
     }
 
     @Override

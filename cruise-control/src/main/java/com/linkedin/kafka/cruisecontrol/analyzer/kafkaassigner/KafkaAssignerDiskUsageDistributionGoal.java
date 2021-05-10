@@ -342,8 +342,8 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
         LOG.trace("replicaToSwap: {}(size={}), targetSize={}, minSize={}, maxSize={}",
                   replicaToSwap, dWrap(replicaSize(replicaToSwap)), dWrap(targetSize), dWrap(minSize), dWrap(maxSize));
       }
-      Replica replicaToSwapWith = sortedReplicasToSwapWith.isEmpty() ? null :
-                                  findReplicaToSwapWith(replicaToSwap, sortedReplicasToSwapWith, targetSize, minSize, maxSize, clusterModel);
+      Replica replicaToSwapWith = sortedReplicasToSwapWith.isEmpty() ? null : findReplicaToSwapWith(replicaToSwap, sortedReplicasToSwapWith,
+                                                                                                    targetSize, minSize, maxSize, clusterModel);
       if (replicaToSwapWith != null) {
         if (LOG.isDebugEnabled()) {
           LOG.debug("Found replica to swap. Swapping {}({}) on broker {}({}) and {}({}) on broker {}({})",

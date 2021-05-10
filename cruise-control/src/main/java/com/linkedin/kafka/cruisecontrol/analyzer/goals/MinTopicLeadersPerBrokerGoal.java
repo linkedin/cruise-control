@@ -250,8 +250,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     if (_mustHaveTopicLeadersPerBroker.contains(action.topic())) {
       return true;
     }
-    return action.balancingAction() == ActionType.INTER_BROKER_REPLICA_SWAP &&
-           _mustHaveTopicLeadersPerBroker.contains(action.destinationTopic());
+    return action.balancingAction() == ActionType.INTER_BROKER_REPLICA_SWAP && _mustHaveTopicLeadersPerBroker.contains(action.destinationTopic());
   }
 
   /**

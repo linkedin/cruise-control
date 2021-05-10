@@ -41,10 +41,7 @@ public class PrometheusValue {
 
     @Override
     public String toString() {
-        return "PrometheusValue{" +
-            "_epochSeconds=" + _epochSeconds +
-            ", _value=" + _value +
-            '}';
+        return "PrometheusValue{_epochSeconds=" + _epochSeconds + ", _value=" + _value + '}';
     }
 
     @Override public boolean equals(Object o) {
@@ -55,8 +52,7 @@ public class PrometheusValue {
             return false;
         }
         PrometheusValue that = (PrometheusValue) o;
-        return _epochSeconds == that._epochSeconds &&
-            Double.compare(that._value, _value) == 0;
+        return _epochSeconds == that._epochSeconds && Double.compare(that._value, _value) == 0;
     }
 
     @Override public int hashCode() {

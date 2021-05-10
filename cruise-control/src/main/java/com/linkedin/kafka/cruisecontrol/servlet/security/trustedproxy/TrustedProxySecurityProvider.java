@@ -22,7 +22,7 @@ import java.util.List;
  * GET query parameter.
  */
 public class TrustedProxySecurityProvider extends SpnegoSecurityProvider {
-  
+
   private List<String> _trustedProxyServices;
   private String _trustedProxyServicesIpRegex;
 
@@ -36,8 +36,7 @@ public class TrustedProxySecurityProvider extends SpnegoSecurityProvider {
     if (ipWhitelistRegex != null) {
       _trustedProxyServicesIpRegex = ipWhitelistRegex;
     }
-    LOG.info("Setting up authentication for trusted proxy list [{}] with keytab {} and spnego principal {} " +
-             "with IP whitelist regex {}",
+    LOG.info("Setting up authentication for trusted proxy list [{}] with keytab {} and spnego principal {} with IP whitelist regex {}",
         String.join(",", _trustedProxyServices), _keyTabPath, _spnegoPrincipal, _trustedProxyServicesIpRegex);
   }
 
