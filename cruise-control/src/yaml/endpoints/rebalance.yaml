@@ -135,7 +135,7 @@ RebalanceEndpoint:
           default: false
       - name: review_id
         in: query
-        description: Review id for 2FA.
+        description: Review id for 2-step verification.
         schema:
           type: integer
           format: int32
@@ -162,7 +162,7 @@ RebalanceEndpoint:
         example: "Balance disk utilization across all brokers in the cluster."
       - name: get_response_schema
         in: query
-        description: Whether to return in JSON schema in response header or not.
+        description: Whether to return JSON schema in response header or not.
         schema:
           type: boolean
           default: false

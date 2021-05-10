@@ -102,8 +102,8 @@ public class PartitionMetricSample extends MetricSample<String, PartitionEntity>
       case 1:
         return readV1(buffer);
       default:
-        throw new UnknownVersionException("Unsupported deserialization version: " + version + " (Latest: " +
-                                          LATEST_SUPPORTED_VERSION + ", Minimum: " + MIN_SUPPORTED_VERSION + ")");
+        throw new UnknownVersionException("Unsupported deserialization version: " + version + " (Latest: "
+                                          + LATEST_SUPPORTED_VERSION + ", Minimum: " + MIN_SUPPORTED_VERSION + ")");
     }
   }
 

@@ -561,8 +561,8 @@ public class GoalOptimizer implements Runnable {
       try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
         long startMs = _time.milliseconds();
         // We compute the proposal even if there is not enough modeled partitions.
-        ModelCompletenessRequirements requirements = _loadMonitor.meetCompletenessRequirements(_defaultModelCompletenessRequirements) ?
-                                                     _defaultModelCompletenessRequirements : _requirementsWithAvailableValidWindows;
+        ModelCompletenessRequirements requirements = _loadMonitor.meetCompletenessRequirements(_defaultModelCompletenessRequirements)
+                                                     ? _defaultModelCompletenessRequirements : _requirementsWithAvailableValidWindows;
         ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), requirements, _allowCapacityEstimation, operationProgress);
         if (!clusterModel.topics().isEmpty()) {
           OptimizerResult result = optimizations(clusterModel, _goalsByPriority, operationProgress);

@@ -42,8 +42,8 @@ public class MetricSample<G, E extends Entity<G>> {
 
     Double origValue = _valuesByMetricId.putIfAbsent(info.id(), sampleValue);
     if (origValue != null) {
-      throw new IllegalStateException("Trying to record sample value " + sampleValue + " for " + info.name() +
-                                          ", but there is already a value " + origValue + " recorded.");
+      throw new IllegalStateException("Trying to record sample value " + sampleValue + " for " + info.name()
+                                      + ", but there is already a value " + origValue + " recorded.");
     }
   }
 

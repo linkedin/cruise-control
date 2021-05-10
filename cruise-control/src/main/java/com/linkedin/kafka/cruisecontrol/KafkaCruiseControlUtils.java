@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.Collections;
+import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -93,6 +94,7 @@ public class KafkaCruiseControlUtils {
   public static final String ENV_CONFIG_PROVIDER_CLASS_CONFIG = ".env.class";
   public static final long CLIENT_REQUEST_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(30);
   public static final String DEFAULT_CLEANUP_POLICY = "delete";
+  public static final Random RANDOM = new Random();
 
   private KafkaCruiseControlUtils() {
 
@@ -360,8 +362,8 @@ public class KafkaCruiseControlUtils {
    * @param config The configurations for Cruise Control.
    */
   public static void sanityCheckGoals(List<String> goals, boolean skipHardGoalCheck, KafkaCruiseControlConfig config) {
-    if (goals != null && !goals.isEmpty() && !skipHardGoalCheck &&
-        !(goals.size() == 1 && goals.get(0).equals(PreferredLeaderElectionGoal.class.getSimpleName()))) {
+    if (goals != null && !goals.isEmpty() && !skipHardGoalCheck
+        && !(goals.size() == 1 && goals.get(0).equals(PreferredLeaderElectionGoal.class.getSimpleName()))) {
       sanityCheckNonExistingGoal(goals, AnalyzerUtils.getCaseInsensitiveGoalsByName(config));
       Set<String> hardGoals = hardGoals(config);
       if (!goals.containsAll(hardGoals)) {
@@ -395,8 +397,8 @@ public class KafkaCruiseControlUtils {
    */
   public static void sanityCheckLoadMonitorReadiness(ModelCompletenessRequirements completenessRequirements,
                                                      LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState) {
-    if (completenessRequirements.minRequiredNumWindows() > 0 &&
-        loadMonitorTaskRunnerState == LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.LOADING) {
+    if (completenessRequirements.minRequiredNumWindows() > 0
+        && loadMonitorTaskRunnerState == LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.LOADING) {
       throw new IllegalStateException("Unable to generate proposal since load monitor is in "
                                       + LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.LOADING + " state.");
     }

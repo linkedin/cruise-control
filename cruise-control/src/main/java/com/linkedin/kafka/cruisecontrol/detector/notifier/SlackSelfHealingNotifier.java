@@ -4,11 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.detector.notifier;
 
+import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.detector.AnomalyType;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +50,7 @@ public class SlackSelfHealingNotifier extends SelfHealingNotifier {
     }
 
     @Override
-    public void alert(Object anomaly, boolean autoFixTriggered, long selfHealingStartTime, AnomalyType anomalyType) {
+    public void alert(Anomaly anomaly, boolean autoFixTriggered, long selfHealingStartTime, AnomalyType anomalyType) {
         super.alert(anomaly, autoFixTriggered, selfHealingStartTime, anomalyType);
 
         if (_slackWebhook == null) {
@@ -79,16 +76,6 @@ public class SlackSelfHealingNotifier extends SelfHealingNotifier {
     }
 
     protected void sendSlackMessage(SlackMessage slackMessage, String slackWebhookUrl) throws IOException {
-        CloseableHttpClient client = HttpClients.createDefault();
-        HttpPost httpPost = new HttpPost(slackWebhookUrl);
-        StringEntity entity = new StringEntity(slackMessage.toString());
-        httpPost.setEntity(entity);
-        httpPost.setHeader("Accept", "application/json");
-        httpPost.setHeader("Content-type", "application/json");
-        try {
-            client.execute(httpPost);
-        } finally {
-            client.close();
-        }
+        NotifierUtils.sendMessage(slackMessage.toString(), slackWebhookUrl, null);
     }
 }

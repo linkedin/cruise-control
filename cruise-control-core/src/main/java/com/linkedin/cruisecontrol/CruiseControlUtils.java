@@ -5,10 +5,12 @@
 package com.linkedin.cruisecontrol;
 
 import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 
 import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
-
 
 /**
  * Utils class for Cruise Control
@@ -32,7 +34,7 @@ public class CruiseControlUtils {
    * @return The current UTC date.
    */
   public static String currentUtcDate() {
-    return Instant.now().truncatedTo(ChronoUnit.SECONDS).toString();
+    return utcDateFor(Instant.now().getEpochSecond() * 1000);
   }
 
   /**
@@ -41,6 +43,20 @@ public class CruiseControlUtils {
    * @return The date for the given time in ISO 8601 format with date, hour, minute, and seconds.
    */
   public static String utcDateFor(long timeMs) {
-    return Instant.ofEpochMilli(timeMs).truncatedTo(ChronoUnit.SECONDS).toString();
+    return utcDateFor(timeMs, 0, ChronoUnit.SECONDS);
   }
+
+  /**
+   * @see <a href="https://xkcd.com/1179/">https://xkcd.com/1179/</a>
+   * @param timeMs Time in milliseconds.
+   * @param precision requested time precision used in {@link DateTimeFormatterBuilder#appendInstant()}
+   *        i.e: 0 for seconds precision, 3 for milliseconds, 6 for microseconds etc...
+   * @param roundTo round the provided time to the provided {@link TemporalUnit}
+   * @return The date for the given time in ISO 8601 format with provided precision (not truncated even if 0)
+   */
+  public static String utcDateFor(long timeMs, int precision, TemporalUnit roundTo) {
+    DateTimeFormatter formatter = new DateTimeFormatterBuilder().appendInstant(precision).toFormatter();
+    return formatter.format(Instant.ofEpochMilli(timeMs).truncatedTo(roundTo));
+  }
+
 }

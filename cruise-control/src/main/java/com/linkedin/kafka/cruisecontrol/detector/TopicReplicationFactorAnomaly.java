@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.UpdateTopicConfigurationRunnable;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -33,6 +34,13 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
   // Bad topic here refers to the topic having at least one partition, which violates replication factor requirements.
   protected Map<Short, Set<TopicReplicationFactorAnomalyEntry>> _badTopicsByReplicationFactor;
   protected UpdateTopicConfigurationRunnable _updateTopicConfigurationRunnable;
+
+  /**
+   * @return An unmodifiable version of the actual bad topic map
+   */
+  public Map<Short, Set<TopicReplicationFactorAnomalyEntry>> getBadTopicsByReplicationFactor() {
+    return Collections.unmodifiableMap(_badTopicsByReplicationFactor);
+  }
 
   @Override
   public boolean fix() throws Exception {

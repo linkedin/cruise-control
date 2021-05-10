@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector.notifier;
 
+import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import com.linkedin.kafka.cruisecontrol.detector.DiskFailures;
@@ -264,7 +265,7 @@ public class SelfHealingNotifier implements AnomalyNotifier {
    * @param selfHealingStartTime The time that the self healing started.
    * @param anomalyType Type of anomaly.
    */
-  public void alert(Object anomaly, boolean autoFixTriggered, long selfHealingStartTime, AnomalyType anomalyType) {
+  public void alert(Anomaly anomaly, boolean autoFixTriggered, long selfHealingStartTime, AnomalyType anomalyType) {
     LOG.warn("{} detected {}. Self healing {}.", anomalyType, anomaly,
              _selfHealingEnabled.get(anomalyType) ? String.format("start time %s", utcDateFor(selfHealingStartTime)) : "is disabled");
 

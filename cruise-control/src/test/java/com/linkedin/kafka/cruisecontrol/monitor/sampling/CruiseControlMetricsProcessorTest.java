@@ -85,34 +85,34 @@ public class CruiseControlMetricsProcessorTest {
   private static final Set<TopicPartition> TEST_PARTITIONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(T1P0, T1P1, T2P0, T2P1)));
   private static final Map<TopicPartition, Double> CPU_UTIL = new HashMap<>(4);
   static {
-    CPU_UTIL.put(T1P0, MOCK_NUM_CPU_CORES *
-                       estimateLeaderCpuUtilPerCore(B0_CPU,
-                                                    B0_ALL_TOPIC_BYTES_IN,
-                                             B0_ALL_TOPIC_BYTES_OUT + B0_TOPIC1_REPLICATION_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT,
-                                                    B0_TOPIC1_REPLICATION_BYTES_IN,
-                                                    B0_TOPIC1_BYTES_IN,
-                                             B0_TOPIC1_BYTES_OUT + B0_TOPIC1_REPLICATION_BYTES_OUT));
-    CPU_UTIL.put(T1P1, MOCK_NUM_CPU_CORES *
-                       estimateLeaderCpuUtilPerCore(B1_CPU,
-                                                    B1_ALL_TOPIC_BYTES_IN,
-                                             B1_ALL_TOPIC_BYTES_OUT + B1_TOPIC1_REPLICATION_BYTES_OUT,
-                                             B1_TOPIC1_REPLICATION_BYTES_IN + B1_TOPIC2_REPLICATION_BYTES_IN,
-                                                    B1_TOPIC1_BYTES_IN,
-                                             B1_TOPIC1_BYTES_OUT + B1_TOPIC1_REPLICATION_BYTES_OUT));
-    CPU_UTIL.put(T2P0, MOCK_NUM_CPU_CORES *
-                       estimateLeaderCpuUtilPerCore(B0_CPU,
-                                                    B0_ALL_TOPIC_BYTES_IN,
-                                             B0_ALL_TOPIC_BYTES_OUT + B0_TOPIC1_REPLICATION_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT,
-                                                    B0_TOPIC1_REPLICATION_BYTES_IN,
-                                             B0_TOPIC2_BYTES_IN / 2,
-                                             (B0_TOPIC2_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT) / 2));
-    CPU_UTIL.put(T2P1, MOCK_NUM_CPU_CORES *
-                       estimateLeaderCpuUtilPerCore(B0_CPU,
-                                                    B0_ALL_TOPIC_BYTES_IN,
-                                             B0_ALL_TOPIC_BYTES_OUT + B0_TOPIC1_REPLICATION_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT,
-                                                    B0_TOPIC1_REPLICATION_BYTES_IN,
-                                             B0_TOPIC2_BYTES_IN / 2,
-                                             (B0_TOPIC2_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT) / 2));
+    CPU_UTIL.put(T1P0, MOCK_NUM_CPU_CORES
+                       * estimateLeaderCpuUtilPerCore(B0_CPU,
+                                                      B0_ALL_TOPIC_BYTES_IN,
+                                                      B0_ALL_TOPIC_BYTES_OUT + B0_TOPIC1_REPLICATION_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT,
+                                                      B0_TOPIC1_REPLICATION_BYTES_IN,
+                                                      B0_TOPIC1_BYTES_IN,
+                                                      B0_TOPIC1_BYTES_OUT + B0_TOPIC1_REPLICATION_BYTES_OUT));
+    CPU_UTIL.put(T1P1, MOCK_NUM_CPU_CORES
+                       * estimateLeaderCpuUtilPerCore(B1_CPU,
+                                                      B1_ALL_TOPIC_BYTES_IN,
+                                                      B1_ALL_TOPIC_BYTES_OUT + B1_TOPIC1_REPLICATION_BYTES_OUT,
+                                                      B1_TOPIC1_REPLICATION_BYTES_IN + B1_TOPIC2_REPLICATION_BYTES_IN,
+                                                      B1_TOPIC1_BYTES_IN,
+                                                      B1_TOPIC1_BYTES_OUT + B1_TOPIC1_REPLICATION_BYTES_OUT));
+    CPU_UTIL.put(T2P0, MOCK_NUM_CPU_CORES
+                       * estimateLeaderCpuUtilPerCore(B0_CPU,
+                                                      B0_ALL_TOPIC_BYTES_IN,
+                                                      B0_ALL_TOPIC_BYTES_OUT + B0_TOPIC1_REPLICATION_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT,
+                                                      B0_TOPIC1_REPLICATION_BYTES_IN,
+                                                      B0_TOPIC2_BYTES_IN / 2,
+                                                      (B0_TOPIC2_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT) / 2));
+    CPU_UTIL.put(T2P1, MOCK_NUM_CPU_CORES
+                       * estimateLeaderCpuUtilPerCore(B0_CPU,
+                                                      B0_ALL_TOPIC_BYTES_IN,
+                                                      B0_ALL_TOPIC_BYTES_OUT + B0_TOPIC1_REPLICATION_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT,
+                                                      B0_TOPIC1_REPLICATION_BYTES_IN,
+                                                      B0_TOPIC2_BYTES_IN / 2,
+                                                      (B0_TOPIC2_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT) / 2));
   }
   private final Time _time = new MockTime(0, 100L, TimeUnit.NANOSECONDS.convert(100L, TimeUnit.MILLISECONDS));
 
@@ -168,7 +168,7 @@ public class CruiseControlMetricsProcessorTest {
     BrokerCapacityConfigResolver brokerCapacityConfigResolverSomeEstimated = EasyMock.mock(BrokerCapacityConfigResolver.class);
     EasyMock.expect(brokerCapacityConfigResolverSomeEstimated.capacityForBroker(EasyMock.anyString(), EasyMock.anyString(),
                                                                                 EasyMock.eq(BROKER_ID_1), EasyMock.anyLong(), EasyMock.anyBoolean()))
-        .andThrow(new TimeoutException("Unable to resolve capacity.")).anyTimes();
+            .andThrow(new TimeoutException("Unable to resolve capacity.")).anyTimes();
     EasyMock.expect(brokerCapacityConfigResolverSomeEstimated.capacityForBroker(EasyMock.anyString(), EasyMock.anyString(),
                                                                                 EasyMock.eq(BROKER_ID_0), EasyMock.anyLong(), EasyMock.anyBoolean()))
             .andReturn(new BrokerCapacityInfo(EMPTY_BROKER_CAPACITY, Collections.emptyMap(), MOCK_NUM_CPU_CORES)).anyTimes();

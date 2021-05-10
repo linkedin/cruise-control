@@ -550,10 +550,12 @@ Changing topic's replication factor will not move any existing replicas. `goals`
 Note sometimes the topic regex can be too long to put at POST request head, in this case user can specify topic regex and target replication factor pairs in POST request body. For details, check [Change-topic-replication-factor-through-Cruise-Control wiki page](https://github.com/linkedin/cruise-control/wiki/Change-topic-replication-factor-through-Cruise-Control).
 
 ### Change Cruise Control configuration
-Some of Cruise Control's configs can be changed dynamically via `admin` endpoint, which includes
-* enable/disable self-healing
-* increase/decrease execution concurrency
-* drop recently removed/demoted brokers
+Some Cruise Control configs can be changed dynamically via `admin` endpoint, which includes
+* Dynamically change the partition and leadership concurrency and the interval between checking and updating (if needed) the progress of an ongoing execution.
+* Enable/disable self-healing for the specified anomaly types.
+* Drop selected recently removed/demoted brokers.
+* Enable/disable the specified concurrency adjusters.
+* Enable/disable the (At/Under)MinISR-based concurrency adjustment.
 
 Supported parameters are:
 
@@ -567,6 +569,13 @@ Supported parameters are:
 | drop_recently_removed_brokers                 | list      | list of id of recently removed brokers to be dropped                      | N/A       | yes       |
 | drop_recently_demoted_brokers                 | list      | list of id of recently demoted brokers to be dropped                      | N/A       | yes       |
 | doAs                                          | string    | propagated user by the trusted proxy service                              | null      | yes       | 
+| json                                          | boolean   | return in JSON format or not                                              | false     | yes       |
+| review_id                                     | integer   | review id for 2-step verification                                         | N/A       | yes       |
+| execution_progress_check_interval_ms          | long      | execution progress check interval in milliseconds                         | N/A       | yes       |
+| get_response_schema                           | boolean   | return JSON schema in response header or not                              | false     | yes       |
+| disable_concurrency_adjuster_for              | list      | disable concurrency adjuster for given concurrency types                  | N/A       | yes       |
+| enable_concurrency_adjuster_for               | list      | enable concurrency adjuster for given concurrency types                   | N/A       | yes       |
+| min_isr_based_concurrency_adjustment          | boolean   | enable (true) or disable (false) MinISR-based concurrency adjustment      | N/A       | yes       |
 
 To Enable/disable self-healing, send POST request like:
 

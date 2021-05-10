@@ -116,6 +116,7 @@ public class ParameterUtils {
   public static final String ENABLE_SELF_HEALING_FOR_PARAM = "enable_self_healing_for";
   public static final String DISABLE_CONCURRENCY_ADJUSTER_FOR_PARAM = "disable_concurrency_adjuster_for";
   public static final String ENABLE_CONCURRENCY_ADJUSTER_FOR_PARAM = "enable_concurrency_adjuster_for";
+  public static final String MIN_ISR_BASED_CONCURRENCY_ADJUSTMENT_PARAM = "min_isr_based_concurrency_adjustment";
   public static final String EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM = "exclude_recently_demoted_brokers";
   public static final String EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM = "exclude_recently_removed_brokers";
   public static final String REPLICA_MOVEMENT_STRATEGIES_PARAM = "replica_movement_strategies";
@@ -665,6 +666,18 @@ public class ParameterUtils {
   }
 
   /**
+   * @param request The http request.
+   * @return {@code true}: enable or {@code false}: disable MinISR-based concurrency adjustment, {@code null} if the request parameter is unset.
+   */
+  @Nullable static Boolean minIsrBasedConcurrencyAdjustment(HttpServletRequest request) {
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), MIN_ISR_BASED_CONCURRENCY_ADJUSTMENT_PARAM);
+    if (parameterString == null) {
+      return null;
+    }
+    return Boolean.parseBoolean(request.getParameter(parameterString));
+  }
+
+  /**
    * Compare and ensure two sets are disjoint as part of a user request.
    * @param set1 The first set to compare.
    * @param set2 The second set to compare.
@@ -843,10 +856,10 @@ public class ParameterUtils {
   static Integer concurrentMovements(HttpServletRequest request,
                                      boolean isInterBrokerPartitionMovement,
                                      boolean isIntraBrokerPartitionMovement) {
-    String parameterString = caseSensitiveParameterName(request.getParameterMap(),
-                                                        isInterBrokerPartitionMovement ? CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM :
-                                                        isIntraBrokerPartitionMovement ? CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM :
-                                                                                         CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    String parameter = isInterBrokerPartitionMovement
+                       ? CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM
+                       : isIntraBrokerPartitionMovement ? CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM : CONCURRENT_LEADER_MOVEMENTS_PARAM;
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), parameter);
     if (parameterString == null) {
       return null;
     }
@@ -1046,8 +1059,7 @@ public class ParameterUtils {
    * Skip hard goal check in kafka_assigner mode.
    */
   static boolean skipHardGoalCheck(HttpServletRequest request) {
-    return isKafkaAssignerMode(request) || isRebalanceDiskMode(request) ||
-           getBooleanParam(request, SKIP_HARD_GOAL_CHECK_PARAM, false);
+    return isKafkaAssignerMode(request) || isRebalanceDiskMode(request) || getBooleanParam(request, SKIP_HARD_GOAL_CHECK_PARAM, false);
   }
 
   static boolean skipUrpDemotion(HttpServletRequest request) {

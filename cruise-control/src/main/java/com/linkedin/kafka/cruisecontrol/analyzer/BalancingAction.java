@@ -243,8 +243,8 @@ public class BalancingAction {
    */
   @Override
   public String toString() {
-    String actSymbol = (_actionType.equals(ActionType.INTER_BROKER_REPLICA_SWAP) ||
-                        _actionType.equals(ActionType.INTRA_BROKER_REPLICA_SWAP)) ? "<->" : "->";
+    String actSymbol = (_actionType.equals(ActionType.INTER_BROKER_REPLICA_SWAP)
+                        || _actionType.equals(ActionType.INTRA_BROKER_REPLICA_SWAP)) ? "<->" : "->";
     return String.format("(%s%s%s, %d%s%s%d%s, %s)",
                          _tp, actSymbol, _destinationTp, _sourceBrokerId,
                          _sourceBrokerLogdir == null ? "" : String.format("(%s)", _sourceBrokerLogdir),

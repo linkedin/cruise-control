@@ -117,7 +117,7 @@ TopicConfigurationEndpoint:
           default: false
       - name: review_id
         in: query
-        description: Review id for 2FA.
+        description: Review id for 2-step verification.
         schema:
           type: string
       - name: skip_rack_awareness_check
@@ -146,7 +146,7 @@ TopicConfigurationEndpoint:
           default: false
       - name: get_response_schema
         in: query
-        description: Whether to return in JSON schema in response header or not.
+        description: Whether to return JSON schema in response header or not.
         schema:
           type: boolean
           default: false

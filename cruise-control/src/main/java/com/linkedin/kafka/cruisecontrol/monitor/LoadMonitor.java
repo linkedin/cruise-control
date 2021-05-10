@@ -466,7 +466,7 @@ public class LoadMonitor {
    * @return Cluster capacity without cluster load.
    */
   public ClusterModel clusterCapacity() throws TimeoutException, BrokerCapacityResolutionException {
-    MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
+    MetadataClient.ClusterAndGeneration clusterAndGeneration = refreshClusterAndGeneration();
     Cluster cluster = clusterAndGeneration.cluster();
 
     // Create an empty cluster model first.
@@ -545,7 +545,7 @@ public class LoadMonitor {
       throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
     long startMs = _time.milliseconds();
 
-    MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
+    MetadataClient.ClusterAndGeneration clusterAndGeneration = refreshClusterAndGeneration();
     Cluster cluster = clusterAndGeneration.cluster();
 
     // Get the metric aggregation result.
@@ -595,7 +595,7 @@ public class LoadMonitor {
    * expensive.
    */
   public ModelGeneration clusterModelGeneration() {
-    int clusterGeneration = _metadataClient.refreshMetadata().generation();
+    int clusterGeneration = refreshClusterAndGeneration().generation();
     return new ModelGeneration(clusterGeneration, _partitionMetricSampleAggregator.generation());
   }
 
@@ -607,7 +607,7 @@ public class LoadMonitor {
     if (_cachedBrokerLoadGeneration != null
         && (allowCapacityEstimation || !_cachedBrokerLoadStats.isBrokerStatsEstimated())
         && _partitionMetricSampleAggregator.generation() == _cachedBrokerLoadGeneration.loadGeneration()
-        && _metadataClient.refreshMetadata().generation() == _cachedBrokerLoadGeneration.clusterGeneration()) {
+        && refreshClusterAndGeneration().generation() == _cachedBrokerLoadGeneration.clusterGeneration()) {
       return _cachedBrokerLoadStats;
     }
     return null;
@@ -647,7 +647,7 @@ public class LoadMonitor {
    * @return True if the monitored load meets the load requirements, false otherwise.
    */
   public boolean meetCompletenessRequirements(ModelCompletenessRequirements requirements) {
-    MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
+    MetadataClient.ClusterAndGeneration clusterAndGeneration = refreshClusterAndGeneration();
     return meetCompletenessRequirements(clusterAndGeneration.cluster(), requirements);
   }
 
@@ -682,7 +682,7 @@ public class LoadMonitor {
   }
 
   /**
-   * Get all the brokers having offline replca in the cluster based on the partition assignment. If a metadata refresh failed
+   * Get all the brokers having offline replicas in the cluster based on the partition assignment. If a metadata refresh failed
    * due to timeout, the current metadata information will be used. This is to handle the case that all the brokers are down.
    * @param timeout the timeout in milliseconds.
    * @return All the brokers in the cluster that has at least one offline replica.
@@ -739,7 +739,7 @@ public class LoadMonitor {
   }
 
   private double getMonitoredPartitionsPercentage() {
-    MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
+    MetadataClient.ClusterAndGeneration clusterAndGeneration = refreshClusterAndGeneration();
 
     Cluster kafkaCluster = clusterAndGeneration.cluster();
     MetricSampleAggregationResult<String, PartitionEntity> metricSampleAggregationResult;
@@ -801,7 +801,7 @@ public class LoadMonitor {
     private int _refreshCount = 0;
     @Override
     public void run() {
-      _allTopics.addAll(_metadataClient.refreshMetadata().cluster().topics());
+      _allTopics.addAll(refreshClusterAndGeneration().cluster().topics());
       _refreshCount++;
       if (_refreshCount % REFRESH_LIMIT == 0) {
         _partitionMetricSampleAggregator.retainEntityGroup(_allTopics);

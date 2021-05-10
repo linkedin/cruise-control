@@ -273,8 +273,8 @@ public class Broker implements Serializable, Comparable<Broker> {
   public SortedReplicas trackedSortedReplicas(String sortName) {
     SortedReplicas sortedReplicas = _sortedReplicas.get(sortName);
     if (sortedReplicas == null) {
-      throw new IllegalStateException("The sort name " + sortName + "  is not found. Make sure trackSortedReplicas() " +
-                                      "has been called for the sort name");
+      throw new IllegalStateException("The sort name " + sortName + "  is not found. Make sure trackSortedReplicas() "
+                                      + "has been called for the sort name");
     }
     return sortedReplicas;
   }

@@ -142,9 +142,8 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
     validateNotNull(metricsHistoryByEntity, "Metrics history cannot be null.");
     validateNotNull(currentMetricsByEntity, "Current metrics cannot be null.");
 
-    if (metricsHistoryByEntity.isEmpty() ||
-        !isDataSufficient(metricsHistoryByEntity.values().iterator().next().metricValues().length(),
-                          _anomalyUpperPercentile, _anomalyLowerPercentile)) {
+    if (metricsHistoryByEntity.isEmpty() || !isDataSufficient(metricsHistoryByEntity.values().iterator().next().metricValues().length(),
+                                                              _anomalyUpperPercentile, _anomalyLowerPercentile)) {
       return Collections.emptySet();
     }
 
