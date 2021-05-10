@@ -135,8 +135,7 @@ abstract class MetricFetcher implements Callable<Boolean> {
         }
       }
 
-      if (_samplingMode == MetricSampler.SamplingMode.ONGOING_EXECUTION &&
-          _sampleStoreForPartitionMetricsDuringExecution != null) {
+      if (_samplingMode == MetricSampler.SamplingMode.ONGOING_EXECUTION && _sampleStoreForPartitionMetricsDuringExecution != null) {
         _sampleStoreForPartitionMetricsDuringExecution.storeSamples(new MetricSampler.Samples(samples.partitionMetricSamples(),
                                                                                               Collections.emptySet()));
       }

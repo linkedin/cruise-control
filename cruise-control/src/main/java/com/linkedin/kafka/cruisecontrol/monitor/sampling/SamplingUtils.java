@@ -46,6 +46,7 @@ public class SamplingUtils {
   private static final String SKIP_BUILDING_SAMPLE_PREFIX = "Skip generating metric sample for ";
   public static final int UNRECOGNIZED_BROKER_ID = -1;
   public static final Random RANDOM = new Random();
+  public static final int LOADING_PROGRESS = -1;
 
   private SamplingUtils() {
   }

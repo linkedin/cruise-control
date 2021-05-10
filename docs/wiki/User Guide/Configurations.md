@@ -277,6 +277,14 @@ We are still trying to improve cruise control. And following are some configurat
 | min.broker.sample.store.topic.retention.time.ms       | Integer | N         | 3600000       | The config for the minimal retention time for Kafka broker sample store topic                                                                                                                           |
 | skip.sample.store.topic.rack.awareness.check          | Boolean | N         | false         | The config to skip rack awareness sanity check for sample store topics                                                                                                                                  |
 
+### KafkaPartitionMetricSampleDuringExecutionStore configurations
+| Name                                                  | Type    | Required? | Default Value | Description                                                                                                     |
+|-------------------------------------------------------|---------|-----------|---------------|-----------------------------------------------------------------------------------------------------------------|
+| partition.metric.sample.store.on.execution.topic      | String  | Y         |               | The topic in which Cruise Control will store its processed partition metric samples during ongoing execution.   |
+| sample.store.on.execution.topic.replication.factor    | Integer | N         | 2             | The config for the replication factor of Kafka partition metrics sample store during ongoing execution topics.  |
+| partition.sample.store.on.execution.partition.count   | Integer | N         | 32            | The config for the number of partition for Kafka partition metrics sample store during ongoing execution topic. |
+| partition.sample.store.on.execution.retention.time.ms | Integer | N         | 3600000       | The config for the retention time for Kafka partition metrics sample store during ongoing execution topic.      |
+
 ### MaintenanceEventTopicReader configurations
 | Name                                          | Type    | Required? | Default Value           | Description                                                       |
 |-----------------------------------------------|---------|-----------|-------------------------|-------------------------------------------------------------------|
