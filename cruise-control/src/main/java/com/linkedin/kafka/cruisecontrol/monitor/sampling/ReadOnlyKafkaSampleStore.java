@@ -9,7 +9,8 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.Executors;
 
-import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.*;
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.LOADING_PROGRESS;
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.createSampleStoreConsumer;
 
 
 /**

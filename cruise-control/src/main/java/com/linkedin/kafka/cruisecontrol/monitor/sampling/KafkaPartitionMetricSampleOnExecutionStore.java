@@ -49,8 +49,7 @@ public class KafkaPartitionMetricSampleOnExecutionStore extends AbstractKafkaSam
 
   @Override
   public void configure(Map<String, ?> config) {
-    _partitionMetricSampleStoreTopic = KafkaCruiseControlUtils.getRequiredConfig(config,
-                                                                                 PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_CONFIG);
+    _partitionMetricSampleStoreTopic = KafkaCruiseControlUtils.getRequiredConfig(config, PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_CONFIG);
     String metricSampleStoreTopicReplicationFactorString = (String) config.get(
         PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_REPLICATION_FACTOR_CONFIG);
     _sampleStoreTopicReplicationFactor = metricSampleStoreTopicReplicationFactorString == null
@@ -59,15 +58,14 @@ public class KafkaPartitionMetricSampleOnExecutionStore extends AbstractKafkaSam
     String partitionSampleStoreTopicPartitionCountString = (String) config.get(
         PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_PARTITION_COUNT_CONFIG);
     int partitionSampleStoreTopicPartitionCount = partitionSampleStoreTopicPartitionCountString == null
-                                               || partitionSampleStoreTopicPartitionCountString.isEmpty()
-                                               ? DEFAULT_PARTITION_SAMPLE_STORE_TOPIC_PARTITION_COUNT
-                                               : Integer.parseInt(partitionSampleStoreTopicPartitionCountString);
-    String sampleStoreTopicRetentionTimeMsString = (String) config.get(
-        PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_RETENTION_TIME_MS_CONFIG);
+                                                  || partitionSampleStoreTopicPartitionCountString.isEmpty()
+                                                  ? DEFAULT_PARTITION_SAMPLE_STORE_TOPIC_PARTITION_COUNT
+                                                  : Integer.parseInt(partitionSampleStoreTopicPartitionCountString);
+    String sampleStoreTopicRetentionTimeMsString = (String) config.get(PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_RETENTION_TIME_MS_CONFIG);
     long partitionSampleStoreTopicRetentionTimeMs = sampleStoreTopicRetentionTimeMsString == null
-                                                || sampleStoreTopicRetentionTimeMsString.isEmpty()
-                                                ? DEFAULT_PARTITION_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS
-                                                : Long.parseLong(sampleStoreTopicRetentionTimeMsString);
+                                                    || sampleStoreTopicRetentionTimeMsString.isEmpty()
+                                                    ? DEFAULT_PARTITION_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS
+                                                    : Long.parseLong(sampleStoreTopicRetentionTimeMsString);
 
     createProducer(config, PRODUCER_CLIENT_ID);
     ensureTopicCreated(config, partitionSampleStoreTopicPartitionCount, partitionSampleStoreTopicRetentionTimeMs);
