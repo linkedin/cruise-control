@@ -283,7 +283,7 @@ We are still trying to improve cruise control. And following are some configurat
 | min.broker.sample.store.topic.retention.time.ms       | Integer | N         | 3600000       | The config for the minimal retention time for Kafka broker sample store topic                                                                                                                           |
 | skip.sample.store.topic.rack.awareness.check          | Boolean | N         | false         | The config to skip rack awareness sanity check for sample store topics                                                                                                                                  |
 
-### KafkaPartitionMetricSampleOngoingExecutionStore configurations
+### KafkaPartitionMetricSampleOnExecutionStore configurations
 | Name                                                                | Type    | Required? | Default Value | Description                                                                                                     |
 |---------------------------------------------------------------------|---------|-----------|---------------|-----------------------------------------------------------------------------------------------------------------|
 | partition.metric.sample.store.on.execution.topic                    | String  | Y         |               | The topic in which Cruise Control will store its processed partition metric samples during ongoing execution.   |
