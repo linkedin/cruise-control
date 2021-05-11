@@ -194,6 +194,7 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
     props.setProperty(MonitorConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG, "2");
     props.setProperty(MonitorConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG, Long.toString(SAMPLING_INTERVAL_MS));
     props.setProperty(MonitorConfig.SAMPLE_STORE_CLASS_CONFIG, NoopSampleStore.class.getName());
+    props.setProperty(MonitorConfig.SAMPLE_PARTITION_METRIC_STORE_ON_EXECUTION_CLASS_CONFIG, NoopSampleStore.class.getName());
     return props;
   }
 
