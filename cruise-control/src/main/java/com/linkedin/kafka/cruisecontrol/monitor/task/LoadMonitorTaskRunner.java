@@ -39,7 +39,7 @@ public class LoadMonitorTaskRunner {
   private final KafkaBrokerMetricSampleAggregator _brokerMetricSampleAggregator;
   private final MetadataClient _metadataClient;
   private final SampleStore _sampleStore;
-  private final SampleStore _sampleStoreForPartitionMetricOngoingExecution;
+  private final SampleStore _sampleStoreForPartitionMetricOnExecution;
   private final ScheduledExecutorService _samplingScheduler;
   private final long _samplingIntervalMs;
   // The following two configuration is actually for MetricSampleAggregator, the MetricFetcherManager uses it to
@@ -109,8 +109,8 @@ public class LoadMonitorTaskRunner {
     _brokerMetricSampleAggregator = brokerMetricSampleAggregator;
     _metadataClient = metadataClient;
     _sampleStore = config.getConfiguredInstance(MonitorConfig.SAMPLE_STORE_CLASS_CONFIG, SampleStore.class);
-    _sampleStoreForPartitionMetricOngoingExecution =
-        config.getConfiguredInstance(MonitorConfig.SAMPLE_PARTITION_METRIC_STORE_ONGOING_EXECUTION_CLASS_CONFIG, SampleStore.class);
+    _sampleStoreForPartitionMetricOnExecution =
+        config.getConfiguredInstance(MonitorConfig.SAMPLE_PARTITION_METRIC_STORE_ON_EXECUTION_CLASS_CONFIG, SampleStore.class);
     long samplingIntervalMs = config.getLong(MonitorConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG);
 
     _samplingScheduler =
@@ -244,7 +244,7 @@ public class LoadMonitorTaskRunner {
     }
     _samplingScheduler.scheduleAtFixedRate(new SamplingTask(_samplingIntervalMs, _metadataClient,
                                                             this, _metricFetcherManager, _sampleStore,
-                                                            _sampleStoreForPartitionMetricOngoingExecution, _time),
+                                                            _sampleStoreForPartitionMetricOnExecution, _time),
                                            0L,
                                            _samplingIntervalMs,
                                            TimeUnit.MILLISECONDS);

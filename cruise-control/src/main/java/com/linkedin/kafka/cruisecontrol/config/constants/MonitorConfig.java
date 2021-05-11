@@ -316,11 +316,11 @@ public class MonitorConfig {
       + "persisted samples can be reloaded from the sample store to Kafka Cruise Control.";
 
   /**
-   * <code>sample.partition.metrics.store.ongoing.execution.class</code>
+   * <code>sample.partition.metrics.store.on.execution.class</code>
    */
-  public static final String SAMPLE_PARTITION_METRIC_STORE_ONGOING_EXECUTION_CLASS_CONFIG = "sample.partition.metric.store.ongoing.execution.class";
-  public static final String DEFAULT_SAMPLE_PARTITION_METRIC_STORE_ONGOING_EXECUTION_CLASS = NoopSampleStore.class.getName();
-  public static final String SAMPLE_PARTITION_METRIC_STORE_ONGOING_EXECUTION_CLASS_DOC = "The sample store during execution class name. "
+  public static final String SAMPLE_PARTITION_METRIC_STORE_ON_EXECUTION_CLASS_CONFIG = "sample.partition.metric.store.on.execution.class";
+  public static final String DEFAULT_SAMPLE_PARTITION_METRIC_STORE_ON_EXECUTION_CLASS = NoopSampleStore.class.getName();
+  public static final String SAMPLE_PARTITION_METRIC_STORE_ON_EXECUTION_CLASS_DOC = "The sample store during execution class name. "
       + "User may configure a sample store that persists the partition metric samples collected while there is an ongoing execution. "
       + "This config is not intended for enhancing the fault tolerance of the system through recovery of the historical load information.";
 
@@ -558,9 +558,9 @@ public class MonitorConfig {
                             DEFAULT_SAMPLE_STORE_CLASS,
                             ConfigDef.Importance.LOW,
                             SAMPLE_STORE_CLASS_DOC)
-                    .define(SAMPLE_PARTITION_METRIC_STORE_ONGOING_EXECUTION_CLASS_CONFIG,
-                            ConfigDef.Type.CLASS, DEFAULT_SAMPLE_PARTITION_METRIC_STORE_ONGOING_EXECUTION_CLASS,
-                            ConfigDef.Importance.LOW, SAMPLE_PARTITION_METRIC_STORE_ONGOING_EXECUTION_CLASS_DOC)
+                    .define(SAMPLE_PARTITION_METRIC_STORE_ON_EXECUTION_CLASS_CONFIG,
+                            ConfigDef.Type.CLASS, DEFAULT_SAMPLE_PARTITION_METRIC_STORE_ON_EXECUTION_CLASS,
+                            ConfigDef.Importance.LOW, SAMPLE_PARTITION_METRIC_STORE_ON_EXECUTION_CLASS_DOC)
                     .define(TOPIC_CONFIG_PROVIDER_CLASS_CONFIG,
                             ConfigDef.Type.CLASS,
                             DEFAULT_TOPIC_CONFIG_PROVIDER_CLASS,

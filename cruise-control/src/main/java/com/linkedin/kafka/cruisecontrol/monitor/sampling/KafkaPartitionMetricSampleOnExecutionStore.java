@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -30,14 +31,13 @@ import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.LO
  *   Kafka partition sample store topic, default value is set to {@link #DEFAULT_PARTITION_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS}.</li>
  * </ul>
  */
-public class KafkaPartitionMetricSampleOngoingExecutionStore extends AbstractKafkaSampleStore {
-  private static final Logger LOG = LoggerFactory.getLogger(KafkaPartitionMetricSampleOngoingExecutionStore.class);
+public class KafkaPartitionMetricSampleOnExecutionStore extends AbstractKafkaSampleStore {
+  private static final Logger LOG = LoggerFactory.getLogger(KafkaPartitionMetricSampleOnExecutionStore.class);
 
   protected static final String PRODUCER_CLIENT_ID = "KafkaCruiseControlPartitionMetricSampleOnExecutionStoreProducer";
+  protected static final long DEFAULT_PARTITION_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS = TimeUnit.HOURS.toMillis(1);
 
   protected String _partitionMetricSampleStoreTopic;
-  protected int _partitionSampleStoreTopicPartitionCount;
-  protected long _partitionSampleStoreTopicRetentionTimeMs;
 
   public static final String PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_CONFIG = "partition.metric.sample.store.on.execution.topic";
   public static final String PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_REPLICATION_FACTOR_CONFIG =
@@ -58,30 +58,30 @@ public class KafkaPartitionMetricSampleOngoingExecutionStore extends AbstractKaf
                                          ? null : Short.parseShort(metricSampleStoreTopicReplicationFactorString);
     String partitionSampleStoreTopicPartitionCountString = (String) config.get(
         PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_PARTITION_COUNT_CONFIG);
-    _partitionSampleStoreTopicPartitionCount = partitionSampleStoreTopicPartitionCountString == null
+    int partitionSampleStoreTopicPartitionCount = partitionSampleStoreTopicPartitionCountString == null
                                                || partitionSampleStoreTopicPartitionCountString.isEmpty()
                                                ? DEFAULT_PARTITION_SAMPLE_STORE_TOPIC_PARTITION_COUNT
                                                : Integer.parseInt(partitionSampleStoreTopicPartitionCountString);
     String sampleStoreTopicRetentionTimeMsString = (String) config.get(
         PARTITION_METRIC_SAMPLE_STORE_ON_EXECUTION_TOPIC_RETENTION_TIME_MS_CONFIG);
-    _partitionSampleStoreTopicRetentionTimeMs = sampleStoreTopicRetentionTimeMsString == null
+    long partitionSampleStoreTopicRetentionTimeMs = sampleStoreTopicRetentionTimeMsString == null
                                                 || sampleStoreTopicRetentionTimeMsString.isEmpty()
                                                 ? DEFAULT_PARTITION_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS
                                                 : Long.parseLong(sampleStoreTopicRetentionTimeMsString);
 
     createProducer(config, PRODUCER_CLIENT_ID);
-    ensureTopicsCreated(config);
+    ensureTopicCreated(config, partitionSampleStoreTopicPartitionCount, partitionSampleStoreTopicRetentionTimeMs);
   }
 
   @SuppressWarnings("unchecked")
-  protected void ensureTopicsCreated(Map<String, ?> config) {
+  protected void ensureTopicCreated(Map<String, ?> config, int topicPartitionCount, long topicRetentionTimeMs) {
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient((Map<String, Object>) config);
     try {
       short replicationFactor = sampleStoreTopicReplicationFactor(config, adminClient);
 
       // New topics
-      NewTopic partitionSampleStoreNewTopic = wrapTopic(_partitionMetricSampleStoreTopic, _partitionSampleStoreTopicPartitionCount,
-                                                        replicationFactor, _partitionSampleStoreTopicRetentionTimeMs);
+      NewTopic partitionSampleStoreNewTopic = wrapTopic(_partitionMetricSampleStoreTopic, topicPartitionCount,
+                                                        replicationFactor, topicRetentionTimeMs);
       ensureTopicCreated(adminClient, partitionSampleStoreNewTopic);
     } finally {
       KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);

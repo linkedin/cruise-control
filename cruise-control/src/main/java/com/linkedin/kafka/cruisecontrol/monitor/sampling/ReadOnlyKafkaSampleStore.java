@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.Executors;
 
-import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.createSampleStoreConsumer;
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.*;
 
 
 /**
@@ -36,6 +36,7 @@ public class ReadOnlyKafkaSampleStore extends KafkaSampleStore {
     for (int i = 0; i < numProcessingThreads; i++) {
       _consumers.add(createSampleStoreConsumer(config, CONSUMER_CLIENT_ID_PREFIX));
     }
+    _loadingProgress = LOADING_PROGRESS;
   }
 
   @Override
@@ -45,11 +46,6 @@ public class ReadOnlyKafkaSampleStore extends KafkaSampleStore {
 
   @Override
   public void storeSamples(MetricSampler.Samples samples) {
-    // Do nothing.
-  }
-
-  @Override
-  public void evictSamplesBefore(long timestamp) {
     // Do nothing.
   }
 }

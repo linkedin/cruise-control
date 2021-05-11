@@ -27,7 +27,7 @@ abstract class MetricFetcher implements Callable<Boolean> {
   protected final MetricSampler _metricSampler;
   protected final Cluster _cluster;
   protected final SampleStore _sampleStore;
-  protected final SampleStore _sampleStoreForPartitionMetricOngoingExecution;
+  protected final SampleStore _sampleStoreForPartitionMetricOnExecution;
   protected final Set<TopicPartition> _assignedPartitions;
   protected final long _startTimeMs;
   protected final long _endTimeMs;
@@ -67,8 +67,8 @@ abstract class MetricFetcher implements Callable<Boolean> {
    * @param metricSampler The sampler used to retrieve metrics.
    * @param cluster The Kafka cluster.
    * @param sampleStore Sample store to persist the fetched samples, or skip storing samples if {@code null}.
-   * @param sampleStoreForPartitionMetricOngoingExecution Sample store to persist the fetched partition samples during execution, or
-   *                                                      skip storing samples if {@code null}.
+   * @param sampleStoreForPartitionMetricOnExecution Sample store to persist the fetched partition samples during execution, or skip
+   *                                                storing samples if {@code null}.
    * @param assignedPartitions Partitions to fetch samples from.
    * @param startTimeMs The start time of the sampling period.
    * @param endTimeMs The end time of the sampling period.
@@ -80,7 +80,7 @@ abstract class MetricFetcher implements Callable<Boolean> {
   MetricFetcher(MetricSampler metricSampler,
                 Cluster cluster,
                 SampleStore sampleStore,
-                SampleStore sampleStoreForPartitionMetricOngoingExecution,
+                SampleStore sampleStoreForPartitionMetricOnExecution,
                 Set<TopicPartition> assignedPartitions,
                 long startTimeMs,
                 long endTimeMs,
@@ -91,7 +91,7 @@ abstract class MetricFetcher implements Callable<Boolean> {
     _metricSampler = metricSampler;
     _cluster = cluster;
     _sampleStore = sampleStore;
-    _sampleStoreForPartitionMetricOngoingExecution = sampleStoreForPartitionMetricOngoingExecution;
+    _sampleStoreForPartitionMetricOnExecution = sampleStoreForPartitionMetricOnExecution;
     _assignedPartitions = assignedPartitions;
     _startTimeMs = startTimeMs;
     _endTimeMs = endTimeMs;
@@ -135,9 +135,9 @@ abstract class MetricFetcher implements Callable<Boolean> {
         }
       }
 
-      if (_samplingMode == MetricSampler.SamplingMode.ONGOING_EXECUTION && _sampleStoreForPartitionMetricOngoingExecution != null) {
-        _sampleStoreForPartitionMetricOngoingExecution.storeSamples(new MetricSampler.Samples(samples.partitionMetricSamples(),
-                                                                                              Collections.emptySet()));
+      if (_samplingMode == MetricSampler.SamplingMode.ONGOING_EXECUTION && _sampleStoreForPartitionMetricOnExecution != null) {
+        _sampleStoreForPartitionMetricOnExecution.storeSamples(new MetricSampler.Samples(samples.partitionMetricSamples(),
+                                                                                         Collections.emptySet()));
       }
       // TODO: evolve sample store interface to allow independent eviction time for different type of metric samples.
       // We are not calling sampleStore.evictSamplesBefore() because the broker metric samples and partition metric

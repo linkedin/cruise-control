@@ -551,7 +551,7 @@ public class LoadMonitorTest {
     props.put(MonitorConfig.PARTITION_METRICS_WINDOW_MS_CONFIG, Long.toString(WINDOW_MS));
     props.put(CleanupPolicyProp(), DEFAULT_CLEANUP_POLICY);
     props.put(MonitorConfig.SAMPLE_STORE_CLASS_CONFIG, NoopSampleStore.class.getName());
-    props.put(MonitorConfig.SAMPLE_PARTITION_METRIC_STORE_ONGOING_EXECUTION_CLASS_CONFIG, NoopSampleStore.class.getName());
+    props.put(MonitorConfig.SAMPLE_PARTITION_METRIC_STORE_ON_EXECUTION_CLASS_CONFIG, NoopSampleStore.class.getName());
     props.put(ExecutorConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG, "false");
     props.put(MonitorConfig.MONITOR_STATE_UPDATE_INTERVAL_MS_CONFIG, MONITOR_STATE_UPDATE_INTERVAL_MS);
     if (isClusterJBOD) {
