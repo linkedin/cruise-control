@@ -24,6 +24,7 @@ class SamplingTask implements Runnable {
   private final LoadMonitorTaskRunner _loadMonitorTaskRunner;
   private final MetricFetcherManager _metricFetcherManager;
   private final SampleStore _sampleStore;
+  private final SampleStore _sampleStoreForPartitionMetricOnExecution;
   private long _lastSamplingPeriodEndTimeMs;
 
   SamplingTask(long samplingIntervalMs,
@@ -31,6 +32,7 @@ class SamplingTask implements Runnable {
                LoadMonitorTaskRunner loadMonitorTaskRunner,
                MetricFetcherManager metricFetcherManager,
                SampleStore sampleStore,
+               SampleStore sampleStoreForPartitionMetricOnExecution,
                Time time) {
     _samplingIntervalMs = samplingIntervalMs;
     _time = time;
@@ -38,6 +40,7 @@ class SamplingTask implements Runnable {
     _loadMonitorTaskRunner = loadMonitorTaskRunner;
     _metricFetcherManager = metricFetcherManager;
     _sampleStore = sampleStore;
+    _sampleStoreForPartitionMetricOnExecution = sampleStoreForPartitionMetricOnExecution;
     _lastSamplingPeriodEndTimeMs = _time.milliseconds() - _samplingIntervalMs;
   }
 
@@ -57,7 +60,7 @@ class SamplingTask implements Runnable {
           hasSamplingError = _metricFetcherManager.fetchMetricSamples(_lastSamplingPeriodEndTimeMs,
                                                                       samplingPeriodEndMs,
                                                                       deadline - now,
-                                                                      _sampleStore,
+                                                                      _sampleStore, _sampleStoreForPartitionMetricOnExecution,
                                                                       _loadMonitorTaskRunner.samplingMode());
 
           if (!hasSamplingError) {

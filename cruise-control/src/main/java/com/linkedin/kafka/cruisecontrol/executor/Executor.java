@@ -62,8 +62,7 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.ExecutionTasksSummary;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorAdminUtils.*;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVAL_TO_PERCENTAGE;
-import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.SamplingMode.ALL;
-import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.SamplingMode.BROKER_METRICS_ONLY;
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.SamplingMode.*;
 import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.ReplicaLogDirInfo;
 import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
@@ -1108,12 +1107,12 @@ public class Executor {
      */
     private void adjustSamplingModeBeforeExecution() throws InterruptedException {
       // Pause the partition metric sampling to avoid the loss of accuracy during execution.
-      while (_loadMonitor.samplingMode() != BROKER_METRICS_ONLY) {
+      while (_loadMonitor.samplingMode() != ONGOING_EXECUTION) {
         try {
           String reasonForPause = String.format("Paused-By-Cruise-Control-Before-Starting-Execution (Date: %s)", currentUtcDate());
           _loadMonitor.pauseMetricSampling(reasonForPause, FORCE_PAUSE_SAMPLING);
           // Set the metric sampling mode to retrieve broker samples only.
-          _loadMonitor.setSamplingMode(BROKER_METRICS_ONLY);
+          _loadMonitor.setSamplingMode(ONGOING_EXECUTION);
           break;
         } catch (IllegalStateException e) {
           Thread.sleep(executionProgressCheckIntervalMs());
