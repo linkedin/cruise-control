@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaTopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.DefaultMetricSamplerPartitionAssignor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampleStore;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.common.config.ConfigDef;
@@ -311,8 +312,17 @@ public class MonitorConfig {
   public static final String SAMPLE_STORE_CLASS_CONFIG = "sample.store.class";
   public static final String DEFAULT_SAMPLE_STORE_CLASS = KafkaSampleStore.class.getName();
   public static final String SAMPLE_STORE_CLASS_DOC = "The sample store class name. User may configure a sample store "
-      + "that persist the metric samples that have already been aggregated into Kafka Cruise Control. Later on the "
+      + "that persists the metric samples that have already been aggregated into Kafka Cruise Control. Later on the "
       + "persisted samples can be reloaded from the sample store to Kafka Cruise Control.";
+
+  /**
+   * <code>sample.partition.metrics.store.on.execution.class</code>
+   */
+  public static final String SAMPLE_PARTITION_METRIC_STORE_ON_EXECUTION_CLASS_CONFIG = "sample.partition.metric.store.on.execution.class";
+  public static final String DEFAULT_SAMPLE_PARTITION_METRIC_STORE_ON_EXECUTION_CLASS = NoopSampleStore.class.getName();
+  public static final String SAMPLE_PARTITION_METRIC_STORE_ON_EXECUTION_CLASS_DOC = "The sample store during execution class name. "
+      + "User may configure a sample store that persists the partition metric samples collected while there is an ongoing execution. "
+      + "This config is not intended for enhancing the fault tolerance of the system through recovery of the historical load information.";
 
   /**
    * <code>topic.config.provider.class</code>
@@ -548,6 +558,9 @@ public class MonitorConfig {
                             DEFAULT_SAMPLE_STORE_CLASS,
                             ConfigDef.Importance.LOW,
                             SAMPLE_STORE_CLASS_DOC)
+                    .define(SAMPLE_PARTITION_METRIC_STORE_ON_EXECUTION_CLASS_CONFIG,
+                            ConfigDef.Type.CLASS, DEFAULT_SAMPLE_PARTITION_METRIC_STORE_ON_EXECUTION_CLASS,
+                            ConfigDef.Importance.LOW, SAMPLE_PARTITION_METRIC_STORE_ON_EXECUTION_CLASS_DOC)
                     .define(TOPIC_CONFIG_PROVIDER_CLASS_CONFIG,
                             ConfigDef.Type.CLASS,
                             DEFAULT_TOPIC_CONFIG_PROVIDER_CLASS,

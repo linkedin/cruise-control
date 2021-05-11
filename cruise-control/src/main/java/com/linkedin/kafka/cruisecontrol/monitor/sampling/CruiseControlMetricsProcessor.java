@@ -123,14 +123,14 @@ public class CruiseControlMetricsProcessor {
     // Get partition metric samples.
     Map<Integer, Integer> skippedPartitionByBroker = null;
     Set<PartitionMetricSample> partitionMetricSamples = new HashSet<>();
-    if (samplingMode == MetricSampler.SamplingMode.ALL || samplingMode == MetricSampler.SamplingMode.PARTITION_METRICS_ONLY) {
+    if (samplingMode != MetricSampler.SamplingMode.BROKER_METRICS_ONLY) {
       skippedPartitionByBroker = addPartitionMetricSamples(cluster, partitionsDotNotHandled, partitionMetricSamples);
     }
 
     // Get broker metric samples.
     int skippedBroker = 0;
     Set<BrokerMetricSample> brokerMetricSamples = new HashSet<>();
-    if (samplingMode == MetricSampler.SamplingMode.ALL || samplingMode == MetricSampler.SamplingMode.BROKER_METRICS_ONLY) {
+    if (samplingMode != MetricSampler.SamplingMode.PARTITION_METRICS_ONLY) {
       skippedBroker = addBrokerMetricSamples(cluster, brokerMetricSamples);
     }
 
@@ -144,6 +144,7 @@ public class CruiseControlMetricsProcessor {
                           Set<PartitionMetricSample> partitionMetricSamples,
                           Set<BrokerMetricSample> brokerMetricSamples) {
     switch (samplingMode) {
+      case ONGOING_EXECUTION:
       case ALL:
         LOG.info("Generated {}{} partition metric samples and {}{} broker metric samples for timestamp {}.",
                  partitionMetricSamples.size(),

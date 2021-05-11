@@ -61,8 +61,7 @@ import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC2;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC3;
-import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.SamplingMode.ALL;
-import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.SamplingMode.BROKER_METRICS_ONLY;
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.SamplingMode.*;
 import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.isA;
 import static org.junit.Assert.assertTrue;
@@ -443,7 +442,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     EasyMock.expect(mockLoadMonitor.samplingMode()).andReturn(ALL).anyTimes();
     mockLoadMonitor.pauseMetricSampling(isA(String.class), EasyMock.anyBoolean());
     expectLastCall().anyTimes();
-    mockLoadMonitor.setSamplingMode(BROKER_METRICS_ONLY);
+    mockLoadMonitor.setSamplingMode(ONGOING_EXECUTION);
     expectLastCall().anyTimes();
     mockLoadMonitor.resumeMetricSampling(isA(String.class));
     expectLastCall().anyTimes();

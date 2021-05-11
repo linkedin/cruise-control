@@ -140,12 +140,32 @@ public class MetricFetcherManager {
    * @param endMs the end time of the fetching period.
    * @param timeoutMs the timeout.
    * @param sampleStore the sample store to save the broker and partition metric samples.
+   * @param samplingMode the sampling mode to indicate which type of samples is interested.
    * @return True if there was no fetching error, false otherwise.
    */
   public boolean fetchMetricSamples(long startMs,
                                     long endMs,
                                     long timeoutMs,
                                     SampleStore sampleStore,
+                                    MetricSampler.SamplingMode samplingMode) {
+    return fetchMetricSamples(startMs, endMs, timeoutMs, sampleStore, null, samplingMode);
+  }
+
+  /**
+   * Fetch the partition and broker metric samples for a given period.
+   * @param startMs the starting time of the fetching period.
+   * @param endMs the end time of the fetching period.
+   * @param timeoutMs the timeout.
+   * @param sampleStore the sample store to save the broker and partition metric samples.
+   * @param sampleStoreForPartitionMetricOnExecution the sample store to save the partition metrics samples during ongoing execution.
+   * @param samplingMode the sampling mode to indicate which type of samples is interested.
+   * @return True if there was no fetching error, false otherwise.
+   */
+  public boolean fetchMetricSamples(long startMs,
+                                    long endMs,
+                                    long timeoutMs,
+                                    SampleStore sampleStore,
+                                    SampleStore sampleStoreForPartitionMetricOnExecution,
                                     MetricSampler.SamplingMode samplingMode) {
     LOG.info("Kicking off metric sampling for time range [{}, {}], duration {} ms with timeout {} ms.",
              startMs, endMs, endMs - startMs, timeoutMs);
@@ -155,6 +175,7 @@ public class MetricFetcherManager {
                                                         _partitionMetricSampleAggregator,
                                                         _brokerMetricSampleAggregator,
                                                         sampleStore,
+                                                        sampleStoreForPartitionMetricOnExecution,
                                                         partitionAssignment,
                                                         startMs,
                                                         endMs,
