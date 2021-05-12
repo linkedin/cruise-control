@@ -78,7 +78,7 @@ public class BasicStats {
     _bytesOutRate = Math.max(broker.load().expectedUtilizationFor(Resource.NW_OUT), 0.0);
     _potentialBytesOutRate = Math.max(potentialBytesOutRate, 0.0);
     _numReplicas = broker.replicas().size();
-    _numLeaders =  broker.leaderReplicas().size();
+    _numLeaders = broker.leaderReplicas().size();
     _diskCapacity = Math.max(broker.capacityFor(Resource.DISK), 0.0);
     _networkInCapacity = Math.max(broker.capacityFor(Resource.NW_IN), 0.0);
     _networkOutCapacity = Math.max(broker.capacityFor(Resource.NW_OUT), 0.0);
@@ -145,7 +145,7 @@ public class BasicStats {
     _leaderBytesInRate += basicStats.leaderBytesInRate();
     _followerBytesInRate += basicStats.followerBytesInRate();
     _bytesOutRate += basicStats.bytesOutRate();
-    _potentialBytesOutRate  += basicStats.potentialBytesOutRate();
+    _potentialBytesOutRate += basicStats.potentialBytesOutRate();
     _numReplicas += basicStats.numReplicas();
     _numLeaders += basicStats.numLeaders();
     _diskCapacity += basicStats.diskCapacity();

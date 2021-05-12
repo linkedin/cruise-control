@@ -155,12 +155,12 @@ public abstract class ReplicaDistributionAbstractGoal extends AbstractGoal {
   }
 
   /**
-   * Count of replicas of interest in the cluster, use to calculate balance upper/lower limit.
+   * @return The count of replicas of interest in the cluster, use to calculate balance upper/lower limit.
    */
   abstract int numInterestedReplicas(ClusterModel clusterModel);
 
   /**
-   * The requested balance threshold.
+   * @return The requested balance threshold.
    */
   abstract double balancePercentage();
 

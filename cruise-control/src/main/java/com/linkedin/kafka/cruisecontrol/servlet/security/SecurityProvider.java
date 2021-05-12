@@ -8,7 +8,6 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import org.eclipse.jetty.security.Authenticator;
 import org.eclipse.jetty.security.ConstraintMapping;
 import org.eclipse.jetty.security.LoginService;
-
 import javax.servlet.ServletException;
 import java.util.List;
 import java.util.Set;

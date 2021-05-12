@@ -397,7 +397,7 @@ public class ExecutionTaskPlanner {
       if (_intraPartMoveTaskByBrokerId.containsKey(brokerId)) {
         Iterator<ExecutionTask> tasksForBroker = _intraPartMoveTaskByBrokerId.get(brokerId).iterator();
         while (limit-- > 0 && tasksForBroker.hasNext()) {
-          ExecutionTask task =  tasksForBroker.next();
+          ExecutionTask task = tasksForBroker.next();
           executableReplicaMovements.add(task);
           // Remove the proposal from the execution plan.
           tasksForBroker.remove();
@@ -422,6 +422,7 @@ public class ExecutionTaskPlanner {
   /**
    * A proposal is executable if the source broker and all the destination brokers are ready. i.e. has slots to
    * execute more proposals.
+   * @return {@code true} if the proposal is executable, {@code false} otherwise.
    */
   private boolean isExecutableProposal(ExecutionProposal proposal, Map<Integer, Integer> readyBrokers) {
     if (readyBrokers.get(proposal.oldLeader().brokerId()) <= 0) {

@@ -16,7 +16,8 @@ public class GoalsAndRequirements {
   protected final ModelCompletenessRequirements _requirements;
 
   public GoalsAndRequirements(List<String> goals, ModelCompletenessRequirements requirements) {
-    _goals = goals; // An empty list indicates the default goals.
+    // An empty list indicates the default goals.
+    _goals = goals;
     _requirements = requirements;
   }
 

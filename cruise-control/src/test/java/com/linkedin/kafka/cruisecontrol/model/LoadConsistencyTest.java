@@ -7,12 +7,10 @@ package com.linkedin.kafka.cruisecontrol.model;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
 import org.junit.runner.RunWith;

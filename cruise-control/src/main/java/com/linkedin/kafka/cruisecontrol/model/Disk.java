@@ -217,7 +217,7 @@ public class Disk implements Comparable<Disk> {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof  Disk)) {
+    if (!(o instanceof Disk)) {
       return false;
     }
     return compareTo((Disk) o) == 0;

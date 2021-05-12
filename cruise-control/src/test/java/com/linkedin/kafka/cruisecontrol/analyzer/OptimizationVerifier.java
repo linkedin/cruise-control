@@ -16,7 +16,6 @@ import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
-
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
@@ -29,7 +28,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.StringJoiner;
-
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.admin.AdminClient;

@@ -156,7 +156,7 @@ public class KafkaCruiseControlServletEndpointTest {
     UserTaskState userTaskState = new UserTaskState(_userTaskManager.getAllUserTasks(), null);
 
     // Test Case 1: Get all PROPOSAL or REBALANCE tasks
-    Map<String,  String []> answerQueryParam1 = new HashMap<>();
+    Map<String, String []> answerQueryParam1 = new HashMap<>();
     answerQueryParam1.put("param", new String[]{"true"});
     answerQueryParam1.put("endpoints", new String[]{PROPOSALS.toString() + "," + REBALANCE.toString()});
     HttpServletRequest answerQueryRequest1 = prepareRequest(_mockHttpSession, null, "", USER_TASKS.toString(), answerQueryParam1, GET_METHOD);
@@ -168,7 +168,7 @@ public class KafkaCruiseControlServletEndpointTest {
 
 
     // Test Case 2: Get all tasks from client 0.0.0.1
-    Map<String,  String []> answerQueryParam2 = new HashMap<>();
+    Map<String, String []> answerQueryParam2 = new HashMap<>();
     answerQueryParam2.put("param", new String[]{"true"});
     answerQueryParam2.put("client_ids", new String[]{"0.0.0.1"});
     HttpServletRequest answerQueryRequest2 = prepareRequest(_mockHttpSession, null, "", USER_TASKS.toString(), answerQueryParam2, GET_METHOD);
@@ -180,7 +180,7 @@ public class KafkaCruiseControlServletEndpointTest {
 
 
     // Test Case 3: Get all PROPOSALS and REMOVE_BROKERS from client 0.0.0.1
-    Map<String,  String []> answerQueryParam3 = new HashMap<>();
+    Map<String, String []> answerQueryParam3 = new HashMap<>();
     answerQueryParam3.put("param", new String[]{"true"});
     answerQueryParam3.put("client_ids", new String[]{"0.0.0.1"});
     answerQueryParam3.put("endpoints", new String[]{PROPOSALS.toString() + "," + REMOVE_BROKER.toString()});
@@ -193,7 +193,7 @@ public class KafkaCruiseControlServletEndpointTest {
 
 
     // Test Case 4: Get all tasks limit to 4 entries
-    Map<String,  String []> answerQueryParam4 = new HashMap<>();
+    Map<String, String []> answerQueryParam4 = new HashMap<>();
     answerQueryParam4.put("param", new String[]{"true"});
     answerQueryParam4.put("entries", new String[]{"4"});
     HttpServletRequest answerQueryRequest4 = prepareRequest(_mockHttpSession, null, "", USER_TASKS.toString(), answerQueryParam4, GET_METHOD);
@@ -205,16 +205,19 @@ public class KafkaCruiseControlServletEndpointTest {
 
     // Transition UserTaskManager state: some tasks will move from ACTIVE to COMPLETED
     // Resolve futures. Allow those tasks to be moved into completed state
-    getFuture(0).complete(new MockResult());    // Complete 1st request
-    getFuture(4).complete(new MockResult());    // Complete 5th request
-    getFuture(5).complete(new MockResult());    // Complete 6th request
+    // Complete 1st request
+    getFuture(0).complete(new MockResult());
+    // Complete 5th request
+    getFuture(4).complete(new MockResult());
+    // Complete 6th request
+    getFuture(5).complete(new MockResult());
     // Update task manager active vs completed state
     _userTaskManager.checkActiveUserTasks();
     // Now the UserTaskManager state has changed, so we reload the states
     UserTaskState userTaskState2 = new UserTaskState(_userTaskManager.getAllUserTasks(), null);
 
     // Test Case 5: Get all LOAD or REMOVE_BROKER tasks that's completed and with user task id repeatUUID
-    Map<String,  String []> answerQueryParam5 = new HashMap<>();
+    Map<String, String []> answerQueryParam5 = new HashMap<>();
     answerQueryParam5.put("param", new String[]{"true"});
     answerQueryParam5.put("endpoints", new String[]{LOAD.toString() + "," + REMOVE_BROKER.toString()});
     answerQueryParam5.put("user_task_ids", new String[]{repeatUUID.toString()});

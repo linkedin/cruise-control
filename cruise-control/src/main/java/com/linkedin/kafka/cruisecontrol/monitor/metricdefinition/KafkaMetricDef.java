@@ -48,8 +48,10 @@ public enum KafkaMetricDef {
   PRODUCE_RATE(AVG, COMMON, null, false),
   FETCH_RATE(AVG, COMMON, null, false),
   MESSAGE_IN_RATE(AVG, COMMON, null, false),
-  REPLICATION_BYTES_IN_RATE(AVG, COMMON, NW_IN, false), // Not available at topic level yet.
-  REPLICATION_BYTES_OUT_RATE(AVG, COMMON, NW_OUT, false), // Not available at topic level yet.
+  // Not available at topic level yet.
+  REPLICATION_BYTES_IN_RATE(AVG, COMMON, NW_IN, false),
+  // Not available at topic level yet.
+  REPLICATION_BYTES_OUT_RATE(AVG, COMMON, NW_OUT, false),
 
   BROKER_PRODUCE_REQUEST_RATE(AVG, BROKER_ONLY, null, false),
   BROKER_CONSUMER_FETCH_REQUEST_RATE(AVG, BROKER_ONLY, null, false),

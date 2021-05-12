@@ -22,7 +22,6 @@ import org.eclipse.jetty.util.security.Credential;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
 import javax.security.auth.Subject;
 import javax.servlet.ServletRequest;
 import javax.servlet.http.HttpServletResponse;

@@ -1139,6 +1139,7 @@ public class ConfigDef {
    *
    * If grouping is not specified, the result will reflect "natural" order: listing required fields first,
    * then ordering by importance, and finally by name.
+   * @return A list of configs sorted taking the 'group' and 'orderInGroup' into account.
    */
   private List<ConfigKey> sortedConfigs() {
     final Map<String, Integer> groupOrd = new HashMap<>(_groups.size());
@@ -1189,7 +1190,7 @@ public class ConfigDef {
   }
 
   /**
-   * Returns a new validator instance that delegates to the base validator but unprefixes the config name along the way.
+   * @return A new validator instance that delegates to the base validator but unprefixes the config name along the way.
    */
   private static Validator embeddedValidator(final String keyPrefix, final Validator base) {
     if (base == null) {
@@ -1205,6 +1206,7 @@ public class ConfigDef {
 
   /**
    * Updated list of dependent configs with the specified {@code prefix} added.
+   * @return Updated dependents.
    */
   private static List<String> embeddedDependents(final String keyPrefix, final List<String> dependents) {
     if (dependents == null) {
@@ -1218,7 +1220,7 @@ public class ConfigDef {
   }
 
   /**
-   * Returns a new recommender instance that delegates to the base recommender but unprefixes the input parameters along the way.
+   * @return A new recommender instance that delegates to the base recommender but unprefixes the input parameters along the way.
    */
   private static Recommender embeddedRecommender(final String keyPrefix, final Recommender base) {
     if (base == null) {

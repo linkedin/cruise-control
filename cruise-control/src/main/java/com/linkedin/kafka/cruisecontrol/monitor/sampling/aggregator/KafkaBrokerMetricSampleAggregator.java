@@ -52,7 +52,7 @@ public class KafkaBrokerMetricSampleAggregator extends MetricSampleAggregator<St
    * @return Metric sample aggregation result for brokers.
    */
   public MetricSampleAggregationResult<String, BrokerEntity> aggregate(Set<BrokerEntity> brokerEntities) {
-    AggregationOptions<String, BrokerEntity>  aggregationOptions =
+    AggregationOptions<String, BrokerEntity> aggregationOptions =
         new AggregationOptions<>(MIN_VALID_BROKER_RATIO, MIN_VALID_GROUP_RATIO, MIN_VALID_WINDOWS,
                                  _maxAllowedExtrapoloationsPerBroker, brokerEntities,
                                  AggregationOptions.Granularity.ENTITY, INCLUDE_INVALID_ENTITIES);

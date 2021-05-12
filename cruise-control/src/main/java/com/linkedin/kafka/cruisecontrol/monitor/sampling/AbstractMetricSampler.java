@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
-
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;

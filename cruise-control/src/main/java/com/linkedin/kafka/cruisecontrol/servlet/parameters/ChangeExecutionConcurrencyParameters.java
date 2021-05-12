@@ -21,7 +21,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  * Optional Parameters for {@link CruiseControlEndPoint#ADMIN}.
  * This class holds all the request parameters for {@link AdminParameters.AdminType#CHANGE_CONCURRENCY}.
  */
-public class ChangeExecutionConcurrencyParameters  extends AbstractParameters {
+public class ChangeExecutionConcurrencyParameters extends AbstractParameters {
   protected static final SortedSet<String> CASE_INSENSITIVE_PARAMETER_NAMES;
   static {
     SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);

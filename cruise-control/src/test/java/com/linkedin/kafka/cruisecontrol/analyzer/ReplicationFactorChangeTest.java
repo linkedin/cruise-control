@@ -132,7 +132,7 @@ public class ReplicationFactorChangeTest {
         || (replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == NetworkInboundUsageDistributionGoal.class)
         || (replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == NetworkOutboundUsageDistributionGoal.class)
         || (replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == CpuUsageDistributionGoal.class)
-        || (replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == LeaderReplicaDistributionGoal.class  && smallCluster)
+        || (replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == LeaderReplicaDistributionGoal.class && smallCluster)
         || (replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == NetworkOutboundUsageDistributionGoal.class && smallCluster)
         || (goalClass == LeaderBytesInDistributionGoal.class && (replicationFactor == SMALL_REPLICATION_FACTOR || smallCluster))
         || (replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == DiskUsageDistributionGoal.class && !smallCluster)
@@ -281,9 +281,11 @@ public class ReplicationFactorChangeTest {
                                  Boolean expectedToOptimize) throws Exception {
     Properties configOverrides = new Properties();
     configOverrides.put(AnalyzerConfig.MIN_TOPIC_LEADERS_PER_BROKER_CONFIG, "1");
-    if (topics.contains(DeterministicCluster.TOPIC_A)) { // It implies the cluster model is the medium cluster model
+    if (topics.contains(DeterministicCluster.TOPIC_A)) {
+      // It implies the cluster model is the medium cluster model
       configOverrides.put(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG, DeterministicCluster.TOPIC_A);
-    } else if (topics.contains(DeterministicCluster.T2)) { // It implies the cluster model is the small cluster model
+    } else if (topics.contains(DeterministicCluster.T2)) {
+      // It implies the cluster model is the small cluster model
       configOverrides.put(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG, DeterministicCluster.T2);
     } else {
       fail("Cannot figure out which topic to use to test the MinTopicLeadersPerBrokerGoal with model: " + clusterModel);

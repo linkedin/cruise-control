@@ -13,7 +13,6 @@ import org.eclipse.jetty.security.ConfigurableSpnegoLoginService;
 import org.eclipse.jetty.security.LoginService;
 import org.eclipse.jetty.security.authentication.AuthorizationService;
 import org.eclipse.jetty.security.authentication.ConfigurableSpnegoAuthenticator;
-
 import java.nio.file.Paths;
 
 /**

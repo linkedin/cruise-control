@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.detector.notifier;
 
 import java.io.IOException;
-
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
@@ -13,7 +12,6 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import com.linkedin.cruisecontrol.detector.AnomalyType;
 
 public class NotifierUtils {

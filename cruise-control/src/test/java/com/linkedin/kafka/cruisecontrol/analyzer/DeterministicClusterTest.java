@@ -33,7 +33,6 @@ import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
-
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -41,7 +40,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
-
 import java.util.Properties;
 import org.junit.Rule;
 import org.junit.Test;
@@ -240,7 +238,8 @@ public class DeterministicClusterTest {
     // Min-topic-leader-replica-per-broker satisfiable4 to test the case where two topics need to have at least one leader per broker.
     properties = getDefaultCruiseControlProperties();
     properties.setProperty(AnalyzerConfig.MIN_TOPIC_LEADERS_PER_BROKER_CONFIG, "1");
-    properties.setProperty(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG, "topic\\d"); // Try to match "topic0" and "topic1"
+    // Try to match "topic0" and "topic1"
+    properties.setProperty(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG, "topic\\d");
     p.add(params(new BalancingConstraint(new KafkaCruiseControlConfig(properties)), DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable4(),
                  Collections.singletonList(MinTopicLeadersPerBrokerGoal.class.getName()), verifications, null));
     return p;

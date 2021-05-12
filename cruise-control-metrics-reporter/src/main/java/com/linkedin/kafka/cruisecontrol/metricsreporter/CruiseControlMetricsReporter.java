@@ -10,7 +10,6 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricsUtils;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.TopicMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.YammerMetricProcessor;
-
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
@@ -200,7 +199,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
    *
    * @return  MetricsRegistry with Kafka metrics
    */
-  private static MetricsRegistry metricsRegistry()   {
+  private static MetricsRegistry metricsRegistry() {
     try {
       Class.forName("kafka.metrics.KafkaYammerMetrics");
       LOG.info("KafkaYammerMetrics found and will be used.");

@@ -16,7 +16,6 @@ import org.eclipse.jetty.util.component.ContainerLifeCycle;
 import org.eclipse.jetty.util.component.LifeCycle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import javax.security.auth.Subject;
 import javax.servlet.ServletRequest;
 import javax.servlet.http.HttpServletRequest;

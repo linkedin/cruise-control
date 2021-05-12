@@ -18,7 +18,6 @@ import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -27,7 +26,6 @@ import java.util.Set;
 
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
-
 import static org.junit.Assert.assertEquals;
 
 public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness {

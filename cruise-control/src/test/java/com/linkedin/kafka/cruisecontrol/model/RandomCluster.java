@@ -12,7 +12,6 @@ import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolutionException;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -21,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
@@ -248,7 +246,8 @@ public class RandomCluster {
                 }
               }
             }
-          } else { // Exponential.
+          } else {
+            // Exponential.
             int binRange = numBrokers * numBrokers;
             int randomBinValue = uniformlyRandom(1, binRange, TestConstants.REPLICA_ASSIGNMENT_SEED + replicaIndex);
             randomBrokerId = 0;
@@ -396,7 +395,7 @@ public class RandomCluster {
       if (populateDisk) {
         int remainingBrokerWithBadDiskIndex = 0;
         for (Broker brokerToMark : cluster.brokers()) {
-          if (numBrokersWithBadDisk  == remainingBrokerWithBadDiskIndex) {
+          if (numBrokersWithBadDisk == remainingBrokerWithBadDiskIndex) {
             break;
           }
           if (brokerToMark.isAlive()) {

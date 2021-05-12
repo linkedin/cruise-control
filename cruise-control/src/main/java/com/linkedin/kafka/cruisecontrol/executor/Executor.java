@@ -910,7 +910,7 @@ public class Executor {
   private synchronized boolean stopExecution(boolean forceExecutionStop) {
     if ((forceExecutionStop && (_stopSignal.compareAndSet(NO_STOP_EXECUTION, FORCE_STOP_EXECUTION)
                                 || _stopSignal.compareAndSet(STOP_EXECUTION, FORCE_STOP_EXECUTION)))
-        || (!forceExecutionStop && _stopSignal.compareAndSet(NO_STOP_EXECUTION, STOP_EXECUTION)))  {
+        || (!forceExecutionStop && _stopSignal.compareAndSet(NO_STOP_EXECUTION, STOP_EXECUTION))) {
       _numExecutionStopped.incrementAndGet();
       _executionTaskManager.setStopRequested();
       return true;

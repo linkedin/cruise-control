@@ -10,7 +10,6 @@ import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCEmbeddedBroker;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
-
 import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;

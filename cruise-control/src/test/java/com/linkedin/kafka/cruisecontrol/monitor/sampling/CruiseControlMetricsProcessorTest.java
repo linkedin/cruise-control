@@ -349,6 +349,7 @@ public class CruiseControlMetricsProcessorTest {
    * <li>B0: CPU = {@link #B0_CPU}%</li>
    * <li>B1: CPU = {@link #B1_CPU}%</li>
    * </ul>
+   * @return Cruise Control metrics.
    */
   private Set<CruiseControlMetric> getCruiseControlMetrics() {
     Set<CruiseControlMetric> metrics = new HashSet<>();
@@ -414,10 +415,10 @@ public class CruiseControlMetricsProcessorTest {
                                       B0_TOPIC2_REPLICATION_BYTES_OUT * BYTES_IN_KB));
           break;
         default:
-          metrics.add(new TopicMetric(rawMetricType, _time.milliseconds(),  BROKER_ID_0, TOPIC1, i * BYTES_IN_MB));
-          metrics.add(new TopicMetric(rawMetricType, _time.milliseconds(),  BROKER_ID_1, TOPIC1, i * BYTES_IN_MB));
-          metrics.add(new TopicMetric(rawMetricType, _time.milliseconds(),  BROKER_ID_0, TOPIC2, i * BYTES_IN_MB));
-          metrics.add(new TopicMetric(rawMetricType, _time.milliseconds(),  BROKER_ID_1, TOPIC2, i * BYTES_IN_MB));
+          metrics.add(new TopicMetric(rawMetricType, _time.milliseconds(), BROKER_ID_0, TOPIC1, i * BYTES_IN_MB));
+          metrics.add(new TopicMetric(rawMetricType, _time.milliseconds(), BROKER_ID_1, TOPIC1, i * BYTES_IN_MB));
+          metrics.add(new TopicMetric(rawMetricType, _time.milliseconds(), BROKER_ID_0, TOPIC2, i * BYTES_IN_MB));
+          metrics.add(new TopicMetric(rawMetricType, _time.milliseconds(), BROKER_ID_1, TOPIC2, i * BYTES_IN_MB));
           break;
       }
     }

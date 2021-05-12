@@ -9,7 +9,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
-
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
@@ -31,7 +30,6 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
@@ -355,7 +353,7 @@ public class ClusterModel implements Serializable {
    * @param destinationLogdir Destination logdir.
    */
   public void relocateReplica(TopicPartition tp, int brokerId, String destinationLogdir) {
-    Replica replicaToMove =  _partitionsByTopicPartition.get(tp).replica(brokerId);
+    Replica replicaToMove = _partitionsByTopicPartition.get(tp).replica(brokerId);
     // Move replica from the source disk to destination disk on the same broker.
     replicaToMove.broker().moveReplicaBetweenDisks(tp, replicaToMove.disk().logDir(), destinationLogdir);
   }
@@ -906,7 +904,7 @@ public class ClusterModel implements Serializable {
    * Refresh the maximum topic replication factor statistic.
    */
   public void refreshClusterMaxReplicationFactor() {
-    _maxReplicationFactor =  _replicationFactorByTopic.values().stream().max(Integer::compareTo).orElse(0);
+    _maxReplicationFactor = _replicationFactorByTopic.values().stream().max(Integer::compareTo).orElse(0);
   }
 
   /**
@@ -1328,10 +1326,10 @@ public class ClusterModel implements Serializable {
       double leaderBytesInRate = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN);
       for (RawAndDerivedResource derivedResource : resources) {
         switch (derivedResource) {
-          case DISK: //fall through
-          case NW_OUT: //fall through
-          case CPU:  utilization[derivedResource.ordinal()][brokerIndex] =
-              broker.load().expectedUtilizationFor(derivedResource.derivedFrom());
+          case DISK:
+          case NW_OUT:
+          case CPU:
+            utilization[derivedResource.ordinal()][brokerIndex] = broker.load().expectedUtilizationFor(derivedResource.derivedFrom());
             break;
           case FOLLOWER_NW_IN:
             utilization[derivedResource.ordinal()][brokerIndex] =

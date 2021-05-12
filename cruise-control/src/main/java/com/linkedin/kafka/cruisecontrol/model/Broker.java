@@ -315,7 +315,7 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
-   * get the load density of a resource on a replica for sorting. This is to help reduce the movement cost.
+   * @return the load density of a resource on a replica for sorting. This is to help reduce the movement cost.
    */
   private double loadDensity(Replica replica, Resource resource) {
     double expectedLoad = replica.load().expectedUtilizationFor(resource);
@@ -344,7 +344,7 @@ public class Broker implements Serializable, Comparable<Broker> {
     if (!isAlive()) {
       _currentOfflineReplicas.addAll(replicas());
       _diskByLogdir.values().forEach(d -> d.setState(Disk.State.DEAD));
-      Resource.cachedValues().forEach(r -> _brokerCapacity[r.id()] =  DEAD_BROKER_CAPACITY);
+      Resource.cachedValues().forEach(r -> _brokerCapacity[r.id()] = DEAD_BROKER_CAPACITY);
     }
   }
 
@@ -393,6 +393,7 @@ public class Broker implements Serializable, Comparable<Broker> {
    * later populating replicas to cluster model will get some offline replicas' disk not found.
    *
    * @param logdir Logdir of the dead disk to be added to the current broker.
+   * @return The dead disk that was added to this broker.
    */
   Disk addDeadDisk(String logdir) {
     Disk disk = new Disk(logdir, this, -1);

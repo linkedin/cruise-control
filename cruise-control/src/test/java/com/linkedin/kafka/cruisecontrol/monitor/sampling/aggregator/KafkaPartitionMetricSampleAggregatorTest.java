@@ -34,7 +34,6 @@ import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.record.RecordBatch;
 import org.apache.kafka.common.requests.MetadataResponse;
 import org.junit.Test;
-
 import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
@@ -490,6 +489,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
 
   /**
    * Two topics with 2 partitions each. No data missing.
+   * @return Setup scenario #1
    */
   private TestContext setupScenario1() {
     TopicPartition t0p1 = new TopicPartition(TOPIC0, 1);
@@ -510,6 +510,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
    * Two topics with 2 partitions each.
    * T1P1 misses window 6000 (index=5), 7000 (index=6) and 20000 (index=19)
    * Other partitions has full data.
+   * @return Setup scenario #2
    */
   private TestContext setupScenario2() {
     TopicPartition t0p1 = new TopicPartition(TOPIC0, 1);
@@ -538,6 +539,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
    * T0P1 missing window 18000 (index=17), 19000 (index=18)
    * T1P1 missing window 6000 (index=5), 7000 (index=6)
    * Other partitions have all data.
+   * @return Setup scenario #3
    */
   private TestContext setupScenario3() {
     TopicPartition t0p1 = new TopicPartition(TOPIC0, 1);
@@ -573,6 +575,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
    * T0P1 has all the windows with AVG_AVAILABLE as extrapolations.
    * T1P1 misses window 6000 (index=5), 7000 (index=6)
    * All other partitions have full data.
+   * @return Setup scenario #4
    */
   private TestContext setupScenario4() {
     TopicPartition t0p1 = new TopicPartition(TOPIC0, 1);

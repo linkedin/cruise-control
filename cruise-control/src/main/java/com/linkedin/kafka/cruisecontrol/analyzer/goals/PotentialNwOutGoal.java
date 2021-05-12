@@ -16,7 +16,6 @@ import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
-
 import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
 import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
@@ -24,7 +23,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
 import java.util.SortedSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

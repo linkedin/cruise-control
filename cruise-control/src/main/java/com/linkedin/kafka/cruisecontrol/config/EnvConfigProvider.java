@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.config;
 import org.apache.kafka.common.config.ConfigData;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.provider.ConfigProvider;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;

@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.servlet.security.trustedproxy;
 
 import org.eclipse.jetty.server.UserIdentity;
 import org.junit.Test;
-
 import javax.servlet.http.HttpServletRequest;
 import java.util.Collections;
 

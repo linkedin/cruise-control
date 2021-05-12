@@ -26,11 +26,25 @@ public class BrokerMetric extends CruiseControlMetric {
     return MetricClassId.BROKER_METRIC;
   }
 
+  /**
+   * The buffer capacity is calculated as follows:
+   * <ul>
+   *   <li>(headerPos + {@link Byte#BYTES}) - version</li>
+   *   <li>{@link Byte#BYTES} - raw metric type</li>
+   *   <li>{@link Long#BYTES} - time</li>
+   *   <li>{@link Integer#BYTES} - broker id</li>
+   *   <li>{@link Double#BYTES} - value</li>
+   * </ul>
+   * @param headerPos Header position
+   * @return Byte buffer of the partition metric.
+   */
   @Override
   public ByteBuffer toBuffer(int headerPos) {
-    ByteBuffer buffer = ByteBuffer.allocate(headerPos + 1 /* version */ + 1 /* raw metric type */
-                                            + Long.BYTES /* time */ + Integer.BYTES /* broker id */
-                                            + Double.BYTES /* value */);
+    ByteBuffer buffer = ByteBuffer.allocate(headerPos + Byte.BYTES
+                                            + Byte.BYTES
+                                            + Long.BYTES
+                                            + Integer.BYTES
+                                            + Double.BYTES);
     buffer.position(headerPos);
     buffer.put(METRIC_VERSION);
     buffer.put(rawMetricType().id());

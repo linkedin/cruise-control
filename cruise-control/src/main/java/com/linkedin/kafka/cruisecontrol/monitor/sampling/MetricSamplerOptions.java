@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 import java.util.Set;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
-
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
 
 /**

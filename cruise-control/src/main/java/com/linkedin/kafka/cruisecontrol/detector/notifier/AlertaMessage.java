@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.detector.notifier;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
-
 import javax.validation.constraints.NotNull;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;

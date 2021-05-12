@@ -425,7 +425,7 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(3, 4, aggregator, PE_T1P0, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 1, aggregator, PE_T1P1, 1, WINDOW_MS, METRIC_DEF);
 
-    ClusterModel clusterModel =  loadMonitor.clusterModel(-1, Long.MAX_VALUE, requirements1, true, new OperationProgress());
+    ClusterModel clusterModel = loadMonitor.clusterModel(-1, Long.MAX_VALUE, requirements1, true, new OperationProgress());
     for (TopicPartition tp : Arrays.asList(T0P0, T0P1, T1P0, T1P1)) {
       assertNotNull(clusterModel.partition(tp));
     }
@@ -583,7 +583,7 @@ public class LoadMonitorTest {
   private Map<Integer, KafkaFuture<Map<String, DescribeLogDirsResponse.LogDirInfo>>> getDescribeLogDirsResultValues() {
 
     Map<Integer, KafkaFuture<Map<String, DescribeLogDirsResponse.LogDirInfo>>> futureByBroker = new HashMap<>();
-    Map<String, DescribeLogDirsResponse.LogDirInfo> logdirInfoBylogdir =  new HashMap<>();
+    Map<String, DescribeLogDirsResponse.LogDirInfo> logdirInfoBylogdir = new HashMap<>();
     Map<TopicPartition, DescribeLogDirsResponse.ReplicaInfo> replicaInfoByPartition = new HashMap<>();
     replicaInfoByPartition.put(T0P0, new DescribeLogDirsResponse.ReplicaInfo(0, 0, false));
     replicaInfoByPartition.put(T0P1, new DescribeLogDirsResponse.ReplicaInfo(0, 0, false));
@@ -592,7 +592,7 @@ public class LoadMonitorTest {
     logdirInfoBylogdir.put("/tmp/kafka-logs", new DescribeLogDirsResponse.LogDirInfo(Errors.NONE, replicaInfoByPartition));
     futureByBroker.put(0, completedFuture(logdirInfoBylogdir));
 
-    logdirInfoBylogdir =  new HashMap<>();
+    logdirInfoBylogdir = new HashMap<>();
     replicaInfoByPartition = new HashMap<>();
     replicaInfoByPartition.put(T0P0, new DescribeLogDirsResponse.ReplicaInfo(0, 0, false));
     replicaInfoByPartition.put(T0P1, new DescribeLogDirsResponse.ReplicaInfo(0, 0, false));

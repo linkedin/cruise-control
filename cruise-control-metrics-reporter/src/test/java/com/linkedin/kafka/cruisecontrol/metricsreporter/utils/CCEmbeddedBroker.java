@@ -30,7 +30,8 @@ public class CCEmbeddedBroker implements AutoCloseable {
     _hosts = new HashMap<>();
 
     try {
-      KafkaConfig kafkaConfig = KafkaConfig.apply(config); //also validates
+      // Also validates the config
+      KafkaConfig kafkaConfig = KafkaConfig.apply(config);
       parseConfigs(config);
       _kafkaServer = new KafkaServer(kafkaConfig, Time.SYSTEM, Option.empty(), new ArrayBuffer<>());
       startup();
@@ -50,14 +51,15 @@ public class CCEmbeddedBroker implements AutoCloseable {
     _id = Integer.parseInt((String) config.get(KafkaConfig.BrokerIdProp()));
     _logDir = new File((String) config.get(KafkaConfig.LogDirProp()));
 
-    //bind addresses
+    // Bind addresses
     String listenersString = (String) config.get(KafkaConfig.ListenersProp());
     for (String protocolAddr : listenersString.split("\\s*,\\s*")) {
       try {
         URI uri = new URI(protocolAddr.trim());
         SecurityProtocol protocol = SecurityProtocol.forName(uri.getScheme());
         _hosts.put(protocol, uri.getHost());
-        _ports.put(protocol, null); //we get the value after boot
+        // We get the value after boot
+        _ports.put(protocol, null);
       } catch (Exception e) {
         throw new IllegalStateException(e);
       }
