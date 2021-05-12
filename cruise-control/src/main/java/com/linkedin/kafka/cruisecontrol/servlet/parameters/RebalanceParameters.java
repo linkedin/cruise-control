@@ -98,7 +98,7 @@ public class RebalanceParameters extends ProposalsParameters {
     boolean twoStepVerificationEnabled = _config.getBoolean(WebServerConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _replicationThrottle = ParameterUtils.replicationThrottle(_request, _config);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
-    _isRebalanceDiskMode =  ParameterUtils.isRebalanceDiskMode(_request);
+    _isRebalanceDiskMode = ParameterUtils.isRebalanceDiskMode(_request);
     boolean requestReasonRequired = _config.getBoolean(ExecutorConfig.REQUEST_REASON_REQUIRED_CONFIG);
     _reason = ParameterUtils.reason(_request, requestReasonRequired && !_dryRun);
     _stopOngoingExecution = ParameterUtils.stopOngoingExecution(_request);

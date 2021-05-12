@@ -51,7 +51,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     try {
       jsonStructure = getJsonStructure(isVerbose, topic);
       jsonStructure.put(VERSION, JSON_VERSION);
-    }  catch (InterruptedException | ExecutionException e) {
+    } catch (InterruptedException | ExecutionException e) {
       throw new RuntimeException("Failed to populate broker logDir state.", e);
     }
     return gson.toJson(jsonStructure);

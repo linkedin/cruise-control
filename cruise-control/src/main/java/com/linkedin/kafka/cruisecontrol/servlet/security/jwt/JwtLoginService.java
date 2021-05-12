@@ -18,7 +18,6 @@ import org.eclipse.jetty.security.authentication.AuthorizationService;
 import org.eclipse.jetty.server.UserIdentity;
 import org.eclipse.jetty.util.component.AbstractLifeCycle;
 import org.eclipse.jetty.util.component.LifeCycle;
-
 import javax.security.auth.Subject;
 import javax.servlet.ServletRequest;
 import javax.servlet.http.HttpServletRequest;

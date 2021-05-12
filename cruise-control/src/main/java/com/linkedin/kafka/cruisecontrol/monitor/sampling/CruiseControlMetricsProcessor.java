@@ -96,6 +96,7 @@ public class CruiseControlMetricsProcessor {
 
   /**
    * Package private for unit tests.
+   * @return The cached number of cores by broker.
    */
   Map<Integer, Short> cachedNumCoresByBroker() {
     return _cachedNumCoresByBroker;

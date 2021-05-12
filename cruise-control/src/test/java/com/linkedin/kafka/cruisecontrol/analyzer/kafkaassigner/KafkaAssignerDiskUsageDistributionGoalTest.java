@@ -206,6 +206,7 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
    * b4: 290
    *
    * The average broker size should be: 270
+   * @return Cluster model with the documented properties for testing.
    */
   private ClusterModel createClusterModel() {
     Map<TopicPartition, Float> partitionSize = new HashMap<>();

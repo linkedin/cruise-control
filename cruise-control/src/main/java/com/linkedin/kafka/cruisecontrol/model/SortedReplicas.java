@@ -72,7 +72,7 @@ public class SortedReplicas {
     _selectionFuncs = selectionFuncs;
     _scoreFunc = scoreFunc;
     _priorityFuncs = priorityFuncs;
-    _replicaComparator =  (Replica r1, Replica r2) -> {
+    _replicaComparator = (Replica r1, Replica r2) -> {
       // First apply priority functions.
       int result = comparePriority(r1, r2);
       if (result != 0) {
@@ -156,7 +156,7 @@ public class SortedReplicas {
    */
   void remove(Replica replica) {
     if (_initialized) {
-        _sortedReplicas.remove(replica);
+      _sortedReplicas.remove(replica);
     }
   }
 

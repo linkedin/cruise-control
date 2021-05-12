@@ -13,13 +13,11 @@ import io.swagger.v3.oas.models.Paths;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.parser.OpenAPIV3Parser;
-
 import io.swagger.v3.parser.core.models.ParseOptions;
 import io.swagger.v3.parser.core.models.SwaggerParseResult;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
 import java.util.List;
 import java.util.Set;
 import java.util.Map;

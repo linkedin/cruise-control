@@ -31,15 +31,28 @@ public class TopicMetric extends CruiseControlMetric {
   }
 
   /**
+   * The buffer capacity is calculated as follows:
+   * <ul>
+   *   <li>(headerPos + {@link Byte#BYTES}) - version</li>
+   *   <li>{@link Byte#BYTES} - raw metric type</li>
+   *   <li>{@link Long#BYTES} - time</li>
+   *   <li>{@link Integer#BYTES} - broker id</li>
+   *   <li>{@link Integer#BYTES} - topic length</li>
+   *   <li>topic.length - topic</li>
+   *   <li>{@link Double#BYTES} - value</li>
+   * </ul>
    * @param headerPos Header position
    * @return Byte buffer of topic metric.
    */
   public ByteBuffer toBuffer(int headerPos) {
     byte[] topic = _topic.getBytes(StandardCharsets.UTF_8);
-    ByteBuffer buffer = ByteBuffer.allocate(headerPos + 1 /* version */ + 1 /* raw metric type */
-                                            + Long.BYTES /* time */ + Integer.BYTES /* broker id */
-                                            + Integer.BYTES /* topic length */ + topic.length /* topic */
-                                            + Double.BYTES /* value */);
+    ByteBuffer buffer = ByteBuffer.allocate(headerPos + Byte.BYTES
+                                            + Byte.BYTES
+                                            + Long.BYTES
+                                            + Integer.BYTES
+                                            + Integer.BYTES
+                                            + topic.length
+                                            + Double.BYTES);
     buffer.position(headerPos);
     buffer.put(METRIC_VERSION);
     buffer.put(rawMetricType().id());

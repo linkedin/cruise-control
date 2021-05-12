@@ -45,19 +45,40 @@ public class TopicReplicationFactorPlan extends MaintenancePlan {
     return _topicRegexWithRFUpdate;
   }
 
+  /**
+   * The content size for buffer is calculated as follows:
+   * <ul>
+   *   <li>{@link Byte#BYTES} - maintenance event type id.</li>
+   *   <li>{@link Byte#BYTES} - plan version.</li>
+   *   <li>{@link Long#BYTES} - timeMs.</li>
+   *   <li>{@link Integer#BYTES} - broker id.</li>
+   *   <li>{@link Byte#BYTES} - number of replication factor update entries.</li>
+   *   <li>The required capacity for RF entries (see below) - /* total capacity for all entries.</li>
+   * </ul>
+   *
+   * The required capacity for each RF entry is calculated as follows:
+   * <ul>
+   *   <li>{@link Short#BYTES} - replication factor.</li>
+   *   <li>{@link Integer#BYTES} - regex length.</li>
+   *   <li>The byte length of the actual regex - regex.</li>
+   * </ul>
+   *
+   * @return CRC of the content
+   */
   protected long getCrc() {
     byte numRFUpdateEntries = (byte) _topicRegexWithRFUpdate.size();
     int requiredCapacityForRFEntries = 0;
     for (Map.Entry<Short, String> entry : _topicRegexWithRFUpdate.entrySet()) {
-      requiredCapacityForRFEntries += (Short.BYTES /* replication factor */ + Integer.BYTES /* regex length */
-                                       + entry.getValue().getBytes(StandardCharsets.UTF_8).length /* regex */);
+      requiredCapacityForRFEntries += (Short.BYTES
+                                       + Integer.BYTES
+                                       + entry.getValue().getBytes(StandardCharsets.UTF_8).length);
     }
-    int contentSize = (Byte.BYTES /* maintenance event type id */
-                       + Byte.BYTES /* plan version */
-                       + Long.BYTES /* timeMs */
-                       + Integer.BYTES /* broker id */
-                       + Byte.BYTES /* number of replication factor update entries */
-                       + requiredCapacityForRFEntries /* total capacity for all entries */);
+    int contentSize = (Byte.BYTES
+                       + Byte.BYTES
+                       + Long.BYTES
+                       + Integer.BYTES
+                       + Byte.BYTES
+                       + requiredCapacityForRFEntries);
     ByteBuffer buffer = ByteBuffer.allocate(contentSize);
     buffer.put(maintenanceEventType().id());
     buffer.put(planVersion());

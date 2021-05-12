@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.detector.notifier;
 
 import org.junit.Test;
-
 import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
@@ -48,7 +47,7 @@ public class AlertaMessageTest {
 
     assertEquals(expectedJson, alertaMessage.toString());
   }
-  
+
   @Test
   public void testAlertaMessageJsonFormatWithoutNullValues() {
     AlertaMessage alertaMessage = new AlertaMessage("resource", "event");

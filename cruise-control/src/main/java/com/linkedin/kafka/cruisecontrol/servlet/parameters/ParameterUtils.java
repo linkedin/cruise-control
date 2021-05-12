@@ -23,7 +23,6 @@ import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
-
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -177,10 +176,12 @@ public class ParameterUtils {
         throw new UserRequestException("Unsupported request method: " + request.getMethod() + ".");
     }
     String pathInfo = request.getPathInfo();
-    if (pathInfo == null) { // URL does not have any extra path information
+    if (pathInfo == null) {
+      // URL does not have any extra path information
       return null;
     }
-    String path = pathInfo.substring(1); // Skip the first character '/'
+    // Skip the first character '/'
+    String path = pathInfo.substring(1);
     for (CruiseControlEndPoint endPoint : supportedEndpoints) {
       if (endPoint.toString().equalsIgnoreCase(path)) {
         return endPoint;
@@ -324,6 +325,7 @@ public class ParameterUtils {
   /**
    * Default: {@code false} -- i.e. recently demoted brokers may receive leadership from the other brokers as long as
    * {@link ExecutorConfig#DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG}.
+   * @return The value of {@link #EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM} parameter.
    */
   static boolean excludeRecentlyDemotedBrokers(HttpServletRequest request) {
     return excludeBrokers(request, EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM, false);
@@ -332,6 +334,7 @@ public class ParameterUtils {
   /**
    * Default: {@code true} -- i.e. recently removed brokers may not receive replicas from the other brokers as long as
    * {@link ExecutorConfig#REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG}.
+   * @return The value of {@link #EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM} parameter.
    */
   static boolean excludeRecentlyRemovedBrokers(HttpServletRequest request) {
     return excludeBrokers(request, EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM, true);
@@ -574,6 +577,7 @@ public class ParameterUtils {
 
   /**
    * Empty parameter means all substates are requested.
+   * @return The value of {@link #SUBSTATES_PARAM} parameter.
    */
   static Set<CruiseControlState.SubState> substates(HttpServletRequest request) throws UnsupportedEncodingException {
     Set<String> substatesString = parseParamToStringSet(request, SUBSTATES_PARAM);
@@ -629,6 +633,7 @@ public class ParameterUtils {
    * Get self healing types for {@link #ENABLE_SELF_HEALING_FOR_PARAM} and {@link #DISABLE_SELF_HEALING_FOR_PARAM}.
    *
    * Sanity check ensures that the same anomaly is not specified in both configs at the same request.
+   * @return The self healing types for {@link #ENABLE_SELF_HEALING_FOR_PARAM} and {@link #DISABLE_SELF_HEALING_FOR_PARAM}.
    */
   static Map<Boolean, Set<AnomalyType>> selfHealingFor(HttpServletRequest request) throws UnsupportedEncodingException {
     Set<AnomalyType> enableSelfHealingFor = anomalyTypes(request, true);
@@ -649,6 +654,7 @@ public class ParameterUtils {
    * Get concurrency adjuster types for {@link #ENABLE_CONCURRENCY_ADJUSTER_FOR_PARAM} and {@link #DISABLE_CONCURRENCY_ADJUSTER_FOR_PARAM}.
    *
    * Sanity check ensures that the same concurrency type is not specified in both configs at the same request.
+   * @return The concurrency adjuster types for {@link #ENABLE_CONCURRENCY_ADJUSTER_FOR_PARAM} and {@link #DISABLE_CONCURRENCY_ADJUSTER_FOR_PARAM}.
    */
   static Map<Boolean, Set<ConcurrencyType>> concurrencyAdjusterFor(HttpServletRequest request) throws UnsupportedEncodingException {
     Set<ConcurrencyType> enableConcurrencyAdjusterFor = concurrencyTypes(request, true);
@@ -852,6 +858,7 @@ public class ParameterUtils {
    * @param request                        The Http request.
    * @param isInterBrokerPartitionMovement True if inter-broker partition movement per broker.
    * @param isIntraBrokerPartitionMovement True if intra-broker partition movement.
+   * @return The execution concurrency requirement dynamically set from the Http request.
    */
   static Integer concurrentMovements(HttpServletRequest request,
                                      boolean isInterBrokerPartitionMovement,
@@ -877,7 +884,9 @@ public class ParameterUtils {
   }
 
   /**
+   * Default: {@link Integer#MAX_VALUE} for upper bound parameter, or {@link Integer#MIN_VALUE} otherwise.
    * @param isUpperBound True if upper bound, false if lower bound.
+   * @return The value of {@link #PARTITION_PARAM} parameter.
    */
   static int partitionBoundary(HttpServletRequest request, boolean isUpperBound) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), PARTITION_PARAM);
@@ -922,6 +931,7 @@ public class ParameterUtils {
 
   /**
    * Default: An empty set.
+   * @return The value of {@link #DESTINATION_BROKER_IDS_PARAM} parameter.
    */
   static Set<Integer> destinationBrokerIds(HttpServletRequest request) throws UnsupportedEncodingException {
     Set<Integer> brokerIds = Collections.unmodifiableSet(parseParamToIntegerSet(request, DESTINATION_BROKER_IDS_PARAM));
@@ -940,6 +950,7 @@ public class ParameterUtils {
 
   /**
    * Default: An empty set.
+   * @return The value of {@link #APPROVE_PARAM} parameter for approve or {@link #DISCARD_PARAM} parameter for discard.
    */
   private static Set<Integer> review(HttpServletRequest request, boolean isApprove) throws UnsupportedEncodingException {
     Set<Integer> parsedReview = parseParamToIntegerSet(request, isApprove ? APPROVE_PARAM : DISCARD_PARAM);
@@ -951,6 +962,7 @@ public class ParameterUtils {
    * {@link #DISCARD_PARAM}.
    *
    * Sanity check ensures that the same request cannot be specified in both configs.
+   * @return {@link ReviewStatus#APPROVED} and {@link ReviewStatus#DISCARDED} requests via {@link #APPROVE_PARAM} and {@link #DISCARD_PARAM}.
    */
   static Map<ReviewStatus, Set<Integer>> reviewRequests(HttpServletRequest request) throws UnsupportedEncodingException {
     Set<Integer> approve = review(request, true);
@@ -973,6 +985,7 @@ public class ParameterUtils {
 
   /**
    * Default: An empty map.
+   * @return The value for {@link #BROKER_ID_AND_LOGDIRS_PARAM} parameter.
    */
   static Map<Integer, Set<String>> brokerIdAndLogdirs(HttpServletRequest request) throws UnsupportedEncodingException {
     final Map<Integer, Set<String>> brokerIdAndLogdirs = new HashMap<>();
@@ -1045,6 +1058,7 @@ public class ParameterUtils {
 
   /**
    * Default: {@link DataFrom#VALID_WINDOWS}
+   * @return The value for {@link #DATA_FROM_PARAM} parameter.
    */
   static DataFrom getDataFrom(HttpServletRequest request) {
     DataFrom dataFrom = DataFrom.VALID_WINDOWS;
@@ -1056,7 +1070,8 @@ public class ParameterUtils {
   }
 
   /**
-   * Skip hard goal check in kafka_assigner mode.
+   * Check whether to skip the hard goal check.
+   * @return {@code true} if hard goal check should be skipped, {@code false} otherwise.
    */
   static boolean skipHardGoalCheck(HttpServletRequest request) {
     return isKafkaAssignerMode(request) || isRebalanceDiskMode(request) || getBooleanParam(request, SKIP_HARD_GOAL_CHECK_PARAM, false);

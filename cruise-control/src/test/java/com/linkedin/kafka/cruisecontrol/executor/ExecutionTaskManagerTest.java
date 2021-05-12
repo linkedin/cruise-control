@@ -102,7 +102,7 @@ public class ExecutionTaskManagerTest {
       TASK_MANAGER.setRequestedLeadershipMovementConcurrency(null);
       List<ExecutionTask> tasks = TASK_MANAGER.getInterBrokerReplicaMovementTasks();
       assertEquals(1, tasks.size());
-      ExecutionTask task  = tasks.get(0);
+      ExecutionTask task = tasks.get(0);
       verifyStateChangeSequence(sequence, task, TASK_MANAGER);
     }
 

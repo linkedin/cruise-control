@@ -272,6 +272,7 @@ public class AnomalyDetectorState {
 
   /**
    * Package private for testing
+   * @return Metrics as a JSON structure.
    */
   Map<String, Object> metrics() {
     return _metrics.getJsonStructure();
@@ -338,6 +339,7 @@ public class AnomalyDetectorState {
 
   /**
    * Package private for unit tests.
+   * @return Recent anomalies by type.
    */
   Map<AnomalyType, Map<String, AnomalyState>> recentAnomaliesByType() {
     return _recentAnomaliesByType;

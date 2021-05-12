@@ -273,7 +273,8 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
   private void ensureBrokersAllHaveEnoughLeaderOfTopics(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
       throws OptimizationFailureException {
     if (_mustHaveTopicLeadersPerBroker.isEmpty()) {
-      return; // Early termination to avoid some unnecessary computation
+      // Early termination to avoid some unnecessary computation
+      return;
     }
     for (Broker broker : clusterModel.aliveBrokers()) {
       if (!isEligibleToHaveLeaders(broker, optimizationOptions)) {
@@ -305,7 +306,8 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
     moveAwayOfflineReplicas(broker, clusterModel, optimizedGoals, optimizationOptions);
     if (_mustHaveTopicLeadersPerBroker.isEmpty()) {
-      return; // Early termination to avoid some unnecessary computation
+      // Early termination to avoid some unnecessary computation
+      return;
     }
     if (!(broker.isAlive() && isEligibleToHaveLeaders(broker, optimizationOptions))) {
       return;
@@ -322,7 +324,8 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
                                               OptimizationOptions optimizationOptions) throws OptimizationFailureException {
     int topicLeaderCountOnReceiverBroker = broker.numLeadersFor(topicMustHaveLeaderPerBroker);
     if (topicLeaderCountOnReceiverBroker >= minTopicLeadersPerBroker()) {
-      return; // This broker has enough leader replica(s) for the given topic
+      // This broker has enough leader replica(s) for the given topic
+      return;
     }
     // Try to elect follower replica(s) of the interested topic on this broker to be leader
     List<Replica> followerReplicas = broker.trackedSortedReplicas(_replicaSortName)
@@ -338,7 +341,8 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
                                       LEADERSHIP_MOVEMENT, optimizedGoals, optimizationOptions) != null) {
           topicLeaderCountOnReceiverBroker++;
           if (topicLeaderCountOnReceiverBroker >= minTopicLeadersPerBroker()) {
-            return; // This broker satisfies this goal for the given topic
+            // This broker satisfies this goal for the given topic
+            return;
           }
         }
       }
@@ -365,13 +369,15 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
                                                              INTER_BROKER_REPLICA_MOVEMENT, optimizedGoals, optimizationOptions);
         if (destinationBroker != null) {
           leaderMoved = true;
-          break; // Successfully move one leader replica
+          // Successfully move one leader replica
+          break;
         }
       }
       if (leaderMoved) {
         topicLeaderCountOnReceiverBroker++;
         if (topicLeaderCountOnReceiverBroker >= minTopicLeadersPerBroker()) {
-          return; // This broker satisfies this goal for the given topic
+          // This broker satisfies this goal for the given topic
+          return;
         }
         topicLeaderCountOnGiverBroker--;
         if (topicLeaderCountOnGiverBroker > minTopicLeadersPerBroker()) {

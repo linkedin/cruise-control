@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.servlet.security;
 import org.apache.kerby.kerberos.kerb.KrbException;
 import org.apache.kerby.kerberos.kerb.client.JaasKrbUtil;
 import org.apache.kerby.kerberos.kerb.server.SimpleKdcServer;
-
 import javax.security.auth.Subject;
 import javax.security.auth.login.LoginException;
 import java.io.File;

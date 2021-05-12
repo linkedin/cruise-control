@@ -424,6 +424,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
 
   /**
    * Package private for testing.
+   * @return Metric sample aggregator state.
    */
   MetricSampleAggregatorState<G, E> aggregatorState() {
     maybeUpdateAggregatorState();
@@ -561,7 +562,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
   }
 
   /**
-   * The absolute window index of the given timestamp.
+   * @return The absolute window index of the given timestamp.
    */
   private long windowIndex(long time) {
     return time / _windowMs + 1;

@@ -13,10 +13,8 @@ import org.eclipse.jetty.security.UserStore;
 import org.eclipse.jetty.security.authentication.AuthorizationService;
 import org.eclipse.jetty.server.UserIdentity;
 import org.junit.Test;
-
 import javax.security.auth.Subject;
 import javax.servlet.http.HttpServletRequest;
-
 import java.util.Collections;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DO_AS;

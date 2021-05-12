@@ -34,7 +34,8 @@ public class CCEmbeddedBrokerBuilder {
   private boolean _enableDeleteTopic;
   private boolean _enableLogCleaner;
   //resource management
-  private long _logCleanerDedupBufferSize = 2097152; //2MB
+  // 2MB
+  private long _logCleanerDedupBufferSize = 2097152;
   private String _rack;
 
   public CCEmbeddedBrokerBuilder() {
