@@ -30,14 +30,12 @@ import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
-
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -139,7 +137,7 @@ public class ExcludedTopicsTest {
                  DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable(), noDeadBroker, true, true, configOverrides));
     // With one excluded and relevant topic, no dead brokers (Expect exception since the excluded topic happens to be the
     // same topic which this goal interests in)
-    p.add(params(1,  MinTopicLeadersPerBrokerGoal.class, Collections.singleton(TestConstants.TOPIC_MUST_HAVE_LEADER_REPLICAS_ON_BROKERS),
+    p.add(params(1, MinTopicLeadersPerBrokerGoal.class, Collections.singleton(TestConstants.TOPIC_MUST_HAVE_LEADER_REPLICAS_ON_BROKERS),
                  OptimizationFailureException.class, DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable(),
                  noDeadBroker, null, null, configOverrides));
 

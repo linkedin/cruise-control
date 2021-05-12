@@ -13,7 +13,7 @@ import org.apache.kafka.common.annotation.InterfaceStability;
  * The finder which checks violation of user-defined topic properties.
  */
 @InterfaceStability.Evolving
-public interface  TopicAnomalyFinder extends CruiseControlConfigurable {
+public interface TopicAnomalyFinder extends CruiseControlConfigurable {
 
   /**
    * Get a collection of topic anomalies for topics which are misconfigured or violate user-defined topic properties.

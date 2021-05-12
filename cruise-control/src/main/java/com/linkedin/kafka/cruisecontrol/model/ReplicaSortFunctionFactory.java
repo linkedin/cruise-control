@@ -8,7 +8,6 @@ package com.linkedin.kafka.cruisecontrol.model;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
-
 import java.util.Set;
 import java.util.function.Function;
 

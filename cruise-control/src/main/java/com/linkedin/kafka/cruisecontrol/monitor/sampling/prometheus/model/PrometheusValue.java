@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model;
 
 import java.util.Objects;
-
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.annotations.SerializedName;
 

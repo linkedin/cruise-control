@@ -55,11 +55,23 @@ public abstract class MaintenancePlan {
     return _planVersion;
   }
 
+  /**
+   * The content size for buffer is calculated as follows:
+   * <ul>
+   *   <li>{@link Byte#BYTES} - maintenance event type id.</li>
+   *   <li>{@link Byte#BYTES} - plan version.</li>
+   *   <li>{@link Long#BYTES} - timeMs.</li>
+   *   <li>{@link Integer#BYTES} - broker id.</li>
+   *   <li></li>
+   * </ul>
+   *
+   * @return CRC of the content
+   */
   protected long getCrc() {
-    int contentSize = (Byte.BYTES /* maintenance event type id */
-                       + Byte.BYTES /* plan version */
-                       + Long.BYTES /* timeMs */
-                       + Integer.BYTES /* broker id */);
+    int contentSize = (Byte.BYTES
+                       + Byte.BYTES
+                       + Long.BYTES
+                       + Integer.BYTES);
     ByteBuffer buffer = ByteBuffer.allocate(contentSize);
     buffer.put(maintenanceEventType().id());
     buffer.put(planVersion());

@@ -110,7 +110,7 @@ public class RequestInfo {
         }
       }
     }
-    return  sb.toString();
+    return sb.toString();
   }
 
   public EndPoint endPoint() {

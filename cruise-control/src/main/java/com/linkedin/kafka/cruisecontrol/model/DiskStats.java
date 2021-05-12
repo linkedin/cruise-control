@@ -37,30 +37,30 @@ public class DiskStats {
     _capacity = capacity;
   }
 
-  public int numLeaderReplicas()  {
+  public int numLeaderReplicas() {
     return _numLeaderReplicas;
   }
 
-  public int numReplicas()  {
+  public int numReplicas() {
     return _numReplicas;
   }
 
-  public Double utilization()  {
+  public Double utilization() {
     return _utilization;
   }
 
-  public double capacity()  {
+  public double capacity() {
     return _capacity;
   }
 
   public Double utilizationPercentage() {
-    return  _utilization == null ? null : _utilization * 100.0 / _capacity;
+    return _utilization == null ? null : _utilization * 100.0 / _capacity;
   }
 
   /**
    * @return An object that can be further used to encode into JSON.
    */
-  public Map<String, Object> getJSONStructure()   {
+  public Map<String, Object> getJSONStructure() {
     Map<String, Object> entry = new HashMap<>(4);
     entry.put(DISK_MB, _utilization == null ? DEAD_STATE : _utilization);
     entry.put(DISK_PCT, _utilization == null ? DEAD_STATE : utilizationPercentage());

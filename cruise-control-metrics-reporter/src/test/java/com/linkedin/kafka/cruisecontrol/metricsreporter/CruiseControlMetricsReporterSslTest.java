@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.metricsreporter;
 import java.io.File;
 import java.io.IOException;
 import java.util.Properties;
-
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaTestUtils;
 import kafka.server.KafkaConfig;
 import org.apache.kafka.clients.CommonClientConfigs;

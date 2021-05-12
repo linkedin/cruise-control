@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.servlet.security.spnego;
 import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreAuthorizationService;
 import org.eclipse.jetty.security.UserStore;
 import org.eclipse.jetty.server.UserIdentity;
-
 import javax.servlet.http.HttpServletRequest;
 
 public class SpnegoUserStoreAuthorizationService extends UserStoreAuthorizationService {

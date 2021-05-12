@@ -124,7 +124,7 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
   @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
     // Currently disk-granularity goals do not work with broker-granularity goals.
-    if (action.sourceBrokerLogdir() ==  null || action.destinationBrokerLogdir() == null) {
+    if (action.sourceBrokerLogdir() == null || action.destinationBrokerLogdir() == null) {
       throw new IllegalArgumentException(this.getClass().getSimpleName() + " does not support balancing action not "
                                          + "specifying logdir.");
     }
@@ -171,8 +171,8 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
     LOG.debug("balancing broker {}, optimized goals = {}.", broker, optimizedGoals);
 
     // Get alive disk over capacity limit.
-    List<Disk> disksOverUtilized  =  broker.disks().stream().filter(Disk::isAlive)
-                                           .filter(this::isUtilizationOverLimit).collect(Collectors.toList());
+    List<Disk> disksOverUtilized = broker.disks().stream().filter(Disk::isAlive)
+                                         .filter(this::isUtilizationOverLimit).collect(Collectors.toList());
     if (disksOverUtilized.isEmpty()) {
       return;
     }

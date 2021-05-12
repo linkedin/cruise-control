@@ -31,7 +31,7 @@ public class OperationProgress {
   private List<Long> _startTimes = new ArrayList<>();
   private final String _operation;
 
-  public  OperationProgress() {
+  public OperationProgress() {
     this("");
   }
 

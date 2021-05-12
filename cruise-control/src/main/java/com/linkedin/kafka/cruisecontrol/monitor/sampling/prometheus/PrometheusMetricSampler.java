@@ -17,7 +17,6 @@ import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import com.linkedin.cruisecontrol.common.config.ConfigDef;
 import com.linkedin.cruisecontrol.common.config.ConfigException;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfigUtils;

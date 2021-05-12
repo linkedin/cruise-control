@@ -11,7 +11,6 @@ import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreAuthorizationS
 import org.eclipse.jetty.security.Authenticator;
 import org.eclipse.jetty.security.LoginService;
 import org.eclipse.jetty.security.authentication.AuthorizationService;
-
 import javax.servlet.ServletException;
 import java.io.IOException;
 import java.security.cert.CertificateException;

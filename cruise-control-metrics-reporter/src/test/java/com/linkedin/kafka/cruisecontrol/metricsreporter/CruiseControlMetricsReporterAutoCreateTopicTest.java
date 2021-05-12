@@ -19,7 +19,6 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
 import java.util.Collections;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;

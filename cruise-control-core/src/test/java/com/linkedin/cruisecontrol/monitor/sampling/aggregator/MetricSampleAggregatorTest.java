@@ -427,6 +427,7 @@ public class MetricSampleAggregatorTest {
    * Entity 3: Invalid in window 3, 4 and 20
    *
    * Note that the first window index is 1.
+   * @return Metric sample aggregator.
    */
   private MetricSampleAggregator<String, IntegerEntity> prepareCompletenessTestEnv() {
     MetricSampleAggregator<String, IntegerEntity> aggregator =

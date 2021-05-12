@@ -74,10 +74,10 @@ public class ExecutionTaskTracker {
     String metricName = "Executor";
     for (TaskType type : TaskType.cachedValues()) {
       for (ExecutionTaskState state : ExecutionTaskState.cachedValues()) {
-        String typeString =  type == TaskType.INTER_BROKER_REPLICA_ACTION
+        String typeString = type == TaskType.INTER_BROKER_REPLICA_ACTION
                              ? INTER_BROKER_REPLICA_ACTION : type == TaskType.INTRA_BROKER_REPLICA_ACTION
                                                              ? INTRA_BROKER_REPLICA_ACTION : LEADERSHIP_ACTION;
-        String stateString =  state == ExecutionTaskState.PENDING
+        String stateString = state == ExecutionTaskState.PENDING
                               ? PENDING : state == ExecutionTaskState.IN_PROGRESS
                                           ? IN_PROGRESS : state == ExecutionTaskState.ABORTING
                                                           ? ABORTING : state == ExecutionTaskState.ABORTED
@@ -106,7 +106,8 @@ public class ExecutionTaskTracker {
     _tasksByType.get(task.type()).get(task.state()).remove(task);
     switch (newState) {
       case PENDING:
-        break; // Let it go.
+        // Let it go.
+        break;
       case IN_PROGRESS:
         task.inProgress(_time.milliseconds());
         updateDataMovement(task);
@@ -286,7 +287,7 @@ public class ExecutionTaskTracker {
   }
 
   public int numRemainingIntraBrokerPartitionMovements() {
-    return  _tasksByType.get(TaskType.INTRA_BROKER_REPLICA_ACTION).get(ExecutionTaskState.PENDING).size();
+    return _tasksByType.get(TaskType.INTRA_BROKER_REPLICA_ACTION).get(ExecutionTaskState.PENDING).size();
   }
 
   public long remainingIntraBrokerDataToMoveInMB() {
@@ -297,9 +298,9 @@ public class ExecutionTaskTracker {
    * @return Number of finished intra broker partition movements, which is the sum of completed, dead, and aborted tasks.
    */
   public int numFinishedIntraBrokerPartitionMovements() {
-    return  _tasksByType.get(TaskType.INTRA_BROKER_REPLICA_ACTION).get(ExecutionTaskState.COMPLETED).size()
-            + _tasksByType.get(TaskType.INTRA_BROKER_REPLICA_ACTION).get(ExecutionTaskState.DEAD).size()
-            + _tasksByType.get(TaskType.INTRA_BROKER_REPLICA_ACTION).get(ExecutionTaskState.ABORTED).size();
+    return _tasksByType.get(TaskType.INTRA_BROKER_REPLICA_ACTION).get(ExecutionTaskState.COMPLETED).size()
+           + _tasksByType.get(TaskType.INTRA_BROKER_REPLICA_ACTION).get(ExecutionTaskState.DEAD).size()
+           + _tasksByType.get(TaskType.INTRA_BROKER_REPLICA_ACTION).get(ExecutionTaskState.ABORTED).size();
   }
 
   public long finishedIntraBrokerDataToMoveInMB() {

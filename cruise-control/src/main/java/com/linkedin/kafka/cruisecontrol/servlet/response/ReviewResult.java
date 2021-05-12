@@ -44,7 +44,8 @@ public class ReviewResult extends AbstractCruiseControlResponse {
     // Plaintext response, each column name will be underscore-separated instead of case-separated.
     int idLabelSize = RequestInfo.ID.length();
     int submitterAddressLabelSize = RequestInfo.SUBMITTER_ADDRESS.length() + 1;
-    int submissionTimeLabelSize = RequestInfo.SUBMISSION_TIME_MS.length() - 2; // Returns submission_time -- i.e. not submission_time_ms.
+    // Returns submission_time -- i.e. not submission_time_ms.
+    int submissionTimeLabelSize = RequestInfo.SUBMISSION_TIME_MS.length() - 2;
     int statusLabelSize = RequestInfo.STATUS.length();
     int endpointWithParamsLabelSize = RequestInfo.ENDPOINT_WITH_PARAMS.length() + 2;
     int reasonLabelSize = RequestInfo.REASON.length();

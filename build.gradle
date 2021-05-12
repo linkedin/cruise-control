@@ -92,7 +92,7 @@ subprojects {
 
   //code quality and inspections
   checkstyle {
-    project.ext.checkstyleVersion = '8.42'
+    toolVersion = '8.42'
     ignoreFailures = false
     configDir = file("$rootDir/checkstyle")
   }

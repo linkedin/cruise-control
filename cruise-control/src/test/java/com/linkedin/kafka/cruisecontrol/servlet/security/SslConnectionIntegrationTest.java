@@ -9,7 +9,6 @@ import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;

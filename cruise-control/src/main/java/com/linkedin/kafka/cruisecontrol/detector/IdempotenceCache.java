@@ -71,6 +71,7 @@ public class IdempotenceCache {
 
   /**
    * Package private for unit test.
+   * @return Time by maintenance event.
    */
   Map<MaintenanceEvent, Long> timeByMaintenanceEvent() {
     return Collections.unmodifiableMap(_timeByMaintenanceEvent);

@@ -9,7 +9,6 @@ import org.apache.kafka.common.config.ConfigException;
 import org.junit.Test;
 
 import static org.junit.Assert.assertThrows;
-
 import static org.easymock.EasyMock.partialMockBuilder;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
@@ -44,8 +43,10 @@ public class WebserverUrlPrefixConfigTest {
     verify(config);
     reset(config);
 
-    expect(config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG)).andReturn("a/b/c/d/*"); // Valid value
-    expect(config.getString(WebServerConfig.WEBSERVER_UI_URLPREFIX_CONFIG)).andReturn("a/b/c/");     // Invalid value
+    // Valid value
+    expect(config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG)).andReturn("a/b/c/d/*");
+    // Invalid value
+    expect(config.getString(WebServerConfig.WEBSERVER_UI_URLPREFIX_CONFIG)).andReturn("a/b/c/");
     replay(config);
     assertThrows(ConfigException.class, config::sanityCheckWebServerUrlPrefix);
     verify(config);

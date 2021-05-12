@@ -665,6 +665,7 @@ public class LoadMonitor {
 
   /**
    * Package private for unit test.
+   * @return The partition metric sample aggregator.
    */
   KafkaPartitionMetricSampleAggregator partitionSampleAggregator() {
     return _partitionMetricSampleAggregator;

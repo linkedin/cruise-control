@@ -206,6 +206,7 @@ public class KafkaCruiseControlServletUtils {
 
   /**
    * Creates a {@link HttpServletResponse#SC_BAD_REQUEST} Http servlet response.
+   * @return The error message.
    */
   static String handleUserRequestException(UserRequestException ure,
                                            HttpServletRequest request,
@@ -219,6 +220,7 @@ public class KafkaCruiseControlServletUtils {
 
   /**
    * Creates a {@link HttpServletResponse#SC_FORBIDDEN} Http servlet response.
+   * @return The error message.
    */
   static String handleConfigException(ConfigException ce,
                                       HttpServletRequest request,
@@ -233,6 +235,7 @@ public class KafkaCruiseControlServletUtils {
 
   /**
    * Creates a {@link HttpServletResponse#SC_INTERNAL_SERVER_ERROR} Http servlet response.
+   * @return The error message.
    */
   static String handleException(Exception e,
                                 HttpServletRequest request,

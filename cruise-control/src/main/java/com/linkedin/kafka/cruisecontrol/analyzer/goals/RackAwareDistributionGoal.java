@@ -328,7 +328,7 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
         if (someAliveRacksHaveNoReplicas || maxNumReplicasInARack - min(numReplicasByRack.values()) > 1) {
           Set<String> excludedRackIds = new HashSet<>(numReplicasByRack.size());
           if (someAliveRacksHaveNoReplicas) {
-             // Exclude all racks containing replicas of this partition.
+            // Exclude all racks containing replicas of this partition.
             excludedRackIds.addAll(numReplicasByRack.keySet());
           } else {
             for (Map.Entry<String, Integer> entry : numReplicasByRack.entrySet()) {

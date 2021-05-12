@@ -78,6 +78,7 @@ public class MonitorUtils {
    * If linear regression model is not used, CPU utilization of the follower will be fixed to be 0.2;
    *
    * @param aggregatedMetricValues the leader aggregated metric values to convert.
+   * @return The aggregated metric values for the corresponding follower.
    */
   private static AggregatedMetricValues toFollowerMetricValues(AggregatedMetricValues aggregatedMetricValues) {
     AggregatedMetricValues followerLoad = new AggregatedMetricValues();

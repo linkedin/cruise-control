@@ -138,12 +138,13 @@ public class UserTaskState extends AbstractCruiseControlResponse {
                            .append(requestURLLabelSize + padding)
                            .append("s");
 
-    sb.append(String.format(formattingStringBuilder.toString(), "USER TASK ID", "CLIENT ADDRESS", "START TIME", "STATUS",
-                            "REQUEST URL")); // header
+    // header
+    sb.append(String.format(formattingStringBuilder.toString(), "USER TASK ID", "CLIENT ADDRESS", "START TIME", "STATUS", "REQUEST URL"));
     for (UserTaskManager.UserTaskInfo userTaskInfo : taskInfoList) {
       String dateFormatted = utcDateFor(userTaskInfo.startMs());
+      // values
       sb.append(String.format(formattingStringBuilder.toString(), userTaskInfo.userTaskId().toString(), userTaskInfo.clientIdentity(),
-                              dateFormatted, userTaskInfo.state(), userTaskInfo.requestWithParams())); // values
+                              dateFormatted, userTaskInfo.state(), userTaskInfo.requestWithParams()));
     }
 
     // Populate original response of completed tasks if requested so.

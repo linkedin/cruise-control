@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.servlet.security.jwt;
 
 import org.eclipse.jetty.server.UserIdentity;
-
 import javax.security.auth.Subject;
 import java.security.Principal;
 

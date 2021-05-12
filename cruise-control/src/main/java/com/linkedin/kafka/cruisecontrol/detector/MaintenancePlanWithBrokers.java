@@ -15,7 +15,7 @@ public abstract class MaintenancePlanWithBrokers extends MaintenancePlan {
   protected final SortedSet<Integer> _brokers;
 
   public MaintenancePlanWithBrokers(MaintenanceEventType maintenanceEventType, long timeMs, int brokerId,
-      byte planVersion, SortedSet<Integer> brokers) {
+                                    byte planVersion, SortedSet<Integer> brokers) {
     super(maintenanceEventType, timeMs, brokerId, planVersion);
 
     if (brokers == null || brokers.isEmpty()) {
@@ -24,14 +24,28 @@ public abstract class MaintenancePlanWithBrokers extends MaintenancePlan {
     _brokers = new TreeSet<>(brokers);
   }
 
+  /**
+   * The content size for buffer is calculated as follows:
+   * <ul>
+   *   <li>{@link Byte#BYTES} - maintenance event type id.</li>
+   *   <li>{@link Byte#BYTES} - plan version.</li>
+   *   <li>{@link Long#BYTES} - timeMs.</li>
+   *   <li>{@link Integer#BYTES} - broker id.</li>
+   *   <li>{@link Short#BYTES} - number of brokers.</li>
+   *   <li>{@link Integer#BYTES} * numBrokers - brokers.</li>
+   *   <li></li>
+   * </ul>
+   *
+   * @return CRC of the content
+   */
   protected long getCrc() {
     short numBrokers = (short) _brokers.size();
-    int contentSize = (Byte.BYTES /* maintenance event type id */
-                       + Byte.BYTES /* plan version */
-                       + Long.BYTES /* timeMs */
-                       + Integer.BYTES /* broker id */
-                       + Short.BYTES /* number of brokers */
-                       + (Integer.BYTES * numBrokers) /* brokers */);
+    int contentSize = (Byte.BYTES
+                       + Byte.BYTES
+                       + Long.BYTES
+                       + Integer.BYTES
+                       + Short.BYTES
+                       + (Integer.BYTES * numBrokers));
     ByteBuffer buffer = ByteBuffer.allocate(contentSize);
     buffer.put(maintenanceEventType().id());
     buffer.put(planVersion());

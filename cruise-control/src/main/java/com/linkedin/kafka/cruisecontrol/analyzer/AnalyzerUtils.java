@@ -10,7 +10,6 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
-
 import com.linkedin.kafka.cruisecontrol.model.RawAndDerivedResource;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
@@ -19,7 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-
 import org.apache.commons.math3.random.MersenneTwister;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.stat.inference.KolmogorovSmirnovTest;
@@ -150,10 +148,12 @@ public class AnalyzerUtils {
    */
   public static int compare(double d1, double d2, double epsilon) {
     if (d2 - d1 > epsilon) {
-      return -1;  // Second value is larger than the first value.
+      // Second value is larger than the first value.
+      return -1;
     }
     if (d1 - d2 > epsilon) {
-      return 1;   // First value is larger than the second value.
+      // First value is larger than the second value.
+      return 1;
     }
     // Given values are approximately equal.
     return 0;

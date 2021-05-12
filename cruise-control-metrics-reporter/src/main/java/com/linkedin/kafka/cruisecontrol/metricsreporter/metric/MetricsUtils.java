@@ -24,7 +24,7 @@ public class MetricsUtils {
   private static final String REQUEST_QUEUE_SIZE = "RequestQueueSize";
   private static final String RESPONSE_QUEUE_SIZE = "ResponseQueueSize";
   private static final String REQUEST_QUEUE_TIME_MS = "RequestQueueTimeMs";
-  private static final String LOCAL_TIME_MS =   "LocalTimeMs";
+  private static final String LOCAL_TIME_MS = "LocalTimeMs";
   private static final String TOTAL_TIME_MS = "TotalTimeMs";
   private static final String TOTAL_FETCH_REQUEST_PER_SEC = "TotalFetchRequestsPerSec";
   private static final String TOTAL_PRODUCE_REQUEST_PER_SEC = "TotalProduceRequestsPerSec";
@@ -226,6 +226,7 @@ public class MetricsUtils {
 
   /**
    * Check if a metric is an interested metric.
+   * @return {@code true} for a metric of interest, {@code false} otherwise.
    */
   private static boolean isInterested(String group, String name, String type, Map<String, String> tags) {
     if (group.equals(KAFKA_SERVER)) {
@@ -242,6 +243,7 @@ public class MetricsUtils {
 
   /**
    * build a CruiseControlMetric object.
+   * @return A {@link CruiseControlMetric} object with the given properties.
    */
   private static CruiseControlMetric toCruiseControlMetric(long now,
                                                            int brokerId,
@@ -253,6 +255,7 @@ public class MetricsUtils {
 
   /**
    * build a CruiseControlMetric object.
+   * @return A {@link CruiseControlMetric} object with the given properties.
    */
   private static CruiseControlMetric toCruiseControlMetric(long now,
                                                            int brokerId,

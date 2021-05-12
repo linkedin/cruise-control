@@ -5,7 +5,7 @@
 
 <!DOCTYPE module PUBLIC "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN" "https://checkstyle.org/dtds/configuration_1_3.dtd">
 <!--
-    Checkstyle-Configuration: LinkedIn Style
+    Checkstyle-Configuration: (Enhanced) LinkedIn Style
     Description:
 LinkedIn Java style.
 -->
@@ -20,6 +20,14 @@ LinkedIn Java style.
     </module>
 
     <property name="severity" value="${checkstyle.severity}" default="error"/>
+
+    <!-- LENGTHS -->
+
+    <!-- Desired line length is 120 but allow some overrun beyond that -->
+    <module name="LineLength">
+        <property name="max" value="150"/>
+        <message key="maxLineLen" value="Line is longer than {0,number,integer} characters (found {1,number,integer}). Try to keep lines under 120 characters."/>
+    </module>
 
     <module name="TreeWalker">
 
@@ -92,6 +100,14 @@ LinkedIn Java style.
         <module name="RedundantModifier"/>
         <!-- Ensure proper wrap lines on operators -->
         <module name="OperatorWrap"/>
+        <!-- Avoid escaped unicode characters -->
+        <module name="AvoidEscapedUnicodeCharacters"/>
+        <!-- Ensure proper indentation for comments -->
+        <module name="CommentsIndentation"/>
+        <!-- Ensure that the class Foo is in a file named Foo.java -->
+        <module name="OuterTypeFilename"/>
+        <!-- Ensure that lines with code do not end with comment -->
+        <module name="TrailingComment"/>
         <!-- IMPORTS -->
 
         <!-- No imports statements using '*' notation except static imports -->
@@ -120,9 +136,12 @@ LinkedIn Java style.
         </module>
 
         <module name="JavadocMethod">
-            <property name="scope" value="public"/>
             <property name="allowMissingParamTags" value="true"/>
-            <property name="allowMissingThrowsTags" value="true"/>
+            <property name="tokens" value="METHOD_DEF,ANNOTATION_FIELD_DEF"/>
+        </module>
+
+        <module name="MissingJavadocMethodCheck">
+            <property name="scope" value="public"/>
             <property name="allowMissingPropertyJavadoc" value="true"/>
             <property name="minLineCount" value="1"/>
             <property name="tokens" value="METHOD_DEF,ANNOTATION_FIELD_DEF"/>
@@ -163,17 +182,13 @@ LinkedIn Java style.
         <!-- Type names must be camel case starting with an uppercase letter -->
         <module name="TypeName"/>
 
-        <!-- LENGTHS -->
-
-        <!-- Desired line length is 120 but allow some overrun beyond that -->
-        <module name="LineLength">
-            <property name="max" value="150"/>
-            <message key="maxLineLen" value="Line is longer than {0,number,integer} characters (found {1,number,integer}). Try to keep lines under 120 characters."/>
-        </module>
-
         <!-- WHITESPACE -->
 
         <module name="GenericWhitespace"/>
+        <!-- Ensure that non-whitespace characters are separated by no more than one whitespace -->
+        <module name="SingleSpaceSeparator">
+            <property name="validateComments" value="true"/>
+        </module>
         <module name="MethodParamPad"/>
         <module name="NoWhitespaceBefore"/>
         <module name="ParenPad"/>

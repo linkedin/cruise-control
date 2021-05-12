@@ -14,14 +14,12 @@ import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.UserTaskManagerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
-
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-
 import com.linkedin.kafka.cruisecontrol.servlet.security.BasicSecurityProvider;
 import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityProvider;
 import com.linkedin.kafka.cruisecontrol.servlet.security.jwt.JwtSecurityProvider;
@@ -414,6 +412,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   }
 
   /**
+   * Package private for unit test.
    * Sanity check to ensure that SSL and authentication is set up correctly. This means the following:
    * <ul>
    *   <li>If <code>webserver.ssl.enable</code> is set, then <code>webserver.ssl.keystore.location</code> and
@@ -423,7 +422,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    *   then <code>basic.auth.credentials.file</code> must point to an existing file.</li>
    * </ul>
    */
-  void sanityCheckSecurity() { // visible for testing
+  void sanityCheckSecurity() {
     Boolean sslEnabled = getBoolean(WebServerConfig.WEBSERVER_SSL_ENABLE_CONFIG);
     if (sslEnabled) {
       if (getString(WebServerConfig.WEBSERVER_SSL_KEYSTORE_LOCATION_CONFIG) == null) {
@@ -466,10 +465,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   }
 
   /**
+   * Package private for unit test.
    * Sanity check to ensure that webserver URL prefix is set up correctly. This means the following:
    *  <code>webserver.api.urlprefix</code> and <code>webserver.ui.urlprefix</code> must end with "/*"
    */
-  void sanityCheckWebServerUrlPrefix() { // visible for testing
+  void sanityCheckWebServerUrlPrefix() {
     String expectedSuffix = "/*";
     String webserverApiUrlPrefix = getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG);
     if (!webserverApiUrlPrefix.endsWith(expectedSuffix)) {

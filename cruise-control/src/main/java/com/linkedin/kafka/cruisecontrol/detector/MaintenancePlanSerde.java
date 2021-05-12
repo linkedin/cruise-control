@@ -60,7 +60,8 @@ public class MaintenancePlanSerde implements Serializer<MaintenancePlan>, Deseri
   public static class MaintenancePlanTypeAdapter implements JsonSerializer<MaintenancePlan>, JsonDeserializer<MaintenancePlan> {
     public static final String PLAN_TYPE = "planType";
     public static final String VERSION = "version";
-    public static final String CRC = "crc"; /* crc of the content */
+    /* crc of the content */
+    public static final String CRC = "crc";
     public static final String CONTENT = "content";
 
     /**
@@ -96,7 +97,8 @@ public class MaintenancePlanSerde implements Serializer<MaintenancePlan>, Deseri
         latestSupportedVersion = DemoteBrokerPlan.LATEST_SUPPORTED_VERSION;
       } else if (TopicReplicationFactorPlan.class.getSimpleName().equals(type)) {
         latestSupportedVersion = TopicReplicationFactorPlan.LATEST_SUPPORTED_VERSION;
-      } else { // This could happen when a new type of maintenance event is added but we are still running the old code.
+      } else {
+        // This could happen when a new type of maintenance event is added but we are still running the old code.
         throw new IllegalArgumentException(String.format("Unsupported plan type: %s", type));
       }
 

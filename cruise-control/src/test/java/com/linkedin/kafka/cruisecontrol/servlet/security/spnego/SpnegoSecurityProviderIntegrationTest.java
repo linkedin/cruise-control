@@ -11,7 +11,6 @@ import org.apache.kerby.kerberos.kerb.KrbException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
 import javax.security.auth.Subject;
 import javax.servlet.http.HttpServletResponse;
 import java.net.HttpURLConnection;
@@ -54,7 +53,7 @@ public class SpnegoSecurityProviderIntegrationTest extends CruiseControlIntegrat
     configs.put(WebServerConfig.WEBSERVER_SECURITY_ENABLE_CONFIG, true);
     configs.put(WebServerConfig.WEBSERVER_SECURITY_PROVIDER_CONFIG, SpnegoSecurityProvider.class);
     configs.put(WebServerConfig.WEBSERVER_AUTH_CREDENTIALS_FILE_CONFIG,
-        Objects.requireNonNull(this.getClass().getClassLoader().getResource(AUTH_CREDENTIALS_FILE)).getPath());
+                Objects.requireNonNull(this.getClass().getClassLoader().getResource(AUTH_CREDENTIALS_FILE)).getPath());
     configs.put(WebServerConfig.SPNEGO_PRINCIPAL_CONFIG, SPNEGO_SERVICE_PRINCIPAL + "@" + REALM);
     configs.put(WebServerConfig.SPNEGO_KEYTAB_FILE_CONFIG, _miniKdc.keytab().getAbsolutePath());
 
@@ -108,9 +107,9 @@ public class SpnegoSecurityProviderIntegrationTest extends CruiseControlIntegrat
         throw new RuntimeException(e);
       }
       // There is a bug in the Jetty implementation and it doesn't seem to handle the connection
-        // properly in case of an error so it somehow doesn't send a response code. To work this around
-        // I catch the RuntimeException that it throws.
-        assertThrows(RuntimeException.class, stateEndpointConnection::getResponseCode);
+      // properly in case of an error so it somehow doesn't send a response code. To work this around
+      // I catch the RuntimeException that it throws.
+      assertThrows(RuntimeException.class, stateEndpointConnection::getResponseCode);
       return null;
     });
   }
