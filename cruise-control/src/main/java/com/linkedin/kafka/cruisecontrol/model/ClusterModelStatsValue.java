@@ -22,11 +22,11 @@ public class ClusterModelStatsValue {
   protected final Map<Statistic, Number> _leaderReplicaStats;
   protected final Map<Statistic, Number> _topicReplicaStats;
 
-  public  ClusterModelStatsValue(Map<Statistic, Map<Resource, Double>> resourceUtilizationStats,
-                                 Map<Statistic, Double> potentialNwOutUtilizationStats,
-                                 Map<Statistic, Number> replicaStats,
-                                 Map<Statistic, Number> leaderReplicaStats,
-                                 Map<Statistic, Number> topicReplicaStats) {
+  public ClusterModelStatsValue(Map<Statistic, Map<Resource, Double>> resourceUtilizationStats,
+                                Map<Statistic, Double> potentialNwOutUtilizationStats,
+                                Map<Statistic, Number> replicaStats,
+                                Map<Statistic, Number> leaderReplicaStats,
+                                Map<Statistic, Number> topicReplicaStats) {
     _resourceUtilizationStats = resourceUtilizationStats;
     _potentialNwOutUtilizationStats = potentialNwOutUtilizationStats;
     _replicaStats = replicaStats;

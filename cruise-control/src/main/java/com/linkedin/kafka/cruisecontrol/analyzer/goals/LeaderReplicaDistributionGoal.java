@@ -211,7 +211,7 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
     }
 
     int numLeaderReplicas = broker.leaderReplicas().size();
-    Set<Broker> candidateBrokers =  Collections.singleton(broker);
+    Set<Broker> candidateBrokers = Collections.singleton(broker);
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     for (Replica replica : broker.replicas()) {
       if (replica.isLeader() || replica.isCurrentOffline() || excludedTopics.contains(replica.topicPartition().topic())) {

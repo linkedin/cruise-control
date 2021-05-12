@@ -356,7 +356,7 @@ public class ExecutorState {
     return _recentlyRemovedBrokers;
   }
 
-  public ExecutionTasksSummary  executionTasksSummary() {
+  public ExecutionTasksSummary executionTasksSummary() {
     return _executionTasksSummary;
   }
 

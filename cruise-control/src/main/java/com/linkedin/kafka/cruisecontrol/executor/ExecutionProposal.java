@@ -233,7 +233,7 @@ public class ExecutionProposal {
    *         always the size of the replica since one broker can only host one replica of the topic partition.
    */
   public long intraBrokerDataToMoveInMB() {
-    return  _partitionSize;
+    return _partitionSize;
   }
 
   /**

@@ -22,13 +22,13 @@ import static org.junit.Assert.assertTrue;
  */
 public class ExecutionProposalTest {
   public static final TopicPartition TP = new TopicPartition("topic", 0);
-  private final ReplicaPlacementInfo _r0 =  new ReplicaPlacementInfo(0);
-  private final ReplicaPlacementInfo _r1 =  new ReplicaPlacementInfo(1);
-  private final ReplicaPlacementInfo _r2 =  new ReplicaPlacementInfo(2);
+  private final ReplicaPlacementInfo _r0 = new ReplicaPlacementInfo(0);
+  private final ReplicaPlacementInfo _r1 = new ReplicaPlacementInfo(1);
+  private final ReplicaPlacementInfo _r2 = new ReplicaPlacementInfo(2);
 
-  private final ReplicaPlacementInfo _r0d0 =  new ReplicaPlacementInfo(0, "tmp0");
-  private final ReplicaPlacementInfo _r0d1 =  new ReplicaPlacementInfo(0, "tmp1");
-  private final ReplicaPlacementInfo _r1d1 =  new ReplicaPlacementInfo(1, "tmp1");
+  private final ReplicaPlacementInfo _r0d0 = new ReplicaPlacementInfo(0, "tmp0");
+  private final ReplicaPlacementInfo _r0d1 = new ReplicaPlacementInfo(0, "tmp1");
+  private final ReplicaPlacementInfo _r1d1 = new ReplicaPlacementInfo(1, "tmp1");
 
   private static final Node NODE_0 = new Node(0, "host0", 100);
   private static final Node NODE_1 = new Node(1, "host1", 200);

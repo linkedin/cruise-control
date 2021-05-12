@@ -117,7 +117,8 @@ public class ParameterUtilsTest {
 
     EasyMock.expect(mockRequest.getParameterMap()).andReturn(paramMap).once();
     EasyMock.expect(mockRequest.getParameter(ParameterUtils.REPLICATION_THROTTLE_PARAM)).andReturn(REPLICATION_THROTTLE_STRING).once();
-    EasyMock.expect(controlConfig.getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG)).andReturn(null); // No default
+    // No default
+    EasyMock.expect(controlConfig.getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG)).andReturn(null);
 
     EasyMock.replay(mockRequest, controlConfig);
 

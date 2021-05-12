@@ -12,7 +12,6 @@ import org.eclipse.jetty.security.LoginService;
 import org.eclipse.jetty.security.authentication.ConfigurableSpnegoAuthenticator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.nio.file.Paths;
 import java.util.List;
 

@@ -79,7 +79,7 @@ public class RebalanceRunnable extends GoalBasedOperationRunnable {
     _replicationThrottle = parameters.replicationThrottle();
     _ignoreProposalCache = parameters.ignoreProposalCache();
     _destinationBrokerIds = parameters.destinationBrokerIds();
-    _isRebalanceDiskMode =  parameters.isRebalanceDiskMode();
+    _isRebalanceDiskMode = parameters.isRebalanceDiskMode();
   }
 
   @Override

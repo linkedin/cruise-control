@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model;
 
 import java.util.Objects;
 import javax.annotation.Nullable;
-
 import com.google.gson.annotations.SerializedName;
 
 /**

@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus;
 
 import java.util.Map;
 import java.util.function.Supplier;
-
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType;
 
 /**

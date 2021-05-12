@@ -34,7 +34,8 @@ public abstract class CCKafkaIntegrationTestHarness extends CCAbstractZookeeperT
       CCEmbeddedBroker broker = new CCEmbeddedBroker(brokerConfig);
       int id = broker.id();
       if (_brokers.putIfAbsent(id, broker) != null) {
-        CCKafkaTestUtils.quietly(broker::close); //wont be picked up by teardown
+        // Will not be picked up by teardown
+        CCKafkaTestUtils.quietly(broker::close);
         throw new IllegalStateException("multiple brokers defined with id " + id);
       }
     }

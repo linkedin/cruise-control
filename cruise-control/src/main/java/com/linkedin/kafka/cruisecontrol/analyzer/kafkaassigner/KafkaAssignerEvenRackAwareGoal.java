@@ -272,6 +272,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
    *
    * @param sourcePartition Partition whose replica will be returned.
    * @param position The position of replica in the partition, i.e. 0 means leader, 1 is the first follower, and so on.
+   * @return The replica of the given partition residing in the given position.
    */
   private Replica replicaAtPosition(Partition sourcePartition, int position) {
     return sourcePartition.replicas().get(position);

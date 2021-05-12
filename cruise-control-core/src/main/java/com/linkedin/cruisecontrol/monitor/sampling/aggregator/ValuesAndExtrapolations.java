@@ -89,7 +89,7 @@ public class ValuesAndExtrapolations {
    */
   static ValuesAndExtrapolations empty(int numWindows, MetricDef metricDef) {
     Map<Short, MetricValues> values = new HashMap<>(metricDef.all().size());
-    for (short i = 0; i <  metricDef.all().size(); i++) {
+    for (short i = 0; i < metricDef.all().size(); i++) {
       values.put(i, new MetricValues(numWindows));
     }
     Map<Integer, Extrapolation> extrapolations = new HashMap<>(numWindows);

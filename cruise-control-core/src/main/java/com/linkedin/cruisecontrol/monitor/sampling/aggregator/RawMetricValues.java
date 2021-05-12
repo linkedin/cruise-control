@@ -322,7 +322,7 @@ public class RawMetricValues extends WindowIndexedArrays {
             case AVG:
               aggValuesForMetric.set(resultIndex, total / (_counts[prevArrayIndex] + _counts[arrayIndex] + _counts[nextArrayIndex]));
               break;
-            case MAX: // fall through.
+            case MAX:
             case LATEST:
               // for max and latest, we already only keep the largest or last value.
               aggValuesForMetric.set(resultIndex, total / (_counts[arrayIndex] > 0 ? 3 : 2));
@@ -417,7 +417,7 @@ public class RawMetricValues extends WindowIndexedArrays {
   }
 
   /**
-   * if there are {@link #_minSamplesPerWindow}, then valid: true, extrapolation: false
+   * @return if there are {@link #_minSamplesPerWindow}, then valid: true, extrapolation: false
    */
   private boolean updateEnoughSamples(int arrayIndex) {
     if (_counts[arrayIndex] == _minSamplesPerWindow) {
@@ -429,7 +429,7 @@ public class RawMetricValues extends WindowIndexedArrays {
   }
 
   /**
-   * regardless of the number of samples in the given arrayIndex, if next and previous array indices are valid and have
+   * @return regardless of the number of samples in the given arrayIndex, if next and previous array indices are valid and have
    * more than {@link #_minSamplesPerWindow}, then valid: true, extrapolation: true
    */
   private boolean updateAvgAdjacent(int arrayIndex) {
@@ -447,7 +447,7 @@ public class RawMetricValues extends WindowIndexedArrays {
   }
 
   /**
-   * if there is at least one sample, then valid: true, extrapolation: true
+   * @return if there is at least one sample, then valid: true, extrapolation: true
    */
   private boolean updateForcedInsufficient(int arrayIndex) {
     if (_counts[arrayIndex] > 0) {

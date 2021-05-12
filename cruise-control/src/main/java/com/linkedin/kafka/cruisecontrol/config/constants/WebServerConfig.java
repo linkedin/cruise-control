@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.config.constants;
 
 import java.util.concurrent.TimeUnit;
-
 import com.linkedin.kafka.cruisecontrol.servlet.security.BasicSecurityProvider;
 import org.apache.kafka.common.config.ConfigDef;
 

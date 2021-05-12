@@ -10,7 +10,6 @@ import com.nimbusds.jwt.SignedJWT;
 import org.eclipse.jetty.security.UserStore;
 import org.eclipse.jetty.server.UserIdentity;
 import org.junit.Test;
-
 import javax.servlet.http.HttpServletRequest;
 import java.time.Clock;
 import java.time.Duration;
@@ -55,7 +54,8 @@ public class JwtLoginServiceTest {
     UserStore testUserStore = new UserStore();
     testUserStore.addUser(TEST_USER, SecurityUtils.NO_CREDENTIAL, new String[] {"USER"});
     TokenGenerator.TokenAndKeys tokenAndKeys = TokenGenerator.generateToken(TEST_USER);
-    TokenGenerator.TokenAndKeys tokenAndKeys2 = TokenGenerator.generateToken(TEST_USER); // this will be signed with a different key
+    // This will be signed with a different key
+    TokenGenerator.TokenAndKeys tokenAndKeys2 = TokenGenerator.generateToken(TEST_USER);
     JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys2.publicKey(), null);
 
     SignedJWT jwtToken = SignedJWT.parse(tokenAndKeys.token());

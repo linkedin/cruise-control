@@ -92,7 +92,7 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
                                       AdminClient adminClient) {
     _kafkaCruiseControl = kafkaCruiseControl;
     _targetReplicationFactor = targetReplicationFactor;
-    _topicExcludedFromCheck =  Pattern.compile(DEFAULT_TOPIC_EXCLUDED_FROM_REPLICATION_FACTOR_CHECK);
+    _topicExcludedFromCheck = Pattern.compile(DEFAULT_TOPIC_EXCLUDED_FROM_REPLICATION_FACTOR_CHECK);
     _topicReplicationTopicAnomalyClass = DEFAULT_TOPIC_REPLICATION_FACTOR_ANOMALY_CLASS;
     _topicReplicationFactorMargin = DEFAULT_TOPIC_REPLICATION_FACTOR_MARGIN;
     _topicMinISRRecordRetentionTimeMs = DEFAULT_TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS;
@@ -173,7 +173,7 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
         if (violatedPartitionCount > 0) {
           topicsByReplicationFactor.putIfAbsent(targetReplicationFactor, new HashSet<>());
           topicsByReplicationFactor.get(targetReplicationFactor).add(
-              new TopicReplicationFactorAnomalyEntry(topic, (double) violatedPartitionCount /  cluster.partitionCountForTopic(topic)));
+              new TopicReplicationFactorAnomalyEntry(topic, (double) violatedPartitionCount / cluster.partitionCountForTopic(topic)));
         }
       }
     }

@@ -91,7 +91,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
     }
     _executionId = executionId;
     _proposal = proposal;
-    _brokerId =  brokerId == null ? -1 : brokerId;
+    _brokerId = brokerId == null ? -1 : brokerId;
     _state = ExecutionTaskState.PENDING;
     _type = type;
     _startTimeMs = -1L;
@@ -289,7 +289,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   public String toString() {
     switch (_type) {
       case INTRA_BROKER_REPLICA_ACTION:
-        return String.format("{EXE_ID: %d, %s(%d), %s, %s}", _executionId, _type,  _brokerId, _proposal, _state);
+        return String.format("{EXE_ID: %d, %s(%d), %s, %s}", _executionId, _type, _brokerId, _proposal, _state);
       case INTER_BROKER_REPLICA_ACTION:
       case LEADER_ACTION:
         return String.format("{EXE_ID: %d, %s, %s, %s}", _executionId, _type, _proposal, _state);

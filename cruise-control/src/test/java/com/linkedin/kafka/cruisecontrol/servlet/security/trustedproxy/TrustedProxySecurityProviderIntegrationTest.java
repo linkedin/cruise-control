@@ -11,7 +11,6 @@ import org.apache.kerby.kerberos.kerb.KrbException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
 import javax.security.auth.Subject;
 import javax.servlet.http.HttpServletResponse;
 import java.net.HttpURLConnection;

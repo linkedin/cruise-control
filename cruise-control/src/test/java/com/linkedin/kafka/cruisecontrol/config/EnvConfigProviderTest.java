@@ -8,7 +8,6 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import org.apache.kafka.common.config.types.Password;
 import org.junit.Test;
-
 import java.io.IOException;
 import java.util.Objects;
 

@@ -229,7 +229,7 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
   }
 
   private boolean isGettingMoreBalanced(Disk sourceDisk, Disk destinationDisk, double sourceUtilizationDelta) {
-    double prevDiff = diskUtilizationPercentage(sourceDisk)  - diskUtilizationPercentage(destinationDisk);
+    double prevDiff = diskUtilizationPercentage(sourceDisk) - diskUtilizationPercentage(destinationDisk);
     double nextDiff = prevDiff + sourceUtilizationDelta / sourceDisk.capacity() + sourceUtilizationDelta / destinationDisk.capacity();
     return abs(nextDiff) < abs(prevDiff);
   }

@@ -269,7 +269,7 @@ public class ProvisionRecommendation {
         throw new IllegalArgumentException("When the resource type is partition, the corresponding topic must be specified.");
       }
     } else if (builder._topic != null) {
-        throw new IllegalArgumentException("When the resource type is not partition, topic cannot be specified.");
+      throw new IllegalArgumentException("When the resource type is not partition, topic cannot be specified.");
     }
   }
 
@@ -313,7 +313,7 @@ public class ProvisionRecommendation {
    */
   static void sanityCheckExcludedRackIds(Builder builder) {
     if (builder._excludedRackIds != null && builder._numBrokers == DEFAULT_OPTIONAL_INT) {
-        throw new IllegalArgumentException("Excluded rack ids can be specified only with the number of brokers.");
+      throw new IllegalArgumentException("Excluded rack ids can be specified only with the number of brokers.");
     }
   }
 
@@ -365,7 +365,7 @@ public class ProvisionRecommendation {
   public String toString() {
     StringBuilder sb = new StringBuilder();
     // 1. Add or remove resources
-    sb.append(String.format("%s at least ",  _status == ProvisionStatus.UNDER_PROVISIONED ? "Add" : "Remove"));
+    sb.append(String.format("%s at least ", _status == ProvisionStatus.UNDER_PROVISIONED ? "Add" : "Remove"));
     // 2. Specify the number of brokers, racks, disks, or partitions
     if (_numBrokers != DEFAULT_OPTIONAL_INT) {
       sb.append(String.format("%d broker%s", _numBrokers, _numBrokers > 1 ? "s" : ""));

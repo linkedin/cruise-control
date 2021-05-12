@@ -107,7 +107,7 @@ public class UserTaskManagerTest {
     HttpSession mockHttpSession = EasyMock.mock(HttpSession.class);
     EasyMock.expect(mockHttpSession.getLastAccessedTime()).andReturn(100L).anyTimes();
 
-    Map<String,  String []> requestParams1 = new HashMap<>();
+    Map<String, String []> requestParams1 = new HashMap<>();
     requestParams1.put("param", new String[]{"true"});
     HttpServletRequest mockHttpServletRequest1 = prepareRequest(mockHttpSession, null, "test", requestParams1);
     HttpServletResponse mockHttpServletResponse1 = EasyMock.mock(HttpServletResponse.class);
@@ -115,13 +115,13 @@ public class UserTaskManagerTest {
     Capture<String> userTaskHeaderValue = Capture.newInstance();
     mockHttpServletResponse1.setHeader(EasyMock.capture(userTaskHeader), EasyMock.capture(userTaskHeaderValue));
 
-    Map<String,  String []> requestParams2 = new HashMap<>();
+    Map<String, String []> requestParams2 = new HashMap<>();
     requestParams2.put("param", new String[]{"true"});
     HttpServletRequest mockHttpServletRequest2 = prepareRequest(mockHttpSession, null, "test", requestParams2);
     HttpServletResponse mockHttpServletResponse2 = EasyMock.mock(HttpServletResponse.class);
     mockHttpServletResponse2.setHeader(EasyMock.capture(userTaskHeader), EasyMock.capture(userTaskHeaderValue));
 
-    Map<String,  String []> requestParams3 = new HashMap<>();
+    Map<String, String []> requestParams3 = new HashMap<>();
     requestParams3.put("param", new String[]{"true"});
     HttpServletRequest mockHttpServletRequest3 = prepareRequest(mockHttpSession, testUserTaskId.toString(), "test", requestParams3);
     HttpServletResponse mockHttpServletResponse3 = EasyMock.mock(HttpServletResponse.class);

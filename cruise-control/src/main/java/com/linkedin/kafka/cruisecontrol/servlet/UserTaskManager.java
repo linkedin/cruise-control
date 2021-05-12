@@ -93,7 +93,7 @@ public class UserTaskManager implements Closeable {
     _purgatory = purgatory;
     _sessionKeyToUserTaskIdMap = new HashMap<>();
     List<CruiseControlEndpointType> endpointTypes = Collections.unmodifiableList(Arrays.asList(CruiseControlEndpointType.values()));
-    _uuidToCompletedUserTaskInfoMap =  new HashMap<>(endpointTypes.size());
+    _uuidToCompletedUserTaskInfoMap = new HashMap<>(endpointTypes.size());
     _completedUserTaskRetentionTimeMs = new HashMap<>(endpointTypes.size());
     initCompletedUserTaskRetentionPolicy(config, endpointTypes);
     _sessionExpiryMs = config.getLong(WebServerConfig.WEBSERVER_SESSION_EXPIRY_MS_CONFIG);
@@ -324,7 +324,8 @@ public class UserTaskManager implements Closeable {
     String userTaskIdString = httpServletRequest.getHeader(USER_TASK_HEADER_NAME);
 
     UUID userTaskId;
-    if (userTaskIdString != null && !userTaskIdString.isEmpty()) { // valid user task id
+    if (userTaskIdString != null && !userTaskIdString.isEmpty()) {
+      // valid user task id
       userTaskId = UUID.fromString(userTaskIdString);
     } else {
       SessionKey sessionKey = new SessionKey(httpServletRequest);
@@ -714,7 +715,7 @@ public class UserTaskManager implements Closeable {
           }
         }
       }
-      return  sb.toString();
+      return sb.toString();
     }
 
     /**

@@ -367,6 +367,7 @@ public class RawMetricValuesTest {
 
   /**
    * Test code should ensure that the {@link #NUM_RAW_METRICS} size matches the metrics generated here
+   * @return A metric sample with the given metric values.
    */
   private MetricSample<String, IntegerEntity> getMetricSample(float v1, float v2, float v3) {
     MetricSample<String, IntegerEntity> metricSample = new MetricSample<>(new IntegerEntity("group", 0));
