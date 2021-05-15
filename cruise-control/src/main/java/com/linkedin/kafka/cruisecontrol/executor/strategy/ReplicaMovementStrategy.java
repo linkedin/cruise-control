@@ -18,9 +18,20 @@ public interface ReplicaMovementStrategy {
    * Determine the execution order for replica movement tasks based on a customized strategy.
    *
    * @param replicaMovementTasks The replica movement tasks to be executed.
-   * @param cluster The current cluster state.
+   * @param strategyOptions Strategy options to be used during application of a replica movement strategy.
    * @return Ordered set of tasks to be executed for each broker.
    */
+  Map<Integer, SortedSet<ExecutionTask>> applyStrategy(Set<ExecutionTask> replicaMovementTasks, StrategyOptions strategyOptions);
+
+  /**
+   * Determine the execution order for replica movement tasks based on a customized strategy.
+   *
+   * @param replicaMovementTasks The replica movement tasks to be executed.
+   * @param cluster The current cluster state.
+   * @return Ordered set of tasks to be executed for each broker.
+   * @deprecated Will be removed in a future release -- please use {@link #applyStrategy(Set, StrategyOptions)}.
+   */
+  @Deprecated
   Map<Integer, SortedSet<ExecutionTask>> applyStrategy(Set<ExecutionTask> replicaMovementTasks, Cluster cluster);
 
   /**
@@ -36,9 +47,20 @@ public interface ReplicaMovementStrategy {
    * Generate a comparator for replica movement task which incorporate the strategy to apply. The "smaller" task will have
    * higher execution priority.
    *
-   * @param cluster The current cluster state.
+   * @param strategyOptions Strategy options to be used while comparing the tasks.
    * @return The comparator of task.
    */
+  Comparator<ExecutionTask> taskComparator(StrategyOptions strategyOptions);
+
+  /**
+   * Generate a comparator for replica movement task which incorporate the strategy to apply. The "smaller" task will have
+   * higher execution priority.
+   *
+   * @param cluster The current cluster state.
+   * @return The comparator of task.
+   * @deprecated Will be removed in a future release -- please use {@link #taskComparator(StrategyOptions)}.
+   */
+  @Deprecated
   Comparator<ExecutionTask> taskComparator(Cluster cluster);
 
   /**

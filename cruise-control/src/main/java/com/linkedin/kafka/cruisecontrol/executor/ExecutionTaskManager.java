@@ -8,6 +8,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.StrategyOptions;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -15,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
@@ -238,14 +238,14 @@ public class ExecutionTaskManager {
    * @param brokersToSkipConcurrencyCheck Brokers that do not need to be throttled when moving the partitions. Note that
    *                                      there would still be some throttling based on {@link #_maxNumClusterMovementConcurrency}
    *                                      to ensure that default ZooKeeper zNode file size limit is not exceeded.
-   * @param cluster Cluster state.
+   * @param strategyOptions Strategy options to be used during application of a replica movement strategy.
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    */
   public synchronized void addExecutionProposals(Collection<ExecutionProposal> proposals,
                                                  Collection<Integer> brokersToSkipConcurrencyCheck,
-                                                 Cluster cluster,
+                                                 StrategyOptions strategyOptions,
                                                  ReplicaMovementStrategy replicaMovementStrategy) {
-    _executionTaskPlanner.addExecutionProposals(proposals, cluster, replicaMovementStrategy);
+    _executionTaskPlanner.addExecutionProposals(proposals, strategyOptions, replicaMovementStrategy);
     for (ExecutionProposal p : proposals) {
       p.replicasToMoveBetweenDisksByBroker().keySet()
                                             .forEach(broker -> _inProgressIntraBrokerReplicaMovementsByBrokerId.putIfAbsent(broker, 0));

@@ -16,10 +16,15 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.isPartiti
 public class PostponeUrpReplicaMovementStrategy extends AbstractReplicaMovementStrategy {
 
   @Override
+  public Comparator<ExecutionTask> taskComparator(StrategyOptions strategyOptions) {
+    return (task1, task2) -> isPartitionUnderReplicated(strategyOptions.cluster(), task1.proposal().topicPartition())
+                             ? (isPartitionUnderReplicated(strategyOptions.cluster(), task2.proposal().topicPartition()) ? 0 : 1)
+                             : (isPartitionUnderReplicated(strategyOptions.cluster(), task2.proposal().topicPartition()) ? -1 : 0);
+  }
+
+  @Override
   public Comparator<ExecutionTask> taskComparator(Cluster cluster) {
-    return (task1, task2) -> isPartitionUnderReplicated(cluster, task1.proposal().topicPartition())
-                             ? (isPartitionUnderReplicated(cluster, task2.proposal().topicPartition()) ? 0 : 1)
-                             : (isPartitionUnderReplicated(cluster, task2.proposal().topicPartition()) ? -1 : 0);
+    return taskComparator(new StrategyOptions.Builder(cluster).build());
   }
 
   /**

@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.common;
 
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import java.time.Duration;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -68,10 +68,10 @@ public class TopicMinIsrCache {
   }
 
   /**
-   * @return An unmodifiable view of cache, containing minIsr with time by topic name.
+   * @return An unordered shallow copy (i.e. a snapshot) of the cache, containing minIsr with time by topic name.
    */
-  public Map<String, MinIsrWithTime> minIsrWithTimeByTopic() {
-    return Collections.unmodifiableMap(_minIsrWithTimeByTopic);
+  public synchronized Map<String, MinIsrWithTime> minIsrWithTimeByTopic() {
+    return new HashMap<>(_minIsrWithTimeByTopic);
   }
 
   /**
