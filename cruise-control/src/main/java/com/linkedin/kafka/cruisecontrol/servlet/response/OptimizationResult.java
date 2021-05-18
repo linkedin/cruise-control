@@ -157,7 +157,8 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
     sb.append(_optimizerResult.getProposalSummary());
     for (Map.Entry<String, ClusterModelStats> entry : _optimizerResult.statsByGoalName().entrySet()) {
       String goalName = entry.getKey();
-      sb.append(String.format("%n%nStats for %s(%s):%n", goalName, _optimizerResult.goalResultDescription(goalName)));
+      sb.append(String.format("%n%n[%6d ms] Stats for %s(%s):%n", _optimizerResult.optimizationDuration(goalName).toMillis(), goalName,
+                              _optimizerResult.goalResultDescription(goalName)));
       sb.append(entry.getValue().toString());
     }
   }
@@ -170,6 +171,8 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
     protected static final String STATUS = "status";
     @JsonResponseField
     protected static final String CLUSTER_MODEL_STATS = "clusterModelStats";
+    @JsonResponseField
+    protected static final String OPTIMIZATION_TIME_MS = "optimizationTimeMs";
     protected String _goalName;
 
     GoalStatus(String goalName) {
@@ -181,6 +184,7 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
       goalMap.put(GOAL, _goalName);
       goalMap.put(STATUS, _optimizerResult.goalResultDescription(_goalName));
       goalMap.put(CLUSTER_MODEL_STATS, _optimizerResult.statsByGoalName().get(_goalName).getJsonStructure());
+      goalMap.put(OPTIMIZATION_TIME_MS, _optimizerResult.optimizationDuration(_goalName).toMillis());
       return goalMap;
     }
   }

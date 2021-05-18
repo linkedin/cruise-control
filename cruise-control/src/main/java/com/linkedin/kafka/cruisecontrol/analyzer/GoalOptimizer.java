@@ -25,6 +25,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -434,15 +435,18 @@ public class GoalOptimizer implements Runnable {
     Map<TopicPartition, ReplicaPlacementInfo> preOptimizedLeaderDistribution = null;
 
     ProvisionResponse provisionResponse = new ProvisionResponse(ProvisionStatus.UNDECIDED);
+    Map<String, Duration> optimizationDurationByGoal = new HashMap<>(goalsByPriority.size());
     for (Goal goal : goalsByPriority) {
       preOptimizedReplicaDistribution = preOptimizedReplicaDistribution == null ? initReplicaDistribution : clusterModel.getReplicaDistribution();
       preOptimizedLeaderDistribution = preOptimizedLeaderDistribution == null ? initLeaderDistribution : clusterModel.getLeaderDistribution();
       OptimizationForGoal step = new OptimizationForGoal(goal.name());
       operationProgress.addStep(step);
       LOG.debug("Optimizing goal {}", goal.name());
+      long startTimeMs = _time.milliseconds();
       boolean succeeded = goal.optimize(clusterModel, optimizedGoals, optimizationOptions);
       optimizedGoals.add(goal);
       statsByGoalPriority.put(goal, clusterModel.getClusterStats(_balancingConstraint, optimizationOptions));
+      optimizationDurationByGoal.put(goal.name(), Duration.ofMillis(_time.milliseconds() - startTimeMs));
 
       Set<ExecutionProposal> goalProposals = AnalyzerUtils.getDiff(preOptimizedReplicaDistribution,
                                                                    preOptimizedLeaderDistribution,
@@ -479,12 +483,10 @@ public class GoalOptimizer implements Runnable {
                                violatedGoalNamesAfterOptimization,
                                proposals,
                                brokerStatsBeforeOptimization,
-                               clusterModel.brokerStats(null),
-                               clusterModel.generation(),
-                               clusterModel.getClusterStats(_balancingConstraint, optimizationOptions),
-                               clusterModel.capacityEstimationInfoByBrokerId(),
+                               clusterModel,
                                optimizationOptions,
                                balancednessCostByGoal(goalsByPriority, _priorityWeight, _strictnessWeight),
+                               optimizationDurationByGoal,
                                provisionResponse);
   }
 

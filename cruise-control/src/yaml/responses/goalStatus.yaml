@@ -4,6 +4,7 @@ GoalStatus:
     - goal
     - status
     - clusterModelStats
+    - optimizationTimeMs
   properties:
     goal:
       type: string
@@ -15,3 +16,6 @@ GoalStatus:
         - "NO-ACTION"
     clusterModelStats:
       $ref: './clusterModelStats.yaml#/ClusterModelStats'
+    optimizationTimeMs:
+      type: integer
+      format: int64
