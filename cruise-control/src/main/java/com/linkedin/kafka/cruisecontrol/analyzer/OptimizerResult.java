@@ -6,11 +6,13 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
+import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -20,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.MAX_BALANCEDNESS_SCORE;
 
 
@@ -73,6 +76,7 @@ public class OptimizerResult {
   private final OptimizationOptions _optimizationOptions;
   private final double _onDemandBalancednessScoreBefore;
   private final double _onDemandBalancednessScoreAfter;
+  private final Map<String, Duration> _optimizationDurationByGoal;
   private final ProvisionResponse _provisionResponse;
 
   OptimizerResult(LinkedHashMap<Goal, ClusterModelStats> statsByGoalPriority,
@@ -80,13 +84,17 @@ public class OptimizerResult {
                   Set<String> violatedGoalNamesAfterOptimization,
                   Set<ExecutionProposal> proposals,
                   BrokerStats brokerStatsBeforeOptimization,
-                  BrokerStats brokerStatsAfterOptimization,
-                  ModelGeneration modelGeneration,
-                  ClusterModelStats clusterModelStats,
-                  Map<Integer, String> capacityEstimationInfoByBrokerId,
+                  ClusterModel clusterModel,
                   OptimizationOptions optimizationOptions,
                   Map<String, Double> balancednessCostByGoal,
+                  Map<String, Duration> optimizationDurationByGoal,
                   ProvisionResponse provisionResponse) {
+    validateNotNull(statsByGoalPriority, "The stats by goal priority cannot be null.");
+    validateNotNull(optimizationDurationByGoal, "The optimization duration by goal priority cannot be null.");
+    if (statsByGoalPriority.isEmpty()) {
+      throw new IllegalArgumentException("At least one stats by goal priority must be provided to get an optimizer result.");
+    }
+    BalancingConstraint balancingConstraint = statsByGoalPriority.entrySet().stream().findAny().get().getValue().balancingConstraint();
     _clusterModelStatsComparatorByGoalName = new LinkedHashMap<>(statsByGoalPriority.size());
     _statsByGoalName = new LinkedHashMap<>(statsByGoalPriority.size());
     for (Map.Entry<Goal, ClusterModelStats> entry : statsByGoalPriority.entrySet()) {
@@ -100,14 +108,15 @@ public class OptimizerResult {
     _violatedGoalNamesAfterOptimization = violatedGoalNamesAfterOptimization;
     _proposals = proposals;
     _brokerStatsBeforeOptimization = brokerStatsBeforeOptimization;
-    _brokerStatsAfterOptimization = brokerStatsAfterOptimization;
-    _modelGeneration = modelGeneration;
-    _clusterModelStats = clusterModelStats;
-    _capacityEstimationInfoByBrokerId = capacityEstimationInfoByBrokerId;
+    _brokerStatsAfterOptimization = clusterModel.brokerStats(null);
+    _modelGeneration = clusterModel.generation();
+    _clusterModelStats = clusterModel.getClusterStats(balancingConstraint, optimizationOptions);
+    _capacityEstimationInfoByBrokerId = clusterModel.capacityEstimationInfoByBrokerId();
     _optimizationOptions = optimizationOptions;
     // Populate on-demand balancedness score before and after.
     _onDemandBalancednessScoreBefore = onDemandBalancednessScore(balancednessCostByGoal, _violatedGoalNamesBeforeOptimization);
     _onDemandBalancednessScoreAfter = onDemandBalancednessScore(balancednessCostByGoal, _violatedGoalNamesAfterOptimization);
+    _optimizationDurationByGoal = optimizationDurationByGoal;
     _provisionResponse = provisionResponse;
   }
 
@@ -196,6 +205,15 @@ public class OptimizerResult {
    */
   public Map<Integer, String> capacityEstimationInfoByBrokerId() {
     return Collections.unmodifiableMap(_capacityEstimationInfoByBrokerId);
+  }
+
+  /**
+   * @param goalName Name of the goal for which the optimization duration will be retrieved.
+   * @return Optimization duration for the given goal name -- i.e. the time it took to optimize the given goal, or {@code null} if the goal
+   * is not present in the optimized goals in this optimizer result.
+   */
+  public Duration optimizationDuration(String goalName) {
+    return _optimizationDurationByGoal.get(goalName);
   }
 
   /**
