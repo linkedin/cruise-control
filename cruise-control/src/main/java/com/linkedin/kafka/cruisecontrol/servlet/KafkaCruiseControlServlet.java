@@ -27,6 +27,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.KAFKA_CRUISE_CONTROL_SERVLET_SENSOR;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.REVIEW;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.REVIEW_BOARD;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.*;
@@ -59,9 +60,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
     for (CruiseControlEndPoint endpoint : CruiseControlEndPoint.cachedValues()) {
       _requestMeter.put(endpoint, dropwizardMetricRegistry.meter(
-          MetricRegistry.name("KafkaCruiseControlServlet", endpoint.name() + "-request-rate")));
+          MetricRegistry.name(KAFKA_CRUISE_CONTROL_SERVLET_SENSOR, endpoint.name() + "-request-rate")));
       _successfulRequestExecutionTimer.put(endpoint, dropwizardMetricRegistry.timer(
-          MetricRegistry.name("KafkaCruiseControlServlet", endpoint.name() + "-successful-request-execution-timer")));
+          MetricRegistry.name(KAFKA_CRUISE_CONTROL_SERVLET_SENSOR, endpoint.name() + "-successful-request-execution-timer")));
     }
   }
 

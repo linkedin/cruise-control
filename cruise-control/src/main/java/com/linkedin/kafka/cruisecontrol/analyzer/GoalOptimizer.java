@@ -50,6 +50,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ADMIN_CLIENT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.balancednessCostByGoal;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.GOAL_OPTIMIZER_SENSOR;
 import static com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.BOOTSTRAPPING;
 import static com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.LOADING;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG;
@@ -121,7 +122,7 @@ public class GoalOptimizer implements Runnable {
     // A new AtomicReference with null initial value.
     _proposalGenerationException = new AtomicReference<>();
     _proposalPrecomputingProgress = new OperationProgress();
-    _proposalComputationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("GoalOptimizer", "proposal-computation-timer"));
+    _proposalComputationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name(GOAL_OPTIMIZER_SENSOR, "proposal-computation-timer"));
     _executor = executor;
     _hasOngoingExplicitPrecomputation = false;
     _priorityWeight = config.getDouble(AnalyzerConfig.GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG);

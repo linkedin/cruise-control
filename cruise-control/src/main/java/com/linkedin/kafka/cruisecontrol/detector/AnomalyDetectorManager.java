@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyType;
@@ -35,6 +36,7 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ANOMALY_DETECTOR_SENSOR;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION_LOGGER;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.RANDOM;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckGoals;
@@ -77,6 +79,7 @@ public class AnomalyDetectorManager {
   private volatile Anomaly _anomalyInProgress;
   private final AtomicLong _numCheckedWithDelay;
   private final Object _shutdownLock;
+  private final Map<AnomalyType, Timer> _selfHealingFixGenerationTimer;
 
   public AnomalyDetectorManager(KafkaCruiseControl kafkaCruiseControl, Time time, MetricRegistry dropwizardMetricRegistry) {
     // For anomalies of different types, prioritize handling anomaly of higher priority;
@@ -103,7 +106,7 @@ public class AnomalyDetectorManager {
     _kafkaCruiseControl = kafkaCruiseControl;
     _selfHealingGoals = getSelfHealingGoalNames(config);
     sanityCheckGoals(_selfHealingGoals, false, config);
-    _goalViolationDetector = new GoalViolationDetector(_anomalies, _kafkaCruiseControl);
+    _goalViolationDetector = new GoalViolationDetector(_anomalies, _kafkaCruiseControl, dropwizardMetricRegistry);
     _brokerFailureDetector = new BrokerFailureDetector(_anomalies, _kafkaCruiseControl);
     _metricAnomalyDetector = new MetricAnomalyDetector(_anomalies, _kafkaCruiseControl);
     _diskFailureDetector = new DiskFailureDetector(_anomalies, _kafkaCruiseControl);
@@ -120,6 +123,7 @@ public class AnomalyDetectorManager {
     _numCheckedWithDelay = new AtomicLong();
     _shutdownLock = new Object();
     // Register gauge sensors.
+    _selfHealingFixGenerationTimer = new HashMap<>(KafkaAnomalyType.cachedValues().size());
     registerGaugeSensors(dropwizardMetricRegistry);
     _anomalyDetectorState = new AnomalyDetectorState(time,
                                                      _anomalyNotifier.selfHealingEnabled(),
@@ -162,6 +166,8 @@ public class AnomalyDetectorManager {
     _anomalyInProgress = null;
     _numCheckedWithDelay = new AtomicLong();
     _shutdownLock = new Object();
+    _selfHealingFixGenerationTimer = new HashMap<>(KafkaAnomalyType.cachedValues().size());
+    cachedValues().forEach(anomalyType -> _selfHealingFixGenerationTimer.put(anomalyType, new Timer()));
     // Add anomaly detector state
     _anomalyDetectorState = new AnomalyDetectorState(new SystemTime(), new HashMap<>(KafkaAnomalyType.cachedValues().size()), 10, null);
   }
@@ -170,36 +176,43 @@ public class AnomalyDetectorManager {
    * Register gauge sensors.
    */
   private void registerGaugeSensors(MetricRegistry dropwizardMetricRegistry) {
-    dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "balancedness-score"),
+    dropwizardMetricRegistry.register(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "balancedness-score"),
                                       (Gauge<Double>) _goalViolationDetector::balancednessScore);
 
     // Self-Healing is turned on/off. 1/0 metric for each of the self-healing options.
     for (KafkaAnomalyType anomalyType : KafkaAnomalyType.cachedValues()) {
-      dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME,
+      dropwizardMetricRegistry.register(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR,
                                                             String.format("%s-self-healing-enabled", anomalyType.toString().toLowerCase())),
                                         (Gauge<Integer>) () -> _anomalyNotifier.selfHealingEnabled().get(anomalyType) ? 1 : 0);
     }
 
     // The cluster is identified as under-provisioned, over-provisioned, or right-sized (undecided not reported).
-    dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "under-provisioned"),
+    dropwizardMetricRegistry.register(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "under-provisioned"),
                                       (Gauge<Integer>) () -> (_goalViolationDetector.provisionStatus() == ProvisionStatus.UNDER_PROVISIONED)
                                                              ? 1 : 0);
-    dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "over-provisioned"),
+    dropwizardMetricRegistry.register(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "over-provisioned"),
                                       (Gauge<Integer>) () -> (_goalViolationDetector.provisionStatus() == ProvisionStatus.OVER_PROVISIONED)
                                                              ? 1 : 0);
-    dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "right-sized"),
+    dropwizardMetricRegistry.register(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "right-sized"),
                                       (Gauge<Integer>) () -> (_goalViolationDetector.provisionStatus() == ProvisionStatus.RIGHT_SIZED)
                                                              ? 1 : 0);
 
     // The number of metric anomalies corresponding to each metric anomaly type.
     for (MetricAnomalyType type : MetricAnomalyType.cachedValues()) {
-      dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME,
+      dropwizardMetricRegistry.register(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR,
                                                             String.format("num-%s-metric-anomalies", type.toString().toLowerCase())),
                                         (Gauge<Integer>) () -> _metricAnomalyDetector.numAnomaliesOfType(type));
     }
     // The cluster has partitions with RF > the number of eligible racks (0: No such partitions, 1: Has such partitions)
-    dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "has-partitions-with-replication-factor-greater-than-num-racks"),
+    dropwizardMetricRegistry.register(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "has-partitions-with-replication-factor-greater-than-num-racks"),
                                       (Gauge<Integer>) () -> _goalViolationDetector.hasPartitionsWithRFGreaterThanNumRacks() ? 1 : 0);
+
+    // The time taken to generate a fix for self-healing for each anomaly type
+    for (KafkaAnomalyType anomalyType : KafkaAnomalyType.cachedValues()) {
+      Timer timer = dropwizardMetricRegistry.timer(
+          MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, String.format("%s-self-healing-fix-generation-timer", anomalyType.toString().toLowerCase())));
+      _selfHealingFixGenerationTimer.put(anomalyType, timer);
+    }
   }
 
   private void scheduleDetectorAtFixedRate(KafkaAnomalyType anomalyType, Runnable anomalyDetector) {
@@ -529,7 +542,12 @@ public class AnomalyDetectorManager {
           try {
             if (isReadyToFix) {
               LOG.info("Generating a fix for the anomaly {}.", _anomalyInProgress);
-              fixStarted = _anomalyInProgress.fix();
+              final Timer.Context ctx = _selfHealingFixGenerationTimer.get(anomalyType).time();
+              try {
+                fixStarted = _anomalyInProgress.fix();
+              } finally {
+                ctx.stop();
+              }
               LOG.info("{} the anomaly {}.", fixStarted ? "Fixing" : "Cannot fix", _anomalyInProgress);
               String optimizationResult = fixStarted ? _anomalyInProgress.optimizationResult(false) : null;
               _anomalyLoggerExecutor.submit(() -> logSelfHealingOperation(anomalyId, null, optimizationResult));
