@@ -177,6 +177,13 @@ public class ClusterModelStats {
   }
 
   /**
+   * @return Balancing constraint used while populating the stats.
+   */
+  public BalancingConstraint balancingConstraint() {
+    return _balancingConstraint;
+  }
+
+  /**
    * This is the utilization matrix generated from {@link ClusterModel#utilizationMatrix()}.
    * @return Non-null if populate has been called else this may return null.
    */
