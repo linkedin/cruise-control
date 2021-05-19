@@ -61,6 +61,7 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.LOAD_MONITOR_SENSOR;
 import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.SKIP_LOADING_SAMPLES_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.getRackHandleNull;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.getReplicaPlacementInfo;
@@ -81,7 +82,6 @@ public class LoadMonitor {
   // Metadata TTL is set based on experience -- i.e. a short TTL with large metadata may cause excessive load on brokers.
   private static final long METADATA_TTL = TimeUnit.SECONDS.toMillis(10);
   private static final long METADATA_REFRESH_BACKOFF = TimeUnit.SECONDS.toMillis(5);
-  public static final String LOAD_MONITOR_METRICS_NAME_PREFIX = "LoadMonitor";
   // The maximum time allowed to make a state update. If the state value cannot be updated in time it will be invalidated.
   // TODO: Make this configurable.
   private final long _monitorStateUpdateTimeoutMs;
@@ -153,7 +153,7 @@ public class LoadMonitor {
     long monitorStateUpdateIntervalMs = config.getLong(MonitorConfig.MONITOR_STATE_UPDATE_INTERVAL_MS_CONFIG);
     _monitorStateUpdateTimeoutMs = 10 * monitorStateUpdateIntervalMs;
     _topicConfigProvider = config.getConfiguredInstance(MonitorConfig.TOPIC_CONFIG_PROVIDER_CLASS_CONFIG,
-                                                                 TopicConfigProvider.class);
+                                                        TopicConfigProvider.class);
 
     _partitionMetricSampleAggregator = new KafkaPartitionMetricSampleAggregator(config, metadataClient.metadata());
     _brokerMetricSampleAggregator = new KafkaBrokerMetricSampleAggregator(config);
@@ -170,28 +170,28 @@ public class LoadMonitor {
     _loadMonitorTaskRunner =
         new LoadMonitorTaskRunner(config, _partitionMetricSampleAggregator, _brokerMetricSampleAggregator, _metadataClient,
                                   metricDef, time, dropwizardMetricRegistry, _brokerCapacityConfigResolver);
-    _clusterModelCreationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name(LOAD_MONITOR_METRICS_NAME_PREFIX,
+    _clusterModelCreationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name(LOAD_MONITOR_SENSOR,
                                                                                     "cluster-model-creation-timer"));
     _loadMonitorExecutor = Executors.newScheduledThreadPool(2,
                                                             new KafkaCruiseControlThreadFactory("LoadMonitorExecutor", true, LOG));
     _loadMonitorExecutor.scheduleAtFixedRate(new SensorUpdater(), 0, monitorStateUpdateIntervalMs, TimeUnit.MILLISECONDS);
     _loadMonitorExecutor.scheduleAtFixedRate(new PartitionMetricSampleAggregatorCleaner(), 0,
                                              PartitionMetricSampleAggregatorCleaner.CHECK_INTERVAL_MS, TimeUnit.MILLISECONDS);
-    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_METRICS_NAME_PREFIX, "valid-windows"),
+    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_SENSOR, "valid-windows"),
                                       (Gauge<Integer>) this::numValidSnapshotWindows);
-    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_METRICS_NAME_PREFIX, "monitored-partitions-percentage"),
+    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_SENSOR, "monitored-partitions-percentage"),
                                       (Gauge<Double>) this::monitoredPartitionsPercentage);
-    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_METRICS_NAME_PREFIX, "total-monitored-windows"),
+    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_SENSOR, "total-monitored-windows"),
                                       (Gauge<Integer>) this::totalMonitoredSnapshotWindows);
-    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_METRICS_NAME_PREFIX, "num-partitions-with-extrapolations"),
+    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_SENSOR, "num-partitions-with-extrapolations"),
                                       (Gauge<Integer>) this::numPartitionsWithExtrapolations);
-    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_METRICS_NAME_PREFIX, "num-topics"),
+    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_SENSOR, "num-topics"),
                                       (Gauge<Integer>) this::numTopics);
     double metadataFactorExponent = config.getDouble(MonitorConfig.METADATA_FACTOR_EXPONENT_CONFIG);
-    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_METRICS_NAME_PREFIX, "metadata-factor"),
+    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_SENSOR, "metadata-factor"),
                                       (Gauge<Double>) () -> metadataFactor(metadataFactorExponent));
     // The cluster has partitions with ISR > replicas (0: No such partitions, 1: Has such partitions)
-    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_METRICS_NAME_PREFIX, "has-partitions-with-isr-greater-than-replicas"),
+    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_SENSOR, "has-partitions-with-isr-greater-than-replicas"),
                                       (Gauge<Integer>) () -> MonitorUtils.hasPartitionsWithIsrGreaterThanReplicas(kafkaCluster()) ? 1 : 0);
   }
 

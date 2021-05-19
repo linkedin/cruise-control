@@ -56,6 +56,7 @@ import java.util.List;
 
 import static com.linkedin.cruisecontrol.CruiseControlUtils.currentUtcDate;
 import static com.linkedin.cruisecontrol.CruiseControlUtils.utcDateFor;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.EXECUTOR_SENSOR;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION_LOGGER;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*;
@@ -273,20 +274,26 @@ public class Executor {
    * Register gauge sensors.
    */
   private void registerGaugeSensors(MetricRegistry dropwizardMetricRegistry) {
-    String name = "Executor";
-    dropwizardMetricRegistry.register(MetricRegistry.name(name, ExecutionUtils.GAUGE_EXECUTION_STOPPED),
+    dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR,
+                                                          ExecutionUtils.GAUGE_EXECUTION_STOPPED),
                                       (Gauge<Integer>) this::numExecutionStopped);
-    dropwizardMetricRegistry.register(MetricRegistry.name(name, ExecutionUtils.GAUGE_EXECUTION_STOPPED_BY_USER),
+    dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR,
+                                                          ExecutionUtils.GAUGE_EXECUTION_STOPPED_BY_USER),
                                       (Gauge<Integer>) this::numExecutionStoppedByUser);
-    dropwizardMetricRegistry.register(MetricRegistry.name(name, ExecutionUtils.GAUGE_EXECUTION_STARTED_IN_KAFKA_ASSIGNER_MODE),
+    dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR,
+                                                          ExecutionUtils.GAUGE_EXECUTION_STARTED_IN_KAFKA_ASSIGNER_MODE),
                                       (Gauge<Integer>) this::numExecutionStartedInKafkaAssignerMode);
-    dropwizardMetricRegistry.register(MetricRegistry.name(name, ExecutionUtils.GAUGE_EXECUTION_STARTED_IN_NON_KAFKA_ASSIGNER_MODE),
+    dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR,
+                                                          ExecutionUtils.GAUGE_EXECUTION_STARTED_IN_NON_KAFKA_ASSIGNER_MODE),
                                       (Gauge<Integer>) this::numExecutionStartedInNonKafkaAssignerMode);
-    dropwizardMetricRegistry.register(MetricRegistry.name(name, ExecutionUtils.GAUGE_EXECUTION_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER_CAP),
+    dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR,
+                                                          ExecutionUtils.GAUGE_EXECUTION_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER_CAP),
                                       (Gauge<Integer>) _executionTaskManager::interBrokerPartitionMovementConcurrency);
-    dropwizardMetricRegistry.register(MetricRegistry.name(name, ExecutionUtils.GAUGE_EXECUTION_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER_CAP),
+    dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR,
+                                                          ExecutionUtils.GAUGE_EXECUTION_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER_CAP),
                                       (Gauge<Integer>) _executionTaskManager::intraBrokerPartitionMovementConcurrency);
-    dropwizardMetricRegistry.register(MetricRegistry.name(name, ExecutionUtils.GAUGE_EXECUTION_LEADERSHIP_MOVEMENTS_GLOBAL_CAP),
+    dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR,
+                                                          ExecutionUtils.GAUGE_EXECUTION_LEADERSHIP_MOVEMENTS_GLOBAL_CAP),
                                       (Gauge<Integer>) _executionTaskManager::leadershipMovementConcurrency);
   }
 

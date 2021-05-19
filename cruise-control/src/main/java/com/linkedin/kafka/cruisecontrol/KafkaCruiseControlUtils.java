@@ -75,6 +75,14 @@ import static kafka.log.LogConfig.RetentionMsProp;
  */
 public class KafkaCruiseControlUtils {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlUtils.class);
+  // Cruise Control sensor types -- i.e. the first element of the metric name.
+  public static final String EXECUTOR_SENSOR = "Executor";
+  public static final String LOAD_MONITOR_SENSOR = "LoadMonitor";
+  public static final String USER_TASK_MANAGER_SENSOR = "UserTaskManager";
+  public static final String ANOMALY_DETECTOR_SENSOR = "AnomalyDetector";
+  public static final String GOAL_OPTIMIZER_SENSOR = "GoalOptimizer";
+  public static final String METRIC_FETCHER_MANAGER_SENSOR = "MetricFetcherManager";
+  public static final String KAFKA_CRUISE_CONTROL_SERVLET_SENSOR = "KafkaCruiseControlServlet";
   // Config to pass an Admin client to a pluggable component
   public static final String ADMIN_CLIENT_CONFIG = "admin.client.object";
   public static final double MAX_BALANCEDNESS_SCORE = 100.0;

@@ -28,6 +28,8 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.METRIC_FETCHER_MANAGER_SENSOR;
+
 
 /**
  * The class manages the metric fetchers. It periodically kicks off the sampling and refreshes the metadata as well.
@@ -104,13 +106,13 @@ public class MetricFetcherManager {
                                                       MetricSamplerPartitionAssignor.class);
     _partitionAssignor.configure(config.mergedConfigValues());
     _useLinearRegressionModel = config.getBoolean(MonitorConfig.USE_LINEAR_REGRESSION_MODEL_CONFIG);
-    _samplingFetcherTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("MetricFetcherManager",
+    _samplingFetcherTimer = dropwizardMetricRegistry.timer(MetricRegistry.name(METRIC_FETCHER_MANAGER_SENSOR,
                                                                                 "partition-samples-fetcher-timer"));
-    _samplingFetcherFailureRate = dropwizardMetricRegistry.meter(MetricRegistry.name("MetricFetcherManager",
+    _samplingFetcherFailureRate = dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_FETCHER_MANAGER_SENSOR,
                                                                                       "partition-samples-fetcher-failure-rate"));
-    _trainingSamplesFetcherTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("MetricFetcherManager",
+    _trainingSamplesFetcherTimer = dropwizardMetricRegistry.timer(MetricRegistry.name(METRIC_FETCHER_MANAGER_SENSOR,
                                                                                        "training-samples-fetcher-timer"));
-    _trainingSamplesFetcherFailureRate = dropwizardMetricRegistry.meter(MetricRegistry.name("MetricFetcherManager",
+    _trainingSamplesFetcherFailureRate = dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_FETCHER_MANAGER_SENSOR,
                                                                                              "training-samples-fetcher-failure-rate"));
 
     _metricSampler = sampler == null
