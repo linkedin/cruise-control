@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.kafka.common.utils.Time;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.EXECUTOR_SENSOR;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType;
 
 /**
@@ -71,27 +72,26 @@ public class ExecutionTaskTracker {
   }
 
   private void registerGaugeSensors(MetricRegistry dropwizardMetricRegistry) {
-    String metricName = "Executor";
     for (TaskType type : TaskType.cachedValues()) {
       for (ExecutionTaskState state : ExecutionTaskState.cachedValues()) {
         String typeString = type == TaskType.INTER_BROKER_REPLICA_ACTION
-                             ? INTER_BROKER_REPLICA_ACTION : type == TaskType.INTRA_BROKER_REPLICA_ACTION
-                                                             ? INTRA_BROKER_REPLICA_ACTION : LEADERSHIP_ACTION;
+                            ? INTER_BROKER_REPLICA_ACTION : type == TaskType.INTRA_BROKER_REPLICA_ACTION
+                                                            ? INTRA_BROKER_REPLICA_ACTION : LEADERSHIP_ACTION;
         String stateString = state == ExecutionTaskState.PENDING
-                              ? PENDING : state == ExecutionTaskState.IN_PROGRESS
-                                          ? IN_PROGRESS : state == ExecutionTaskState.ABORTING
-                                                          ? ABORTING : state == ExecutionTaskState.ABORTED
-                                                                       ? ABORTED : state == ExecutionTaskState.COMPLETED
-                                                                                   ? COMPLETED : DEAD;
-        dropwizardMetricRegistry.register(MetricRegistry.name(metricName, typeString + "-" + stateString),
+                             ? PENDING : state == ExecutionTaskState.IN_PROGRESS
+                                         ? IN_PROGRESS : state == ExecutionTaskState.ABORTING
+                                                         ? ABORTING : state == ExecutionTaskState.ABORTED
+                                                                      ? ABORTED : state == ExecutionTaskState.COMPLETED
+                                                                                  ? COMPLETED : DEAD;
+        dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR, typeString + "-" + stateString),
                                           (Gauge<Integer>) () -> (state == ExecutionTaskState.PENDING && _stopRequested)
                                                                  ? 0 : _tasksByType.get(type).get(state).size());
       }
     }
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_ONGOING_EXECUTION_IN_KAFKA_ASSIGNER_MODE),
+    dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR, GAUGE_ONGOING_EXECUTION_IN_KAFKA_ASSIGNER_MODE),
                                       (Gauge<Integer>) () -> _isKafkaAssignerMode
                                                              && !inExecutionTasks(TaskType.cachedValues()).isEmpty() ? 1 : 0);
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_ONGOING_EXECUTION_IN_NON_KAFKA_ASSIGNER_MODE),
+    dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR, GAUGE_ONGOING_EXECUTION_IN_NON_KAFKA_ASSIGNER_MODE),
                                       (Gauge<Integer>) () -> !_isKafkaAssignerMode
                                                              && !inExecutionTasks(TaskType.cachedValues()).isEmpty() ? 1 : 0);
   }
@@ -326,7 +326,7 @@ public class ExecutionTaskTracker {
                                      _remainingIntraBrokerDataToMoveInMB,
                                      taskStat(),
                                      filteredTasksByState(taskTypesToGetFullList)
-                                     );
+    );
   }
 
   public static class ExecutionTasksSummary {
