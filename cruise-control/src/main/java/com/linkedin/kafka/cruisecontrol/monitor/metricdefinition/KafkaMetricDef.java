@@ -212,9 +212,8 @@ public enum KafkaMetricDef {
   }
 
   /**
-   * @see MetricDef
-   *
    * @return The metric group of the Kafka metric def.
+   * @see MetricDef
    */
   public String group() {
     return _group;

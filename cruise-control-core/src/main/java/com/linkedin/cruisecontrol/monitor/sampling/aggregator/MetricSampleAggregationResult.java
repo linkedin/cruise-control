@@ -79,9 +79,8 @@ public class MetricSampleAggregationResult<G, E extends Entity<G>> extends LongG
   /**
    * Get the completeness summary of this aggregation result.
    *
-   * @see MetricSampleCompleteness
-   *
    * @return The completeness summary of this aggregation result.
+   * @see MetricSampleCompleteness
    */
   public MetricSampleCompleteness<G, E> completeness() {
     return _completeness;

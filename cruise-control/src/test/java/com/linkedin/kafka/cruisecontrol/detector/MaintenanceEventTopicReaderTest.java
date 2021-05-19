@@ -36,7 +36,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.*;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.createAdminClient;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.MaintenanceEventTopicReader.DEFAULT_MAINTENANCE_PLAN_EXPIRATION_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.MaintenanceEventTopicReader.MAINTENANCE_EVENT_TOPIC_CONFIG;
@@ -59,15 +59,23 @@ public class MaintenanceEventTopicReaderTest extends CruiseControlIntegrationTes
   private static final long TEST_REBALANCE_PLAN_TIME = 1601089200000L;
   private static final long TEST_EXPIRED_PLAN_TIME = TEST_REBALANCE_PLAN_TIME - 1L;
   private static final int TEST_BROKER_ID = 42;
-  private static final SortedSet<Integer> BROKERS_IN_PLAN = new TreeSet<Integer>() {{
-    add(42);
-    add(24);
-  }};
+  private static final SortedSet<Integer> BROKERS_IN_PLAN;
+  static {
+    SortedSet<Integer> brokersInPlan = new TreeSet<>();
+    brokersInPlan.add(42);
+    brokersInPlan.add(24);
+    BROKERS_IN_PLAN = Collections.unmodifiableSortedSet(brokersInPlan);
+  }
+
   private static final Duration TEST_TIMEOUT = Duration.ofSeconds(5);
-  private static final SortedMap<Short, String> TEST_TOPIC_REGEX_WITH_RF_UPDATE = new TreeMap<Short, String>() {{
-    put((short) 2, "T2");
-    put((short) 3, "T3");
-  }};
+  private static final SortedMap<Short, String> TEST_TOPIC_REGEX_WITH_RF_UPDATE;
+  static {
+    SortedMap<Short, String> testTopicRegexWithRfUpdate = new TreeMap<>();
+    testTopicRegexWithRfUpdate.put((short) 2, "T2");
+    testTopicRegexWithRfUpdate.put((short) 3, "T3");
+    TEST_TOPIC_REGEX_WITH_RF_UPDATE = Collections.unmodifiableSortedMap(testTopicRegexWithRfUpdate);
+  }
+
   private TopicDescription _topicDescription;
   private Config _topicConfig;
 

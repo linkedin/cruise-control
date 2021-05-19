@@ -38,8 +38,8 @@ public interface SecurityProvider {
    * Associates a username, credentials and roles with a {@link org.eclipse.jetty.server.UserIdentity}
    * that will be used by Jetty to manage the authentication.
    *
-   * @throws ServletException if any problem occurred during the initialization of the LoginService.
    * @return a new {@link LoginService}.
+   * @throws ServletException if any problem occurred during the initialization of the LoginService.
    */
   LoginService loginService() throws ServletException;
 
@@ -48,8 +48,8 @@ public interface SecurityProvider {
    * according to authentication method and decide if the user has valid credentials according
    * to the authentication method.
    *
-   * @throws ServletException if any problem occurred during the initialization of the Authenticator.
    * @return the {@link Authenticator} that'll be used for checking the incoming requests.
+   * @throws ServletException if any problem occurred during the initialization of the Authenticator.
    */
   Authenticator authenticator() throws ServletException;
 
