@@ -80,6 +80,13 @@ Cruise Control metrics are useful to monitor the state of Cruise Control itself.
 | The number of brokers that have recently been identified with a metric anomaly                                    | kafka.cruisecontrol:name=AnomalyDetector.num-recent-metric-anomalies                                      |
 | The number of brokers that continue to be identified with a metric anomaly for a prolonged period                 | kafka.cruisecontrol:name=AnomalyDetector.num-persistent-metric-anomalies                                  |
 | The cluster has partitions with RF > the number of eligible racks (0: No such partitions, 1: Has such partitions) | kafka.cruisecontrol:name=AnomalyDetector.has-partitions-with-replication-factor-greater-than-num-racks    |
+| The time taken by goal violation detection                                                                        | kafka.cruisecontrol:name=AnomalyDetector.goal-violation-detection-timer                                   |
+| The time taken to generate a fix for self-healing for broker failures                                             | kafka.cruisecontrol:name=AnomalyDetector.broker_failure-self-healing-fix-generation-timer                 |
+| The time taken to generate a fix for self-healing for maintenance events                                          | kafka.cruisecontrol:name=AnomalyDetector.maintenance_event-self-healing-fix-generation-timer              |
+| The time taken to generate a fix for self-healing for disk failures                                               | kafka.cruisecontrol:name=AnomalyDetector.disk_failure-self-healing-fix-generation-timer                   |
+| The time taken to generate a fix for self-healing for metric anomalies                                            | kafka.cruisecontrol:name=AnomalyDetector.metric_anomaly-self-healing-fix-generation-timer                 |
+| The time taken to generate a fix for self-healing for goal violations                                             | kafka.cruisecontrol:name=AnomalyDetector.goal_violation-self-healing-fix-generation-timer                 |
+| The time taken to generate a fix for self-healing for topic anomalies                                             | kafka.cruisecontrol:name=AnomalyDetector.topic_anomaly-self-healing-fix-generation-timer                  |
 
 ### GoalOptimizer Sensors
 

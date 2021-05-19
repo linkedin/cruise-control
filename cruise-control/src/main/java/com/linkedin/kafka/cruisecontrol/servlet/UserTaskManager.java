@@ -48,6 +48,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION_LOGGER;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.USER_TASK_MANAGER_SENSOR;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.ensureHeaderNotPresent;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.httpServletRequestToString;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REVIEW_ID_PARAM;
@@ -105,9 +106,9 @@ public class UserTaskManager implements Closeable {
                                                  USER_TASK_SCANNER_INITIAL_DELAY_SECONDS,
                                                  USER_TASK_SCANNER_PERIOD_SECONDS,
                                                  TimeUnit.SECONDS);
-    dropwizardMetricRegistry.register(MetricRegistry.name("UserTaskManager", "num-active-sessions"),
+    dropwizardMetricRegistry.register(MetricRegistry.name(USER_TASK_MANAGER_SENSOR, "num-active-sessions"),
                                       (Gauge<Integer>) _sessionKeyToUserTaskIdMap::size);
-    dropwizardMetricRegistry.register(MetricRegistry.name("UserTaskManager", "num-active-user-tasks"),
+    dropwizardMetricRegistry.register(MetricRegistry.name(USER_TASK_MANAGER_SENSOR, "num-active-user-tasks"),
                                       (Gauge<Integer>) _uuidToActiveUserTaskInfoMap::size);
     _successfulRequestExecutionTimer = successfulRequestExecutionTimer;
   }

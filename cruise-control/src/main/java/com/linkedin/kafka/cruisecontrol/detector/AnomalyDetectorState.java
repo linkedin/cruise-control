@@ -22,8 +22,8 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ANOMALY_DETECTOR_SENSOR;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.SEC_TO_MS;
-import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorManager.METRIC_REGISTRY_NAME;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.*;
 
 
@@ -109,30 +109,30 @@ public class AnomalyDetectorState {
     _metrics = new AnomalyMetrics(meanTimeBetweenAnomaliesMs, 0.0, 0L, 0L, 0L);
 
     if (dropwizardMetricRegistry != null) {
-      dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "mean-time-to-start-fix-ms"),
+      dropwizardMetricRegistry.register(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "mean-time-to-start-fix-ms"),
                                         (Gauge<Double>) this::meanTimeToStartFixMs);
-      dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "number-of-self-healing-started"),
+      dropwizardMetricRegistry.register(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "number-of-self-healing-started"),
                                         (Gauge<Long>) this::numSelfHealingStarted);
-      dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "number-of-self-healing-failed-to-start"),
+      dropwizardMetricRegistry.register(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "number-of-self-healing-failed-to-start"),
                                         (Gauge<Long>) this::numSelfHealingFailedToStart);
-      dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "ongoing-anomaly-duration-ms"),
+      dropwizardMetricRegistry.register(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "ongoing-anomaly-duration-ms"),
                                         (Gauge<Long>) this::ongoingAnomalyDurationMs);
-      dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, String.format("%s-has-unfixable-goals", GOAL_VIOLATION)),
+      dropwizardMetricRegistry.register(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, String.format("%s-has-unfixable-goals", GOAL_VIOLATION)),
                                         (Gauge<Integer>) () -> hasUnfixableGoals() ? 1 : 0);
 
       _anomalyRateByType = new HashMap<>(KafkaAnomalyType.cachedValues().size());
       _anomalyRateByType.put(BROKER_FAILURE,
-                             dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "broker-failure-rate")));
+                             dropwizardMetricRegistry.meter(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "broker-failure-rate")));
       _anomalyRateByType.put(GOAL_VIOLATION,
-                             dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "goal-violation-rate")));
+                             dropwizardMetricRegistry.meter(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "goal-violation-rate")));
       _anomalyRateByType.put(METRIC_ANOMALY,
-                             dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "metric-anomaly-rate")));
+                             dropwizardMetricRegistry.meter(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "metric-anomaly-rate")));
       _anomalyRateByType.put(DISK_FAILURE,
-                             dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "disk-failure-rate")));
+                             dropwizardMetricRegistry.meter(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "disk-failure-rate")));
       _anomalyRateByType.put(TOPIC_ANOMALY,
-                             dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "topic-anomaly-rate")));
+                             dropwizardMetricRegistry.meter(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "topic-anomaly-rate")));
       _anomalyRateByType.put(MAINTENANCE_EVENT,
-                             dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "maintenance-event-rate")));
+                             dropwizardMetricRegistry.meter(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "maintenance-event-rate")));
     } else {
       _anomalyRateByType = new HashMap<>(KafkaAnomalyType.cachedValues().size());
       KafkaAnomalyType.cachedValues().forEach(anomalyType -> _anomalyRateByType.put(anomalyType, new Meter()));

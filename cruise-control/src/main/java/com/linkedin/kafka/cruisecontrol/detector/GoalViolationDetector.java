@@ -4,6 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.common.Utils;
@@ -37,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ADMIN_CLIENT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ANOMALY_DETECTOR_SENSOR;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.balancednessCostByGoal;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.MAX_BALANCEDNESS_SCORE;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
@@ -62,10 +65,11 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
   private volatile ProvisionResponse _provisionResponse;
   private volatile boolean _hasPartitionsWithRFGreaterThanNumRacks;
   private final OptimizationOptionsGenerator _optimizationOptionsGenerator;
+  private final Timer _goalViolationDetectionTimer;
   protected static final double BALANCEDNESS_SCORE_WITH_OFFLINE_REPLICAS = -1.0;
   protected final Provisioner _provisioner;
 
-  public GoalViolationDetector(Queue<Anomaly> anomalies, KafkaCruiseControl kafkaCruiseControl) {
+  public GoalViolationDetector(Queue<Anomaly> anomalies, KafkaCruiseControl kafkaCruiseControl, MetricRegistry dropwizardMetricRegistry) {
     super(anomalies, kafkaCruiseControl);
     KafkaCruiseControlConfig config = _kafkaCruiseControl.config();
     // Notice that we use a separate set of Goal instances for anomaly detector to avoid interference.
@@ -86,6 +90,8 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
     _optimizationOptionsGenerator = config.getConfiguredInstance(AnalyzerConfig.OPTIMIZATION_OPTIONS_GENERATOR_CLASS_CONFIG,
                                                                  OptimizationOptionsGenerator.class,
                                                                  overrideConfigs);
+    _goalViolationDetectionTimer = dropwizardMetricRegistry.timer(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR,
+                                                                                      "goal-violation-detection-timer"));
     overrideConfigs = Collections.singletonMap(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, kafkaCruiseControl);
     _provisioner = config.getConfiguredInstance(AnomalyDetectorConfig.PROVISIONER_CLASS_CONFIG,
                                                 Provisioner.class,
@@ -180,37 +186,42 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
 
       ProvisionResponse provisionResponse = new ProvisionResponse(ProvisionStatus.UNDECIDED);
       boolean checkPartitionsWithRFGreaterThanNumRacks = true;
-      for (Goal goal : _detectionGoals) {
-        if (_kafkaCruiseControl.loadMonitor().meetCompletenessRequirements(goal.clusterModelCompletenessRequirements())) {
-          LOG.debug("Detecting if {} is violated.", goal.name());
-          // Because the model generation could be slow, We only get new cluster model if needed.
-          if (newModelNeeded) {
-            if (clusterModelSemaphore != null) {
-              clusterModelSemaphore.close();
-            }
-            clusterModelSemaphore = _kafkaCruiseControl.acquireForModelGeneration(new OperationProgress());
-            // Make cluster model null before generating a new cluster model so the current one can be GCed.
-            clusterModel = null;
-            clusterModel = _kafkaCruiseControl.clusterModel(goal.clusterModelCompletenessRequirements(),
-                                                            _allowCapacityEstimation,
-                                                            new OperationProgress());
+      final Timer.Context ctx = _goalViolationDetectionTimer.time();
+      try {
+        for (Goal goal : _detectionGoals) {
+          if (_kafkaCruiseControl.loadMonitor().meetCompletenessRequirements(goal.clusterModelCompletenessRequirements())) {
+            LOG.debug("Detecting if {} is violated.", goal.name());
+            // Because the model generation could be slow, We only get new cluster model if needed.
+            if (newModelNeeded) {
+              if (clusterModelSemaphore != null) {
+                clusterModelSemaphore.close();
+              }
+              clusterModelSemaphore = _kafkaCruiseControl.acquireForModelGeneration(new OperationProgress());
+              // Make cluster model null before generating a new cluster model so the current one can be GCed.
+              clusterModel = null;
+              clusterModel = _kafkaCruiseControl.clusterModel(goal.clusterModelCompletenessRequirements(),
+                                                              _allowCapacityEstimation,
+                                                              new OperationProgress());
 
-            // If the clusterModel contains dead brokers or disks, goal violation detector will ignore any goal violations.
-            // Detection and fix for dead brokers/disks is the responsibility of broker/disk failure detector.
-            if (skipDueToOfflineReplicas(clusterModel)) {
-              return;
+              // If the clusterModel contains dead brokers or disks, goal violation detector will ignore any goal violations.
+              // Detection and fix for dead brokers/disks is the responsibility of broker/disk failure detector.
+              if (skipDueToOfflineReplicas(clusterModel)) {
+                return;
+              }
+              _lastCheckedModelGeneration = clusterModel.generation();
             }
-            _lastCheckedModelGeneration = clusterModel.generation();
+            newModelNeeded = optimizeForGoal(clusterModel, goal, goalViolations, excludedBrokersForLeadership, excludedBrokersForReplicaMove,
+                                             checkPartitionsWithRFGreaterThanNumRacks);
+            // CC will check for partitions with RF greater than number of eligible racks just once, because regardless of the goal, the cluster
+            // will have the same (1) maximum replication factor and (2) rack count containing brokers that are eligible to host replicas.
+            checkPartitionsWithRFGreaterThanNumRacks = false;
+          } else {
+            LOG.warn("Skipping goal violation detection for {} because load completeness requirement is not met.", goal);
           }
-          newModelNeeded = optimizeForGoal(clusterModel, goal, goalViolations, excludedBrokersForLeadership, excludedBrokersForReplicaMove,
-                                           checkPartitionsWithRFGreaterThanNumRacks);
-          // CC will check for partitions with RF greater than number of eligible racks just once, because regardless of the goal, the cluster
-          // will have the same (1) maximum replication factor and (2) rack count containing brokers that are eligible to host replicas.
-          checkPartitionsWithRFGreaterThanNumRacks = false;
-        } else {
-          LOG.warn("Skipping goal violation detection for {} because load completeness requirement is not met.", goal);
+          provisionResponse.aggregate(goal.provisionResponse());
         }
-        provisionResponse.aggregate(goal.provisionResponse());
+      } finally {
+        ctx.stop();
       }
       _provisionResponse = provisionResponse;
       // Right-size the cluster (if needed)
