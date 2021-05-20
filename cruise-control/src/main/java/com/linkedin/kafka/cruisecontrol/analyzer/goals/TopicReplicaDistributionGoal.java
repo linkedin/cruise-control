@@ -110,12 +110,11 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    * Ensure that the given balance limit falls into min/max limits determined by min/max gaps for topic replica balance.
    * If the computed balance limit is out of these gap-based limits, use the relevant max/min gap-based balance limit.
    *
-   * @see com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig#TOPIC_REPLICA_COUNT_BALANCE_MIN_GAP_DOC
-   * @see com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig#TOPIC_REPLICA_COUNT_BALANCE_MAX_GAP_DOC
-   *
    * @param computedLimit Computed balance upper or lower limit
    * @param average Average topic replicas on broker.
-   * @return A balance limit that falls into [minGap, maxGap] for topic replica balance.
+   * @return A balance limit that falls into [minGap, maxGap] for topic replica balance.*
+   * @see com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig#TOPIC_REPLICA_COUNT_BALANCE_MIN_GAP_DOC
+   * @see com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig#TOPIC_REPLICA_COUNT_BALANCE_MAX_GAP_DOC
    */
   private int gapBasedBalanceLimit(int computedLimit, double average, boolean isLowerLimit) {
     int minLimit;

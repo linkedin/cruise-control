@@ -38,21 +38,21 @@ public class CruiseControlUtils {
   }
 
   /**
-   * @see <a href="https://xkcd.com/1179/">https://xkcd.com/1179/</a>
    * @param timeMs Time in milliseconds.
    * @return The date for the given time in ISO 8601 format with date, hour, minute, and seconds.
+   * @see <a href="https://xkcd.com/1179/">https://xkcd.com/1179/</a>
    */
   public static String utcDateFor(long timeMs) {
     return utcDateFor(timeMs, 0, ChronoUnit.SECONDS);
   }
 
   /**
-   * @see <a href="https://xkcd.com/1179/">https://xkcd.com/1179/</a>
    * @param timeMs Time in milliseconds.
    * @param precision requested time precision used in {@link DateTimeFormatterBuilder#appendInstant()}
    *        i.e: 0 for seconds precision, 3 for milliseconds, 6 for microseconds etc...
    * @param roundTo round the provided time to the provided {@link TemporalUnit}
    * @return The date for the given time in ISO 8601 format with provided precision (not truncated even if 0)
+   * @see <a href="https://xkcd.com/1179/">https://xkcd.com/1179/</a>
    */
   public static String utcDateFor(long timeMs, int precision, TemporalUnit roundTo) {
     DateTimeFormatter formatter = new DateTimeFormatterBuilder().appendInstant(precision).toFormatter();
