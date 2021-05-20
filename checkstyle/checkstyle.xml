@@ -108,6 +108,8 @@ LinkedIn Java style.
         <module name="OuterTypeFilename"/>
         <!-- Ensure that lines with code do not end with comment -->
         <module name="TrailingComment"/>
+        <!-- Double brace initialization is considered as anti-pattern and should be avoided -->
+        <module name="AvoidDoubleBraceInitialization"/>
         <!-- IMPORTS -->
 
         <!-- No imports statements using '*' notation except static imports -->
@@ -151,8 +153,16 @@ LinkedIn Java style.
         <module name="NonEmptyAtclauseDescription">
             <property name="javadocTokens" value="PARAM_LITERAL,RETURN_LITERAL,DEPRECATED_LITERAL"/>
         </module>
+
+        <!-- Ensure proper order of javadoc block-tags or javadoc tags -->
+        <module name="AtclauseOrder"/>
+
         <!-- NAMING CONVENTIONS -->
 
+        <!-- Long anonymous inner classes should usually be refactored into a named inner class -->
+        <module name="AnonInnerLength">
+            <property name="max" value="25"/>
+        </module>
         <!-- Generic parameters for a class must be uppercase letters (e.g. <T>, <OLD>) -->
         <module name="ClassTypeParameterName">
             <property name="format" value="^[A-Z]+$"/>
