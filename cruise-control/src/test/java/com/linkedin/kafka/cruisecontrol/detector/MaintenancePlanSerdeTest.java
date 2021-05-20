@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import java.util.Collections;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
@@ -15,14 +16,21 @@ import org.junit.Test;
 public class MaintenancePlanSerdeTest {
   private static final int TEST_BROKER_ID = 42;
   private static final String TOPIC_NAME = "TestTopic";
-  private static final SortedSet<Integer> BROKERS_IN_PLAN = new TreeSet<Integer>() {{
-    add(42);
-    add(24);
-  }};
-  private static final SortedMap<Short, String> TEST_TOPIC_REGEX_WITH_RF_UPDATE = new TreeMap<Short, String>() {{
-    put((short) 2, "T2");
-    put((short) 3, "T3");
-  }};
+  private static final SortedSet<Integer> BROKERS_IN_PLAN;
+  static {
+    SortedSet<Integer> brokersInPlan = new TreeSet<>();
+    brokersInPlan.add(42);
+    brokersInPlan.add(24);
+    BROKERS_IN_PLAN = Collections.unmodifiableSortedSet(brokersInPlan);
+  }
+
+  private static final SortedMap<Short, String> TEST_TOPIC_REGEX_WITH_RF_UPDATE;
+  static {
+    SortedMap<Short, String> testTopicRegexWithRfUpdate = new TreeMap<>();
+    testTopicRegexWithRfUpdate.put((short) 2, "T2");
+    testTopicRegexWithRfUpdate.put((short) 3, "T3");
+    TEST_TOPIC_REGEX_WITH_RF_UPDATE = Collections.unmodifiableSortedMap(testTopicRegexWithRfUpdate);
+  }
 
   @Test
   public void testDemotePlanSerde() {
