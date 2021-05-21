@@ -281,7 +281,7 @@ We are still trying to improve cruise control. And following are some configurat
 | broker.sample.store.topic.partition.count             | Integer | N         | 32            | The config for the number of partition for Kafka broker sample store topic                                                                                                                              |
 | min.partition.sample.store.topic.retention.time.ms    | Integer | N         | 3600000       | The config for the minimal retention time for Kafka partition sample store topic                                                                                                                        |
 | min.broker.sample.store.topic.retention.time.ms       | Integer | N         | 3600000       | The config for the minimal retention time for Kafka broker sample store topic                                                                                                                           |
-| skip.sample.store.topic.rack.awareness.check          | Boolean | N         | false         | The config to skip rack awareness sanity check for sample store topics                                                                                                                                  |
+                                                                                                                                  |
 
 ### KafkaPartitionMetricSampleOnExecutionStore configurations
 | Name                                                                | Type    | Required? | Default Value | Description                                                                                                     |
