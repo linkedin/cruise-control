@@ -90,7 +90,6 @@ public final class KafkaCruiseControlUtils {
   public static final int ZK_CONNECTION_TIMEOUT = (int) TimeUnit.MINUTES.toMillis(2);
   public static final long KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
   public static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
-  public static final long ADMIN_CLIENT_REQUEST_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
   public static final int SEC_TO_MS = (int) TimeUnit.SECONDS.toMillis(1);
   private static final int MIN_TO_MS = SEC_TO_MS * 60;
   private static final int HOUR_TO_MS = MIN_TO_MS * 60;
