@@ -15,8 +15,13 @@ import org.apache.kafka.common.Cluster;
 public class BaseReplicaMovementStrategy extends AbstractReplicaMovementStrategy {
 
   @Override
-  public Comparator<ExecutionTask> taskComparator(Cluster cluster) {
+  public Comparator<ExecutionTask> taskComparator(StrategyOptions strategyOptions) {
     return (task1, task2) -> (int) (task1.executionId() - task2.executionId());
+  }
+
+  @Override
+  public Comparator<ExecutionTask> taskComparator(Cluster cluster) {
+    return taskComparator(new StrategyOptions.Builder(cluster).build());
   }
 
   /**

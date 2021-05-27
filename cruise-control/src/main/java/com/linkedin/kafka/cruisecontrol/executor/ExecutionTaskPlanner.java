@@ -4,10 +4,12 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
+import com.linkedin.cruisecontrol.common.utils.Utils;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.StrategyOptions;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -63,7 +65,7 @@ import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.Replic
 public class ExecutionTaskPlanner {
   private static final Logger LOG = LoggerFactory.getLogger(ExecutionTaskPlanner.class);
   private Map<Integer, SortedSet<ExecutionTask>> _interPartMoveTaskByBrokerId;
-  private Map<Integer, SortedSet<ExecutionTask>> _intraPartMoveTaskByBrokerId;
+  private final Map<Integer, SortedSet<ExecutionTask>> _intraPartMoveTaskByBrokerId;
   private final Set<ExecutionTask> _remainingInterBrokerReplicaMovements;
   private final Set<ExecutionTask> _remainingIntraBrokerReplicaMovements;
   private final Map<Long, ExecutionTask> _remainingLeadershipMovements;
@@ -99,18 +101,22 @@ public class ExecutionTaskPlanner {
       for (String replicaMovementStrategy : defaultReplicaMovementStrategies) {
         try {
           if (_defaultReplicaMovementTaskStrategy == null) {
-            _defaultReplicaMovementTaskStrategy = (ReplicaMovementStrategy) Class.forName(replicaMovementStrategy).newInstance();
+            _defaultReplicaMovementTaskStrategy = Utils.newInstance(replicaMovementStrategy, ReplicaMovementStrategy.class);
           } else {
-            _defaultReplicaMovementTaskStrategy = _defaultReplicaMovementTaskStrategy.chain(
-                (ReplicaMovementStrategy) Class.forName(replicaMovementStrategy).newInstance());
+            _defaultReplicaMovementTaskStrategy = _defaultReplicaMovementTaskStrategy.chain(Utils.newInstance(replicaMovementStrategy,
+                                                                                                              ReplicaMovementStrategy.class));
           }
         } catch (Exception e) {
           throw new RuntimeException("Error occurred while setting up the replica movement strategy: " + replicaMovementStrategy + ".", e);
         }
       }
-      // Chain the custom strategies with BaseReplicaMovementStrategy in the end to handle the scenario that provided custom strategy is unable
-      // to determine the order of two tasks. BaseReplicaMovementStrategy makes the task with smaller execution id to get executed first.
-      _defaultReplicaMovementTaskStrategy = _defaultReplicaMovementTaskStrategy.chain(new BaseReplicaMovementStrategy());
+
+      if (!_defaultReplicaMovementTaskStrategy.name().contains(BaseReplicaMovementStrategy.class.getSimpleName())) {
+        // Unless the custom strategies are already chained with BaseReplicaMovementStrategy, chain it in the end to handle the scenario
+        // that provided custom strategy is unable to determine the order of two tasks.
+        // BaseReplicaMovementStrategy makes the task with smaller execution id to get executed first.
+        _defaultReplicaMovementTaskStrategy = _defaultReplicaMovementTaskStrategy.chain(new BaseReplicaMovementStrategy());
+      }
     }
   }
 
@@ -123,16 +129,16 @@ public class ExecutionTaskPlanner {
    * 3. Leader action (i.e. leadership movement)
    *
    * @param proposals Execution proposals.
-   * @param cluster Kafka cluster state.
+   * @param strategyOptions Strategy options to be used during application of a replica movement strategy.
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    */
   public void addExecutionProposals(Collection<ExecutionProposal> proposals,
-                                    Cluster cluster,
+                                    StrategyOptions strategyOptions,
                                     ReplicaMovementStrategy replicaMovementStrategy) {
-    LOG.trace("Cluster state before adding proposals: {}.", cluster);
-    maybeAddInterBrokerReplicaMovementTasks(proposals, cluster, replicaMovementStrategy);
+    LOG.trace("Cluster state before adding proposals: {}.", strategyOptions.cluster());
+    maybeAddInterBrokerReplicaMovementTasks(proposals, strategyOptions, replicaMovementStrategy);
     maybeAddIntraBrokerReplicaMovementTasks(proposals);
-    maybeAddLeaderChangeTasks(proposals, cluster);
+    maybeAddLeaderChangeTasks(proposals, strategyOptions.cluster());
     sanityCheckExecutionTasks();
     maybeDropReplicaSwapTasks();
   }
@@ -169,15 +175,15 @@ public class ExecutionTaskPlanner {
    * expected final proposal state.
    *
    * @param proposals Execution proposals.
-   * @param cluster Kafka cluster state.
+   * @param strategyOptions Strategy options to be used during application of a replica movement strategy.
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    */
   private void maybeAddInterBrokerReplicaMovementTasks(Collection<ExecutionProposal> proposals,
-                                                       Cluster cluster,
+                                                       StrategyOptions strategyOptions,
                                                        ReplicaMovementStrategy replicaMovementStrategy) {
     for (ExecutionProposal proposal : proposals) {
       TopicPartition tp = proposal.topicPartition();
-      PartitionInfo partitionInfo = cluster.partition(tp);
+      PartitionInfo partitionInfo = strategyOptions.cluster().partition(tp);
       if (partitionInfo == null) {
         LOG.trace("Ignored the attempt to move non-existing partition for topic partition: {}", tp);
         continue;
@@ -193,13 +199,12 @@ public class ExecutionTaskPlanner {
       }
     }
     if (replicaMovementStrategy == null) {
-      _interPartMoveTaskByBrokerId = _defaultReplicaMovementTaskStrategy.applyStrategy(_remainingInterBrokerReplicaMovements,
-                                                                                       cluster);
+      _interPartMoveTaskByBrokerId = _defaultReplicaMovementTaskStrategy.applyStrategy(_remainingInterBrokerReplicaMovements, strategyOptions);
     } else {
       // Chain the generated composite strategy with BaseReplicaMovementStrategy in the end to ensure the returned
       // strategy can always determine the order of two tasks.
       _interPartMoveTaskByBrokerId = replicaMovementStrategy.chain(new BaseReplicaMovementStrategy())
-              .applyStrategy(_remainingInterBrokerReplicaMovements, cluster);
+                                                            .applyStrategy(_remainingInterBrokerReplicaMovements, strategyOptions);
     }
   }
 
@@ -212,8 +217,8 @@ public class ExecutionTaskPlanner {
   private void maybeAddIntraBrokerReplicaMovementTasks(Collection<ExecutionProposal> proposals) {
     Set<TopicPartitionReplica> replicasToCheckLogdir = new HashSet<>();
     for (ExecutionProposal proposal : proposals) {
-      proposal.replicasToMoveBetweenDisksByBroker().keySet().forEach(broker ->
-        replicasToCheckLogdir.add(new TopicPartitionReplica(proposal.topic(), proposal.partitionId(), broker)));
+      proposal.replicasToMoveBetweenDisksByBroker().keySet().forEach(broker -> replicasToCheckLogdir.add(
+          new TopicPartitionReplica(proposal.topic(), proposal.partitionId(), broker)));
     }
 
     if (!replicasToCheckLogdir.isEmpty()) {
@@ -348,7 +353,7 @@ public class ExecutionTaskPlanner {
             Set<Integer> destinationBrokers = task.proposal().replicasToAdd().stream().mapToInt(ReplicaPlacementInfo::brokerId)
                                                   .boxed().collect(Collectors.toSet());
             if (brokerInvolved.contains(sourceBroker)
-                    || KafkaCruiseControlUtils.containsAny(brokerInvolved, destinationBrokers)) {
+                || KafkaCruiseControlUtils.containsAny(brokerInvolved, destinationBrokers)) {
               continue;
             }
             TopicPartition tp = task.proposal().topicPartition();
