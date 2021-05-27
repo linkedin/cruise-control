@@ -14,8 +14,13 @@ import org.apache.kafka.common.Cluster;
 public class PrioritizeSmallReplicaMovementStrategy extends AbstractReplicaMovementStrategy {
 
   @Override
-  public Comparator<ExecutionTask> taskComparator(Cluster cluster) {
+  public Comparator<ExecutionTask> taskComparator(StrategyOptions strategyOptions) {
     return (task1, task2) -> (int) (task1.proposal().dataToMoveInMB() - task2.proposal().dataToMoveInMB());
+  }
+
+  @Override
+  public Comparator<ExecutionTask> taskComparator(Cluster cluster) {
+    return taskComparator(new StrategyOptions.Builder(cluster).build());
   }
 
   /**

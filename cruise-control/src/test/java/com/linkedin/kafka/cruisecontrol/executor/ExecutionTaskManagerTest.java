@@ -8,12 +8,12 @@ import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.StrategyOptions;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -40,7 +40,7 @@ public class ExecutionTaskManagerTest {
   }
   private static ExecutionTaskManager TASK_MANAGER;
 
-  private Cluster generateExpectedCluster(ExecutionProposal proposal, TopicPartition tp) {
+  private Cluster generateExpectedCluster(ExecutionProposal proposal) {
     List<Node> expectedReplicas = new ArrayList<>(proposal.oldReplicas().size());
     expectedReplicas.add(new Node(0, "null", -1));
     expectedReplicas.add(new Node(2, "null", -1));
@@ -48,10 +48,10 @@ public class ExecutionTaskManagerTest {
     Node[] isrArray = new Node[expectedReplicas.size()];
     isrArray = expectedReplicas.toArray(isrArray);
 
-    Set<PartitionInfo> partitions = new HashSet<>();
-    partitions.add(new PartitionInfo(tp.topic(), tp.partition(), expectedReplicas.get(1), isrArray, isrArray));
+    TopicPartition tp = proposal.topicPartition();
+    Set<PartitionInfo> partition = Collections.singleton(new PartitionInfo(tp.topic(), tp.partition(), expectedReplicas.get(1), isrArray, isrArray));
 
-    return new Cluster(null, expectedReplicas, partitions, Collections.emptySet(), Collections.emptySet());
+    return new Cluster(null, expectedReplicas, partition, Collections.emptySet(), Collections.emptySet());
   }
 
   /**
@@ -87,15 +87,16 @@ public class ExecutionTaskManagerTest {
     ReplicaPlacementInfo r0 = new ReplicaPlacementInfo(0);
     ReplicaPlacementInfo r1 = new ReplicaPlacementInfo(1);
     ReplicaPlacementInfo r2 = new ReplicaPlacementInfo(2);
+    // Make sure the proposal does not involve leader movement.
+    ExecutionProposal proposal = new ExecutionProposal(tp, 10, r2, Arrays.asList(r0, r2), Arrays.asList(r2, r1));
+    StrategyOptions strategyOptions = new StrategyOptions.Builder(generateExpectedCluster(proposal)).build();
+
     for (List<ExecutionTaskState> sequence : testSequences) {
       TASK_MANAGER.clear();
-      // Make sure the proposal does not involve leader movement.
-      ExecutionProposal proposal = new ExecutionProposal(tp, 10, r2, Arrays.asList(r0, r2), Arrays.asList(r2, r1));
-
       TASK_MANAGER.setExecutionModeForTaskTracker(false);
       TASK_MANAGER.addExecutionProposals(Collections.singletonList(proposal),
                                          Collections.emptySet(),
-                                         generateExpectedCluster(proposal, tp),
+                                         strategyOptions,
                                          null);
       TASK_MANAGER.setRequestedInterBrokerPartitionMovementConcurrency(null);
       TASK_MANAGER.setRequestedIntraBrokerPartitionMovementConcurrency(null);

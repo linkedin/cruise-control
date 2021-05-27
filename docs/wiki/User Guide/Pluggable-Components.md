@@ -76,9 +76,10 @@ By default Cruise Control is configured to use `NoopNotifier` which ignores all 
 ## Replica Movement Strategy
 The strategy to determine the execution order for generated proposals. By default `BaseReplicaMovementStrategy` is used, which is totally random.
 Sometimes this could result in prolonged execution time due to some long tail tasks in each execution batches. Other available strategies includes:
-* **PrioritizeSmallReplicaMovementStrategy**: first move small sized replicas
-* **PrioritizeLargeReplicaMovementStrategy**: first move large sized replicas
-* **PostponeUrpReplicaMovementStrategy**: first move replicas for partition having no out-of-sync replica
+* **PrioritizeSmallReplicaMovementStrategy**: prioritize small sized replicas
+* **PrioritizeLargeReplicaMovementStrategy**: prioritize large sized replicas
+* **PostponeUrpReplicaMovementStrategy**: prioritize replicas for partition having no out-of-sync replica
+* **PrioritizeMinIsrWithOfflineReplicasStrategy**: prioritize tasks with (At/Under)MinISR partitions with offline replicas
 
 The strategies can be chained to use and can be dynamically set using `replica_movement_strategies` in corresponding request(e.g. [rebalance request](https://github.com/linkedin/cruise-control/wiki/REST-APIs#trigger-a-workload-balance)).
 

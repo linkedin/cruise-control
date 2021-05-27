@@ -198,7 +198,7 @@ public final class ExecutionUtils {
     Comparator<PartitionInfo> comparator = Comparator.comparing(PartitionInfo::topic).thenComparingInt(PartitionInfo::partition);
     Set<PartitionInfo> atMinIsr = new TreeSet<>(comparator);
     Set<PartitionInfo> underMinIsr = new TreeSet<>(comparator);
-    populateMinIsrState(cluster, minIsrWithTimeByTopic, atMinIsr, underMinIsr);
+    populateMinIsrState(cluster, minIsrWithTimeByTopic, atMinIsr, underMinIsr, false);
 
     Integer recommendedConcurrency = null;
     if (!underMinIsr.isEmpty()) {
@@ -218,9 +218,10 @@ public final class ExecutionUtils {
   }
 
   /**
-   * Populates the given sets for partitions that are (1) UnderMinISR without offline replicas and (2) AtMinISR without offline replicas
-   * using the topics from the given Kafka cluster and {@link org.apache.kafka.common.config.TopicConfig#MIN_IN_SYNC_REPLICAS_CONFIG} from
-   * the given {@code minIsrWithTimeByTopic}.
+   * Populates the given sets for partitions that are (1) UnderMinISR without any ({@code withOfflineReplicas=false}) or with at least one
+   * ({@code withOfflineReplicas=true}) offline replicas and (2) AtMinISR without any ({@code withOfflineReplicas=false}) or with at least
+   * one ({@code withOfflineReplicas=true}) offline replicas using the topics from the given Kafka cluster and
+   * {@link org.apache.kafka.common.config.TopicConfig#MIN_IN_SYNC_REPLICAS_CONFIG} from the given {@code minIsrWithTimeByTopic}.
    *
    * If the minISR value for a topic in the given Kafka cluster is missing from the given {@code minIsrWithTimeByTopic}, this function skips
    * populating minIsr state for partitions of that topic.
@@ -229,11 +230,14 @@ public final class ExecutionUtils {
    * @param minIsrWithTimeByTopic Value and capture time of {@link org.apache.kafka.common.config.TopicConfig#MIN_IN_SYNC_REPLICAS_CONFIG} by topic.
    * @param atMinIsrWithoutOfflineReplicas AtMinISR partitions without offline replicas.
    * @param underMinIsrWithoutOfflineReplicas UnderMinISR without offline replicas.
+   * @param withOfflineReplicas {@code true} to retrieve (At/Under)MinISR partitions each containing at least an offline replica,
+   * {@code false} to retrieve (At/Under)MinISR partitions without any offline replicas.
    */
-  private static void populateMinIsrState(Cluster cluster,
-                                          Map<String, MinIsrWithTime> minIsrWithTimeByTopic,
-                                          Set<PartitionInfo> atMinIsrWithoutOfflineReplicas,
-                                          Set<PartitionInfo> underMinIsrWithoutOfflineReplicas) {
+  public static void populateMinIsrState(Cluster cluster,
+                                         Map<String, MinIsrWithTime> minIsrWithTimeByTopic,
+                                         Set<PartitionInfo> atMinIsrWithoutOfflineReplicas,
+                                         Set<PartitionInfo> underMinIsrWithoutOfflineReplicas,
+                                         boolean withOfflineReplicas) {
     for (String topic : cluster.topics()) {
       MinIsrWithTime minIsrWithTime = minIsrWithTimeByTopic.get(topic);
       if (minIsrWithTime == null) {
@@ -243,7 +247,7 @@ public final class ExecutionUtils {
       int minISR = minIsrWithTime.minISR();
       for (PartitionInfo partitionInfo : cluster.partitionsForTopic(topic)) {
         boolean hasOfflineReplica = partitionInfo.offlineReplicas().length != 0;
-        if (hasOfflineReplica) {
+        if (hasOfflineReplica != withOfflineReplicas) {
           continue;
         }
 
