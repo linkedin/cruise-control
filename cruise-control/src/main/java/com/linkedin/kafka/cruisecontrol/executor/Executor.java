@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorManager;
 import com.linkedin.kafka.cruisecontrol.exception.OngoingExecutionException;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.StrategyOptions;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
@@ -395,7 +396,6 @@ public class Executor {
     }
 
     private void maybeRetrieveAndCacheTopicMinIsr(Set<String> topicsToCheck) {
-      topicsToCheck.removeAll(_topicMinIsrCache.minIsrWithTimeByTopic().keySet());
       if (topicsToCheck.isEmpty()) {
         return;
       }
@@ -417,9 +417,12 @@ public class Executor {
         return null;
       }
       Cluster cluster = _loadMonitor.kafkaCluster();
-      maybeRetrieveAndCacheTopicMinIsr(new HashSet<>(cluster.topics()));
+      Map<String, TopicMinIsrCache.MinIsrWithTime> minIsrWithTimeByTopic = _topicMinIsrCache.minIsrWithTimeByTopic();
+      Set<String> topicsToCheck = new HashSet<>(cluster.topics());
+      topicsToCheck.removeAll(minIsrWithTimeByTopic.keySet());
+      maybeRetrieveAndCacheTopicMinIsr(topicsToCheck);
 
-      return ExecutionUtils.recommendedConcurrency(cluster, _topicMinIsrCache.minIsrWithTimeByTopic(), currentMovementConcurrency, concurrencyType);
+      return ExecutionUtils.recommendedConcurrency(cluster, minIsrWithTimeByTopic, currentMovementConcurrency, concurrencyType);
     }
 
     @Override
@@ -618,8 +621,10 @@ public class Executor {
     _executorState = ExecutorState.initializeProposalExecution(_uuid, _reasonSupplier.get(), recentlyDemotedBrokers(),
                                                                recentlyRemovedBrokers(), isTriggeredByUserRequest);
     _executionTaskManager.setExecutionModeForTaskTracker(_isKafkaAssignerMode);
-    _executionTaskManager.addExecutionProposals(proposals, brokersToSkipConcurrencyCheck, _metadataClient.refreshMetadata().cluster(),
-                                                replicaMovementStrategy);
+    // Get a snapshot of (1) cluster and (2) minIsr with time by topic name.
+    StrategyOptions strategyOptions = new StrategyOptions.Builder(_metadataClient.refreshMetadata().cluster())
+        .minIsrWithTimeByTopic(_topicMinIsrCache.minIsrWithTimeByTopic()).build();
+    _executionTaskManager.addExecutionProposals(proposals, brokersToSkipConcurrencyCheck, strategyOptions, replicaMovementStrategy);
     _concurrencyAdjuster.initAdjustment(loadMonitor, requestedInterBrokerPartitionMovementConcurrency, requestedLeadershipMovementConcurrency);
     setRequestedIntraBrokerPartitionMovementConcurrency(requestedIntraBrokerPartitionMovementConcurrency);
     setRequestedExecutionProgressCheckIntervalMs(requestedExecutionProgressCheckIntervalMs);
