@@ -19,9 +19,6 @@ import org.apache.kafka.common.PartitionInfo;
  * for produce and consume. This strategy aims to help fixing such partitions faster.
  */
 public class PrioritizeMinIsrWithOfflineReplicasStrategy extends AbstractReplicaMovementStrategy {
-  private static final int PRIORITIZE_TASK_1 = -1;
-  private static final int PRIORITIZE_TASK_2 = 1;
-  private static final int PRIORITIZE_NONE = 0;
 
   /**
    * <ul>

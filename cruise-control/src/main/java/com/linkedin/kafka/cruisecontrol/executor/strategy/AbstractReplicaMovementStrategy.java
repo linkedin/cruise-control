@@ -20,6 +20,9 @@ import org.apache.kafka.common.Cluster;
  * execution order the replica movement tasks.
  */
 public abstract class AbstractReplicaMovementStrategy implements ReplicaMovementStrategy {
+  protected static final int PRIORITIZE_TASK_1 = -1;
+  protected static final int PRIORITIZE_TASK_2 = 1;
+  protected static final int PRIORITIZE_NONE = 0;
 
   @Override
   public ReplicaMovementStrategy chain(ReplicaMovementStrategy strategy) {
