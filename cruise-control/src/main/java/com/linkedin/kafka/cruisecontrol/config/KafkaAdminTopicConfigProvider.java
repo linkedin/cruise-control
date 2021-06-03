@@ -4,8 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.config;
 
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
-import java.time.Duration;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -15,12 +14,17 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
+import com.linkedin.kafka.cruisecontrol.model.Load;
+import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.Config;
 import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.common.config.ConfigResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 
 
 /**
@@ -41,7 +45,6 @@ public class KafkaAdminTopicConfigProvider extends JsonFileTopicConfigProvider {
   public static final String CLUSTER_CONFIGS_FILE = "cluster.configs.file";
   private Properties _clusterConfigs;
   private AdminClient _adminClient;
-  private long _adminTimeoutMs;
 
   @Override
   public Properties clusterConfigs() {
@@ -57,16 +60,13 @@ public class KafkaAdminTopicConfigProvider extends JsonFileTopicConfigProvider {
       topicConfig = _adminClient
               .describeConfigs(Collections.singletonList(topicResource))
               .all()
-              .get(_adminTimeoutMs, TimeUnit.MILLISECONDS)
+              .get()
               .get(topicResource);
     } catch (InterruptedException e) {
       LOG.error("The request for the configuration of topic '{}' was interrupted", topic);
       e.printStackTrace();
     } catch (ExecutionException e) {
       LOG.error("The request for the configuration of topic '{}' failed", topic);
-      e.printStackTrace();
-    } catch (TimeoutException e) {
-      LOG.error("The request for the configuration of topic '{}' timed out", topic);
       e.printStackTrace();
     }
 
@@ -91,16 +91,13 @@ public class KafkaAdminTopicConfigProvider extends JsonFileTopicConfigProvider {
                               topicNameSet.stream().map(name -> new ConfigResource(ConfigResource.Type.TOPIC, name)).collect(Collectors.toList())
                       ).all()
               )
-              .get(_adminTimeoutMs, TimeUnit.MILLISECONDS)
-              .get(_adminTimeoutMs, TimeUnit.MILLISECONDS);
+              .get()
+              .get();
     } catch (InterruptedException e) {
       LOG.error("The request for the configuration of all topics was interrupted");
       e.printStackTrace();
     } catch (ExecutionException e) {
       LOG.error("The request for the configuration of all topics failed");
-      e.printStackTrace();
-    } catch (TimeoutException e) {
-      LOG.error("The request for the configuration of all topics timed out");
       e.printStackTrace();
     }
 
@@ -128,14 +125,14 @@ public class KafkaAdminTopicConfigProvider extends JsonFileTopicConfigProvider {
 
   @Override
   public void configure(Map<String, ?> configs) {
-    KafkaCruiseControlConfig ccConfig = new KafkaCruiseControlConfig(configs);
-    _adminTimeoutMs = ccConfig.getConfiguredInstance(ExecutorConfig.ADMIN_CLIENT_REQUEST_TIMEOUT_MS_CONFIG, Integer.class);
-    _adminClient = KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(ccConfig));
+    _adminClient = (AdminClient) validateNotNull(
+            configs.get(LoadMonitor.KAFKA_ADMIN_CLIENT_OBJECT_CONFIG),
+            () -> String.format("Missing %s when creating Kafka Admin Client based Topic Config Provider", LoadMonitor.KAFKA_ADMIN_CLIENT_OBJECT_CONFIG));
     _clusterConfigs = loadClusterConfigs(configs, CLUSTER_CONFIGS_FILE);
   }
 
   @Override
   public void close() {
-    _adminClient.close(Duration.ofMillis(KafkaCruiseControlUtils.ADMIN_CLIENT_CLOSE_TIMEOUT_MS));
+    //no-op
   }
 }
