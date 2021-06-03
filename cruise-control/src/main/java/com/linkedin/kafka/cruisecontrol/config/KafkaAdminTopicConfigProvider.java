@@ -4,14 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.config;
 
-import com.google.gson.Gson;
-import com.google.gson.stream.JsonReader;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
@@ -41,12 +34,12 @@ import org.slf4j.LoggerFactory;
  * </pre>
  *
  */
-public class KafkaAdminTopicConfigProvider implements TopicConfigProvider {
+public class KafkaAdminTopicConfigProvider extends JsonFileTopicConfigProvider {
 
   private static final Logger LOG = LoggerFactory.getLogger(KafkaAdminTopicConfigProvider.class);
 
   public static final String CLUSTER_CONFIGS_FILE = "cluster.configs.file";
-  private static Properties _clusterConfigs;
+  private Properties _clusterConfigs;
   private AdminClient _adminClient;
   private long _adminTimeoutMs;
 
@@ -132,33 +125,13 @@ public class KafkaAdminTopicConfigProvider implements TopicConfigProvider {
     return props;
   }
 
-  private void loadClusterConfigs(String clusterConfigsFile) throws FileNotFoundException {
-    JsonReader reader = new JsonReader(new InputStreamReader(new FileInputStream(clusterConfigsFile), StandardCharsets.UTF_8));
-    try {
-      Gson gson = new Gson();
-      _clusterConfigs = gson.fromJson(reader, Properties.class);
-    } finally {
-      try {
-        reader.close();
-      } catch (IOException e) {
-        // let it go.
-      }
-    }
-  }
 
   @Override
   public void configure(Map<String, ?> configs) {
-
     KafkaCruiseControlConfig ccConfig = new KafkaCruiseControlConfig(configs);
     _adminTimeoutMs = ccConfig.getConfiguredInstance(ExecutorConfig.ADMIN_CLIENT_REQUEST_TIMEOUT_MS_CONFIG, Integer.class);
     _adminClient = KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(ccConfig));
-
-    String configFile = KafkaCruiseControlUtils.getRequiredConfig(configs, CLUSTER_CONFIGS_FILE);
-    try {
-      loadClusterConfigs(configFile);
-    } catch (FileNotFoundException e) {
-      throw new IllegalArgumentException(e);
-    }
+    _clusterConfigs = loadClusterConfigs(configs, CLUSTER_CONFIGS_FILE);
   }
 
   @Override

@@ -4,19 +4,12 @@
 
 package com.linkedin.kafka.cruisecontrol.config;
 
-import com.google.gson.Gson;
-import com.google.gson.stream.JsonReader;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import kafka.server.ConfigType;
 import kafka.zk.AdminZkClient;
 import kafka.zk.KafkaZkClient;
 import scala.collection.JavaConversions;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Properties;
 
@@ -31,20 +24,19 @@ import java.util.Properties;
  * </pre>
  *
  * This class uses the Zookeeper based admin client that will be removed in Kafka 3.0. Therefore this class has been
- * deprecated and will be removed in a future Cruise Control release. A new
- * {@link com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider} implementation using the Kafka Admin Client has
- * been created ({@link com.linkedin.kafka.cruisecontrol.config.KafkaAdminTopicConfigProvider}) and can be set using the
+ * deprecated and will be removed in a future Cruise Control release. A new {@link TopicConfigProvider} implementation
+ * using the Kafka Admin Client has been created ({@link KafkaAdminTopicConfigProvider}) and can be set using the
  * {@code topic.config.provider.class} configuration setting.
  *
  */
 @Deprecated
-public class KafkaTopicConfigProvider implements TopicConfigProvider {
+public class KafkaTopicConfigProvider extends JsonFileTopicConfigProvider {
   public static final String CLUSTER_CONFIGS_FILE = "cluster.configs.file";
   public static final String ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP = "KafkaTopicConfigProvider";
   public static final String ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE = "GetAllActiveTopicConfigs";
   private String _connectString;
   private boolean _zkSecurityEnabled;
-  private static Properties _clusterConfigs;
+  private Properties _clusterConfigs;
 
   @Override
   public Properties clusterConfigs() {
@@ -79,30 +71,11 @@ public class KafkaTopicConfigProvider implements TopicConfigProvider {
     }
   }
 
-  private void loadClusterConfigs(String clusterConfigsFile) throws FileNotFoundException {
-    JsonReader reader = new JsonReader(new InputStreamReader(new FileInputStream(clusterConfigsFile), StandardCharsets.UTF_8));
-    try {
-      Gson gson = new Gson();
-      _clusterConfigs = gson.fromJson(reader, Properties.class);
-    } finally {
-      try {
-        reader.close();
-      } catch (IOException e) {
-        // let it go.
-      }
-    }
-  }
-
   @Override
   public void configure(Map<String, ?> configs) {
     _connectString = (String) configs.get(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG);
     _zkSecurityEnabled = (Boolean) configs.get(ExecutorConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
-    String configFile = KafkaCruiseControlUtils.getRequiredConfig(configs, CLUSTER_CONFIGS_FILE);
-    try {
-      loadClusterConfigs(configFile);
-    } catch (FileNotFoundException e) {
-      throw new IllegalArgumentException(e);
-    }
+    _clusterConfigs = loadClusterConfigs(configs, CLUSTER_CONFIGS_FILE);
   }
 
   @Override
