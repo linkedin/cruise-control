@@ -1078,7 +1078,7 @@ public class ParameterUtils {
   }
 
   static boolean skipUrpDemotion(HttpServletRequest request) {
-    return getBooleanParam(request, SKIP_URP_DEMOTION_PARAM, false);
+    return getBooleanParam(request, SKIP_URP_DEMOTION_PARAM, true);
   }
 
   static boolean excludeFollowerDemotion(HttpServletRequest request) {

@@ -457,7 +457,7 @@ Supported parameters are:
 | dryrun                            | boolean   | whether dry-run the request or not                                                                                                    | true                  | yes                                       | 
 | allow_capacity_estimation         | boolean   | whether to allow broker capacity to be estimated                                                                                      | true                  | yes                                       | 
 | concurrent_leader_movements       | integer   | upper bound of ongoing leadership movements                                                                                           | null                  | yes                                       | 
-| skip_urp_demotion                 | boolean   | whether skip demoting leader replicas for under replicated partitions                                                                 | false                 | yes                                       | 
+| skip_urp_demotion                 | boolean   | whether skip demoting leader replicas for under replicated partitions                                                                 | true                  | yes                                       |
 | exclude_follower_demotion         | boolean   | whether skip demoting follower replicas on the broker to be demoted                                                                   | true                  | yes                                       | 
 | exclude_recently_demoted_brokers  | boolean   | whether to allow leader replicas to be moved to recently demoted brokers                                                              | false                 | yes                                       | 
 | replica_movement_strategies       | string    | [replica movement strategy](https://github.com/linkedin/cruise-control/wiki/Pluggable-Components#replica-movement-strategy) to use    | null                  | yes                                       | 
@@ -472,7 +472,7 @@ Demoting a broker/disk is consist of tow steps.
     within their corresponding partitions
   * Trigger a preferred leader election on the partitions to migrate the leader replicas off the broker/disk
 
-Set `skip_urp_demotion` to true will skip the operations on partitions which is currently under replicated; Set `exclude_follower_demotion` will skip operations on the partitions which only have follower replicas on the brokers/disks to be demoted. The purpose of the former is to prevent the URP recovery process from blocking the demotion execution, the latter ensures that the demotion operation is limited to leaders.
+Set `skip_urp_demotion` to false will cancel outstanding operations if partitions stay under replicated; Set `exclude_follower_demotion` will skip operations on the partitions which only have follower replicas on the brokers/disks to be demoted. The purpose of the former is to prevent the URP recovery process from blocking the demotion execution, the latter ensures that the demotion operation is limited to leaders.
 
 ### Stop the current proposal execution task
 The following POST request will let Kafka Cruise Control stop an ongoing `rebalance`, `add_broker`,  `remove_broker`, `fix_offline_replica`, `topic_configuration` or `demote_broker` operation:
