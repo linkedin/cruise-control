@@ -4,17 +4,12 @@
 
 package com.linkedin.kafka.cruisecontrol.config;
 
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
-import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
-import com.linkedin.kafka.cruisecontrol.model.Load;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.Config;
@@ -24,7 +19,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
-import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 
 
 /**
@@ -62,12 +56,8 @@ public class KafkaAdminTopicConfigProvider extends JsonFileTopicConfigProvider {
               .all()
               .get()
               .get(topicResource);
-    } catch (InterruptedException e) {
-      LOG.error("The request for the configuration of topic '{}' was interrupted", topic);
-      e.printStackTrace();
-    } catch (ExecutionException e) {
-      LOG.error("The request for the configuration of topic '{}' failed", topic);
-      e.printStackTrace();
+    } catch (InterruptedException | ExecutionException e) {
+        LOG.warn("Config check for topic {} failed due to failure to describe its configs.", topic, e);
     }
 
     if (topicConfig != null) {
@@ -93,12 +83,8 @@ public class KafkaAdminTopicConfigProvider extends JsonFileTopicConfigProvider {
               )
               .get()
               .get();
-    } catch (InterruptedException e) {
-      LOG.error("The request for the configuration of all topics was interrupted");
-      e.printStackTrace();
-    } catch (ExecutionException e) {
-      LOG.error("The request for the configuration of all topics failed");
-      e.printStackTrace();
+    } catch (InterruptedException | ExecutionException e) {
+      LOG.warn("Config check for all topics failed due to failure to describe their configs.", e);
     }
 
     Map<String, Properties> propsMap = new HashMap<>();
@@ -127,7 +113,8 @@ public class KafkaAdminTopicConfigProvider extends JsonFileTopicConfigProvider {
   public void configure(Map<String, ?> configs) {
     _adminClient = (AdminClient) validateNotNull(
             configs.get(LoadMonitor.KAFKA_ADMIN_CLIENT_OBJECT_CONFIG),
-            () -> String.format("Missing %s when creating Kafka Admin Client based Topic Config Provider", LoadMonitor.KAFKA_ADMIN_CLIENT_OBJECT_CONFIG));
+            () -> String.format("Missing %s when creating Kafka Admin Client based Topic Config Provider",
+                    LoadMonitor.KAFKA_ADMIN_CLIENT_OBJECT_CONFIG));
     _clusterConfigs = loadClusterConfigs(configs, CLUSTER_CONFIGS_FILE);
   }
 
