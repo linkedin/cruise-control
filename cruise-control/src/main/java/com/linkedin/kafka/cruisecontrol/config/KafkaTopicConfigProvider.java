@@ -23,7 +23,7 @@ import java.util.Properties;
  *   }
  * </pre>
  *
- * This class uses the Zookeeper based admin client that will be removed in Kafka 3.0. Therefore this class has been
+ * @deprecated This class uses the Zookeeper based admin client that will be removed in Kafka 3.0. Therefore this class has been
  * deprecated and will be removed in a future Cruise Control release. A new {@link TopicConfigProvider} implementation
  * using the Kafka Admin Client has been created ({@link KafkaAdminTopicConfigProvider}) and can be set using the
  * {@code topic.config.provider.class} configuration setting.
@@ -31,7 +31,6 @@ import java.util.Properties;
  */
 @Deprecated
 public class KafkaTopicConfigProvider extends JsonFileTopicConfigProvider {
-  public static final String CLUSTER_CONFIGS_FILE = "cluster.configs.file";
   public static final String ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP = "KafkaTopicConfigProvider";
   public static final String ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE = "GetAllActiveTopicConfigs";
   private String _connectString;

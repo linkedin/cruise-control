@@ -20,6 +20,8 @@ import java.util.Properties;
  */
 public abstract class JsonFileTopicConfigProvider implements TopicConfigProvider {
 
+    public static final String CLUSTER_CONFIGS_FILE = "cluster.configs.file";
+
     /**
      * Method which will find the file path from the supplied config map using the supplied cluster file config key and
      * load the configs contained in that JSON file into a {@link java.util.Properties} instance.

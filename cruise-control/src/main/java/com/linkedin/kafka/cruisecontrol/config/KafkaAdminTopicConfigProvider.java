@@ -37,7 +37,6 @@ public class KafkaAdminTopicConfigProvider extends JsonFileTopicConfigProvider {
 
   private static final Logger LOG = LoggerFactory.getLogger(KafkaAdminTopicConfigProvider.class);
 
-  public static final String CLUSTER_CONFIGS_FILE = "cluster.configs.file";
   private Properties _clusterConfigs;
   private AdminClient _adminClient;
 
