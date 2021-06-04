@@ -43,7 +43,7 @@ DemoteBrokerEndpoint:
         description: Whether to operate on partitions which are currently under-replicated.
         schema:
           type: boolean
-          default: false
+          default: true
       - name: exclude_follower_demotion
         in: query
         description: Whether to operate on partitions which only have follower replicas on the specified broker(s).
