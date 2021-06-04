@@ -147,7 +147,6 @@ public class ClusterPartitionState {
     return partitionList;
   }
 
-
   /**
    * Write broker summary
    * @param sb String builder to write the response to.

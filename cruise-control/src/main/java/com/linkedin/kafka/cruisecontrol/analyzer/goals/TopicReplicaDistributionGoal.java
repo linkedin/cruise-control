@@ -459,7 +459,6 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
         .filter(b -> b.numReplicasOfTopicInBroker(topic) < _balanceUpperLimitByTopic.get(topic))
         .collect(Collectors.toSet()));
 
-
     Collection<Replica> replicasOfTopicInBroker = broker.replicasOfTopicInBroker(topic);
     int numReplicasOfTopicInBroker = replicasOfTopicInBroker.size();
     int numOfflineTopicReplicas = GoalUtils.retainCurrentOfflineBrokerReplicas(broker, replicasOfTopicInBroker).size();
@@ -521,7 +520,6 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
       }
       return resultByOfflineReplicas;
     });
-
 
     // Source broker can be dead, alive, or may have bad disks.
     if (_fixOfflineReplicasOnly) {

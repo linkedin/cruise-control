@@ -78,7 +78,6 @@ public class SamplingUtilsTest {
     EasyMock.expect(alterConfigsResult.values()).andReturn(alterConfigsValues);
     EasyMock.replay(adminClient, describeConfigsResult, describedConfigsFuture, topicConfig, alterConfigsResult);
 
-
     boolean updateTopicConfig = maybeUpdateTopicConfig(adminClient, topicToUpdateConfigs);
     EasyMock.verify(adminClient, describeConfigsResult, describedConfigsFuture, topicConfig, alterConfigsResult);
     assertTrue(updateTopicConfig);

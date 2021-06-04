@@ -160,7 +160,6 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                                               AnalyzerConfig.GOALS_CONFIG, interBrokerGoalNames));
     }
 
-
     // Ensure that hard goals are contained in default goals.
     List<String> hardGoalNames = getList(AnalyzerConfig.HARD_GOALS_CONFIG);
     if (hardGoalNames.stream().anyMatch(g -> !defaultGoalNames.contains(g))) {
@@ -168,7 +167,6 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                                               AnalyzerConfig.HARD_GOALS_CONFIG, hardGoalNames,
                                               AnalyzerConfig.DEFAULT_GOALS_CONFIG, defaultGoalNames));
     }
-
 
     // Ensure that goals used for self-healing are contained in default goals.
     List<String> selfHealingGoalNames = getList(AnomalyDetectorConfig.SELF_HEALING_GOALS_CONFIG);

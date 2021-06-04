@@ -47,7 +47,7 @@ public class AlertaSelfHealingNotifierTest {
 
     /**
      * Setup the test.
-     * @throws ParseException 
+     * @throws ParseException
      */
     @BeforeClass
     public static void setup() throws ParseException {
@@ -128,7 +128,6 @@ public class AlertaSelfHealingNotifierTest {
             _selfHealingEnabled.put(KafkaAnomalyType.BROKER_FAILURE, true);
             _alertaMessageList = new ArrayList<>();
         }
-
 
         @Override
         protected void sendAlertaMessage(AlertaMessage alertaMessage) throws IOException {

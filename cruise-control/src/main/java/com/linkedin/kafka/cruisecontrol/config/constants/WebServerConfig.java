@@ -118,7 +118,6 @@ public class WebServerConfig {
   public static final boolean DEFAULT_WEBSERVER_ACCESSLOG_ENABLED = true;
   public static final String WEBSERVER_ACCESSLOG_ENABLED_DOC = "true if access log is enabled";
 
-
   /**
    * <code>webserver.accesslog.path</code>
    */

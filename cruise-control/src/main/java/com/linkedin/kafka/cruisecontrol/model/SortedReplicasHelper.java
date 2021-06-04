@@ -63,7 +63,6 @@ public class SortedReplicasHelper {
     return maybeAddSelectionFunc(selectionFunc, true);
   }
 
-
   /**
    * If condition holds, add a priority function to the {@link SortedReplicas} to be created.
    * Note the order of adding priority function matters. Each call of this method (if condition holds)

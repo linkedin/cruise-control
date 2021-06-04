@@ -38,7 +38,6 @@ public class RandomClusterUniformDistNewBrokerTest extends RandomClusterTest {
     return RandomClusterTest.data(TestConstants.Distribution.UNIFORM);
   }
 
-
   @Test
   public void testNewBrokers() throws Exception {
     super.testNewBrokers();

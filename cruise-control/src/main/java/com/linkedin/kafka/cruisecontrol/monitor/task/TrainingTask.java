@@ -29,7 +29,6 @@ class TrainingTask implements Runnable {
   private long _nextSamplingStartingMs;
   private long _nextSamplingEndMs;
 
-
   TrainingTask(Time time,
                LoadMonitorTaskRunner loadMonitorTaskRunner,
                MetricFetcherManager metricFetcherManager,
