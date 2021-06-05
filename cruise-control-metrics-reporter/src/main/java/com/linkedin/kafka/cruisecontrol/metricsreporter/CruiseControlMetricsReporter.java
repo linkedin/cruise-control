@@ -391,7 +391,6 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     });
   }
 
-
   private void reportYammerMetrics(long now) throws Exception {
     LOG.debug("Reporting yammer metrics.");
     YammerMetricProcessor.Context context = new YammerMetricProcessor.Context(this, now, _brokerId, _reportingIntervalMs);

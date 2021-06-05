@@ -75,5 +75,3 @@ public class RemoveBrokerParameters extends AddedOrRemovedBrokerParameters {
     return CASE_INSENSITIVE_PARAMETER_NAMES;
   }
 }
-
-

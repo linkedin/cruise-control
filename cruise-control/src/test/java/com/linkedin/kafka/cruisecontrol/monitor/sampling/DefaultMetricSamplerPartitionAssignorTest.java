@@ -92,7 +92,6 @@ public class DefaultMetricSamplerPartitionAssignorTest {
                                                                                         topicMetadata);
     metadata.update(KafkaCruiseControlUtils.REQUEST_VERSION_UPDATE, metadataResponse, false, 0);
 
-
     MetricSamplerPartitionAssignor assignor = new DefaultMetricSamplerPartitionAssignor();
     Set<TopicPartition> assignment = assignor.assignPartitions(metadata.fetch());
 

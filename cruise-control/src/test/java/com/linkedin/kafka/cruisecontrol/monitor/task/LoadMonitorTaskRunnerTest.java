@@ -320,7 +320,5 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
     public BlockingQueue<PartitionMetricSample> metricSampleQueue() {
       return _partitionMetricSamples;
     }
-
-
   }
 }

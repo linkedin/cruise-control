@@ -103,7 +103,6 @@ public class SlackSelfHealingNotifierTest {
             _slackMessageList = new ArrayList<>();
         }
 
-
         @Override
         protected void sendSlackMessage(SlackMessage slackMessage, String slackWebhookUrl) throws IOException {
             _slackMessageList.add(slackMessage);

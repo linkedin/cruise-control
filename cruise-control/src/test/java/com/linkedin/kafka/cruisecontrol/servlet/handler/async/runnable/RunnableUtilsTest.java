@@ -34,7 +34,6 @@ public class RunnableUtilsTest {
     CLUSTER = new Cluster("cluster_id", new HashSet<>(Arrays.asList(NODES)), partitionInfo, Collections.emptySet(), Collections.emptySet());
   }
 
-
   @Test
   public void testPopulateRackInfoForReplicationFactorChange() {
     Map<String, List<Integer>> brokersByRack = new HashMap<>();

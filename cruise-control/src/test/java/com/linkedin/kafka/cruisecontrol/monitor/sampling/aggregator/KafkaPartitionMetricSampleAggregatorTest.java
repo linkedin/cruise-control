@@ -147,7 +147,6 @@ public class KafkaPartitionMetricSampleAggregatorTest {
                                                                                         topicMetadata);
     metadata.update(KafkaCruiseControlUtils.REQUEST_VERSION_UPDATE, metadataResponse, false, 1);
 
-
     Map<PartitionEntity, ValuesAndExtrapolations> aggregateResult =
         metricSampleAggregator.aggregate(cluster, Long.MAX_VALUE, new OperationProgress()).valuesAndExtrapolations();
     // Partition "topic-0" should be valid in all NUM_WINDOW windows and Partition "topic1-0" should not since
@@ -278,8 +277,6 @@ public class KafkaPartitionMetricSampleAggregatorTest {
       numExtrapolations++;
     }
     assertEquals(1, numExtrapolations);
-
-
   }
 
   @Test
@@ -293,7 +290,6 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(NUM_WINDOWS - 2, MIN_SAMPLES_PER_WINDOW,
                                                         metricSampleAggregator, PE, 3, WINDOW_MS,
                                                         KafkaMetricDef.commonMetricDef());
-
 
     MetricSampleAggregationResult<String, PartitionEntity> result =
         metricSampleAggregator.aggregate(metadata.fetch(), NUM_WINDOWS * WINDOW_MS, new OperationProgress());

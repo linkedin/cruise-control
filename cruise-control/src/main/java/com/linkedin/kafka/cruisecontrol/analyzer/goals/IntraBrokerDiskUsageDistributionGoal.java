@@ -486,7 +486,6 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
     return PER_DISK_SWAP_TIMEOUT_MS - (System.currentTimeMillis() - swapStartTimeMs);
   }
 
-
   @Override
   public ClusterModelStatsComparator clusterModelStatsComparator() {
     return new ClusterModelStatsComparator() {
