@@ -106,7 +106,6 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
                                    Arrays.asList(T0P0, T0P0, T0P0, T0P0, T1P1, T1P1, T1P1),
                                    9, 90, r, 3, clusterModel, goal);
 
-
     findReplicaToSwapWithAndVerify(Arrays.asList(-1.0, 5.0, 10.0, 20.0, 21.0, 60.0, 100.0),
                                    Arrays.asList(T1P1, T1P1, T1P1, T1P1, T1P1, T1P1, T1P1),
                                    10, 31, r, 3, clusterModel, goal);
@@ -256,7 +255,6 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
     clusterModel.createReplica("r2", 3, T1P1, 1, false);
     clusterModel.createReplica("r3", 4, T0P0, 1, false);
     clusterModel.createReplica("r3", 4, T1P2, 1, false);
-
 
     clusterModel.createReplica("r0", 0, T1P1, 2, false);
     clusterModel.createReplica("r1", 2, T1P0, 2, false);

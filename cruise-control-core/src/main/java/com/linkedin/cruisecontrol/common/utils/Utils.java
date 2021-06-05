@@ -43,7 +43,6 @@ public class Utils {
     return Utils.newInstance(Class.forName(klass, true, Utils.getContextOrCruiseControlClassLoader()).asSubclass(base));
   }
 
-
   /**
    * Get the Context ClassLoader on this thread or, if not present, the ClassLoader that loaded Cruise Control.
    *

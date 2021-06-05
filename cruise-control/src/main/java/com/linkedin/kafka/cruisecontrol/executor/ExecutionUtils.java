@@ -80,7 +80,6 @@ public final class ExecutionUtils {
   static long LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS;
   static int LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS;
 
-
   private ExecutionUtils() { }
 
   /**

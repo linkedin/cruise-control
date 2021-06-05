@@ -64,7 +64,6 @@ public class CruiseControlConfig extends AbstractConfig {
   private static final String METRIC_ANOMALY_ANALYZER_METRICS_DOC = "The metric ids that the metric anomaly detector "
       + "should detect if they are violated.";
 
-
   static {
     CONFIG = new ConfigDef()
         .define(METRICS_WINDOW_MS_CONFIG,

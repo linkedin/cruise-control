@@ -299,7 +299,6 @@ public class RunnableUtils {
                                    isTriggeredByGoalViolation, requestedDestinationBrokerIds, onlyMoveImmigrantReplicas);
   }
 
-
   /**
    * Update recently removed and demoted brokers with the given brokers to drop if the given dryrun is false.
    *

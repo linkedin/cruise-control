@@ -9,5 +9,4 @@ package com.linkedin.kafka.cruisecontrol.model;
  */
 public class LoadTest {
 
-
 }

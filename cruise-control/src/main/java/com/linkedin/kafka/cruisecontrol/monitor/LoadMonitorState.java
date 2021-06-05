@@ -280,7 +280,6 @@ public class LoadMonitorState {
     return Double.isNaN(v) ? 0.0 : v;
   }
 
-
   @Override
   public String toString() {
     String trained = ModelParameters.trainingCompleted()
