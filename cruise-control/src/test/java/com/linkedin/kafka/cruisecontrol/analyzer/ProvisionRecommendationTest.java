@@ -13,7 +13,6 @@ import static org.junit.Assert.assertThrows;
 
 public class ProvisionRecommendationTest {
 
-
   @Test
   public void testBuilderInput() {
     // Verify: state

@@ -166,7 +166,6 @@ public class KafkaCruiseControlServletEndpointTest {
     Assert.assertEquals(3, result1.size());
     EasyMock.reset(_mockUUIDGenerator, _mockHttpSession, _mockHttpServletResponse);
 
-
     // Test Case 2: Get all tasks from client 0.0.0.1
     Map<String, String []> answerQueryParam2 = new HashMap<>();
     answerQueryParam2.put("param", new String[]{"true"});
@@ -177,7 +176,6 @@ public class KafkaCruiseControlServletEndpointTest {
     // Test Case 2 result
     Assert.assertEquals(3, result2.size());
     EasyMock.reset(_mockUUIDGenerator, _mockHttpSession, _mockHttpServletResponse);
-
 
     // Test Case 3: Get all PROPOSALS and REMOVE_BROKERS from client 0.0.0.1
     Map<String, String []> answerQueryParam3 = new HashMap<>();
@@ -190,7 +188,6 @@ public class KafkaCruiseControlServletEndpointTest {
     // Test Case 3 result
     Assert.assertEquals(2, result3.size());
     EasyMock.reset(_mockUUIDGenerator, _mockHttpSession, _mockHttpServletResponse);
-
 
     // Test Case 4: Get all tasks limit to 4 entries
     Map<String, String []> answerQueryParam4 = new HashMap<>();

@@ -393,7 +393,6 @@ public final class GoalUtils {
     return String.format("%s%s%s", goal.name(), reverse ? "-REVERSE" : "", leaderOnly ? "-LEADER" : "");
   }
 
-
   /**
    * Get the set of topics to rebalance for a soft goal.
    *

@@ -63,7 +63,6 @@ public final class ExecutionUtils {
   static final Map<ConcurrencyType, Integer> MIN_CONCURRENCY = new HashMap<>(ConcurrencyType.cachedValues().size());
   static final Map<String, Double> CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME = new HashMap<>(5);
 
-
   private ExecutionUtils() { }
 
   /**

@@ -167,7 +167,6 @@ public class ExecutionTaskPlannerTest {
     ExecutionTaskPlanner prioritizeMinIsrMovementPlanner = new ExecutionTaskPlanner(null,
                                                                                     new KafkaCruiseControlConfig(prioritizeMinIsrMovementProps));
 
-
     Set<PartitionInfo> partitions = new HashSet<>();
     partitions.add(generatePartitionInfoWithUrpHavingOfflineReplica(_partitionMovement1, true));
     partitions.add(generatePartitionInfo(_partitionMovement2, false));

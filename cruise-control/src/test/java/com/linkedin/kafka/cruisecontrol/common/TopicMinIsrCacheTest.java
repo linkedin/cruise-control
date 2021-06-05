@@ -172,7 +172,6 @@ public class TopicMinIsrCacheTest {
     EasyMock.expect(topicConfig2.get(EasyMock.eq(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG)))
             .andReturn(new ConfigEntry(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, MIN_IN_SYNC_REPLICAS_VALUE_2));
 
-
     EasyMock.replay(describeConfigsResult, describedConfigsFuture, describedConfigsFuture2, topicConfig2);
     topicMinIsrCache.putTopicMinIsr(describeConfigsResult);
     Map<String, TopicMinIsrCache.MinIsrWithTime> minIsrWithTimeByTopic = topicMinIsrCache.minIsrWithTimeByTopic();
@@ -199,7 +198,6 @@ public class TopicMinIsrCacheTest {
     EasyMock.expect(describedConfigsFuture3.get()).andReturn(topicConfig3);
     EasyMock.expect(topicConfig3.get(EasyMock.eq(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG)))
             .andReturn(new ConfigEntry(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, MIN_IN_SYNC_REPLICAS_VALUE_3));
-
 
     EasyMock.replay(describeConfigsResult, describedConfigsFuture, describedConfigsFuture3, topicConfig3);
     topicMinIsrCache.putTopicMinIsr(describeConfigsResult);

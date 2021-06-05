@@ -28,7 +28,11 @@ LinkedIn Java style.
         <property name="max" value="150"/>
         <message key="maxLineLen" value="Line is longer than {0,number,integer} characters (found {1,number,integer}). Try to keep lines under 120 characters."/>
     </module>
-
+    <module name="RegexpMultiline">
+        <property name="message" value="Multiple empty lines after this line"/>
+        <property name="format" value="^(?!import|package).+[\r]?\n\s*[\r]?\n\s*[\r]?\n"/>
+        <property name="fileExtensions" value="java"/>
+    </module>
     <module name="TreeWalker">
 
         <!-- ANNOTATIONS -->

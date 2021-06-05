@@ -41,7 +41,6 @@ public class CaseInsensitiveGoalConfigTest {
   public static Collection<Object[]> data() {
     Collection<Object[]> params = new ArrayList<>();
 
-
     Properties sharedProps = new Properties();
     sharedProps.setProperty(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, "localhost:2121");
     sharedProps.setProperty(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, "aaa");

@@ -136,7 +136,6 @@ public class KafkaCruiseControlServletUtils {
     REQUEST_PARAMETER_CONFIGS = Collections.unmodifiableMap(requestParameterConfigs);
   }
 
-
   private KafkaCruiseControlServletUtils() {
 
   }
