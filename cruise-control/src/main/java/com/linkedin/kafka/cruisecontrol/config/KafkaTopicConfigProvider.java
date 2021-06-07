@@ -9,9 +9,13 @@ import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import kafka.server.ConfigType;
 import kafka.zk.AdminZkClient;
 import kafka.zk.KafkaZkClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.collection.JavaConversions;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 
 
 /**
@@ -31,6 +35,8 @@ import java.util.Properties;
  */
 @Deprecated
 public class KafkaTopicConfigProvider extends JsonFileTopicConfigProvider {
+
+  private static final Logger LOG = LoggerFactory.getLogger(KafkaTopicConfigProvider.class);
   public static final String ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP = "KafkaTopicConfigProvider";
   public static final String ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE = "GetAllActiveTopicConfigs";
   private String _connectString;
@@ -57,9 +63,32 @@ public class KafkaTopicConfigProvider extends JsonFileTopicConfigProvider {
   }
 
   @Override
+  public Map<String, Properties> topicConfigs(Set<String> topics) {
+    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(_connectString,
+            ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP,
+            ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE,
+            _zkSecurityEnabled);
+
+    AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
+
+    Map<String, Properties> topicConfigs = new HashMap<>();
+    for (String topic : topics) {
+      try {
+        Properties topicConfig = adminZkClient.fetchEntityConfig(ConfigType.Topic(), topic);
+        topicConfigs.put(topic, topicConfig);
+      } catch (Exception e) {
+        LOG.warn("Unable to retrieve config for topic '{}'", topic, e);
+      }
+    }
+
+    KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
+    return topicConfigs;
+  }
+
+  @Override
   public Map<String, Properties> allTopicConfigs() {
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(_connectString,
-                                                                              ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP,
+            ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP,
                                                                               ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE,
                                                                               _zkSecurityEnabled);
     try {

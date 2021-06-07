@@ -51,5 +51,4 @@ public abstract class JsonFileTopicConfigProvider implements TopicConfigProvider
         }
     }
 
-
 }
