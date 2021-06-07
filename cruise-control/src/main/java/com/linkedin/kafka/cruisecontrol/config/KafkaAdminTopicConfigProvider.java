@@ -56,8 +56,16 @@ public class KafkaAdminTopicConfigProvider extends JsonFileTopicConfigProvider {
               .all()
               .get()
               .get(topicResource);
-    } catch (InterruptedException | ExecutionException e) {
-        LOG.warn("Config check for topic {} failed due to failure to describe its configs.", topic, e);
+    } catch (ExecutionException ee) {
+      if (org.apache.kafka.common.errors.TimeoutException.class == ee.getCause().getClass()) {
+        LOG.warn("Failed to retrieve config for topic '{}' due to describeConfigs request time out. Check for Kafka-side issues"
+                + " and consider increasing the configured timeout.", topic);
+      } else {
+        // e.g. could be UnknownTopicOrPartitionException due to topic deletion or InvalidTopicException
+        LOG.debug("Cannot retrieve config for topic {}.", topic, ee);
+      }
+    } catch (InterruptedException ie) {
+      LOG.debug("Interrupted while getting config for topic {}.", topic, ie);
     }
 
     if (topicConfig != null) {
@@ -85,34 +93,34 @@ public class KafkaAdminTopicConfigProvider extends JsonFileTopicConfigProvider {
               )
               .get();
     } catch (InterruptedException | ExecutionException e) {
-      LOG.warn("Config check for all topics failed due to failure to describe their configs.", e);
+      LOG.warn("Unable to get topic configuration futures for all topics via Kafka admin client", e);
     }
 
     Map<String, Properties> propsMap = new HashMap<>();
     if (topicConfigs != null) {
-
-      // Set a method to run when each topic config future completes which either logs any error or adds the config to the properties map
       for (Map.Entry<ConfigResource, KafkaFuture<Config>> entry : topicConfigs.entrySet()) {
-
-        entry.getValue().whenComplete((config, error) -> {
-            if (error != null) {
-              LOG.warn("Topic configurations for topic '{}' on the cluster could not be retrieved due to: {}", entry.getKey(), error.getMessage());
-            } else {
-              propsMap.put(entry.getKey().name(), convertTopicConfigToProperties(config));
-            }
-        });
-
-      }
-
-      //Block on all the config futures completing
-      try {
-        KafkaFuture.allOf(topicConfigs.values().toArray(new KafkaFuture[0])).get();
-      } catch (InterruptedException | ExecutionException e) {
-        LOG.warn("Config check for all topics failed due to failure to describe their configs.", e);
+        try {
+          Config config = entry.getValue().get();
+          propsMap.put(entry.getKey().name(), convertTopicConfigToProperties(config));
+        } catch (ExecutionException ee) {
+          if (org.apache.kafka.common.errors.TimeoutException.class == ee.getCause().getClass()) {
+            LOG.warn("Failed to retrieve config for topic '{}' due to describeConfigs request time out. Check for Kafka-side issues"
+                            + " and consider increasing the configured timeout.", entry.getKey().name());
+          } else {
+            // e.g. could be UnknownTopicOrPartitionException due to topic deletion or InvalidTopicException
+            LOG.debug("Cannot retrieve config for topic {}.", entry.getKey().name(), ee);
+          }
+        } catch (InterruptedException ie) {
+          LOG.debug("Interrupted while getting config for topic {}.", entry.getKey().name(), ie);
+        }
       }
     }
 
-    return propsMap;
+    if (!propsMap.isEmpty()) {
+      return propsMap;
+    } else {
+      throw new RuntimeException("Unable to retrieve topic configuration for any topics in the Kafka cluster");
+    }
   }
 
   private static Properties convertTopicConfigToProperties(Config config) {
