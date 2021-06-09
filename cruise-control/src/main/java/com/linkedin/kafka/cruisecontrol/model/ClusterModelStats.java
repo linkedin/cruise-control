@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.function.Function;
 import org.apache.kafka.common.TopicPartition;
 
@@ -81,19 +82,22 @@ public class ClusterModelStats {
    * @return Analysis stats with this cluster and given balancing constraint.
    */
   ClusterModelStats populate(ClusterModel clusterModel, BalancingConstraint balancingConstraint, OptimizationOptions optimizationOptions) {
-    _numBrokers = clusterModel.brokers().size();
-    _numTopics = clusterModel.topics().size();
+    final SortedSet<Broker> brokers = clusterModel.brokers();
+    final Set<Broker> aliveBrokers = clusterModel.aliveBrokers();
+    Set<String> topics = clusterModel.topics();
+    _numBrokers = brokers.size();
+    _numTopics = topics.size();
     _balancingConstraint = balancingConstraint;
     _brokersAllowedReplicaMove = GoalUtils.aliveBrokersNotExcludedForReplicaMove(clusterModel, optimizationOptions);
-    utilizationForResources(clusterModel, optimizationOptions);
-    utilizationForPotentialNwOut(clusterModel, optimizationOptions);
-    numForReplicas(clusterModel);
-    numForLeaderReplicas(clusterModel);
-    numForAvgTopicReplicas(clusterModel);
+    utilizationForResources(clusterModel, optimizationOptions, aliveBrokers);
+    utilizationForPotentialNwOut(clusterModel, optimizationOptions, aliveBrokers);
+    numForReplicas(clusterModel, brokers, aliveBrokers);
+    numForLeaderReplicas(brokers, aliveBrokers);
+    numForAvgTopicReplicas(clusterModel, brokers, topics);
     _utilizationMatrix = clusterModel.utilizationMatrix();
     _numSnapshotWindows = clusterModel.load().numWindows();
     _monitoredPartitionsRatio = clusterModel.monitoredPartitionsRatio();
-    populateStatsForDisks(clusterModel, balancingConstraint);
+    populateStatsForDisks(balancingConstraint, aliveBrokers);
     return this;
   }
 
@@ -260,8 +264,9 @@ public class ClusterModelStats {
    *
    * @param clusterModel The state of the cluster.
    * @param optimizationOptions Options to take into account while retrieving cluster capacity.
+   * @param aliveBrokers Alive brokers in the cluster -- passed to this function to avoid recomputing them using cluster model.
    */
-  private void utilizationForResources(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
+  private void utilizationForResources(ClusterModel clusterModel, OptimizationOptions optimizationOptions, Set<Broker> aliveBrokers) {
     // Average, maximum, and standard deviation of utilization by resource.
     Map<Resource, Double> avgUtilizationByResource = new HashMap<>(Resource.cachedValues().size());
     Map<Resource, Double> maxUtilizationByResource = new HashMap<>(Resource.cachedValues().size());
@@ -276,21 +281,21 @@ public class ClusterModelStats {
                                                                                           _balancingConstraint,
                                                                                           optimizationOptions.isTriggeredByGoalViolation(),
                                                                                           ResourceDistributionGoal.BALANCE_MARGIN,
-                                                                          false);
+                                                                                          false);
 
       double balanceLowerThreshold = GoalUtils.computeResourceUtilizationBalanceThreshold(avgUtilizationPercentage,
                                                                                           resource,
                                                                                           _balancingConstraint,
                                                                                           optimizationOptions.isTriggeredByGoalViolation(),
                                                                                           ResourceDistributionGoal.BALANCE_MARGIN,
-                                                                          true);
+                                                                                          true);
 
       // Maximum, minimum, and standard deviation utilization for the resource.
       double hottestBrokerUtilization = 0.0;
       double coldestBrokerUtilization = Double.MAX_VALUE;
       double varianceSum = 0.0;
       int numBalancedBrokersInBrokersAllowedReplicaMove = 0;
-      for (Broker broker : clusterModel.aliveBrokers()) {
+      for (Broker broker : aliveBrokers) {
         double utilization = resource.isHostResource() ? broker.host().load().expectedUtilizationFor(resource)
                                                        : broker.load().expectedUtilizationFor(resource);
         hottestBrokerUtilization = Math.max(hottestBrokerUtilization, utilization);
@@ -324,14 +329,14 @@ public class ClusterModelStats {
    *
    * @param clusterModel The state of the cluster.
    * @param optimizationOptions Options to take into account while retrieving cluster capacity.
+   * @param aliveBrokers Alive brokers in the cluster -- passed to this function to avoid recomputing them using cluster model.
    */
-  private void utilizationForPotentialNwOut(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
+  private void utilizationForPotentialNwOut(ClusterModel clusterModel, OptimizationOptions optimizationOptions, Set<Broker> aliveBrokers) {
     // Average, minimum, and maximum: network outbound utilization and replicas in brokers.
     double maxPotentialNwOut = 0.0;
     double minPotentialNwOut = Double.MAX_VALUE;
     double varianceSum = 0.0;
-    double potentialNwOutInCluster = clusterModel.aliveBrokers()
-                                                 .stream()
+    double potentialNwOutInCluster = aliveBrokers.stream()
                                                  .filter(b -> _brokersAllowedReplicaMove.contains(b.id()))
                                                  .mapToDouble(b -> clusterModel.potentialLeadershipLoadFor(b.id())
                                                                                .expectedUtilizationFor(Resource.NW_OUT))
@@ -339,7 +344,7 @@ public class ClusterModelStats {
     double capacity = clusterModel.capacityWithAllowedReplicaMovesFor(Resource.NW_OUT, optimizationOptions);
     double avgPotentialNwOutUtilizationPct = potentialNwOutInCluster / capacity;
     double capacityThreshold = _balancingConstraint.capacityThreshold(Resource.NW_OUT);
-    for (Broker broker : clusterModel.aliveBrokers()) {
+    for (Broker broker : aliveBrokers) {
       double brokerUtilization = clusterModel.potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT);
       double brokerCapacity = broker.capacityFor(Resource.NW_OUT);
       maxPotentialNwOut = Math.max(maxPotentialNwOut, brokerUtilization);
@@ -362,11 +367,14 @@ public class ClusterModelStats {
    * Generate statistics for replicas in the given cluster.
    *
    * @param clusterModel The state of the cluster.
+   * @param brokers Brokers in the cluster -- passed to this function to avoid recomputing them using cluster model.
+   * @param aliveBrokers Alive brokers in the cluster -- passed to this function to avoid recomputing them using cluster model.
    */
-  private void numForReplicas(ClusterModel clusterModel) {
-    populateReplicaStats(clusterModel,
-                         broker -> broker.replicas().size(),
-                         _replicaStats);
+  private void numForReplicas(ClusterModel clusterModel, SortedSet<Broker> brokers, Set<Broker> aliveBrokers) {
+    populateReplicaStats(broker -> broker.replicas().size(),
+                         _replicaStats,
+                         brokers,
+                         aliveBrokers);
     _numReplicasInCluster = clusterModel.numReplicas();
     // Set the number of partitions with offline replicas.
     Set<TopicPartition> partitionsWithOfflineReplicas = new HashSet<>();
@@ -379,30 +387,34 @@ public class ClusterModelStats {
   /**
    * Generate statistics for leader replicas in the given cluster.
    *
-   * @param clusterModel The state of the cluster.
+   * @param brokers Brokers in the cluster -- passed to this function to avoid recomputing them using cluster model.
+   * @param aliveBrokers Alive brokers in the cluster -- passed to this function to avoid recomputing them using cluster model.
    */
-  private void numForLeaderReplicas(ClusterModel clusterModel) {
-    populateReplicaStats(clusterModel,
-                         broker -> broker.leaderReplicas().size(),
-                         _leaderReplicaStats);
+  private void numForLeaderReplicas(SortedSet<Broker> brokers, Set<Broker> aliveBrokers) {
+    populateReplicaStats(broker -> broker.leaderReplicas().size(),
+                         _leaderReplicaStats,
+                         brokers,
+                         aliveBrokers);
   }
 
   /**
    * Generate statistics for replicas of interest in the given cluster.
    * Average and standard deviation calculations are based on brokers not excluded for replica moves.
    *
-   * @param clusterModel The state of the cluster.
    * @param numInterestedReplicasFunc function to calculate number of replicas of interest on a broker.
    * @param interestedReplicaStats statistics for replicas of interest.
+   * @param brokers Brokers in the cluster -- passed to this function to avoid recomputing them using cluster model.
+   * @param aliveBrokers Alive brokers in the cluster -- passed to this function to avoid recomputing them using cluster model.
    */
-  private void populateReplicaStats(ClusterModel clusterModel,
-                                    Function<Broker, Integer> numInterestedReplicasFunc,
-                                    Map<Statistic, Number> interestedReplicaStats) {
+  private void populateReplicaStats(Function<Broker, Integer> numInterestedReplicasFunc,
+                                    Map<Statistic, Number> interestedReplicaStats,
+                                    SortedSet<Broker> brokers,
+                                    Set<Broker> aliveBrokers) {
     // Average, minimum, and maximum number of replicas of interest in brokers.
     int maxInterestedReplicasInBroker = 0;
     int minInterestedReplicasInBroker = Integer.MAX_VALUE;
     int numInterestedReplicasInCluster = 0;
-    for (Broker broker : clusterModel.brokers()) {
+    for (Broker broker : brokers) {
       int numInterestedReplicasInBroker = numInterestedReplicasFunc.apply(broker);
       numInterestedReplicasInCluster += numInterestedReplicasInBroker;
       maxInterestedReplicasInBroker = Math.max(maxInterestedReplicasInBroker, numInterestedReplicasInBroker);
@@ -412,7 +424,7 @@ public class ClusterModelStats {
 
     // Standard deviation of replicas of interest in alive brokers.
     double variance = 0.0;
-    for (Broker broker : clusterModel.aliveBrokers()) {
+    for (Broker broker : aliveBrokers) {
       if (_brokersAllowedReplicaMove.contains(broker.id())) {
         variance += (Math.pow((double) numInterestedReplicasFunc.apply(broker) - avgInterestedReplicas, 2)
                      / _brokersAllowedReplicaMove.size());
@@ -430,35 +442,34 @@ public class ClusterModelStats {
    * Average and standard deviation calculations are based on brokers not excluded for replica moves.
    *
    * @param clusterModel The state of the cluster.
+   * @param brokers Brokers in the cluster -- passed to this function to avoid recomputing them using cluster model.
+   * @param topics Topics in the cluster -- passed to this function to avoid recomputing them using cluster model.
    */
-  private void numForAvgTopicReplicas(ClusterModel clusterModel) {
+  private void numForAvgTopicReplicas(ClusterModel clusterModel, SortedSet<Broker> brokers, Set<String> topics) {
     _topicReplicaStats.put(Statistic.AVG, 0.0);
     _topicReplicaStats.put(Statistic.MAX, 0);
     _topicReplicaStats.put(Statistic.MIN, Integer.MAX_VALUE);
     _topicReplicaStats.put(Statistic.ST_DEV, 0.0);
-    for (String topic : clusterModel.topics()) {
+    for (String topic : topics) {
       int maxTopicReplicasInBroker = 0;
       int minTopicReplicasInBroker = Integer.MAX_VALUE;
-      for (Broker broker : clusterModel.brokers()) {
+      double avgTopicReplicas = ((double) clusterModel.numTopicReplicas(topic)) / _brokersAllowedReplicaMove.size();
+      double variance = 0.0;
+      for (Broker broker : brokers) {
         int numTopicReplicasInBroker = broker.numReplicasOfTopicInBroker(topic);
         maxTopicReplicasInBroker = Math.max(maxTopicReplicasInBroker, numTopicReplicasInBroker);
         minTopicReplicasInBroker = Math.min(minTopicReplicasInBroker, numTopicReplicasInBroker);
-      }
-      double avgTopicReplicas = ((double) clusterModel.numTopicReplicas(topic)) / _brokersAllowedReplicaMove.size();
-
-      // Standard deviation of replicas in brokers allowed replica move.
-      double variance = 0.0;
-      for (Broker broker : clusterModel.aliveBrokers()) {
-        if (_brokersAllowedReplicaMove.contains(broker.id())) {
-          variance += (Math.pow(broker.numReplicasOfTopicInBroker(topic) - avgTopicReplicas, 2) / _brokersAllowedReplicaMove.size());
+        if (broker.isAlive() && _brokersAllowedReplicaMove.contains(broker.id())) {
+          // Standard deviation of replicas in brokers allowed replica move.
+          variance += (Math.pow(numTopicReplicasInBroker - avgTopicReplicas, 2) / _brokersAllowedReplicaMove.size());
         }
       }
 
       _topicReplicaStats.put(Statistic.AVG, _topicReplicaStats.get(Statistic.AVG).doubleValue() + avgTopicReplicas);
       _topicReplicaStats.put(Statistic.MAX,
-          Math.max(_topicReplicaStats.get(Statistic.MAX).intValue(), maxTopicReplicasInBroker));
+                             Math.max(_topicReplicaStats.get(Statistic.MAX).intValue(), maxTopicReplicasInBroker));
       _topicReplicaStats.put(Statistic.MIN,
-          Math.min(_topicReplicaStats.get(Statistic.MIN).intValue(), minTopicReplicasInBroker));
+                             Math.min(_topicReplicaStats.get(Statistic.MIN).intValue(), minTopicReplicasInBroker));
       _topicReplicaStats.put(Statistic.ST_DEV, (Double) _topicReplicaStats.get(Statistic.ST_DEV) + Math.sqrt(variance));
     }
 
@@ -474,13 +485,13 @@ public class ClusterModelStats {
    * If the disk utilization percentage is out of the boundary, the disk is counted as unbalanced.
    * Also sum up the variance of utilization for each alive disk and get an aggregated standard deviation.
    *
-   * @param clusterModel The state of the cluster.
    * @param balancingConstraint Balancing constraint.
+   * @param aliveBrokers Alive brokers in the cluster -- passed to this function to avoid recomputing them using cluster model.
    */
-  private void populateStatsForDisks(ClusterModel clusterModel, BalancingConstraint balancingConstraint) {
+  private void populateStatsForDisks(BalancingConstraint balancingConstraint, Set<Broker> aliveBrokers) {
     double totalDiskUtilizationVariance = 0;
     int numAliveDisks = 0;
-    for (Broker broker : clusterModel.aliveBrokers()) {
+    for (Broker broker : aliveBrokers) {
       double brokerDiskUtilization = averageDiskUtilizationPercentage(broker);
       double upperLimit = brokerDiskUtilization * balancingConstraint.resourceBalancePercentage(Resource.DISK);
       double lowerLimit = brokerDiskUtilization * Math.max(0, (2 - balancingConstraint.resourceBalancePercentage(Resource.DISK)));

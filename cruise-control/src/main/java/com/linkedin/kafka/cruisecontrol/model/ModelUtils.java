@@ -152,11 +152,11 @@ public class ModelUtils {
    * @return A single representative utilization value on a resource, or {@code 0} if the given aggregatedMetricValues is empty.
    */
   public static double expectedUtilizationFor(Resource resource, AggregatedMetricValues aggregatedMetricValues) {
-    validateNotNull(resource, "Resource cannot be null.");
     validateNotNull(aggregatedMetricValues, "AggregatedMetricValues cannot be null.");
     if (aggregatedMetricValues.isEmpty()) {
       return 0.0;
     }
+    validateNotNull(resource, "Resource cannot be null.");
     double result = 0;
     for (MetricInfo info : KafkaMetricDef.resourceToMetricInfo(resource)) {
       MetricValues valuesForId = aggregatedMetricValues.valuesFor(info.id());

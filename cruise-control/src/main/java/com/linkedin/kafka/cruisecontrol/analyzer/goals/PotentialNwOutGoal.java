@@ -160,8 +160,12 @@ public class PotentialNwOutGoal extends AbstractGoal {
   @Override
   protected SortedSet<Broker> brokersToBalance(ClusterModel clusterModel) {
     // Balance the broken brokers (i.e. dead or has bad disks) if any, otherwise balance all brokers.
-    SortedSet<Broker> brokenBrokers = clusterModel.deadBrokers();
-    brokenBrokers.addAll(clusterModel.brokersHavingOfflineReplicasOnBadDisks());
+    SortedSet<Broker> brokenBrokers = clusterModel.brokersHavingOfflineReplicasOnBadDisks();
+    if (!brokenBrokers.isEmpty()) {
+      brokenBrokers.addAll(clusterModel.deadBrokers());
+    } else {
+      brokenBrokers = clusterModel.deadBrokers();
+    }
 
     return brokenBrokers.isEmpty() ? clusterModel.brokers() : brokenBrokers;
   }
@@ -226,9 +230,10 @@ public class PotentialNwOutGoal extends AbstractGoal {
     _fixOfflineReplicasOnly = false;
 
     // Filter out some replicas based on optimization options.
-    new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
-                                                     optimizationOptions.onlyMoveImmigrantReplicas())
-                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(optimizationOptions.excludedTopics()))
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
+    new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(), optimizationOptions.onlyMoveImmigrantReplicas())
+                              .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics),
+                                                     !excludedTopics.isEmpty())
                               .trackSortedReplicasFor(replicaSortName(this, false, false), clusterModel);
   }
 

@@ -260,7 +260,8 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
                               .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
                                                      (!_fixOfflineReplicasOnly && !clusterModel.selfHealingEligibleReplicas().isEmpty())
                                                      || optimizationOptions.onlyMoveImmigrantReplicas())
-                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
+                              .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics),
+                                                     !excludedTopics.isEmpty())
                               .trackSortedReplicasFor(replicaSortName, broker);
     SortedSet<Replica> candidateReplicas = broker.trackedSortedReplicas(replicaSortName).sortedReplicas(true);
     int numReplicas = candidateReplicas.size();
@@ -313,7 +314,8 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
     new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectLeaders())
                               .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
                                                      !clusterModel.brokenBrokers().isEmpty() || onlyMoveImmigrantReplicas)
-                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
+                              .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics),
+                                                     !excludedTopics.isEmpty())
                               .trackSortedReplicasFor(replicaSortName, clusterModel);
     int numLeaderReplicas = broker.leaderReplicas().size();
     while (!eligibleBrokers.isEmpty()) {
