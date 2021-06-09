@@ -225,6 +225,38 @@ public class WebServerConfig {
   private static final String WEBSERVER_SSL_PROTOCOL_DOC = "Sets the SSL protocol to use. By default it's TLS.";
 
   /**
+   * <code>webserver.ssl.include.ciphers</code>
+   */
+  public static final String WEBSERVER_SSL_INCLUDE_CIPHERS_CONFIG = "webserver.ssl.include.ciphers";
+  public static final String DEFAULT_WEBSERVER_SSL_INCLUDE_CIPHERS = null;
+  private static final String WEBSERVER_SSL_INCLUDE_CIPHERS_DOC = "Sets the included ciphers (list) for the webserver. "
+      + "If not set, it does not change the system defaults.";
+
+  /**
+   * <code>webserver.ssl.exclude.ciphers</code>
+   */
+  public static final String WEBSERVER_SSL_EXCLUDE_CIPHERS_CONFIG = "webserver.ssl.exclude.ciphers";
+  public static final String DEFAULT_WEBSERVER_SSL_EXCLUDE_CIPHERS = null;
+  private static final String WEBSERVER_SSL_EXCLUDE_CIPHERS_DOC = "Sets the excluded ciphers (list of patterns) for the webserver. "
+      + "If not set, it does not change the system defaults.";
+
+  /**
+   * <code>webserver.ssl.include.protocols</code>
+   */
+  public static final String WEBSERVER_SSL_INCLUDE_PROTOCOLS_CONFIG = "webserver.ssl.include.protocols";
+  public static final String DEFAULT_WEBSERVER_SSL_INCLUDE_PROTOCOLS = null;
+  private static final String WEBSERVER_SSL_INCLUDE_PROTOCOLS_DOC = "Sets the included TLS protocols for the webserver. "
+      + "If not set, it does not change the system defaults.";
+
+  /**
+   * <code>webserver.ssl.exclude.protocols</code>
+   */
+  public static final String WEBSERVER_SSL_EXCLUDE_PROTOCOLS_CONFIG = "webserver.ssl.exclude.protocols";
+  public static final String DEFAULT_WEBSERVER_SSL_EXCLUDE_PROTOCOLS = null;
+  private static final String WEBSERVER_SSL_EXCLUDE_PROTOCOLS_DOC = "Sets the excluded protocols (list of patterns) for the webserver. "
+      + "If not set, it does not change the system defaults.";
+
+  /**
    * <code>jwt.authentication.provider.url</code>
    */
   public static final String JWT_AUTHENTICATION_PROVIDER_URL_CONFIG = "jwt.authentication.provider.url";
@@ -449,6 +481,26 @@ public class WebServerConfig {
                             DEFAULT_WEBSERVER_SSL_PROTOCOL,
                             ConfigDef.Importance.MEDIUM,
                             WEBSERVER_SSL_PROTOCOL_DOC)
+                    .define(WEBSERVER_SSL_INCLUDE_CIPHERS_CONFIG,
+                            ConfigDef.Type.LIST,
+                            DEFAULT_WEBSERVER_SSL_INCLUDE_CIPHERS,
+                            ConfigDef.Importance.MEDIUM,
+                            WEBSERVER_SSL_INCLUDE_CIPHERS_DOC)
+                    .define(WEBSERVER_SSL_EXCLUDE_CIPHERS_CONFIG,
+                        ConfigDef.Type.LIST,
+                        DEFAULT_WEBSERVER_SSL_EXCLUDE_CIPHERS,
+                        ConfigDef.Importance.MEDIUM,
+                        WEBSERVER_SSL_EXCLUDE_CIPHERS_DOC)
+                    .define(WEBSERVER_SSL_INCLUDE_PROTOCOLS_CONFIG,
+                        ConfigDef.Type.LIST,
+                        DEFAULT_WEBSERVER_SSL_INCLUDE_PROTOCOLS,
+                        ConfigDef.Importance.MEDIUM,
+                        WEBSERVER_SSL_INCLUDE_PROTOCOLS_DOC)
+                    .define(WEBSERVER_SSL_EXCLUDE_PROTOCOLS_CONFIG,
+                        ConfigDef.Type.LIST,
+                        DEFAULT_WEBSERVER_SSL_EXCLUDE_PROTOCOLS,
+                        ConfigDef.Importance.MEDIUM,
+                        WEBSERVER_SSL_EXCLUDE_PROTOCOLS_DOC)
                     .define(JWT_AUTHENTICATION_PROVIDER_URL_CONFIG,
                             ConfigDef.Type.STRING,
                             DEFAULT_JWT_AUTHENTICATION_PROVIDER_URL,
