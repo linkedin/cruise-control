@@ -22,6 +22,7 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import javax.servlet.ServletException;
+import java.util.List;
 
 public class KafkaCruiseControlApp {
 
@@ -109,6 +110,7 @@ public class KafkaCruiseControlApp {
       if (keyStoreType != null) {
         sslServerContextFactory.setKeyStoreType(keyStoreType);
       }
+      maybeConfigureTlsProtocolsAndCiphers(sslServerContextFactory);
       serverConnector = new ServerConnector(_server, sslServerContextFactory);
     } else {
       serverConnector = new ServerConnector(_server);
@@ -116,6 +118,27 @@ public class KafkaCruiseControlApp {
     serverConnector.setHost(hostname);
     serverConnector.setPort(port);
     return serverConnector;
+  }
+
+  private void maybeConfigureTlsProtocolsAndCiphers(SslContextFactory sslContextFactory) {
+    List<String> includeProtocols = _config.getList(WebServerConfig.WEBSERVER_SSL_INCLUDE_PROTOCOLS_CONFIG);
+    if (includeProtocols != null) {
+      sslContextFactory.setIncludeProtocols(includeProtocols.toArray(new String[0]));
+    }
+    List<String> excludeProtocols = _config.getList(WebServerConfig.WEBSERVER_SSL_EXCLUDE_PROTOCOLS_CONFIG);
+    if (excludeProtocols != null) {
+      sslContextFactory.setExcludeProtocols(excludeProtocols.toArray(new String[0]));
+    }
+
+    List<String> includeCiphers = _config.getList(WebServerConfig.WEBSERVER_SSL_INCLUDE_CIPHERS_CONFIG);
+    if (includeCiphers != null) {
+      sslContextFactory.setIncludeCipherSuites(includeCiphers.toArray(new String[0]));
+    }
+
+    List<String> excludeCiphers = _config.getList(WebServerConfig.WEBSERVER_SSL_EXCLUDE_CIPHERS_CONFIG);
+    if (excludeCiphers != null) {
+      sslContextFactory.setExcludeCipherSuites(excludeCiphers.toArray(new String[0]));
+    }
   }
 
   private void setupWebUi(ServletContextHandler contextHandler) {
