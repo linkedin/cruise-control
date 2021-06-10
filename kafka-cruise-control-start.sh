@@ -30,7 +30,7 @@ copyJars() {
 base_dir=$(dirname $0)
 
 if [ -z "$SCALA_VERSION" ]; then
-  SCALA_VERSION=2.12.10
+  SCALA_VERSION=2.13.6
 fi
 
 if [ -z "$SCALA_BINARY_VERSION" ]; then
