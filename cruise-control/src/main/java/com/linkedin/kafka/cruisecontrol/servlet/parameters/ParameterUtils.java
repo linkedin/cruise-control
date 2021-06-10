@@ -155,6 +155,7 @@ public class ParameterUtils {
   public static final String ADMIN_PARAMETER_OBJECT_CONFIG = "admin.parameter.object";
   public static final String REVIEW_PARAMETER_OBJECT_CONFIG = "review.parameter.object";
   public static final String TOPIC_CONFIGURATION_PARAMETER_OBJECT_CONFIG = "topic.configuration.parameter.object";
+  public static final String RESIZE_PARAMETER_OBJECT_CONFIG = "resize.parameter.object";
 
   private ParameterUtils() {
   }

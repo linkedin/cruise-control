@@ -17,6 +17,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.PauseResumeParameters
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ProposalsParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RebalanceParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RemoveBrokerParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.ResizeParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ReviewBoardParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ReviewParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.StopProposalParameters;
@@ -175,6 +176,13 @@ public class CruiseControlParametersConfig {
   public static final String TOPIC_CONFIGURATION_PARAMETERS_CLASS_DOC = "The class for parameters of a topic configuration request.";
 
   /**
+   * <code>resize.parameters.class</code>
+   */
+  public static final String RESIZE_PARAMETERS_CLASS_CONFIG = "resize.parameters.class";
+  public static final String DEFAULT_RESIZE_PARAMETERS_CLASS = ResizeParameters.class.getName();
+  public static final String RESIZE_PARAMETERS_CLASS_DOC = "The class for testing resizing requests";
+
+  /**
    * Define configs for Cruise Control Parameters.
    *
    * @param configDef Config definition.
@@ -280,6 +288,11 @@ public class CruiseControlParametersConfig {
                             ConfigDef.Type.CLASS,
                             DEFAULT_TOPIC_CONFIGURATION_PARAMETERS_CLASS,
                             ConfigDef.Importance.MEDIUM,
-                            TOPIC_CONFIGURATION_PARAMETERS_CLASS_DOC);
+                            TOPIC_CONFIGURATION_PARAMETERS_CLASS_DOC)
+                    .define(RESIZE_PARAMETERS_CLASS_CONFIG,
+                            ConfigDef.Type.CLASS,
+                            DEFAULT_RESIZE_PARAMETERS_CLASS,
+                            ConfigDef.Importance.MEDIUM,
+                            RESIZE_PARAMETERS_CLASS_DOC);
   }
 }

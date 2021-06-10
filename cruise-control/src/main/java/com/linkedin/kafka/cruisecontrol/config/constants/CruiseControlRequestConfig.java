@@ -13,6 +13,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.handler.async.PartitionLoadReque
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.ProposalsRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.RebalanceRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.RemoveBrokerRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.ResizeRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.TopicConfigurationRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.AdminRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.BootstrapRequest;
@@ -177,6 +178,13 @@ public class CruiseControlRequestConfig {
   public static final String TOPIC_CONFIGURATION_REQUEST_CLASS_DOC = "The class to handle a topic configuration request.";
 
   /**
+   * <code>resize.request.class</code>
+   */
+  public static final String RESIZE_REQUEST_CLASS_CONFIG = "resize.request.class";
+  public static final String DEFAULT_RESIZE_REQUEST_CLASS = ResizeRequest.class.getName();
+  public static final String RESIZE_REQUEST_CLASS_DOC = "The class to handle testing a resizing request";
+
+  /**
    * Define configs for Cruise Control Request.
    *
    * @param configDef Config definition.
@@ -282,6 +290,11 @@ public class CruiseControlRequestConfig {
                             ConfigDef.Type.CLASS,
                             DEFAULT_TOPIC_CONFIGURATION_REQUEST_CLASS,
                             ConfigDef.Importance.MEDIUM,
-                            TOPIC_CONFIGURATION_REQUEST_CLASS_DOC);
+                            TOPIC_CONFIGURATION_REQUEST_CLASS_DOC)
+                    .define(RESIZE_REQUEST_CLASS_CONFIG,
+                            ConfigDef.Type.CLASS,
+                            DEFAULT_RESIZE_REQUEST_CLASS,
+                            ConfigDef.Importance.MEDIUM,
+                            RESIZE_REQUEST_CLASS_DOC);
   }
 }

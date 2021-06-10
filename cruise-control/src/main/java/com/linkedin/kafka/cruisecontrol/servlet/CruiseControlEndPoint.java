@@ -33,7 +33,8 @@ public enum CruiseControlEndPoint implements EndPoint {
   REVIEW_BOARD(CRUISE_CONTROL_MONITOR),
   ADMIN(CRUISE_CONTROL_ADMIN),
   REVIEW(CRUISE_CONTROL_ADMIN),
-  TOPIC_CONFIGURATION(KAFKA_ADMIN);
+  TOPIC_CONFIGURATION(KAFKA_ADMIN),
+  RESIZE(KAFKA_ADMIN);
 
   private final EndpointType _endpointType;
 
@@ -65,7 +66,8 @@ public enum CruiseControlEndPoint implements EndPoint {
                                                                                   DEMOTE_BROKER,
                                                                                   ADMIN,
                                                                                   REVIEW,
-                                                                                  TOPIC_CONFIGURATION);
+                                                                                  TOPIC_CONFIGURATION,
+                                                                                  RESIZE);
 
   private static final List<CruiseControlEndPoint> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 

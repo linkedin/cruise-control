@@ -46,7 +46,8 @@ public class KafkaCruiseControlServletUtils {
   private static final String ACCESS_CONTROL_ALLOW_CREDENTIALS = "Access-Control-Allow-Credentials";
   private static final String ACCESS_CONTROL_MAX_AGE = "Access-Control-Max-Age";
   private static final String ACCESS_CONTROL_MAX_AGE_IN_SEC = "1728000";
-  private static final Map<EndPoint, RequestParameterWrapper> REQUEST_PARAMETER_CONFIGS;
+  private static final Map<EndPoint, RequestParameterWrapper>
+      REQUEST_PARAMETER_CONFIGS;
 
   static {
     Map<EndPoint, RequestParameterWrapper> requestParameterConfigs = new HashMap<>(CruiseControlEndPoint.cachedValues().size());
@@ -111,6 +112,9 @@ public class KafkaCruiseControlServletUtils {
     RequestParameterWrapper topicConfiguration = new RequestParameterWrapper(TOPIC_CONFIGURATION_PARAMETERS_CLASS_CONFIG,
                                                                              TOPIC_CONFIGURATION_PARAMETER_OBJECT_CONFIG,
                                                                              TOPIC_CONFIGURATION_REQUEST_CLASS_CONFIG);
+    RequestParameterWrapper resize = new RequestParameterWrapper(RESIZE_PARAMETERS_CLASS_CONFIG,
+                                                                 RESIZE_PARAMETER_OBJECT_CONFIG,
+                                                                 RESIZE_REQUEST_CLASS_CONFIG);
 
     requestParameterConfigs.put(BOOTSTRAP, bootstrap);
     requestParameterConfigs.put(TRAIN, train);
@@ -132,6 +136,7 @@ public class KafkaCruiseControlServletUtils {
     requestParameterConfigs.put(REVIEW, review);
     requestParameterConfigs.put(REVIEW_BOARD, reviewBoard);
     requestParameterConfigs.put(TOPIC_CONFIGURATION, topicConfiguration);
+    requestParameterConfigs.put(RESIZE, resize);
 
     REQUEST_PARAMETER_CONFIGS = Collections.unmodifiableMap(requestParameterConfigs);
   }
