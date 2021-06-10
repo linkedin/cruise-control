@@ -29,3 +29,4 @@ discussed are unlikely to be accepted.
 7. If there are no existing issues about a PR, create one before submitting the PR.
 8. We strongly encourage the use of recommended code-style for the project 
 (see [code-style.xml](https://github.com/linkedin/cruise-control/blob/master/docs/code-style.xml)).
+9. A pre-commit CheckStyle hook can be run by adding `./checkstyle/checkstyle-pre-commit` to your `.git/hooks/pre-commit` script.
