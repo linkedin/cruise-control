@@ -231,7 +231,8 @@ public class PotentialNwOutGoal extends AbstractGoal {
 
     // Filter out some replicas based on optimization options.
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
-    new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(), optimizationOptions.onlyMoveImmigrantReplicas())
+    new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
+                                                     optimizationOptions.onlyMoveImmigrantReplicas())
                               .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics),
                                                      !excludedTopics.isEmpty())
                               .trackSortedReplicasFor(replicaSortName(this, false, false), clusterModel);
