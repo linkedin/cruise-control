@@ -100,21 +100,6 @@ public class Rack implements Serializable {
   }
 
   /**
-   * Get the number of replicas with the given topic name in this rack.
-   *
-   * @param topic Name of the topic for which the number of replicas in this rack will be counted.
-   * @return Number of replicas with the given topic name in this rack.
-   */
-  public int numTopicReplicas(String topic) {
-    int numTopicReplicas = 0;
-
-    for (Host host : _hosts.values()) {
-      numTopicReplicas += host.numTopicReplicas(topic);
-    }
-    return numTopicReplicas;
-  }
-
-  /**
    * @return A set of topic names in the cluster.
    */
   public Set<String> topics() {

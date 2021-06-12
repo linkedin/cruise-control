@@ -27,7 +27,6 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.SortedSet;
@@ -461,6 +460,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       // Get candidate replicas on candidate broker to try moving load from -- sorted in the order of trial (descending load).
       if (utilization(candidate, resource()) > (isExcludedForReplicaMove(candidate) ? 0.0 : _balanceLowerThreshold)) {
         replicaSortName = sortedCandidateReplicas(candidate,
+                                                  clusterModel,
                                                   excludedTopics,
                                                   0.0,
                                                   false,
@@ -476,31 +476,47 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     while (!candidateBrokerPQ.isEmpty() && (actionType == INTER_BROKER_REPLICA_MOVEMENT
                                             || (actionType == LEADERSHIP_MOVEMENT && broker.leaderReplicas().size() != broker.replicas().size()))) {
       Broker cb = candidateBrokerPQ.poll();
-      SortedSet<Replica> candidateReplicasToReceive = cb.trackedSortedReplicas(replicaSortName).sortedReplicas(true);
+      SortedSet<Replica> candidateReplicasToReceive = cb.trackedSortedReplicas(replicaSortName).sortedReplicas(false);
 
-      for (Iterator<Replica> iterator = candidateReplicasToReceive.iterator(); iterator.hasNext(); ) {
-        Replica replica = iterator.next();
-        Broker b = maybeApplyBalancingAction(clusterModel, replica, Collections.singletonList(broker), actionType,
-                                             optimizedGoals, optimizationOptions);
+      // Track (1) whether the iteration is ready to poll the next cb and (2) indices to skip in candidate replicas to receive.
+      boolean readyToPollNextCb = false;
+      int indicesToSkip = 0;
 
-        // Only need to check status if the action is taken. This will also handle the case that the source broker
-        // has nothing to move in. In that case we will never reenqueue that source broker.
-        if (b != null) {
-          if (isLoadAboveBalanceLowerLimit(broker)) {
-            clusterModel.untrackSortedReplicas(replicaSortName);
-            return false;
-          }
-          // Remove the replica from its source broker if it was a replica movement.
-          if (actionType == INTER_BROKER_REPLICA_MOVEMENT) {
-            iterator.remove();
+      while (!readyToPollNextCb) {
+        // Track indices that have already been iterated in candidate replicas to receive.
+        int iteratedIndices = indicesToSkip;
+        int maxIndicesToIterate = candidateReplicasToReceive.size();
+        for (Replica replica : candidateReplicasToReceive) {
+          // Skip indices of candidate replicas that have already been checked before.
+          if (indicesToSkip > 0) {
+            indicesToSkip--;
+            continue;
           }
 
-          // If the source broker has a lower utilization than the next broker in the eligible broker in the queue,
-          // we reenqueue the source broker and switch to the next broker.
-          if (!candidateBrokerPQ.isEmpty() && utilization(cb, resource()) < utilization(candidateBrokerPQ.peek(), resource())) {
-            candidateBrokerPQ.add(cb);
+          Broker b = maybeApplyBalancingAction(clusterModel, replica, Collections.singletonList(broker), actionType,
+                                               optimizedGoals, optimizationOptions);
+
+          // Only need to check status if the action is taken. This will also handle the case that the source broker
+          // has nothing to move in. In that case we will never reenqueue that source broker.
+          if (b != null) {
+            if (isLoadAboveBalanceLowerLimit(broker)) {
+              clusterModel.untrackSortedReplicas(replicaSortName);
+              return false;
+            }
+            indicesToSkip = iteratedIndices;
+
+            // If the source broker has a lower utilization than the next broker in the eligible broker in the queue,
+            // we reenqueue the source broker and switch to the next broker.
+            if (!candidateBrokerPQ.isEmpty() && utilization(cb, resource()) < utilization(candidateBrokerPQ.peek(), resource())) {
+              candidateBrokerPQ.add(cb);
+              readyToPollNextCb = true;
+            }
             break;
           }
+          iteratedIndices++;
+        }
+        if (iteratedIndices == maxIndicesToIterate) {
+          readyToPollNextCb = true;
         }
       }
     }
@@ -514,6 +530,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    * descending order, (2) below the given limit in ascending order. Offline replicas have priority over online replicas.
    *
    * @param broker Broker whose replicas will be considered.
+   * @param clusterModel The state of the cluster.
    * @param excludedTopics Excluded topics for which the replicas will be remove from the returned candidate replicas.
    * @param loadLimit Load limit determining the lower cutoff in descending order, upper cutoff in ascending order.
    * @param isAscending True if sort requested in ascending order, false otherwise.
@@ -523,6 +540,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    * @return The name of tracked sorted replicas.
    */
   private String sortedCandidateReplicas(Broker broker,
+                                         ClusterModel clusterModel,
                                          Set<String> excludedTopics,
                                          double loadLimit,
                                          boolean isAscending,
@@ -533,10 +551,12 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     helper.maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectFollowers(), followersOnly)
           .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectLeaders(), leadersOnly)
           .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(), immigrantsOnly)
-          .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
-          .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas());
+          .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics),
+                                 !excludedTopics.isEmpty())
+          .maybeAddPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas(),
+                                !clusterModel.selfHealingEligibleReplicas().isEmpty());
     if (isAscending) {
-      helper.addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBelowLimit(resource(), loadLimit))
+      helper.maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBelowLimit(resource(), loadLimit), loadLimit < Double.MAX_VALUE)
             .setScoreFunc(ReplicaSortFunctionFactory.sortByMetricGroupValue(resource().name()));
     } else {
       helper.addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasAboveLimit(resource(), loadLimit))
@@ -589,6 +609,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     // Get the replicas to swap.
     String sourceReplicaSortName = sortedCandidateReplicas(broker,
+                                                           clusterModel,
                                                            excludedTopics,
                                                            0.0,
                                                            false,
@@ -611,6 +632,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                         .stream().filter(b -> !b.replicas().isEmpty()).collect(Collectors.toSet())) {
       // Get candidate replicas on candidate broker to try swapping with -- sorted in the order of trial (ascending load).
       candidateReplicaSortName = sortedCandidateReplicas(candidate,
+                                                         clusterModel,
                                                          excludedTopics,
                                                          maxSourceReplicaLoad,
                                                          true,
@@ -686,6 +708,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     // Get the replicas to swap.
     String sourceReplicaSortName = sortedCandidateReplicas(broker,
+                                                           clusterModel,
                                                            excludedTopics,
                                                            Double.MAX_VALUE,
                                                            true,
@@ -707,6 +730,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     for (Broker candidate : clusterModel.aliveBrokersOverThreshold(resource(), _balanceLowerThreshold)) {
       // Get candidate replicas on candidate broker to try swapping with -- sorted in the order of trial (descending load).
       candidateReplicaSortName = sortedCandidateReplicas(candidate,
+                                                         clusterModel,
                                                          excludedTopics,
                                                          minSourceReplicaLoad,
                                                          false,
@@ -781,8 +805,10 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                                      optimizationOptions.onlyMoveImmigrantReplicas())
                               .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrantOrOfflineReplicas(),
                                                      !clusterModel.selfHealingEligibleReplicas().isEmpty() && broker.isAlive())
-                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
-                              .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas())
+                              .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics),
+                                                     !excludedTopics.isEmpty())
+                              .maybeAddPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas(),
+                                                    !clusterModel.selfHealingEligibleReplicas().isEmpty())
                               .maybeAddPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants(),
                                                     !optimizationOptions.onlyMoveImmigrantReplicas())
                               .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(resource().name()))

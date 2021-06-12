@@ -135,7 +135,7 @@ public class SortedReplicas {
   }
 
   /**
-   * Add a new replicas to the sorted replicas. The replica will be included if it satisfies the requirement of all
+   * Add a new replica to the sorted replicas. The replica will be included if it satisfies the requirement of all
    * selection functions. It has no impact if this {@link SortedReplicas} has not been initialized.
    *
    * @param replica the replica to add.

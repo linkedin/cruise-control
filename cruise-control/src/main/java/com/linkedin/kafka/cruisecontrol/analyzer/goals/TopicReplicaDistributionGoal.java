@@ -282,7 +282,8 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
                                                        optimizationOptions.onlyMoveImmigrantReplicas())
                                 .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrantOrOfflineReplicas(),
                                                        !clusterModel.selfHealingEligibleReplicas().isEmpty() && broker.isAlive())
-                                .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
+                                .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics),
+                                                       !excludedTopics.isEmpty())
                                 .trackSortedReplicasFor(replicaSortName(this, false, false), broker);
     }
 

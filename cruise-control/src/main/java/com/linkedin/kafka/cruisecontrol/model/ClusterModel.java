@@ -66,6 +66,7 @@ public class ClusterModel implements Serializable {
   private int _maxReplicationFactor;
   // The replication factor that each topic in the cluster created with ().
   private final Map<String, Integer> _replicationFactorByTopic;
+  private final Map<String, Integer> _numReplicasByTopic;
   private final Map<Integer, Load> _potentialLeadershipLoadByBrokerId;
   private int _unknownHostId;
   private final Map<Integer, String> _capacityEstimationInfoByBrokerId;
@@ -100,6 +101,7 @@ public class ClusterModel implements Serializable {
     _clusterCapacity = new double[Resource.cachedValues().size()];
     _maxReplicationFactor = 1;
     _replicationFactorByTopic = new HashMap<>();
+    _numReplicasByTopic = new HashMap<>();
     _potentialLeadershipLoadByBrokerId = new HashMap<>();
     _monitoredPartitionsRatio = monitoredPartitionsRatio;
     _unknownHostId = 0;
@@ -439,10 +441,10 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * @return The dead brokers in the cluster.
+   * @return The view of dead brokers in the cluster.
    */
   public SortedSet<Broker> deadBrokers() {
-    return new TreeSet<>(_deadBrokers);
+    return Collections.unmodifiableSortedSet(_deadBrokers);
   }
 
   /**
@@ -480,7 +482,7 @@ public class ClusterModel implements Serializable {
    * @return The set of new brokers.
    */
   public SortedSet<Broker> newBrokers() {
-    return _newBrokers;
+    return Collections.unmodifiableSortedSet(_newBrokers);
   }
 
   /**
@@ -493,8 +495,8 @@ public class ClusterModel implements Serializable {
   /**
    * @return Brokers containing offline replicas residing on bad disks in the current cluster model.
    */
-  public Set<Broker> brokersHavingOfflineReplicasOnBadDisks() {
-    Set<Broker> brokersWithOfflineReplicasOnBadDisks = new HashSet<>();
+  public SortedSet<Broker> brokersHavingOfflineReplicasOnBadDisks() {
+    SortedSet<Broker> brokersWithOfflineReplicasOnBadDisks = _brokersWithBadDisks.isEmpty() ? Collections.emptySortedSet() : new TreeSet<>();
     for (Broker brokerWithBadDisks : _brokersWithBadDisks) {
       if (!brokerWithBadDisks.currentOfflineReplicas().isEmpty()) {
         brokersWithOfflineReplicasOnBadDisks.add(brokerWithBadDisks);
@@ -539,6 +541,11 @@ public class ClusterModel implements Serializable {
       // Remove the replica and the associated load from the rack that it resides in.
       Replica removedReplica = rack.removeReplica(brokerId, tp);
       if (removedReplica != null) {
+        // Decrement the number of replicas per this topic.
+        _numReplicasByTopic.merge(tp.topic(), -1, Integer::sum);
+        if (_numReplicasByTopic.get(tp.topic()) == 0) {
+          _numReplicasByTopic.remove(tp.topic());
+        }
         // Remove the load of the removed replica from the recent load of the cluster.
         _load.subtractLoad(removedReplica.load());
         _potentialLeadershipLoadByBrokerId.get(brokerId).subtractLoad(partition(tp).leader().load());
@@ -550,10 +557,10 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * @return The set of brokers in the cluster.
+   * @return The unmodifiable view of set of brokers in the cluster.
    */
   public SortedSet<Broker> brokers() {
-    return new TreeSet<>(_brokers);
+    return Collections.unmodifiableSortedSet(_brokers);
   }
 
   /**
@@ -626,6 +633,7 @@ public class ClusterModel implements Serializable {
     _load.clearLoad();
     _maxReplicationFactor = 1;
     _replicationFactorByTopic.clear();
+    _numReplicasByTopic.clear();
     _capacityEstimationInfoByBrokerId.clear();
   }
 
@@ -663,12 +671,7 @@ public class ClusterModel implements Serializable {
    * @return Number of replicas with the given topic name in cluster.
    */
   public int numTopicReplicas(String topic) {
-    int numTopicReplicas = 0;
-
-    for (Rack rack : _racksById.values()) {
-      numTopicReplicas += rack.numTopicReplicas(topic);
-    }
-    return numTopicReplicas;
+    return _numReplicasByTopic.getOrDefault(topic, 0);
   }
 
   /**
@@ -848,6 +851,8 @@ public class ClusterModel implements Serializable {
       replica.setBroker(broker);
     }
     rack(rackId).addReplica(replica);
+    // Increment the number of replicas per this topic.
+    _numReplicasByTopic.merge(tp.topic(), 1, Integer::sum);
 
     // Add replica to its partition.
     if (!_partitionsByTopicPartition.containsKey(tp)) {

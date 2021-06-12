@@ -161,7 +161,8 @@ public class ReplicaCapacityGoal extends AbstractGoal {
     // Filter out some replicas based on optimization options.
     new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
                                                      optimizationOptions.onlyMoveImmigrantReplicas())
-                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
+                              .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics),
+                                                     !excludedTopics.isEmpty())
                               .trackSortedReplicasFor(replicaSortName(this, false, false), clusterModel);
   }
 

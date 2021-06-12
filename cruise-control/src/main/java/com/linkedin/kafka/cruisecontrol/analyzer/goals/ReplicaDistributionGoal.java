@@ -164,8 +164,10 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
                                                        optimizationOptions.onlyMoveImmigrantReplicas())
                                 .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrantOrOfflineReplicas(),
                                                        !clusterModel.selfHealingEligibleReplicas().isEmpty() && broker.isAlive())
-                                .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
-                                .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas())
+                                .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics),
+                                                       !excludedTopics.isEmpty())
+                                .maybeAddPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas(),
+                                                      !clusterModel.selfHealingEligibleReplicas().isEmpty())
                                 .maybeAddPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants(),
                                                       !optimizationOptions.onlyMoveImmigrantReplicas())
                                 .setScoreFunc(ReplicaSortFunctionFactory.sortByMetricGroupValue(DISK.name()))
