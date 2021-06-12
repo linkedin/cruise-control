@@ -29,6 +29,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -151,12 +152,10 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
   @Override
   protected SortedSet<Broker> brokersToBalance(ClusterModel clusterModel) {
     // Brokers having inbound network traffic over the balance threshold for inbound traffic are eligible for balancing.
-    SortedSet<Broker> brokersToBalance = clusterModel.brokers();
-    for (Iterator<Broker> iterator = brokersToBalance.iterator(); iterator.hasNext(); ) {
-      Broker broker = iterator.next();
-      double brokerUtilizationForNwIn = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN);
-      if (brokerUtilizationForNwIn <= balanceThreshold(clusterModel, broker.id())) {
-        iterator.remove();
+    SortedSet<Broker> brokersToBalance = new TreeSet<>();
+    for (Broker broker : clusterModel.brokers()) {
+      if (broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN) > balanceThreshold(clusterModel, broker.id())) {
+        brokersToBalance.add(broker);
       }
     }
 
@@ -187,7 +186,8 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
     // Sort leader replicas for each broker.
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectLeaders())
-                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
+                              .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics),
+                                                     !excludedTopics.isEmpty())
                               .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(Resource.NW_IN.toString()))
                               .trackSortedReplicasFor(replicaSortName(this, true, true), clusterModel);
   }
