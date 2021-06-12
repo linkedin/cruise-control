@@ -94,12 +94,14 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
     // Sort all the replicas for each disk based on disk utilization.
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectOnlineReplicas())
-                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
+                              .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics),
+                                                     !excludedTopics.isEmpty())
                               .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeDiskImmigrants())
                               .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(RESOURCE.name()))
                               .trackSortedReplicasFor(replicaSortName(this, true, false), clusterModel);
     new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectOnlineReplicas())
-                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
+                              .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics),
+                                                     !excludedTopics.isEmpty())
                               .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeDiskImmigrants())
                               .setScoreFunc(ReplicaSortFunctionFactory.sortByMetricGroupValue(RESOURCE.name()))
                               .trackSortedReplicasFor(replicaSortName(this, false, false), clusterModel);

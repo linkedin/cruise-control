@@ -179,8 +179,10 @@ public abstract class CapacityGoal extends AbstractGoal {
     boolean onlyMoveImmigrantReplicas = optimizationOptions.onlyMoveImmigrantReplicas();
     // Sort all replicas for each broker based on resource utilization.
     new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(), onlyMoveImmigrantReplicas)
-                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
-                              .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas())
+                              .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics),
+                                                     !excludedTopics.isEmpty())
+                              .maybeAddPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas(),
+                                                    !clusterModel.selfHealingEligibleReplicas().isEmpty())
                               .maybeAddPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants(), !onlyMoveImmigrantReplicas)
                               .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(resource().name()))
                               .trackSortedReplicasFor(replicaSortName(this, true, false), clusterModel);
@@ -188,7 +190,8 @@ public abstract class CapacityGoal extends AbstractGoal {
     // Sort leader replicas for each broker based on resource utilization.
     new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectLeaders())
                               .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(), onlyMoveImmigrantReplicas)
-                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics))
+                              .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics),
+                                                     !excludedTopics.isEmpty())
                               .maybeAddPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants(), !onlyMoveImmigrantReplicas)
                               .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(resource().name()))
                               .trackSortedReplicasFor(replicaSortName(this, true, true), clusterModel);

@@ -230,9 +230,7 @@ class OptimizationVerifier {
   }
 
   private static boolean verifyBrokenBrokers(ClusterModel clusterModel) {
-    Set<Broker> deadBrokers = clusterModel.brokers();
-    deadBrokers.removeAll(clusterModel.aliveBrokers());
-    for (Broker deadBroker : deadBrokers) {
+    for (Broker deadBroker : clusterModel.deadBrokers()) {
       if (deadBroker.replicas().size() > 0) {
         LOG.error("Failed to move {} replicas on dead broker {} to other brokers.", deadBroker.replicas().size(),
                   deadBroker.id());
