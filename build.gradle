@@ -9,6 +9,7 @@ plugins {
   id "jacoco" // Java Code Coverage plugin
   id "com.github.ben-manes.versions" version "0.38.0"
   id "com.github.spotbugs" version "4.7.1" apply false
+  id "checkstyle"
 }
 
 group = 'com.linkedin.cruisecontrol'
