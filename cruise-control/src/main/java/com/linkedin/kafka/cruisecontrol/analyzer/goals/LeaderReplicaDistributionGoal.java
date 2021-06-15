@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.remainingTimeMs;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionAbstractGoal.ChangeType.*;
 
@@ -171,6 +172,7 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
                                                  ClusterModel clusterModel,
                                                  Set<Goal> optimizedGoals,
                                                  OptimizationOptions optimizationOptions) {
+    long moveStartTimeMs = System.currentTimeMillis();
     if (!clusterModel.deadBrokers().isEmpty()) {
       return true;
     }
@@ -178,7 +180,12 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
     int balanceUpperLimitForSourceBroker = isExcludedForReplicaMove(broker) ? 0 : _balanceUpperLimit;
     int numLeaderReplicas = broker.leaderReplicas().size();
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
+    boolean fastMode = optimizationOptions.fastMode();
     for (Replica leader : new HashSet<>(broker.leaderReplicas())) {
+      if (fastMode && remainingTimeMs(_balancingConstraint.fastModePerBrokerMoveTimeoutMs(), moveStartTimeMs) <= 0) {
+        LOG.debug("Move leadership out timeout in fast mode for broker {}.", broker.id());
+        break;
+      }
       if (excludedTopics.contains(leader.topicPartition().topic())) {
         continue;
       }
@@ -206,6 +213,7 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
                                                 ClusterModel clusterModel,
                                                 Set<Goal> optimizedGoals,
                                                 OptimizationOptions optimizationOptions) {
+    long moveStartTimeMs = System.currentTimeMillis();
     if (!clusterModel.deadBrokers().isEmpty() || optimizationOptions.excludedBrokersForLeadership().contains(broker.id())) {
       return true;
     }
@@ -213,7 +221,12 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
     int numLeaderReplicas = broker.leaderReplicas().size();
     Set<Broker> candidateBrokers = Collections.singleton(broker);
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
+    boolean fastMode = optimizationOptions.fastMode();
     for (Replica replica : broker.replicas()) {
+      if (fastMode && remainingTimeMs(_balancingConstraint.fastModePerBrokerMoveTimeoutMs(), moveStartTimeMs) <= 0) {
+        LOG.debug("Move leadership in timeout in fast mode for broker {}.", broker.id());
+        break;
+      }
       if (replica.isLeader() || replica.isCurrentOffline() || excludedTopics.contains(replica.topicPartition().topic())) {
         continue;
       }
@@ -237,6 +250,7 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
                                                ClusterModel clusterModel,
                                                Set<Goal> optimizedGoals,
                                                OptimizationOptions optimizationOptions) {
+    long moveStartTimeMs = System.currentTimeMillis();
     // Get the eligible brokers.
     SortedSet<Broker> candidateBrokers;
     if (_fixOfflineReplicasOnly) {
@@ -265,7 +279,12 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
                               .trackSortedReplicasFor(replicaSortName, broker);
     SortedSet<Replica> candidateReplicas = broker.trackedSortedReplicas(replicaSortName).sortedReplicas(true);
     int numReplicas = candidateReplicas.size();
+    boolean fastMode = optimizationOptions.fastMode();
     for (Replica replica : candidateReplicas) {
+      if (fastMode && !replica.isCurrentOffline() && remainingTimeMs(_balancingConstraint.fastModePerBrokerMoveTimeoutMs(), moveStartTimeMs) <= 0) {
+        LOG.debug("Move replica out timeout in fast mode for broker {}.", broker.id());
+        break;
+      }
       Broker b = maybeApplyBalancingAction(clusterModel,
                                            replica,
                                            candidateBrokers,
@@ -293,6 +312,7 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
                                                     ClusterModel clusterModel,
                                                     Set<Goal> optimizedGoals,
                                                     OptimizationOptions optimizationOptions) {
+    long moveStartTimeMs = System.currentTimeMillis();
     if (optimizationOptions.excludedBrokersForLeadership().contains(broker.id())) {
       return true;
     }
@@ -318,7 +338,12 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
                                                      !excludedTopics.isEmpty())
                               .trackSortedReplicasFor(replicaSortName, clusterModel);
     int numLeaderReplicas = broker.leaderReplicas().size();
+    boolean fastMode = optimizationOptions.fastMode();
     while (!eligibleBrokers.isEmpty()) {
+      if (fastMode && remainingTimeMs(_balancingConstraint.fastModePerBrokerMoveTimeoutMs(), moveStartTimeMs) <= 0) {
+        LOG.debug("Move leaders in timeout in fast mode for broker {}.", broker.id());
+        break;
+      }
       Broker sourceBroker = eligibleBrokers.poll();
       for (Replica replica : sourceBroker.trackedSortedReplicas(replicaSortName).sortedReplicas(true)) {
         Broker b = maybeApplyBalancingAction(clusterModel,

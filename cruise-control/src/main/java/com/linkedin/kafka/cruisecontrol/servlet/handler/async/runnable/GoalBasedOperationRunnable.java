@@ -26,6 +26,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_SKIP_HARD_GOAL_CHECK;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXCLUDED_TOPICS;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_IS_TRIGGERED_BY_USER_REQUEST;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_FAST_MODE;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.maybeStopOngoingExecutionToModifyAndWait;
 
 
@@ -45,6 +46,7 @@ public abstract class GoalBasedOperationRunnable extends OperationRunnable {
   protected final String _uuid;
   protected final Supplier<String> _reasonSupplier;
   protected final boolean _isTriggeredByUserRequest;
+  protected final boolean _fastMode;
   protected OperationProgress _operationProgress;
   // Combined completeness requirements to be used after initialization.
   protected ModelCompletenessRequirements _combinedCompletenessRequirements;
@@ -64,7 +66,8 @@ public abstract class GoalBasedOperationRunnable extends OperationRunnable {
     this(kafkaCruiseControl, future, dryRun, parameters.goals(), stopOngoingExecution,
          parameters.modelCompletenessRequirements(), skipHardGoalCheck, parameters.excludedTopics(),
          parameters.allowCapacityEstimation(), parameters.excludeRecentlyDemotedBrokers(),
-         parameters.excludeRecentlyRemovedBrokers(), uuid, reasonSupplier, !SELF_HEALING_IS_TRIGGERED_BY_USER_REQUEST);
+         parameters.excludeRecentlyRemovedBrokers(), uuid, reasonSupplier, !SELF_HEALING_IS_TRIGGERED_BY_USER_REQUEST,
+         parameters.fastMode());
   }
 
   /**
@@ -82,7 +85,7 @@ public abstract class GoalBasedOperationRunnable extends OperationRunnable {
     this(kafkaCruiseControl, future, SELF_HEALING_DRYRUN, goals, stopOngoingExecution,
          SELF_HEALING_MODEL_COMPLETENESS_REQUIREMENTS, SELF_HEALING_SKIP_HARD_GOAL_CHECK, SELF_HEALING_EXCLUDED_TOPICS,
          allowCapacityEstimation, excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, uuid, reasonSupplier,
-         SELF_HEALING_IS_TRIGGERED_BY_USER_REQUEST);
+         SELF_HEALING_IS_TRIGGERED_BY_USER_REQUEST, SELF_HEALING_FAST_MODE);
   }
 
   public GoalBasedOperationRunnable(KafkaCruiseControl kafkaCruiseControl,
@@ -98,7 +101,8 @@ public abstract class GoalBasedOperationRunnable extends OperationRunnable {
                                     boolean excludeRecentlyRemovedBrokers,
                                     String uuid,
                                     Supplier<String> reasonSupplier,
-                                    boolean isTriggeredByUserRequest) {
+                                    boolean isTriggeredByUserRequest,
+                                    boolean fastMode) {
     super(kafkaCruiseControl, future);
     _goals = goals;
     _modelCompletenessRequirements = modelCompletenessRequirements;
@@ -115,6 +119,7 @@ public abstract class GoalBasedOperationRunnable extends OperationRunnable {
     _operationProgress = null;
     _combinedCompletenessRequirements = null;
     _goalsByPriority = null;
+    _fastMode = fastMode;
   }
 
   /**

@@ -105,7 +105,8 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
                                                                          _excludeRecentlyRemovedBrokers,
                                                                          _excludedTopics,
                                                                          Collections.emptySet(),
-                                                                         false);
+                                                                         false,
+                                                                         _fastMode);
 
     OptimizerResult result = _kafkaCruiseControl.optimizations(clusterModel, _goalsByPriority, _operationProgress, null, optimizationOptions);
     if (!_dryRun) {

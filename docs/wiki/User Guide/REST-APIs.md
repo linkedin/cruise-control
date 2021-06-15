@@ -236,6 +236,7 @@ Supported parameters are:
 | json                              | boolean   | return in JSON format or not                                                          | false             | yes       | 
 | verbose                           | boolean   | return detailed state information                                                     | false             | yes       |
 | doAs                              | string    | propagated user by the trusted proxy service                                          | null              | yes       | 
+| fast_mode                                 | boolean   | true to compute proposals in fast mode, false otherwise                                                                               | false                 | yes       |
 
 Proposal can be generated based on **valid_window** or **valid_partitions**.
 
@@ -325,6 +326,7 @@ Supported parameters are:
 | verbose                                       | boolean   | return detailed state information                                                                                                     | false                 | yes       | 
 | reason                                        | string    | reason for the request                                                                                                                | "No reason provided"  | yes       | 
 | doAs                                          | string    | propagated user by the trusted proxy service                                                                                          | null                  | yes       | 
+| fast_mode                                 | boolean   | true to compute proposals in fast mode, false otherwise                                                                               | false                 | yes       |
 
 Similar to the [GET interface for getting proposals](https://github.com/linkedin/cruise-control/wiki/REST-APIs/_edit#get-optimization-proposals), the rebalance can also be based on available valid windows or available valid partitions.
 
@@ -364,6 +366,7 @@ Supported parameters are:
 | verbose                                   | boolean   | return detailed state information                                                                                                     | false                 | yes       | 
 | reason                                    | string    | reason for the request                                                                                                                | "No reason provided"  | yes       | 
 | doAs                                      | string    | propagated user by the trusted proxy service                                                                                          | null                  | yes       | 
+| fast_mode                                 | boolean   | true to compute proposals in fast mode, false otherwise                                                                               | false                 | yes       |
 
 
 When adding new brokers to a Kafka cluster, Cruise Control makes sure that the **replicas will only be moved from the existing brokers to the provided new broker**, but not moved among existing brokers. 
@@ -400,6 +403,7 @@ Supported parameters are:
 | verbose                                   | boolean   | return detailed state information                                                                                                     | false                 | yes       | 
 | reason                                    | string    | reason for the request                                                                                                                | "No reason provided"  | yes       | 
 | doAs                                      | string    | propagated user by the trusted proxy service                                                                                          | null                  | yes       | 
+| fast_mode                                 | boolean   | true to compute proposals in fast mode, false otherwise                                                                               | false                 | yes       |
 
 Similar to adding brokers to a cluster, removing brokers from a cluster will **only move partitions from the brokers to be removed to the other existing brokers**. There won't be partition movements among remaining brokers. And user can specify the destination broker for these replica movement via `destination_broker_ids` parameter.
 
@@ -434,6 +438,7 @@ Supported parameters are:
 | verbose                                   | boolean   | return detailed state information                                                                                                     | false                 | yes       | 
 | reason                                    | string    | reason for the request                                                                                                                | "No reason provided"  | yes       | 
 | doAs                                      | string    | propagated user by the trusted proxy service                                                                                          | null                  | yes       | 
+| fast_mode                                 | boolean   | true to compute proposals in fast mode, false otherwise                                                                               | false                 | yes       |
 
 Likewise, users can throttle partition movement, the throttling can be set in the same way as [`rebalance` request](#trigger-a-workload-balance).
 
@@ -544,6 +549,7 @@ Supported parameters are:
 | verbose                                   | boolean   | return detailed state information                                                                                                     | false                 | yes       | 
 | reason                                    | string    | reason for the request                                                                                                                | "No reason provided"  | yes       | 
 | doAs                                      | string    | propagated user by the trusted proxy service                                                                                          | null                  | yes       | 
+| fast_mode                                 | boolean   | true to compute proposals in fast mode, false otherwise                                                                               | false                 | yes       |
 
 Changing topic's replication factor will not move any existing replicas. `goals` are used to determine which replica to be deleted(to decrease topic's replication factor) and which broker to assign new replica (to increase topic's replication factor).
 

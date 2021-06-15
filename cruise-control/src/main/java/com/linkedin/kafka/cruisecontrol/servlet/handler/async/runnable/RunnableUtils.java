@@ -57,6 +57,7 @@ public class RunnableUtils {
   public static final boolean SELF_HEALING_EXCLUDE_FOLLOWER_DEMOTION = true;
   public static final boolean SELF_HEALING_SKIP_RACK_AWARENESS_CHECK = false;
   public static final boolean SELF_HEALING_IS_TRIGGERED_BY_USER_REQUEST = false;
+  public static final boolean SELF_HEALING_FAST_MODE = false;
   private static final Set<String> KAFKA_ASSIGNER_GOALS =
       Collections.unmodifiableSet(new HashSet<>(Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
                                                               KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName())));
@@ -264,16 +265,17 @@ public class RunnableUtils {
    * Compute optimization options, update recently removed and demoted brokers (if not dryRun) and return the computed result.
    *
    * @param clusterModel The state of the cluster.
-   * @param isTriggeredByGoalViolation True if proposals is triggered by goal violation, false otherwise.
+   * @param isTriggeredByGoalViolation {@code true} if proposals is triggered by goal violation, {@code false} otherwise.
    * @param kafkaCruiseControl The Kafka Cruise Control instance.
    * @param brokersToDrop Brokers to drop from recently removed and demoted brokers. Modifies the actual values if not dryRun.
-   * @param dryRun True if dryrun, false otherwise.
+   * @param dryRun {@code true} if dryrun, {@code false} otherwise.
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
    * @param excludedTopicsPattern The topics that should be excluded from the optimization action.
    * @param requestedDestinationBrokerIds Explicitly requested destination broker Ids to limit the replica movement to
    *                                      these brokers (if empty, no explicit filter is enforced -- cannot be null).
-   * @param onlyMoveImmigrantReplicas True to move only immigrant replicas, false otherwise.
+   * @param onlyMoveImmigrantReplicas {@code true} to move only immigrant replicas, {@code false} otherwise.
+   * @param fastMode {@code true} to compute proposals in fast mode, {@code false} otherwise.
    * @return Computed optimization options.
    */
   public static OptimizationOptions computeOptimizationOptions(ClusterModel clusterModel,
@@ -285,7 +287,8 @@ public class RunnableUtils {
                                                                boolean excludeRecentlyRemovedBrokers,
                                                                Pattern excludedTopicsPattern,
                                                                Set<Integer> requestedDestinationBrokerIds,
-                                                               boolean onlyMoveImmigrantReplicas) {
+                                                               boolean onlyMoveImmigrantReplicas,
+                                                               boolean fastMode) {
 
     // Update recently removed and demoted brokers.
     RecentBrokers recentBrokers = maybeDropFromRecentBrokers(kafkaCruiseControl, brokersToDrop, dryRun);
@@ -299,7 +302,7 @@ public class RunnableUtils {
     Set<String> excludedTopics = kafkaCruiseControl.excludedTopics(clusterModel, excludedTopicsPattern);
     LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
     return new OptimizationOptions(excludedTopics, excludedBrokersForLeadership, excludedBrokersForReplicaMove,
-                                   isTriggeredByGoalViolation, requestedDestinationBrokerIds, onlyMoveImmigrantReplicas);
+                                   isTriggeredByGoalViolation, requestedDestinationBrokerIds, onlyMoveImmigrantReplicas, fastMode);
   }
 
   /**
