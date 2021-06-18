@@ -102,6 +102,12 @@ ProposalsEndpoint:
         description: The user specified by a trusted proxy in that authentication model.
         schema:
           type: string
+      - name: fast_mode
+        in: query
+        description: True to compute proposals in fast mode, false otherwise
+        schema:
+          type: boolean
+          default: false
     responses:
       '200':
         description: Successful optimization proposals response.

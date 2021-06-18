@@ -32,6 +32,7 @@ public class DefaultOptimizationOptionsGenerator implements OptimizationOptionsG
                                    Collections.emptySet(),
                                    false,
                                    Collections.emptySet(),
+                                   false,
                                    false);
   }
 

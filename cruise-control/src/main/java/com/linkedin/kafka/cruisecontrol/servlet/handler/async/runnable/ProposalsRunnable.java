@@ -57,11 +57,12 @@ public class ProposalsRunnable extends GoalBasedOperationRunnable {
                            Set<Integer> destinationBrokerIds,
                            boolean isRebalanceDiskMode,
                            boolean skipHardGoalCheck,
-                           boolean isTriggeredByGoalViolation) {
+                           boolean isTriggeredByGoalViolation,
+                           boolean fastMode) {
     super(kafkaCruiseControl, future, PROPOSALS_DRYRUN, goals, PROPOSALS_STOP_ONGOING_EXECUTION,
           modelCompletenessRequirements, skipHardGoalCheck, excludedTopics, allowCapacityEstimation,
           excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, PROPOSALS_UUID, PROPOSALS_REASON_SUPPLIER,
-          PROPOSALS_IS_TRIGGERED_BY_USER_REQUEST);
+          PROPOSALS_IS_TRIGGERED_BY_USER_REQUEST, fastMode);
     _ignoreProposalCache = ignoreProposalCache;
     _destinationBrokerIds = destinationBrokerIds;
     _isRebalanceDiskMode = isRebalanceDiskMode;
@@ -107,7 +108,8 @@ public class ProposalsRunnable extends GoalBasedOperationRunnable {
                                                                          _excludeRecentlyRemovedBrokers,
                                                                          _excludedTopics,
                                                                          _destinationBrokerIds,
-                                                                         false);
+                                                                         false,
+                                                                         _fastMode);
 
     return _kafkaCruiseControl.optimizations(clusterModel, _goalsByPriority, _operationProgress, null, optimizationOptions);
   }

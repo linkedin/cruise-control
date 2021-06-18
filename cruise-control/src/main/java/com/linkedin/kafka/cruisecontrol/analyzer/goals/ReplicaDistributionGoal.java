@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.remainingTimeMs;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionAbstractGoal.ChangeType.*;
 import static com.linkedin.kafka.cruisecontrol.common.Resource.DISK;
@@ -233,6 +234,7 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
                                                ClusterModel clusterModel,
                                                Set<Goal> optimizedGoals,
                                                OptimizationOptions optimizationOptions) {
+    long moveStartTimeMs = System.currentTimeMillis();
     // Get the eligible brokers.
     SortedSet<Broker> candidateBrokers = new TreeSet<>(Comparator.comparingInt((Broker b) -> b.replicas().size()).thenComparingInt(Broker::id));
 
@@ -247,10 +249,17 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
 
     // Now let's move things around.
     boolean wasUnableToMoveOfflineReplica = false;
+    boolean fastMode = optimizationOptions.fastMode();
     for (Replica replica : broker.trackedSortedReplicas(replicaSortName(this, false, false)).sortedReplicas(true)) {
-      if (wasUnableToMoveOfflineReplica && !replica.isCurrentOffline() && broker.replicas().size() <= balanceUpperLimitForSourceBroker) {
-        // Was unable to move offline replicas from the broker, and remaining replica count is under the balance limit.
-        return false;
+      if (!replica.isCurrentOffline()) {
+        if (fastMode && remainingTimeMs(_balancingConstraint.fastModePerBrokerMoveTimeoutMs(), moveStartTimeMs) <= 0) {
+          LOG.debug("Move replicas out timeout in fast mode for broker {}.", broker.id());
+          break;
+        }
+        if (wasUnableToMoveOfflineReplica && broker.replicas().size() <= balanceUpperLimitForSourceBroker) {
+          // Was unable to move offline replicas from the broker, and remaining replica count is under the balance limit.
+          return false;
+        }
       }
 
       Broker b = maybeApplyBalancingAction(clusterModel, replica, candidateBrokers, ActionType.INTER_BROKER_REPLICA_MOVEMENT,
@@ -277,6 +286,7 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
                                               ClusterModel clusterModel,
                                               Set<Goal> optimizedGoals,
                                               OptimizationOptions optimizationOptions) {
+    long moveStartTimeMs = System.currentTimeMillis();
     PriorityQueue<Broker> eligibleBrokers = new PriorityQueue<>((b1, b2) -> {
       // Brokers are sorted by (1) current offline replica count then (2) all replica count then (3) broker id.
       int resultByOfflineReplicas = Integer.compare(b2.currentOfflineReplicas().size(), b1.currentOfflineReplicas().size());
@@ -301,9 +311,13 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
     }
 
     List<Broker> candidateBrokers = Collections.singletonList(aliveDestBroker);
-
+    boolean fastMode = optimizationOptions.fastMode();
     // Stop when no replicas can be moved in anymore.
     while (!eligibleBrokers.isEmpty()) {
+      if (fastMode && remainingTimeMs(_balancingConstraint.fastModePerBrokerMoveTimeoutMs(), moveStartTimeMs) <= 0) {
+        LOG.debug("Move replicas in timeout in fast mode for broker {}.", aliveDestBroker.id());
+        break;
+      }
       Broker sourceBroker = eligibleBrokers.poll();
       for (Replica replica : sourceBroker.trackedSortedReplicas(replicaSortName(this, false, false)).sortedReplicas(true)) {
         Broker b = maybeApplyBalancingAction(clusterModel, replica, candidateBrokers, ActionType.INTER_BROKER_REPLICA_MOVEMENT,

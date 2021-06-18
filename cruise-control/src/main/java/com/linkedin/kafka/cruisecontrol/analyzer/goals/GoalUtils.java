@@ -51,6 +51,17 @@ public final class GoalUtils {
   }
 
   /**
+   * Get the remaining time in milliseconds based on the given timout and start time.
+   *
+   * @param timeoutMs Timeout in milliseconds.
+   * @param startTimeMs Start time in milliseconds.
+   * @return Remaining time in milliseconds.
+   */
+  protected static long remainingTimeMs(long timeoutMs, long startTimeMs) {
+    return timeoutMs - (System.currentTimeMillis() - startTimeMs);
+  }
+
+  /**
    * A convenience {@link com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal.ClusterModelStatsComparator} for typical hard goals.
    */
   public static class HardGoalStatsComparator implements Goal.ClusterModelStatsComparator {
