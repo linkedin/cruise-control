@@ -399,6 +399,15 @@ public class AnalyzerConfig {
       + "broker to consider a cluster as overprovisioned after balancing its replica distribution.";
 
   /**
+   * <code>fast.mode.per.broker.move.timeout.ms</code>
+   */
+  public static final String FAST_MODE_PER_BROKER_MOVE_TIMEOUT_MS_CONFIG = "fast.mode.per.broker.move.timeout.ms";
+  public static final long DEFAULT_FAST_MODE_PER_BROKER_MOVE_TIMEOUT_MS = 500L;
+  public static final String FAST_MODE_PER_BROKER_MOVE_TIMEOUT_MS_DOC = "The per broker move timeout in fast mode in milliseconds. "
+      + "Users can run goal optimizations in fast mode by setting the fast_mode parameter to true in relevant endpoints. "
+      + "This mode intends to provide a more predictable runtime for goal optimizations.";
+
+  /**
    * Define configs for Analyzer.
    *
    * @param configDef Config definition.
@@ -606,6 +615,12 @@ public class AnalyzerConfig {
                             DEFAULT_OVERPROVISIONED_MAX_REPLICAS_PER_BROKER,
                             atLeast(1),
                             ConfigDef.Importance.LOW,
-                            OVERPROVISIONED_MAX_REPLICAS_PER_BROKER_DOC);
+                            OVERPROVISIONED_MAX_REPLICAS_PER_BROKER_DOC)
+                    .define(FAST_MODE_PER_BROKER_MOVE_TIMEOUT_MS_CONFIG,
+                            ConfigDef.Type.LONG,
+                            DEFAULT_FAST_MODE_PER_BROKER_MOVE_TIMEOUT_MS,
+                            atLeast(1),
+                            ConfigDef.Importance.LOW,
+                            FAST_MODE_PER_BROKER_MOVE_TIMEOUT_MS_DOC);
   }
 }

@@ -158,7 +158,9 @@ public class LowResourceUtilizationTest {
     // Before the optimization, goals are expected to be undecided wrt their provision status.
     assertEquals(ProvisionStatus.UNDECIDED, _resourceDistributionGoal.provisionResponse().status());
     assertTrue("Failed to optimize " + _resourceDistributionGoal.name(),
-        _resourceDistributionGoal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet())));
+        _resourceDistributionGoal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet(),
+                                                                                                         Collections.emptySet(),
+                                                                                                         Collections.emptySet())));
     // Since all optimizations succeed, it is guaranteed that all brokers have resource utilization under low utilization threshold.
     assertEquals(ProvisionStatus.OVER_PROVISIONED, _resourceDistributionGoal.provisionResponse().status());
 

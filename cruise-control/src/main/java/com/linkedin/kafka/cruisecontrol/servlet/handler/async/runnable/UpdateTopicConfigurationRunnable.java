@@ -182,7 +182,8 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
                                                                          _excludeRecentlyRemovedBrokers,
                                                                          _excludedTopics,
                                                                          Collections.emptySet(),
-                                                                         true);
+                                                                         true,
+                                                                         _fastMode);
     populateRackInfoForReplicationFactorChange(_topicsToChangeByReplicationFactor, _cluster,
                                                _skipRackAwarenessCheck, brokersByRack, rackByBroker);
     Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = clusterModel.getReplicaDistribution();

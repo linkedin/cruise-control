@@ -19,6 +19,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.EXCLUDED_TOPICS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.GOALS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.FAST_MODE_PARAM;
 
 
 public abstract class GoalBasedOptimizationParameters extends KafkaOptimizationParameters {
@@ -30,6 +31,7 @@ public abstract class GoalBasedOptimizationParameters extends KafkaOptimizationP
     validParameterNames.add(EXCLUDED_TOPICS_PARAM);
     validParameterNames.add(EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM);
     validParameterNames.add(GOALS_PARAM);
+    validParameterNames.add(FAST_MODE_PARAM);
     validParameterNames.addAll(KafkaOptimizationParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
     CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
   }
@@ -49,6 +51,7 @@ public abstract class GoalBasedOptimizationParameters extends KafkaOptimizationP
   protected Pattern _excludedTopics;
   protected boolean _excludeRecentlyRemovedBrokers;
   protected GoalsAndRequirements _goalsAndRequirements;
+  protected boolean _fastMode;
 
   GoalBasedOptimizationParameters() {
     super();
@@ -63,6 +66,7 @@ public abstract class GoalBasedOptimizationParameters extends KafkaOptimizationP
     _excludeRecentlyRemovedBrokers = ParameterUtils.excludeRecentlyRemovedBrokers(_request);
     List<String> goals = ParameterUtils.getGoals(_request);
     _goalsAndRequirements = new GoalsAndRequirements(goals, getRequirements(_dataFrom));
+    _fastMode = ParameterUtils.fastMode(_request);
   }
 
   public ParameterUtils.DataFrom dataFrom() {
@@ -87,6 +91,10 @@ public abstract class GoalBasedOptimizationParameters extends KafkaOptimizationP
 
   public boolean excludeRecentlyRemovedBrokers() {
     return _excludeRecentlyRemovedBrokers;
+  }
+
+  public boolean fastMode() {
+    return _fastMode;
   }
 
   protected static ModelCompletenessRequirements getRequirements(ParameterUtils.DataFrom dataFrom) {
