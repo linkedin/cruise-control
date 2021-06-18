@@ -47,7 +47,9 @@ public class ClusterModel implements Serializable {
   private static final long serialVersionUID = -6840253566423285966L;
   // Hypothetical broker that indicates the original broker of replicas to be created in the existing cluster model.
   private static final Broker GENESIS_BROKER = new Broker(null, -1, new BrokerCapacityInfo(EMPTY_BROKER_CAPACITY), false);
-  private static final OptimizationOptions DEFAULT_OPTIMIZATION_OPTIONS = new OptimizationOptions(Collections.emptySet());
+  private static final OptimizationOptions DEFAULT_OPTIMIZATION_OPTIONS = new OptimizationOptions(Collections.emptySet(),
+                                                                                                  Collections.emptySet(),
+                                                                                                  Collections.emptySet());
 
   private final ModelGeneration _generation;
   private final Map<String, Rack> _racksById;

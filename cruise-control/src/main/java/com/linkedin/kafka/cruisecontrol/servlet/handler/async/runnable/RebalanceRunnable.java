@@ -110,7 +110,8 @@ public class RebalanceRunnable extends GoalBasedOperationRunnable {
     ProposalsRunnable proposalsRunnable = new ProposalsRunnable(_kafkaCruiseControl, _future, _goals, _modelCompletenessRequirements,
                                                                 _allowCapacityEstimation, _excludedTopics, _excludeRecentlyDemotedBrokers,
                                                                 _excludeRecentlyRemovedBrokers, _ignoreProposalCache, _destinationBrokerIds,
-                                                                _isRebalanceDiskMode, _skipHardGoalCheck, !_isTriggeredByUserRequest);
+                                                                _isRebalanceDiskMode, _skipHardGoalCheck, !_isTriggeredByUserRequest,
+                                                                _fastMode);
     OptimizerResult result = proposalsRunnable.computeResult();
     if (!_dryRun) {
       _kafkaCruiseControl.executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(_goals),

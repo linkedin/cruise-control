@@ -27,7 +27,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *    &amp;use_ready_default_goals=[true/false]&amp;allow_capacity_estimation=[true/false]&amp;json=[true/false]
  *    &amp;exclude_recently_demoted_brokers=[true/false]&amp;exclude_recently_removed_brokers=[true/false]
  *    &amp;destination_broker_ids=[id1,id2...]&amp;kafka_assigner=[true/false]&amp;rebalance_disk=[true/false]
- *    &amp;get_response_schema=[true/false]
+ *    &amp;get_response_schema=[true/false]&amp;fast_mode=[true/false]
  * </pre>
  */
 public class ProposalsParameters extends GoalBasedOptimizationParameters {

@@ -33,6 +33,7 @@ public class BalancingConstraint {
   private final int _overprovisionedMinExtraRacks;
   private final Pattern _topicsWithMinLeadersPerBrokerPattern;
   private final int _minTopicLeadersPerBroker;
+  private final long _fastModePerBrokerMoveTimeoutMs;
 
   /**
    * Constructor for Balancing Constraint.
@@ -76,6 +77,8 @@ public class BalancingConstraint {
     // excluded for replica move.
     _topicsWithMinLeadersPerBrokerPattern = Pattern.compile(config.getString(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG));
     _minTopicLeadersPerBroker = config.getInt(AnalyzerConfig.MIN_TOPIC_LEADERS_PER_BROKER_CONFIG);
+    // Set default value for the per broker move timeout in fast mode in milliseconds
+    _fastModePerBrokerMoveTimeoutMs = config.getLong(AnalyzerConfig.FAST_MODE_PER_BROKER_MOVE_TIMEOUT_MS_CONFIG);
   }
 
   Properties setProps(Properties props) {
@@ -106,6 +109,7 @@ public class BalancingConstraint {
     props.put(AnalyzerConfig.GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG, Double.toString(_goalViolationDistributionThresholdMultiplier));
     props.put(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG, _topicsWithMinLeadersPerBrokerPattern.pattern());
     props.put(AnalyzerConfig.MIN_TOPIC_LEADERS_PER_BROKER_CONFIG, Integer.toString(_minTopicLeadersPerBroker));
+    props.put(AnalyzerConfig.FAST_MODE_PER_BROKER_MOVE_TIMEOUT_MS_CONFIG, Long.toString(_fastModePerBrokerMoveTimeoutMs));
     return props;
   }
 
@@ -232,6 +236,13 @@ public class BalancingConstraint {
   }
 
   /**
+   * @return The per broker move timeout in fast mode in milliseconds.
+   */
+  public long fastModePerBrokerMoveTimeoutMs() {
+    return _fastModePerBrokerMoveTimeoutMs;
+  }
+
+  /**
    * Set resource balance percentage for the given resource.
    *
    * @param resource Resource for which the balance percentage will be set.
@@ -291,15 +302,14 @@ public class BalancingConstraint {
                          + "topicReplicaBalancePercentage=%.4f,topicReplicaBalanceGap=[%d,%d],"
                          + "goalViolationDistributionThresholdMultiplier=%.4f,"
                          + "topicsWithMinLeadersPerBrokerPattern=%s,"
-                         + "minTopicLeadersPerBroker=%d]",
+                         + "minTopicLeadersPerBroker=%d,fastModePerBrokerMoveTimeoutMs=%d]",
                          _resourceBalancePercentage.get(Resource.CPU), _resourceBalancePercentage.get(Resource.DISK),
                          _resourceBalancePercentage.get(Resource.NW_IN), _resourceBalancePercentage.get(Resource.NW_OUT),
                          _capacityThreshold.get(Resource.CPU), _capacityThreshold.get(Resource.DISK),
                          _capacityThreshold.get(Resource.NW_IN), _capacityThreshold.get(Resource.NW_OUT),
                          _maxReplicasPerBroker, _replicaBalancePercentage, _leaderReplicaBalancePercentage,
                          _topicReplicaBalancePercentage, _topicReplicaBalanceMinGap, _topicReplicaBalanceMaxGap,
-                         _goalViolationDistributionThresholdMultiplier,
-                         _topicsWithMinLeadersPerBrokerPattern.pattern(),
-                         _minTopicLeadersPerBroker);
+                         _goalViolationDistributionThresholdMultiplier, _topicsWithMinLeadersPerBrokerPattern.pattern(),
+                         _minTopicLeadersPerBroker, _fastModePerBrokerMoveTimeoutMs);
   }
 }

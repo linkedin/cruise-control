@@ -31,7 +31,6 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -41,6 +40,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionType.INTER_BROKER_REPLICA_MOVEMENT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionType.LEADERSHIP_MOVEMENT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.remainingTimeMs;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.utilization;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.DENOMINATOR_FOR_MIN_VALID_WINDOWS_FOR_SELF_HEALING;
@@ -55,7 +55,6 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ResourceDistributi
 public abstract class ResourceDistributionGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(ResourceDistributionGoal.class);
   public static final double BALANCE_MARGIN = 0.9;
-  private static final long PER_BROKER_SWAP_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(1);
   // Flag to indicate whether the self healing failed to relocate all offline replicas away from dead brokers or broken
   // disks in its initial attempt and currently omitting the resource balance limit to relocate remaining replicas.
   private boolean _fixOfflineReplicasOnly;
@@ -444,7 +443,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                           ActionType actionType,
                                           OptimizationOptions optimizationOptions,
                                           boolean moveImmigrantsOnly) {
-
+    long moveStartTimeMs = System.currentTimeMillis();
     if (!clusterModel.newBrokers().isEmpty() && !broker.isNew()) {
       // We have new brokers and the current broker is not a new broker.
       return true;
@@ -471,10 +470,15 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       }
     }
 
+    boolean fastMode = optimizationOptions.fastMode();
     // Stop when all the replicas are leaders for leader movement or there is no replicas can be moved in anymore
     // for replica movement.
     while (!candidateBrokerPQ.isEmpty() && (actionType == INTER_BROKER_REPLICA_MOVEMENT
                                             || (actionType == LEADERSHIP_MOVEMENT && broker.leaderReplicas().size() != broker.replicas().size()))) {
+      if (fastMode && remainingTimeMs(_balancingConstraint.fastModePerBrokerMoveTimeoutMs(), moveStartTimeMs) <= 0) {
+        LOG.debug("Move load in timeout in fast mode for broker {}.", broker.id());
+        break;
+      }
       Broker cb = candidateBrokerPQ.poll();
       SortedSet<Replica> candidateReplicasToReceive = cb.trackedSortedReplicas(replicaSortName).sortedReplicas(false);
 
@@ -642,8 +646,9 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       candidateBrokerPQ.add(candidate);
     }
 
+    long perBrokerSwapTimeoutMs = 2 * _balancingConstraint.fastModePerBrokerMoveTimeoutMs();
     while (!candidateBrokerPQ.isEmpty()) {
-      if (remainingPerBrokerSwapTimeMs(swapStartTimeMs) <= 0) {
+      if (remainingTimeMs(perBrokerSwapTimeoutMs, swapStartTimeMs) <= 0) {
         LOG.debug("Swap load out timeout for broker {}.", broker.id());
         break;
       }
@@ -666,7 +671,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
           // Add swapped in/out replica for updating the list of replicas in source broker.
           swappedInReplica = swappedIn;
           break;
-        } else if (remainingPerBrokerSwapTimeMs(swapStartTimeMs) <= 0) {
+        } else if (remainingTimeMs(perBrokerSwapTimeoutMs, swapStartTimeMs) <= 0) {
           LOG.debug("Swap load out timeout for source replica {}.", sourceReplica);
           clusterModel.clearSortedReplicas();
           return true;
@@ -682,16 +687,6 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     }
     clusterModel.clearSortedReplicas();
     return true;
-  }
-
-  /**
-   * Get the remaining per broker swap time in milliseconds based on the given swap start time.
-   *
-   * @param swapStartTimeMs Per broker swap start time in milliseconds.
-   * @return Remaining per broker swap time in milliseconds.
-   */
-  private long remainingPerBrokerSwapTimeMs(long swapStartTimeMs) {
-    return PER_BROKER_SWAP_TIMEOUT_MS - (System.currentTimeMillis() - swapStartTimeMs);
   }
 
   private boolean rebalanceBySwappingLoadIn(Broker broker,
@@ -740,8 +735,9 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       candidateBrokerPQ.add(candidate);
     }
 
+    long perBrokerSwapTimeoutMs = 2 * _balancingConstraint.fastModePerBrokerMoveTimeoutMs();
     while (!candidateBrokerPQ.isEmpty()) {
-      if (remainingPerBrokerSwapTimeMs(swapStartTimeMs) <= 0) {
+      if (remainingTimeMs(perBrokerSwapTimeoutMs, swapStartTimeMs) <= 0) {
         LOG.debug("Swap load in timeout for broker {}.", broker.id());
         break;
       }
@@ -765,7 +761,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
           // Add swapped in/out replica for updating the list of replicas in source broker.
           swappedInReplica = swappedIn;
           break;
-        } else if (remainingPerBrokerSwapTimeMs(swapStartTimeMs) <= 0) {
+        } else if (remainingTimeMs(perBrokerSwapTimeoutMs, swapStartTimeMs) <= 0) {
           LOG.debug("Swap load in timeout for source replica {}.", sourceReplica);
           clusterModel.clearSortedReplicas();
           return true;
@@ -788,6 +784,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                            Set<Goal> optimizedGoals,
                                            ActionType actionType,
                                            OptimizationOptions optimizationOptions) {
+    long moveStartTimeMs = System.currentTimeMillis();
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     // Get the eligible brokers.
     SortedSet<Broker> candidateBrokers = new TreeSet<>(
@@ -818,11 +815,18 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
 
     // If the source broker is excluded for replica move, set its upper limit to 0.
     double balanceUpperThresholdForSourceBroker = isExcludedForReplicaMove(broker) ? 0 : _balanceUpperThreshold;
+    boolean fastMode = optimizationOptions.fastMode();
     // Now let's move things around.
     for (Replica replica : replicasToMove) {
-      // It does not make sense to move an online replica without utilization from a live broker.
-      if (replica.load().expectedUtilizationFor(resource()) == 0.0 && !replica.isCurrentOffline()) {
-        break;
+      if (!replica.isCurrentOffline()) {
+        if (fastMode && remainingTimeMs(_balancingConstraint.fastModePerBrokerMoveTimeoutMs(), moveStartTimeMs) <= 0) {
+          LOG.debug("Move load out timeout in fast mode for broker {}.", broker.id());
+          break;
+        }
+        // It does not make sense to move an online replica without utilization from a live broker.
+        if (replica.load().expectedUtilizationFor(resource()) == 0.0) {
+          break;
+        }
       }
 
       // An optimization for leader movements.

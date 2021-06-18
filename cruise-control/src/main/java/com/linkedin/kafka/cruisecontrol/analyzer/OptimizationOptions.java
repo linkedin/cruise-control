@@ -20,20 +20,7 @@ public class OptimizationOptions {
   private final boolean _isTriggeredByGoalViolation;
   private final Set<Integer> _requestedDestinationBrokerIds;
   private final boolean _onlyMoveImmigrantReplicas;
-
-  /**
-   * Default value for {@link #_excludedBrokersForLeadership} is an empty set.
-   */
-  public OptimizationOptions(Set<String> excludedTopics) {
-    this(excludedTopics, Collections.emptySet());
-  }
-
-  /**
-   * Default value for {@link #_excludedBrokersForReplicaMove} is an empty set.
-   */
-  public OptimizationOptions(Set<String> excludedTopics, Set<Integer> excludedBrokersForLeadership) {
-    this(excludedTopics, excludedBrokersForLeadership, Collections.emptySet());
-  }
+  private final boolean _fastMode;
 
   /**
    * Default value for {@link #_isTriggeredByGoalViolation} is false.
@@ -67,7 +54,7 @@ public class OptimizationOptions {
   }
 
   /**
-   * The optimization options intended to be used during optimization of goals.
+   * Default value for {@link #_fastMode} is false.
    */
   public OptimizationOptions(Set<String> excludedTopics,
                              Set<Integer> excludedBrokersForLeadership,
@@ -75,12 +62,27 @@ public class OptimizationOptions {
                              boolean isTriggeredByGoalViolation,
                              Set<Integer> requestedDestinationBrokerIds,
                              boolean onlyMoveImmigrantReplicas) {
+    this(excludedTopics, excludedBrokersForLeadership, excludedBrokersForReplicaMove, isTriggeredByGoalViolation,
+         requestedDestinationBrokerIds, onlyMoveImmigrantReplicas, false);
+  }
+
+  /**
+   * The optimization options intended to be used during optimization of goals.
+   */
+  public OptimizationOptions(Set<String> excludedTopics,
+                             Set<Integer> excludedBrokersForLeadership,
+                             Set<Integer> excludedBrokersForReplicaMove,
+                             boolean isTriggeredByGoalViolation,
+                             Set<Integer> requestedDestinationBrokerIds,
+                             boolean onlyMoveImmigrantReplicas,
+                             boolean fastMode) {
     _excludedTopics = validateNotNull(excludedTopics, "Excluded topics cannot be null.");
     _excludedBrokersForLeadership = validateNotNull(excludedBrokersForLeadership, "Excluded brokers for leadership cannot be null.");
     _excludedBrokersForReplicaMove = validateNotNull(excludedBrokersForReplicaMove, "Excluded brokers for replica move cannot be null.");
     _isTriggeredByGoalViolation = isTriggeredByGoalViolation;
-    _requestedDestinationBrokerIds = validateNotNull(requestedDestinationBrokerIds, "Requested destination broker ids cannot be null.");;
+    _requestedDestinationBrokerIds = validateNotNull(requestedDestinationBrokerIds, "Requested destination broker ids cannot be null.");
     _onlyMoveImmigrantReplicas = onlyMoveImmigrantReplicas;
+    _fastMode = fastMode;
   }
 
   /**
@@ -105,7 +107,7 @@ public class OptimizationOptions {
   }
 
   /**
-   * @return True if the optimization request was triggered by goal violation ,false otherwise.
+   * @return {@code true} if the optimization request was triggered by goal violation, {@code false} otherwise.
    */
   public boolean isTriggeredByGoalViolation() {
     return _isTriggeredByGoalViolation;
@@ -119,17 +121,24 @@ public class OptimizationOptions {
   }
 
   /**
-   * @return True if the optimization will apply only to immigrant replicas, false otherwise.
+   * @return {@code true} if the optimization will apply only to immigrant replicas, {@code false} otherwise.
    */
   public boolean onlyMoveImmigrantReplicas() {
     return _onlyMoveImmigrantReplicas;
   }
 
+  /**
+   * @return {@code true} to compute proposals in fast mode, {@code false} otherwise.
+   */
+  public boolean fastMode() {
+    return _fastMode;
+  }
+
   @Override
   public String toString() {
     return String.format("[excludedTopics=%s,excludedBrokersForLeadership=%s,excludedBrokersForReplicaMove=%s,"
-                         + "isTriggeredByGoalViolation=%s,requestedDestinationBrokerIds=%s,onlyMoveImmigrantReplicas=%s]",
+                         + "isTriggeredByGoalViolation=%s,requestedDestinationBrokerIds=%s,onlyMoveImmigrantReplicas=%s,fastMode=%s]",
                          _excludedTopics, _excludedBrokersForLeadership, _excludedBrokersForReplicaMove, _isTriggeredByGoalViolation,
-                         _requestedDestinationBrokerIds, _onlyMoveImmigrantReplicas);
+                         _requestedDestinationBrokerIds, _onlyMoveImmigrantReplicas, _fastMode);
   }
 }

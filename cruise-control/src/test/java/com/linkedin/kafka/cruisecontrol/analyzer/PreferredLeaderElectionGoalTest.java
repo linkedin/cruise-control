@@ -63,7 +63,9 @@ public class PreferredLeaderElectionGoalTest {
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
     // Before the optimization, goals are expected to be undecided wrt their provision status.
     assertEquals(ProvisionStatus.UNDECIDED, goal.provisionResponse().status());
-    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
+    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet(),
+                                                                                Collections.emptySet(),
+                                                                                Collections.emptySet()));
     // After the optimization, PreferredLeaderElectionGoal is expected to be undecided wrt its provision status.
     assertEquals(ProvisionStatus.UNDECIDED, goal.provisionResponse().status());
 
@@ -93,7 +95,9 @@ public class PreferredLeaderElectionGoalTest {
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
     // Before the optimization, goals are expected to be undecided wrt their provision status.
     assertEquals(ProvisionStatus.UNDECIDED, goal.provisionResponse().status());
-    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
+    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet(),
+                                                                                Collections.emptySet(),
+                                                                                Collections.emptySet()));
     // After the optimization, PreferredLeaderElectionGoal is expected to be undecided wrt its provision status.
     assertEquals(ProvisionStatus.UNDECIDED, goal.provisionResponse().status());
 
@@ -139,7 +143,9 @@ public class PreferredLeaderElectionGoalTest {
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
     // Before the optimization, goals are expected to be undecided wrt their provision status.
     assertEquals(ProvisionStatus.UNDECIDED, goal.provisionResponse().status());
-    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
+    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet(),
+                                                                                Collections.emptySet(),
+                                                                                Collections.emptySet()));
     // After the optimization, PreferredLeaderElectionGoal is expected to be undecided wrt its provision status.
     assertEquals(ProvisionStatus.UNDECIDED, goal.provisionResponse().status());
 
@@ -185,7 +191,9 @@ public class PreferredLeaderElectionGoalTest {
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
     // Before the optimization, goals are expected to be undecided wrt their provision status.
     assertEquals(ProvisionStatus.UNDECIDED, goal.provisionResponse().status());
-    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
+    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet(),
+                                                                                Collections.emptySet(),
+                                                                                Collections.emptySet()));
     // After the optimization, PreferredLeaderElectionGoal is expected to be undecided wrt its provision status.
     assertEquals(ProvisionStatus.UNDECIDED, goal.provisionResponse().status());
 
@@ -223,7 +231,9 @@ public class PreferredLeaderElectionGoalTest {
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(true, false, cluster);
     // Before the optimization, goals are expected to be undecided wrt their provision status.
     assertEquals(ProvisionStatus.UNDECIDED, goal.provisionResponse().status());
-    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
+    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet(),
+                                                                                Collections.emptySet(),
+                                                                                Collections.emptySet()));
     // After the optimization, PreferredLeaderElectionGoal is expected to be undecided wrt its provision status.
     assertEquals(ProvisionStatus.UNDECIDED, goal.provisionResponse().status());
 
@@ -246,7 +256,9 @@ public class PreferredLeaderElectionGoalTest {
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, true, null);
     // Before the optimization, goals are expected to be undecided wrt their provision status.
     assertEquals(ProvisionStatus.UNDECIDED, goal.provisionResponse().status());
-    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
+    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet(),
+                                                                                Collections.emptySet(),
+                                                                                Collections.emptySet()));
     // After the optimization, PreferredLeaderElectionGoal is expected to be undecided wrt its provision status.
     assertEquals(ProvisionStatus.UNDECIDED, goal.provisionResponse().status());
     Map<TopicPartition, List<ReplicaPlacementInfo>> optimizedReplicaDistribution = clusterModel.getReplicaDistribution();
@@ -278,7 +290,9 @@ public class PreferredLeaderElectionGoalTest {
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(true, true, cluster);
     // Before the optimization, goals are expected to be undecided wrt their provision status.
     assertEquals(ProvisionStatus.UNDECIDED, goal.provisionResponse().status());
-    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
+    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet(),
+                                                                                Collections.emptySet(),
+                                                                                Collections.emptySet()));
     // After the optimization, PreferredLeaderElectionGoal is expected to be undecided wrt its provision status.
     assertEquals(ProvisionStatus.UNDECIDED, goal.provisionResponse().status());
     Map<TopicPartition, ReplicaPlacementInfo> optimizedLeaderDistribution = clusterModel.getLeaderDistribution();
@@ -366,31 +380,31 @@ public class PreferredLeaderElectionGoalTest {
       List<PartitionInfo> partitions = new ArrayList<>(9);
       // Make topic1 and topic2's partitions under replicated.
       partitions.add(new PartitionInfo(T0P0.topic(), T0P0.partition(), nodes[0], new Node[]{nodes[0], nodes[4], nodes[3]},
-                     new Node[]{nodes[0], nodes[4], nodes[3]}));
+                                       new Node[]{nodes[0], nodes[4], nodes[3]}));
 
       partitions.add(new PartitionInfo(T0P1.topic(), T0P1.partition(), nodes[1], new Node[]{nodes[1], nodes[2], nodes[4]},
-                     new Node[]{nodes[1], nodes[2], nodes[4]}));
+                                       new Node[]{nodes[1], nodes[2], nodes[4]}));
 
       partitions.add(new PartitionInfo(T0P2.topic(), T0P2.partition(), nodes[2], new Node[]{nodes[2], nodes[0], nodes[3]},
-                     new Node[]{nodes[2], nodes[0], nodes[3]}));
+                                       new Node[]{nodes[2], nodes[0], nodes[3]}));
 
       partitions.add(new PartitionInfo(T1P0.topic(), T1P0.partition(), nodes[1], new Node[]{nodes[1], nodes[3]},
-                     new Node[]{nodes[1], nodes[3], nodes[2]}));
+                                       new Node[]{nodes[1], nodes[3], nodes[2]}));
 
       partitions.add(new PartitionInfo(T1P1.topic(), T1P1.partition(), nodes[3], new Node[]{nodes[3], nodes[4]},
-                     new Node[]{nodes[3], nodes[4], nodes[0]}));
+                                       new Node[]{nodes[3], nodes[4], nodes[0]}));
 
       partitions.add(new PartitionInfo(T1P2.topic(), T1P2.partition(), nodes[4], new Node[]{nodes[4], nodes[2]},
-                     new Node[]{nodes[4], nodes[2], nodes[0]}));
+                                       new Node[]{nodes[4], nodes[2], nodes[0]}));
 
       partitions.add(new PartitionInfo(T2P0.topic(), T2P0.partition(), nodes[4], new Node[]{nodes[4], nodes[2]},
-                     new Node[]{nodes[4], nodes[2], nodes[1]}));
+                                       new Node[]{nodes[4], nodes[2], nodes[1]}));
 
       partitions.add(new PartitionInfo(T2P1.topic(), T2P1.partition(), nodes[3], new Node[]{nodes[3], nodes[0]},
-                     new Node[]{nodes[3], nodes[0], nodes[2]}));
+                                       new Node[]{nodes[3], nodes[0], nodes[2]}));
 
       partitions.add(new PartitionInfo(T2P2.topic(), T2P2.partition(), nodes[4], new Node[]{nodes[4], nodes[1]},
-                     new Node[]{nodes[4], nodes[1], nodes[3]}));
+                                       new Node[]{nodes[4], nodes[1], nodes[3]}));
 
       cluster = new Cluster("id", Arrays.asList(nodes), partitions, Collections.emptySet(), Collections.emptySet());
     }
