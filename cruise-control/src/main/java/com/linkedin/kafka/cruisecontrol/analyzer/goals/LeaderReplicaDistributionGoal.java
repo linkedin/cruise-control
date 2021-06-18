@@ -282,7 +282,7 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
     boolean fastMode = optimizationOptions.fastMode();
     for (Replica replica : candidateReplicas) {
       if (fastMode && !replica.isCurrentOffline() && remainingTimeMs(_balancingConstraint.fastModePerBrokerMoveTimeoutMs(), moveStartTimeMs) <= 0) {
-        LOG.debug("Move replica out timeout in fast mode for broker {}.", broker.id());
+        LOG.debug("Move replicas out timeout in fast mode for broker {}.", broker.id());
         break;
       }
       Broker b = maybeApplyBalancingAction(clusterModel,

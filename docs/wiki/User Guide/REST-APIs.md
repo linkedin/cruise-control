@@ -236,7 +236,7 @@ Supported parameters are:
 | json                              | boolean   | return in JSON format or not                                                          | false             | yes       | 
 | verbose                           | boolean   | return detailed state information                                                     | false             | yes       |
 | doAs                              | string    | propagated user by the trusted proxy service                                          | null              | yes       | 
-| fast_mode                                 | boolean   | true to compute proposals in fast mode, false otherwise                                                                               | false                 | yes       |
+| fast_mode                         | boolean   | true to compute proposals in fast mode, false otherwise                               | false             | yes       |
 
 Proposal can be generated based on **valid_window** or **valid_partitions**.
 
@@ -326,7 +326,7 @@ Supported parameters are:
 | verbose                                       | boolean   | return detailed state information                                                                                                     | false                 | yes       | 
 | reason                                        | string    | reason for the request                                                                                                                | "No reason provided"  | yes       | 
 | doAs                                          | string    | propagated user by the trusted proxy service                                                                                          | null                  | yes       | 
-| fast_mode                                 | boolean   | true to compute proposals in fast mode, false otherwise                                                                               | false                 | yes       |
+| fast_mode                                     | boolean   | true to compute proposals in fast mode, false otherwise                                                                               | false                 | yes       |
 
 Similar to the [GET interface for getting proposals](https://github.com/linkedin/cruise-control/wiki/REST-APIs/_edit#get-optimization-proposals), the rebalance can also be based on available valid windows or available valid partitions.
 

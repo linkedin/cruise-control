@@ -253,7 +253,7 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
     for (Replica replica : broker.trackedSortedReplicas(replicaSortName(this, false, false)).sortedReplicas(true)) {
       if (!replica.isCurrentOffline()) {
         if (fastMode && remainingTimeMs(_balancingConstraint.fastModePerBrokerMoveTimeoutMs(), moveStartTimeMs) <= 0) {
-          LOG.debug("Move load out timeout in fast mode for broker {}.", broker.id());
+          LOG.debug("Move replicas out timeout in fast mode for broker {}.", broker.id());
           break;
         }
         if (wasUnableToMoveOfflineReplica && broker.replicas().size() <= balanceUpperLimitForSourceBroker) {
