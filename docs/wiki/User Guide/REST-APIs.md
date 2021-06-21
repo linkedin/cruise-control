@@ -486,10 +486,14 @@ The following POST request will let Kafka Cruise Control stop an ongoing `rebala
 
 Supported parameters are:
 
-| PARAMETER | TYPE      | DESCRIPTION                                   | DEFAULT   | OPTIONAL  |
-|-----------|-----------|-----------------------------------------------|-----------|-----------|
-| json      | boolean   | return in JSON format or not                  | false     | yes       | 
-| doAs      | string    | propagated user by the trusted proxy service  | null      | yes       | 
+| PARAMETER           | TYPE      | DESCRIPTION                                                                                                   | DEFAULT   | OPTIONAL  |
+|---------------------|-----------|---------------------------------------------------------------------------------------------------------------|-----------|-----------|
+| force_stop          | boolean   | (not supporeted in Kafka 2.4 or above) stop an ongoing execution forcefully by deleting Kafka internal zNodes | false     | yes       |
+| stop_external_agent | boolean   | (required Kakfa 2.4 or above) stop an ongoing execution even if it is started by an external agent            | true      | yes       |
+| review_id           | integer   | review id for 2-step verification                                                                             | N/A       | yes       |
+| json                | boolean   | return in JSON format or not                                                                                  | false     | yes       |
+| get_response_schema | boolean   | return JSON schema in response header or not                                                                  | false     | yes       |
+| doAs                | string    | propagated user by the trusted proxy service                                                                  | null      | yes       |
 
 Note that **Cruise Control does not wait for the ongoing batch to finish when it stops execution**, i.e. the in-progress batch may still be running after Cruise Control stops the execution.
 
