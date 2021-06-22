@@ -33,7 +33,7 @@ public class DefaultOptimizationOptionsGenerator implements OptimizationOptionsG
                                    false,
                                    Collections.emptySet(),
                                    false,
-                                   false);
+                                   true);
   }
 
   @Override

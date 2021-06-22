@@ -54,7 +54,7 @@ public class OptimizationOptions {
   }
 
   /**
-   * Default value for {@link #_fastMode} is false.
+   * Default value for {@link #_fastMode} is {@code true}.
    */
   public OptimizationOptions(Set<String> excludedTopics,
                              Set<Integer> excludedBrokersForLeadership,
@@ -63,7 +63,7 @@ public class OptimizationOptions {
                              Set<Integer> requestedDestinationBrokerIds,
                              boolean onlyMoveImmigrantReplicas) {
     this(excludedTopics, excludedBrokersForLeadership, excludedBrokersForReplicaMove, isTriggeredByGoalViolation,
-         requestedDestinationBrokerIds, onlyMoveImmigrantReplicas, false);
+         requestedDestinationBrokerIds, onlyMoveImmigrantReplicas, true);
   }
 
   /**
