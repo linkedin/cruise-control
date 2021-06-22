@@ -130,6 +130,7 @@ public class ParameterUtils {
   public static final String FETCH_COMPLETED_TASK_PARAM = "fetch_completed_task";
   public static final String FORCE_STOP_PARAM = "force_stop";
   public static final String FAST_MODE_PARAM = "fast_mode";
+  public static final String STOP_EXTERNAL_AGENT_PARAM = "stop_external_agent";
   private static final int MAX_REASON_LENGTH = 50;
   private static final String DELIMITER_BETWEEN_BROKER_ID_AND_LOGDIR = "-";
   public static final long DEFAULT_START_TIME_FOR_CLUSTER_MODEL = -1L;
@@ -397,6 +398,10 @@ public class ParameterUtils {
 
   static boolean forceExecutionStop(HttpServletRequest request) {
     return getBooleanParam(request, FORCE_STOP_PARAM, false);
+  }
+
+  static boolean stopExternalAgent(HttpServletRequest request) {
+    return getBooleanParam(request, STOP_EXTERNAL_AGENT_PARAM, true);
   }
 
   static boolean throttleAddedOrRemovedBrokers(HttpServletRequest request, EndPoint endPoint) {
