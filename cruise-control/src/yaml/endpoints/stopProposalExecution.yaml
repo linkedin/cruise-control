@@ -13,7 +13,7 @@ StopProposalExecutionEndpoint:
       - name: stop_external_agent
         in: query
         description: If true, stop any ongoing execution even if it is started by an external agent. If false, only stop
-                     execution started by the current CC instance. This parameter would only be honored with Kakfa 2.4 or above.
+                     execution started by the current CC instance. This parameter would only be honored with Kafka 2.4 or above.
         schema:
           type: boolean
           default: true

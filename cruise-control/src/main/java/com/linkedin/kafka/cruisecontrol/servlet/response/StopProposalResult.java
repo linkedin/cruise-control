@@ -13,7 +13,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.ge
 @JsonResponseClass
 @JsonResponseExternalFields(ResponseUtils.class)
 public class StopProposalResult extends AbstractCruiseControlResponse {
-  public static final String STOP_EXTERNAL_AGENT_SUFFIX = " The stop_external_agent parameter would only be honored with Kakfa 2.4 or above."
+  public static final String STOP_EXTERNAL_AGENT_SUFFIX = " The stop_external_agent parameter would only be honored with Kafka 2.4 or above."
                                                           + " Please consider using force_stop instead.";
 
   public StopProposalResult(KafkaCruiseControlConfig config) {
