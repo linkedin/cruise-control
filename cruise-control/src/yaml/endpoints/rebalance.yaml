@@ -176,7 +176,7 @@ RebalanceEndpoint:
         description: True to compute proposals in fast mode, false otherwise
         schema:
           type: boolean
-          default: false
+          default: true
     responses:
       '200':
         description: Successful rebalance response.
