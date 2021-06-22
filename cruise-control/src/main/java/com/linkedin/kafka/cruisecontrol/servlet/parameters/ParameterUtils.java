@@ -389,7 +389,7 @@ public class ParameterUtils {
   }
 
   static boolean fastMode(HttpServletRequest request) {
-    return getBooleanParam(request, FAST_MODE_PARAM, false);
+    return getBooleanParam(request, FAST_MODE_PARAM, true);
   }
 
   static boolean getDryRun(HttpServletRequest request) {
