@@ -118,7 +118,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
                                                                               "ExecutorTestMetricGroup",
                                                                               "ReplicaReassignment",
-                                                                              false);
+                                                                              false,
+                                                                              null);
     try {
       List<ExecutionProposal> proposalsToExecute = new ArrayList<>();
       List<ExecutionProposal> proposalsToCheck = new ArrayList<>();
@@ -134,7 +135,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
                                                                               "ExecutorTestMetricGroup",
                                                                               "ReplicaReassignmentProgressWithThrottle",
-                                                                              false);
+                                                                              false,
+                                                                              null);
     try {
       List<ExecutionProposal> proposalsToExecute = new ArrayList<>();
       List<ExecutionProposal> proposalsToCheck = new ArrayList<>();
@@ -151,7 +153,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
                                                                               "ExecutorTestMetricGroup",
                                                                               "BrokerDiesBeforeMovingPartition",
-                                                                              false);
+                                                                              false,
+                                                                              null);
     try {
       Map<String, TopicDescription> topicDescriptions = createTopics((int) PRODUCE_SIZE_IN_BYTES);
       // initialLeader0 will be alive after killing a broker in cluster.

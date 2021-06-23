@@ -8,6 +8,7 @@ import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.ZKConfigUtils;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import java.io.File;
@@ -28,6 +29,7 @@ import org.I0Itec.zkclient.ZkClient;
 import org.I0Itec.zkclient.ZkConnection;
 import org.I0Itec.zkclient.exception.ZkMarshallingError;
 import org.I0Itec.zkclient.serialize.ZkSerializer;
+import org.apache.zookeeper.client.ZKClientConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.jdk.javaapi.CollectionConverters;
@@ -65,10 +67,10 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector {
     String zkUrl = config.getString(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG);
     boolean zkSecurityEnabled = config.getBoolean(ExecutorConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
     ZkConnection zkConnection = new ZkConnection(zkUrl, ZK_SESSION_TIMEOUT);
+    ZKClientConfig zkClientConfig = ZKConfigUtils.zkClientConfigFromKafkaConfig(config);
     _zkClient = new ZkClient(zkConnection, ZK_CONNECTION_TIMEOUT, new ZkStringSerializer());
-    // Do not support secure ZK at this point.
     _kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zkUrl, ZK_BROKER_FAILURE_METRIC_GROUP, ZK_BROKER_FAILURE_METRIC_TYPE,
-                                                                 zkSecurityEnabled);
+                                                                 zkSecurityEnabled, zkClientConfig);
     _failedBrokers = new HashMap<>();
     _failedBrokersFile = new File(config.getString(AnomalyDetectorConfig.FAILED_BROKERS_FILE_PATH_CONFIG));
     _fixableFailedBrokerCountThreshold = config.getShort(AnomalyDetectorConfig.FIXABLE_FAILED_BROKER_COUNT_THRESHOLD_CONFIG);
