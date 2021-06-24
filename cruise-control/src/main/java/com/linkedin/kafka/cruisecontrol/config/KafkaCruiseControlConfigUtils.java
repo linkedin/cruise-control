@@ -8,7 +8,7 @@ import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import java.util.Map;
 
 
-public class KafkaCruiseControlConfigUtils {
+public final class KafkaCruiseControlConfigUtils {
 
   private KafkaCruiseControlConfigUtils() {
 

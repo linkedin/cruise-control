@@ -123,7 +123,7 @@ public class Executor {
   private volatile boolean _concurrencyAdjusterMinIsrCheckEnabled;
   private final TopicMinIsrCache _topicMinIsrCache;
   private final long _minExecutionProgressCheckIntervalMs;
-  public final long _slowTaskAlertingBackoffTimeMs;
+  private final long _slowTaskAlertingBackoffTimeMs;
   private final KafkaCruiseControlConfig _config;
 
   /**

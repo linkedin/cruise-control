@@ -13,7 +13,7 @@ import org.apache.kafka.common.PartitionInfo;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.*;
 
 
-class HolderUtils {
+final class HolderUtils {
   static final double MISSING_BROKER_METRIC_VALUE = 0.0;
   static final Map<RawMetricType, RawMetricType> METRIC_TYPES_TO_SUM = new HashMap<>();
   static {

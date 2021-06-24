@@ -62,7 +62,7 @@ public class AnomalyDetectorState {
   private final Map<AnomalyType, Map<String, AnomalyState>> _recentAnomaliesByType;
   private Anomaly _ongoingSelfHealingAnomaly;
   private final Map<AnomalyType, Boolean> _selfHealingEnabled;
-  SelfHealingEnabledRatio _selfHealingEnabledRatio;
+  private SelfHealingEnabledRatio _selfHealingEnabledRatio;
   // Maximum number of anomalies to keep in the anomaly detector state.
   private final int _numCachedRecentAnomalyStates;
   private AnomalyMetrics _metrics;

@@ -87,9 +87,8 @@ public class SlackSelfHealingNotifierTest {
 
     private static class MockSlackSelfHealingNotifier extends SlackSelfHealingNotifier {
         private List<SlackMessage> _slackMessageList;
-
-        final Map<AnomalyType, Boolean> _alertCalled;
-        final Map<AnomalyType, Boolean> _autoFixTriggered;
+        private final Map<AnomalyType, Boolean> _alertCalled;
+        private final Map<AnomalyType, Boolean> _autoFixTriggered;
 
         MockSlackSelfHealingNotifier(Time time) {
             super(time);

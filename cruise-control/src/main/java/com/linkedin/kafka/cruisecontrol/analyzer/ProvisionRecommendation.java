@@ -30,7 +30,7 @@ import java.util.Set;
  *   <li>Total resource capacity required to add or remove</li>
  * </ul>
  */
-public class ProvisionRecommendation {
+public final class ProvisionRecommendation {
   public static final int DEFAULT_OPTIONAL_INT = -1;
   public static final double DEFAULT_OPTIONAL_DOUBLE = -1.0;
   // Provisions status to identify whether resources will be added or removed.

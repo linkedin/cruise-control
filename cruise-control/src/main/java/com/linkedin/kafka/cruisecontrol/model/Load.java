@@ -234,15 +234,6 @@ public class Load implements Serializable {
   }
 
   /**
-   * Subtract the given load from this load.
-   *
-   * @param loadToSubtract Load to subtract from this load.
-   */
-  void subtractLoad(Load loadToSubtract) {
-    _metricValues.subtract(loadToSubtract.loadByWindows());
-  }
-
-  /**
    * Add the given load for the given resource to this load.
    *
    * @param loadToAdd Load to add to this load for the given resource.
@@ -251,6 +242,15 @@ public class Load implements Serializable {
     if (!_metricValues.isEmpty()) {
       _metricValues.add(loadToAdd);
     }
+  }
+
+  /**
+   * Subtract the given load from this load.
+   *
+   * @param loadToSubtract Load to subtract from this load.
+   */
+  void subtractLoad(Load loadToSubtract) {
+    _metricValues.subtract(loadToSubtract.loadByWindows());
   }
 
   /**

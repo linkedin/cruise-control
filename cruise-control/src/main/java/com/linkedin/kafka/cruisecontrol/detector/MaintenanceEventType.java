@@ -26,6 +26,8 @@ public enum MaintenanceEventType {
   // Do not change the order of enums. Append new ones to the end.
   ADD_BROKER, REMOVE_BROKER, FIX_OFFLINE_REPLICAS, REBALANCE, DEMOTE_BROKER, TOPIC_REPLICATION_FACTOR;
 
+  private static final List<MaintenanceEventType> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
+
   // This id helps with serialization and deserialization of event types
   byte id() {
     return (byte) ordinal();
@@ -43,8 +45,6 @@ public enum MaintenanceEventType {
 
     throw new IllegalArgumentException("MaintenanceEventType " + id + " does not exist.");
   }
-
-  private static final List<MaintenanceEventType> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 
   /**
    * Use this instead of values() because values() creates a new array each time.

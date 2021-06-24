@@ -19,7 +19,7 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.ExecutionTasksSummary;
 
 @JsonResponseClass
-public class ExecutorState {
+public final class ExecutorState {
   @JsonResponseField(required = false)
   private static final String TRIGGERED_USER_TASK_ID = "triggeredUserTaskId";
   @JsonResponseField(required = false)

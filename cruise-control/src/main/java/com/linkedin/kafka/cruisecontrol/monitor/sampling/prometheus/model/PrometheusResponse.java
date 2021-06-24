@@ -36,7 +36,8 @@ public class PrometheusResponse {
         return _data;
     }
 
-    @Override public boolean equals(Object o) {
+    @Override
+    public boolean equals(Object o) {
         if (this == o) {
             return true;
         }
@@ -47,7 +48,8 @@ public class PrometheusResponse {
         return Objects.equals(_status, response._status) && Objects.equals(_data, response._data);
     }
 
-    @Override public int hashCode() {
+    @Override
+    public int hashCode() {
         return Objects.hash(_status, _data);
     }
 }

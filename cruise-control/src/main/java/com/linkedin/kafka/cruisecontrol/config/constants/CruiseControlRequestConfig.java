@@ -31,10 +31,7 @@ import org.apache.kafka.common.config.ConfigDef;
  * A class to keep Cruise Control Request Configs and defaults.
  * DO NOT CHANGE EXISTING CONFIG NAMES AS CHANGES WOULD BREAK USER CODE.
  */
-public class CruiseControlRequestConfig {
-  private CruiseControlRequestConfig() {
-
-  }
+public final class CruiseControlRequestConfig {
 
   /**
    * <code>stop.proposal.request.class</code>
@@ -175,6 +172,9 @@ public class CruiseControlRequestConfig {
   public static final String TOPIC_CONFIGURATION_REQUEST_CLASS_CONFIG = "topic.configuration.request.class";
   public static final String DEFAULT_TOPIC_CONFIGURATION_REQUEST_CLASS = TopicConfigurationRequest.class.getName();
   public static final String TOPIC_CONFIGURATION_REQUEST_CLASS_DOC = "The class to handle a topic configuration request.";
+
+  private CruiseControlRequestConfig() {
+  }
 
   /**
    * Define configs for Cruise Control Request.

@@ -32,12 +32,8 @@ import static org.apache.kafka.common.config.ConfigDef.Range.between;
  * A class to keep Cruise Control Anomaly Detector Configs and defaults.
  * DO NOT CHANGE EXISTING CONFIG NAMES AS CHANGES WOULD BREAK USER CODE.
  */
-public class AnomalyDetectorConfig {
+public final class AnomalyDetectorConfig {
   public static final boolean DEFAULT_SELF_HEALING_EXCLUDE_RECENT_BROKERS_CONFIG = true;
-
-  private AnomalyDetectorConfig() {
-
-  }
 
   /**
    * <code>metric.anomaly.finder.class</code>
@@ -271,6 +267,9 @@ public class AnomalyDetectorConfig {
   public static final String DEFAULT_PROVISIONER_CLASS = NoopProvisioner.class.getName();
   public static final String PROVISIONER_CLASS_DOC = "A provisioner class for adding / removing resources to / from the cluster. Different"
       + " platforms (e.g. Azure) should implement their own custom provisioners.";
+
+  private AnomalyDetectorConfig() {
+  }
 
   /**
    * Define configs for Anomaly Detector.

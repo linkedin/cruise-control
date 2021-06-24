@@ -64,10 +64,11 @@ public class ConcurrencyAdjusterTest {
 
   private static Map<Short, Double> populateMetricValues(int numOverLimitMetrics) {
     Map<Short, Double> metricValueById = new HashMap<>(4);
+    int remainingOverLimitMetrics = numOverLimitMetrics;
     for (String name : ExecutionUtils.CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.keySet()) {
       // Generate a number in [1.0, MOCK_COMMON_CONCURRENCY_ADJUSTER_LIMIT + 1.0]
       double diff = 1.0 + (MOCK_COMMON_CONCURRENCY_ADJUSTER_LIMIT * RANDOM.nextDouble());
-      if (--numOverLimitMetrics < 0) {
+      if (--remainingOverLimitMetrics < 0) {
         diff *= -1.0;
       }
       metricValueById.put(KafkaMetricDef.brokerMetricDef().metricInfo(name).id(), MOCK_COMMON_CONCURRENCY_ADJUSTER_LIMIT + diff);

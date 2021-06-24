@@ -63,7 +63,7 @@ public class JwtSecurityProviderIntegrationTest extends CruiseControlIntegration
 
   class TestAuthenticatorHandler extends AbstractHandler {
 
-    HashLoginService _loginService;
+    private final HashLoginService _loginService;
 
     TestAuthenticatorHandler() {
       _loginService = new HashLoginService();

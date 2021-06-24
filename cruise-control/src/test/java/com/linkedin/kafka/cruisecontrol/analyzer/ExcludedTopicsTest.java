@@ -71,6 +71,43 @@ public class ExcludedTopicsTest {
   @Rule
   public ExpectedException _expected = ExpectedException.none();
 
+  private final int _testId;
+  private final Goal _goal;
+  private final OptimizationOptions _optimizationOptions;
+  private final Class<Throwable> _exceptionClass;
+  private final ClusterModel _clusterModel;
+  private final Boolean _expectedToOptimize;
+  private final Boolean _expectedToGenerateProposals;
+  private static final Properties NO_CONFIG_OVERRIDE = new Properties();
+
+  /**
+   * Constructor of Excluded Topics Test.
+   *
+   * @param testId the test id
+   * @param goal Goal to be tested.
+   * @param excludedTopics Topics to be excluded from the goal.
+   * @param exceptionClass Expected exception class (if any).
+   * @param clusterModel Cluster model to be used for the test.
+   * @param expectedToOptimize The expectation on whether the cluster state will be considered optimized or not.
+   * @param expectedToGenerateProposals The expectation on whether the optimization process will generate proposals or not,
+   *                                   or {@code null} if proposal generation is irrelevant due to exception.
+   */
+  public ExcludedTopicsTest(int testId,
+                            Goal goal,
+                            Set<String> excludedTopics,
+                            Class<Throwable> exceptionClass,
+                            ClusterModel clusterModel,
+                            Boolean expectedToOptimize,
+                            Boolean expectedToGenerateProposals) {
+    _testId = testId;
+    _goal = goal;
+    _optimizationOptions = new OptimizationOptions(excludedTopics, Collections.emptySet(), Collections.emptySet());
+    _exceptionClass = exceptionClass;
+    _clusterModel = clusterModel;
+    _expectedToOptimize = expectedToOptimize;
+    _expectedToGenerateProposals = expectedToGenerateProposals;
+  }
+
   /**
    * Populate parameters for the parametrized test.
    * @return Populated parameters.
@@ -262,43 +299,6 @@ public class ExcludedTopicsTest {
                  DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null, null));
 
     return p;
-  }
-
-  private final int _testId;
-  private final Goal _goal;
-  private final OptimizationOptions _optimizationOptions;
-  private final Class<Throwable> _exceptionClass;
-  private final ClusterModel _clusterModel;
-  private final Boolean _expectedToOptimize;
-  private final Boolean _expectedToGenerateProposals;
-  private static final Properties NO_CONFIG_OVERRIDE = new Properties();
-
-  /**
-   * Constructor of Excluded Topics Test.
-   *
-   * @param testId the test id
-   * @param goal Goal to be tested.
-   * @param excludedTopics Topics to be excluded from the goal.
-   * @param exceptionClass Expected exception class (if any).
-   * @param clusterModel Cluster model to be used for the test.
-   * @param expectedToOptimize The expectation on whether the cluster state will be considered optimized or not.
-   * @param expectedToGenerateProposals The expectation on whether the optimization process will generate proposals or not,
-   *                                   or {@code null} if proposal generation is irrelevant due to exception.
-   */
-  public ExcludedTopicsTest(int testId,
-                            Goal goal,
-                            Set<String> excludedTopics,
-                            Class<Throwable> exceptionClass,
-                            ClusterModel clusterModel,
-                            Boolean expectedToOptimize,
-                            Boolean expectedToGenerateProposals) {
-    _testId = testId;
-    _goal = goal;
-    _optimizationOptions = new OptimizationOptions(excludedTopics, Collections.emptySet(), Collections.emptySet());
-    _exceptionClass = exceptionClass;
-    _clusterModel = clusterModel;
-    _expectedToOptimize = expectedToOptimize;
-    _expectedToGenerateProposals = expectedToGenerateProposals;
   }
 
   @Test

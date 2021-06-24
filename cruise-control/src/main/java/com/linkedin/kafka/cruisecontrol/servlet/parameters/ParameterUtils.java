@@ -63,7 +63,7 @@ import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 /**
  * The util class for Kafka Cruise Control parameters.
  */
-public class ParameterUtils {
+public final class ParameterUtils {
   public static final String JSON_PARAM = "json";
   public static final String GET_RESPONSE_SCHEMA = "get_response_schema";
   public static final String START_MS_PARAM = "start";
@@ -685,7 +685,8 @@ public class ParameterUtils {
    * @param request The http request.
    * @return {@code true}: enable or {@code false}: disable MinISR-based concurrency adjustment, {@code null} if the request parameter is unset.
    */
-  @Nullable static Boolean minIsrBasedConcurrencyAdjustment(HttpServletRequest request) {
+  @Nullable
+  static Boolean minIsrBasedConcurrencyAdjustment(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), MIN_ISR_BASED_CONCURRENCY_ADJUSTMENT_PARAM);
     if (parameterString == null) {
       return null;

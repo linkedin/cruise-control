@@ -38,20 +38,20 @@ public enum Resource {
 
   private static final List<Resource> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 
-  /**
-   * Use this instead of values() because values() creates a new array each time.
-   * @return enumerated values in the same order as values()
-   */
-  public static List<Resource> cachedValues() {
-    return CACHED_VALUES;
-  }
-
   Resource(String resource, int id, boolean isHostResource, boolean isBrokerResource, double epsilon) {
     _resource = resource;
     _id = id;
     _isHostResource = isHostResource;
     _isBrokerResource = isBrokerResource;
     _epsilon = epsilon;
+  }
+
+  /**
+   * Use this instead of values() because values() creates a new array each time.
+   * @return enumerated values in the same order as values()
+   */
+  public static List<Resource> cachedValues() {
+    return CACHED_VALUES;
   }
 
   /**

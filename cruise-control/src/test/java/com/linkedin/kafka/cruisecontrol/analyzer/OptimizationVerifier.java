@@ -50,7 +50,7 @@ import org.slf4j.LoggerFactory;
  * (3) {@link DeterministicClusterTest} with different balancing constraints with deterministic clusters.
  * (4) {@link RandomSelfHealingTest} with dead brokers.
  */
-class OptimizationVerifier {
+final class OptimizationVerifier {
   private static final Logger LOG = LoggerFactory.getLogger(OptimizationVerifier.class);
 
   private OptimizationVerifier() {

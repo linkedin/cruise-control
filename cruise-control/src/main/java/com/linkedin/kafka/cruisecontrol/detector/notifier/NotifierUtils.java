@@ -14,7 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.linkedin.cruisecontrol.detector.AnomalyType;
 
-public class NotifierUtils {
+public final class NotifierUtils {
 
   private static final Logger LOG = LoggerFactory.getLogger(NotifierUtils.class);
 

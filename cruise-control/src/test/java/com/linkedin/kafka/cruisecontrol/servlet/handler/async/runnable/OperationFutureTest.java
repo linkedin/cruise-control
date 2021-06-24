@@ -124,7 +124,7 @@ public class OperationFutureTest {
                 future.setExecutionThread(new Thread()));
   }
 
-  private static class TestThread extends Thread {
+  private static final class TestThread extends Thread {
     private final OperationFuture _future;
     private CruiseControlResponse _result = DEFAULT_RESULT;
     private Exception _exception = null;

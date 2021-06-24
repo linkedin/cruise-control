@@ -84,6 +84,11 @@ public class PercentileMetricAnomalyFinderConfig extends AbstractConfig {
                              ConfigDef.Importance.MEDIUM,
                              METRIC_ANOMALY_LOWER_MARGIN_DOC);
 
+  PercentileMetricAnomalyFinderConfig(Map<?, ?> originals) {
+    super(CONFIG, originals);
+    sanityCheckPercentile();
+  }
+
   /**
    * Sanity check to ensure that
    * <ul>
@@ -108,10 +113,5 @@ public class PercentileMetricAnomalyFinderConfig extends AbstractConfig {
       throw new IllegalArgumentException(String.format("Lower percentile (%f) is larger than upper percentile (%f).",
                                                        lowerPercentile, upperPercentile));
     }
-  }
-
-  PercentileMetricAnomalyFinderConfig(Map<?, ?> originals) {
-    super(CONFIG, originals);
-    sanityCheckPercentile();
   }
 }

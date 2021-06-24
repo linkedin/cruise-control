@@ -41,7 +41,7 @@ import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricT
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler.METRIC_REPORTER_SAMPLER_BOOTSTRAP_SERVERS;
 
 
-public class SamplingUtils {
+public final class SamplingUtils {
   private static final Logger LOG = LoggerFactory.getLogger(SamplingUtils.class);
   private static final String SKIP_BUILDING_SAMPLE_PREFIX = "Skip generating metric sample for ";
   public static final int UNRECOGNIZED_BROKER_ID = -1;

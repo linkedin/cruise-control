@@ -11,7 +11,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 /**
  * A util class for Kafka Assigner Goals.
  */
-public class KafkaAssignerUtils {
+public final class KafkaAssignerUtils {
 
   private KafkaAssignerUtils() {
 

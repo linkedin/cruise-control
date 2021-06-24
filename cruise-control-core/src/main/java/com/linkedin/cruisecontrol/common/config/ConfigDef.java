@@ -473,6 +473,43 @@ public class ConfigDef {
     return new ArrayList<>(validateAll(props).values());
   }
 
+  private Map<String, ConfigValue> validate(Map<String, Object> parsed, Map<String, ConfigValue> configValues) {
+    Set<String> configsWithNoParent = getConfigsWithNoParent();
+    for (String name : configsWithNoParent) {
+      validate(name, parsed, configValues);
+    }
+    return configValues;
+  }
+
+  private void validate(String name, Map<String, Object> parsed, Map<String, ConfigValue> configs) {
+    if (!_configKeys.containsKey(name)) {
+      return;
+    }
+
+    ConfigKey key = _configKeys.get(name);
+    ConfigValue value = configs.get(name);
+
+    if (key._recommender != null) {
+      try {
+        List<Object> recommendedValues = key._recommender.validValues(name, parsed);
+        List<Object> originalRecommendedValues = value.recommendedValues();
+        if (!originalRecommendedValues.isEmpty()) {
+          Set<Object> originalRecommendedValueSet = new HashSet<>(originalRecommendedValues);
+          recommendedValues.removeIf(o -> !originalRecommendedValueSet.contains(o));
+        }
+        value.recommendedValues(recommendedValues);
+        value.visible(key._recommender.visible(name, parsed));
+      } catch (ConfigException e) {
+        value.addErrorMessage(e.getMessage());
+      }
+    }
+
+    configs.put(name, value);
+    for (String dependent : key._dependents) {
+      validate(dependent, parsed, configs);
+    }
+  }
+
   /**
    * Validate all configuration values.
    *
@@ -505,44 +542,6 @@ public class ConfigDef {
       parseForValidate(name, props, parsed, configValues);
     }
     return parsed;
-  }
-
-  private Map<String, ConfigValue> validate(Map<String, Object> parsed, Map<String, ConfigValue> configValues) {
-    Set<String> configsWithNoParent = getConfigsWithNoParent();
-    for (String name : configsWithNoParent) {
-      validate(name, parsed, configValues);
-    }
-    return configValues;
-  }
-
-  private List<String> undefinedDependentConfigs() {
-    Set<String> undefinedConfigKeys = new HashSet<>();
-    for (ConfigKey configKey : _configKeys.values()) {
-      for (String dependent : configKey._dependents) {
-        if (!_configKeys.containsKey(dependent)) {
-          undefinedConfigKeys.add(dependent);
-        }
-      }
-    }
-    return new ArrayList<>(undefinedConfigKeys);
-  }
-
-  // package accessible for testing
-  Set<String> getConfigsWithNoParent() {
-    if (this._configsWithNoParent != null) {
-      return this._configsWithNoParent;
-    }
-    Set<String> configsWithParent = new HashSet<>();
-
-    for (ConfigKey configKey : _configKeys.values()) {
-      List<String> dependents = configKey._dependents;
-      configsWithParent.addAll(dependents);
-    }
-
-    Set<String> configs = new HashSet<>(_configKeys.keySet());
-    configs.removeAll(configsWithParent);
-    this._configsWithNoParent = configs;
-    return configs;
   }
 
   private void parseForValidate(String name, Map<String, String> props, Map<String, Object> parsed, Map<String, ConfigValue> configs) {
@@ -579,33 +578,34 @@ public class ConfigDef {
     }
   }
 
-  private void validate(String name, Map<String, Object> parsed, Map<String, ConfigValue> configs) {
-    if (!_configKeys.containsKey(name)) {
-      return;
-    }
-
-    ConfigKey key = _configKeys.get(name);
-    ConfigValue value = configs.get(name);
-
-    if (key._recommender != null) {
-      try {
-        List<Object> recommendedValues = key._recommender.validValues(name, parsed);
-        List<Object> originalRecommendedValues = value.recommendedValues();
-        if (!originalRecommendedValues.isEmpty()) {
-          Set<Object> originalRecommendedValueSet = new HashSet<>(originalRecommendedValues);
-          recommendedValues.removeIf(o -> !originalRecommendedValueSet.contains(o));
+  private List<String> undefinedDependentConfigs() {
+    Set<String> undefinedConfigKeys = new HashSet<>();
+    for (ConfigKey configKey : _configKeys.values()) {
+      for (String dependent : configKey._dependents) {
+        if (!_configKeys.containsKey(dependent)) {
+          undefinedConfigKeys.add(dependent);
         }
-        value.recommendedValues(recommendedValues);
-        value.visible(key._recommender.visible(name, parsed));
-      } catch (ConfigException e) {
-        value.addErrorMessage(e.getMessage());
       }
     }
+    return new ArrayList<>(undefinedConfigKeys);
+  }
 
-    configs.put(name, value);
-    for (String dependent : key._dependents) {
-      validate(dependent, parsed, configs);
+  // package accessible for testing
+  Set<String> getConfigsWithNoParent() {
+    if (this._configsWithNoParent != null) {
+      return this._configsWithNoParent;
     }
+    Set<String> configsWithParent = new HashSet<>();
+
+    for (ConfigKey configKey : _configKeys.values()) {
+      List<String> dependents = configKey._dependents;
+      configsWithParent.addAll(dependents);
+    }
+
+    Set<String> configs = new HashSet<>(_configKeys.keySet());
+    configs.removeAll(configsWithParent);
+    this._configsWithNoParent = configs;
+    return configs;
   }
 
   /**
@@ -629,9 +629,9 @@ public class ConfigDef {
       switch (type) {
         case BOOLEAN:
           if (value instanceof String) {
-            if (trimmed.equalsIgnoreCase("true")) {
+            if ("true".equalsIgnoreCase(trimmed)) {
               return true;
-            } else if (trimmed.equalsIgnoreCase("false")) {
+            } else if ("false".equalsIgnoreCase(trimmed)) {
               return false;
             } else {
               throw new ConfigException(name, value, "Expected value to be either true or false");
@@ -821,7 +821,7 @@ public class ConfigDef {
   /**
    * Validation logic for numeric ranges
    */
-  public static class Range implements Validator {
+  public static final class Range implements Validator {
     private final Number _min;
     private final Number _max;
 
@@ -880,9 +880,9 @@ public class ConfigDef {
     }
   }
 
-  public static class ValidList implements Validator {
+  public static final class ValidList implements Validator {
 
-    final ValidString _validString;
+    protected final ValidString _validString;
 
     private ValidList(List<String> validStrings) {
       this._validString = new ValidString(validStrings);
@@ -906,8 +906,8 @@ public class ConfigDef {
     }
   }
 
-  public static class ValidString implements Validator {
-    final List<String> _validStrings;
+  public static final class ValidString implements Validator {
+    protected final List<String> _validStrings;
 
     private ValidString(List<String> validStrings) {
       this._validStrings = validStrings;
@@ -947,19 +947,19 @@ public class ConfigDef {
   }
 
   public static class ConfigKey {
-    public final String _name;
-    public final Type _type;
-    public final String _documentation;
-    public final Object _defaultValue;
-    public final Validator _validator;
-    public final Importance _importance;
-    public final String _group;
-    public final int _orderInGroup;
-    public final Width _width;
-    public final String _displayName;
-    public final List<String> _dependents;
-    public final Recommender _recommender;
-    public final boolean _internalConfig;
+    protected final String _name;
+    protected final Type _type;
+    protected final String _documentation;
+    protected final Object _defaultValue;
+    protected final Validator _validator;
+    protected final Importance _importance;
+    protected final String _group;
+    protected final int _orderInGroup;
+    protected final Width _width;
+    protected final String _displayName;
+    protected final List<String> _dependents;
+    protected final Recommender _recommender;
+    protected final boolean _internalConfig;
 
     public ConfigKey(String name, Type type, Object defaultValue, Validator validator, Importance importance, String documentation, String group,
                      int orderInGroup, Width width, String displayName, List<String> dependents, Recommender recommender, boolean internalConfig) {
@@ -983,6 +983,58 @@ public class ConfigDef {
 
     public boolean hasDefault() {
       return !NO_DEFAULT_VALUE.equals(this._defaultValue);
+    }
+
+    public String name() {
+      return _name;
+    }
+
+    public Type type() {
+      return _type;
+    }
+
+    public String documentation() {
+      return _documentation;
+    }
+
+    public Object defaultValue() {
+      return _defaultValue;
+    }
+
+    public Validator validator() {
+      return _validator;
+    }
+
+    public Importance importance() {
+      return _importance;
+    }
+
+    public String group() {
+      return _group;
+    }
+
+    public int orderInGroup() {
+      return _orderInGroup;
+    }
+
+    public Width width() {
+      return _width;
+    }
+
+    public String displayName() {
+      return _displayName;
+    }
+
+    public List<String> dependents() {
+      return _dependents;
+    }
+
+    public Recommender recommender() {
+      return _recommender;
+    }
+
+    public boolean internalConfig() {
+      return _internalConfig;
     }
   }
 
