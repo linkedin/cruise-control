@@ -385,6 +385,8 @@ public class ClusterModel implements Serializable {
 
     // Add this replica and related load to the destination broker / destination rack / cluster.
     replica.broker().rack().addReplica(replica);
+    // Increment the number of replicas per this topic.
+    _numReplicasByTopic.merge(tp.topic(), 1, Integer::sum);
     _load.addLoad(replica.load());
     // Add leadership load to the destination replica.
     _potentialLeadershipLoadByBrokerId.get(destinationBrokerId).addLoad(partition(tp).leader().load());
