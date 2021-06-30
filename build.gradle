@@ -50,7 +50,6 @@ allprojects {
 
   repositories {
     mavenCentral()
-    jcenter()
   }
 
   apply plugin: 'com.github.ben-manes.versions'
@@ -81,13 +80,16 @@ subprojects {
   apply plugin: "com.github.spotbugs"
   apply plugin: 'jacoco'
 
+  // This project requires Java 11
+  sourceCompatibility = JavaVersion.VERSION_11
+
   task sourcesJar(type: Jar, dependsOn: classes) {
-    classifier = 'sources'
+    archiveClassifier.set("sources")
     from sourceSets.main.allSource
   }
 
   task javadocJar(type: Jar, dependsOn: javadoc) {
-    classifier = 'javadoc'
+    archiveClassifier.set("javadoc")
     from javadoc.destinationDir
   }
 
