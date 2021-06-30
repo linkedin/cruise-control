@@ -123,11 +123,21 @@ public class AnomalyDetectorConfig {
       + "are excluded from optimizations during self healing, false otherwise.";
 
   /**
+   * @deprecated
    * <code>failed.brokers.zk.path</code>
    */
+  @Deprecated
   public static final String FAILED_BROKERS_ZK_PATH_CONFIG = "failed.brokers.zk.path";
   public static final String DEFAULT_FAILED_BROKERS_ZK_PATH = "/CruiseControlBrokerList";
   public static final String FAILED_BROKERS_ZK_PATH_DOC = "The zk path to store the failed broker list. This is to "
+      + "persist the broker failure time in case Cruise Control failed and restarted when some brokers are down.";
+
+  /**
+   * <code>failed.brokers.file.path</code>
+   */
+  public static final String FAILED_BROKERS_FILE_PATH_CONFIG = "failed.brokers.file.path";
+  public static final String DEFAULT_FAILED_BROKERS_FILE_PATH = "fileStore/failedBrokers.txt";
+  public static final String FAILED_BROKERS_FILE_PATH_DOC = "The file path to store the failed broker list. This is to "
       + "persist the broker failure time in case Cruise Control failed and restarted when some brokers are down.";
 
   /**
@@ -347,6 +357,11 @@ public class AnomalyDetectorConfig {
                             DEFAULT_FAILED_BROKERS_ZK_PATH,
                             ConfigDef.Importance.LOW,
                             FAILED_BROKERS_ZK_PATH_DOC)
+                    .define(FAILED_BROKERS_FILE_PATH_CONFIG,
+                            ConfigDef.Type.STRING,
+                            DEFAULT_FAILED_BROKERS_FILE_PATH,
+                            ConfigDef.Importance.LOW,
+                            FAILED_BROKERS_FILE_PATH_DOC)
                     .define(FIXABLE_FAILED_BROKER_COUNT_THRESHOLD_CONFIG,
                             ConfigDef.Type.SHORT,
                             DEFAULT_FIXABLE_FAILED_BROKER_COUNT_THRESHOLD,

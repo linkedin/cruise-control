@@ -196,15 +196,6 @@ public class MonitorConfig {
       + "maintain.";
 
   /**
-   * @deprecated (i.e. cannot be configured to a value other than 1).
-   * <code>num.metric.fetchers</code>
-   */
-  @Deprecated
-  public static final String NUM_METRIC_FETCHERS_CONFIG = "num.metric.fetchers";
-  public static final int DEFAULT_NUM_METRIC_FETCHERS = 1;
-  public static final String NUM_METRIC_FETCHERS_DOC = "The number of metric fetchers to fetch from the Kafka cluster.";
-
-  /**
    * <code>metric.sampler.class</code>
    */
   public static final String METRIC_SAMPLER_CLASS_CONFIG = "metric.sampler.class";
@@ -481,11 +472,6 @@ public class MonitorConfig {
                             atLeast(0),
                             ConfigDef.Importance.LOW,
                             BROKER_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_DOC)
-                    .define(NUM_METRIC_FETCHERS_CONFIG,
-                            ConfigDef.Type.INT,
-                            DEFAULT_NUM_METRIC_FETCHERS,
-                            ConfigDef.Importance.HIGH,
-                            NUM_METRIC_FETCHERS_DOC)
                     .define(METRIC_SAMPLER_CLASS_CONFIG,
                             ConfigDef.Type.CLASS,
                             DEFAULT_METRIC_SAMPLER_CLASS,
