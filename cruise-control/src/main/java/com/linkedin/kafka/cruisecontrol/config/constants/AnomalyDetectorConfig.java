@@ -273,6 +273,13 @@ public class AnomalyDetectorConfig {
       + " platforms (e.g. Azure) should implement their own custom provisioners.";
 
   /**
+   * <code>provisioner.enable</code>
+   */
+  public static final String PROVISIONER_ENABLE_CONFIG = "provisioner.enable";
+  public static final boolean DEFAULT_PROVISIONER_ENABLE = true;
+  public static final String PROVISIONER_ENABLE_DOC = "The flag to indicate whether use of provisioner is enabled.";
+
+  /**
    * Define configs for Anomaly Detector.
    *
    * @param configDef Config definition.
@@ -426,6 +433,11 @@ public class AnomalyDetectorConfig {
                             ConfigDef.Type.CLASS,
                             DEFAULT_PROVISIONER_CLASS,
                             ConfigDef.Importance.MEDIUM,
-                            PROVISIONER_CLASS_DOC);
+                            PROVISIONER_CLASS_DOC)
+                    .define(PROVISIONER_ENABLE_CONFIG,
+                            ConfigDef.Type.BOOLEAN,
+                            DEFAULT_PROVISIONER_ENABLE,
+                            ConfigDef.Importance.LOW,
+                            PROVISIONER_ENABLE_DOC);
   }
 }
