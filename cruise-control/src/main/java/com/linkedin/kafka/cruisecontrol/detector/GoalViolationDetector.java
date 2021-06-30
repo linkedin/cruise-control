@@ -68,6 +68,7 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
   private final Timer _goalViolationDetectionTimer;
   protected static final double BALANCEDNESS_SCORE_WITH_OFFLINE_REPLICAS = -1.0;
   protected final Provisioner _provisioner;
+  protected final Boolean _isProvisionerEnabled;
 
   public GoalViolationDetector(Queue<Anomaly> anomalies, KafkaCruiseControl kafkaCruiseControl, MetricRegistry dropwizardMetricRegistry) {
     super(anomalies, kafkaCruiseControl);
@@ -96,6 +97,7 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
     _provisioner = config.getConfiguredInstance(AnomalyDetectorConfig.PROVISIONER_CLASS_CONFIG,
                                                 Provisioner.class,
                                                 overrideConfigs);
+    _isProvisionerEnabled = config.getBoolean(AnomalyDetectorConfig.PROVISIONER_ENABLE_CONFIG);
   }
 
   /**
@@ -224,10 +226,12 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
         ctx.stop();
       }
       _provisionResponse = provisionResponse;
-      // Right-size the cluster (if needed)
-      boolean isRightsized = _provisioner.rightsize(_provisionResponse.recommendationByRecommender());
-      if (isRightsized) {
-        LOG.info("Actions have been taken on the cluster towards rightsizing.");
+      if (_isProvisionerEnabled) {
+        // Right-size the cluster (if needed)
+        boolean isRightsized = _provisioner.rightsize(_provisionResponse.recommendationByRecommender());
+        if (isRightsized) {
+          LOG.info("Actions have been taken on the cluster towards rightsizing.");
+        }
       }
       Map<Boolean, List<String>> violatedGoalsByFixability = goalViolations.violatedGoalsByFixability();
       if (!violatedGoalsByFixability.isEmpty()) {
