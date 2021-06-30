@@ -53,6 +53,7 @@ public class UserTaskManagerTest {
     Assert.assertEquals(userTaskHeader.getValue(), UserTaskManager.USER_TASK_HEADER_NAME);
     Assert.assertEquals(userTaskHeaderValue.getValue(), testUserTaskId.toString());
     Assert.assertEquals(future, future1);
+    EasyMock.verify(mockHttpServletResponse);
 
     EasyMock.reset(mockHttpServletResponse);
     // test-case: get same future back using sessions
@@ -93,7 +94,7 @@ public class UserTaskManagerTest {
     savedUUID = userTaskManager.getUserTaskId(mockHttpServletRequest3);
     Assert.assertNotEquals(savedUUID, null);
     Assert.assertEquals(future5, future);
-
+    EasyMock.verify(mockUUIDGenerator);
     userTaskManager.close();
   }
 
@@ -139,6 +140,7 @@ public class UserTaskManagerTest {
 
     // The 2nd request should reuse the UserTask created for the 1st request since they use the same session and send the same request.
     Assert.assertEquals(1, userTaskManager.numActiveSessionKeys());
+    EasyMock.verify(mockUUIDGenerator, mockHttpSession);
   }
 
   @Test
@@ -176,6 +178,7 @@ public class UserTaskManagerTest {
 
     Assert.assertEquals(userTaskManager.getUserTaskByUserTaskId(testUserTaskId, mockHttpServletRequest).futures().size(), 2);
     userTaskManager.close();
+    EasyMock.verify(mockUUIDGenerator, mockHttpSession);
   }
 
   @Test
@@ -210,6 +213,8 @@ public class UserTaskManagerTest {
     Assert.assertTrue(future.isCancelled());
 
     userTaskManager.close();
+
+    EasyMock.verify(mockHttpSession, mockUUIDGenerator);
   }
 
   @Test
@@ -246,6 +251,7 @@ public class UserTaskManagerTest {
     Assert.assertNull(future2);
 
     userTaskManager.close();
+    EasyMock.verify(mockUUIDGenerator, mockHttpSession);
   }
 
   @Test
@@ -278,6 +284,7 @@ public class UserTaskManagerTest {
       OperationFuture future2 =
           userTaskManager.getOrCreateUserTask(mockHttpServletRequest2, mockHttpServletResponse, uuid -> future, 0, true, null).get(0);
       Assert.assertEquals(future, future2);
+      EasyMock.verify(mockHttpSession1, mockHttpSession2);
     } catch (RuntimeException e) {
       userTaskManager.close();
       return;
