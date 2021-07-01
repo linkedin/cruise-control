@@ -172,10 +172,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
       Collection<ExecutionProposal> proposalsToExecute = Arrays.asList(proposal0, proposal1);
       executeAndVerifyProposals(kafkaZkClient, proposalsToExecute, Collections.emptyList(), true, null, false, false);
 
-      // We are doing the rollback.
-      assertThrows(java.util.NoSuchElementException.class, () -> ExecutorUtils.newAssignmentForPartition(kafkaZkClient, TP0));
-      assertThrows(java.util.NoSuchElementException.class, () -> ExecutorUtils.newAssignmentForPartition(kafkaZkClient, TP1));
-      // The leadership should be on the alive broker.
+      // We are doing the rollback. -- The leadership should be on the alive broker.
       assertEquals(initialLeader0, kafkaZkClient.getLeaderForPartition(TP0).get());
       assertEquals(initialLeader0, kafkaZkClient.getLeaderForPartition(TP1).get());
     } finally {
