@@ -26,7 +26,10 @@ public class BootstrapRequest extends AbstractSyncRequest {
     Long startMs = _parameters.startMs();
     Long endMs = _parameters.endMs();
     boolean clearMetrics = _parameters.clearMetrics();
-    _kafkaCruiseControl.bootstrap(startMs, endMs, clearMetrics);
+    if (_parameters.developerMode()) {
+      // This endpoint is used only for development purposes in developer_mode=true.
+      _kafkaCruiseControl.bootstrap(startMs, endMs, clearMetrics);
+    }
 
     return new BootstrapResult(_kafkaCruiseControl.config());
   }
