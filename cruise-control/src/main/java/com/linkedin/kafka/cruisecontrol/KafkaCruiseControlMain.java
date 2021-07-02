@@ -14,7 +14,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.readConfi
 /**
  * The main class to run Kafka Cruise Control.
  */
-public class KafkaCruiseControlMain {
+public final class KafkaCruiseControlMain {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlMain.class);
 
   private KafkaCruiseControlMain() { }

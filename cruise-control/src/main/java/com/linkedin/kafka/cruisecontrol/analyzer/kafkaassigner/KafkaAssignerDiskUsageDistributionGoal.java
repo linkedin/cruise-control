@@ -678,8 +678,8 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
   }
 
   // Thin wrapper around double for printing purpose.
-  private static class DoubleWrapper {
-    final double _value;
+  private static final class DoubleWrapper {
+    private final double _value;
 
     private DoubleWrapper(double value) {
       _value = value;

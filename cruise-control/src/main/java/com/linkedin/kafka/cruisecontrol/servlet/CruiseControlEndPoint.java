@@ -35,17 +35,7 @@ public enum CruiseControlEndPoint implements EndPoint {
   REVIEW(CRUISE_CONTROL_ADMIN),
   TOPIC_CONFIGURATION(KAFKA_ADMIN);
 
-  private final EndpointType _endpointType;
-
-  CruiseControlEndPoint(EndpointType endpointType) {
-    _endpointType = endpointType;
-  }
-
-  @Override
-  public EndpointType endpointType() {
-    return _endpointType;
-  }
-
+  private static final List<CruiseControlEndPoint> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
   private static final List<CruiseControlEndPoint> GET_ENDPOINTS = Arrays.asList(BOOTSTRAP,
                                                                                  TRAIN,
                                                                                  LOAD,
@@ -67,7 +57,16 @@ public enum CruiseControlEndPoint implements EndPoint {
                                                                                   REVIEW,
                                                                                   TOPIC_CONFIGURATION);
 
-  private static final List<CruiseControlEndPoint> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
+  private final EndpointType _endpointType;
+
+  CruiseControlEndPoint(EndpointType endpointType) {
+    _endpointType = endpointType;
+  }
+
+  @Override
+  public EndpointType endpointType() {
+    return _endpointType;
+  }
 
   public static List<CruiseControlEndPoint> getEndpoints() {
     return GET_ENDPOINTS;

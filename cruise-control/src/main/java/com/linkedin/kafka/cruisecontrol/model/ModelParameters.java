@@ -12,7 +12,7 @@ import javax.annotation.Nonnull;
 import org.apache.kafka.common.record.CompressionType;
 
 
-public class ModelParameters {
+public final class ModelParameters {
   // The linear regression model parameters.
   private static final LinearRegressionModelParameters LINEAR_REGRESSION_PARAMETERS = new LinearRegressionModelParameters();
 
@@ -20,15 +20,15 @@ public class ModelParameters {
   /**
    * The contribution weight of leader bytes in on the CPU utilization of a broker.
    */
-  static double CPU_WEIGHT_OF_LEADER_BYTES_IN_RATE = 0.7;
+  private static double CPU_WEIGHT_OF_LEADER_BYTES_IN_RATE = 0.7;
   /**
    * The contribution weight of leader bytes out on the CPU utilization of a broker.
    */
-  static double CPU_WEIGHT_OF_LEADER_BYTES_OUT_RATE = 0.15;
+  private static double CPU_WEIGHT_OF_LEADER_BYTES_OUT_RATE = 0.15;
   /**
    * The contribution weight of follower bytes in on the CPU utilization of a broker.
    */
-  static double CPU_WEIGHT_OF_FOLLOWER_BYTES_IN_RATE = 0.15;
+  private static double CPU_WEIGHT_OF_FOLLOWER_BYTES_IN_RATE = 0.15;
 
   private ModelParameters() {
 
@@ -51,6 +51,18 @@ public class ModelParameters {
 
   public static Double getCoefficient(LinearRegressionModelParameters.ModelCoefficient name) {
     return LINEAR_REGRESSION_PARAMETERS.getCoefficient(name);
+  }
+
+  public static double cpuWeightOfLeaderBytesInRate() {
+    return CPU_WEIGHT_OF_LEADER_BYTES_IN_RATE;
+  }
+
+  public static double cpuWeightOfLeaderBytesOutRate() {
+    return CPU_WEIGHT_OF_LEADER_BYTES_OUT_RATE;
+  }
+
+  public static double cpuWeightOfFollowerBytesInRate() {
+    return CPU_WEIGHT_OF_FOLLOWER_BYTES_IN_RATE;
   }
 
   public static boolean trainingCompleted() {

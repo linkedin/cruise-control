@@ -9,7 +9,7 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling.holder;
  * A class to give the latest of the recorded values.
  */
 class ValueAndTime implements ValueHolder {
-  static double NO_RECORD_EXISTS = 0.0;
+  protected static final double NO_RECORD_EXISTS = 0.0;
   private double _value = NO_RECORD_EXISTS;
   private long _time = -1;
 

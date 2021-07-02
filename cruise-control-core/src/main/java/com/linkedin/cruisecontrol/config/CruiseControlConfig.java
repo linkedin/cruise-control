@@ -103,17 +103,6 @@ public class CruiseControlConfig extends AbstractConfig {
                 METRIC_ANOMALY_ANALYZER_METRICS_DOC);
   }
 
-  private static ConfigDef mergeConfigDef(ConfigDef definition) {
-    for (ConfigDef.ConfigKey configKey : definition.configKeys().values()) {
-      if (!CONFIG.configKeys().containsKey(configKey._name)) {
-        CONFIG.define(configKey._name, configKey._type, configKey._defaultValue, configKey._validator, configKey._importance,
-                      configKey._documentation, configKey._group, configKey._orderInGroup, configKey._width,
-                      configKey._displayName, configKey._dependents, configKey._recommender);
-      }
-    }
-    return CONFIG;
-  }
-
   public CruiseControlConfig(ConfigDef definition, Map<?, ?> originals, boolean doLog) {
     super(mergeConfigDef(definition), originals, doLog);
   }
@@ -124,5 +113,16 @@ public class CruiseControlConfig extends AbstractConfig {
 
   public CruiseControlConfig(Map<String, Object> parsedConfig) {
     super(CONFIG, parsedConfig);
+  }
+
+  private static ConfigDef mergeConfigDef(ConfigDef definition) {
+    for (ConfigDef.ConfigKey configKey : definition.configKeys().values()) {
+      if (!CONFIG.configKeys().containsKey(configKey.name())) {
+        CONFIG.define(configKey.name(), configKey.type(), configKey.defaultValue(), configKey.validator(), configKey.importance(),
+                      configKey.documentation(), configKey.group(), configKey.orderInGroup(), configKey.width(),
+                      configKey.displayName(), configKey.dependents(), configKey.recommender());
+      }
+    }
+    return CONFIG;
   }
 }

@@ -28,7 +28,7 @@ import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.L
 import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.ReplicaLogDirInfo;
 import static org.apache.kafka.common.requests.DescribeLogDirsResponse.LogDirInfo;
 
-public class ExecutorAdminUtils {
+public final class ExecutorAdminUtils {
   private static final Logger LOG = LoggerFactory.getLogger(ExecutorAdminUtils.class);
 
   private ExecutorAdminUtils() {

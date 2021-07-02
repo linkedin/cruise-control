@@ -23,10 +23,7 @@ import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
  * A class to keep Cruise Control Executor Configs and defaults.
  * DO NOT CHANGE EXISTING CONFIG NAMES AS CHANGES WOULD BREAK USER CODE.
  */
-public class ExecutorConfig {
-  private ExecutorConfig() {
-
-  }
+public final class ExecutorConfig {
 
   /**
    * <code>zookeeper.connect</code>
@@ -421,6 +418,9 @@ public class ExecutorConfig {
   public static final long DEFAULT_CONCURRENCY_ADJUSTER_MIN_ISR_RETENTION_MS = TimeUnit.HOURS.toMillis(12);
   public static final String CONCURRENCY_ADJUSTER_MIN_ISR_RETENTION_MS_DOC = "The maximum time in ms to cache min.insync.replicas of topics."
       + " Relevant only if concurrency adjuster is enabled based on (At/Under)MinISR status of partitions.";
+
+  private ExecutorConfig() {
+  }
 
   /**
    * Define configs for Executor.

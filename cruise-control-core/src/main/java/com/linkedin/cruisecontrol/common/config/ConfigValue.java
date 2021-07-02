@@ -36,8 +36,16 @@ public class ConfigValue {
         return _value;
     }
 
+    public void value(Object value) {
+        this._value = value;
+    }
+
     public List<Object> recommendedValues() {
         return _recommendedValues;
+    }
+
+    public void recommendedValues(List<Object> recommendedValues) {
+        this._recommendedValues = recommendedValues;
     }
 
     public List<String> errorMessages() {
@@ -48,20 +56,12 @@ public class ConfigValue {
         return _visible;
     }
 
-    public void value(Object value) {
-        this._value = value;
-    }
-
-    public void recommendedValues(List<Object> recommendedValues) {
-        this._recommendedValues = recommendedValues;
+    public void visible(boolean visible) {
+        this._visible = visible;
     }
 
     public void addErrorMessage(String errorMessage) {
         this._errorMessages.add(errorMessage);
-    }
-
-    public void visible(boolean visible) {
-        this._visible = visible;
     }
 
     @Override

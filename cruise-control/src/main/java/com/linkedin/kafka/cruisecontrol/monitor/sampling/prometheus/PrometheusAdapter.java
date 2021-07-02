@@ -41,10 +41,8 @@ class PrometheusAdapter {
     private static final String STEP = "step";
 
     private final CloseableHttpClient _httpClient;
-    /* Visible for testing */
-    final HttpHost _prometheusEndpoint;
-    /* Visible for testing */
-    final int _samplingIntervalMs;
+    protected final HttpHost _prometheusEndpoint;
+    protected final int _samplingIntervalMs;
 
     PrometheusAdapter(CloseableHttpClient httpClient,
                       HttpHost prometheusEndpoint,
@@ -52,6 +50,10 @@ class PrometheusAdapter {
         _httpClient = validateNotNull(httpClient, "httpClient cannot be null.");
         _prometheusEndpoint = validateNotNull(prometheusEndpoint, "prometheusEndpoint cannot be null.");
         _samplingIntervalMs = samplingIntervalMs;
+    }
+
+    public int samplingIntervalMs() {
+        return _samplingIntervalMs;
     }
 
     public List<PrometheusQueryResult> queryMetric(String queryString,

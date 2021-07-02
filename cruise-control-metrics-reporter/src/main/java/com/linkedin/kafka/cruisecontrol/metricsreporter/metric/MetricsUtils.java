@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.kafka.common.metrics.KafkaMetric;
 
-public class MetricsUtils {
+public final class MetricsUtils {
   // Names
   private static final String BYTES_IN_PER_SEC = "BytesInPerSec";
   private static final String BYTES_OUT_PER_SEC = "BytesOutPerSec";
@@ -155,90 +155,6 @@ public class MetricsUtils {
                                                        + "broker %d at time %d for tag %s", metricName, brokerId, now, attribute));
     }
     return ccm;
-  }
-
-  /**
-   * Get the "recent CPU usage" for the JVM process.
-   *
-   * @param now The current time in milliseconds.
-   * @param brokerId Broker Id.
-   * @param kubernetesMode If true, gets CPU usage values with respect to the operating environment instead of node.
-   * @return the "recent CPU usage" for the JVM process as a double in [0.0,1.0].
-   */
-  public static BrokerMetric getCpuMetric(long now, int brokerId, boolean kubernetesMode) throws IOException {
-    double cpuUtil = ((com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean()).getProcessCpuLoad();
-
-    if (kubernetesMode) {
-      cpuUtil = ContainerMetricUtils.getContainerProcessCpuLoad(cpuUtil);
-    }
-
-    if (cpuUtil < 0) {
-      throw new IllegalStateException("Java Virtual Machine recent CPU usage is not available.");
-    }
-    return new BrokerMetric(RawMetricType.BROKER_CPU_UTIL, now, brokerId, cpuUtil);
-  }
-
-  /**
-   * Check whether the kafkaMetric is an interested metric.
-   *
-   * @param metricName Kafka metric name.
-   * @return True if a kafkaMetric is an interested metric, false otherwise.
-   */
-  public static boolean isInterested(org.apache.kafka.common.MetricName metricName) {
-    String group = metricName.group();
-    String name = metricName.name();
-    String type = metricName.tags().get(TYPE_KEY);
-    return isInterested(group, name, type, metricName.tags());
-  }
-
-  /**
-   * Check whether the yammer metric name is an interested metric.
-   *
-   * @param metricName Yammer metric name.
-   * @return True if the yammer metric name is an interested metric, false otherwise.
-   */
-  public static boolean isInterested(com.yammer.metrics.core.MetricName metricName) {
-    Map<String, String> tags = yammerMetricScopeToTags(metricName.getScope());
-    return tags != null && isInterested(metricName.getGroup(), metricName.getName(), metricName.getType(), tags);
-  }
-
-  /**
-   * Convert a yammer metrics scope to a tags map.
-   * @param scope Scope of the Yammer metric.
-   * @return Empty map for {@code null} scope, {@code null} for scope with keys without a matching value (i.e. unacceptable
-   * scope) (see https://github.com/linkedin/cruise-control/issues/1296), parsed tags otherwise.
-   */
-  private static Map<String, String> yammerMetricScopeToTags(String scope) {
-    if (scope != null) {
-      String[] kv = scope.split("\\.");
-      if (kv.length % 2 != 0) {
-        return null;
-      }
-      Map<String, String> tags = new HashMap<>();
-      for (int i = 0; i < kv.length; i += 2) {
-        tags.put(kv[i], kv[i + 1]);
-      }
-      return tags;
-    } else {
-      return Collections.emptyMap();
-    }
-  }
-
-  /**
-   * Check if a metric is an interested metric.
-   * @return {@code true} for a metric of interest, {@code false} otherwise.
-   */
-  private static boolean isInterested(String group, String name, String type, Map<String, String> tags) {
-    if (group.equals(KAFKA_SERVER)) {
-      return (INTERESTED_TOPIC_METRIC_NAMES.contains(name) && BROKER_TOPIC_METRICS_GROUP.equals(type)) || (
-          INTERESTED_SERVER_METRIC_NAMES.contains(name) && REQUEST_KAFKA_HANDLER_POOL_GROUP.equals(type));
-    } else if (group.equals(KAFKA_NETWORK) && INTERESTED_NETWORK_METRIC_NAMES.contains(name)) {
-      return REQUEST_CHANNEL_GROUP.equals(type)
-                    || (REQUEST_METRICS_GROUP.equals(type) && INTERESTED_REQUEST_TYPE.contains(tags.get(REQUEST_TYPE_KEY)));
-    } else if (group.equals(KAFKA_LOG) && INTERESTED_LOG_METRIC_NAMES.contains(name)) {
-      return LOG_GROUP.equals(type) || LOG_FLUSH_STATS_GROUP.equals(type);
-    }
-    return false;
   }
 
   /**
@@ -478,6 +394,90 @@ public class MetricsUtils {
         return new BrokerMetric(RawMetricType.BROKER_REQUEST_HANDLER_AVG_IDLE_PERCENT, now, brokerId, value);
       default:
         return null;
+    }
+  }
+
+  /**
+   * Get the "recent CPU usage" for the JVM process.
+   *
+   * @param now The current time in milliseconds.
+   * @param brokerId Broker Id.
+   * @param kubernetesMode If true, gets CPU usage values with respect to the operating environment instead of node.
+   * @return the "recent CPU usage" for the JVM process as a double in [0.0,1.0].
+   */
+  public static BrokerMetric getCpuMetric(long now, int brokerId, boolean kubernetesMode) throws IOException {
+    double cpuUtil = ((com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean()).getProcessCpuLoad();
+
+    if (kubernetesMode) {
+      cpuUtil = ContainerMetricUtils.getContainerProcessCpuLoad(cpuUtil);
+    }
+
+    if (cpuUtil < 0) {
+      throw new IllegalStateException("Java Virtual Machine recent CPU usage is not available.");
+    }
+    return new BrokerMetric(RawMetricType.BROKER_CPU_UTIL, now, brokerId, cpuUtil);
+  }
+
+  /**
+   * Check whether the kafkaMetric is an interested metric.
+   *
+   * @param metricName Kafka metric name.
+   * @return True if a kafkaMetric is an interested metric, false otherwise.
+   */
+  public static boolean isInterested(org.apache.kafka.common.MetricName metricName) {
+    String group = metricName.group();
+    String name = metricName.name();
+    String type = metricName.tags().get(TYPE_KEY);
+    return isInterested(group, name, type, metricName.tags());
+  }
+
+  /**
+   * Check whether the yammer metric name is an interested metric.
+   *
+   * @param metricName Yammer metric name.
+   * @return True if the yammer metric name is an interested metric, false otherwise.
+   */
+  public static boolean isInterested(com.yammer.metrics.core.MetricName metricName) {
+    Map<String, String> tags = yammerMetricScopeToTags(metricName.getScope());
+    return tags != null && isInterested(metricName.getGroup(), metricName.getName(), metricName.getType(), tags);
+  }
+
+  /**
+   * Check if a metric is an interested metric.
+   * @return {@code true} for a metric of interest, {@code false} otherwise.
+   */
+  private static boolean isInterested(String group, String name, String type, Map<String, String> tags) {
+    if (group.equals(KAFKA_SERVER)) {
+      return (INTERESTED_TOPIC_METRIC_NAMES.contains(name) && BROKER_TOPIC_METRICS_GROUP.equals(type)) || (
+          INTERESTED_SERVER_METRIC_NAMES.contains(name) && REQUEST_KAFKA_HANDLER_POOL_GROUP.equals(type));
+    } else if (group.equals(KAFKA_NETWORK) && INTERESTED_NETWORK_METRIC_NAMES.contains(name)) {
+      return REQUEST_CHANNEL_GROUP.equals(type)
+             || (REQUEST_METRICS_GROUP.equals(type) && INTERESTED_REQUEST_TYPE.contains(tags.get(REQUEST_TYPE_KEY)));
+    } else if (group.equals(KAFKA_LOG) && INTERESTED_LOG_METRIC_NAMES.contains(name)) {
+      return LOG_GROUP.equals(type) || LOG_FLUSH_STATS_GROUP.equals(type);
+    }
+    return false;
+  }
+
+  /**
+   * Convert a yammer metrics scope to a tags map.
+   * @param scope Scope of the Yammer metric.
+   * @return Empty map for {@code null} scope, {@code null} for scope with keys without a matching value (i.e. unacceptable
+   * scope) (see https://github.com/linkedin/cruise-control/issues/1296), parsed tags otherwise.
+   */
+  private static Map<String, String> yammerMetricScopeToTags(String scope) {
+    if (scope != null) {
+      String[] kv = scope.split("\\.");
+      if (kv.length % 2 != 0) {
+        return null;
+      }
+      Map<String, String> tags = new HashMap<>();
+      for (int i = 0; i < kv.length; i += 2) {
+        tags.put(kv[i], kv[i + 1]);
+      }
+      return tags;
+    } else {
+      return Collections.emptyMap();
     }
   }
 }

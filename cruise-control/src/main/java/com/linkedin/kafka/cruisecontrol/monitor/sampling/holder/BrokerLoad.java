@@ -40,13 +40,6 @@ public class BrokerLoad {
   private final RawMetricsHolder _brokerMetrics;
   private final Map<String, RawMetricsHolder> _dotHandledTopicMetrics;
   private final Map<TopicPartition, RawMetricsHolder> _dotHandledPartitionMetrics;
-
-  public BrokerLoad() {
-    _brokerMetrics = new RawMetricsHolder();
-    _dotHandledTopicMetrics = new HashMap<>();
-    _dotHandledPartitionMetrics = new HashMap<>();
-  }
-
   // Remember which topic has partition size reported. Because the topic level IO metrics are only created when
   // there is IO, the topic level IO metrics may be missing if there was no traffic to the topic on the broker.
   // However, because the partition size will always be reported, when we see partition size was reported for
@@ -56,6 +49,12 @@ public class BrokerLoad {
   private boolean _minRequiredBrokerMetricsAvailable = false;
   // Set to the latest possible deserialization version based on the sampled data.
   private byte _brokerSampleDeserializationVersion = -1;
+
+  public BrokerLoad() {
+    _brokerMetrics = new RawMetricsHolder();
+    _dotHandledTopicMetrics = new HashMap<>();
+    _dotHandledPartitionMetrics = new HashMap<>();
+  }
 
   /**
    * Record the given Cruise Control metric.

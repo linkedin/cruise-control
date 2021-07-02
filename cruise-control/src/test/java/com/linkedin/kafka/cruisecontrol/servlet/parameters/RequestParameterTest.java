@@ -29,7 +29,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet
 
 public class RequestParameterTest {
   private Map<String, CruiseControlParameters> _endpointToClass;
-  OpenAPI _openAPI;
+  private OpenAPI _openAPI;
   /**
    * Specify endpoints to be tested
    */

@@ -33,6 +33,14 @@ public class CaseInsensitiveGoalConfigTest {
   @Rule
   public ExpectedException _expected = ExpectedException.none();
 
+  private final Properties _properties;
+  private final Class<Throwable> _exceptionClass;
+
+  public CaseInsensitiveGoalConfigTest(Properties properties, Class<Throwable> exceptionClass) {
+    _properties = properties;
+    _exceptionClass = exceptionClass;
+  }
+
   /**
    * Populate parameters for the parametrized test.
    * @return Populated parameters.
@@ -58,7 +66,7 @@ public class CaseInsensitiveGoalConfigTest {
     Properties duplicateGoalProps = new Properties();
     duplicateGoalProps.putAll(sharedProps);
     duplicateGoalProps.setProperty(AnalyzerConfig.GOALS_CONFIG,
-        "com.linkedin.package1.RackAwareGoal,com.linkedin.package2.RackAwareGoal");
+                                   "com.linkedin.package1.RackAwareGoal,com.linkedin.package2.RackAwareGoal");
 
     Object[] withDuplicateGoalParams = {duplicateGoalProps, ConfigException.class};
     params.add(withDuplicateGoalParams);
@@ -66,21 +74,14 @@ public class CaseInsensitiveGoalConfigTest {
     // Test: With case sensitive goal names (Exception)
     Properties caseSensitiveGoalProps = new Properties();
     caseSensitiveGoalProps.putAll(sharedProps);
-    caseSensitiveGoalProps.setProperty(AnalyzerConfig.GOALS_CONFIG,
+    caseSensitiveGoalProps.setProperty(
+        AnalyzerConfig.GOALS_CONFIG,
         "com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal,com.linkedin.kafka.cruisecontrol.analyzer.goals.RaCkAwArEgOaL");
 
     Object[] withCaseSensitiveGoalParams = {caseSensitiveGoalProps, ConfigException.class};
     params.add(withCaseSensitiveGoalParams);
 
     return params;
-  }
-
-  private Properties _properties;
-  private Class<Throwable> _exceptionClass;
-
-  public CaseInsensitiveGoalConfigTest(Properties properties, Class<Throwable> exceptionClass) {
-    _properties = properties;
-    _exceptionClass = exceptionClass;
   }
 
   @Test

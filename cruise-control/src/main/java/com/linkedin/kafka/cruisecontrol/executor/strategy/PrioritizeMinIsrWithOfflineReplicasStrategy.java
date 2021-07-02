@@ -54,13 +54,13 @@ public class PrioritizeMinIsrWithOfflineReplicasStrategy extends AbstractReplica
     };
   }
 
-  private static boolean isTaskInSet(ExecutionTask task, Set<PartitionInfo> partitionInfoSet) {
-    return partitionInfoSet.stream().anyMatch(p -> p.topic().equals(task.proposal().topic()) && p.partition() == task.proposal().partitionId());
-  }
-
   @Override
   public Comparator<ExecutionTask> taskComparator(Cluster cluster) {
     return taskComparator(new StrategyOptions.Builder(cluster).build());
+  }
+
+  private static boolean isTaskInSet(ExecutionTask task, Set<PartitionInfo> partitionInfoSet) {
+    return partitionInfoSet.stream().anyMatch(p -> p.topic().equals(task.proposal().topic()) && p.partition() == task.proposal().partitionId());
   }
 
   @Override

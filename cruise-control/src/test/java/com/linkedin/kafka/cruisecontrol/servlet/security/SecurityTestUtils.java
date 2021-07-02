@@ -4,12 +4,10 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.security;
 
-public class SecurityTestUtils {
-
-  private SecurityTestUtils() {
-
-  }
-
+public final class SecurityTestUtils {
   public static final String AUTH_CREDENTIALS_FILE = "auth.credentials";
   public static final String BASIC_AUTH_CREDENTIALS_FILE = "basic-auth.credentials";
+
+  private SecurityTestUtils() {
+  }
 }

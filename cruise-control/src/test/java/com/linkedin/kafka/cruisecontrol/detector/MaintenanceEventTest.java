@@ -82,7 +82,7 @@ public class MaintenanceEventTest {
   @Before
   public void setup() {
     _mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
-    _executorState = EasyMock.mock(ExecutorState.class);
+    _executorState = ExecutorState.noTaskInProgress(Collections.emptySet(), Collections.emptySet());
     _optimizerResult = EasyMock.mock(OptimizerResult.class);
     _brokerStats = EasyMock.mock(BrokerStats.class);
 
@@ -116,8 +116,6 @@ public class MaintenanceEventTest {
     EasyMock.expect(_mockKafkaCruiseControl.clusterModel(EasyMock.anyObject(), EasyMock.eq(true), EasyMock.anyObject()))
             .andReturn(clusterModel);
     EasyMock.expect(_mockKafkaCruiseControl.executorState()).andReturn(_executorState).once();
-    EasyMock.expect(_executorState.recentlyDemotedBrokers()).andReturn(Collections.emptySet());
-    EasyMock.expect(_executorState.recentlyRemovedBrokers()).andReturn(Collections.emptySet());
 
     EasyMock.expect(_mockKafkaCruiseControl.dropRecentBrokers(EasyMock.eq(MOCK_BROKERS_OBJECT),
                                                               EasyMock.eq(true))).andReturn(false);
@@ -150,7 +148,7 @@ public class MaintenanceEventTest {
     EasyMock.expect(_optimizerResult.getProposalSummary()).andReturn(null);
 
     // Replay mocks.
-    EasyMock.replay(_mockKafkaCruiseControl, _executorState, _optimizerResult, _brokerStats);
+    EasyMock.replay(_mockKafkaCruiseControl, _optimizerResult, _brokerStats);
     MaintenanceEvent maintenanceEvent = _config.getConfiguredInstance(AnomalyDetectorConfig.MAINTENANCE_EVENT_CLASS_CONFIG,
                                                                       MaintenanceEvent.class,
                                                                       parameterConfigOverrides);
@@ -163,7 +161,7 @@ public class MaintenanceEventTest {
     assertTrue(maintenanceEvent.fix());
 
     // Verify mocks.
-    EasyMock.verify(_mockKafkaCruiseControl, _executorState, _optimizerResult, _brokerStats);
+    EasyMock.verify(_mockKafkaCruiseControl, _optimizerResult, _brokerStats);
   }
 
   @Test
@@ -190,8 +188,6 @@ public class MaintenanceEventTest {
     EasyMock.expect(_mockKafkaCruiseControl.clusterModel(EasyMock.anyObject(), EasyMock.eq(true), EasyMock.anyObject()))
             .andReturn(clusterModel);
     EasyMock.expect(_mockKafkaCruiseControl.executorState()).andReturn(_executorState).once();
-    EasyMock.expect(_executorState.recentlyDemotedBrokers()).andReturn(Collections.emptySet());
-    EasyMock.expect(_executorState.recentlyRemovedBrokers()).andReturn(Collections.emptySet());
 
     EasyMock.expect(_mockKafkaCruiseControl.dropRecentBrokers(EasyMock.eq(Collections.emptySet()),
                                                               EasyMock.eq(true))).andReturn(false);
@@ -223,7 +219,7 @@ public class MaintenanceEventTest {
     EasyMock.expect(_optimizerResult.getProposalSummary()).andReturn(null);
 
     // Replay mocks.
-    EasyMock.replay(_mockKafkaCruiseControl, _executorState, _optimizerResult, _brokerStats);
+    EasyMock.replay(_mockKafkaCruiseControl, _optimizerResult, _brokerStats);
     MaintenanceEvent maintenanceEvent = _config.getConfiguredInstance(AnomalyDetectorConfig.MAINTENANCE_EVENT_CLASS_CONFIG,
                                                                       MaintenanceEvent.class,
                                                                       parameterConfigOverrides);
@@ -236,7 +232,7 @@ public class MaintenanceEventTest {
     assertTrue(maintenanceEvent.fix());
 
     // Verify mocks.
-    EasyMock.verify(_mockKafkaCruiseControl, _executorState, _optimizerResult, _brokerStats);
+    EasyMock.verify(_mockKafkaCruiseControl, _optimizerResult, _brokerStats);
   }
 
   @Test
@@ -262,8 +258,6 @@ public class MaintenanceEventTest {
     EasyMock.expect(_mockKafkaCruiseControl.clusterModel(EasyMock.anyObject(), EasyMock.eq(true), EasyMock.anyObject()))
             .andReturn(clusterModel);
     EasyMock.expect(_mockKafkaCruiseControl.executorState()).andReturn(_executorState).once();
-    EasyMock.expect(_executorState.recentlyDemotedBrokers()).andReturn(Collections.emptySet());
-    EasyMock.expect(_executorState.recentlyRemovedBrokers()).andReturn(Collections.emptySet());
 
     EasyMock.expect(_mockKafkaCruiseControl.dropRecentBrokers(EasyMock.eq(Collections.emptySet()),
                                                               EasyMock.eq(true))).andReturn(false);
@@ -296,7 +290,7 @@ public class MaintenanceEventTest {
     EasyMock.expect(_optimizerResult.getProposalSummary()).andReturn(null);
 
     // Replay mocks.
-    EasyMock.replay(_mockKafkaCruiseControl, _executorState, _optimizerResult, _brokerStats);
+    EasyMock.replay(_mockKafkaCruiseControl, _optimizerResult, _brokerStats);
     MaintenanceEvent maintenanceEvent = _config.getConfiguredInstance(AnomalyDetectorConfig.MAINTENANCE_EVENT_CLASS_CONFIG,
                                                                       MaintenanceEvent.class,
                                                                       parameterConfigOverrides);
@@ -309,7 +303,7 @@ public class MaintenanceEventTest {
     assertTrue(maintenanceEvent.fix());
 
     // Verify mocks.
-    EasyMock.verify(_mockKafkaCruiseControl, _executorState, _optimizerResult, _brokerStats);
+    EasyMock.verify(_mockKafkaCruiseControl, _optimizerResult, _brokerStats);
   }
 
   @Test
@@ -357,8 +351,6 @@ public class MaintenanceEventTest {
             .andReturn(clusterModel);
 
     EasyMock.expect(_mockKafkaCruiseControl.executorState()).andReturn(_executorState).once();
-    EasyMock.expect(_executorState.recentlyDemotedBrokers()).andReturn(Collections.emptySet());
-    EasyMock.expect(_executorState.recentlyRemovedBrokers()).andReturn(Collections.emptySet());
     EasyMock.expect(_mockKafkaCruiseControl.excludedTopics(clusterModel, SELF_HEALING_EXCLUDED_TOPICS)).andReturn(Collections.emptySet());
     EasyMock.expect(_mockKafkaCruiseControl.optimizations(EasyMock.eq(clusterModel),
                                                           EasyMock.anyObject(),
@@ -386,7 +378,7 @@ public class MaintenanceEventTest {
     EasyMock.expect(_optimizerResult.getProposalSummary()).andReturn(null);
 
     // Replay mocks.
-    EasyMock.replay(_mockKafkaCruiseControl, _executorState, _optimizerResult, _brokerStats);
+    EasyMock.replay(_mockKafkaCruiseControl, _optimizerResult, _brokerStats);
     MaintenanceEvent maintenanceEvent = _config.getConfiguredInstance(AnomalyDetectorConfig.MAINTENANCE_EVENT_CLASS_CONFIG,
                                                                       MaintenanceEvent.class,
                                                                       parameterConfigOverrides);
@@ -399,7 +391,7 @@ public class MaintenanceEventTest {
     assertTrue(maintenanceEvent.fix());
 
     // Verify mocks.
-    EasyMock.verify(_mockKafkaCruiseControl, _executorState, _optimizerResult, _brokerStats);
+    EasyMock.verify(_mockKafkaCruiseControl, _optimizerResult, _brokerStats);
   }
 
   @Test
@@ -426,8 +418,6 @@ public class MaintenanceEventTest {
     EasyMock.expect(_mockKafkaCruiseControl.kafkaCluster()).andReturn(generateClusterFromClusterModel(clusterModel)).once();
 
     EasyMock.expect(_mockKafkaCruiseControl.executorState()).andReturn(_executorState).once();
-    EasyMock.expect(_executorState.recentlyDemotedBrokers()).andReturn(Collections.emptySet());
-    EasyMock.expect(_executorState.recentlyRemovedBrokers()).andReturn(Collections.emptySet());
 
     EasyMock.expect(_mockKafkaCruiseControl.dropRecentBrokers(EasyMock.eq(Collections.emptySet()),
                                                               EasyMock.eq(true))).andReturn(false);
@@ -457,7 +447,7 @@ public class MaintenanceEventTest {
     EasyMock.expect(_optimizerResult.getProposalSummary()).andReturn(null);
 
     // Replay mocks.
-    EasyMock.replay(_mockKafkaCruiseControl, _executorState, _optimizerResult, _brokerStats);
+    EasyMock.replay(_mockKafkaCruiseControl, _optimizerResult, _brokerStats);
     MaintenanceEvent maintenanceEvent = _config.getConfiguredInstance(AnomalyDetectorConfig.MAINTENANCE_EVENT_CLASS_CONFIG,
                                                                       MaintenanceEvent.class,
                                                                       parameterConfigOverrides);
@@ -470,7 +460,7 @@ public class MaintenanceEventTest {
     assertTrue(maintenanceEvent.fix());
 
     // Verify mocks.
-    EasyMock.verify(_mockKafkaCruiseControl, _executorState, _optimizerResult, _brokerStats);
+    EasyMock.verify(_mockKafkaCruiseControl, _optimizerResult, _brokerStats);
   }
 
   @Test
@@ -505,8 +495,6 @@ public class MaintenanceEventTest {
     EasyMock.expect(_mockKafkaCruiseControl.kafkaCluster()).andReturn(generateClusterFromClusterModel(clusterModel)).once();
 
     EasyMock.expect(_mockKafkaCruiseControl.executorState()).andReturn(_executorState).once();
-    EasyMock.expect(_executorState.recentlyDemotedBrokers()).andReturn(Collections.emptySet());
-    EasyMock.expect(_executorState.recentlyRemovedBrokers()).andReturn(Collections.emptySet());
     EasyMock.expect(_mockKafkaCruiseControl.excludedTopics(clusterModel, SELF_HEALING_EXCLUDED_TOPICS)).andReturn(Collections.emptySet());
     EasyMock.expect(_mockKafkaCruiseControl.optimizations(EasyMock.eq(clusterModel),
                                                           EasyMock.anyObject(),
@@ -534,7 +522,7 @@ public class MaintenanceEventTest {
     EasyMock.expect(_optimizerResult.getProposalSummary()).andReturn(null);
 
     // Replay mocks.
-    EasyMock.replay(_mockKafkaCruiseControl, _executorState, _optimizerResult, _brokerStats);
+    EasyMock.replay(_mockKafkaCruiseControl, _optimizerResult, _brokerStats);
     MaintenanceEvent maintenanceEvent = _config.getConfiguredInstance(AnomalyDetectorConfig.MAINTENANCE_EVENT_CLASS_CONFIG,
                                                                       MaintenanceEvent.class,
                                                                       parameterConfigOverrides);
@@ -546,7 +534,7 @@ public class MaintenanceEventTest {
     assertTrue(maintenanceEvent.fix());
 
     // Verify mocks.
-    EasyMock.verify(_mockKafkaCruiseControl, _executorState, _optimizerResult, _brokerStats);
+    EasyMock.verify(_mockKafkaCruiseControl, _optimizerResult, _brokerStats);
   }
 
   @Test

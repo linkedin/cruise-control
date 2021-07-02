@@ -24,7 +24,7 @@ import org.easymock.EasyMock;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 
 
-public class AnomalyDetectorTestUtils {
+public final class AnomalyDetectorTestUtils {
   public static final List<BrokerEntity> BROKER_ENTITIES;
   public static final long ANOMALY_DETECTION_TIME_MS = 100L;
   static {

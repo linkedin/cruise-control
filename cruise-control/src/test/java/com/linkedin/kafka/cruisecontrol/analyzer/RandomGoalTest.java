@@ -61,6 +61,28 @@ public class RandomGoalTest {
   public ExpectedException _expected = ExpectedException.none();
 
   private static final Random RANDOM = new Random(34534534);
+  private final Map<ClusterProperty, Number> _modifiedProperties;
+  private final List<String> _goalNameByPriority;
+  private final BalancingConstraint _balancingConstraint;
+  private final List<OptimizationVerifier.Verification> _verifications;
+
+  /**
+   * Constructor of Random Goal Test.
+   *
+   * @param modifiedProperties Modified cluster properties over the {@link TestConstants#BASE_PROPERTIES}.
+   * @param goalNameByPriority Goal name by priority.
+   * @param balancingConstraint the balancing constraints.
+   * @param verifications the verifications to make.
+   */
+  public RandomGoalTest(Map<ClusterProperty, Number> modifiedProperties,
+                        List<String> goalNameByPriority,
+                        BalancingConstraint balancingConstraint,
+                        List<OptimizationVerifier.Verification> verifications) {
+    _modifiedProperties = modifiedProperties;
+    _goalNameByPriority = goalNameByPriority;
+    _balancingConstraint = balancingConstraint;
+    _verifications = verifications;
+  }
 
   /**
    * Populate parameters for the {@link OptimizationVerifier}. All brokers are alive.
@@ -142,36 +164,6 @@ public class RandomGoalTest {
     return p;
   }
 
-  private static Object[] params(Map<ClusterProperty, Number> modifiedProperties,
-                                 List<String> goalNameByPriority,
-                                 BalancingConstraint balancingConstraint,
-                                 List<OptimizationVerifier.Verification> verifications) {
-    return new Object[]{modifiedProperties, goalNameByPriority, balancingConstraint, verifications};
-  }
-
-  private final Map<ClusterProperty, Number> _modifiedProperties;
-  private final List<String> _goalNameByPriority;
-  private final BalancingConstraint _balancingConstraint;
-  private final List<OptimizationVerifier.Verification> _verifications;
-
-  /**
-   * Constructor of Random Goal Test.
-   *
-   * @param modifiedProperties Modified cluster properties over the {@link TestConstants#BASE_PROPERTIES}.
-   * @param goalNameByPriority Goal name by priority.
-   * @param balancingConstraint the balancing constraints.
-   * @param verifications the verifications to make.
-   */
-  public RandomGoalTest(Map<ClusterProperty, Number> modifiedProperties,
-                        List<String> goalNameByPriority,
-                        BalancingConstraint balancingConstraint,
-                        List<OptimizationVerifier.Verification> verifications) {
-    _modifiedProperties = modifiedProperties;
-    _goalNameByPriority = goalNameByPriority;
-    _balancingConstraint = balancingConstraint;
-    _verifications = verifications;
-  }
-
   @Test
   public void test() throws Exception {
     // Create cluster properties by applying modified properties to base properties.
@@ -190,5 +182,12 @@ public class RandomGoalTest {
       assertTrue("IllegalArgumentException is expected for empty goal names.",
           OptimizationVerifier.executeGoalsFor(_balancingConstraint, clusterModel, _goalNameByPriority, _verifications));
     }
+  }
+
+  private static Object[] params(Map<ClusterProperty, Number> modifiedProperties,
+                                 List<String> goalNameByPriority,
+                                 BalancingConstraint balancingConstraint,
+                                 List<OptimizationVerifier.Verification> verifications) {
+    return new Object[]{modifiedProperties, goalNameByPriority, balancingConstraint, verifications};
   }
 }

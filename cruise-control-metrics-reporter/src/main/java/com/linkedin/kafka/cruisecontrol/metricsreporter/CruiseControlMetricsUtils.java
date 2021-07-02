@@ -18,7 +18,7 @@ import org.apache.kafka.common.security.auth.SecurityProtocol;
 import java.util.Properties;
 import java.util.function.Supplier;
 
-public class CruiseControlMetricsUtils {
+public final class CruiseControlMetricsUtils {
 
   public static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
   public static final long CLIENT_REQUEST_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);

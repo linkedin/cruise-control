@@ -113,9 +113,8 @@ public class AlertaSelfHealingNotifierTest {
 
     private static class MockAlertaSelfHealingNotifier extends AlertaSelfHealingNotifier {
         private List<AlertaMessage> _alertaMessageList;
-
-        final Map<AnomalyType, Boolean> _alertCalled;
-        final Map<AnomalyType, Boolean> _autoFixTriggered;
+        private final Map<AnomalyType, Boolean> _alertCalled;
+        private final Map<AnomalyType, Boolean> _autoFixTriggered;
 
         MockAlertaSelfHealingNotifier(Time time) {
             super(time);

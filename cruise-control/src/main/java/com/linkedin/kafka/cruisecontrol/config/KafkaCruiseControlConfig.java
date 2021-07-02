@@ -43,6 +43,21 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
             UserTaskManagerConfig.define(new ConfigDef())))))))).withClientSslSupport().withClientSaslSupport();
   }
 
+  public KafkaCruiseControlConfig(Map<?, ?> originals) {
+    this(originals, true);
+  }
+
+  public KafkaCruiseControlConfig(Map<?, ?> originals, boolean doLog) {
+    super(CONFIG, originals, doLog);
+    sanityCheckGoalNames();
+    sanityCheckSamplingPeriod(originals);
+    sanityCheckConcurrency();
+    sanityCheckTaskExecutionAlertingThreshold();
+    sanityCheckSecurity();
+    sanityCheckBalancingConstraints();
+    sanityCheckWebServerUrlPrefix();
+  }
+
   /**
    * @return Merged config values.
    */
@@ -68,6 +83,16 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     return o;
   }
 
+  /**
+   * @return Configured instance.
+   */
+  public <T> T getConfiguredInstance(String key, Class<T> t, Map<String, Object> configOverrides) {
+    Class<?> c = getClass(key);
+    Map<String, Object> configPairs = mergedConfigValues();
+    configPairs.putAll(configOverrides);
+    return KafkaCruiseControlConfigUtils.getConfiguredInstance(c, t, configPairs);
+  }
+
   @Override
   public <T> List<T> getConfiguredInstances(String key, Class<T> t) {
     List<T> objects = super.getConfiguredInstances(key, t);
@@ -90,16 +115,6 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       }
     }
     return objects;
-  }
-
-  /**
-   * @return Configured instance.
-   */
-  public <T> T getConfiguredInstance(String key, Class<T> t, Map<String, Object> configOverrides) {
-    Class<?> c = getClass(key);
-    Map<String, Object> configPairs = mergedConfigValues();
-    configPairs.putAll(configOverrides);
-    return KafkaCruiseControlConfigUtils.getConfiguredInstance(c, t, configPairs);
   }
 
   /**
@@ -484,20 +499,5 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
 
   private boolean fileExists(String file) {
     return file != null && Files.exists(Paths.get(file));
-  }
-
-  public KafkaCruiseControlConfig(Map<?, ?> originals) {
-    this(originals, true);
-  }
-
-  public KafkaCruiseControlConfig(Map<?, ?> originals, boolean doLog) {
-    super(CONFIG, originals, doLog);
-    sanityCheckGoalNames();
-    sanityCheckSamplingPeriod(originals);
-    sanityCheckConcurrency();
-    sanityCheckTaskExecutionAlertingThreshold();
-    sanityCheckSecurity();
-    sanityCheckBalancingConstraints();
-    sanityCheckWebServerUrlPrefix();
   }
 }

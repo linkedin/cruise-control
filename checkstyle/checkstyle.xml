@@ -37,10 +37,16 @@ LinkedIn Java style.
 
         <!-- ANNOTATIONS -->
 
+        <!-- Locate annotations immediately after documentation block and before target element -->
+        <module name="AnnotationLocation">
+            <property name="allowSamelineSingleParameterlessAnnotation" value="false"/>
+        </module>
         <!-- No trailing empty parenthesis or commas -->
         <module name="AnnotationUseStyle">
             <property name="elementStyle" value="ignore"/>
         </module>
+        <!-- The annotation @Deprecated and the Javadoc tag @deprecated must both be present when either of them is present -->
+        <module name="MissingDeprecated"/>
         <!-- Ensure @Override is present when {@inheritDoc} Javadoc tag is present -->
         <module name="MissingOverride"/>
         <!-- Package level annotations belong in package-info.java -->
@@ -48,6 +54,12 @@ LinkedIn Java style.
 
         <!-- BLOCKS -->
 
+        <!-- Nested blocks confuse the reader -->
+        <module name="AvoidNestedBlocks"/>
+        <!-- Checks for empty blocks with no comment or statement -->
+        <module name="EmptyBlock">
+            <property name="option" value="text"/>
+        </module>
         <!-- Block opening brace on same line -->
         <module name="LeftCurly">
             <property name="option" value="eol"/>
@@ -61,8 +73,18 @@ LinkedIn Java style.
 
         <!-- CLASS DESIGN -->
 
+        <!-- A class with only private constructors must be declared as final -->
+        <module name="FinalClass"/>
         <!-- Classes containing only static methods should not have a public constructor -->
         <module name="HideUtilityClassConstructor"/>
+        <!-- Use Interfaces only to define types -->
+        <module name="InterfaceIsType"/>
+        <!-- Too many differently rooted exceptions makes exception handling onerous -->
+        <module name="ThrowsCount"/>
+        <!-- Only static final, immutable, or annotated by specified annotation members may be public; others must be private or protected -->
+        <module name="VisibilityModifier">
+            <property name="protectedAllowed" value="true"/>
+        </module>
 
         <!-- CODING -->
 
@@ -114,6 +136,27 @@ LinkedIn Java style.
         <module name="TrailingComment"/>
         <!-- Double brace initialization is considered as anti-pattern and should be avoided -->
         <module name="AvoidDoubleBraceInitialization"/>
+        <!-- Ensure compliance with the declaration order suggested by the Code Conventions for the Java Programming Language -->
+        <module name="DeclarationOrder">
+            <property name="ignoreModifiers" value="true"/>
+        </module>
+        <!-- Ensure no empty statement -->
+        <module name="EmptyStatement"/>
+        <!-- String literal expressions should be on the left side of an equals comparison -->
+        <module name="EqualsAvoidNull"/>
+        <!-- A local variable shall not shadow a field that is defined in the same class -->
+        <module name="HiddenField">
+            <property name="tokens" value="VARIABLE_DEF"/>
+        </module>
+        <!-- There cannot be a finalize method with zero parameters -->
+        <module name="NoFinalizer"/>
+        <!-- Clone method cannot be overridden from the Object class -->
+        <module name="NoClone"/>
+        <!-- Overloaded methods shall be grouped together -->
+        <module name="OverloadMethodsDeclarationOrder"/>
+        <!-- Parameter assignment is not allowed -->
+        <module name="ParameterAssignment"/>
+
         <!-- IMPORTS -->
 
         <!-- No imports statements using '*' notation except static imports -->

@@ -34,7 +34,7 @@ import static javax.servlet.http.HttpServletResponse.SC_OK;
 /**
  * The util class for Kafka Cruise Control servlet.
  */
-public class KafkaCruiseControlServletUtils {
+public final class KafkaCruiseControlServletUtils {
   public static final String GET_METHOD = "GET";
   public static final String POST_METHOD = "POST";
   public static final String KAFKA_CRUISE_CONTROL_SERVLET_OBJECT_CONFIG = "kafka.cruise.control.servlet.object";
@@ -136,14 +136,6 @@ public class KafkaCruiseControlServletUtils {
     REQUEST_PARAMETER_CONFIGS = Collections.unmodifiableMap(requestParameterConfigs);
   }
 
-  private KafkaCruiseControlServletUtils() {
-
-  }
-
-  public static RequestParameterWrapper requestParameterFor(EndPoint endpoint) {
-    return REQUEST_PARAMETER_CONFIGS.get(endpoint);
-  }
-
   static final String[] HEADERS_TO_TRY = {
       "X-Forwarded-For",
       "Proxy-Client-IP",
@@ -157,6 +149,14 @@ public class KafkaCruiseControlServletUtils {
       "HTTP_VIA",
       "REMOTE_ADDR"
   };
+
+  private KafkaCruiseControlServletUtils() {
+
+  }
+
+  public static RequestParameterWrapper requestParameterFor(EndPoint endpoint) {
+    return REQUEST_PARAMETER_CONFIGS.get(endpoint);
+  }
 
   /**
    * Get the ip address of the client sending the request.

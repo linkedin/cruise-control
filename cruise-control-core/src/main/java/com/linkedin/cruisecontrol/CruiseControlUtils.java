@@ -15,7 +15,7 @@ import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 /**
  * Utils class for Cruise Control
  */
-public class CruiseControlUtils {
+public final class CruiseControlUtils {
   private CruiseControlUtils() {
 
   }

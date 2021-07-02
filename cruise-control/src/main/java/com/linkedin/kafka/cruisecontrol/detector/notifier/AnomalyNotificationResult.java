@@ -7,13 +7,21 @@ package com.linkedin.kafka.cruisecontrol.detector.notifier;
 /**
  * The result of an anomaly notification.
  */
-public class AnomalyNotificationResult {
+public final class AnomalyNotificationResult {
   public enum Action {
     IGNORE, FIX, CHECK
   }
 
   private final Action _action;
   private final long _delay;
+
+  private AnomalyNotificationResult(Action action, long delay) {
+    if (action == Action.IGNORE && delay > 0) {
+      throw new IllegalArgumentException("The ignore action should not have a delay.");
+    }
+    _action = action;
+    _delay = delay;
+  }
 
   /**
    * @return A notification result to indicate ignoring the anomaly.
@@ -34,14 +42,6 @@ public class AnomalyNotificationResult {
    */
   public static AnomalyNotificationResult check(long delay) {
     return new AnomalyNotificationResult(Action.CHECK, delay);
-  }
-
-  private AnomalyNotificationResult(Action action, long delay) {
-    if (action == Action.IGNORE && delay > 0) {
-      throw new IllegalArgumentException("The ignore action should not have a delay.");
-    }
-    _action = action;
-    _delay = delay;
   }
 
   /**

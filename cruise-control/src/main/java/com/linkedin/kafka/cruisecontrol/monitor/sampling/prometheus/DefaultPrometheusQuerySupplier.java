@@ -153,7 +153,8 @@ public class DefaultPrometheusQuerySupplier implements PrometheusQuerySupplier {
             "kafka_log_Log_Value{name=\"Size\",topic!=\"\",partition!=\"\"}");
     }
 
-    @Override public Map<RawMetricType, String> get() {
+    @Override
+    public Map<RawMetricType, String> get() {
         return TYPE_TO_QUERY;
     }
 }

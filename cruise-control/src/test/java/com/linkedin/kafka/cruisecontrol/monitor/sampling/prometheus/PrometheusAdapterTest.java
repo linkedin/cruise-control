@@ -37,7 +37,8 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
     @Test
     public void testSuccessfulResponseDeserialized() throws Exception {
         this.serverBootstrap.registerHandler(PrometheusAdapter.QUERY_RANGE_API_PATH, new HttpRequestHandler() {
-            @Override public void handle(HttpRequest request, HttpResponse response, HttpContext context) {
+            @Override
+            public void handle(HttpRequest request, HttpResponse response, HttpContext context) {
                 response.setStatusCode(HttpServletResponse.SC_OK);
                 response.setEntity(buildSuccessResponseEntity());
             }
@@ -127,7 +128,8 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
     @Test(expected = IOException.class)
     public void testFailureResponseWith200Code() throws Exception {
         this.serverBootstrap.registerHandler(PrometheusAdapter.QUERY_RANGE_API_PATH, new HttpRequestHandler() {
-            @Override public void handle(HttpRequest request, HttpResponse response, HttpContext context) {
+            @Override
+            public void handle(HttpRequest request, HttpResponse response, HttpContext context) {
                 response.setStatusCode(HttpServletResponse.SC_OK);
                 response.setEntity(new StringEntity(
                     "{\"status\": \"failure\", \"data\": {\"result\": []}}", StandardCharsets.UTF_8));
@@ -146,7 +148,8 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
     @Test(expected = IOException.class)
     public void testFailureResponseWith403Code() throws Exception {
         this.serverBootstrap.registerHandler("/api/v1/query_range", new HttpRequestHandler() {
-            @Override public void handle(HttpRequest request, HttpResponse response, HttpContext context) {
+            @Override
+            public void handle(HttpRequest request, HttpResponse response, HttpContext context) {
                 response.setStatusCode(HttpServletResponse.SC_FORBIDDEN);
                 response.setEntity(new StringEntity(
                     "{\"status\": \"failure\", \"data\": {\"result\": []}}", StandardCharsets.UTF_8));
@@ -165,7 +168,8 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
     @Test(expected = IOException.class)
     public void testEmptyResponse() throws Exception {
         this.serverBootstrap.registerHandler("/api/v1/query_range", new HttpRequestHandler() {
-            @Override public void handle(HttpRequest request, HttpResponse response, HttpContext context) {
+            @Override
+            public void handle(HttpRequest request, HttpResponse response, HttpContext context) {
                 response.setStatusCode(HttpServletResponse.SC_OK);
                 response.setEntity(new StringEntity(
                     "", StandardCharsets.UTF_8));
@@ -184,7 +188,8 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
     @Test(expected = IOException.class)
     public void testEmptyStatus() throws Exception {
         this.serverBootstrap.registerHandler("/api/v1/query_range", new HttpRequestHandler() {
-            @Override public void handle(HttpRequest request, HttpResponse response, HttpContext context) {
+            @Override
+            public void handle(HttpRequest request, HttpResponse response, HttpContext context) {
                 response.setStatusCode(HttpServletResponse.SC_OK);
                 response.setEntity(new StringEntity(
                     "{\"data\":{\"result\": []}}", StandardCharsets.UTF_8));
@@ -203,7 +208,8 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
     @Test(expected = IOException.class)
     public void testEmptyData() throws Exception {
         this.serverBootstrap.registerHandler("/api/v1/query_range", new HttpRequestHandler() {
-            @Override public void handle(HttpRequest request, HttpResponse response, HttpContext context) {
+            @Override
+            public void handle(HttpRequest request, HttpResponse response, HttpContext context) {
                 response.setStatusCode(HttpServletResponse.SC_OK);
                 response.setEntity(new StringEntity(
                     "{\"status\":\"success\"}", StandardCharsets.UTF_8));
@@ -222,7 +228,8 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
     @Test(expected = IOException.class)
     public void testEmptyResult() throws Exception {
         this.serverBootstrap.registerHandler(PrometheusAdapter.QUERY_RANGE_API_PATH, new HttpRequestHandler() {
-            @Override public void handle(HttpRequest request, HttpResponse response, HttpContext context) {
+            @Override
+            public void handle(HttpRequest request, HttpResponse response, HttpContext context) {
                 response.setStatusCode(HttpServletResponse.SC_OK);
                 response.setEntity(new StringEntity(
                     "{\"status\": \"success\", \"data\": {}}", StandardCharsets.UTF_8));

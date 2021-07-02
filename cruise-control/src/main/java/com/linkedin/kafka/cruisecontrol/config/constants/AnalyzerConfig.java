@@ -40,10 +40,7 @@ import static org.apache.kafka.common.config.ConfigDef.Range.between;
  * A class to keep Cruise Control Analyzer Configs and defaults.
  * DO NOT CHANGE EXISTING CONFIG NAMES AS CHANGES WOULD BREAK USER CODE.
  */
-public class AnalyzerConfig {
-  private AnalyzerConfig() {
-
-  }
+public final class AnalyzerConfig {
 
   /**
    * <code>cpu.balance.threshold</code>
@@ -406,6 +403,9 @@ public class AnalyzerConfig {
   public static final String FAST_MODE_PER_BROKER_MOVE_TIMEOUT_MS_DOC = "The per broker move timeout in fast mode in milliseconds. "
       + "Users can run goal optimizations in fast mode by setting the fast_mode parameter to true in relevant endpoints. "
       + "This mode intends to provide a more predictable runtime for goal optimizations.";
+
+  private AnalyzerConfig() {
+  }
 
   /**
    * Define configs for Analyzer.

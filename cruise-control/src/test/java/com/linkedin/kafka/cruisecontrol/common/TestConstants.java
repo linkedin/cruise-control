@@ -44,11 +44,6 @@ public final class TestConstants {
   public static final double TYPICAL_CPU_CAPACITY = 100.0;
   public static final double MEDIUM_BROKER_CAPACITY = 200000.0;
   public static final double SMALL_BROKER_CAPACITY = 10.0;
-
-  private TestConstants() {
-
-  }
-
   public static final String GOALS_VALUES;
   static {
     GOALS_VALUES = "com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal,"
@@ -143,4 +138,7 @@ public final class TestConstants {
   // Topic replication factor anomaly test.
   public static final TopicReplicationFactorAnomalyEntry TOPIC_REPLICATION_FACTOR_ANOMALY_ENTRY =
       new TopicReplicationFactorAnomalyEntry(T1, 0.5);
+
+  private TestConstants() {
+  }
 }

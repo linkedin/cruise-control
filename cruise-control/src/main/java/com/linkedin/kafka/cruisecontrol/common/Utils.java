@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 
-public class Utils {
+public final class Utils {
 
   private Utils() {
 

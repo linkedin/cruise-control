@@ -39,7 +39,8 @@ public class PrometheusMetric {
      * @return The topic for which this metric is reported. Will be
      * null if the metric is not a topic-level or partition-level metric.
      */
-    @Nullable public String topic() {
+    @Nullable
+    public String topic() {
         return _topic;
     }
 
@@ -47,7 +48,8 @@ public class PrometheusMetric {
      * @return The partition for which this metric is reported.
      * Will be null if the metric is not a partition-level metric.
      */
-    @Nullable public String partition() {
+    @Nullable
+    public String partition() {
         return _partition;
     }
 
@@ -56,7 +58,8 @@ public class PrometheusMetric {
         return "PrometheusMetric{_instance='" + _instance + '\'' + ", _topic='" + _topic + '\'' + ", _partition='" + _partition + '\'' + '}';
     }
 
-    @Override public boolean equals(Object o) {
+    @Override
+    public boolean equals(Object o) {
         if (this == o) {
             return true;
         }
@@ -67,7 +70,8 @@ public class PrometheusMetric {
         return Objects.equals(_instance, that._instance) && Objects.equals(_topic, that._topic) && Objects.equals(_partition, that._partition);
     }
 
-    @Override public int hashCode() {
+    @Override
+    public int hashCode() {
         return Objects.hash(_instance, _topic, _partition);
     }
 }
