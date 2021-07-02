@@ -268,15 +268,15 @@ public final class AnomalyDetectorConfig {
   public static final String PROVISIONER_CLASS_DOC = "A provisioner class for adding / removing resources to / from the cluster. Different"
       + " platforms (e.g. Azure) should implement their own custom provisioners.";
 
-  private AnomalyDetectorConfig() {
-  }
-
   /**
    * <code>provisioner.enable</code>
    */
   public static final String PROVISIONER_ENABLE_CONFIG = "provisioner.enable";
   public static final boolean DEFAULT_PROVISIONER_ENABLE = true;
   public static final String PROVISIONER_ENABLE_DOC = "The flag to indicate whether use of provisioner is enabled.";
+
+  private AnomalyDetectorConfig() {
+  }
 
   /**
    * Define configs for Anomaly Detector.

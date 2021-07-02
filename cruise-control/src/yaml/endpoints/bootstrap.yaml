@@ -21,7 +21,13 @@ BootstrapEndpoint:
           minimum: 0
       - name: clearmetrics
         in: query
-        description: Whethere clear the collected metrics sample during bootstrap.
+        description: Whether to clear the collected metric samples during bootstrap.
+        schema:
+          type: boolean
+          default: false
+      - name: developer_mode
+        in: query
+        description: Whether to run the request in developer mode.
         schema:
           type: boolean
           default: false
