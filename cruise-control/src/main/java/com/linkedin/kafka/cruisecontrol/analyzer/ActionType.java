@@ -29,6 +29,11 @@ public enum ActionType {
   INTRA_BROKER_REPLICA_SWAP("INTRA_BROKER_SWAP");
 
   private static final List<ActionType> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
+  private final String _balancingAction;
+
+  ActionType(String balancingAction) {
+    _balancingAction = balancingAction;
+  }
 
   /**
    * Use this instead of values() because values() creates a new array each time.
@@ -36,12 +41,6 @@ public enum ActionType {
    */
   public static List<ActionType> cachedValues() {
     return CACHED_VALUES;
-  }
-
-  private final String _balancingAction;
-
-  ActionType(String balancingAction) {
-    _balancingAction = balancingAction;
   }
 
   /**

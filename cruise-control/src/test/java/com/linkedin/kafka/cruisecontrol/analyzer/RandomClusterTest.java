@@ -60,6 +60,32 @@ import static org.junit.Assert.assertTrue;
  */
 public class RandomClusterTest {
   private static final Logger LOG = LoggerFactory.getLogger(RandomClusterTest.class);
+  private final Map<ClusterProperty, Number> _modifiedProperties;
+  private final List<String> _goalNameByPriority;
+  private final TestConstants.Distribution _replicaDistribution;
+  private final BalancingConstraint _balancingConstraint;
+  private final List<OptimizationVerifier.Verification> _verifications;
+
+  /**
+   * Constructor of Random Cluster Test.
+   *
+   * @param modifiedProperties  Modified cluster properties over the {@link TestConstants#BASE_PROPERTIES}.
+   * @param goalNameByPriority  Goal name by priority.
+   * @param replicaDistribution Distribution of replicas in the test cluster.
+   * @param balancingConstraint The balancing constraints.
+   * @param verifications       The verifications to make.
+   */
+  public RandomClusterTest(Map<ClusterProperty, Number> modifiedProperties,
+                           List<String> goalNameByPriority,
+                           TestConstants.Distribution replicaDistribution,
+                           BalancingConstraint balancingConstraint,
+                           List<OptimizationVerifier.Verification> verifications) {
+    _modifiedProperties = modifiedProperties;
+    _goalNameByPriority = goalNameByPriority;
+    _replicaDistribution = replicaDistribution;
+    _balancingConstraint = balancingConstraint;
+    _verifications = verifications;
+  }
 
   /**
    * Populate parameters for the {@link OptimizationVerifier}. All brokers are alive.
@@ -142,41 +168,6 @@ public class RandomClusterTest {
     return p;
   }
 
-  private static Object[] params(Map<ClusterProperty, Number> modifiedProperties,
-                                 List<String> goalNameByPriority,
-                                 TestConstants.Distribution replicaDistribution,
-                                 BalancingConstraint balancingConstraint,
-                                 List<OptimizationVerifier.Verification> verifications) {
-    return new Object[]{modifiedProperties, goalNameByPriority, replicaDistribution, balancingConstraint, verifications};
-  }
-
-  private final Map<ClusterProperty, Number> _modifiedProperties;
-  private final List<String> _goalNameByPriority;
-  private final TestConstants.Distribution _replicaDistribution;
-  private final BalancingConstraint _balancingConstraint;
-  private final List<OptimizationVerifier.Verification> _verifications;
-
-  /**
-   * Constructor of Random Cluster Test.
-   *
-   * @param modifiedProperties  Modified cluster properties over the {@link TestConstants#BASE_PROPERTIES}.
-   * @param goalNameByPriority  Goal name by priority.
-   * @param replicaDistribution Distribution of replicas in the test cluster.
-   * @param balancingConstraint The balancing constraints.
-   * @param verifications       The verifications to make.
-   */
-  public RandomClusterTest(Map<ClusterProperty, Number> modifiedProperties,
-                           List<String> goalNameByPriority,
-                           TestConstants.Distribution replicaDistribution,
-                           BalancingConstraint balancingConstraint,
-                           List<OptimizationVerifier.Verification> verifications) {
-    _modifiedProperties = modifiedProperties;
-    _goalNameByPriority = goalNameByPriority;
-    _replicaDistribution = replicaDistribution;
-    _balancingConstraint = balancingConstraint;
-    _verifications = verifications;
-  }
-
   private ClusterModel rebalance() throws Exception {
     // Create cluster properties by applying modified properties to base properties.
     Map<ClusterProperty, Number> clusterProperties = new HashMap<>(TestConstants.BASE_PROPERTIES);
@@ -240,5 +231,13 @@ public class RandomClusterTest {
     assertTrue("Random Cluster Test failed to improve the existing state with new brokers.",
                OptimizationVerifier.executeGoalsFor(_balancingConstraint, clusterWithNewBroker, _goalNameByPriority,
                                                     _verifications));
+  }
+
+  private static Object[] params(Map<ClusterProperty, Number> modifiedProperties,
+                                 List<String> goalNameByPriority,
+                                 TestConstants.Distribution replicaDistribution,
+                                 BalancingConstraint balancingConstraint,
+                                 List<OptimizationVerifier.Verification> verifications) {
+    return new Object[]{modifiedProperties, goalNameByPriority, replicaDistribution, balancingConstraint, verifications};
   }
 }

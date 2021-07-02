@@ -15,10 +15,7 @@ import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
  * A class to keep Cruise Control Web Server Configs and defaults.
  * DO NOT CHANGE EXISTING CONFIG NAMES AS CHANGES WOULD BREAK USER CODE.
  */
-public class WebServerConfig {
-  private WebServerConfig() {
-
-  }
+public final class WebServerConfig {
 
   /**
    * <code>webserver.http.port</code>
@@ -326,6 +323,9 @@ public class WebServerConfig {
       + "IP addresses of the trusted proxy services. If a request arrives from these addresses authenticated as one of the specified "
       + "trusted.proxy.services then the operation will be delegated as the user in the doAs parameter. This is an optional "
       + "parameter. Not specifying this means that the IP of the trusted proxy won't be validated.";
+
+  private WebServerConfig() {
+  }
 
   /**
    * Define configs for Web Server.

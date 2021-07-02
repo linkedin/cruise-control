@@ -22,7 +22,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 
 
-public class CCKafkaTestUtils {
+public final class CCKafkaTestUtils {
   private static final AtomicBoolean SHUTDOWN_HOOK_INSTALLED = new AtomicBoolean(false);
   private static final Thread SHUTDOWN_HOOK;
   private static final List<File> FILES_TO_CLEAN_UP = Collections.synchronizedList(new ArrayList<>());

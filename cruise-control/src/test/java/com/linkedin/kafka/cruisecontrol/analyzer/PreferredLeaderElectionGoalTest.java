@@ -58,7 +58,7 @@ public class PreferredLeaderElectionGoalTest {
 
   @Test
   public void testOptimizeWithoutDemotedBrokers() {
-    ClusterModel clusterModel = createClusterModel(true, false)._clusterModel;
+    ClusterModel clusterModel = createClusterModel(true, false).clusterModel();
 
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
     // Before the optimization, goals are expected to be undecided wrt their provision status.
@@ -82,7 +82,7 @@ public class PreferredLeaderElectionGoalTest {
 
   @Test
   public void testOptimizeWithDemotedBrokers() {
-    ClusterModel clusterModel = createClusterModel(true, false)._clusterModel;
+    ClusterModel clusterModel = createClusterModel(true, false).clusterModel();
     clusterModel.setBrokerState(0, Broker.State.DEMOTED);
 
     Set<TopicPartition> leaderPartitionsOnDemotedBroker = new HashSet<>();
@@ -125,7 +125,7 @@ public class PreferredLeaderElectionGoalTest {
 
   @Test
   public void testOptimizeWithDemotedDisks() {
-    ClusterModel clusterModel = createClusterModel(true, true)._clusterModel;
+    ClusterModel clusterModel = createClusterModel(true, true).clusterModel();
     clusterModel.broker(0).disk(LOGDIR0).setState(Disk.State.DEMOTED);
     clusterModel.broker(1).disk(LOGDIR1).setState(Disk.State.DEMOTED);
 
@@ -174,7 +174,7 @@ public class PreferredLeaderElectionGoalTest {
 
   @Test
   public void testOptimizeWithDemotedBrokersAndDisks() {
-    ClusterModel clusterModel = createClusterModel(true, true)._clusterModel;
+    ClusterModel clusterModel = createClusterModel(true, true).clusterModel();
     clusterModel.setBrokerState(0, Broker.State.DEMOTED);
     clusterModel.broker(1).disk(LOGDIR0).setState(Disk.State.DEMOTED);
 
@@ -223,8 +223,8 @@ public class PreferredLeaderElectionGoalTest {
   @Test
   public void testOptimizeWithDemotedBrokersAndSkipUrpDemotion() throws KafkaCruiseControlException {
     ClusterModelAndInfo clusterModelAndInfo = createClusterModel(false, false);
-    ClusterModel clusterModel = clusterModelAndInfo._clusterModel;
-    Cluster cluster = clusterModelAndInfo._clusterInfo;
+    ClusterModel clusterModel = clusterModelAndInfo.clusterModel();
+    Cluster cluster = clusterModelAndInfo.clusterInfo();
     clusterModel.setBrokerState(1, Broker.State.DEMOTED);
 
     Map<TopicPartition, List<ReplicaPlacementInfo>> originalReplicaDistribution = clusterModel.getReplicaDistribution();
@@ -248,7 +248,7 @@ public class PreferredLeaderElectionGoalTest {
 
   @Test
   public void testOptimizeWithDemotedBrokersAndExcludeFollowerDemotion() {
-    ClusterModel clusterModel = createClusterModel(true, false)._clusterModel;
+    ClusterModel clusterModel = createClusterModel(true, false).clusterModel();
     clusterModel.setBrokerState(2, Broker.State.DEMOTED);
 
     Map<TopicPartition, ReplicaPlacementInfo> originalLeaderDistribution = clusterModel.getLeaderDistribution();
@@ -282,8 +282,8 @@ public class PreferredLeaderElectionGoalTest {
   @Test
   public void testOptimizeWithDemotedBrokersAndSkipUrpDemotionAndExcludeFollowerDemotion() {
     ClusterModelAndInfo clusterModelAndInfo = createClusterModel(false, false);
-    ClusterModel clusterModel = clusterModelAndInfo._clusterModel;
-    Cluster cluster = clusterModelAndInfo._clusterInfo;
+    ClusterModel clusterModel = clusterModelAndInfo.clusterModel();
+    Cluster cluster = clusterModelAndInfo.clusterInfo();
     clusterModel.setBrokerState(0, Broker.State.DEMOTED);
 
     Map<TopicPartition, ReplicaPlacementInfo> originalLeaderDistribution = clusterModel.getLeaderDistribution();
@@ -313,12 +313,20 @@ public class PreferredLeaderElectionGoalTest {
   }
 
   private static class ClusterModelAndInfo {
-    ClusterModel _clusterModel;
-    Cluster _clusterInfo;
+    private final ClusterModel _clusterModel;
+    private final Cluster _clusterInfo;
 
     ClusterModelAndInfo(ClusterModel clusterModel, Cluster clusterInfo) {
       _clusterInfo = clusterInfo;
       _clusterModel = clusterModel;
+    }
+
+    public ClusterModel clusterModel() {
+      return _clusterModel;
+    }
+
+    public Cluster clusterInfo() {
+      return _clusterInfo;
     }
   }
 

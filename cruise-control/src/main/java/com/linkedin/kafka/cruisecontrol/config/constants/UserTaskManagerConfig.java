@@ -14,10 +14,7 @@ import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
  * A class to keep Cruise Control User Task Manager Configs and defaults.
  * DO NOT CHANGE EXISTING CONFIG NAMES AS CHANGES WOULD BREAK USER CODE.
  */
-public class UserTaskManagerConfig {
-  private UserTaskManagerConfig() {
-
-  }
+public final class UserTaskManagerConfig {
 
   /**
    * <code>max.cached.completed.kafka.monitor.user.tasks</code>
@@ -111,6 +108,9 @@ public class UserTaskManagerConfig {
   public static final String COMPLETED_USER_TASK_RETENTION_TIME_MS_DOC = "The fallback maximum time in milliseconds to store "
       + "the response and access details of a completed user task if more specific config for certain user task type is not set"
       + " (e.g. COMPLETED_KAFKA_MONITOR_USER_TASK_RETENTION_TIME_MS_CONFIG).";
+
+  private UserTaskManagerConfig() {
+  }
 
   /**
    * Define configs for User Task Manager.

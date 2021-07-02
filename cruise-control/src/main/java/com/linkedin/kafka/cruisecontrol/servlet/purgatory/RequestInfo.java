@@ -105,7 +105,7 @@ public class RequestInfo {
     for (Map.Entry<String, String[]> paramSet : _parameterMap.entrySet()) {
       for (String paramValue : paramSet.getValue()) {
         sb.append(queryParamDelimiter).append(paramSet.getKey()).append("=").append(paramValue);
-        if (queryParamDelimiter.equals("?")) {
+        if ("?".equals(queryParamDelimiter)) {
           queryParamDelimiter = "&";
         }
       }

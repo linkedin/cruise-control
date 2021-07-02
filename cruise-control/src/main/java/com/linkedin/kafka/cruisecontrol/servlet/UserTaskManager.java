@@ -711,7 +711,7 @@ public class UserTaskManager implements Closeable {
       for (Map.Entry<String, String[]> paramSet : _queryParams.entrySet()) {
         for (String paramValue : paramSet.getValue()) {
           sb.append(queryParamDelimiter).append(paramSet.getKey()).append("=").append(paramValue);
-          if (queryParamDelimiter.equals("?")) {
+          if ("?".equals(queryParamDelimiter)) {
             queryParamDelimiter = "&";
           }
         }
@@ -813,7 +813,8 @@ public class UserTaskManager implements Closeable {
     COMPLETED("Completed"),
     COMPLETED_WITH_ERROR("CompletedWithError");
 
-    private String _type;
+    private static final List<TaskState> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
+    private final String _type;
     TaskState(String type) {
       _type = type;
     }
@@ -822,8 +823,6 @@ public class UserTaskManager implements Closeable {
     public String toString() {
       return _type;
     }
-
-    private static final List<TaskState> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 
     /**
      * Use this instead of values() because values() creates a new array each time.

@@ -19,9 +19,9 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 
-class TokenGenerator {
+final class TokenGenerator {
 
-  static class TokenAndKeys {
+  static final class TokenAndKeys {
     private final String _token;
     private final RSAPrivateKey _privateKey;
     private final RSAPublicKey _publicKey;

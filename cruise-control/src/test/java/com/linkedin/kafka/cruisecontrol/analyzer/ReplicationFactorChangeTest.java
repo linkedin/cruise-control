@@ -74,6 +74,47 @@ public class ReplicationFactorChangeTest {
   @Rule
   public ExpectedException _expected = ExpectedException.none();
 
+  private final int _testId;
+  private final Set<String> _topics;
+  private final short _replicationFactor;
+  private final Goal _goal;
+  private final OptimizationOptions _optimizationOptions;
+  private final Class<Throwable> _exceptionClass;
+  private final ClusterModel _clusterModel;
+  private final Boolean _expectedToOptimize;
+  private Map<String, List<Integer>> _brokersByRack;
+  private Map<Integer, String> _rackByBroker;
+  private Cluster _cluster;
+
+  /**
+   * Constructor of Replication Factor Change Test.
+   *
+   * @param testId The test id.
+   * @param topics Topics to modify replication factor.
+   * @param replicationFactor The target replication factor.
+   * @param goal Goal to be used to further tune location of new replicas.
+   * @param exceptionClass Expected exception class (if any).
+   * @param clusterModel Cluster model to be used for the test.
+   * @param expectedToOptimize The expectation on whether the cluster state will be considered optimized or not.
+   */
+  public ReplicationFactorChangeTest(int testId,
+                                     Set<String> topics,
+                                     short replicationFactor,
+                                     Goal goal,
+                                     Class<Throwable> exceptionClass,
+                                     ClusterModel clusterModel,
+                                     Boolean expectedToOptimize) {
+    _testId = testId;
+    _topics = topics;
+    _replicationFactor = replicationFactor;
+    _goal = goal;
+    _optimizationOptions = new OptimizationOptions(Collections.emptySet(), Collections.emptySet(), Collections.emptySet(),
+                                                   false, Collections.emptySet(), true);
+    _exceptionClass = exceptionClass;
+    _clusterModel = clusterModel;
+    _expectedToOptimize = expectedToOptimize;
+  }
+
   /**
    * Populate parameters for the parametrized test.
    * @return Populated parameters.
@@ -143,47 +184,6 @@ public class ReplicationFactorChangeTest {
       return false;
     }
     return true;
-  }
-
-  private final int _testId;
-  private final Set<String> _topics;
-  private final short _replicationFactor;
-  private final Goal _goal;
-  private final OptimizationOptions _optimizationOptions;
-  private final Class<Throwable> _exceptionClass;
-  private final ClusterModel _clusterModel;
-  private final Boolean _expectedToOptimize;
-  private Map<String, List<Integer>> _brokersByRack;
-  private Map<Integer, String> _rackByBroker;
-  private Cluster _cluster;
-
-  /**
-   * Constructor of Replication Factor Change Test.
-   *
-   * @param testId The test id.
-   * @param topics Topics to modify replication factor.
-   * @param replicationFactor The target replication factor.
-   * @param goal Goal to be used to further tune location of new replicas.
-   * @param exceptionClass Expected exception class (if any).
-   * @param clusterModel Cluster model to be used for the test.
-   * @param expectedToOptimize The expectation on whether the cluster state will be considered optimized or not.
-   */
-  public ReplicationFactorChangeTest(int testId,
-                                     Set<String> topics,
-                                     short replicationFactor,
-                                     Goal goal,
-                                     Class<Throwable> exceptionClass,
-                                     ClusterModel clusterModel,
-                                     Boolean expectedToOptimize) {
-    _testId = testId;
-    _topics = topics;
-    _replicationFactor = replicationFactor;
-    _goal = goal;
-    _optimizationOptions = new OptimizationOptions(Collections.emptySet(), Collections.emptySet(), Collections.emptySet(),
-                                                   false, Collections.emptySet(), true);
-    _exceptionClass = exceptionClass;
-    _clusterModel = clusterModel;
-    _expectedToOptimize = expectedToOptimize;
   }
 
   @Test

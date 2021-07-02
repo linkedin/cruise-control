@@ -20,7 +20,7 @@ import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 /**
  * A util class for anomalies.
  */
-public class AnomalyUtils {
+public final class AnomalyUtils {
 
   private AnomalyUtils() {
 

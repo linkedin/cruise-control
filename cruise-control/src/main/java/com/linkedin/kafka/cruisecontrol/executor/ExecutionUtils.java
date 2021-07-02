@@ -77,8 +77,8 @@ public final class ExecutionUtils {
   static final Map<ConcurrencyType, Integer> MAX_CONCURRENCY = new HashMap<>(ConcurrencyType.cachedValues().size());
   static final Map<ConcurrencyType, Integer> MIN_CONCURRENCY = new HashMap<>(ConcurrencyType.cachedValues().size());
   static final Map<String, Double> CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME = new HashMap<>(5);
-  static long LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS;
-  static int LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS;
+  private static long LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS;
+  private static int LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS;
 
   private ExecutionUtils() { }
 
@@ -217,6 +217,39 @@ public final class ExecutionUtils {
   }
 
   /**
+   * Provide a recommended concurrency for the ongoing movements of the given concurrency type using selected current broker
+   * metrics and based on additive-increase/multiplicative-decrease (AIMD) feedback control algorithm.
+   *
+   * @param currentMetricsByBroker Current metrics by broker.
+   * @param currentMovementConcurrency The effective allowed movement concurrency.
+   * @param concurrencyType The type of concurrency for which the recommendation is requested.
+   * @return {@code null} to indicate recommendation for no change in allowed movement concurrency.
+   * Otherwise an integer to indicate the recommended movement concurrency.
+   */
+  static Integer recommendedConcurrency(Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker,
+                                        int currentMovementConcurrency,
+                                        ConcurrencyType concurrencyType) {
+    boolean withinAdjusterLimit = withinConcurrencyAdjusterLimit(currentMetricsByBroker);
+    Integer recommendedConcurrency = null;
+    if (withinAdjusterLimit) {
+      int maxMovementsConcurrency = MAX_CONCURRENCY.get(concurrencyType);
+      // Additive-increase reassignment concurrency (MAX: maxMovementsConcurrency).
+      if (currentMovementConcurrency < maxMovementsConcurrency) {
+        recommendedConcurrency = Math.min(maxMovementsConcurrency, currentMovementConcurrency + ADDITIVE_INCREASE.get(concurrencyType));
+        LOG.info("Concurrency adjuster recommended an increase in {} movement concurrency to {}", concurrencyType, recommendedConcurrency);
+      }
+    } else {
+      int minMovementsConcurrency = MIN_CONCURRENCY.get(concurrencyType);
+      // Multiplicative-decrease reassignment concurrency (MIN: minMovementsConcurrency).
+      if (currentMovementConcurrency > minMovementsConcurrency) {
+        recommendedConcurrency = Math.max(minMovementsConcurrency, currentMovementConcurrency / MULTIPLICATIVE_DECREASE.get(concurrencyType));
+        LOG.info("Concurrency adjuster recommended a decrease in {} movement concurrency to {}", concurrencyType, recommendedConcurrency);
+      }
+    }
+    return recommendedConcurrency;
+  }
+
+  /**
    * Populates the given sets for partitions that are (1) UnderMinISR without any ({@code withOfflineReplicas=false}) or with at least one
    * ({@code withOfflineReplicas=true}) offline replicas and (2) AtMinISR without any ({@code withOfflineReplicas=false}) or with at least
    * one ({@code withOfflineReplicas=true}) offline replicas using the topics from the given Kafka cluster and
@@ -258,39 +291,6 @@ public final class ExecutionUtils {
         }
       }
     }
-  }
-
-  /**
-   * Provide a recommended concurrency for the ongoing movements of the given concurrency type using selected current broker
-   * metrics and based on additive-increase/multiplicative-decrease (AIMD) feedback control algorithm.
-   *
-   * @param currentMetricsByBroker Current metrics by broker.
-   * @param currentMovementConcurrency The effective allowed movement concurrency.
-   * @param concurrencyType The type of concurrency for which the recommendation is requested.
-   * @return {@code null} to indicate recommendation for no change in allowed movement concurrency.
-   * Otherwise an integer to indicate the recommended movement concurrency.
-   */
-  static Integer recommendedConcurrency(Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker,
-                                        int currentMovementConcurrency,
-                                        ConcurrencyType concurrencyType) {
-    boolean withinAdjusterLimit = withinConcurrencyAdjusterLimit(currentMetricsByBroker);
-    Integer recommendedConcurrency = null;
-    if (withinAdjusterLimit) {
-      int maxMovementsConcurrency = MAX_CONCURRENCY.get(concurrencyType);
-      // Additive-increase reassignment concurrency (MAX: maxMovementsConcurrency).
-      if (currentMovementConcurrency < maxMovementsConcurrency) {
-        recommendedConcurrency = Math.min(maxMovementsConcurrency, currentMovementConcurrency + ADDITIVE_INCREASE.get(concurrencyType));
-        LOG.info("Concurrency adjuster recommended an increase in {} movement concurrency to {}", concurrencyType, recommendedConcurrency);
-      }
-    } else {
-      int minMovementsConcurrency = MIN_CONCURRENCY.get(concurrencyType);
-      // Multiplicative-decrease reassignment concurrency (MIN: minMovementsConcurrency).
-      if (currentMovementConcurrency > minMovementsConcurrency) {
-        recommendedConcurrency = Math.max(minMovementsConcurrency, currentMovementConcurrency / MULTIPLICATIVE_DECREASE.get(concurrencyType));
-        LOG.info("Concurrency adjuster recommended a decrease in {} movement concurrency to {}", concurrencyType, recommendedConcurrency);
-      }
-    }
-    return recommendedConcurrency;
   }
 
   /**

@@ -6,7 +6,7 @@ package com.linkedin.cruisecontrol.detector.metricanomaly;
 /**
  * A util class for metric anomaly finders.
  */
-public class PercentileMetricAnomalyFinderUtils {
+public final class PercentileMetricAnomalyFinderUtils {
 
   // Ensure that no metric anomaly is generated unless the upper percentile metric value is a significant metric value.
   public static final double SIGNIFICANT_METRIC_VALUE_THRESHOLD = 1;

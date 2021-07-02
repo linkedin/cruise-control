@@ -50,6 +50,7 @@ public interface MetricSampler extends CruiseControlConfigurable, AutoCloseable 
    * @param metricDef the metric definitions.
    * @param timeoutMs The sampling timeout in milliseconds to stop sampling even if there is more data to get.
    * @return Samples collected from the Kafka cluster.
+   * @deprecated Will be removed in a future release -- please use {@link #getSamples(MetricSamplerOptions)}
    */
   @Deprecated
   Samples getSamples(Cluster cluster,

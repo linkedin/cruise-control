@@ -30,11 +30,8 @@ import org.apache.kafka.common.config.ConfigDef;
  * A class to keep Cruise Control Parameters Configs and defaults.
  * DO NOT CHANGE EXISTING CONFIG NAMES AS CHANGES WOULD BREAK USER CODE.
  */
-public class CruiseControlParametersConfig {
+public final class CruiseControlParametersConfig {
   public static final String DEFAULT_PAUSE_RESUME_PARAMETERS_CLASS = PauseResumeParameters.class.getName();
-  private CruiseControlParametersConfig() {
-
-  }
 
   /**
    * <code>stop.proposal.parameters.class</code>
@@ -173,6 +170,9 @@ public class CruiseControlParametersConfig {
   public static final String TOPIC_CONFIGURATION_PARAMETERS_CLASS_CONFIG = "topic.configuration.parameters.class";
   public static final String DEFAULT_TOPIC_CONFIGURATION_PARAMETERS_CLASS = TopicConfigurationParameters.class.getName();
   public static final String TOPIC_CONFIGURATION_PARAMETERS_CLASS_DOC = "The class for parameters of a topic configuration request.";
+
+  private CruiseControlParametersConfig() {
+  }
 
   /**
    * Define configs for Cruise Control Parameters.

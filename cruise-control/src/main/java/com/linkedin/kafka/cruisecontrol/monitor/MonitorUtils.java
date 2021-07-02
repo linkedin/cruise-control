@@ -47,7 +47,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMet
 /**
  * A util class for Monitor.
  */
-public class MonitorUtils {
+public final class MonitorUtils {
   // A utility variable for conversion of unit interval to percentage -- i.e. [0, 1.0] -> [0, 100.0].
   public static final double UNIT_INTERVAL_TO_PERCENTAGE = 100.0;
   private static final Logger LOG = LoggerFactory.getLogger(MonitorUtils.class);

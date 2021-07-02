@@ -33,7 +33,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.BROKER_CAPAC
 /**
  * A class to generate and populate random clusters with given properties.
  */
-public class RandomCluster {
+public final class RandomCluster {
 
   // The randomly generated cluster always has this topic and the partition count of this topic
   // equals the broker count in the cluster.

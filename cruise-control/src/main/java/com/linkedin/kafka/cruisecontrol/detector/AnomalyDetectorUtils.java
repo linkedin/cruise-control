@@ -33,7 +33,7 @@ import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.RE
 /**
  * A util class for Anomaly Detectors.
  */
-public class AnomalyDetectorUtils {
+public final class AnomalyDetectorUtils {
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetectorUtils.class);
   public static final String KAFKA_CRUISE_CONTROL_OBJECT_CONFIG = "kafka.cruise.control.object";
   public static final String ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG = "anomaly.detection.time.ms.object";

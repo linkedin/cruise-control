@@ -48,16 +48,16 @@ public abstract class CapacityGoal extends AbstractGoal {
 
   }
 
-  @Override
-  public boolean isHardGoal() {
-    return true;
-  }
-
   /**
    * Package private for unit test.
    */
   CapacityGoal(BalancingConstraint constraint) {
     _balancingConstraint = constraint;
+  }
+
+  @Override
+  public boolean isHardGoal() {
+    return true;
   }
 
   protected abstract Resource resource();

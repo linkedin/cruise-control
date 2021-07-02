@@ -40,7 +40,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.getRackHandl
 import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 
-public class RunnableUtils {
+public final class RunnableUtils {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlUtils.class);
   // Common self healing constants used in runnables.
   public static final boolean SELF_HEALING_DRYRUN = false;

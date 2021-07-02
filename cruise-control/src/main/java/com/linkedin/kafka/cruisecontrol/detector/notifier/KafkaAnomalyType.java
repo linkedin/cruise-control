@@ -41,6 +41,7 @@ public enum KafkaAnomalyType implements AnomalyType {
   @JsonResponseField
   TOPIC_ANOMALY(5);
 
+  private static final List<KafkaAnomalyType> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
   private final int _priority;
 
   KafkaAnomalyType(int priority) {
@@ -51,8 +52,6 @@ public enum KafkaAnomalyType implements AnomalyType {
   public int priority() {
     return _priority;
   }
-
-  private static final List<KafkaAnomalyType> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 
   /**
    * Use this instead of values() because values() creates a new array each time.

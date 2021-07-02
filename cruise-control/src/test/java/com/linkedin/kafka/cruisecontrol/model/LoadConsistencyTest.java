@@ -25,6 +25,17 @@ import static org.junit.Assert.fail;
  */
 @RunWith(Parameterized.class)
 public class LoadConsistencyTest {
+  private final ClusterModel _clusterModel;
+  private final boolean _shouldPassSanityCheck;
+
+  /**
+   * Constructor of LoadConsistencyTest.
+   */
+  public LoadConsistencyTest(ClusterModel clusterModel, boolean shouldPassSanityCheck) {
+    _clusterModel = clusterModel;
+    _shouldPassSanityCheck = shouldPassSanityCheck;
+  }
+
   /**
    * Populate parameters for the parametrized test.
    * @return Populated parameters.
@@ -79,28 +90,17 @@ public class LoadConsistencyTest {
     // Test for failure after adding replica in low level of abstraction only.
     ClusterModel smallFaultyReplicaAddClusterModel = DeterministicCluster.smallClusterModel(brokerCapacity);
     smallFaultyReplicaAddClusterModel.broker(0)
-        .addReplica(new Replica(pInfoT10, smallFaultyReplicaAddClusterModel.broker(1), false));
+                                     .addReplica(new Replica(pInfoT10, smallFaultyReplicaAddClusterModel.broker(1), false));
     Object[] smallFaultyReplicaAddClusterModelParams = {smallFaultyReplicaAddClusterModel, false};
     params.add(smallFaultyReplicaAddClusterModelParams);
 
     ClusterModel mediumFaultyReplicaAddClusterModel = DeterministicCluster.mediumClusterModel(brokerCapacity);
     mediumFaultyReplicaAddClusterModel.broker(0)
-        .addReplica(new Replica(pInfoB0, mediumFaultyReplicaAddClusterModel.broker(1), false));
+                                      .addReplica(new Replica(pInfoB0, mediumFaultyReplicaAddClusterModel.broker(1), false));
     Object[] mediumFaultyReplicaAddClusterModelParams = {mediumFaultyReplicaAddClusterModel, false};
     params.add(mediumFaultyReplicaAddClusterModelParams);
 
     return params;
-  }
-
-  private ClusterModel _clusterModel;
-  private boolean _shouldPassSanityCheck;
-
-  /**
-   * Constructor of LoadConsistencyTest.
-   */
-  public LoadConsistencyTest(ClusterModel clusterModel, boolean shouldPassSanityCheck) {
-    _clusterModel = clusterModel;
-    _shouldPassSanityCheck = shouldPassSanityCheck;
   }
 
   @Test

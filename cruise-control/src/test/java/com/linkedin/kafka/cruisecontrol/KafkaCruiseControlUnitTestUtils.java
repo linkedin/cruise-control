@@ -29,7 +29,7 @@ import static org.junit.Assert.fail;
 /**
  * A test util class.
  */
-public class KafkaCruiseControlUnitTestUtils {
+public final class KafkaCruiseControlUnitTestUtils {
   public static final int ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE = 10;
   public static final String OPENAPI_SPEC_PATH = System.getProperty("user.dir") + "/src/yaml/base.yaml";
   public static final String CRUISE_CONTROL_PACKAGE = "com.linkedin.kafka.cruisecontrol";

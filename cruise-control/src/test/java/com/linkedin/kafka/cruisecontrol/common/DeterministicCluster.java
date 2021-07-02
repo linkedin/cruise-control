@@ -29,7 +29,7 @@ import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
 
 
-public class DeterministicCluster {
+public final class DeterministicCluster {
   public static final String T1 = "T1";
   public static final String T2 = "T2";
   public static final String TOPIC_A = "A";

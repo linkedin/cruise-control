@@ -26,7 +26,7 @@ import org.apache.kafka.common.utils.SystemTime;
 import org.easymock.EasyMock;
 
 
-public class OfflineProposalGenerator {
+public final class OfflineProposalGenerator {
 
   private OfflineProposalGenerator() {
 

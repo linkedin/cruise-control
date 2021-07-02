@@ -12,7 +12,7 @@ import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import java.lang.reflect.Constructor;
 import java.util.Properties;
 
-public class AnalyzerUnitTestUtils {
+public final class AnalyzerUnitTestUtils {
 
   private AnalyzerUnitTestUtils() {
 

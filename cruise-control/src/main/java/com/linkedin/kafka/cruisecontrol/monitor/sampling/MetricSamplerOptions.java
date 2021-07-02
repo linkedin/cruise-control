@@ -15,6 +15,14 @@ import com.linkedin.cruisecontrol.metricdef.MetricDef;
  * Future use-cases may choose to extend this class and add more options.
  */
 public class MetricSamplerOptions {
+  private final Cluster _cluster;
+  private final Set<TopicPartition> _assignedPartitions;
+  private final long _startTimeMs;
+  private final long _endTimeMs;
+  private final MetricSampler.SamplingMode _mode;
+  private final MetricDef _metricDef;
+  private final long _timeoutMs;
+
   /**
    * @param cluster the metadata of the cluster.
    * @param assignedPartitions the topic partition
@@ -39,14 +47,6 @@ public class MetricSamplerOptions {
     _metricDef = metricDef;
     _timeoutMs = timeoutMs;
   }
-
-  private final Cluster _cluster;
-  private final Set<TopicPartition> _assignedPartitions;
-  private final long _startTimeMs;
-  private final long _endTimeMs;
-  private final MetricSampler.SamplingMode _mode;
-  private final MetricDef _metricDef;
-  private final long _timeoutMs;
 
   public Cluster cluster() {
     return _cluster;
