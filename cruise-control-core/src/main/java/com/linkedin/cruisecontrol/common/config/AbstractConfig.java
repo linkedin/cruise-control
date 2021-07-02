@@ -130,7 +130,7 @@ public class AbstractConfig {
     if (configKey == null) {
       return null;
     }
-    return configKey._type;
+    return configKey.type();
   }
 
   public Password getPassword(String key) {

@@ -11,7 +11,7 @@ import static java.lang.Math.max;
  * A class to give the maximum of the recorded values.
  */
 class ValueMax implements ValueHolder {
-  static double NO_RECORD_EXISTS = -1.0;
+  protected static final double NO_RECORD_EXISTS = -1.0;
   private double _value = NO_RECORD_EXISTS;
 
   @Override

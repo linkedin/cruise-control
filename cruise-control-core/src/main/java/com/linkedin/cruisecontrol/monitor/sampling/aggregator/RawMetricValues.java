@@ -40,11 +40,6 @@ public class RawMetricValues extends WindowIndexedArrays {
   // A bit set to indicate whether a given window is valid or not.
   private final BitSet _validity;
 
-  @Override
-  protected int length() {
-    return _counts.length;
-  }
-
   /**
    * Construct a RawMetricValues.
    *
@@ -55,7 +50,7 @@ public class RawMetricValues extends WindowIndexedArrays {
   public RawMetricValues(int numWindowsToKeep, byte minSamplesPerWindow, int numMetricTypesInSample) {
     if (numWindowsToKeep <= 1) {
       throw new IllegalArgumentException("The number of windows should be at least 2 because at least one available"
-                                             + " window and one current window are needed.");
+                                         + " window and one current window are needed.");
     }
     _windowValuesByMetricId = new HashMap<>(numMetricTypesInSample);
     _counts = new byte[numWindowsToKeep];
@@ -64,6 +59,11 @@ public class RawMetricValues extends WindowIndexedArrays {
     _minSamplesPerWindow = minSamplesPerWindow;
     _halfMinRequiredSamples = (byte) Math.max(1, _minSamplesPerWindow / 2);
     _oldestWindowIndex = Long.MAX_VALUE;
+  }
+
+  @Override
+  protected int length() {
+    return _counts.length;
   }
 
   /**
@@ -266,18 +266,6 @@ public class RawMetricValues extends WindowIndexedArrays {
     return aggregate(windowIndices, metricDef, true);
   }
 
-  /**
-   * Peek the value for the current window.
-   *
-   * @param metricDef the metric definitions.
-   * @return The aggregated values and extrapolations of the given sorted set of windows in that order.
-   */
-  public synchronized ValuesAndExtrapolations peekCurrentWindow(long currentWindowIndex, MetricDef metricDef) {
-    SortedSet<Long> window = new TreeSet<>();
-    window.add(currentWindowIndex);
-    return aggregate(window, metricDef, false);
-  }
-
   private ValuesAndExtrapolations aggregate(SortedSet<Long> windowIndices, MetricDef metricDef, boolean checkWindow) {
     if (_windowValuesByMetricId.isEmpty()) {
       return ValuesAndExtrapolations.empty(windowIndices.size(), metricDef);
@@ -330,11 +318,11 @@ public class RawMetricValues extends WindowIndexedArrays {
             default:
               throw new IllegalStateException("Should never be here.");
           }
-        // Neighbor not available, use the insufficient samples.
+          // Neighbor not available, use the insufficient samples.
         } else if (_counts[arrayIndex] > 0) {
           aggValuesForMetric.set(resultIndex, getValue(info, arrayIndex, values));
           extrapolations.putIfAbsent(resultIndex, Extrapolation.FORCED_INSUFFICIENT);
-        // Nothing is available, just return all 0 and NO_VALID_EXTRAPOLATION.
+          // Nothing is available, just return all 0 and NO_VALID_EXTRAPOLATION.
         } else {
           aggValuesForMetric.set(resultIndex, 0);
           extrapolations.putIfAbsent(resultIndex, Extrapolation.NO_VALID_EXTRAPOLATION);
@@ -343,6 +331,18 @@ public class RawMetricValues extends WindowIndexedArrays {
       }
     }
     return new ValuesAndExtrapolations(new AggregatedMetricValues(aggValues), extrapolations);
+  }
+
+  /**
+   * Peek the value for the current window.
+   *
+   * @param metricDef the metric definitions.
+   * @return The aggregated values and extrapolations of the given sorted set of windows in that order.
+   */
+  public synchronized ValuesAndExtrapolations peekCurrentWindow(long currentWindowIndex, MetricDef metricDef) {
+    SortedSet<Long> window = new TreeSet<>();
+    window.add(currentWindowIndex);
+    return aggregate(window, metricDef, false);
   }
 
   /**

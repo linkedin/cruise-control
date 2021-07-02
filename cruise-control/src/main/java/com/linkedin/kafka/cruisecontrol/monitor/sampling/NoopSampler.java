@@ -20,7 +20,8 @@ public class NoopSampler implements MetricSampler {
     return null;
   }
 
-  @Override public Samples getSamples(MetricSamplerOptions metricSamplerOptions) throws SamplingException {
+  @Override
+  public Samples getSamples(MetricSamplerOptions metricSamplerOptions) throws SamplingException {
     return null;
   }
 

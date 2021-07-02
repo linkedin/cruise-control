@@ -10,7 +10,7 @@ import java.util.Iterator;
 import java.util.function.Supplier;
 
 
-public class Utils {
+public final class Utils {
 
   private Utils() {
 

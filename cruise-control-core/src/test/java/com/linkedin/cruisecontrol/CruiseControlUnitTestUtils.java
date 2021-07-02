@@ -12,7 +12,7 @@ import com.linkedin.cruisecontrol.monitor.sampling.MetricSample;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator;
 
 
-public class CruiseControlUnitTestUtils {
+public final class CruiseControlUnitTestUtils {
   public static final String METRIC1 = "m1";
   public static final String METRIC2 = "m2";
   public static final String METRIC3 = "m3";

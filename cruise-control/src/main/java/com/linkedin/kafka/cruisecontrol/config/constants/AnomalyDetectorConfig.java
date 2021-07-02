@@ -32,12 +32,8 @@ import static org.apache.kafka.common.config.ConfigDef.Range.between;
  * A class to keep Cruise Control Anomaly Detector Configs and defaults.
  * DO NOT CHANGE EXISTING CONFIG NAMES AS CHANGES WOULD BREAK USER CODE.
  */
-public class AnomalyDetectorConfig {
+public final class AnomalyDetectorConfig {
   public static final boolean DEFAULT_SELF_HEALING_EXCLUDE_RECENT_BROKERS_CONFIG = true;
-
-  private AnomalyDetectorConfig() {
-
-  }
 
   /**
    * <code>metric.anomaly.finder.class</code>
@@ -278,6 +274,9 @@ public class AnomalyDetectorConfig {
   public static final String PROVISIONER_ENABLE_CONFIG = "provisioner.enable";
   public static final boolean DEFAULT_PROVISIONER_ENABLE = true;
   public static final String PROVISIONER_ENABLE_DOC = "The flag to indicate whether use of provisioner is enabled.";
+
+  private AnomalyDetectorConfig() {
+  }
 
   /**
    * Define configs for Anomaly Detector.

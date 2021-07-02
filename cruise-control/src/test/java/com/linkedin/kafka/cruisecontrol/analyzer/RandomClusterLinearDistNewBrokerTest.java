@@ -17,11 +17,6 @@ import org.junit.runners.Parameterized;
 @RunWith(Parameterized.class)
 public class RandomClusterLinearDistNewBrokerTest extends RandomClusterTest {
 
-  @Parameterized.Parameters
-  public static Collection<Object[]> data() {
-    return RandomClusterTest.data(TestConstants.Distribution.LINEAR);
-  }
-
   /**
    * Constructor of Random Cluster Test.
    *  @param modifiedProperties  Modified cluster properties over the {@link TestConstants#BASE_PROPERTIES}.
@@ -36,6 +31,11 @@ public class RandomClusterLinearDistNewBrokerTest extends RandomClusterTest {
                                               BalancingConstraint balancingConstraint,
                                               List<OptimizationVerifier.Verification> verifications) {
     super(modifiedProperties, goalNameByPriority, replicaDistribution, balancingConstraint, verifications);
+  }
+
+  @Parameterized.Parameters
+  public static Collection<Object[]> data() {
+    return RandomClusterTest.data(TestConstants.Distribution.LINEAR);
   }
 
   @Test

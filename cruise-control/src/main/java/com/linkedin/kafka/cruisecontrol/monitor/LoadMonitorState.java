@@ -16,7 +16,7 @@ import javax.annotation.Nonnull;
 
 
 @JsonResponseClass
-public class LoadMonitorState {
+public final class LoadMonitorState {
   @JsonResponseField
   private static final String STATE = "state";
   @JsonResponseField(required = false)

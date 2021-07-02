@@ -15,11 +15,7 @@ import java.util.function.Function;
  * A factory class of replica sort functions. It is always preferred to use the functions in this factory instead
  * of writing ad-hoc functions.
  */
-public class ReplicaSortFunctionFactory {
-
-  private ReplicaSortFunctionFactory() {
-
-  }
+public final class ReplicaSortFunctionFactory {
   // Priority functions
   /** Prioritize the immigrant replicas */
   private static final Function<Replica, Integer> PRIORITIZE_IMMIGRANTS = r -> r.originalBroker() != r.broker() ? 0 : 1;
@@ -42,6 +38,9 @@ public class ReplicaSortFunctionFactory {
   /** Select immigrant or offline replicas only */
   private static final Function<Replica, Boolean> SELECT_IMMIGRANT_OR_OFFLINE_REPLICAS = r -> r.originalBroker() != r.broker()
                                                                                               || r.isCurrentOffline();
+
+  private ReplicaSortFunctionFactory() {
+  }
 
   // Score functions
   /**

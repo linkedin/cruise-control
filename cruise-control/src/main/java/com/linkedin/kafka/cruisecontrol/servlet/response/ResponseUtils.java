@@ -25,7 +25,7 @@ import javax.servlet.http.HttpServletResponse;
 /**
  * The util class for Kafka Cruise Control response.
  */
-public class ResponseUtils {
+public final class ResponseUtils {
   public static final int JSON_VERSION = 1;
   public static final String VERSION = "version";
   @JsonResponseField
@@ -157,10 +157,9 @@ public class ResponseUtils {
       result.append("{");
       for (Iterator<Map.Entry<String, JsonElement>> iterator = node.getAsJsonObject().entrySet().iterator(); iterator.hasNext(); ) {
         Map.Entry<String, JsonElement> entry = iterator.next();
-        key = entry.getKey();
         JsonElement child = entry.getValue();
 
-        result.append(convertNodeToStringSchemaNode(child, key));
+        result.append(convertNodeToStringSchemaNode(child, entry.getKey()));
         if (iterator.hasNext()) {
           result.append(",");
         }

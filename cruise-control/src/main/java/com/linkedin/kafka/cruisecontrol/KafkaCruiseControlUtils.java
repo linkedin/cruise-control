@@ -73,7 +73,7 @@ import static kafka.log.LogConfig.RetentionMsProp;
 /**
  * Util class for convenience.
  */
-public class KafkaCruiseControlUtils {
+public final class KafkaCruiseControlUtils {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlUtils.class);
   // Cruise Control sensor types -- i.e. the first element of the metric name.
   public static final String EXECUTOR_SENSOR = "Executor";

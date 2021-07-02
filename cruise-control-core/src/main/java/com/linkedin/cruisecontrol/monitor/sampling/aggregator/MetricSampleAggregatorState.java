@@ -36,11 +36,6 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
   // The window size.
   private final long _windowMs;
 
-  @Override
-  protected int length() {
-    return _windowGenerations.length;
-  }
-
   /**
    * Construct the MetricSampleAggregatorState.
    */
@@ -58,6 +53,11 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
       _windowGenerations[arrayIndex] = new MyAtomicLong(0);
     }
     _windowMs = windowMs;
+  }
+
+  @Override
+  protected int length() {
+    return _windowGenerations.length;
   }
 
   /**

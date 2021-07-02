@@ -79,7 +79,7 @@ public class SelfHealingNotifierTest {
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertEquals(SelfHealingNotifier.DEFAULT_ALERT_THRESHOLD_MS + failureTime1 - mockTime.milliseconds(),
                  result.delay());
-    assertFalse(anomalyNotifier._alertCalled.get(KafkaAnomalyType.BROKER_FAILURE));
+    assertFalse(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.BROKER_FAILURE));
 
     // Sleep to 1 ms before alert.
     mockTime.sleep(result.delay() - 1);
@@ -89,7 +89,7 @@ public class SelfHealingNotifierTest {
                                                        parameterConfigOverrides));
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertEquals(1, result.delay());
-    assertFalse(anomalyNotifier._alertCalled.get(KafkaAnomalyType.BROKER_FAILURE));
+    assertFalse(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.BROKER_FAILURE));
 
     // Sleep 1 ms
     mockTime.sleep(1);
@@ -101,7 +101,7 @@ public class SelfHealingNotifierTest {
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertEquals(SelfHealingNotifier.DEFAULT_AUTO_FIX_THRESHOLD_MS + failureTime1 - mockTime.milliseconds(),
                  result.delay());
-    assertTrue(anomalyNotifier._alertCalled.get(KafkaAnomalyType.BROKER_FAILURE));
+    assertTrue(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.BROKER_FAILURE));
 
     // Sleep to 1 ms before alert.
     mockTime.sleep(result.delay() - 1);
@@ -112,8 +112,8 @@ public class SelfHealingNotifierTest {
                                                        parameterConfigOverrides));
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertEquals(1, result.delay());
-    assertFalse(anomalyNotifier._alertCalled.get(KafkaAnomalyType.BROKER_FAILURE));
-    assertFalse(anomalyNotifier._autoFixTriggered.get(KafkaAnomalyType.BROKER_FAILURE));
+    assertFalse(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.BROKER_FAILURE));
+    assertFalse(anomalyNotifier.isAutoFixTriggeredFor(KafkaAnomalyType.BROKER_FAILURE));
 
     // Sleep 1 ms
     mockTime.sleep(1);
@@ -124,12 +124,12 @@ public class SelfHealingNotifierTest {
                                                        parameterConfigOverrides));
     assertEquals(AnomalyNotificationResult.Action.FIX, result.action());
     assertEquals(-1L, result.delay());
-    assertTrue(anomalyNotifier._alertCalled.get(KafkaAnomalyType.BROKER_FAILURE));
-    assertTrue(anomalyNotifier._autoFixTriggered.get(KafkaAnomalyType.BROKER_FAILURE));
-    assertFalse(anomalyNotifier._alertCalled.get(KafkaAnomalyType.GOAL_VIOLATION));
-    assertFalse(anomalyNotifier._alertCalled.get(KafkaAnomalyType.METRIC_ANOMALY));
-    assertFalse(anomalyNotifier._alertCalled.get(KafkaAnomalyType.DISK_FAILURE));
-    assertFalse(anomalyNotifier._alertCalled.get(KafkaAnomalyType.TOPIC_ANOMALY));
+    assertTrue(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.BROKER_FAILURE));
+    assertTrue(anomalyNotifier.isAutoFixTriggeredFor(KafkaAnomalyType.BROKER_FAILURE));
+    assertFalse(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.GOAL_VIOLATION));
+    assertFalse(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.METRIC_ANOMALY));
+    assertFalse(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.DISK_FAILURE));
+    assertFalse(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.TOPIC_ANOMALY));
   }
 
   @Test
@@ -183,8 +183,8 @@ public class SelfHealingNotifierTest {
                                                        BrokerFailures.class,
                                                        parameterConfigOverrides));
     assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
-    assertTrue(anomalyNotifier._alertCalled.get(KafkaAnomalyType.BROKER_FAILURE));
-    assertFalse(anomalyNotifier._autoFixTriggered.get(KafkaAnomalyType.BROKER_FAILURE));
+    assertTrue(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.BROKER_FAILURE));
+    assertFalse(anomalyNotifier.isAutoFixTriggeredFor(KafkaAnomalyType.BROKER_FAILURE));
 
     // (2) Test goal violation anomaly can be detected by notifier.
     anomalyNotifier.resetAlert(KafkaAnomalyType.GOAL_VIOLATION);
@@ -193,8 +193,8 @@ public class SelfHealingNotifierTest {
                                                        GoalViolations.class,
                                                        parameterConfigOverrides));
     assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
-    assertTrue(anomalyNotifier._alertCalled.get(KafkaAnomalyType.GOAL_VIOLATION));
-    assertFalse(anomalyNotifier._autoFixTriggered.get(KafkaAnomalyType.GOAL_VIOLATION));
+    assertTrue(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.GOAL_VIOLATION));
+    assertFalse(anomalyNotifier.isAutoFixTriggeredFor(KafkaAnomalyType.GOAL_VIOLATION));
 
     // (3) Test metric anomaly can be detected by notifier.
     anomalyNotifier.resetAlert(KafkaAnomalyType.METRIC_ANOMALY);
@@ -202,8 +202,8 @@ public class SelfHealingNotifierTest {
                                                                                             KafkaMetricAnomaly.class,
                                                                                             parameterConfigOverrides));
     assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
-    assertTrue(anomalyNotifier._alertCalled.get(KafkaAnomalyType.METRIC_ANOMALY));
-    assertFalse(anomalyNotifier._autoFixTriggered.get(KafkaAnomalyType.METRIC_ANOMALY));
+    assertTrue(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.METRIC_ANOMALY));
+    assertFalse(anomalyNotifier.isAutoFixTriggeredFor(KafkaAnomalyType.METRIC_ANOMALY));
 
     // (4) Test disk failure anomaly can be detected by notifier.
     anomalyNotifier.resetAlert(KafkaAnomalyType.DISK_FAILURE);
@@ -211,8 +211,8 @@ public class SelfHealingNotifierTest {
                                                                                           DiskFailures.class,
                                                                                           parameterConfigOverrides));
     assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
-    assertTrue(anomalyNotifier._alertCalled.get(KafkaAnomalyType.DISK_FAILURE));
-    assertFalse(anomalyNotifier._autoFixTriggered.get(KafkaAnomalyType.DISK_FAILURE));
+    assertTrue(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.DISK_FAILURE));
+    assertFalse(anomalyNotifier.isAutoFixTriggeredFor(KafkaAnomalyType.DISK_FAILURE));
 
     // (5) Test topic anomaly can be detected by notifier.
     anomalyNotifier.resetAlert(KafkaAnomalyType.TOPIC_ANOMALY);
@@ -220,13 +220,13 @@ public class SelfHealingNotifierTest {
     topicReplicationFactorAnomaly.configure(parameterConfigOverrides);
     result = anomalyNotifier.onTopicAnomaly(topicReplicationFactorAnomaly);
     assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
-    assertTrue(anomalyNotifier._alertCalled.get(KafkaAnomalyType.TOPIC_ANOMALY));
-    assertFalse(anomalyNotifier._autoFixTriggered.get(KafkaAnomalyType.TOPIC_ANOMALY));
+    assertTrue(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.TOPIC_ANOMALY));
+    assertFalse(anomalyNotifier.isAutoFixTriggeredFor(KafkaAnomalyType.TOPIC_ANOMALY));
   }
 
   private static class TestingBrokerFailureAutoFixNotifier extends SelfHealingNotifier {
-    final Map<AnomalyType, Boolean> _alertCalled;
-    final Map<AnomalyType, Boolean> _autoFixTriggered;
+    private final Map<AnomalyType, Boolean> _alertCalled;
+    private final Map<AnomalyType, Boolean> _autoFixTriggered;
 
     TestingBrokerFailureAutoFixNotifier(Time time) {
       super(time);
@@ -236,6 +236,14 @@ public class SelfHealingNotifierTest {
         _alertCalled.put(alertType, false);
         _autoFixTriggered.put(alertType, false);
       }
+    }
+
+    public boolean isAlertCalledFor(AnomalyType anomalyType) {
+      return _alertCalled.get(anomalyType);
+    }
+
+    public boolean isAutoFixTriggeredFor(AnomalyType anomalyType) {
+      return _autoFixTriggered.get(anomalyType);
     }
 
     @Override

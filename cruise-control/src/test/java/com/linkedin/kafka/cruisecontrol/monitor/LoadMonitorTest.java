@@ -606,7 +606,7 @@ public class LoadMonitorTest {
     return futureByBroker;
   }
 
-  private static class TestContext {
+  private static final class TestContext {
     private final LoadMonitor _loadMonitor;
     private final KafkaPartitionMetricSampleAggregator _aggregator;
 

@@ -30,6 +30,20 @@ public class SslConnectionIntegrationTest extends CruiseControlIntegrationTestHa
 
   private static final String CRUISE_CONTROL_STATE_ENDPOINT = "kafkacruisecontrol/" + STATE;
   public static final String HTTPS = "https";
+  private final TrustManager[] _trustAllCerts = new TrustManager[]{
+      new X509TrustManager() {
+        public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+          return null;
+        }
+        public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) {
+          fail("checkClientTrusted shouldn't be called");
+        }
+        public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) {
+          assertEquals(1, certs.length);
+          assertEquals("CN=" + LOCALHOST, certs[0].getIssuerDN().getName());
+        }
+      }
+  };
 
   @Before
   public void setup() throws Exception {
@@ -52,21 +66,6 @@ public class SslConnectionIntegrationTest extends CruiseControlIntegrationTestHa
     sslConfigs.put(WebServerConfig.WEBSERVER_SSL_KEY_PASSWORD_CONFIG, "jetty");
     return sslConfigs;
   }
-
-  private final TrustManager[] _trustAllCerts = new TrustManager[]{
-      new X509TrustManager() {
-        public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-          return null;
-        }
-        public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) {
-          fail("checkClientTrusted shouldn't be called");
-        }
-        public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) {
-          assertEquals(1, certs.length);
-          assertEquals("CN=" + LOCALHOST, certs[0].getIssuerDN().getName());
-        }
-      }
-  };
 
   @Test
   public void testSslConnection() throws Exception {

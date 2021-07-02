@@ -21,7 +21,7 @@ import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 /**
  * The util class for model.
  */
-public class ModelUtils {
+public final class ModelUtils {
   private static final Logger LOG = LoggerFactory.getLogger(ModelUtils.class);
   public static final String BROKER_ID = "brokerid";
   public static final String BROKER_STATE = "brokerstate";
@@ -69,9 +69,9 @@ public class ModelUtils {
       if (leaderBytesInRate == 0.0 && leaderBytesOutRate == 0.0) {
         return 0.0;
       } else {
-        return leaderCpuUtil * (ModelParameters.CPU_WEIGHT_OF_FOLLOWER_BYTES_IN_RATE * leaderBytesInRate) / (
-            ModelParameters.CPU_WEIGHT_OF_LEADER_BYTES_IN_RATE * leaderBytesInRate
-                + ModelParameters.CPU_WEIGHT_OF_LEADER_BYTES_OUT_RATE * leaderBytesOutRate);
+        return leaderCpuUtil * (ModelParameters.cpuWeightOfFollowerBytesInRate() * leaderBytesInRate) / (
+            ModelParameters.cpuWeightOfLeaderBytesInRate() * leaderBytesInRate
+                + ModelParameters.cpuWeightOfLeaderBytesOutRate() * leaderBytesOutRate);
       }
     }
   }
@@ -111,9 +111,9 @@ public class ModelUtils {
                   partitionBytesOutRate, brokerLeaderBytesOutRate);
         return null;
       } else {
-        double brokerLeaderBytesInContribution = ModelParameters.CPU_WEIGHT_OF_LEADER_BYTES_IN_RATE * brokerLeaderBytesInRate;
-        double brokerLeaderBytesOutContribution = ModelParameters.CPU_WEIGHT_OF_LEADER_BYTES_OUT_RATE * brokerLeaderBytesOutRate;
-        double brokerFollowerBytesInContribution = ModelParameters.CPU_WEIGHT_OF_FOLLOWER_BYTES_IN_RATE * brokerFollowerBytesInRate;
+        double brokerLeaderBytesInContribution = ModelParameters.cpuWeightOfLeaderBytesInRate() * brokerLeaderBytesInRate;
+        double brokerLeaderBytesOutContribution = ModelParameters.cpuWeightOfLeaderBytesOutRate() * brokerLeaderBytesOutRate;
+        double brokerFollowerBytesInContribution = ModelParameters.cpuWeightOfFollowerBytesInRate() * brokerFollowerBytesInRate;
         double totalContribution = brokerLeaderBytesInContribution + brokerLeaderBytesOutContribution + brokerFollowerBytesInContribution;
         double leaderReplicaContribution = (brokerLeaderBytesInContribution * Math.min(1, partitionBytesInRate / brokerLeaderBytesInRate))
                                            + (brokerLeaderBytesOutContribution * Math.min(1, partitionBytesOutRate / brokerLeaderBytesOutRate));

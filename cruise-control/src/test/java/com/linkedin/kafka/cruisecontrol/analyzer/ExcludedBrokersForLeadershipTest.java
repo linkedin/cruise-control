@@ -68,6 +68,37 @@ public class ExcludedBrokersForLeadershipTest {
   @Rule
   public ExpectedException _expected = ExpectedException.none();
 
+  private final int _testId;
+  private final Goal _goal;
+  private final OptimizationOptions _optimizationOptions;
+  private final Class<Throwable> _exceptionClass;
+  private final ClusterModel _clusterModel;
+  private final Boolean _expectedToOptimize;
+
+  /**
+   * Constructor of Excluded Brokers For Leadership Test.
+   *
+   * @param testId the test id
+   * @param goal Goal to be tested.
+   * @param excludedBrokersForLeadership Brokers excluded from receiving leadership upon proposal generation.
+   * @param exceptionClass Expected exception class (if any).
+   * @param clusterModel Cluster model to be used for the test.
+   * @param expectedToOptimize The expectation on whether the cluster state will be considered optimized or not.
+   */
+  public ExcludedBrokersForLeadershipTest(int testId,
+                                          Goal goal,
+                                          Set<Integer> excludedBrokersForLeadership,
+                                          Class<Throwable> exceptionClass,
+                                          ClusterModel clusterModel,
+                                          Boolean expectedToOptimize) {
+    _testId = testId;
+    _goal = goal;
+    _optimizationOptions = new OptimizationOptions(Collections.emptySet(), excludedBrokersForLeadership, Collections.emptySet());
+    _exceptionClass = exceptionClass;
+    _clusterModel = clusterModel;
+    _expectedToOptimize = expectedToOptimize;
+  }
+
   /**
    * Populate parameters for the parametrized test.
    * @return Populated parameters.
@@ -286,37 +317,6 @@ public class ExcludedBrokersForLeadershipTest {
     p.add(params(2, PreferredLeaderElectionGoal.class, excludeAllBrokers, null, unbalanced3(), noDeadBroker, false));
 
     return p;
-  }
-
-  private final int _testId;
-  private final Goal _goal;
-  private final OptimizationOptions _optimizationOptions;
-  private final Class<Throwable> _exceptionClass;
-  private final ClusterModel _clusterModel;
-  private final Boolean _expectedToOptimize;
-
-  /**
-   * Constructor of Excluded Brokers For Leadership Test.
-   *
-   * @param testId the test id
-   * @param goal Goal to be tested.
-   * @param excludedBrokersForLeadership Brokers excluded from receiving leadership upon proposal generation.
-   * @param exceptionClass Expected exception class (if any).
-   * @param clusterModel Cluster model to be used for the test.
-   * @param expectedToOptimize The expectation on whether the cluster state will be considered optimized or not.
-   */
-  public ExcludedBrokersForLeadershipTest(int testId,
-                                          Goal goal,
-                                          Set<Integer> excludedBrokersForLeadership,
-                                          Class<Throwable> exceptionClass,
-                                          ClusterModel clusterModel,
-                                          Boolean expectedToOptimize) {
-    _testId = testId;
-    _goal = goal;
-    _optimizationOptions = new OptimizationOptions(Collections.emptySet(), excludedBrokersForLeadership, Collections.emptySet());
-    _exceptionClass = exceptionClass;
-    _clusterModel = clusterModel;
-    _expectedToOptimize = expectedToOptimize;
   }
 
   @Test

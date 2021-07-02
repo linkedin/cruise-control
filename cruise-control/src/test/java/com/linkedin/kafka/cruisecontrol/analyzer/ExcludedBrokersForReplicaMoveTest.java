@@ -74,6 +74,42 @@ public class ExcludedBrokersForReplicaMoveTest {
   @Rule
   public ExpectedException _expected = ExpectedException.none();
 
+  private final int _testId;
+  private final Goal _goal;
+  private final OptimizationOptions _optimizationOptions;
+  private final Class<Throwable> _exceptionClass;
+  private final ClusterModel _clusterModel;
+  private final Boolean _expectedToOptimize;
+  private final Boolean _expectedToGenerateProposals;
+
+  /**
+   * Constructor of Excluded Brokers For Replica Move Test.
+   *
+   * @param testId the test id
+   * @param goal Goal to be tested.
+   * @param excludedBrokersForReplicaMove Brokers excluded from receiving replicas upon proposal generation.
+   * @param exceptionClass Expected exception class (if any).
+   * @param clusterModel Cluster model to be used for the test.
+   * @param expectedToOptimize The expectation on whether the cluster state will be considered optimized or not.
+   * @param expectedToGenerateProposals The expectation on whether the optimization process will generate proposals or not,
+   *                                   or {@code null} if proposal generation is irrelevant due to exception.
+   */
+  public ExcludedBrokersForReplicaMoveTest(int testId,
+                                           Goal goal,
+                                           Set<Integer> excludedBrokersForReplicaMove,
+                                           Class<Throwable> exceptionClass,
+                                           ClusterModel clusterModel,
+                                           Boolean expectedToOptimize,
+                                           Boolean expectedToGenerateProposals) {
+    _testId = testId;
+    _goal = goal;
+    _optimizationOptions = new OptimizationOptions(Collections.emptySet(), Collections.emptySet(), excludedBrokersForReplicaMove);
+    _exceptionClass = exceptionClass;
+    _clusterModel = clusterModel;
+    _expectedToOptimize = expectedToOptimize;
+    _expectedToGenerateProposals = expectedToGenerateProposals;
+  }
+
   /**
    * Populate parameters for the parametrized test.
    * @return Populated parameters.
@@ -303,42 +339,6 @@ public class ExcludedBrokersForReplicaMoveTest {
     // Not expected to look optimized)
     p.add(params(4, LeaderReplicaDistributionGoal.class, excludeB0, null, unbalanced3(), deadBroker1, false, true));
     return p;
-  }
-
-  private final int _testId;
-  private final Goal _goal;
-  private final OptimizationOptions _optimizationOptions;
-  private final Class<Throwable> _exceptionClass;
-  private final ClusterModel _clusterModel;
-  private final Boolean _expectedToOptimize;
-  private final Boolean _expectedToGenerateProposals;
-
-  /**
-   * Constructor of Excluded Brokers For Replica Move Test.
-   *
-   * @param testId the test id
-   * @param goal Goal to be tested.
-   * @param excludedBrokersForReplicaMove Brokers excluded from receiving replicas upon proposal generation.
-   * @param exceptionClass Expected exception class (if any).
-   * @param clusterModel Cluster model to be used for the test.
-   * @param expectedToOptimize The expectation on whether the cluster state will be considered optimized or not.
-   * @param expectedToGenerateProposals The expectation on whether the optimization process will generate proposals or not,
-   *                                   or {@code null} if proposal generation is irrelevant due to exception.
-   */
-  public ExcludedBrokersForReplicaMoveTest(int testId,
-                                           Goal goal,
-                                           Set<Integer> excludedBrokersForReplicaMove,
-                                           Class<Throwable> exceptionClass,
-                                           ClusterModel clusterModel,
-                                           Boolean expectedToOptimize,
-                                           Boolean expectedToGenerateProposals) {
-    _testId = testId;
-    _goal = goal;
-    _optimizationOptions = new OptimizationOptions(Collections.emptySet(), Collections.emptySet(), excludedBrokersForReplicaMove);
-    _exceptionClass = exceptionClass;
-    _clusterModel = clusterModel;
-    _expectedToOptimize = expectedToOptimize;
-    _expectedToGenerateProposals = expectedToGenerateProposals;
   }
 
   private boolean violatesExcludedBrokersForReplicaMove(Set<Integer> excludedBrokersForReplicaMove,

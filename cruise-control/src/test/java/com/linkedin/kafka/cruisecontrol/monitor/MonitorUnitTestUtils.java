@@ -28,7 +28,7 @@ import org.apache.kafka.common.requests.MetadataResponse;
 import org.apache.kafka.common.utils.LogContext;
 
 
-public class MonitorUnitTestUtils {
+public final class MonitorUnitTestUtils {
   public static final long METADATA_REFRESH_BACKOFF = 10L;
   public static final long METADATA_EXPIRY_MS = 10L;
   public static final Node NODE_0 = new Node(0, "localhost", 100, "rack0");

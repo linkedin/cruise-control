@@ -9,7 +9,7 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling.holder;
  * A class to give average of the recorded values.
  */
 class ValueAndCount implements ValueHolder {
-  static double NO_RECORD_EXISTS = -1.0;
+  protected static final double NO_RECORD_EXISTS = -1.0;
   private double _value = 0.0;
   private int _count = 0;
 

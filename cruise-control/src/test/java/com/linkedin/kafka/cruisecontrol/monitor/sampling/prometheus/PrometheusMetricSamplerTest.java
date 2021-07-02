@@ -210,7 +210,7 @@ public class PrometheusMetricSamplerTest {
         config.put(PROMETHEUS_QUERY_RESOLUTION_STEP_MS_CONFIG, "5000");
         addCapacityConfig(config);
         _prometheusMetricSampler.configure(config);
-        assertEquals(5000, _prometheusMetricSampler._prometheusAdapter._samplingIntervalMs);
+        assertEquals(5000, _prometheusMetricSampler._prometheusAdapter.samplingIntervalMs());
     }
 
     @Test(expected = ConfigException.class)
@@ -490,7 +490,8 @@ public class PrometheusMetricSamplerTest {
 
         public static final String TEST_QUERY = "test_query";
 
-        @Override public Map<RawMetricType, String> get() {
+        @Override
+        public Map<RawMetricType, String> get() {
             Map<RawMetricType, String> queryMap = new HashMap<>();
             queryMap.put(RawMetricType.ALL_TOPIC_BYTES_IN, TEST_QUERY);
             return queryMap;

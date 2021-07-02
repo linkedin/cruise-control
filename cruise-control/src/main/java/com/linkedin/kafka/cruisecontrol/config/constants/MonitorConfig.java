@@ -23,10 +23,7 @@ import static org.apache.kafka.common.config.ConfigDef.Range.between;
  * A class to keep Cruise Control Monitor Configs and defaults.
  * DO NOT CHANGE EXISTING CONFIG NAMES AS CHANGES WOULD BREAK USER CODE.
  */
-public class MonitorConfig {
-  private MonitorConfig() {
-
-  }
+public final class MonitorConfig {
 
   /**
    * <code>bootstrap.servers</code>
@@ -368,6 +365,9 @@ public class MonitorConfig {
   public static final double DEFAULT_METADATA_FACTOR_EXPONENT = 1.0;
   public static final String METADATA_FACTOR_EXPONENT_DOC = "The exponent for the metadata factor, which corresponds to "
       + "(number of replicas) * (number of brokers with replicas) ^ exponent.";
+
+  private MonitorConfig() {
+  }
 
   /**
    * Define configs for Monitor.
