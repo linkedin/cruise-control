@@ -50,10 +50,11 @@ public class KafkaTopicConfigProvider extends JsonFileTopicConfigProvider {
 
   @Override
   public Properties topicConfigs(String topic) {
-    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(_connectString,
-                                                                              ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP,
-                                                                              ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE,
-                                                                              _zkSecurityEnabled);
+    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(
+      _connectString,
+      ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP,
+      ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE,
+      _zkSecurityEnabled);
     try {
       AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
       return adminZkClient.fetchEntityConfig(ConfigType.Topic(), topic);
@@ -64,33 +65,38 @@ public class KafkaTopicConfigProvider extends JsonFileTopicConfigProvider {
 
   @Override
   public Map<String, Properties> topicConfigs(Set<String> topics) {
-    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(_connectString,
-            ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP,
-            ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE,
-            _zkSecurityEnabled);
+    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(
+      _connectString,
+      ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP,
+      ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE,
+      _zkSecurityEnabled);
 
-    AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
+    Map<String, Properties> topicConfigs = new HashMap<>(topics.size());
+    try {
+      AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
 
-    Map<String, Properties> topicConfigs = new HashMap<>();
-    for (String topic : topics) {
-      try {
-        Properties topicConfig = adminZkClient.fetchEntityConfig(ConfigType.Topic(), topic);
-        topicConfigs.put(topic, topicConfig);
-      } catch (Exception e) {
-        LOG.warn("Unable to retrieve config for topic '{}'", topic, e);
+      for (String topic : topics) {
+        try {
+          Properties topicConfig = adminZkClient.fetchEntityConfig(ConfigType.Topic(), topic);
+          topicConfigs.put(topic, topicConfig);
+        } catch (Exception e) {
+          LOG.warn("Unable to retrieve config for topic '{}'", topic, e);
+        }
       }
+    } finally {
+      KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
     }
 
-    KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
     return topicConfigs;
   }
 
   @Override
   public Map<String, Properties> allTopicConfigs() {
-    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(_connectString,
-            ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP,
-                                                                              ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE,
-                                                                              _zkSecurityEnabled);
+    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(
+      _connectString,
+      ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP,
+      ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE,
+      _zkSecurityEnabled);
     try {
       AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
       return JavaConversions.mapAsJavaMap(adminZkClient.getAllTopicConfigs());

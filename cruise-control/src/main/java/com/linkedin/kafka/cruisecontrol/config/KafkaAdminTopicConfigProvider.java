@@ -85,31 +85,6 @@ public class KafkaAdminTopicConfigProvider extends JsonFileTopicConfigProvider {
   }
 
   /**
-   * Fetches the configuration for all the topics on the Kafka cluster. If an error is encountered when retrieving the
-   * topic names then the error details will be logged and an empty Map instance will be returned.
-   *
-   * @return A Map from topic name string to Properties instance containing that topic's configuration.
-   */
-  @Override
-  public Map<String, Properties> allTopicConfigs() {
-
-    // Request a map of futures for the config of each topic on the Kafka cluster
-    LOG.debug("Requesting configurations for all topics");
-    Set<String> topicNames = null;
-    try {
-      topicNames = _adminClient.listTopics().names().get();
-    } catch (InterruptedException | ExecutionException e) {
-      LOG.warn("Unable to obtain list of all topic names from the Kafka Cluster");
-    }
-
-    if (topicNames == null) {
-      return new HashMap<>();
-    } else {
-      return topicConfigs(topicNames);
-    }
-  }
-
-  /**
    * Fetches the configuration for the requested topics. If an error is encountered, for each topic, the details will be
    * logged and the entry for that topic will be omitted from the returned map.
    *
@@ -132,8 +107,10 @@ public class KafkaAdminTopicConfigProvider extends JsonFileTopicConfigProvider {
           propsMap.put(entry.getKey().name(), convertTopicConfigToProperties(config));
         } catch (ExecutionException ee) {
           if (org.apache.kafka.common.errors.TimeoutException.class == ee.getCause().getClass()) {
-            LOG.warn("Failed to retrieve config for topic '{}' due to describeConfigs request time out. Check for Kafka-side issues"
-                            + " and consider increasing the configured timeout.", entry.getKey().name());
+            LOG.warn("Failed to retrieve config for topics due to describeConfigs request timing out. "
+                    + "Check for Kafka-side issues and consider increasing the configured timeout.");
+            // If one has timed out then they all will so abort the loop.
+            break;
           } else {
             // e.g. could be UnknownTopicOrPartitionException due to topic deletion or InvalidTopicException
             LOG.debug("Cannot retrieve config for topic {}.", entry.getKey().name(), ee);
@@ -145,6 +122,31 @@ public class KafkaAdminTopicConfigProvider extends JsonFileTopicConfigProvider {
     }
 
     return propsMap;
+  }
+
+  /**
+   * Fetches the configuration for all the topics on the Kafka cluster. If an error is encountered when retrieving the
+   * topic names then the error details will be logged and an empty Map instance will be returned.
+   *
+   * @return A Map from topic name string to Properties instance containing that topic's configuration.
+   */
+  @Override
+  public Map<String, Properties> allTopicConfigs() {
+
+    // Request a map of futures for the config of each topic on the Kafka cluster
+    LOG.debug("Requesting configurations for all topics");
+    Set<String> topicNames = null;
+    try {
+      topicNames = _adminClient.listTopics().names().get();
+    } catch (InterruptedException | ExecutionException e) {
+      LOG.warn("Unable to obtain list of all topic names from the Kafka Cluster");
+    }
+
+    if (topicNames == null) {
+      return Collections.emptyMap();
+    } else {
+      return topicConfigs(topicNames);
+    }
   }
 
   private static Properties convertTopicConfigToProperties(Config config) {
