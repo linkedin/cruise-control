@@ -43,6 +43,7 @@ project.ext {
   }
   buildVersionFileName = "cruise-control-version.properties"
   commitId = project.hasProperty('commitId') ? commitId : null
+  scalaBinaryVersion = getScalaBinaryVersion(scalaVersion)
 }
 
 
@@ -242,9 +243,9 @@ project(':cruise-control') {
     compile "org.apache.zookeeper:zookeeper:${zookeeperVersion}"
     compile "io.netty:netty-handler:${nettyVersion}"
     compile "io.netty:netty-transport-native-epoll:${nettyVersion}"
-    compile "org.apache.kafka:kafka_2.12:$kafkaVersion"
+    compile "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion"
     compile "org.apache.kafka:kafka-clients:$kafkaVersion"
-    compile "org.scala-lang:scala-library:2.12.10"
+    compile "org.scala-lang:scala-library:$scalaVersion"
     compile 'junit:junit:4.13.2'
     compile 'org.apache.commons:commons-math3:3.6.1'
     compile 'org.apache.httpcomponents:httpclient:4.5.13'
@@ -259,9 +260,9 @@ project(':cruise-control') {
 
     testCompile project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
     testCompile project(path: ':cruise-control-core', configuration: 'testOutput')
-    testCompile "org.scala-lang:scala-library:2.12.10"
+    testCompile "org.scala-lang:scala-library:$scalaVersion"
     testCompile 'org.easymock:easymock:4.3'
-    testCompile "org.apache.kafka:kafka_2.12:$kafkaVersion:test"
+    testCompile "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion:test"
     testCompile "org.apache.kafka:kafka-clients:$kafkaVersion:test"
     testCompile 'commons-io:commons-io:2.10.0'
     testCompile 'org.apache.httpcomponents:httpclient:4.5.13:tests'
@@ -369,7 +370,7 @@ project(':cruise-control-metrics-reporter') {
     }
     compile "org.slf4j:slf4j-api:1.7.30"
     compile "org.apache.logging.log4j:log4j-slf4j-impl:2.14.1"
-    compile "org.apache.kafka:kafka_2.12:$kafkaVersion"
+    compile "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion"
     compile "org.apache.kafka:kafka-clients:$kafkaVersion"
     compile 'junit:junit:4.13.2'
     compile 'org.apache.commons:commons-math3:3.6.1'
@@ -432,6 +433,11 @@ task distributeBuild(type: DistributeTask) {
 task buildApiWiki(type: Exec) {
   workingDir '.'
   commandLine './build_api_wiki.sh'
+}
+
+static def getScalaBinaryVersion(String versionStr) {
+  String[] versionList = versionStr.split("\\.");
+  return versionList[0] + "." + versionList[1];
 }
 
 //wrapper generation task

@@ -18,8 +18,7 @@ import java.util.Properties;
 import kafka.server.ConfigType;
 import kafka.zk.AdminZkClient;
 import kafka.zk.KafkaZkClient;
-import scala.collection.JavaConversions;
-
+import scala.jdk.javaapi.CollectionConverters;
 
 /**
  * The Kafka topic config provider implementation based on files. The format of the file is JSON, listing properties:
@@ -66,7 +65,7 @@ public class KafkaTopicConfigProvider implements TopicConfigProvider {
                                                                               _zkSecurityEnabled);
     try {
       AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
-      return JavaConversions.mapAsJavaMap(adminZkClient.getAllTopicConfigs());
+      return CollectionConverters.asJava(adminZkClient.getAllTopicConfigs());
     } finally {
       KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
     }

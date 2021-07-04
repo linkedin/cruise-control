@@ -12,7 +12,7 @@ import kafka.zk.{AdminZkClient, KafkaZkClient, ZkVersion}
 import org.apache.kafka.common.TopicPartition
 import org.slf4j.{Logger, LoggerFactory}
 
-import scala.collection.JavaConverters._
+import scala.jdk.javaapi.CollectionConverters
 
 /**
  * This class is a Java interface wrapper of open source ReassignPartitionCommand. This class is needed because
@@ -25,21 +25,22 @@ object ExecutorUtils {
    * Add a list of replica reassignment tasks to execute. Replica reassignment indicates tasks that (1) relocate a replica
    * within the cluster, (2) introduce a new replica to the cluster (3) remove an existing replica from the cluster.
    *
-   * @param kafkaZkClient the KafkaZkClient class to use for partition reassignment.
+   * @param kafkaZkClient  the KafkaZkClient class to use for partition reassignment.
    * @param tasksToExecute Replica reassignment tasks to be executed.
    * @deprecated Use com.linkedin.kafka.cruisecontrol.executor.ExecutionUtils#submitReplicaReassignmentTasks() instead.
    */
   def executeReplicaReassignmentTasks(kafkaZkClient: KafkaZkClient,
-                                      tasksToExecute: java.util.List[ExecutionTask]) {
+                                      tasksToExecute: java.util.List[ExecutionTask]): Unit = {
     if (tasksToExecute != null && !tasksToExecute.isEmpty) {
-      val inProgressReplicaReassignment = kafkaZkClient.getPartitionReassignment
+      val inProgressReplicaReassignment: scala.collection.Map[TopicPartition, scala.collection.Seq[Int]] = kafkaZkClient.getPartitionReassignment
       // Add the partition being assigned to the newReplicaAssignment because we are going to add the new
       // reassignment together.
-      val newReplicaAssignment = scala.collection.mutable.Map(inProgressReplicaReassignment.toSeq: _*)
-      tasksToExecute.asScala.foreach({ task =>
-        val tp = task.proposal.topicPartition()
-        val oldReplicas = asScalaBuffer(task.proposal.oldReplicas()).map(_.brokerId.toInt)
-        val newReplicas = asScalaBuffer(task.proposal().newReplicas()).map(_.brokerId.toInt)
+      val newReplicaAssignment: scala.collection.mutable.Map[TopicPartition, scala.collection.Seq[Int]] =
+      scala.collection.mutable.Map.from[TopicPartition, scala.collection.Seq[Int]](inProgressReplicaReassignment.toSeq)
+      CollectionConverters.asScala(tasksToExecute).toSeq.map({ task =>
+        val tp = task.proposal().topicPartition()
+        val oldReplicas = CollectionConverters.asScala(task.proposal.oldReplicas()).map(_.brokerId.toInt)
+        val newReplicas = CollectionConverters.asScala(task.proposal().newReplicas()).map(_.brokerId.toInt)
 
         val inProgressReplicasOpt = newReplicaAssignment.get(tp)
         var addTask = true
@@ -93,8 +94,8 @@ object ExecutorUtils {
     }
   }
 
-  def executePreferredLeaderElection(kafkaZkClient: KafkaZkClient, tasks: java.util.List[ExecutionTask]) {
-    val partitionsToExecute = tasks.asScala.map(task =>
+  def executePreferredLeaderElection(kafkaZkClient: KafkaZkClient, tasks: java.util.List[ExecutionTask]): Unit = {
+    val partitionsToExecute = CollectionConverters.asScala(tasks).map(task =>
       new TopicPartition(task.proposal.topic, task.proposal.partitionId)).toSet
     val preferredReplicaElectionCommand = new PreferredReplicaLeaderElectionCommand(kafkaZkClient, partitionsToExecute)
     preferredReplicaElectionCommand.moveLeaderToPreferredReplica()
@@ -108,11 +109,11 @@ object ExecutorUtils {
    * @deprecated Use [[com.linkedin.kafka.cruisecontrol.executor.ExecutionUtils]]#partitionsBeingReassigned instead.
    */
   def partitionsBeingReassigned(kafkaZkClient: KafkaZkClient): util.Set[TopicPartition] = {
-    setAsJavaSet(kafkaZkClient.getPartitionReassignment.keys.toSet)
+    CollectionConverters.asJava(kafkaZkClient.getPartitionReassignment.keys.toSet)
   }
 
   def ongoingLeaderElection(kafkaZkClient: KafkaZkClient): util.Set[TopicPartition] = {
-    setAsJavaSet(kafkaZkClient.getPreferredReplicaElection)
+    CollectionConverters.asJava(kafkaZkClient.getPreferredReplicaElection)
   }
 
   def newAssignmentForPartition(kafkaZkClient: KafkaZkClient, tp : TopicPartition): java.util.List[Integer] = {
@@ -120,11 +121,11 @@ object ExecutorUtils {
       kafkaZkClient.getPartitionReassignment.getOrElse(new TopicPartition(tp.topic(), tp.partition()),
       throw new NoSuchElementException(s"Partition $tp is not being reassigned."))
 
-    seqAsJavaList(inProgressReassignment.map(i => i : java.lang.Integer))
+    CollectionConverters.asJava(inProgressReassignment.map(i => i : java.lang.Integer))
   }
 
   def currentReplicasForPartition(kafkaZkClient: KafkaZkClient, tp: TopicPartition): java.util.List[java.lang.Integer] = {
-    seqAsJavaList(kafkaZkClient.getReplicasForPartition(new TopicPartition(tp.topic(), tp.partition())).map(i => i : java.lang.Integer))
+    CollectionConverters.asJava(kafkaZkClient.getReplicasForPartition(new TopicPartition(tp.topic(), tp.partition())).map(i => i : java.lang.Integer))
   }
 
   def changeBrokerConfig(adminZkClient: AdminZkClient, brokerId: Int, config: Properties): Unit = {
@@ -136,6 +137,6 @@ object ExecutorUtils {
   }
 
   def getAllLiveBrokerIdsInCluster(kafkaZkClient: KafkaZkClient): java.util.List[java.lang.Integer] = {
-    seqAsJavaList(kafkaZkClient.getAllBrokersInCluster.map(_.id : java.lang.Integer))
+    CollectionConverters.asJava(kafkaZkClient.getAllBrokersInCluster.map(_.id : java.lang.Integer))
   }
 }
