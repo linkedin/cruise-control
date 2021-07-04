@@ -5,20 +5,27 @@
 package com.linkedin.kafka.cruisecontrol.metricsreporter.utils;
 
 import java.io.File;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import kafka.metrics.KafkaMetricsReporter;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaServer;
 import org.apache.commons.io.FileUtils;
 import org.apache.kafka.common.network.ListenerName;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.Time;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.Option;
+import scala.collection.Seq;
 import scala.collection.mutable.ArrayBuffer;
 
-
 public class CCEmbeddedBroker implements AutoCloseable {
+  private static final Logger LOG = LoggerFactory.getLogger(CCEmbeddedBroker.class);
   private final Map<SecurityProtocol, Integer> _ports;
   private final Map<SecurityProtocol, String> _hosts;
   private final KafkaServer _kafkaServer;
@@ -33,7 +40,9 @@ public class CCEmbeddedBroker implements AutoCloseable {
       // Also validates the config
       KafkaConfig kafkaConfig = KafkaConfig.apply(config);
       parseConfigs(config);
-      _kafkaServer = new KafkaServer(kafkaConfig, Time.SYSTEM, Option.empty(), new ArrayBuffer<>());
+
+      _kafkaServer = createKafkaServer(kafkaConfig);
+
       startup();
       _ports.replaceAll((securityProtocol, port) -> {
         try {
@@ -44,6 +53,43 @@ public class CCEmbeddedBroker implements AutoCloseable {
       });
     } catch (Exception e) {
       throw new IllegalStateException(e);
+    }
+  }
+
+  /**
+   * Creates the {@link KafkaServer} instance using the appropriate constructor for the version of Kafka on the classpath.
+   * It will attempt to use the 2.8+ version first and then fall back to the 2.5+ version. If neither work, a
+   * {@link NoSuchElementException} will be thrown.
+   *
+   * @param kafkaConfig The {@link KafkaConfig} instance to be used to create the returned {@link KafkaServer} instance.
+   * @return A {@link KafkaServer} instance configured with the supplied {@link KafkaConfig}.
+   * @throws ClassNotFoundException If a version of {@link KafkaServer} cannot be found on the classpath.
+   */
+  private static KafkaServer createKafkaServer(KafkaConfig kafkaConfig) throws ClassNotFoundException {
+    // The KafkaServer constructor changed in 2.8, so we need to figure out which one we are using and invoke it with the correct parameters
+    KafkaServer kafkaServer = null;
+    Class<?> kafkaServerClass = Class.forName(KafkaServer.class.getName());
+
+    try {
+      Constructor<?> kafka28PlusCon = kafkaServerClass.getConstructor(KafkaConfig.class, Time.class, Option.class, boolean.class);
+      kafkaServer = (KafkaServer) kafka28PlusCon.newInstance(kafkaConfig, Time.SYSTEM, Option.empty(), false);
+    } catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
+      LOG.debug("Unable to find Kafka 2.8+ constructor for KafkaSever class", e);
+    }
+
+    if (kafkaServer == null) {
+      try {
+        Constructor<?> kafka25PlusCon = kafkaServerClass.getConstructor(KafkaConfig.class, Time.class, Option.class, Seq.class);
+        kafkaServer = (KafkaServer) kafka25PlusCon.newInstance(kafkaConfig, Time.SYSTEM, Option.empty(), new ArrayBuffer<KafkaMetricsReporter>());
+      } catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
+        LOG.debug("Unable to find Kafka 2.5+ constructor for KafkaSever class", e);
+      }
+    }
+
+    if (kafkaServer != null) {
+      return kafkaServer;
+    } else {
+      throw new NoSuchElementException("Unable to find viable constructor fo the KafkaServer class");
     }
   }
 
