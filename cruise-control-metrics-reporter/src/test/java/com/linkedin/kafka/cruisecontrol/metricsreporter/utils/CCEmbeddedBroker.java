@@ -15,8 +15,6 @@ import org.apache.kafka.common.network.ListenerName;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.Time;
 import scala.Option;
-import scala.collection.mutable.ArrayBuffer;
-
 
 public class CCEmbeddedBroker implements AutoCloseable {
   private final Map<SecurityProtocol, Integer> _ports;
@@ -33,7 +31,7 @@ public class CCEmbeddedBroker implements AutoCloseable {
       // Also validates the config
       KafkaConfig kafkaConfig = KafkaConfig.apply(config);
       parseConfigs(config);
-      _kafkaServer = new KafkaServer(kafkaConfig, Time.SYSTEM, Option.empty(), new ArrayBuffer<>());
+      _kafkaServer = new KafkaServer(kafkaConfig, Time.SYSTEM, Option.empty(), false);
       startup();
       _ports.replaceAll((securityProtocol, port) -> {
         try {

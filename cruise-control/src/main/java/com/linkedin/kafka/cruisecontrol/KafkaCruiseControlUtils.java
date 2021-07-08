@@ -594,7 +594,8 @@ public final class KafkaCruiseControlUtils {
     responseData.setClusterAuthorizedOperations(MetadataResponse.AUTHORIZED_OPERATIONS_OMITTED);
     topicMetadataList.forEach(topicMetadata -> responseData.topics().add(prepareMetadataResponseTopic(topicMetadata)));
 
-    return new MetadataResponse(responseData);
+    // In Kafka 2.8 we need to supply the Metadata response API version. In 2.5 this was version 9 and version 11 in 2.8.
+    return new MetadataResponse(responseData, (short) 9);
   }
 
   private static MetadataResponseData.MetadataResponseTopic prepareMetadataResponseTopic(MetadataResponse.TopicMetadata topicMetadata) {

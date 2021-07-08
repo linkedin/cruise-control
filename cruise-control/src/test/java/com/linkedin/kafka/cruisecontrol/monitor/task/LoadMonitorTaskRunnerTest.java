@@ -78,7 +78,13 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
                                                                               false);
     AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
     for (int i = 0; i < NUM_TOPICS; i++) {
-      adminZkClient.createTopic("topic-" + i, NUM_PARTITIONS, 1, new Properties(), RackAwareMode.Safe$.MODULE$);
+      adminZkClient.createTopic(
+              "topic-" + i,
+              NUM_PARTITIONS,
+              1,
+              new Properties(),
+              RackAwareMode.Safe$.MODULE$,
+              false);
     }
     KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
   }
