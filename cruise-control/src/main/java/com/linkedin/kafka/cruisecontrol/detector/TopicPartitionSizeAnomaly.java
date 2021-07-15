@@ -14,7 +14,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.PartitionSizeAnomalyFind
 
 /**
  * Topic partitions with size larger than
- * {@link com.linkedin.kafka.cruisecontrol.detector.PartitionSizeAnomalyFinder#SELF_HEALING_PARTITION_SIZE_THRESHOLD_BYTE_CONFIG}
+ * {@link com.linkedin.kafka.cruisecontrol.detector.PartitionSizeAnomalyFinder#SELF_HEALING_PARTITION_SIZE_THRESHOLD_MB_CONFIG}
  *
  * Note this class does not try to self-heal partitions with large size, because all the potential fixing operations have the
  * risk of breaking the client-side applications. For example, adding more partitions to the topic can make each partition handle
@@ -22,20 +22,15 @@ import static com.linkedin.kafka.cruisecontrol.detector.PartitionSizeAnomalyFind
  * have no consumer to consume.
  */
 public class TopicPartitionSizeAnomaly extends TopicAnomaly {
-  protected Map<TopicPartition, Double> _sizeByPartition;
+  protected Map<TopicPartition, Double> _sizeInMbByPartition;
 
   /**
-   * @return An unmodifiable version of the actual bad topic partitions size
+   * @return An unmodifiable version of the actual bad topic partitions size in MB.
    */
-  public Map<TopicPartition, Double> getSizeByPartition() {
-    return Collections.unmodifiableMap(_sizeByPartition);
+  public Map<TopicPartition, Double> sizeInMbByPartition() {
+    return Collections.unmodifiableMap(_sizeInMbByPartition);
   }
 
-  /**
-   * Fix the anomaly.
-   *
-   * @return True if fix was started successfully (i.e. there is actual work towards a fix), false otherwise.
-   */
   @Override
   public boolean fix() {
     return false;
@@ -45,8 +40,8 @@ public class TopicPartitionSizeAnomaly extends TopicAnomaly {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    _sizeByPartition = (Map<TopicPartition, Double>) configs.get(PARTITIONS_WITH_LARGE_SIZE_CONFIG);
-    if (_sizeByPartition == null || _sizeByPartition.isEmpty()) {
+    _sizeInMbByPartition = (Map<TopicPartition, Double>) configs.get(PARTITIONS_WITH_LARGE_SIZE_CONFIG);
+    if (_sizeInMbByPartition == null || _sizeInMbByPartition.isEmpty()) {
       throw new IllegalArgumentException(String.format("Missing %s for topic partition size anomaly.", PARTITIONS_WITH_LARGE_SIZE_CONFIG));
     }
   }
@@ -59,9 +54,9 @@ public class TopicPartitionSizeAnomaly extends TopicAnomaly {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append("{Detected following topic partitions having too large size: ");
-    for (Map.Entry<TopicPartition, Double> entry : _sizeByPartition.entrySet()) {
-      sb.append(String.format("%s : %f bytes, ", entry.getKey().toString(), entry.getValue()));
+    sb.append("{Detected large topic partitions: ");
+    for (Map.Entry<TopicPartition, Double> entry : _sizeInMbByPartition.entrySet()) {
+      sb.append(String.format("%s : %.3f bytes, ", entry.getKey().toString(), entry.getValue()));
     }
     sb.setLength(sb.length() - 2);
     sb.append("}");
