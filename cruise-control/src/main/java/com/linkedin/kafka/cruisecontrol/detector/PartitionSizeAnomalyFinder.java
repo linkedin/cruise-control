@@ -35,26 +35,25 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANO
  * The class will check whether there are topics having partition(s) with gigantic size.
  * Required configurations for this class.
  * <ul>
- *   <li>{@link #SELF_HEALING_PARTITION_SIZE_THRESHOLD_BYTE_CONFIG}: The config for the partition size threshold to alert,
- *   default value is set to {@link #DEFAULT_SELF_HEALING_PARTITION_SIZE_THRESHOLD_BYTE} bytes.
+ *   <li>{@link #SELF_HEALING_PARTITION_SIZE_THRESHOLD_MB_CONFIG}: The config for the partition size threshold to alert,
+ *   default value is set to {@link #DEFAULT_SELF_HEALING_PARTITION_SIZE_THRESHOLD_MB} mb.
  *   <li>{@link #TOPIC_EXCLUDED_FROM_PARTITION_SIZE_CHECK}: The config to specify topics excluded from the anomaly checking.
- *   The value is treated as a regular expression, default value is set to
- *   {@link #DEFAULT_TOPIC_EXCLUDED_FROM_PARTITION_SIZE_CHECK}.
+ *   The value is treated as a regular expression, default value is set to {@link #DEFAULT_TOPIC_EXCLUDED_FROM_PARTITION_SIZE_CHECK}.
  *   <li>{@link #TOPIC_PARTITION_SIZE_ANOMALY_CLASS_CONFIG}: The config for the topic anomaly class name,
  *   default value is set to {@link #DEFAULT_TOPIC_PARTITION_SIZE_ANOMALY_CLASS}.
  * </ul>
  */
 public class PartitionSizeAnomalyFinder implements TopicAnomalyFinder {
   private static final Logger LOG = LoggerFactory.getLogger(PartitionSizeAnomalyFinder.class);
-  public static final String SELF_HEALING_PARTITION_SIZE_THRESHOLD_BYTE_CONFIG = "self.healing.partition.size.threshold.byte";
-  public static final Integer DEFAULT_SELF_HEALING_PARTITION_SIZE_THRESHOLD_BYTE = 500 * 1024 * 1024;
+  public static final String SELF_HEALING_PARTITION_SIZE_THRESHOLD_MB_CONFIG = "self.healing.partition.size.threshold.mb";
+  public static final Integer DEFAULT_SELF_HEALING_PARTITION_SIZE_THRESHOLD_MB = 1024 * 1024;
   public static final String TOPIC_EXCLUDED_FROM_PARTITION_SIZE_CHECK = "topic.excluded.from.partition.size.check";
   public static final String DEFAULT_TOPIC_EXCLUDED_FROM_PARTITION_SIZE_CHECK = "";
   public static final String TOPIC_PARTITION_SIZE_ANOMALY_CLASS_CONFIG = "topic.partition.size.anomaly.class";
   public static final Class<?> DEFAULT_TOPIC_PARTITION_SIZE_ANOMALY_CLASS = TopicPartitionSizeAnomaly.class;
   public static final String PARTITIONS_WITH_LARGE_SIZE_CONFIG = "partitions.with.large.size";
   private KafkaCruiseControl _kafkaCruiseControl;
-  private int _partitionSizeThreshold;
+  private int _partitionSizeThresholdInMb;
   private Pattern _topicExcludedFromCheck;
   private Class<?> _topicPartitionSizeAnomalyClass;
   private boolean _allowCapacityEstimation;
@@ -74,7 +73,7 @@ public class PartitionSizeAnomalyFinder implements TopicAnomalyFinder {
         }
         for (Partition partition : entry.getValue()) {
           double partitionSize = partition.leader().load().expectedUtilizationFor(Resource.DISK);
-          if (partitionSize > _partitionSizeThreshold) {
+          if (partitionSize > _partitionSizeThresholdInMb) {
             partitionsWithLargeSize.put(partition.topicPartition(), partitionSize);
           }
         }
@@ -110,9 +109,9 @@ public class PartitionSizeAnomalyFinder implements TopicAnomalyFinder {
     String topicExcludedFromCheck = (String) configs.get(TOPIC_EXCLUDED_FROM_PARTITION_SIZE_CHECK);
     _topicExcludedFromCheck = Pattern.compile(topicExcludedFromCheck == null ? DEFAULT_TOPIC_EXCLUDED_FROM_PARTITION_SIZE_CHECK
                                                                              : topicExcludedFromCheck);
-    Integer partitionSizeThreshold = (Integer) configs.get(SELF_HEALING_PARTITION_SIZE_THRESHOLD_BYTE_CONFIG);
-    _partitionSizeThreshold = partitionSizeThreshold == null ? DEFAULT_SELF_HEALING_PARTITION_SIZE_THRESHOLD_BYTE
-                                                             : partitionSizeThreshold;
+    Integer partitionSizeThreshold = (Integer) configs.get(SELF_HEALING_PARTITION_SIZE_THRESHOLD_MB_CONFIG);
+    _partitionSizeThresholdInMb = partitionSizeThreshold == null ? DEFAULT_SELF_HEALING_PARTITION_SIZE_THRESHOLD_MB
+                                                                 : partitionSizeThreshold;
     String topicPartitionSizeAnomalyClass = (String) configs.get(TOPIC_PARTITION_SIZE_ANOMALY_CLASS_CONFIG);
     if (topicPartitionSizeAnomalyClass == null) {
       _topicPartitionSizeAnomalyClass = DEFAULT_TOPIC_PARTITION_SIZE_ANOMALY_CLASS;
