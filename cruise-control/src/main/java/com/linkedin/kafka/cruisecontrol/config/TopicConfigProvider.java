@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.config;
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import org.apache.kafka.common.annotation.InterfaceStability;
 
 
@@ -23,11 +24,18 @@ public interface TopicConfigProvider extends CruiseControlConfigurable, AutoClos
   Properties clusterConfigs();
 
   /**
-   * Get topic-level configs for the requested topic.
-   * @param topic Topic for which the topic-level configs are requested.
-   * @return Topic-level configs for the requested topic.
+   * Get topic-level configurations for the requested topic.
+   * @param topic Topic name for which the topic-level configurations are required.
+   * @return A {@link Properties} instance containing the topic-level configuration for the requested topic.
    */
   Properties topicConfigs(String topic);
+
+  /**
+   * Get the topic-level configurations for the requested topics.
+   * @param topics The set of topic names for which the topic-level configurations are required.
+   * @return A map from the topic name to a {@link Properties} instance containing that topic's configuration.
+   */
+  Map<String, Properties> topicConfigs(Set<String> topics);
 
   /**
    * @return Topic-level configs for all topics.
