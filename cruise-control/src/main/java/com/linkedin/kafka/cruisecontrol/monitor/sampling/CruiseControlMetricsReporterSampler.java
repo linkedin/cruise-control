@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
-import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
@@ -24,7 +23,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.config.ConfigException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -156,12 +154,6 @@ public class CruiseControlMetricsReporterSampler extends AbstractMetricSampler {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    int numSamplers = (Integer) configs.get(MonitorConfig.NUM_METRIC_FETCHERS_CONFIG);
-    if (numSamplers != 1) {
-      throw new ConfigException("CruiseControlMetricsReporterSampler is not thread safe. Please change "
-                                + MonitorConfig.NUM_METRIC_FETCHERS_CONFIG + " to 1");
-    }
-
     _metricReporterTopic = (String) configs.get(METRIC_REPORTER_TOPIC);
     if (_metricReporterTopic == null) {
       _metricReporterTopic = CruiseControlMetricsReporterConfig.DEFAULT_CRUISE_CONTROL_METRICS_TOPIC;
