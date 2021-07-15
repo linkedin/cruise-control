@@ -166,7 +166,7 @@ public class AlertaSelfHealingNotifier extends SelfHealingNotifier {
                                  List<AlertaMessage> alertaMessages, TopicAnomaly topicAnomaly) {
     if (topicAnomaly instanceof TopicPartitionSizeAnomaly) {
       TopicPartitionSizeAnomaly topicPartitionSizeAnomaly = (TopicPartitionSizeAnomaly) topicAnomaly;
-      for (Map.Entry<TopicPartition, Double> entry : topicPartitionSizeAnomaly.getSizeByPartition().entrySet()) {
+      for (Map.Entry<TopicPartition, Double> entry : topicPartitionSizeAnomaly.sizeInMbByPartition().entrySet()) {
         AlertaMessage alertaMessage = new AlertaMessage(localHostname,
                                                         ALERT_MESSAGE_PREFIX_TOPIC_PARTITION_SIZE_ANOMALY + entry.getKey().toString());
         alertaMessage.setSeverity(NotifierUtils.getAlertSeverity(anomalyType).toString());
