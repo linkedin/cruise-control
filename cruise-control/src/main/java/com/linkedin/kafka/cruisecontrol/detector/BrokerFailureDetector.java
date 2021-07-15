@@ -10,6 +10,9 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -24,7 +27,6 @@ import org.I0Itec.zkclient.IZkChildListener;
 import org.I0Itec.zkclient.ZkClient;
 import org.I0Itec.zkclient.ZkConnection;
 import org.I0Itec.zkclient.exception.ZkMarshallingError;
-import org.I0Itec.zkclient.exception.ZkNodeExistsException;
 import org.I0Itec.zkclient.serialize.ZkSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +38,8 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANO
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 import static java.util.stream.Collectors.toSet;
+import static org.apache.commons.io.FileUtils.readFileToString;
+import static org.apache.commons.io.FileUtils.writeStringToFile;
 
 
 /**
@@ -48,7 +52,7 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector {
   public static final String BROKER_FAILURES_FIXABLE_CONFIG = "broker.failures.fixable.object";
   private static final String ZK_BROKER_FAILURE_METRIC_GROUP = "CruiseControlAnomaly";
   private static final String ZK_BROKER_FAILURE_METRIC_TYPE = "BrokerFailure";
-  private final String _failedBrokersZkPath;
+  private final File _failedBrokersFile;
   private final ZkClient _zkClient;
   private final KafkaZkClient _kafkaZkClient;
   private final Map<Integer, Long> _failedBrokers;
@@ -66,19 +70,15 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector {
     _kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zkUrl, ZK_BROKER_FAILURE_METRIC_GROUP, ZK_BROKER_FAILURE_METRIC_TYPE,
                                                                  zkSecurityEnabled);
     _failedBrokers = new HashMap<>();
-    _failedBrokersZkPath = config.getString(AnomalyDetectorConfig.FAILED_BROKERS_ZK_PATH_CONFIG);
+    _failedBrokersFile = new File(config.getString(AnomalyDetectorConfig.FAILED_BROKERS_FILE_PATH_CONFIG));
     _fixableFailedBrokerCountThreshold = config.getShort(AnomalyDetectorConfig.FIXABLE_FAILED_BROKER_COUNT_THRESHOLD_CONFIG);
     _fixableFailedBrokerPercentageThreshold = config.getDouble(AnomalyDetectorConfig.FIXABLE_FAILED_BROKER_PERCENTAGE_THRESHOLD_CONFIG);
   }
 
   void startDetection() {
-    try {
-      _zkClient.createPersistent(_failedBrokersZkPath);
-    } catch (ZkNodeExistsException znee) {
-      // let it go.
-    }
     // Load the failed broker information from zookeeper.
-    loadPersistedFailedBrokerList();
+    String failedBrokerListString = loadPersistedFailedBrokerList();
+    parsePersistedFailedBrokers(failedBrokerListString);
     // Detect broker failures.
     detectBrokerFailures(false);
     _zkClient.subscribeChildChanges(BrokerIdsZNode.path(), new BrokerFailureListener());
@@ -116,12 +116,31 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector {
   }
 
   private void persistFailedBrokerList() {
-    _zkClient.writeData(_failedBrokersZkPath, failedBrokerString());
+    try {
+      writeStringToFile(_failedBrokersFile, failedBrokerString(), StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      // let it go.
+      LOG.error("Failed to persist the failed broker list.", e);
+    }
   }
 
-  private void loadPersistedFailedBrokerList() {
-    String failedBrokerListString = _zkClient.readData(_failedBrokersZkPath);
-    parsePersistedFailedBrokers(failedBrokerListString);
+  /**
+   * Package private for unit test.
+   * @return Persisted failed broker list as a {@code String}, or an empty {@code String} if no previous failures have been persisted
+   * in the file, or {@code null} if failed to load the failed broker list from the existing {@link #_failedBrokersFile}.
+   */
+  String loadPersistedFailedBrokerList() {
+    String failedBrokerListString = null;
+    try {
+      failedBrokerListString = readFileToString(_failedBrokersFile, StandardCharsets.UTF_8);
+    } catch (FileNotFoundException fnfe) {
+      // This means no previous failures have ever been persisted in the file.
+      failedBrokerListString = "";
+    } catch (IOException ioe) {
+      // let it go.
+      LOG.error("Failed to load the failed broker list.", ioe);
+    }
+    return failedBrokerListString;
   }
 
   /**
