@@ -1354,8 +1354,12 @@ public class Executor {
                  finishedDataMovementInMB, totalDataToMoveInMB,
                  totalDataToMoveInMB == 0 ? 100 : String.format("%.2f", finishedDataMovementInMB * UNIT_INTERVAL_TO_PERCENTAGE
                                                                         / totalDataToMoveInMB));
-        throttleHelper.clearThrottles(completedTasks,
-                tasksToExecute.stream().filter(t -> t.state() == ExecutionTaskState.IN_PROGRESS).collect(Collectors.toList()));
+        List<ExecutionTask> inProgressTasks = tasksToExecute.stream()
+            .filter(t -> t.state() == ExecutionTaskState.IN_PROGRESS)
+            .collect(Collectors.toList());
+        inProgressTasks.addAll(inExecutionTasks());
+
+        throttleHelper.clearThrottles(completedTasks, inProgressTasks);
       }
       // At this point it is guaranteed that there are no in execution tasks to wait -- i.e. all tasks are completed or dead.
       if (_stopSignal.get() == NO_STOP_EXECUTION) {
