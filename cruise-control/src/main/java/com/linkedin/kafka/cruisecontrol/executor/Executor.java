@@ -1282,8 +1282,12 @@ public class Executor {
                  finishedDataMovementInMB, totalDataToMoveInMB,
                  totalDataToMoveInMB == 0 ? 100 : String.format("%.2f", finishedDataMovementInMB * UNIT_INTERVAL_TO_PERCENTAGE
                                                                         / totalDataToMoveInMB));
-        throttleHelper.clearThrottles(completedTasks,
-                tasksToExecute.stream().filter(t -> t.state() == ExecutionTaskState.IN_PROGRESS).collect(Collectors.toList()));
+        List<ExecutionTask> inProgressTasks = tasksToExecute.stream()
+            .filter(t -> t.state() == ExecutionTaskState.IN_PROGRESS)
+            .collect(Collectors.toList());
+        inProgressTasks.addAll(inExecutionTasks());
+
+        throttleHelper.clearThrottles(completedTasks, inProgressTasks);
       }
       // After the partition movement finishes, wait for the controller to clean the reassignment zkPath. This also
       // ensures a clean stop when the execution is stopped in the middle.
