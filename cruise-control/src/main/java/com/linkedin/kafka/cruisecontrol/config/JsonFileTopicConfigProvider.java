@@ -23,7 +23,7 @@ public abstract class JsonFileTopicConfigProvider implements TopicConfigProvider
     public static final String CLUSTER_CONFIGS_FILE = "cluster.configs.file";
 
     /**
-     * Method which will find the file path from the supplied config map using the supplied cluster file config key and
+     * Method which will find the file path from the supplied config map using the config key {@link #CLUSTER_CONFIGS_FILE} and
      * load the configs contained in that JSON file into a {@link java.util.Properties} instance.
      *
      * The format of the file is JSON, with properties listed as top level key/value pairs:
@@ -36,11 +36,10 @@ public abstract class JsonFileTopicConfigProvider implements TopicConfigProvider
      * </pre>
      *
      * @param configs The map of config key/value pairs
-     * @param clusterConfigsFileKey The key under which the config file path is stored.
      * @return A {@link java.util.Properties} instance containing the contents of the specified JSON config file.
      */
-    protected static Properties loadClusterConfigs(Map<String, ?> configs, String clusterConfigsFileKey) {
-        String configFile = KafkaCruiseControlUtils.getRequiredConfig(configs, clusterConfigsFileKey);
+    protected static Properties loadClusterConfigs(Map<String, ?> configs) {
+        String configFile = KafkaCruiseControlUtils.getRequiredConfig(configs, CLUSTER_CONFIGS_FILE);
         try {
             try (JsonReader reader = new JsonReader(new InputStreamReader(new FileInputStream(configFile), StandardCharsets.UTF_8))) {
                 Gson gson = new Gson();

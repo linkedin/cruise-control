@@ -35,13 +35,12 @@ import java.util.Set;
  */
 @Deprecated
 public class KafkaTopicConfigProvider extends JsonFileTopicConfigProvider {
-
   private static final Logger LOG = LoggerFactory.getLogger(KafkaTopicConfigProvider.class);
   public static final String ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP = "KafkaTopicConfigProvider";
   public static final String ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE = "GetAllActiveTopicConfigs";
-  private String _connectString;
-  private boolean _zkSecurityEnabled;
-  private Properties _clusterConfigs;
+  protected String _connectString;
+  protected boolean _zkSecurityEnabled;
+  protected Properties _clusterConfigs;
 
   @Override
   public Properties clusterConfigs() {
@@ -65,12 +64,10 @@ public class KafkaTopicConfigProvider extends JsonFileTopicConfigProvider {
 
   @Override
   public Map<String, Properties> topicConfigs(Set<String> topics) {
-    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(
-      _connectString,
-      ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP,
-      ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE,
-      _zkSecurityEnabled);
-
+    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(_connectString,
+                                                                              ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP,
+                                                                              ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE,
+                                                                              _zkSecurityEnabled);
     Map<String, Properties> topicConfigs = new HashMap<>(topics.size());
     try {
       AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
@@ -92,11 +89,10 @@ public class KafkaTopicConfigProvider extends JsonFileTopicConfigProvider {
 
   @Override
   public Map<String, Properties> allTopicConfigs() {
-    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(
-      _connectString,
-      ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP,
-      ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE,
-      _zkSecurityEnabled);
+    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(_connectString,
+                                                                              ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP,
+                                                                              ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE,
+                                                                              _zkSecurityEnabled);
     try {
       AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
       return JavaConversions.mapAsJavaMap(adminZkClient.getAllTopicConfigs());
@@ -109,7 +105,7 @@ public class KafkaTopicConfigProvider extends JsonFileTopicConfigProvider {
   public void configure(Map<String, ?> configs) {
     _connectString = (String) configs.get(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG);
     _zkSecurityEnabled = (Boolean) configs.get(ExecutorConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
-    _clusterConfigs = loadClusterConfigs(configs, CLUSTER_CONFIGS_FILE);
+    _clusterConfigs = loadClusterConfigs(configs);
   }
 
   @Override

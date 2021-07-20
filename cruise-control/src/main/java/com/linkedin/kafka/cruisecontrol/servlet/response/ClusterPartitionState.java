@@ -40,6 +40,7 @@ public class ClusterPartitionState {
   protected final Cluster _kafkaCluster;
   protected final Map<String, Properties> _allTopicConfigs;
   protected final Properties _clusterConfigs;
+  protected final Map<String, Integer> _minIsrByTopic;
 
   public ClusterPartitionState(boolean verbose, Pattern topicPattern, Cluster kafkaCluster,
                                Map<String, Properties> allTopicConfigs, Properties clusterConfigs) {
@@ -52,6 +53,7 @@ public class ClusterPartitionState {
     _otherPartitions = new TreeSet<>(comparator);
     _partitionsWithOfflineReplicas = new TreeSet<>(comparator);
     _underMinIsrPartitions = new TreeSet<>(comparator);
+    _minIsrByTopic = new HashMap<>(_kafkaCluster.topics().size());
     // Gather the partition state.
     populateKafkaPartitionState(_underReplicatedPartitions, _offlinePartitions, _otherPartitions,
                                 _partitionsWithOfflineReplicas, _underMinIsrPartitions, verbose, topicPattern);
@@ -95,6 +97,7 @@ public class ClusterPartitionState {
     for (String topic : _kafkaCluster.topics()) {
       if (topicPattern == null || topicPattern.matcher(topic).matches()) {
         int minInsyncReplicas = minInsyncReplicas(topic);
+        _minIsrByTopic.put(topic, minInsyncReplicas);
         for (PartitionInfo partitionInfo : _kafkaCluster.partitionsForTopic(topic)) {
           int numInsyncReplicas = partitionInfo.inSyncReplicas().length;
           boolean isURP = numInsyncReplicas != partitionInfo.replicas().length;
@@ -141,7 +144,7 @@ public class ClusterPartitionState {
   protected List<Object> getJsonPartitions(Set<PartitionInfo> partitions) {
     List<Object> partitionList = new ArrayList<>();
     for (PartitionInfo partitionInfo : partitions) {
-      partitionList.add(new PartitionState(partitionInfo).getJsonStructure());
+      partitionList.add(new PartitionState(partitionInfo, _minIsrByTopic.get(partitionInfo.topic())).getJsonStructure());
     }
 
     return partitionList;
@@ -157,8 +160,8 @@ public class ClusterPartitionState {
 
     String initMessage = verbose ? "All Partitions in the Cluster (verbose):"
                                  : "Under Replicated, Offline, and Under MinIsr Partitions:";
-    sb.append(String.format("%n%s%n%" + topicNameLength + "s%10s%10s%30s%30s%25s%25s%n", initMessage, "TOPIC",
-                            "PARTITION", "LEADER", "REPLICAS", "IN-SYNC", "OUT-OF-SYNC", "OFFLINE"));
+    sb.append(String.format("%n%s%n%" + topicNameLength + PartitionState.PARTITION_STATE_FORMAT_SUFFIX, initMessage, "TOPIC",
+                            "PARTITION", "LEADER", "REPLICAS", "IN-SYNC", "OUT-OF-SYNC", "OFFLINE", "MIN-ISR"));
 
     // Write the cluster state.
     sb.append(String.format("Offline Partitions:%n"));
@@ -181,7 +184,7 @@ public class ClusterPartitionState {
 
   protected void writeKafkaPartitionState(StringBuilder sb, Set<PartitionInfo> partitions, int topicNameLength) {
     for (PartitionInfo partitionInfo : partitions) {
-      sb.append(new PartitionState(partitionInfo).writeKafkaPartitionState(topicNameLength));
+      sb.append(new PartitionState(partitionInfo, _minIsrByTopic.get(partitionInfo.topic())).writeKafkaPartitionState(topicNameLength));
     }
   }
 }

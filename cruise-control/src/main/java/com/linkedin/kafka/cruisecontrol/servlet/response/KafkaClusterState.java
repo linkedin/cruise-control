@@ -37,7 +37,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
                            KafkaCruiseControlConfig config) {
     super(config);
     _kafkaCluster = kafkaCluster;
-    _allTopicConfigs = topicConfigProvider.allTopicConfigs();
+    _allTopicConfigs = topicConfigProvider.topicConfigs(_kafkaCluster.topics());
     _clusterConfigs = topicConfigProvider.clusterConfigs();
     _adminClient = adminClient;
   }
