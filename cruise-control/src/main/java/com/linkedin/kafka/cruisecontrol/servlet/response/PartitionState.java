@@ -31,6 +31,8 @@ public class PartitionState {
   protected static final String OUT_OF_SYNC = "out-of-sync";
   @JsonResponseField
   protected static final String OFFLINE = "offline";
+  @JsonResponseField
+  protected static final String MIN_ISR = "min-isr";
   protected final String _topic;
   protected final int _partition;
   protected final int _leader;
@@ -38,8 +40,9 @@ public class PartitionState {
   protected final List<Integer> _inSyncReplicas;
   protected final Set<Integer> _outOfSyncReplicas;
   protected final Set<Integer> _offlineReplicas;
+  protected final int _minIsr;
 
-  public PartitionState(PartitionInfo partitionInfo) {
+  public PartitionState(PartitionInfo partitionInfo, int minIsr) {
     _topic = partitionInfo.topic();
     _partition = partitionInfo.partition();
     _leader = partitionInfo.leader() == null ? -1 : partitionInfo.leader().id();
@@ -48,10 +51,11 @@ public class PartitionState {
     _outOfSyncReplicas = new HashSet<>(_replicas);
     _outOfSyncReplicas.removeAll(_inSyncReplicas);
     _offlineReplicas = Arrays.stream(partitionInfo.offlineReplicas()).map(Node::id).collect(Collectors.toSet());
+    _minIsr = minIsr;
   }
 
   protected Map<String, Object> getJsonStructure() {
-    Map<String, Object> recordMap = new HashMap<>(7);
+    Map<String, Object> recordMap = new HashMap<>(8);
     recordMap.put(TOPIC, _topic);
     recordMap.put(PARTITION, _partition);
     recordMap.put(LEADER, _leader);
@@ -59,15 +63,17 @@ public class PartitionState {
     recordMap.put(IN_SYNC, _inSyncReplicas);
     recordMap.put(OUT_OF_SYNC, _outOfSyncReplicas);
     recordMap.put(OFFLINE, _offlineReplicas);
+    recordMap.put(MIN_ISR, _minIsr);
     return recordMap;
   }
 
   protected String writeKafkaPartitionState(int topicNameLength) {
-    return String.format("%" + topicNameLength + "s%10s%10s%30s%30s%25s%25s%n",
+    return String.format("%" + topicNameLength + "s%10d%10d%30s%30s%25s%25s%10d%n",
                          _topic, _partition,
                          _leader, _replicas,
                          _inSyncReplicas,
                          _outOfSyncReplicas,
-                         _offlineReplicas);
+                         _offlineReplicas,
+                         _minIsr);
   }
 }

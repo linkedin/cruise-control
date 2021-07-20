@@ -29,13 +29,18 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Config;
+import org.apache.kafka.clients.admin.ConfigEntry;
+import org.apache.kafka.clients.admin.DescribeConfigsResult;
 import org.apache.kafka.clients.admin.DescribeLogDirsResult;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.requests.DescribeLogDirsResponse;
 import org.apache.kafka.common.utils.MockTime;
@@ -44,10 +49,12 @@ import org.easymock.EasyMock;
 import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.waitUntilTrue;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.CLUSTER_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.getMetadata;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ClusterPartitionState.MIN_INSYNC_REPLICAS;
 import static org.apache.kafka.common.KafkaFuture.completedFuture;
 import static org.easymock.EasyMock.*;
 import static org.junit.Assert.assertEquals;
@@ -533,6 +540,13 @@ public class LoadMonitorTest {
             .anyTimes();
     EasyMock.replay(mockDescribeLogDirsResult);
 
+    // Create mock DescribeConfigsResult
+    DescribeConfigsResult mockDescribeConfigsResult = EasyMock.mock(DescribeConfigsResult.class);
+    EasyMock.expect(mockDescribeConfigsResult.values())
+            .andReturn(getDescribeConfigsResultValues())
+            .anyTimes();
+    EasyMock.replay(mockDescribeConfigsResult);
+
     // Create mock admin client.
     AdminClient mockAdminClient = EasyMock.mock(AdminClient.class);
     EasyMock.expect(mockAdminClient.describeLogDirs(Arrays.asList(0, 1)))
@@ -540,6 +554,9 @@ public class LoadMonitorTest {
             .anyTimes();
     EasyMock.expect(mockAdminClient.describeLogDirs(Arrays.asList(1, 0)))
             .andReturn(mockDescribeLogDirsResult)
+            .anyTimes();
+    EasyMock.expect(mockAdminClient.describeConfigs(Collections.singleton(CLUSTER_CONFIG)))
+            .andReturn(mockDescribeConfigsResult)
             .anyTimes();
     EasyMock.replay(mockAdminClient);
 
@@ -578,6 +595,18 @@ public class LoadMonitorTest {
     _time.sleep(MONITOR_STATE_UPDATE_INTERVAL_MS + 1L);
     waitUntilTrue(() -> (loadMonitor.lastUpdateMs() == _time.milliseconds()),
                   "Load monitor state did not get updated within the time limit", WAIT_DEADLINE_MS, CHECK_MS);
+  }
+
+  private Map<ConfigResource, KafkaFuture<Config>> getDescribeConfigsResultValues() {
+    Config config = new Config(Collections.singleton(new ConfigEntry(MIN_INSYNC_REPLICAS, "3")));
+    KafkaFuture<Config> clusterConfigFuture = EasyMock.mock(KafkaFuture.class);
+    try {
+      EasyMock.expect(clusterConfigFuture.get(EasyMock.anyLong(), EasyMock.eq(TimeUnit.MILLISECONDS))).andReturn(config).anyTimes();
+    } catch (InterruptedException | ExecutionException | TimeoutException e) {
+      throw new IllegalStateException("Failed to describe configs.", e);
+    }
+
+    return Collections.singletonMap(CLUSTER_CONFIG, clusterConfigFuture);
   }
 
   private Map<Integer, KafkaFuture<Map<String, DescribeLogDirsResponse.LogDirInfo>>> getDescribeLogDirsResultValues() {
