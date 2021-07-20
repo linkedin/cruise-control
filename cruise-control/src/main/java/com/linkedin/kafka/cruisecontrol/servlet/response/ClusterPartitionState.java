@@ -160,7 +160,7 @@ public class ClusterPartitionState {
 
     String initMessage = verbose ? "All Partitions in the Cluster (verbose):"
                                  : "Under Replicated, Offline, and Under MinIsr Partitions:";
-    sb.append(String.format("%n%s%n%" + topicNameLength + "s%10s%10s%30s%30s%25s%25s%10s%n", initMessage, "TOPIC",
+    sb.append(String.format("%n%s%n%" + topicNameLength + PartitionState.PARTITION_STATE_FORMAT_SUFFIX, initMessage, "TOPIC",
                             "PARTITION", "LEADER", "REPLICAS", "IN-SYNC", "OUT-OF-SYNC", "OFFLINE", "MIN-ISR"));
 
     // Write the cluster state.

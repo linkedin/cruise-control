@@ -33,6 +33,7 @@ public class PartitionState {
   protected static final String OFFLINE = "offline";
   @JsonResponseField
   protected static final String MIN_ISR = "min-isr";
+  public static final String PARTITION_STATE_FORMAT_SUFFIX = "s%10s%10s%30s%30s%25s%25s%10s%n";
   protected final String _topic;
   protected final int _partition;
   protected final int _leader;
@@ -68,7 +69,7 @@ public class PartitionState {
   }
 
   protected String writeKafkaPartitionState(int topicNameLength) {
-    return String.format("%" + topicNameLength + "s%10d%10d%30s%30s%25s%25s%10d%n",
+    return String.format("%" + topicNameLength + PARTITION_STATE_FORMAT_SUFFIX,
                          _topic, _partition,
                          _leader, _replicas,
                          _inSyncReplicas,

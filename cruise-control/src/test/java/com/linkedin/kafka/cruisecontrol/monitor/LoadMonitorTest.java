@@ -598,7 +598,7 @@ public class LoadMonitorTest {
   }
 
   private Map<ConfigResource, KafkaFuture<Config>> getDescribeConfigsResultValues() {
-    Config config = new Config(Collections.singleton(new ConfigEntry(MIN_INSYNC_REPLICAS, "3")));
+    Config config = new Config(Collections.singleton(new ConfigEntry(MIN_INSYNC_REPLICAS, "2")));
     KafkaFuture<Config> clusterConfigFuture = EasyMock.mock(KafkaFuture.class);
     try {
       EasyMock.expect(clusterConfigFuture.get(EasyMock.anyLong(), EasyMock.eq(TimeUnit.MILLISECONDS))).andReturn(config).anyTimes();
