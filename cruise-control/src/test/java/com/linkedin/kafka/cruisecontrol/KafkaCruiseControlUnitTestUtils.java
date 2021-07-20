@@ -9,7 +9,7 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
-import com.linkedin.kafka.cruisecontrol.config.KafkaTopicConfigProvider;
+import com.linkedin.kafka.cruisecontrol.config.JsonFileTopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
@@ -53,7 +53,7 @@ public final class KafkaCruiseControlUnitTestUtils {
     props.setProperty(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
     props.setProperty(MonitorConfig.METRIC_SAMPLER_CLASS_CONFIG, NoopSampler.class.getName());
     props.setProperty(BrokerCapacityConfigFileResolver.CAPACITY_CONFIG_FILE, capacityConfigFile);
-    props.setProperty(KafkaTopicConfigProvider.CLUSTER_CONFIGS_FILE, clusterConfigsFile);
+    props.setProperty(JsonFileTopicConfigProvider.CLUSTER_CONFIGS_FILE, clusterConfigsFile);
     props.setProperty(MonitorConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG,
                       Integer.toString(MonitorConfig.DEFAULT_MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW));
     props.setProperty(MonitorConfig.MIN_SAMPLES_PER_BROKER_METRICS_WINDOW_CONFIG,

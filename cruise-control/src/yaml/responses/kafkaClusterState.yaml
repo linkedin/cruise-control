@@ -152,6 +152,7 @@ PartitionState:
     - in-sync
     - out-of-sync
     - offline
+    - min-isr
   properties:
     topic:
       type: string
@@ -181,3 +182,6 @@ PartitionState:
       items:
         type: integer
         format: int32
+    min-isr:
+      type: integer
+      format: int32
