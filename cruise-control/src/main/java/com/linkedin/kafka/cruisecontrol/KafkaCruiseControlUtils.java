@@ -14,6 +14,7 @@ import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.Random;
 import java.util.concurrent.ExecutionException;
@@ -35,6 +36,7 @@ import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
@@ -102,6 +104,7 @@ public final class KafkaCruiseControlUtils {
   public static final long CLIENT_REQUEST_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(30);
   public static final String DEFAULT_CLEANUP_POLICY = "delete";
   public static final Random RANDOM = new Random();
+  public static final ConfigResource CLUSTER_CONFIG = new ConfigResource(ConfigResource.Type.BROKER, "");
 
   private KafkaCruiseControlUtils() {
 
@@ -174,6 +177,26 @@ public final class KafkaCruiseControlUtils {
       throw new IllegalStateException(String.format("Unable to create topic %s.", topicToBeCreated.name()), e);
     }
     return true;
+  }
+  /**
+   * Describe cluster configs.
+   *
+   * @param adminClient The adminClient to send describeConfigs request.
+   * @param timeout Timeout to describe cluster configs.
+   * @return Cluster configs, or {@code null} if there is a timeout.
+   */
+  public static Config describeClusterConfigs(AdminClient adminClient, Duration timeout)
+      throws InterruptedException, ExecutionException {
+    Set<ConfigResource> resources = Collections.singleton(CLUSTER_CONFIG);
+    KafkaFuture<Config> clusterConfigFuture = adminClient.describeConfigs(resources).values().get(CLUSTER_CONFIG);
+
+    Config clusterConfigs = null;
+    try {
+      clusterConfigs = clusterConfigFuture.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
+    } catch (TimeoutException e) {
+      LOG.error("Describing cluster configs has timed out.", e);
+    }
+    return clusterConfigs;
   }
 
   /**

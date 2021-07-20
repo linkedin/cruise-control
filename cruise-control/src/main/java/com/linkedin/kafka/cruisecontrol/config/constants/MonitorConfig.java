@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.config.constants;
 
 import com.linkedin.kafka.cruisecontrol.common.KafkaNetworkClientProvider;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
-import com.linkedin.kafka.cruisecontrol.config.KafkaTopicConfigProvider;
+import com.linkedin.kafka.cruisecontrol.config.KafkaAdminTopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.DefaultMetricSamplerPartitionAssignor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
@@ -330,7 +330,7 @@ public final class MonitorConfig {
    * <code>topic.config.provider.class</code>
    */
   public static final String TOPIC_CONFIG_PROVIDER_CLASS_CONFIG = "topic.config.provider.class";
-  public static final String DEFAULT_TOPIC_CONFIG_PROVIDER_CLASS = KafkaTopicConfigProvider.class.getName();
+  public static final String DEFAULT_TOPIC_CONFIG_PROVIDER_CLASS = KafkaAdminTopicConfigProvider.class.getName();
   public static final String TOPIC_CONFIG_PROVIDER_CLASS_DOC = "The provider class that reports the active configuration of topics.";
 
   /**

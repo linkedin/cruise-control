@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.config;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,26 +22,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.describeClusterConfigs;
 
 
 /**
- * The Kafka topic config provider implementation based on using the Kafka Admin Client for topic level configurations
- * and files for cluster level configurations. The format of the file is JSON, listing properties:
- * <pre>
- *   {
- *     "min.insync.replicas": 1,
- *     "an.example.cluster.config": false
- *   }
- * </pre>
- *
+ * The Kafka topic config provider implementation based on using the Kafka Admin Client for topic- and cluster-level configurations.
  */
-public class KafkaAdminTopicConfigProvider extends JsonFileTopicConfigProvider {
-
+public class KafkaAdminTopicConfigProvider implements TopicConfigProvider {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaAdminTopicConfigProvider.class);
+  // TODO: Make this configurable.
+  public static final Duration DESCRIBE_CLUSTER_CONFIGS_TIMEOUT = Duration.ofSeconds(90);
+  protected Properties _clusterConfigs;
+  protected AdminClient _adminClient;
 
-  private Properties _clusterConfigs;
-  private AdminClient _adminClient;
-
+  /**
+   * To reduce admin client requests, this method provides the cluster-level configs cached during the configuration time. So, if cluster-level
+   * configs change over time, which is a rare event, Cruise Control instance should be bounced to retrieve the latest cluster-level configs.
+   *
+   * @return Cluster-level configs that applies to a topic if no topic-level config exist for it, or {@code null} if retrieval timed out.
+   */
   @Override
   public Properties clusterConfigs() {
     return _clusterConfigs;
@@ -77,7 +77,7 @@ public class KafkaAdminTopicConfigProvider extends JsonFileTopicConfigProvider {
     }
 
     if (topicConfig != null) {
-      return convertTopicConfigToProperties(topicConfig);
+      return convertConfigToProperties(topicConfig);
     } else {
       LOG.warn("The configuration for topic '{}' could not be retrieved, returning empty Properties instance.", topic);
       return new Properties();
@@ -104,7 +104,7 @@ public class KafkaAdminTopicConfigProvider extends JsonFileTopicConfigProvider {
       for (Map.Entry<ConfigResource, KafkaFuture<Config>> entry : topicConfigs.entrySet()) {
         try {
           Config config = entry.getValue().get();
-          propsMap.put(entry.getKey().name(), convertTopicConfigToProperties(config));
+          propsMap.put(entry.getKey().name(), convertConfigToProperties(config));
         } catch (ExecutionException ee) {
           if (org.apache.kafka.common.errors.TimeoutException.class == ee.getCause().getClass()) {
             LOG.warn("Failed to retrieve config for topics due to describeConfigs request timing out. "
@@ -149,7 +149,7 @@ public class KafkaAdminTopicConfigProvider extends JsonFileTopicConfigProvider {
     }
   }
 
-  private static Properties convertTopicConfigToProperties(Config config) {
+  protected static Properties convertConfigToProperties(Config config) {
     Properties props = new Properties();
     for (ConfigEntry entry : config.entries()) {
       props.put(entry.name(), entry.value());
@@ -163,7 +163,19 @@ public class KafkaAdminTopicConfigProvider extends JsonFileTopicConfigProvider {
             configs.get(LoadMonitor.KAFKA_ADMIN_CLIENT_OBJECT_CONFIG),
             () -> String.format("Missing %s when creating Kafka Admin Client based Topic Config Provider",
                     LoadMonitor.KAFKA_ADMIN_CLIENT_OBJECT_CONFIG));
-    _clusterConfigs = loadClusterConfigs(configs, CLUSTER_CONFIGS_FILE);
+    Config clusterConfigs;
+    try {
+      clusterConfigs = describeClusterConfigs(_adminClient, DESCRIBE_CLUSTER_CONFIGS_TIMEOUT);
+    } catch (InterruptedException | ExecutionException e) {
+      throw new RuntimeException("Failed to describe Kafka cluster configs.");
+    }
+
+    if (clusterConfigs != null) {
+      _clusterConfigs = convertConfigToProperties(clusterConfigs);
+    } else {
+      LOG.warn("Cluster configuration could not be retrieved, using empty Properties instance.");
+      _clusterConfigs = new Properties();
+    }
   }
 
   @Override
