@@ -33,6 +33,13 @@ LinkedIn Java style.
         <property name="format" value="^(?!import|package).+[\r]?\n\s*[\r]?\n\s*[\r]?\n"/>
         <property name="fileExtensions" value="java"/>
     </module>
+    <!-- Let others add content at the end of a file w/o "diff" command showing previous lines as changed -->
+    <module name="NewlineAtEndOfFile">
+        <property name="fileExtensions" value="java"/>
+    </module>
+    <!-- There shall be no duplicated keys in properties files -->
+    <module name="UniqueProperties"/>
+
     <module name="TreeWalker">
 
         <!-- ANNOTATIONS -->
