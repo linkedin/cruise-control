@@ -738,8 +738,8 @@ public class KafkaCruiseControl {
    *
    * @param forceExecutionStop Whether force execution to stop.
    */
-  public void userTriggeredStopExecution(boolean forceExecutionStop) {
-    _executor.userTriggeredStopExecution(forceExecutionStop);
+  public void userTriggeredStopExecution(boolean forceExecutionStop, boolean stopExternalAgent) {
+    _executor.userTriggeredStopExecution(forceExecutionStop, stopExternalAgent);
   }
 
   /**

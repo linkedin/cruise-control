@@ -905,7 +905,7 @@ public class Executor {
    *
    * @param forceExecutionStop Whether force execution to stop.
    */
-  public synchronized void userTriggeredStopExecution(boolean forceExecutionStop) {
+  public synchronized void userTriggeredStopExecution(boolean forceExecutionStop, boolean stopExternalAgent) {
     if (stopExecution(forceExecutionStop)) {
       LOG.info("User requested to stop the ongoing proposal execution" + (forceExecutionStop ? " forcefully." : "."));
       _numExecutionStoppedByUser.incrementAndGet();
