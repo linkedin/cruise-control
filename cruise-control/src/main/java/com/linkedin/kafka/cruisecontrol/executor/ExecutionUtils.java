@@ -400,6 +400,34 @@ public final class ExecutionUtils {
   }
 
   /**
+   * TODO
+   * Submits the given inter-broker replica reassignment tasks for execution using the given admin client.
+   *
+   * @param adminClient The adminClient to submit new inter-broker replica reassignments.
+   * @return The {@link AlterPartitionReassignmentsResult result} of stop reassignment request, {@code null} if external agent is not active.
+   */
+  public static AlterPartitionReassignmentsResult maybeStopExternalAgent(AdminClient adminClient) {
+    Set<TopicPartition> partitionsBeingReassigned;
+    try {
+      partitionsBeingReassigned = partitionsBeingReassigned(adminClient);
+    } catch (TimeoutException | InterruptedException | ExecutionException e) {
+      // This may indicate transient (e.g. network) issues.
+      throw new IllegalStateException("Cannot stop external agent due to failure to retrieve whether the Kafka cluster has "
+                                      + "an already ongoing partition reassignment.", e);
+    }
+    if (partitionsBeingReassigned.isEmpty()) {
+      return null;
+    }
+
+    // Update the ongoing replica reassignments in case the task status has changed.
+    Map<TopicPartition, Optional<NewPartitionReassignment>> newReassignments = new HashMap<>(partitionsBeingReassigned.size());
+    for (TopicPartition tp : partitionsBeingReassigned) {
+      newReassignments.put(tp, cancelReassignmentValue());
+    }
+    return adminClient.alterPartitionReassignments(newReassignments);
+  }
+
+  /**
    * Checks whether the topicPartitions of the execution tasks in the given subset is indeed a subset of the given set.
    *
    * @param set The original set.

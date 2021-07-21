@@ -911,6 +911,9 @@ public class Executor {
       _numExecutionStoppedByUser.incrementAndGet();
       _executionStoppedByUser.set(true);
     }
+    if (stopExternalAgent) {
+      maybeStopExternalAgent();
+    }
   }
 
   /**
@@ -1018,6 +1021,24 @@ public class Executor {
    */
   public boolean hasOngoingPartitionReassignments() throws InterruptedException, ExecutionException, TimeoutException {
     return !ExecutionUtils.partitionsBeingReassigned(_adminClient).isEmpty();
+  }
+
+  /**
+   * TODO
+   * Check whether there is an ongoing partition reassignment on Kafka cluster.
+   *
+   * Note that a {@code false} response does not guarantee lack of an ongoing execution because when there is an ongoing
+   * execution inside Cruise Control, partition reassignment task batches are sent to Kafka periodically. So, there will
+   * be intervals without partition reassignments.
+   *
+   * @return True if there is an ongoing partition reassignment on Kafka cluster.
+   */
+  public boolean maybeStopExternalAgent() {
+    if (_hasOngoingExecution) {
+      // Current CC is executing. The chances are low for any external agents to execute. Skip the rest of the check.
+      return false;
+    }
+    return ExecutionUtils.maybeStopExternalAgent(_adminClient) != null;
   }
 
   /**
