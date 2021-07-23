@@ -11,12 +11,11 @@ import kafka.zk.AdminZkClient;
 import kafka.zk.KafkaZkClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.collection.JavaConversions;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-
+import scala.jdk.javaapi.CollectionConverters;
 
 /**
  * The Kafka topic config provider implementation based on files. The format of the file is JSON, listing properties:
@@ -95,7 +94,7 @@ public class KafkaTopicConfigProvider extends JsonFileTopicConfigProvider {
                                                                               _zkSecurityEnabled);
     try {
       AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
-      return JavaConversions.mapAsJavaMap(adminZkClient.getAllTopicConfigs());
+      return CollectionConverters.asJava(adminZkClient.getAllTopicConfigs());
     } finally {
       KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
     }
