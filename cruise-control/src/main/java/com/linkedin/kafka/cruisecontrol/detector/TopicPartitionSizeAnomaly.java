@@ -56,7 +56,7 @@ public class TopicPartitionSizeAnomaly extends TopicAnomaly {
     StringBuilder sb = new StringBuilder();
     sb.append("{Detected large topic partitions: ");
     for (Map.Entry<TopicPartition, Double> entry : _sizeInMbByPartition.entrySet()) {
-      sb.append(String.format("%s : %.3f bytes, ", entry.getKey().toString(), entry.getValue()));
+      sb.append(String.format("%s: %.3f MB, ", entry.getKey().toString(), entry.getValue()));
     }
     sb.setLength(sb.length() - 2);
     sb.append("}");
