@@ -152,6 +152,9 @@ public class KafkaAdminTopicConfigProvider implements TopicConfigProvider {
   protected static Properties convertConfigToProperties(Config config) {
     Properties props = new Properties();
     for (ConfigEntry entry : config.entries()) {
+      if (entry.name() == null || entry.value() == null) {
+        continue;
+      }
       props.put(entry.name(), entry.value());
     }
     return props;
