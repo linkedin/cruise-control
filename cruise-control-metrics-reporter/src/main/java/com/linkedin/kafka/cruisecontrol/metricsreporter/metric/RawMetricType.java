@@ -5,7 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.metricsreporter.metric;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -94,10 +94,10 @@ public enum RawMetricType {
   BROKER_LOG_FLUSH_TIME_MS_50TH(BROKER, (byte) 61, (byte) 5),
   BROKER_LOG_FLUSH_TIME_MS_999TH(BROKER, (byte) 62, (byte) 5);
 
-  private static final List<RawMetricType> CACHED_VALUES = Arrays.asList(RawMetricType.values());
+  private static final List<RawMetricType> CACHED_VALUES = List.of(RawMetricType.values());
   private static final SortedMap<Byte, Set<RawMetricType>> BROKER_METRIC_TYPES_DIFF_BY_VERSION = buildBrokerMetricTypesDiffByVersion();
-  private static final List<RawMetricType> TOPIC_METRIC_TYPES = buildMetricTypeList(TOPIC);
-  private static final List<RawMetricType> PARTITION_METRIC_TYPES = buildMetricTypeList(PARTITION);
+  private static final List<RawMetricType> TOPIC_METRIC_TYPES = Collections.unmodifiableList(buildMetricTypeList(TOPIC));
+  private static final List<RawMetricType> PARTITION_METRIC_TYPES = Collections.unmodifiableList(buildMetricTypeList(PARTITION));
   private final byte _id;
   private final MetricScope _metricScope;
   private final byte _supportedVersionSince;
@@ -125,7 +125,7 @@ public enum RawMetricType {
   }
 
   public static List<RawMetricType> allMetricTypes() {
-    return CACHED_VALUES;
+    return Collections.unmodifiableList(CACHED_VALUES);
   }
 
   public static Map<Byte, Set<RawMetricType>> brokerMetricTypesDiffByVersion() {
@@ -137,11 +137,11 @@ public enum RawMetricType {
   }
 
   public static List<RawMetricType> topicMetricTypes() {
-    return TOPIC_METRIC_TYPES;
+    return Collections.unmodifiableList(TOPIC_METRIC_TYPES);
   }
 
   public static List<RawMetricType> partitionMetricTypes() {
-    return PARTITION_METRIC_TYPES;
+    return Collections.unmodifiableList(PARTITION_METRIC_TYPES);
   }
 
   /**

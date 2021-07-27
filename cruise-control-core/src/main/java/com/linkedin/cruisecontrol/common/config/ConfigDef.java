@@ -410,7 +410,7 @@ public class ConfigDef {
    * @return A map containing all configuration keys
    */
   public Map<String, ConfigKey> configKeys() {
-    return _configKeys;
+    return Collections.unmodifiableMap(_configKeys);
   }
 
   /**
@@ -418,7 +418,7 @@ public class ConfigDef {
    * @return A list of group names
    */
   public List<String> groups() {
-    return _groups;
+    return Collections.unmodifiableList(_groups);
   }
 
   /**
@@ -1026,7 +1026,7 @@ public class ConfigDef {
     }
 
     public List<String> dependents() {
-      return _dependents;
+      return Collections.unmodifiableList(_dependents);
     }
 
     public Recommender recommender() {

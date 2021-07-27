@@ -51,6 +51,6 @@ public enum MaintenanceEventType {
    * @return enumerated values in the same order as values()
    */
   public static List<MaintenanceEventType> cachedValues() {
-    return CACHED_VALUES;
+    return Collections.unmodifiableList(CACHED_VALUES);
   }
 }
