@@ -32,6 +32,27 @@ public interface Provisioner extends CruiseControlConfigurable {
    *
    * @param recommendationByRecommender Provision recommendations provided by corresponding recommenders.
    * @return {@code true} if actions have been taken on the cluster towards rightsizing, {@code false} otherwise.
+   * @deprecated Will be removed in a future release -- please use {@link #rightsize(Map, RightsizeOptions)}
    */
+  @Deprecated
   boolean rightsize(Map<String, ProvisionRecommendation> recommendationByRecommender);
+
+  /**
+   * Rightsize the cluster using the given constraints. All given recommendations are expected to share the same {@link ProvisionStatus}.
+   * Implementations of this function are expected to be non-blocking -- i.e. starts the rightsizing, but does not block until the completion.
+   *
+   * <ul>
+   *   <li>For {@link ProvisionStatus#UNDER_PROVISIONED} clusters, each recommender (e.g. goal name) indicates requested resources
+   *   (e.g. number of brokers) along with relevant constraints (e.g. racks for which brokers should not be added). Typically, aggregating
+   *   different recommendations for the same resource type requires considering the maximum value over all recommendations.</li>
+   *   <li>For {@link ProvisionStatus#OVER_PROVISIONED} clusters, each recommender (e.g. goal name) indicates resources that can be
+   *   released (e.g. number of brokers) along with relevant constraints (e.g. expected broker capacity). Typically, aggregating
+   *   different recommendations for the same resource type requires considering the minimum value over all recommendations.</li>
+   * </ul>
+   *
+   * @param recommendationByRecommender Provision recommendations provided by corresponding recommenders.
+   * @param rightsizeOptions Rightsize options to take into account when rightsizing the cluster.
+   * @return {@link ProvisionerState} of actions taken on the cluster towards rightsizing or null if no actions were taken.
+   */
+  ProvisionerState rightsize(Map<String, ProvisionRecommendation> recommendationByRecommender, RightsizeOptions rightsizeOptions);
 }
