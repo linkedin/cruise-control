@@ -10,7 +10,6 @@ import com.codahale.metrics.Timer;
 import com.linkedin.cruisecontrol.exception.NotEnoughValidWindowsException;
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
-import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleCompleteness;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
@@ -501,8 +500,7 @@ public class LoadMonitor {
     // Create an empty cluster model first.
     long currentLoadGeneration = partitionMetricSampleAggregationResult.generation();
     ModelGeneration modelGeneration = new ModelGeneration(clusterAndGeneration.generation(), currentLoadGeneration);
-    MetricSampleCompleteness<String, PartitionEntity> completeness = partitionMetricSampleAggregationResult.completeness();
-    ClusterModel clusterModel = new ClusterModel(modelGeneration, completeness.validEntityRatio());
+    ClusterModel clusterModel = new ClusterModel(modelGeneration, partitionMetricSampleAggregationResult.validEntityRatioOfCompleteness());
 
     final Timer.Context ctx = _clusterModelCreationTimer.time();
     try {
@@ -765,7 +763,7 @@ public class LoadMonitor {
     });
     _numPartitionsWithExtrapolations = numPartitionsWithExtrapolations.get();
     _totalNumPartitions = MonitorUtils.totalNumPartitions(kafkaCluster);
-    return _totalNumPartitions > 0 ? metricSampleAggregationResult.completeness().validEntityRatio() : 0.0;
+    return _totalNumPartitions > 0 ? metricSampleAggregationResult.validEntityRatioOfCompleteness() : 0.0;
   }
 
   /**

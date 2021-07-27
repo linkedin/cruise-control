@@ -49,7 +49,7 @@ public class ValuesAndExtrapolations {
    * @return The {@link Extrapolation}s for the values if exist.
    */
   public Map<Integer, Extrapolation> extrapolations() {
-    return _extrapolations;
+    return Collections.unmodifiableMap(_extrapolations);
   }
 
   /**

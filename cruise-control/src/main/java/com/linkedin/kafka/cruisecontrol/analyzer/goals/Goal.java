@@ -124,8 +124,8 @@ public interface Goal extends CruiseControlConfigurable {
   boolean isHardGoal();
 
   /**
-   * @deprecated Will be removed in a future release -- please use {@link #provisionResponse()}.
    * @return The {@link ProvisionStatus} of this goal.
+   * @deprecated Will be removed in a future release -- please use {@link #provisionResponse()}.
    */
   @Deprecated
   ProvisionStatus provisionStatus();
