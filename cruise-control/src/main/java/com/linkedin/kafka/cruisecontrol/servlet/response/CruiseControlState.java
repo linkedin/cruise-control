@@ -60,22 +60,6 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
     _anomalyDetectorState = anomalyDetectorState;
   }
 
-  public ExecutorState executorState() {
-    return _executorState;
-  }
-
-  public LoadMonitorState monitorState() {
-    return _monitorState;
-  }
-
-  public AnalyzerState analyzerState() {
-    return _analyzerState;
-  }
-
-  public AnomalyDetectorState anomalyDetectorState() {
-    return _anomalyDetectorState;
-  }
-
   protected String getJSONString(CruiseControlParameters parameters) {
     Gson gson = new Gson();
     Map<String, Object> jsonStructure = getJsonStructure(((CruiseControlStateParameters) parameters).isVerbose());
@@ -227,7 +211,7 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
      * @return enumerated values in the same order as values()
      */
     public static List<SubState> cachedValues() {
-      return CACHED_VALUES;
+      return Collections.unmodifiableList(CACHED_VALUES);
     }
   }
 }

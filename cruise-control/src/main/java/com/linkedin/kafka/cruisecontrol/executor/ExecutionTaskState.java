@@ -17,6 +17,6 @@ public enum ExecutionTaskState {
      * @return enumerated values in the same order as values()
      */
     public static List<ExecutionTaskState> cachedValues() {
-        return CACHED_VALUES;
+        return Collections.unmodifiableList(CACHED_VALUES);
     }
 }

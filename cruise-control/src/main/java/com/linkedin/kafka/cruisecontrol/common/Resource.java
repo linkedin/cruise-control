@@ -51,7 +51,7 @@ public enum Resource {
    * @return enumerated values in the same order as values()
    */
   public static List<Resource> cachedValues() {
-    return CACHED_VALUES;
+    return Collections.unmodifiableList(CACHED_VALUES);
   }
 
   /**

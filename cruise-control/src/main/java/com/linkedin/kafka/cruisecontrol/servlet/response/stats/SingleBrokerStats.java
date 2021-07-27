@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.DiskStats;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -64,7 +65,7 @@ public class SingleBrokerStats extends BasicStats {
    *         replica placement info, otherwise returns an empty map.
    */
   public Map<String, DiskStats> diskStatsByLogdir() {
-    return _diskStatsByLogdir;
+    return Collections.unmodifiableMap(_diskStatsByLogdir);
   }
 
   /**

@@ -58,6 +58,6 @@ public enum KafkaAnomalyType implements AnomalyType {
    * @return enumerated values in the same order as values()
    */
   public static List<KafkaAnomalyType> cachedValues() {
-    return CACHED_VALUES;
+    return Collections.unmodifiableList(CACHED_VALUES);
   }
 }
