@@ -22,6 +22,6 @@ public enum ReviewStatus {
    * @return enumerated values in the same order as values()
    */
   public static List<ReviewStatus> cachedValues() {
-    return CACHED_VALUES;
+    return Collections.unmodifiableList(CACHED_VALUES);
   }
 }

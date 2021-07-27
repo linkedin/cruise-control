@@ -829,7 +829,7 @@ public class UserTaskManager implements Closeable {
      * @return enumerated values in the same order as values()
      */
     public static List<TaskState> cachedValues() {
-      return CACHED_VALUES;
+      return Collections.unmodifiableList(CACHED_VALUES);
     }
   }
 }

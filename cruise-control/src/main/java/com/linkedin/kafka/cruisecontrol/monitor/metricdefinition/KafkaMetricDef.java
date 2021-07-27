@@ -220,11 +220,11 @@ public enum KafkaMetricDef {
   }
 
   public static List<KafkaMetricDef> cachedCommonDefValues() {
-    return CACHED_COMMON_DEF_VALUES;
+    return Collections.unmodifiableList(CACHED_COMMON_DEF_VALUES);
   }
 
   public static List<KafkaMetricDef> cachedBrokerDefValues() {
-    return CACHED_BROKER_DEF_VALUES;
+    return Collections.unmodifiableList(CACHED_BROKER_DEF_VALUES);
   }
 
   public static KafkaMetricDef forRawMetricType(RawMetricType type) {

@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -52,7 +53,7 @@ public class AnalyzerState {
    * @return A map of ready goals.
    */
   public Map<Goal, Boolean> readyGoals() {
-    return _readyGoals;
+    return Collections.unmodifiableMap(_readyGoals);
   }
 
   /**

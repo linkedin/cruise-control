@@ -69,17 +69,17 @@ public enum CruiseControlEndPoint implements EndPoint {
   }
 
   public static List<CruiseControlEndPoint> getEndpoints() {
-    return GET_ENDPOINTS;
+    return Collections.unmodifiableList(GET_ENDPOINTS);
   }
 
   public static List<CruiseControlEndPoint> postEndpoints() {
-    return POST_ENDPOINTS;
+    return Collections.unmodifiableList(POST_ENDPOINTS);
   }
 
   /**
    * @return Cached values of the enum.
    */
   public static List<CruiseControlEndPoint> cachedValues() {
-    return CACHED_VALUES;
+    return Collections.unmodifiableList(CACHED_VALUES);
   }
 }

@@ -4,6 +4,7 @@
 package com.linkedin.cruisecontrol.common.config;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -41,7 +42,7 @@ public class ConfigValue {
     }
 
     public List<Object> recommendedValues() {
-        return _recommendedValues;
+        return Collections.unmodifiableList(_recommendedValues);
     }
 
     public void recommendedValues(List<Object> recommendedValues) {
@@ -49,7 +50,7 @@ public class ConfigValue {
     }
 
     public List<String> errorMessages() {
-        return _errorMessages;
+        return Collections.unmodifiableList(_errorMessages);
     }
 
     public boolean visible() {
