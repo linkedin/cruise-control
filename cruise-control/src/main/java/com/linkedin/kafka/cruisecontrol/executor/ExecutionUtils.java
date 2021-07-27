@@ -400,19 +400,18 @@ public final class ExecutionUtils {
   }
 
   /**
-   * TODO
-   * Submits the given inter-broker replica reassignment tasks for execution using the given admin client.
+   * Stops the inter-broker replica reassignments using the given admin client.
    *
-   * @param adminClient The adminClient to submit new inter-broker replica reassignments.
-   * @return The {@link AlterPartitionReassignmentsResult result} of stop reassignment request, {@code null} if external agent is not active.
+   * @param adminClient The adminClient to stop the inter-broker replica reassignments.
+   * @return The {@link AlterPartitionReassignmentsResult result} of stop reassignment request, {@code null} if there isn't any reassignments.
    */
-  public static AlterPartitionReassignmentsResult maybeStopExternalAgent(AdminClient adminClient) {
+  public static AlterPartitionReassignmentsResult maybeStopPartitionReassignment(AdminClient adminClient) {
     Set<TopicPartition> partitionsBeingReassigned;
     try {
       partitionsBeingReassigned = partitionsBeingReassigned(adminClient);
     } catch (TimeoutException | InterruptedException | ExecutionException e) {
       // This may indicate transient (e.g. network) issues.
-      throw new IllegalStateException("Cannot stop external agent due to failure to retrieve whether the Kafka cluster has "
+      throw new IllegalStateException("Cannot stop partition reassignments due to failure to retrieve whether the Kafka cluster has "
                                       + "an already ongoing partition reassignment.", e);
     }
     if (partitionsBeingReassigned.isEmpty()) {
@@ -432,7 +431,7 @@ public final class ExecutionUtils {
    *
    * @param set The original set.
    * @param subset The subset to validate whether it is indeed a subset of the given set.
-   * @return True if the topicPartitions of the given subset constitute a subset of the given set, false otherwise.
+   * @return {@code true} if the topicPartitions of the given subset constitute a subset of the given set, {@code false} otherwise.
    */
   public static boolean isSubset(Set<TopicPartition> set, Collection<ExecutionTask> subset) {
     boolean isSubset = true;
