@@ -40,14 +40,14 @@ public final class ModelUtils {
   // We also ignore all the inaccuracy when the broker total throughput is too low.
   private static final double ALLOWED_METRIC_ERROR_FACTOR = 1.05;
   private static final int UNSTABLE_METRIC_THROUGHPUT_THRESHOLD = 10;
-  private static boolean _useLinearRegressionModel = false;
+  private static boolean useLinearRegressionModel = false;
 
   private ModelUtils() {
 
   }
 
   public static void init(KafkaCruiseControlConfig config) {
-    _useLinearRegressionModel = config.getBoolean(MonitorConfig.USE_LINEAR_REGRESSION_MODEL_CONFIG);
+    useLinearRegressionModel = config.getBoolean(MonitorConfig.USE_LINEAR_REGRESSION_MODEL_CONFIG);
   }
 
   /**
@@ -61,7 +61,7 @@ public final class ModelUtils {
   public static double getFollowerCpuUtilFromLeaderLoad(double leaderBytesInRate,
                                                         double leaderBytesOutRate,
                                                         double leaderCpuUtil) {
-    if (_useLinearRegressionModel) {
+    if (useLinearRegressionModel) {
       double followerBytesInCoefficient =
           ModelParameters.getCoefficient(LinearRegressionModelParameters.ModelCoefficient.FOLLOWER_BYTES_IN);
       return followerBytesInCoefficient * leaderBytesInRate;
@@ -95,7 +95,7 @@ public final class ModelUtils {
                                                     double brokerFollowerBytesInRate,
                                                     double partitionBytesInRate,
                                                     double partitionBytesOutRate) {
-    if (_useLinearRegressionModel) {
+    if (useLinearRegressionModel) {
       return estimateLeaderCpuUtilUsingLinearRegressionModel(partitionBytesInRate, partitionBytesOutRate);
     } else {
       if (brokerLeaderBytesInRate == 0 || brokerLeaderBytesOutRate == 0) {

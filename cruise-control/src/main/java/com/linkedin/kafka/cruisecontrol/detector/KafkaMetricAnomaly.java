@@ -8,6 +8,7 @@ import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomaly;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
+import java.util.Collections;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
@@ -39,7 +40,7 @@ public class KafkaMetricAnomaly extends KafkaAnomaly implements MetricAnomaly<Br
 
   @Override
   public Map<BrokerEntity, Long> entities() {
-    return _brokerEntitiesWithDetectionTimeMs;
+    return Collections.unmodifiableMap(_brokerEntitiesWithDetectionTimeMs);
   }
 
   /**

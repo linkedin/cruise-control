@@ -256,7 +256,7 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
 
     for (Broker destinationBroker : clusterModel.aliveBrokers()) {
       int numReplicasInThisRack = numReplicasByRack.getOrDefault(destinationBroker.rack().id(), 0);
-      if ((numReplicasInThisRack < baseLimit) || (canMoveToRacksAtBaseLimit && (numReplicasInThisRack == baseLimit))) {
+      if (numReplicasInThisRack < baseLimit || (canMoveToRacksAtBaseLimit && numReplicasInThisRack == baseLimit)) {
         // Either the (1) destination rack needs more replicas or (2) the replica is allowed to be moved to a rack at
         // the base limit and the destination broker is in a rack at the base limit
         if (!partitionBrokers.contains(destinationBroker)) {

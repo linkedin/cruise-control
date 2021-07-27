@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType;
@@ -155,6 +156,6 @@ public class DefaultPrometheusQuerySupplier implements PrometheusQuerySupplier {
 
     @Override
     public Map<RawMetricType, String> get() {
-        return TYPE_TO_QUERY;
+        return Collections.unmodifiableMap(TYPE_TO_QUERY);
     }
 }

@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetr
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.PartitionMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.TopicMetric;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -119,7 +120,7 @@ public class BrokerLoad {
   }
 
   public Set<RawMetricType> missingBrokerMetricsInMinSupportedVersion() {
-    return _missingBrokerMetricsInMinSupportedVersion;
+    return Collections.unmodifiableSet(_missingBrokerMetricsInMinSupportedVersion);
   }
 
   /**
@@ -305,8 +306,8 @@ public class BrokerLoad {
       }
     });
     boolean result = ((double) missingTopics.size() / topicsInBroker.size()) <= MAX_ALLOWED_MISSING_TOPIC_METRIC_PERCENT
-                     && ((double) missingPartitions.get() / cluster.partitionsForNode(brokerId).size()
-                         <= MAX_ALLOWED_MISSING_PARTITION_METRIC_PERCENT);
+                     && (double) missingPartitions.get() / cluster.partitionsForNode(brokerId).size()
+                        <= MAX_ALLOWED_MISSING_PARTITION_METRIC_PERCENT;
     if (!result) {
       LOG.warn("Broker {} is missing {}/{} topics metrics and {}/{} leader partition metrics. Missing leader topics: {}.", brokerId,
                missingTopics.size(), topicsInBroker.size(), missingPartitions.get(), cluster.partitionsForNode(brokerId).size(), missingTopics);

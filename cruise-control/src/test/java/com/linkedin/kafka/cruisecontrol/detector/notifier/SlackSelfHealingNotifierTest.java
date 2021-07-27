@@ -30,8 +30,8 @@ import static com.linkedin.kafka.cruisecontrol.detector.BrokerFailureDetector.FA
 import static org.junit.Assert.assertEquals;
 
 public class SlackSelfHealingNotifierTest {
-    private static BrokerFailures FAILURES;
-    private static Time MOCK_TIME;
+    private static BrokerFailures failures;
+    private static Time mockTime;
     private MockSlackSelfHealingNotifier _notifier;
 
     /**
@@ -40,7 +40,7 @@ public class SlackSelfHealingNotifierTest {
     @BeforeClass
     public static void setup() {
         final long startTime = 500L;
-        MOCK_TIME = new MockTime(0, startTime, TimeUnit.NANOSECONDS.convert(startTime, TimeUnit.MILLISECONDS));
+        mockTime = new MockTime(0, startTime, TimeUnit.NANOSECONDS.convert(startTime, TimeUnit.MILLISECONDS));
         KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
         Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
         KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
@@ -54,32 +54,32 @@ public class SlackSelfHealingNotifierTest {
         parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 200L);
         parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, failedBrokers);
         parameterConfigOverrides.put(BROKER_FAILURES_FIXABLE_CONFIG, true);
-        FAILURES = kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
+        failures = kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
                                                                   BrokerFailures.class,
                                                                   parameterConfigOverrides);
     }
 
     @Test
     public void testSlackAlertWithNoWebhook() {
-        _notifier = new MockSlackSelfHealingNotifier(MOCK_TIME);
-        _notifier.alert(FAILURES, false, 1L, KafkaAnomalyType.BROKER_FAILURE);
+        _notifier = new MockSlackSelfHealingNotifier(mockTime);
+        _notifier.alert(failures, false, 1L, KafkaAnomalyType.BROKER_FAILURE);
         assertEquals(0, _notifier.getSlackMessageList().size());
     }
 
     @Test
     public void testSlackAlertWithNoChannel() {
-        _notifier = new MockSlackSelfHealingNotifier(MOCK_TIME);
+        _notifier = new MockSlackSelfHealingNotifier(mockTime);
         _notifier._slackWebhook = "http://dummy.slack.webhook";
-        _notifier.alert(FAILURES, false, 1L, KafkaAnomalyType.BROKER_FAILURE);
+        _notifier.alert(failures, false, 1L, KafkaAnomalyType.BROKER_FAILURE);
         assertEquals(0, _notifier.getSlackMessageList().size());
     }
 
     @Test
     public void testSlackAlertWithDefaultOptions() {
-        _notifier = new MockSlackSelfHealingNotifier(MOCK_TIME);
+        _notifier = new MockSlackSelfHealingNotifier(mockTime);
         _notifier._slackWebhook = "http://dummy.slack.webhook";
         _notifier._slackChannel = "#dummy-channel";
-        _notifier.alert(FAILURES, false, 1L, KafkaAnomalyType.BROKER_FAILURE);
+        _notifier.alert(failures, false, 1L, KafkaAnomalyType.BROKER_FAILURE);
         assertEquals(1, _notifier.getSlackMessageList().size());
         SlackMessage message = _notifier.getSlackMessageList().get(0);
         assertEquals("#dummy-channel", message.getChannel());

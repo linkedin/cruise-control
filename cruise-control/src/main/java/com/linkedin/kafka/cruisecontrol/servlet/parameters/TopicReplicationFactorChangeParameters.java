@@ -93,7 +93,7 @@ public class TopicReplicationFactorChangeParameters extends AbstractParameters {
   }
 
   public Map<Short, Pattern> topicPatternByReplicationFactor() {
-    return _topicPatternByReplicationFactor;
+    return Collections.unmodifiableMap(_topicPatternByReplicationFactor);
   }
 
   public boolean skipRackAwarenessCheck() {

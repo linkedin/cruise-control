@@ -13,6 +13,7 @@ import com.linkedin.kafka.cruisecontrol.executor.strategy.StrategyOptions;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -276,14 +277,14 @@ public class ExecutionTaskPlanner {
    * @return The remaining inter-broker replica movement tasks.
    */
   public Set<ExecutionTask> remainingInterBrokerReplicaMovements() {
-    return _remainingInterBrokerReplicaMovements;
+    return Collections.unmodifiableSet(_remainingInterBrokerReplicaMovements);
   }
 
   /**
    * @return The remaining intra-broker replica movement tasks.
    */
   public Set<ExecutionTask> remainingIntraBrokerReplicaMovements() {
-    return _remainingIntraBrokerReplicaMovements;
+    return Collections.unmodifiableSet(_remainingIntraBrokerReplicaMovements);
   }
 
   /**

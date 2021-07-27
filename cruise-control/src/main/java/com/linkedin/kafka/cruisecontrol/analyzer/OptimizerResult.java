@@ -134,7 +134,7 @@ public class OptimizerResult {
    * @return Cluster model stats comparator by goal names.
    */
   public Map<String, Goal.ClusterModelStatsComparator> clusterModelStatsComparatorByGoalName() {
-    return _clusterModelStatsComparatorByGoalName;
+    return Collections.unmodifiableMap(_clusterModelStatsComparatorByGoalName);
   }
 
   /**
@@ -148,21 +148,21 @@ public class OptimizerResult {
    * @return Goal proposals.
    */
   public Set<ExecutionProposal> goalProposals() {
-    return _proposals;
+    return Collections.unmodifiableSet(_proposals);
   }
 
   /**
    * @return Violated goals before optimization.
    */
   public Set<String> violatedGoalsBeforeOptimization() {
-    return _violatedGoalNamesBeforeOptimization;
+    return Collections.unmodifiableSet(_violatedGoalNamesBeforeOptimization);
   }
 
   /**
    * @return Violated goals after optimization.
    */
   public Set<String> violatedGoalsAfterOptimization() {
-    return _violatedGoalNamesAfterOptimization;
+    return Collections.unmodifiableSet(_violatedGoalNamesAfterOptimization);
   }
 
   /**
