@@ -281,7 +281,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
      * @return enumerated values in the same order as values()
      */
     public static List<TaskType> cachedValues() {
-      return CACHED_VALUES;
+      return Collections.unmodifiableList(CACHED_VALUES);
     }
   }
 

@@ -154,14 +154,14 @@ public class MetricSampleCompleteness<G, E extends Entity<G>> extends LongGenera
    * @return The set of valid entities based on the specified granularity.
    */
   public Set<E> validEntities() {
-    return _validEntities;
+    return Collections.unmodifiableSet(_validEntities);
   }
 
   /**
    * @return The set of valid entity groups.
    */
   public Set<G> validEntityGroups() {
-    return _validEntityGroups;
+    return Collections.unmodifiableSet(_validEntityGroups);
   }
 
   /**

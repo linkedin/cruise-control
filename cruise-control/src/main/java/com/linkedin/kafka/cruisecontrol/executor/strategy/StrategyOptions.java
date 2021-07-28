@@ -56,6 +56,6 @@ public final class StrategyOptions {
   }
 
   public Map<String, MinIsrWithTime> minIsrWithTimeByTopic() {
-    return _minIsrWithTimeByTopic;
+    return Collections.unmodifiableMap(_minIsrWithTimeByTopic);
   }
 }

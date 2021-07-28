@@ -3,6 +3,7 @@
  */
 package com.linkedin.cruisecontrol.common.config;
 
+import java.util.Collections;
 import java.util.List;
 
 
@@ -14,7 +15,6 @@ public class Config {
     }
 
     public List<ConfigValue> configValues() {
-        return _configValues;
+        return Collections.unmodifiableList(_configValues);
     }
-
 }

@@ -6,6 +6,7 @@ package com.linkedin.cruisecontrol.monitor.sampling.aggregator;
 
 import com.linkedin.cruisecontrol.common.LongGenerationed;
 import com.linkedin.cruisecontrol.model.Entity;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -46,7 +47,7 @@ public class MetricSampleAggregationResult<G, E extends Entity<G>> extends LongG
    * @return A mapping from entity to aggregated metric values and potential extrapolations.
    */
   public Map<E, ValuesAndExtrapolations> valuesAndExtrapolations() {
-    return _entityValuesAndExtrapolations;
+    return Collections.unmodifiableMap(_entityValuesAndExtrapolations);
   }
 
   /**
@@ -73,17 +74,14 @@ public class MetricSampleAggregationResult<G, E extends Entity<G>> extends LongG
    * @return The invalid entity set for this aggregation.
    */
   public Set<E> invalidEntities() {
-    return _invalidEntities;
+    return Collections.unmodifiableSet(_invalidEntities);
   }
 
   /**
-   * Get the completeness summary of this aggregation result.
-   *
-   * @return The completeness summary of this aggregation result.
-   * @see MetricSampleCompleteness
+   * @return The valid entity ratio of the underlying {@link #_completeness}.
    */
-  public MetricSampleCompleteness<G, E> completeness() {
-    return _completeness;
+  public float validEntityRatioOfCompleteness() {
+    return _completeness.validEntityRatio();
   }
 
   // package private for modification.

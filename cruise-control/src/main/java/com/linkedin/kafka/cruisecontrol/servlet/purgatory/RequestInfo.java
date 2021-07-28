@@ -93,7 +93,7 @@ public class RequestInfo {
   }
 
   public Map<String, String[]> parameterMap() {
-    return _parameterMap;
+    return Collections.unmodifiableMap(_parameterMap);
   }
 
   /**

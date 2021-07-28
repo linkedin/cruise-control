@@ -20,15 +20,15 @@ public final class ModelParameters {
   /**
    * The contribution weight of leader bytes in on the CPU utilization of a broker.
    */
-  private static double CPU_WEIGHT_OF_LEADER_BYTES_IN_RATE = 0.7;
+  private static double cpuWeightOfLeaderBytesInRate = 0.7;
   /**
    * The contribution weight of leader bytes out on the CPU utilization of a broker.
    */
-  private static double CPU_WEIGHT_OF_LEADER_BYTES_OUT_RATE = 0.15;
+  private static double cpuWeightOfLeaderBytesOutRate = 0.15;
   /**
    * The contribution weight of follower bytes in on the CPU utilization of a broker.
    */
-  private static double CPU_WEIGHT_OF_FOLLOWER_BYTES_IN_RATE = 0.15;
+  private static double cpuWeightOfFollowerBytesInRate = 0.15;
 
   private ModelParameters() {
 
@@ -40,12 +40,9 @@ public final class ModelParameters {
    * @param config The configurations for Cruise Control.
    */
   public static void init(KafkaCruiseControlConfig config) {
-    CPU_WEIGHT_OF_LEADER_BYTES_IN_RATE =
-        config.getDouble(MonitorConfig.LEADER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG);
-    CPU_WEIGHT_OF_LEADER_BYTES_OUT_RATE =
-        config.getDouble(MonitorConfig.LEADER_NETWORK_OUTBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG);
-    CPU_WEIGHT_OF_FOLLOWER_BYTES_IN_RATE =
-        config.getDouble(MonitorConfig.FOLLOWER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG);
+    cpuWeightOfLeaderBytesInRate = config.getDouble(MonitorConfig.LEADER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG);
+    cpuWeightOfLeaderBytesOutRate = config.getDouble(MonitorConfig.LEADER_NETWORK_OUTBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG);
+    cpuWeightOfFollowerBytesInRate = config.getDouble(MonitorConfig.FOLLOWER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG);
     LinearRegressionModelParameters.init(config);
   }
 
@@ -54,15 +51,15 @@ public final class ModelParameters {
   }
 
   public static double cpuWeightOfLeaderBytesInRate() {
-    return CPU_WEIGHT_OF_LEADER_BYTES_IN_RATE;
+    return cpuWeightOfLeaderBytesInRate;
   }
 
   public static double cpuWeightOfLeaderBytesOutRate() {
-    return CPU_WEIGHT_OF_LEADER_BYTES_OUT_RATE;
+    return cpuWeightOfLeaderBytesOutRate;
   }
 
   public static double cpuWeightOfFollowerBytesInRate() {
-    return CPU_WEIGHT_OF_FOLLOWER_BYTES_IN_RATE;
+    return cpuWeightOfFollowerBytesInRate;
   }
 
   public static boolean trainingCompleted() {

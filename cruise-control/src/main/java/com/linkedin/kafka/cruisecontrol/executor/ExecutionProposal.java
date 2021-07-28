@@ -174,28 +174,28 @@ public class ExecutionProposal {
    * @return The replica list of the partition before executing the proposal.
    */
   public List<ReplicaPlacementInfo> oldReplicas() {
-    return _oldReplicas;
+    return Collections.unmodifiableList(_oldReplicas);
   }
 
   /**
    * @return The new replica list fo the partition after executing the proposal.
    */
   public List<ReplicaPlacementInfo> newReplicas() {
-    return _newReplicas;
+    return Collections.unmodifiableList(_newReplicas);
   }
 
   /**
    * @return The replicas that exist in new replica list but not in old replica list.
    */
   public Set<ReplicaPlacementInfo> replicasToAdd() {
-    return _replicasToAdd;
+    return Collections.unmodifiableSet(_replicasToAdd);
   }
 
   /**
    * @return The replicas that exist in old replica list but not in the new replica list.
    */
   public Set<ReplicaPlacementInfo> replicasToRemove() {
-    return _replicasToRemove;
+    return Collections.unmodifiableSet(_replicasToRemove);
   }
 
   /**
@@ -203,7 +203,7 @@ public class ExecutionProposal {
    *         which means an intra-broker replica movement for is needed for these replicas.
    */
   public Map<Integer, ReplicaPlacementInfo> replicasToMoveBetweenDisksByBroker() {
-    return _replicasToMoveBetweenDisksByBroker;
+    return Collections.unmodifiableMap(_replicasToMoveBetweenDisksByBroker);
   }
 
   /**

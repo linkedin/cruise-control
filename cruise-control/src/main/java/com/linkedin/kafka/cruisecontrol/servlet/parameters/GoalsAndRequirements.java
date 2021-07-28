@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
+import java.util.Collections;
 import java.util.List;
 
 
@@ -22,7 +23,7 @@ public class GoalsAndRequirements {
   }
 
   public List<String> goals() {
-    return _goals;
+    return Collections.unmodifiableList(_goals);
   }
 
   public ModelCompletenessRequirements requirements() {

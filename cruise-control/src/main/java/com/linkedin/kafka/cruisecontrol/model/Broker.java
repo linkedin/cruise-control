@@ -315,26 +315,6 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
-   * @return the load density of a resource on a replica for sorting. This is to help reduce the movement cost.
-   */
-  private double loadDensity(Replica replica, Resource resource) {
-    double expectedLoad = replica.load().expectedUtilizationFor(resource);
-    if (expectedLoad == 0.0) {
-      return 0.0;
-    } else if (resource == Resource.DISK) {
-      return expectedLoad;
-    } else {
-      double diskLoad = replica.load().expectedUtilizationFor(Resource.DISK);
-      if (diskLoad == 0.0) {
-        // Some big number
-        return 1000000.0;
-      } else {
-        return expectedLoad / diskLoad;
-      }
-    }
-  }
-
-  /**
    * Set broker alive status. If the broker is not alive, add all of its replicas to current offline replicas.
    *
    * @param newState The new state of the broker.

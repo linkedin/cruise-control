@@ -39,7 +39,7 @@ public enum Statistic {
    * @return enumerated values in the same order as values()
    */
   public static List<Statistic> cachedValues() {
-    return CACHED_VALUES;
+    return Collections.unmodifiableList(CACHED_VALUES);
   }
 
   @Override

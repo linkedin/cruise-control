@@ -77,8 +77,8 @@ public final class ExecutionUtils {
   static final Map<ConcurrencyType, Integer> MAX_CONCURRENCY = new HashMap<>(ConcurrencyType.cachedValues().size());
   static final Map<ConcurrencyType, Integer> MIN_CONCURRENCY = new HashMap<>(ConcurrencyType.cachedValues().size());
   static final Map<String, Double> CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME = new HashMap<>(5);
-  private static long LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS;
-  private static int LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS;
+  private static long listPartitionReassignmentsTimeoutMs;
+  private static int listPartitionReassignmentsMaxAttempts;
 
   private ExecutionUtils() { }
 
@@ -114,8 +114,8 @@ public final class ExecutionUtils {
                         config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_PARTITION_MOVEMENTS_PER_BROKER_CONFIG));
     MIN_CONCURRENCY.put(ConcurrencyType.LEADERSHIP,
                         config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_CONFIG));
-    LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS = config.getLong(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS_CONFIG);
-    LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS = config.getInt(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS_CONFIG);
+    listPartitionReassignmentsTimeoutMs = config.getLong(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS_CONFIG);
+    listPartitionReassignmentsMaxAttempts = config.getInt(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS_CONFIG);
   }
 
   private static String toMetricName(Short metricId) {
@@ -307,9 +307,9 @@ public final class ExecutionUtils {
   /**
    * Retrieve the map of {@link PartitionReassignment reassignment} by {@link TopicPartition partitions}.
    *
-   * If the response times out, this method retries up to {@link #LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS} times.
+   * If the response times out, this method retries up to {@link #listPartitionReassignmentsMaxAttempts} times.
    * The maximum time to wait for the admin client response is computed as:
-   * {@link #LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS} * ({@link #DEFAULT_RETRY_BACKOFF_BASE} ^ {@code attempt}).
+   * {@link #listPartitionReassignmentsTimeoutMs} * ({@link #DEFAULT_RETRY_BACKOFF_BASE} ^ {@code attempt}).
    *
    * @param adminClient The adminClient to ask for ongoing partition reassignments.
    * @return The map of {@link PartitionReassignment reassignment} by {@link TopicPartition partitions}.
@@ -318,7 +318,7 @@ public final class ExecutionUtils {
       throws InterruptedException, ExecutionException, TimeoutException {
     Map<TopicPartition, PartitionReassignment> partitionReassignments = null;
     int attempts = 0;
-    long timeoutMs = LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS;
+    long timeoutMs = listPartitionReassignmentsTimeoutMs;
     do {
       ListPartitionReassignmentsResult responseResult = adminClient.listPartitionReassignments();
       try {
@@ -327,7 +327,7 @@ public final class ExecutionUtils {
       } catch (TimeoutException e) {
         LOG.info("Failed to list partition reassignments in {}ms (attempt={}). Consider increasing the value of {} config.",
                  timeoutMs, attempts + 1, ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS_CONFIG);
-        if (++attempts == LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS) {
+        if (++attempts == listPartitionReassignmentsMaxAttempts) {
           throw e;
         }
         timeoutMs *= DEFAULT_RETRY_BACKOFF_BASE;

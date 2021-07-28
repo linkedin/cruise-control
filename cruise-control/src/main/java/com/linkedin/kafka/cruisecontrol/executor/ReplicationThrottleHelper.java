@@ -133,8 +133,8 @@ class ReplicationThrottleHelper {
         proposal.oldReplicas().stream().map(ReplicaPlacementInfo::brokerId),
         proposal.replicasToAdd().stream().map(ReplicaPlacementInfo::brokerId));
       Set<String> throttledReplicas = throttledReplicasByTopic
-        .computeIfAbsent(topic, (x) -> new TreeSet<>());
-      brokers.forEach((brokerId) -> throttledReplicas.add(partitionId + ":" + brokerId));
+        .computeIfAbsent(topic, x -> new TreeSet<>());
+      brokers.forEach(brokerId -> throttledReplicas.add(partitionId + ":" + brokerId));
     }
     return throttledReplicasByTopic;
   }

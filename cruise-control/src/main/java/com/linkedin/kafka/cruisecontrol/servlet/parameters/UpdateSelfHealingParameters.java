@@ -65,11 +65,11 @@ public class UpdateSelfHealingParameters extends AbstractParameters {
   }
 
   public Set<AnomalyType> disableSelfHealingFor() {
-    return _disableSelfHealingFor;
+    return Collections.unmodifiableSet(_disableSelfHealingFor);
   }
 
   public Set<AnomalyType> enableSelfHealingFor() {
-    return _enableSelfHealingFor;
+    return Collections.unmodifiableSet(_enableSelfHealingFor);
   }
 
   @Override

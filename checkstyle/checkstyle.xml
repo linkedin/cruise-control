@@ -163,6 +163,18 @@ LinkedIn Java style.
         <module name="OverloadMethodsDeclarationOrder"/>
         <!-- Parameter assignment is not allowed -->
         <module name="ParameterAssignment"/>
+        <!-- There shall be no unnecessary parentheses in a statement or expression -->
+        <module name="UnnecessaryParentheses">
+            <property name="tokens" value="IDENT,NUM_DOUBLE,NUM_FLOAT,NUM_INT,NUM_LONG,STRING_LITERAL,LITERAL_NULL,LITERAL_FALSE,
+            LITERAL_TRUE,ASSIGN,LAMBDA,TEXT_BLOCK_LITERAL_BEGIN,LITERAL_INSTANCEOF,GT,LT,GE,LE,EQUAL,NOT_EQUAL,UNARY_MINUS,
+            UNARY_PLUS,INC,DEC,LNOT,BNOT,POST_INC,POST_DEC" />
+        </module>
+        <!-- There shall be no unnecessary semicolon used after type declaration -->
+        <module name="UnnecessarySemicolonAfterOuterTypeDeclaration"/>
+        <!-- There shall be no unnecessary semicolon used after type member declaration -->
+        <module name="UnnecessarySemicolonAfterTypeMemberDeclaration"/>
+        <!-- There shall be no unnecessary semicolon used in last resource declaration -->
+        <module name="UnnecessarySemicolonInTryWithResources"/>
 
         <!-- IMPORTS -->
 
@@ -183,6 +195,8 @@ LinkedIn Java style.
             <property name="separateLineBetweenGroups" value="true"/>
             <property name="customImportOrderRules" value="THIRD_PARTY_PACKAGE###STATIC"/>
         </module>
+        <!-- The static, non-final variable names must conform to a specified pattern -->
+        <module name="StaticVariableName"/>
 
         <!-- JAVADOC COMMENTS -->
 
@@ -266,6 +280,12 @@ LinkedIn Java style.
         <module name="RegexpSinglelineJava">
             <property name="format" value="[\s]+arg[\d]+[,\)]"/>
             <property name="message" value="Replace argN with a meaningful parameter name"/>
+        </module>
+
+        <!-- Do not allow more than a certain number of parameters per method -->
+        <module name="ParameterNumber">
+            <property name="max" value="15"/>
+            <property name="tokens" value="METHOD_DEF"/>
         </module>
     </module>
 

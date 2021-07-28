@@ -105,35 +105,35 @@ public class ClusterModelStats {
    * @return The resource utilization stats for the cluster instance that the object was populated with.
    */
   public Map<Statistic, Map<Resource, Double>> resourceUtilizationStats() {
-    return _resourceUtilizationStats;
+    return Collections.unmodifiableMap(_resourceUtilizationStats);
   }
 
   /**
    * @return The potential outbound network utilization stats for the cluster instance that the object was populated with.
    */
   public Map<Statistic, Double> potentialNwOutUtilizationStats() {
-    return _potentialNwOutUtilizationStats;
+    return Collections.unmodifiableMap(_potentialNwOutUtilizationStats);
   }
 
   /**
    * @return Replica stats for the cluster instance that the object was populated with.
    */
   public Map<Statistic, Number> replicaStats() {
-    return _replicaStats;
+    return Collections.unmodifiableMap(_replicaStats);
   }
 
   /**
    * @return The leader replica stats for the cluster instance that the object was populated with.
    */
   public Map<Statistic, Number> leaderReplicaStats() {
-    return _leaderReplicaStats;
+    return Collections.unmodifiableMap(_leaderReplicaStats);
   }
 
   /**
    * @return Topic replica stats for the cluster instance that the object was populated with.
    */
   public Map<Statistic, Number> topicReplicaStats() {
-    return _topicReplicaStats;
+    return Collections.unmodifiableMap(_topicReplicaStats);
   }
 
   /**
@@ -169,7 +169,7 @@ public class ClusterModelStats {
    * that the object was populated with.
    */
   public Map<Resource, Integer> numBalancedBrokersByResource() {
-    return _numBalancedBrokersByResource;
+    return Collections.unmodifiableMap(_numBalancedBrokersByResource);
   }
 
   /**

@@ -32,8 +32,8 @@ import static com.linkedin.kafka.cruisecontrol.detector.BrokerFailureDetector.BR
 import static com.linkedin.kafka.cruisecontrol.detector.BrokerFailureDetector.FAILED_BROKERS_OBJECT_CONFIG;
 
 public class AlertaSelfHealingNotifierTest {
-    private static BrokerFailures FAILURES;
-    private static Time MOCK_TIME;
+    private static BrokerFailures failures;
+    private static Time mockTime;
     private MockAlertaSelfHealingNotifier _notifier;
 
     public static final String DUMMY_ALERTA_API_URL = "http://dummy.alerta.api";
@@ -52,7 +52,7 @@ public class AlertaSelfHealingNotifierTest {
     @BeforeClass
     public static void setup() throws ParseException {
         final long startTime = 500L;
-        MOCK_TIME = new MockTime(0, startTime, TimeUnit.NANOSECONDS.convert(startTime, TimeUnit.MILLISECONDS));
+        mockTime = new MockTime(0, startTime, TimeUnit.NANOSECONDS.convert(startTime, TimeUnit.MILLISECONDS));
         KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
         Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
         KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
@@ -66,43 +66,43 @@ public class AlertaSelfHealingNotifierTest {
         parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 200L);
         parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, failedBrokers);
         parameterConfigOverrides.put(BROKER_FAILURES_FIXABLE_CONFIG, true);
-        FAILURES = kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
+        failures = kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
                                                                   BrokerFailures.class,
                                                                   parameterConfigOverrides);
     }
 
     @Test
     public void testAlertaAlertWithNoWebhook() {
-        _notifier = new MockAlertaSelfHealingNotifier(MOCK_TIME);
-        _notifier.alert(FAILURES, false, 1L, KafkaAnomalyType.BROKER_FAILURE);
+        _notifier = new MockAlertaSelfHealingNotifier(mockTime);
+        _notifier.alert(failures, false, 1L, KafkaAnomalyType.BROKER_FAILURE);
         assertEquals(0, _notifier.getAlertaMessageList().size());
     }
 
     @Test
     public void testAlertaAlertWithNoApiKey() {
-        _notifier = new MockAlertaSelfHealingNotifier(MOCK_TIME);
+        _notifier = new MockAlertaSelfHealingNotifier(mockTime);
         _notifier._alertaApiUrl = DUMMY_ALERTA_API_URL;
-        _notifier.alert(FAILURES, false, 1L, KafkaAnomalyType.BROKER_FAILURE);
+        _notifier.alert(failures, false, 1L, KafkaAnomalyType.BROKER_FAILURE);
         assertEquals(0, _notifier.getAlertaMessageList().size());
     }
 
     @Test
     public void testAlertaAlertWithDefaultOptions() {
-        _notifier = new MockAlertaSelfHealingNotifier(MOCK_TIME);
+        _notifier = new MockAlertaSelfHealingNotifier(mockTime);
         _notifier._alertaApiUrl = DUMMY_ALERTA_API_URL;
         _notifier._alertaApiKey = DUMMY_ALERTA_API_KEY;
-        _notifier.alert(FAILURES, false, 1L, KafkaAnomalyType.BROKER_FAILURE);
+        _notifier.alert(failures, false, 1L, KafkaAnomalyType.BROKER_FAILURE);
         assertEquals(2, _notifier.getAlertaMessageList().size());
     }
 
     @Test
     public void testAlertaAlertWithEnvironment() throws ParseException {
-        _notifier = new MockAlertaSelfHealingNotifier(MOCK_TIME);
+        _notifier = new MockAlertaSelfHealingNotifier(mockTime);
         _notifier._alertaApiUrl = DUMMY_ALERTA_API_URL;
         _notifier._alertaApiKey = DUMMY_ALERTA_API_KEY;
         _notifier._alertaEnvironment = DUMMY_ALERTA_ENV;
         long time = new SimpleDateFormat("yyyy-M-dd hh:mm:ssX").parse("2021-03-24 10:02:01Z").getTime();
-        _notifier.alert(FAILURES, false, time, KafkaAnomalyType.BROKER_FAILURE);
+        _notifier.alert(failures, false, time, KafkaAnomalyType.BROKER_FAILURE);
         assertEquals(2, _notifier.getAlertaMessageList().size());
         assertEquals(KafkaAnomalyType.BROKER_FAILURE.toString(), _notifier.getAlertaMessageList().get(0).getEvent());
         assertEquals(KafkaAnomalyType.BROKER_FAILURE.toString(), _notifier.getAlertaMessageList().get(1).getEvent());
