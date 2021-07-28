@@ -71,11 +71,11 @@ public class UpdateConcurrencyAdjusterParameters extends AbstractParameters {
   }
 
   public Set<ConcurrencyType> disableConcurrencyAdjusterFor() {
-    return _disableConcurrencyAdjusterFor;
+    return Collections.unmodifiableSet(_disableConcurrencyAdjusterFor);
   }
 
   public Set<ConcurrencyType> enableConcurrencyAdjusterFor() {
-    return _enableConcurrencyAdjusterFor;
+    return Collections.unmodifiableSet(_enableConcurrencyAdjusterFor);
   }
 
   public Boolean minIsrBasedConcurrencyAdjustment() {

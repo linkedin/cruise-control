@@ -100,7 +100,7 @@ public final class GoalUtils {
                                                            Replica replica,
                                                            ActionType action) {
     Set<Integer> requestedDestinationBrokerIds = optimizationOptions.requestedDestinationBrokerIds();
-    if (requestedDestinationBrokerIds.isEmpty() || (action == ActionType.LEADERSHIP_MOVEMENT)) {
+    if (requestedDestinationBrokerIds.isEmpty() || action == ActionType.LEADERSHIP_MOVEMENT) {
       Set<Integer> excludedBrokers = optimizationOptions.excludedBrokersForLeadership();
       if (!excludedBrokers.isEmpty() && (action == ActionType.LEADERSHIP_MOVEMENT || replica.isLeader())) {
         originalBrokers.removeIf(broker -> excludedBrokers.contains(broker.id()));

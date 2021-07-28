@@ -47,12 +47,12 @@ public class KafkaCruiseControlServletEndpointTest {
 
   private static final UUID repeatUUID = UUID.randomUUID();
 
-  private static Collection<Object[]> _initializeServletRequestsOutput = new ArrayList<>();
-  private static Collection<Object[]> _populateUserTaskManagerOutput = new ArrayList<>();
-  private static UserTaskManager.UUIDGenerator _mockUUIDGenerator;
-  private static HttpSession _mockHttpSession;
-  private static HttpServletResponse _mockHttpServletResponse;
-  private static UserTaskManager _userTaskManager;
+  private static final Collection<Object[]> INITIALIZE_SERVLET_REQUESTS_OUTPUT = new ArrayList<>();
+  private static final Collection<Object[]> POPULATE_USER_TASK_MANAGER_OUTPUT = new ArrayList<>();
+  private static final UserTaskManager.UUIDGenerator MOCK_UUID_GENERATOR;
+  private static final HttpSession MOCK_HTTP_SESSION;
+  private static final HttpServletResponse MOCK_HTTP_SERVLET_RESPONSE;
+  private static final UserTaskManager USER_TASK_MANAGER;
 
   private static final String[] PARAMS_TO_GET = {
       ParameterUtils.CLIENT_IDS_PARAM,
@@ -66,15 +66,15 @@ public class KafkaCruiseControlServletEndpointTest {
     DIFF_PARAM.put("param", new String[]{"true"});
 
     Time mockTime = new MockTime();
-    _mockUUIDGenerator = EasyMock.mock(UserTaskManager.UUIDGenerator.class);
-    _mockHttpSession = EasyMock.mock(HttpSession.class);
-    _mockHttpServletResponse = EasyMock.mock(HttpServletResponse.class);
-    EasyMock.expect(_mockHttpSession.getLastAccessedTime()).andReturn(mockTime.milliseconds()).anyTimes();
-    _mockHttpSession.invalidate();
-    _mockHttpServletResponse.setHeader(EasyMock.anyString(), EasyMock.anyString());
+    MOCK_UUID_GENERATOR = EasyMock.mock(UserTaskManager.UUIDGenerator.class);
+    MOCK_HTTP_SESSION = EasyMock.mock(HttpSession.class);
+    MOCK_HTTP_SERVLET_RESPONSE = EasyMock.mock(HttpServletResponse.class);
+    EasyMock.expect(MOCK_HTTP_SESSION.getLastAccessedTime()).andReturn(mockTime.milliseconds()).anyTimes();
+    MOCK_HTTP_SESSION.invalidate();
+    MOCK_HTTP_SERVLET_RESPONSE.setHeader(EasyMock.anyString(), EasyMock.anyString());
     EasyMock.expectLastCall().anyTimes();
-    _userTaskManager = new UserTaskManager(1000, 10, TimeUnit.HOURS.toMillis(6),
-                                           100, mockTime, _mockUUIDGenerator);
+    USER_TASK_MANAGER = new UserTaskManager(1000, 10, TimeUnit.HOURS.toMillis(6),
+                                            100, mockTime, MOCK_UUID_GENERATOR);
   }
 
   private static class MockResult implements CruiseControlResponse {
@@ -107,7 +107,7 @@ public class KafkaCruiseControlServletEndpointTest {
   }
 
   private static OperationFuture getFuture(int idx) {
-    return (OperationFuture) ((ArrayList<Object[]>) _populateUserTaskManagerOutput).get(idx)[0];
+    return (OperationFuture) ((ArrayList<Object[]>) POPULATE_USER_TASK_MANAGER_OUTPUT).get(idx)[0];
   }
 
   // Creates 6 requests below. These will create 5 entries of UserTaskInfo (request 5 and 6 have same id, so will be 1 UserTaskInfo)
@@ -123,15 +123,15 @@ public class KafkaCruiseControlServletEndpointTest {
 
     for (Object[] params : allParams) {
       HttpServletRequest mockHttpServletRequest = prepareTestRequest(mockHttpSession, params[0], params[1], params[2],
-          params[3], mockUUIDGenerator, params[4], params[5]);
-      _initializeServletRequestsOutput.add(outputRequestInfo(mockHttpServletRequest));
+                                                                     params[3], mockUUIDGenerator, params[4], params[5]);
+      INITIALIZE_SERVLET_REQUESTS_OUTPUT.add(outputRequestInfo(mockHttpServletRequest));
     }
   }
 
   // Create 5 User Tasks. Note the 5th and 6th one have same user task id, thus count as 1.
   private void populateUserTaskManager(HttpServletResponse mockHttpServletResponse, UserTaskManager userTaskManager) {
     List<Object[]> allParams = new ArrayList<>();
-    for (Object[] initInfo : _initializeServletRequestsOutput) {
+    for (Object[] initInfo : INITIALIZE_SERVLET_REQUESTS_OUTPUT) {
       allParams.add(inputCreateTaskParams((HttpServletRequest) initInfo[0], 0, 0));
     }
     // for the 6th getOrCreateUserTask() call, we set step to 1 and get the 2nd future
@@ -141,7 +141,7 @@ public class KafkaCruiseControlServletEndpointTest {
     for (Object[] params : allParams) {
       OperationFuture future = userTaskManager.getOrCreateUserTask((HttpServletRequest) params[0], mockHttpServletResponse, FUTURE_CREATOR,
                                                                    (int) params[1], true, null).get((int) params[2]);
-      _populateUserTaskManagerOutput.add(outputCreateTaskInfo(future));
+      POPULATE_USER_TASK_MANAGER_OUTPUT.add(outputCreateTaskInfo(future));
     }
   }
 
@@ -149,56 +149,56 @@ public class KafkaCruiseControlServletEndpointTest {
   public void testUserTaskParameters() throws UnsupportedEncodingException {
 
     // Set up all mocked requests,  UserTaskManager, and start mocked objects.
-    initializeServletRequests(_mockHttpSession, _mockUUIDGenerator);
-    EasyMock.replay(_mockUUIDGenerator, _mockHttpSession, _mockHttpServletResponse);
-    populateUserTaskManager(_mockHttpServletResponse, _userTaskManager);
+    initializeServletRequests(MOCK_HTTP_SESSION, MOCK_UUID_GENERATOR);
+    EasyMock.replay(MOCK_UUID_GENERATOR, MOCK_HTTP_SESSION, MOCK_HTTP_SERVLET_RESPONSE);
+    populateUserTaskManager(MOCK_HTTP_SERVLET_RESPONSE, USER_TASK_MANAGER);
 
-    UserTaskState userTaskState = new UserTaskState(_userTaskManager.getAllUserTasks(), null);
+    UserTaskState userTaskState = new UserTaskState(USER_TASK_MANAGER.getAllUserTasks(), null);
 
     // Test Case 1: Get all PROPOSAL or REBALANCE tasks
     Map<String, String []> answerQueryParam1 = new HashMap<>();
     answerQueryParam1.put("param", new String[]{"true"});
     answerQueryParam1.put("endpoints", new String[]{PROPOSALS.toString() + "," + REBALANCE.toString()});
-    HttpServletRequest answerQueryRequest1 = prepareRequest(_mockHttpSession, null, "", USER_TASKS.toString(), answerQueryParam1, GET_METHOD);
+    HttpServletRequest answerQueryRequest1 = prepareRequest(MOCK_HTTP_SESSION, null, "", USER_TASKS.toString(), answerQueryParam1, GET_METHOD);
     UserTasksParameters parameters1 = mockUserTasksParameters(answerQueryRequest1);
     List<UserTaskManager.UserTaskInfo> result1 = userTaskState.prepareResultList(parameters1);
     // Test Case 1 result
     Assert.assertEquals(3, result1.size());
-    EasyMock.reset(_mockUUIDGenerator, _mockHttpSession, _mockHttpServletResponse);
+    EasyMock.reset(MOCK_UUID_GENERATOR, MOCK_HTTP_SESSION, MOCK_HTTP_SERVLET_RESPONSE);
 
     // Test Case 2: Get all tasks from client 0.0.0.1
     Map<String, String []> answerQueryParam2 = new HashMap<>();
     answerQueryParam2.put("param", new String[]{"true"});
     answerQueryParam2.put("client_ids", new String[]{"0.0.0.1"});
-    HttpServletRequest answerQueryRequest2 = prepareRequest(_mockHttpSession, null, "", USER_TASKS.toString(), answerQueryParam2, GET_METHOD);
+    HttpServletRequest answerQueryRequest2 = prepareRequest(MOCK_HTTP_SESSION, null, "", USER_TASKS.toString(), answerQueryParam2, GET_METHOD);
     UserTasksParameters parameters2 = mockUserTasksParameters(answerQueryRequest2);
     List<UserTaskManager.UserTaskInfo> result2 = userTaskState.prepareResultList(parameters2);
     // Test Case 2 result
     Assert.assertEquals(3, result2.size());
-    EasyMock.reset(_mockUUIDGenerator, _mockHttpSession, _mockHttpServletResponse);
+    EasyMock.reset(MOCK_UUID_GENERATOR, MOCK_HTTP_SESSION, MOCK_HTTP_SERVLET_RESPONSE);
 
     // Test Case 3: Get all PROPOSALS and REMOVE_BROKERS from client 0.0.0.1
     Map<String, String []> answerQueryParam3 = new HashMap<>();
     answerQueryParam3.put("param", new String[]{"true"});
     answerQueryParam3.put("client_ids", new String[]{"0.0.0.1"});
     answerQueryParam3.put("endpoints", new String[]{PROPOSALS.toString() + "," + REMOVE_BROKER.toString()});
-    HttpServletRequest answerQueryRequest3 = prepareRequest(_mockHttpSession, null, "", USER_TASKS.toString(), answerQueryParam3, GET_METHOD);
+    HttpServletRequest answerQueryRequest3 = prepareRequest(MOCK_HTTP_SESSION, null, "", USER_TASKS.toString(), answerQueryParam3, GET_METHOD);
     UserTasksParameters parameters3 = mockUserTasksParameters(answerQueryRequest3);
     List<UserTaskManager.UserTaskInfo> result3 = userTaskState.prepareResultList(parameters3);
     // Test Case 3 result
     Assert.assertEquals(2, result3.size());
-    EasyMock.reset(_mockUUIDGenerator, _mockHttpSession, _mockHttpServletResponse);
+    EasyMock.reset(MOCK_UUID_GENERATOR, MOCK_HTTP_SESSION, MOCK_HTTP_SERVLET_RESPONSE);
 
     // Test Case 4: Get all tasks limit to 4 entries
     Map<String, String []> answerQueryParam4 = new HashMap<>();
     answerQueryParam4.put("param", new String[]{"true"});
     answerQueryParam4.put("entries", new String[]{"4"});
-    HttpServletRequest answerQueryRequest4 = prepareRequest(_mockHttpSession, null, "", USER_TASKS.toString(), answerQueryParam4, GET_METHOD);
+    HttpServletRequest answerQueryRequest4 = prepareRequest(MOCK_HTTP_SESSION, null, "", USER_TASKS.toString(), answerQueryParam4, GET_METHOD);
     UserTasksParameters parameters4 = mockUserTasksParameters(answerQueryRequest4);
     List<UserTaskManager.UserTaskInfo> result4 = userTaskState.prepareResultList(parameters4);
     // Test Case 4 result
     Assert.assertEquals(4, result4.size());
-    EasyMock.reset(_mockUUIDGenerator, _mockHttpSession, _mockHttpServletResponse);
+    EasyMock.reset(MOCK_UUID_GENERATOR, MOCK_HTTP_SESSION, MOCK_HTTP_SERVLET_RESPONSE);
 
     // Transition UserTaskManager state: some tasks will move from ACTIVE to COMPLETED
     // Resolve futures. Allow those tasks to be moved into completed state
@@ -209,9 +209,9 @@ public class KafkaCruiseControlServletEndpointTest {
     // Complete 6th request
     getFuture(5).complete(new MockResult());
     // Update task manager active vs completed state
-    _userTaskManager.checkActiveUserTasks();
+    USER_TASK_MANAGER.checkActiveUserTasks();
     // Now the UserTaskManager state has changed, so we reload the states
-    UserTaskState userTaskState2 = new UserTaskState(_userTaskManager.getAllUserTasks(), null);
+    UserTaskState userTaskState2 = new UserTaskState(USER_TASK_MANAGER.getAllUserTasks(), null);
 
     // Test Case 5: Get all LOAD or REMOVE_BROKER tasks that's completed and with user task id repeatUUID
     Map<String, String []> answerQueryParam5 = new HashMap<>();
@@ -219,12 +219,12 @@ public class KafkaCruiseControlServletEndpointTest {
     answerQueryParam5.put("endpoints", new String[]{LOAD.toString() + "," + REMOVE_BROKER.toString()});
     answerQueryParam5.put("user_task_ids", new String[]{repeatUUID.toString()});
     answerQueryParam5.put("types", new String[]{UserTaskManager.TaskState.COMPLETED.toString()});
-    HttpServletRequest answerQueryRequest5 = prepareRequest(_mockHttpSession, null, "", USER_TASKS.toString(), answerQueryParam5, GET_METHOD);
+    HttpServletRequest answerQueryRequest5 = prepareRequest(MOCK_HTTP_SESSION, null, "", USER_TASKS.toString(), answerQueryParam5, GET_METHOD);
     UserTasksParameters parameters5 = mockUserTasksParameters(answerQueryRequest5);
     List<UserTaskManager.UserTaskInfo> result5 = userTaskState2.prepareResultList(parameters5);
     // Test Case 5 result
     Assert.assertEquals(1, result5.size());
-    EasyMock.reset(_mockUUIDGenerator, _mockHttpSession, _mockHttpServletResponse);
+    EasyMock.reset(MOCK_UUID_GENERATOR, MOCK_HTTP_SESSION, MOCK_HTTP_SERVLET_RESPONSE);
 
   }
 
@@ -244,7 +244,7 @@ public class KafkaCruiseControlServletEndpointTest {
 
   @SuppressWarnings("unchecked")
   private HttpServletRequest prepareTestRequest(HttpSession session, Object userTaskId, Object clientId, Object resource,
-      Object params, UserTaskManager.UUIDGenerator mockUUIDGenerator, Object addToRequest, Object method) {
+                                                Object params, UserTaskManager.UUIDGenerator mockUUIDGenerator, Object addToRequest, Object method) {
 
     UUID uuidForGenerator = (userTaskId == null ? UUID.randomUUID() : (UUID) userTaskId);
     String uuidForRequest = (((Boolean) addToRequest && userTaskId != null) ? userTaskId.toString() : null);
@@ -254,7 +254,7 @@ public class KafkaCruiseControlServletEndpointTest {
   }
 
   private HttpServletRequest prepareRequest(HttpSession session, String userTaskId, String clientId, String resource,
-      Map<String, String []> params, String method) {
+                                            Map<String, String []> params, String method) {
     HttpServletRequest request = EasyMock.mock(HttpServletRequest.class);
 
     EasyMock.expect(request.getSession()).andReturn(session).anyTimes();

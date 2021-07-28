@@ -195,8 +195,7 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
     boolean isExcludedForReplicaMove = isExcludedForReplicaMove(broker);
 
     // A broker with a bad disk may take new replicas and give away offline replicas.
-    boolean requireLessReplicas = numOfflineReplicas > 0 || (numReplicas > _balanceUpperLimit)
-                                  || isExcludedForReplicaMove;
+    boolean requireLessReplicas = numOfflineReplicas > 0 || numReplicas > _balanceUpperLimit || isExcludedForReplicaMove;
     boolean requireMoreReplicas = !isExcludedForReplicaMove && broker.isAlive() && numReplicas - numOfflineReplicas < _balanceLowerLimit;
     if (broker.isAlive() && !requireMoreReplicas && !requireLessReplicas) {
       // return if the broker is already within the limit.

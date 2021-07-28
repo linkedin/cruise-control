@@ -198,7 +198,7 @@ public class ClusterModel implements Serializable {
    * @return Replicas eligible for self-healing.
    */
   public Set<Replica> selfHealingEligibleReplicas() {
-    return _selfHealingEligibleReplicas;
+    return Collections.unmodifiableSet(_selfHealingEligibleReplicas);
   }
 
   /**
@@ -231,7 +231,7 @@ public class ClusterModel implements Serializable {
    * @return The replication factor that each topic in the cluster created with.
    */
   public Map<String, Integer> replicationFactorByTopic() {
-    return _replicationFactorByTopic;
+    return Collections.unmodifiableMap(_replicationFactorByTopic);
   }
 
   /**

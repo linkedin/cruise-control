@@ -14,6 +14,7 @@ import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -57,7 +58,7 @@ public class Host implements Serializable {
   }
 
   public Set<Replica> replicas() {
-    return _replicas;
+    return Collections.unmodifiableSet(_replicas);
   }
 
   /**

@@ -17,6 +17,7 @@ import com.linkedin.kafka.cruisecontrol.config.RequestParameterWrapper;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.Purgatory;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -80,7 +81,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   public Map<EndPoint, Timer> successfulRequestExecutionTimer() {
-    return _successfulRequestExecutionTimer;
+    return Collections.unmodifiableMap(_successfulRequestExecutionTimer);
   }
 
   public ThreadLocal<Integer> asyncOperationStep() {
