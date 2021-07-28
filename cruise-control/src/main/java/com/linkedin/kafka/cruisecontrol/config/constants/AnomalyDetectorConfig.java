@@ -285,6 +285,14 @@ public final class AnomalyDetectorConfig {
   public static final boolean DEFAULT_PROVISIONER_ENABLE = true;
   public static final String PROVISIONER_ENABLE_DOC = "The flag to indicate whether use of provisioner is enabled.";
 
+  /**
+   * <code>replication.factor.self.healing.skip.rack.awareness.check</code>
+   */
+  public static final String RF_SELF_HEALING_SKIP_RACK_AWARENESS_CHECK_CONFIG = "replication.factor.self.healing.skip.rack.awareness.check";
+  public static final boolean DEFAULT_RF_SELF_HEALING_SKIP_RACK_AWARENESS_CHECK = false;
+  public static final String RF_SELF_HEALING_SKIP_RACK_AWARENESS_CHECK_DOC = "The flag to indicate whether to skip the rack-awareness "
+      + "sanity check while changing the replication factor to self-heal a topic anomaly regarding a replication factor violation.";
+
   private AnomalyDetectorConfig() {
   }
 
@@ -452,6 +460,11 @@ public final class AnomalyDetectorConfig {
                             ConfigDef.Type.BOOLEAN,
                             DEFAULT_PROVISIONER_ENABLE,
                             ConfigDef.Importance.LOW,
-                            PROVISIONER_ENABLE_DOC);
+                            PROVISIONER_ENABLE_DOC)
+                    .define(RF_SELF_HEALING_SKIP_RACK_AWARENESS_CHECK_CONFIG,
+                            ConfigDef.Type.BOOLEAN,
+                            DEFAULT_RF_SELF_HEALING_SKIP_RACK_AWARENESS_CHECK,
+                            ConfigDef.Importance.LOW,
+                            RF_SELF_HEALING_SKIP_RACK_AWARENESS_CHECK_DOC);
   }
 }
