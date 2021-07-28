@@ -418,7 +418,7 @@ public final class ExecutionUtils {
       return null;
     }
 
-    // Update the ongoing replica reassignments in case the task status has changed.
+    // Cancel all the ongoing replica reassignments.
     Map<TopicPartition, Optional<NewPartitionReassignment>> newReassignments = new HashMap<>(partitionsBeingReassigned.size());
     for (TopicPartition tp : partitionsBeingReassigned) {
       newReassignments.put(tp, cancelReassignmentValue());

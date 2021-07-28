@@ -13,7 +13,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.ge
 @JsonResponseClass
 @JsonResponseExternalFields(ResponseUtils.class)
 public class StopProposalResult extends AbstractCruiseControlResponse {
-public static final String FORCE_STOP_SUFFIX = " For replica reassignments force-stop is deprecated and acts as a graceful stop.";
+  public static final String FORCE_STOP_SUFFIX = " For replica reassignments force-stop is deprecated and acts as a graceful stop.";
 
   public StopProposalResult(KafkaCruiseControlConfig config) {
     super(config);
