@@ -55,7 +55,6 @@ public final class RunnableUtils {
   public static final ModelCompletenessRequirements SELF_HEALING_MODEL_COMPLETENESS_REQUIREMENTS = null;
   public static final boolean SELF_HEALING_SKIP_URP_DEMOTION = true;
   public static final boolean SELF_HEALING_EXCLUDE_FOLLOWER_DEMOTION = true;
-  public static final boolean SELF_HEALING_SKIP_RACK_AWARENESS_CHECK = false;
   public static final boolean SELF_HEALING_IS_TRIGGERED_BY_USER_REQUEST = false;
   public static final boolean SELF_HEALING_FAST_MODE = true;
   private static final Set<String> KAFKA_ASSIGNER_GOALS =
@@ -95,8 +94,8 @@ public final class RunnableUtils {
                                                  topics, replicationFactor, rackByBroker.size()));
       } else if (replicationFactor > brokersByRack.size()) {
         if (skipTopicRackAwarenessCheck) {
-          LOG.info("Target replication factor for topics {} is {}, which is larger than number of racks in cluster. Rack-awareness "
-                   + "property will be violated to add new replicas.", topics, replicationFactor);
+          LOG.info("Target replication factor for topics {} is {}, which is larger than the number of racks in cluster. Hence, the same rack"
+                   + " will contain more than one replicas from the same partition.", topics, replicationFactor);
         } else {
           throw new RuntimeException(String.format("Unable to change replication factor of topics %s to %d since there are only %d "
                                                    + "racks in the cluster, to skip the rack-awareness check, set %s to true in the request.",

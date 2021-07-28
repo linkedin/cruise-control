@@ -32,7 +32,6 @@ import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_SKIP_RACK_AWARENESS_CHECK;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_CONCURRENT_MOVEMENTS;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
@@ -123,7 +122,8 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
                                           boolean excludeRecentlyRemovedBrokers,
                                           String anomalyId,
                                           Supplier<String> reasonSupplier,
-                                          boolean stopOngoingExecution) {
+                                          boolean stopOngoingExecution,
+                                          boolean skipRackAwarenessCheck) {
     super(kafkaCruiseControl, new OperationFuture("Updating Topic Replication Factor for Self-Healing."), selfHealingGoals,
           allowCapacityEstimation, excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, anomalyId, reasonSupplier, stopOngoingExecution);
     // Initialize common parameters
@@ -131,7 +131,7 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
 
     // Initialize parameters specific to replication factor changes.
     _topicPatternByReplicationFactor = topicPatternByReplicationFactor;
-    _skipRackAwarenessCheck = SELF_HEALING_SKIP_RACK_AWARENESS_CHECK;
+    _skipRackAwarenessCheck = skipRackAwarenessCheck;
     _concurrentInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _concurrentLeaderMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;

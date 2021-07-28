@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
 
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.MAINTENANCE_EVENT_STOP_ONGOING_EXECUTION_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.RF_SELF_HEALING_SKIP_RACK_AWARENESS_CHECK_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getSelfHealingGoalNames;
@@ -151,6 +152,7 @@ public class MaintenanceEvent extends KafkaAnomaly {
     boolean allowCapacityEstimation = config.getBoolean(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
     boolean excludeRecentlyDemotedBrokers = config.getBoolean(SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
     boolean excludeRecentlyRemovedBrokers = config.getBoolean(SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
+    boolean skipRackAwarenessCheck = config.getBoolean(RF_SELF_HEALING_SKIP_RACK_AWARENESS_CHECK_CONFIG);
     _optimizationResult = null;
     _maintenanceEventType = (MaintenanceEventType) configs.get(MAINTENANCE_EVENT_TYPE_CONFIG);
     _stopOngoingExecution = (Boolean) configs.get(MAINTENANCE_EVENT_STOP_ONGOING_EXECUTION_CONFIG);
@@ -219,7 +221,8 @@ public class MaintenanceEvent extends KafkaAnomaly {
                                                                            excludeRecentlyRemovedBrokers,
                                                                            _anomalyId.toString(),
                                                                            reasonSupplier(),
-                                                                           stopOngoingExecution());
+                                                                           stopOngoingExecution(),
+                                                                           skipRackAwarenessCheck);
         break;
       default:
         throw new IllegalStateException(String.format("Unsupported maintenance event type %s.", _maintenanceEventType));
