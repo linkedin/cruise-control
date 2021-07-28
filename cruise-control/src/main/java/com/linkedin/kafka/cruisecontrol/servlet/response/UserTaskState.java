@@ -42,7 +42,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
   protected String getJSONString(UserTasksParameters parameters) {
     List<Map<String, Object>> jsonUserTaskList = new ArrayList<>();
     for (UserTaskManager.UserTaskInfo taskInfo : prepareResultList(parameters)) {
-      jsonUserTaskList.add(taskInfo.getJsonStructure(parameters.fetchCompletedTask() && (taskInfo.state() != UserTaskManager.TaskState.ACTIVE)));
+      jsonUserTaskList.add(taskInfo.getJsonStructure(parameters.fetchCompletedTask() && taskInfo.state() != UserTaskManager.TaskState.ACTIVE));
     }
     Map<String, Object> jsonResponse = new HashMap<>();
     jsonResponse.put(USER_TASKS, jsonUserTaskList);
@@ -80,9 +80,9 @@ public class UserTaskState extends AbstractCruiseControlResponse {
    * memory
    */
   protected static void populateFilteredTasks(List<UserTaskManager.UserTaskInfo> filteredTasks,
-                                            List<UserTaskManager.UserTaskInfo> userTasks,
-                                            UserTasksParameters parameters,
-                                            int entries) {
+                                              List<UserTaskManager.UserTaskInfo> userTasks,
+                                              UserTasksParameters parameters,
+                                              int entries) {
     if (filteredTasks.size() >= entries) {
       return;
     }
@@ -91,7 +91,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     Set<CruiseControlEndPoint> requestedEndPoints = parameters.endPoints();
     Set<String> requestedClientIds = parameters.clientIds();
 
-    Consumer<UserTaskManager.UserTaskInfo> consumer = (elem) -> {
+    Consumer<UserTaskManager.UserTaskInfo> consumer = elem -> {
       if (filteredTasks.size() < entries) {
         filteredTasks.add(elem);
       }

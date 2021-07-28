@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -73,7 +74,7 @@ public class ProvisionResponse {
    * @return Provision recommendation by the recommender in a programmatically readable format.
    */
   public Map<String, ProvisionRecommendation> recommendationByRecommender() {
-    return _recommendationByRecommender;
+    return Collections.unmodifiableMap(_recommendationByRecommender);
   }
 
   /**

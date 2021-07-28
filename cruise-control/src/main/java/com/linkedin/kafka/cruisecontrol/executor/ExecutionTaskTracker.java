@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.executor;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -382,11 +383,11 @@ public class ExecutionTaskTracker {
     }
 
     public Map<TaskType, Map<ExecutionTaskState, Integer>> taskStat() {
-      return _taskStat;
+      return Collections.unmodifiableMap(_taskStat);
     }
 
     public Map<TaskType, Map<ExecutionTaskState, Set<ExecutionTask>>> filteredTasksByState() {
-      return _filteredTasksByState;
+      return Collections.unmodifiableMap(_filteredTasksByState);
     }
   }
 }

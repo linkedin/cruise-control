@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.FixOfflineReplicasRunnable;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
+import java.util.Collections;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -36,7 +37,7 @@ public class DiskFailures extends KafkaAnomaly {
    * @return The failed disks and their failure time in millisecond grouped by broker.
    */
   public Map<Integer, Map<String, Long>> failedDisks() {
-    return _failedDisksByBroker;
+    return Collections.unmodifiableMap(_failedDisksByBroker);
   }
 
   @Override
