@@ -65,7 +65,7 @@ public class PartitionLoadState extends AbstractCruiseControlResponse {
       if (++numEntries > _entries) {
         break;
       }
-      List<Integer> followers = p.followers().stream().map((replica) -> replica.broker().id()).collect(Collectors.toList());
+      List<Integer> followers = p.followers().stream().map(replica -> replica.broker().id()).collect(Collectors.toList());
       sb.append(String.format("%" + _topicNameLength + "s%10s%30s%19.6f%19.3f%19.3f%19.3f%19.3f%n",
                               p.leader().topicPartition(),
                               p.leader().broker().id(),
@@ -139,7 +139,7 @@ public class PartitionLoadState extends AbstractCruiseControlResponse {
     }
 
     protected Map<String, Object> getJsonStructure() {
-      List<Integer> followers = _partition.followers().stream().map((replica) -> replica.broker().id()).collect(Collectors.toList());
+      List<Integer> followers = _partition.followers().stream().map(replica -> replica.broker().id()).collect(Collectors.toList());
       Map<String, Object> record = new HashMap<>(9);
       record.put(TOPIC, _partition.leader().topicPartition().topic());
       record.put(PARTITION, _partition.leader().topicPartition().partition());

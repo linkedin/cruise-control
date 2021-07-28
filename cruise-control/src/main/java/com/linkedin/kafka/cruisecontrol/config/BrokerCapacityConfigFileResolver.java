@@ -151,7 +151,7 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
   public static final int DEFAULT_CAPACITY_BROKER_ID = -1;
   private static final String NUM_CORES_CONFIG = "num.cores";
   public static final double DEFAULT_CPU_CAPACITY_WITH_CORES = 100.0;
-  private static Map<Integer, BrokerCapacityInfo> _capacitiesForBrokers;
+  private static Map<Integer, BrokerCapacityInfo> capacitiesForBrokers;
   private String _configFile;
 
   @Override
@@ -168,15 +168,15 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
   public BrokerCapacityInfo capacityForBroker(String rack, String host, int brokerId, long timeoutMs, boolean allowCapacityEstimation)
       throws BrokerCapacityResolutionException {
     if (brokerId >= 0) {
-      BrokerCapacityInfo capacity = _capacitiesForBrokers.get(brokerId);
+      BrokerCapacityInfo capacity = capacitiesForBrokers.get(brokerId);
       if (capacity != null) {
         return capacity;
       } else {
         if (allowCapacityEstimation) {
           String info = String.format("Missing broker id(%d) in capacity config file.", brokerId);
-          return new BrokerCapacityInfo(_capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).capacity(), info,
-                                        _capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).diskCapacityByLogDir(),
-                                        _capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).numCpuCores());
+          return new BrokerCapacityInfo(capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).capacity(), info,
+                                        capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).diskCapacityByLogDir(),
+                                        capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).numCpuCores());
         } else {
           throw new BrokerCapacityResolutionException(String.format("Unable to resolve capacity of broker %d. Either (1) adding the "
               + "default broker capacity (via adding capacity for broker %d and allowing capacity estimation) or (2) adding missing "
@@ -296,10 +296,10 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
       reader = new JsonReader(new InputStreamReader(new FileInputStream(_configFile), StandardCharsets.UTF_8));
       Gson gson = new Gson();
       Set<BrokerCapacity> brokerCapacities = ((BrokerCapacities) gson.fromJson(reader, BrokerCapacities.class)).brokerCapacities;
-      _capacitiesForBrokers = new HashMap<>(brokerCapacities.size());
+      capacitiesForBrokers = new HashMap<>(brokerCapacities.size());
       Set<Boolean> numCoresConfigConsistency = new HashSet<>(1);
       for (BrokerCapacity bc : brokerCapacities) {
-        _capacitiesForBrokers.put(bc.brokerId, getBrokerCapacityInfo(bc, numCoresConfigConsistency));
+        capacitiesForBrokers.put(bc.brokerId, getBrokerCapacityInfo(bc, numCoresConfigConsistency));
       }
     } finally {
       try {

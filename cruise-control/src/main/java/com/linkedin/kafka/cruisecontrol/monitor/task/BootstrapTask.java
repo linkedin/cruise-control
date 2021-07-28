@@ -83,7 +83,7 @@ class BootstrapTask implements Runnable {
                 Time time) {
     if (startMs < 0) {
       throw new IllegalArgumentException(String.format("Invalid bootstrap start time %d. The bootstrap since "
-                                                           + "time cannot be negative.", startMs));
+                                                       + "time cannot be negative.", startMs));
     }
     _mode = BootstrapMode.SINCE;
     _startMs = startMs;
@@ -117,8 +117,8 @@ class BootstrapTask implements Runnable {
                 Time time) {
     if (startMs < 0 || endMs < 0 || endMs <= startMs) {
       throw new IllegalArgumentException(String.format("Invalid bootstrap time range [%d, %d]. The bootstrap end "
-                                                           + "time must be non negative and the end time "
-                                                           + "must be greater than start time.", startMs, endMs));
+                                                       + "time must be non negative and the end time "
+                                                       + "must be greater than start time.", startMs, endMs));
     }
     _mode = BootstrapMode.RANGE;
     _startMs = startMs;
@@ -186,15 +186,15 @@ class BootstrapTask implements Runnable {
         return _bootstrappedRangeStartMs == _startMs && _bootstrappedRangeEndMs == _endMs;
       case SINCE:
         return _bootstrappedRangeStartMs == _startMs
-            && _bootstrappedRangeEndMs > now - _samplingIntervalMs;
+               && _bootstrappedRangeEndMs > now - _samplingIntervalMs;
       case RECENT:
         // Because we know that the sampling range end is always up to date. As long as we have enough snapshots
         // in the metric sample aggregator and our sampled range starting time is already no later than the
         // earliest snapshot window starting time, we know the bootstrap has finished.
         List<Long> snapshotWindows = _metricSampleAggregator.allWindows();
-        return (snapshotWindows.size() >= _configuredNumSnapshots + 1)
-            && (snapshotWindows.get(0) - _configuredSnapshotWindowMs >= _bootstrappedRangeStartMs)
-            && _bootstrappedRangeEndMs > now - _samplingIntervalMs;
+        return snapshotWindows.size() >= _configuredNumSnapshots + 1
+               && snapshotWindows.get(0) - _configuredSnapshotWindowMs >= _bootstrappedRangeStartMs
+               && _bootstrappedRangeEndMs > now - _samplingIntervalMs;
       default:
         throw new IllegalStateException("Should never be here");
     }
@@ -254,7 +254,7 @@ class BootstrapTask implements Runnable {
       throw t;
     } finally {
       LOG.info("Load monitor finished bootstrapping {} metric samples in {} snapshot windows for time "
-                   + "range [{}, {}] in {} seconds.", _metricSampleAggregator.numSamples(),
+               + "range [{}, {}] in {} seconds.", _metricSampleAggregator.numSamples(),
                _metricSampleAggregator.allWindows().size(), _bootstrappedRangeStartMs, _bootstrappedRangeEndMs,
                (_time.milliseconds() - bootstrapStartingMs) / 1000);
       _loadMonitorTaskRunner.compareAndSetState(LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.BOOTSTRAPPING,

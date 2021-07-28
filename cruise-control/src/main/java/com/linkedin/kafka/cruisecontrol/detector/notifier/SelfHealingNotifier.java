@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
 import com.linkedin.kafka.cruisecontrol.detector.MaintenanceEvent;
 import com.linkedin.kafka.cruisecontrol.detector.TopicAnomaly;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -150,7 +151,7 @@ public class SelfHealingNotifier implements AnomalyNotifier {
 
   @Override
   public Map<AnomalyType, Boolean> selfHealingEnabled() {
-    return _selfHealingEnabled;
+    return Collections.unmodifiableMap(_selfHealingEnabled);
   }
 
   @Override

@@ -149,7 +149,7 @@ public class PartitionLoadParameters extends AbstractParameters {
   }
 
   public Set<Integer> brokerIds() {
-    return _brokerIds;
+    return Collections.unmodifiableSet(_brokerIds);
   }
 
   @Override

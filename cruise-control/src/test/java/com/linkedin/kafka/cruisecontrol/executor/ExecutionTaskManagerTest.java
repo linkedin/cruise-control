@@ -38,7 +38,7 @@ public class ExecutionTaskManagerTest {
     mockDefaultConcurrency.put(ConcurrencyType.INTRA_BROKER_REPLICA, 2);
     MOCK_DEFAULT_CONCURRENCY = Collections.unmodifiableMap(mockDefaultConcurrency);
   }
-  private static ExecutionTaskManager TASK_MANAGER;
+  private static ExecutionTaskManager taskManager;
 
   private Cluster generateExpectedCluster(ExecutionProposal proposal) {
     List<Node> expectedReplicas = new ArrayList<>(proposal.oldReplicas().size());
@@ -66,8 +66,8 @@ public class ExecutionTaskManagerTest {
                    Integer.toString(MOCK_DEFAULT_CONCURRENCY.get(ConcurrencyType.LEADERSHIP)));
     properties.put(ExecutorConfig.NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG,
                    Integer.toString(MOCK_DEFAULT_CONCURRENCY.get(ConcurrencyType.INTRA_BROKER_REPLICA)));
-    TASK_MANAGER = new ExecutionTaskManager(null, new MetricRegistry(), new SystemTime(),
-                                            new KafkaCruiseControlConfig(properties));
+    taskManager = new ExecutionTaskManager(null, new MetricRegistry(), new SystemTime(),
+                                           new KafkaCruiseControlConfig(properties));
   }
 
   @Test
@@ -92,24 +92,24 @@ public class ExecutionTaskManagerTest {
     StrategyOptions strategyOptions = new StrategyOptions.Builder(generateExpectedCluster(proposal)).build();
 
     for (List<ExecutionTaskState> sequence : testSequences) {
-      TASK_MANAGER.clear();
-      TASK_MANAGER.setExecutionModeForTaskTracker(false);
-      TASK_MANAGER.addExecutionProposals(Collections.singletonList(proposal),
-                                         Collections.emptySet(),
-                                         strategyOptions,
-                                         null);
-      TASK_MANAGER.setRequestedInterBrokerPartitionMovementConcurrency(null);
-      TASK_MANAGER.setRequestedIntraBrokerPartitionMovementConcurrency(null);
-      TASK_MANAGER.setRequestedLeadershipMovementConcurrency(null);
-      List<ExecutionTask> tasks = TASK_MANAGER.getInterBrokerReplicaMovementTasks();
+      taskManager.clear();
+      taskManager.setExecutionModeForTaskTracker(false);
+      taskManager.addExecutionProposals(Collections.singletonList(proposal),
+                                        Collections.emptySet(),
+                                        strategyOptions,
+                                        null);
+      taskManager.setRequestedInterBrokerPartitionMovementConcurrency(null);
+      taskManager.setRequestedIntraBrokerPartitionMovementConcurrency(null);
+      taskManager.setRequestedLeadershipMovementConcurrency(null);
+      List<ExecutionTask> tasks = taskManager.getInterBrokerReplicaMovementTasks();
       assertEquals(1, tasks.size());
       ExecutionTask task = tasks.get(0);
-      verifyStateChangeSequence(sequence, task, TASK_MANAGER);
+      verifyStateChangeSequence(sequence, task, taskManager);
     }
 
     // Verify that the movement concurrency matches the default configuration
     for (ConcurrencyType concurrencyType : ConcurrencyType.cachedValues()) {
-      assertEquals(MOCK_DEFAULT_CONCURRENCY.get(concurrencyType).intValue(), TASK_MANAGER.movementConcurrency(concurrencyType));
+      assertEquals(MOCK_DEFAULT_CONCURRENCY.get(concurrencyType).intValue(), taskManager.movementConcurrency(concurrencyType));
     }
   }
 

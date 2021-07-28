@@ -267,7 +267,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
     boolean validLeader = true;
     if (leaderValidation) {
       Node leader = _metadata.fetch().leaderFor(sample.entity().tp());
-      validLeader = (leader != null) && (sample.brokerId() == leader.id());
+      validLeader = leader != null && sample.brokerId() == leader.id();
       if (!validLeader) {
         LOG.warn("The metric sample is discarded due to invalid leader. Current leader {}, Sample: {}", leader, sample);
       }

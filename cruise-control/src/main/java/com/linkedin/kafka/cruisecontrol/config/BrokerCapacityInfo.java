@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.config;
 
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -114,7 +115,7 @@ public class BrokerCapacityInfo {
    * @return The broker capacity for different resource types.
    */
   public Map<Resource, Double> capacity() {
-    return _capacity;
+    return Collections.unmodifiableMap(_capacity);
   }
 
   /**

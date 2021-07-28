@@ -77,7 +77,7 @@ public class GoalViolations extends KafkaAnomaly {
    * @return All the goal violations.
    */
   public Map<Boolean, List<String>> violatedGoalsByFixability() {
-    return _violatedGoalsByFixability;
+    return Collections.unmodifiableMap(_violatedGoalsByFixability);
   }
 
   @Override

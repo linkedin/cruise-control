@@ -115,7 +115,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
 
     // Case 1: a situation where Topic0 does not exist. Hence no property is returned upon read.
     KafkaZkClient mockKafkaZkClient = prepareMockKafkaZkClient(new Properties());
-    ExecutionTask mockCompleteTask = prepareMockCompleteTask(proposal, mockKafkaZkClient);
+    ExecutionTask mockCompleteTask = prepareMockCompleteTask(proposal);
     EasyMock.replay(mockCompleteTask, mockKafkaZkClient);
 
     ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockKafkaZkClient, throttleRate);
@@ -130,7 +130,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     mockKafkaZkClient = prepareMockKafkaZkClient(topicConfigProps);
     EasyMock.expect(mockKafkaZkClient.topicExists(TOPIC0)).andReturn(false).times(2);
 
-    mockCompleteTask = prepareMockCompleteTask(proposal, mockKafkaZkClient);
+    mockCompleteTask = prepareMockCompleteTask(proposal);
     EasyMock.replay(mockCompleteTask, mockKafkaZkClient);
 
     throttleHelper = new ReplicationThrottleHelper(mockKafkaZkClient, throttleRate);
@@ -210,12 +210,12 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     // We expect all throttles to be cleaned up
     throttleHelper.clearThrottles(Collections.singletonList(task), Collections.emptyList());
 
-    Arrays.asList(0, 1, 2, 3).forEach((i) -> assertExpectedThrottledRateForBroker(kafkaZkClient, i, null));
+    Arrays.asList(0, 1, 2, 3).forEach(i -> assertExpectedThrottledRateForBroker(kafkaZkClient, i, null));
     assertExpectedThrottledReplicas(kafkaZkClient, TOPIC0, null);
   }
 
   @Test
-  public void testAddingThrottlesWithPreExistingThrottles() throws InterruptedException {
+  public void testAddingThrottlesWithPreExistingThrottles() {
     createTopics();
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
                                                                   "ReplicationThrottleHelperTestMetricGroup",
@@ -273,7 +273,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     // any throttles related to partitions which were not moved will remain.
     // However, we do expect the broker throttles to be removed.
     throttleHelper.clearThrottles(Collections.singletonList(task), Collections.emptyList());
-    Arrays.asList(0, 1, 2, 3).forEach((i) -> assertExpectedThrottledRateForBroker(kafkaZkClient, i, null));
+    Arrays.asList(0, 1, 2, 3).forEach(i -> assertExpectedThrottledRateForBroker(kafkaZkClient, i, null));
     assertExpectedThrottledReplicas(kafkaZkClient, TOPIC0, "1:0,1:1");
     assertExpectedThrottledReplicas(kafkaZkClient, TOPIC1, "1:1");
   }
@@ -346,7 +346,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     inProgressTask.completed(3);
     throttleHelper.clearThrottles(Arrays.asList(completedTask, inProgressTask), Collections.emptyList());
 
-    Arrays.asList(0, 1, 2, 3).forEach((i) -> assertExpectedThrottledRateForBroker(kafkaZkClient, i, null));
+    Arrays.asList(0, 1, 2, 3).forEach(i -> assertExpectedThrottledRateForBroker(kafkaZkClient, i, null));
     // Topic-level throttled replica config value should remain as "*"
     assertExpectedThrottledReplicas(kafkaZkClient, TOPIC0, ReplicationThrottleHelper.WILDCARD_ASTERISK);
     assertExpectedThrottledReplicas(kafkaZkClient, TOPIC1, ReplicationThrottleHelper.WILDCARD_ASTERISK);
@@ -409,7 +409,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     inProgressTask.completed(3);
     throttleHelper.clearThrottles(Arrays.asList(completedTask, inProgressTask), Collections.emptyList());
 
-    Arrays.asList(0, 1, 2, 3).forEach((i) -> assertExpectedThrottledRateForBroker(kafkaZkClient, i, null));
+    Arrays.asList(0, 1, 2, 3).forEach(i -> assertExpectedThrottledRateForBroker(kafkaZkClient, i, null));
     assertExpectedThrottledReplicas(kafkaZkClient, TOPIC0, null);
   }
 
@@ -435,7 +435,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     return mockKafkaZkClient;
   }
 
-  private ExecutionTask prepareMockCompleteTask(ExecutionProposal proposal, KafkaZkClient kafkaZkClient) {
+  private ExecutionTask prepareMockCompleteTask(ExecutionProposal proposal) {
     ExecutionTask mockCompleteTask = EasyMock.mock(ExecutionTask.class);
     EasyMock.expect(mockCompleteTask.state()).andReturn(ExecutionTaskState.COMPLETED).times(2);
     EasyMock.expect(mockCompleteTask.type()).andReturn(ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION).once();

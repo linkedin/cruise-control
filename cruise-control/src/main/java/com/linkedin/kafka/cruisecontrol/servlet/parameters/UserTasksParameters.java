@@ -68,19 +68,19 @@ public class UserTasksParameters extends AbstractParameters {
   }
 
   public Set<UUID> userTaskIds() {
-    return _userTaskIds;
+    return Collections.unmodifiableSet(_userTaskIds);
   }
 
   public Set<String> clientIds() {
-    return _clientIds;
+    return Collections.unmodifiableSet(_clientIds);
   }
 
   public Set<CruiseControlEndPoint> endPoints() {
-    return _endPoints;
+    return Collections.unmodifiableSet(_endPoints);
   }
 
   public Set<UserTaskManager.TaskState> types() {
-    return _types;
+    return Collections.unmodifiableSet(_types);
   }
 
   public int entries() {
