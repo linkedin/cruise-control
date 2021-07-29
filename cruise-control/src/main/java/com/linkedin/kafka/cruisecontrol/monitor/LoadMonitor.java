@@ -76,7 +76,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  */
 public class LoadMonitor {
 
-  // Kafka Load Monitor server log.
+  // Kafka load Monitor server log.
   private static final Logger LOG = LoggerFactory.getLogger(LoadMonitor.class);
   // Metadata TTL is set based on experience -- i.e. a short TTL with large metadata may cause excessive load on brokers.
   private static final long METADATA_TTL = TimeUnit.SECONDS.toMillis(10);
@@ -220,7 +220,7 @@ public class LoadMonitor {
     _loadMonitorTaskRunner.shutdown();
     _metadataClient.close();
     KafkaCruiseControlUtils.closeAdminClientWithTimeout(_adminClient);
-    LOG.info("Load Monitor shutdown completed.");
+    LOG.info("load Monitor shutdown completed.");
   }
 
   /**
@@ -788,7 +788,7 @@ public class LoadMonitor {
         _latestStateUpdateMs = _time.milliseconds();
       } catch (Throwable t) {
         // We catch all the throwables because we don't want the sensor updater to die
-        LOG.warn("Load monitor sensor updater received exception ", t);
+        LOG.warn("load monitor sensor updater received exception ", t);
       }
     }
   }

@@ -89,4 +89,54 @@
     <Bug pattern="DMI_RANDOM_USED_ONLY_ONCE, ..." />
   </Match>
 
+  <Match>
+    <Class name="com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectionStatus" />
+    <Bug pattern="MS_EXPOSE_REP" />
+  </Match>
+
+  <Match>
+    <Class name="com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager$TaskState" />
+    <Bug pattern="MS_EXPOSE_REP" />
+  </Match>
+
+  <Match>
+    <Class name="com.linkedin.kafka.cruisecontrol.KafkaCruiseControlVertxApp" />
+    <Bug pattern="MS_PKGPROTECT" />
+  </Match>
+
+  <Match>
+    <Class name="com.linkedin.kafka.cruisecontrol.KafkaCruiseControlVertxApp" />
+    <Bug pattern="RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT" />
+  </Match>
+
+  <Match>
+    <Class name="com.linkedin.kafka.cruisecontrol.vertx.MainVerticle" />
+    <Bug pattern="MS_EXPOSE_REP" />
+  </Match>
+
+  <Match>
+    <Class name="com.linkedin.kafka.cruisecontrol.vertx.MainVerticle" />
+    <Bug pattern="ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD" />
+  </Match>
+
+  <Match>
+    <Class name="com.linkedin.kafka.cruisecontrol.vertx.generator.AnnotationMappers" />
+    <Bug pattern="DLS_DEAD_LOCAL_STORE" />
+  </Match>
+
+  <Match>
+    <Class name="com.linkedin.kafka.cruisecontrol.KafkaCruiseControlVertxApp" />
+    <Bug pattern="ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD" />
+  </Match>
+
+  <Match>
+    <Class name="com.linkedin.kafka.cruisecontrol.CruiseControlVertxIntegrationTestHarness" />
+    <Bug pattern="DM_DEFAULT_ENCODING" />
+  </Match>
+
+  <Match>
+    <Class name="com.linkedin.kafka.cruisecontrol.CruiseControlVertxIntegrationTestHarness" />
+    <Bug pattern="IL_INFINITE_LOOP" />
+  </Match>
+
 </FindBugsFilter>

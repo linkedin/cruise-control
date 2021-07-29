@@ -28,7 +28,6 @@ public class GetStateRunnable extends OperationRunnable {
     super(kafkaCruiseControl, future);
     _substates = parameters.substates();
   }
-
   /**
    * Get the state with selected substates for Kafka Cruise Control.
    */

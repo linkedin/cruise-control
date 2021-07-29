@@ -39,7 +39,11 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     _userTasks = userTasks;
   }
 
-  protected String getJsonString(UserTasksParameters parameters) {
+  /**
+   * @param parameters cruise control parameters
+   * @return JSON string
+   */
+  public String getJsonString(UserTasksParameters parameters) {
     List<Map<String, Object>> jsonUserTaskList = new ArrayList<>();
     for (UserTaskManager.UserTaskInfo taskInfo : prepareResultList(parameters)) {
       jsonUserTaskList.add(taskInfo.getJsonStructure(parameters.fetchCompletedTask() && taskInfo.state() != UserTaskManager.TaskState.ACTIVE));
@@ -112,7 +116,12 @@ public class UserTaskState extends AbstractCruiseControlResponse {
                  .forEach(consumer);
   }
 
-  protected String getPlaintext(UserTasksParameters parameters) {
+  /**
+   *
+   * @param parameters cruise control parameters
+   * @return Plain text
+   */
+  public String getPlaintext(UserTasksParameters parameters) {
     StringBuilder sb = new StringBuilder();
     int padding = 2;
     int userTaskIdLabelSize = 20;

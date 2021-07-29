@@ -90,31 +90,31 @@ public final class ExecutionUtils {
    */
   static void init(KafkaCruiseControlConfig config) {
     CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.put(BROKER_LOG_FLUSH_TIME_MS_999TH.name(),
-                                                  config.getDouble(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_LOG_FLUSH_TIME_MS_CONFIG));
+            config.getDouble(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_LOG_FLUSH_TIME_MS_CONFIG));
     CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.put(BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_999TH.name(),
-                                                  config.getDouble(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_FOLLOWER_FETCH_LOCAL_TIME_MS_CONFIG));
+            config.getDouble(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_FOLLOWER_FETCH_LOCAL_TIME_MS_CONFIG));
     CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.put(BROKER_PRODUCE_LOCAL_TIME_MS_999TH.name(),
-                                                  config.getDouble(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_PRODUCE_LOCAL_TIME_MS_CONFIG));
+            config.getDouble(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_PRODUCE_LOCAL_TIME_MS_CONFIG));
     CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.put(BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_999TH.name(),
-                                                  config.getDouble(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_CONSUMER_FETCH_LOCAL_TIME_MS_CONFIG));
+            config.getDouble(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_CONSUMER_FETCH_LOCAL_TIME_MS_CONFIG));
     CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.put(BROKER_REQUEST_QUEUE_SIZE.name(),
-                                                  config.getDouble(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_CONFIG));
+            config.getDouble(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_CONFIG));
     ADDITIVE_INCREASE.put(ConcurrencyType.INTER_BROKER_REPLICA,
-                          config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_INTER_BROKER_REPLICA_CONFIG));
+            config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_INTER_BROKER_REPLICA_CONFIG));
     ADDITIVE_INCREASE.put(ConcurrencyType.LEADERSHIP,
-                          config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_LEADERSHIP_CONFIG));
+            config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_LEADERSHIP_CONFIG));
     MULTIPLICATIVE_DECREASE.put(ConcurrencyType.INTER_BROKER_REPLICA,
-                                config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_INTER_BROKER_REPLICA_CONFIG));
+            config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_INTER_BROKER_REPLICA_CONFIG));
     MULTIPLICATIVE_DECREASE.put(ConcurrencyType.LEADERSHIP,
-                                config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_LEADERSHIP_CONFIG));
+            config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_LEADERSHIP_CONFIG));
     MAX_CONCURRENCY.put(ConcurrencyType.INTER_BROKER_REPLICA,
-                        config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_CONFIG));
+            config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_CONFIG));
     MAX_CONCURRENCY.put(ConcurrencyType.LEADERSHIP,
-                        config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_CONFIG));
+            config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_CONFIG));
     MIN_CONCURRENCY.put(ConcurrencyType.INTER_BROKER_REPLICA,
-                        config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_PARTITION_MOVEMENTS_PER_BROKER_CONFIG));
+            config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_PARTITION_MOVEMENTS_PER_BROKER_CONFIG));
     MIN_CONCURRENCY.put(ConcurrencyType.LEADERSHIP,
-                        config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_CONFIG));
+            config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_CONFIG));
     listPartitionReassignmentsTimeoutMs = config.getLong(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS_CONFIG);
     listPartitionReassignmentsMaxAttempts = config.getInt(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS_CONFIG);
   }
@@ -209,7 +209,7 @@ public final class ExecutionUtils {
       if (currentMovementConcurrency > minMovementsConcurrency) {
         recommendedConcurrency = Math.max(minMovementsConcurrency, currentMovementConcurrency / MULTIPLICATIVE_DECREASE.get(concurrencyType));
         LOG.info("Concurrency adjuster recommended a decrease in {} movement concurrency to {} due to AtMinISR without offline replicas in {}.",
-                 concurrencyType, recommendedConcurrency, atMinIsr);
+                concurrencyType, recommendedConcurrency, atMinIsr);
       }
     }
 
@@ -330,7 +330,7 @@ public final class ExecutionUtils {
    * @return The set of {@link TopicPartition partitions} that are being reassigned.
    */
   public static Set<TopicPartition> partitionsBeingReassigned(AdminClient adminClient)
-      throws InterruptedException, ExecutionException, TimeoutException {
+          throws InterruptedException, ExecutionException, TimeoutException {
     return ongoingPartitionReassignments(adminClient).keySet();
   }
 
@@ -345,7 +345,7 @@ public final class ExecutionUtils {
    * @return The map of {@link PartitionReassignment reassignment} by {@link TopicPartition partitions}.
    */
   public static Map<TopicPartition, PartitionReassignment> ongoingPartitionReassignments(AdminClient adminClient)
-      throws InterruptedException, ExecutionException, TimeoutException {
+          throws InterruptedException, ExecutionException, TimeoutException {
     Map<TopicPartition, PartitionReassignment> partitionReassignments = null;
     int attempts = 0;
     long timeoutMs = listPartitionReassignmentsTimeoutMs;
@@ -356,7 +356,7 @@ public final class ExecutionUtils {
         partitionReassignments = responseResult.reassignments().get(timeoutMs, TimeUnit.MILLISECONDS);
       } catch (TimeoutException e) {
         LOG.info("Failed to list partition reassignments in {}ms (attempt={}). Consider increasing the value of {} config.",
-                 timeoutMs, attempts + 1, ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS_CONFIG);
+                timeoutMs, attempts + 1, ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS_CONFIG);
         if (++attempts == listPartitionReassignmentsMaxAttempts) {
           throw e;
         }
@@ -480,7 +480,7 @@ public final class ExecutionUtils {
     } catch (TimeoutException | InterruptedException | ExecutionException e) {
       // This may indicate transient (e.g. network) issues.
       throw new IllegalStateException("Cannot stop partition reassignments due to failure to retrieve whether the Kafka cluster has "
-                                      + "an already ongoing partition reassignment.", e);
+              + "an already ongoing partition reassignment.", e);
     }
     if (partitionsBeingReassigned.isEmpty()) {
       return null;
@@ -560,10 +560,10 @@ public final class ExecutionUtils {
           LOG.debug("Rollback failed for {} due to lack of corresponding ongoing replica reassignment.", tp);
         } else if (Errors.REQUEST_TIMED_OUT.exception().getClass() == ee.getCause().getClass()) {
           throw new IllegalStateException(String.format("alterPartitionReassignments request timed out for partitions: %s. Check for Kafka "
-                                                        + "broker- or controller-side issues and consider increasing the configured timeout "
-                                                        + "(see %s).",
-                                                        result.values().keySet(),
-                                                        ExecutorConfig.ADMIN_CLIENT_REQUEST_TIMEOUT_MS_CONFIG), ee.getCause());
+                          + "broker- or controller-side issues and consider increasing the configured timeout "
+                          + "(see %s).",
+                  result.values().keySet(),
+                  ExecutorConfig.ADMIN_CLIENT_REQUEST_TIMEOUT_MS_CONFIG), ee.getCause());
         } else {
           // Not expected to happen.
           throw new IllegalStateException(String.format("%s encountered an unknown execution exception.", tp), ee.getCause());
@@ -602,7 +602,7 @@ public final class ExecutionUtils {
             // The leader is already the preferred leader.
             noElectionNeeded.add(tp);
           } else if (Errors.UNKNOWN_TOPIC_OR_PARTITION.exception().getClass() == entry.getValue().get().getClass()
-                     || Errors.INVALID_TOPIC_EXCEPTION.exception().getClass() == entry.getValue().get().getClass()) {
+                  || Errors.INVALID_TOPIC_EXCEPTION.exception().getClass() == entry.getValue().get().getClass()) {
             // Topic (1) has been deleted -- i.e. since partition does not exist, it is assumed to be deleted or (2) is being deleted.
             deletedTopicPartitions.add(tp);
           } else if (Errors.PREFERRED_LEADER_NOT_AVAILABLE.exception().getClass() == entry.getValue().get().getClass()) {
@@ -630,8 +630,8 @@ public final class ExecutionUtils {
     } catch (ExecutionException ee) {
       if (Errors.REQUEST_TIMED_OUT.exception().getClass() == ee.getCause().getClass()) {
         throw new IllegalStateException(String.format("electLeaders request timed out. Check for Kafka broker- or controller-side issues and"
-                                                      + " consider increasing the configured timeout (see %s).",
-                                                      ExecutorConfig.ADMIN_CLIENT_REQUEST_TIMEOUT_MS_CONFIG), ee.getCause());
+                        + " consider increasing the configured timeout (see %s).",
+                ExecutorConfig.ADMIN_CLIENT_REQUEST_TIMEOUT_MS_CONFIG), ee.getCause());
       } else if (Errors.CLUSTER_AUTHORIZATION_FAILED.exception().getClass() == ee.getCause().getClass()) {
         throw new IllegalStateException("Cruise Control is not authorized to trigger leader election", ee.getCause());
       } else {
@@ -686,7 +686,7 @@ public final class ExecutionUtils {
                                                 ExecutionTask task) {
     if (logdirInfoByTask.containsKey(task)) {
       return logdirInfoByTask.get(task).getCurrentReplicaLogDir()
-                             .equals(task.proposal().replicasToMoveBetweenDisksByBroker().get(task.brokerId()).logdir());
+              .equals(task.proposal().replicasToMoveBetweenDisksByBroker().get(task.brokerId()).logdir());
     }
     return false;
   }
@@ -713,8 +713,8 @@ public final class ExecutionUtils {
         TopicPartition tp = task.proposal().topicPartition();
         Node leader = cluster.leaderFor(tp);
         return (leader != null && leader.id() == task.proposal().newLeader().brokerId())
-               || leader == null
-               || !isInIsr(task.proposal().newLeader().brokerId(), cluster, tp);
+                || leader == null
+                || !isInIsr(task.proposal().newLeader().brokerId(), cluster, tp);
       case ABORTING:
       case DEAD:
         return true;

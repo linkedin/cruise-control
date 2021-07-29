@@ -696,7 +696,7 @@ public final class DeterministicCluster {
    * <li>B1: T1_P2_leader, T2_P1_leader, T2_P3_follower</li>
    * <li>B2: T2_P2_follower, T1_P1_follower, T2_P1_follower</li>
    * <p>
-   * <h3>Load on Partitions</h3>
+   * <h3>load on Partitions</h3>
    * <p>
    * <ul>
    * <li>T1_P1_leader:</li>

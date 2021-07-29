@@ -162,3 +162,4 @@ public class AuthenticationIntegrationTest extends CruiseControlIntegrationTestH
     }
   }
 }
+

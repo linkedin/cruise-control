@@ -42,7 +42,11 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     _adminClient = adminClient;
   }
 
-  protected String getJsonString(CruiseControlParameters parameters) {
+  /**
+   * @param parameters the cruise control parameters
+   * @return JSON string
+   */
+  public String getJsonString(CruiseControlParameters parameters) {
     Gson gson = new Gson();
     Map<String, Object> jsonStructure;
     KafkaClusterStateParameters kafkaClusterStateParams = (KafkaClusterStateParameters) parameters;
@@ -74,7 +78,11 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     return cruiseControlState;
   }
 
-  protected String getPlaintext(CruiseControlParameters parameters) {
+  /**
+   * @param parameters the cruise control parameters
+   * @return Plain text
+   */
+  public String getPlaintext(CruiseControlParameters parameters) {
     KafkaClusterStateParameters kafkaClusterStateParams = (KafkaClusterStateParameters) parameters;
     boolean isVerbose = kafkaClusterStateParams.isVerbose();
     Pattern topic = kafkaClusterStateParams.topic();

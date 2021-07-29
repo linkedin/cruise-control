@@ -4,9 +4,11 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async;
 
+import com.linkedin.kafka.cruisecontrol.CruiseControlEndPoints;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.async.progress.Pending;
+import com.linkedin.cruisecontrol.httframeworkhandler.CruiseControlRequestContext;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.AbstractRequest;
@@ -16,11 +18,8 @@ import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Operation
 import com.linkedin.kafka.cruisecontrol.servlet.response.ProgressResult;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,23 +41,23 @@ public abstract class AbstractAsyncRequest extends AbstractRequest {
    * @param uuid UUID string associated with the request.
    * @return The corresponding {@link OperationFuture}.
    */
-  protected abstract OperationFuture handle(String uuid);
+  public abstract OperationFuture handle(String uuid);
 
   @Override
-  public CruiseControlResponse getResponse(HttpServletRequest request, HttpServletResponse response)
-      throws ExecutionException, InterruptedException {
+  public CruiseControlResponse getResponse(CruiseControlRequestContext handler)
+          throws Exception {
     LOG.info("Processing async request {}.", name());
     int step = _asyncOperationStep.get();
     List<OperationFuture>
-        futures = _userTaskManager.getOrCreateUserTask(request, response, this::handle, step, true, parameters());
+        futures = _userTaskManager.getOrCreateUserTask(handler, this::handle, step, true, parameters());
     _asyncOperationStep.set(step + 1);
     CruiseControlResponse ccResponse;
     try {
       ccResponse = futures.get(step).get(_maxBlockMs, TimeUnit.MILLISECONDS);
-      LOG.info("Computation is completed for async request: {}.", request.getPathInfo());
+      LOG.info("Computation is completed for async request: {}.", handler.getPathInfo());
     } catch (TimeoutException te) {
       ccResponse = new ProgressResult(futures, _asyncKafkaCruiseControl.config());
-      LOG.info("Computation is in progress for async request: {}.", request.getPathInfo());
+      LOG.info("Computation is in progress for async request: {}.", handler.getPathInfo());
     }
     return ccResponse;
   }
@@ -71,10 +70,15 @@ public abstract class AbstractAsyncRequest extends AbstractRequest {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    _asyncKafkaCruiseControl = _servlet.asyncKafkaCruiseControl();
-    _asyncOperationStep = _servlet.asyncOperationStep();
-    _userTaskManager = _servlet.userTaskManager();
-    _maxBlockMs = _asyncKafkaCruiseControl.config().getLong(WebServerConfig.WEBSERVER_REQUEST_MAX_BLOCK_TIME_MS_CONFIG);
+    CruiseControlEndPoints cruiseControlEndPoints = getCruiseControlEndpoints();
+    _asyncKafkaCruiseControl = cruiseControlEndPoints.asyncKafkaCruiseControl();
+    _asyncOperationStep = cruiseControlEndPoints.asyncOperationStep();
+    _userTaskManager = cruiseControlEndPoints.userTaskManager();
+    _maxBlockMs = cruiseControlEndPoints.config().getLong(WebServerConfig.WEBSERVER_REQUEST_MAX_BLOCK_TIME_MS_CONFIG);
+  }
+
+  protected CruiseControlEndPoints getCruiseControlEndpoints() {
+    return _requestHandler.cruiseControlEndPoints();
   }
 
   protected void pending(OperationProgress progress) {

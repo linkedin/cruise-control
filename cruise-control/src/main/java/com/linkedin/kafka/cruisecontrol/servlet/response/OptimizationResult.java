@@ -68,7 +68,11 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
     return _cachedPlaintextResponse;
   }
 
-  protected String getPlaintextPretext(CruiseControlParameters parameters) {
+  /**
+   * @param parameters the cruise control parameters
+   * @return Plaintext pretext
+   */
+  public String getPlaintextPretext(CruiseControlParameters parameters) {
     switch ((CruiseControlEndPoint) parameters.endPoint()) {
       case ADD_BROKER:
         return String.format("%n%nCluster load after adding broker %s:%n", ((AddedOrRemovedBrokerParameters) parameters).brokerIds());
@@ -91,7 +95,12 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
     }
   }
 
-  protected String getPlaintext(boolean isVerbose, String pretext) {
+  /**
+   * @param isVerbose Verbose parameter of the request
+   * @param pretext the pretext of the response
+   * @return Plain text
+   */
+  public String getPlaintext(boolean isVerbose, String pretext) {
     StringBuilder sb = new StringBuilder();
     if (isVerbose) {
       sb.append(_optimizerResult.goalProposals().toString());
@@ -132,7 +141,11 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
     }
   }
 
-  protected String getJsonString(boolean isVerbose) {
+  /**
+   * @param isVerbose Verbose parameter of the request
+   * @return JSON string
+   */
+  public String getJsonString(boolean isVerbose) {
     Map<String, Object> optimizationResult = new HashMap<>();
     if (isVerbose) {
       optimizationResult.put(PROPOSALS, _optimizerResult.goalProposals().stream()

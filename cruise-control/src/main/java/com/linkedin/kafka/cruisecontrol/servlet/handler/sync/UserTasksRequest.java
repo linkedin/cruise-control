@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.handler.sync;
 
+import com.linkedin.kafka.cruisecontrol.CruiseControlEndPoints;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserTasksParameters;
@@ -42,8 +43,9 @@ public class UserTasksRequest extends AbstractSyncRequest {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    _userTasks = _servlet.getAllUserTasks();
-    _config = _servlet.asyncKafkaCruiseControl().config();
+    CruiseControlEndPoints cruiseControlEndPoints = getCruiseControlEndpoints();
+    _userTasks = cruiseControlEndPoints.getAllUserTasks();
+    _config = cruiseControlEndPoints.asyncKafkaCruiseControl().config();
     _parameters = (UserTasksParameters) validateNotNull(configs.get(USER_TASKS_PARAMETER_OBJECT_CONFIG),
             "Parameter configuration is missing from the request.");
   }

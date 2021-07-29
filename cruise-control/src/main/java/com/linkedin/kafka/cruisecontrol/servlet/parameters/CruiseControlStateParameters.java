@@ -49,9 +49,9 @@ public class CruiseControlStateParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _substates = ParameterUtils.substates(_request);
-    _isVerbose = ParameterUtils.isVerbose(_request);
-    _isSuperVerbose = ParameterUtils.isSuperVerbose(_request);
+    _substates = ParameterUtils.substates(_handler);
+    _isVerbose = ParameterUtils.isVerbose(_handler);
+    _isSuperVerbose = ParameterUtils.isSuperVerbose(_handler);
   }
 
   public Set<CruiseControlState.SubState> substates() {

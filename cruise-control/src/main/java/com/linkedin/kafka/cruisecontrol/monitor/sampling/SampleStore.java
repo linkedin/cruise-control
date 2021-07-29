@@ -24,7 +24,7 @@ public interface SampleStore extends CruiseControlConfigurable {
   void storeSamples(MetricSampler.Samples samples);
 
   /**
-   * Load the samples from the sample store.
+   * load the samples from the sample store.
    *
    * @param sampleLoader the sample loader that takes in samples.
    */

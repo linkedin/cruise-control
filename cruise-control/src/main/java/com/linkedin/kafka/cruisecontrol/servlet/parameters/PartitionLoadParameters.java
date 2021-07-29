@@ -15,17 +15,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.RESOURCE_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.START_MS_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.END_MS_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.ENTRIES_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.ALLOW_CAPACITY_ESTIMATION_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.MAX_LOAD_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.AVG_LOAD_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.TOPIC_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.PARTITION_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.MIN_VALID_PARTITION_RATIO_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.BROKER_ID_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.*;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
 
 
@@ -81,7 +71,7 @@ public class PartitionLoadParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    String resourceString = ParameterUtils.resourceString(_request);
+    String resourceString = ParameterUtils.resourceString(_handler);
     try {
       _resource = Resource.valueOf(resourceString.toUpperCase());
     } catch (IllegalArgumentException iae) {
@@ -89,20 +79,20 @@ public class PartitionLoadParameters extends AbstractParameters {
                                                    + "following: CPU, DISK, NW_IN, NW_OUT", resourceString));
     }
 
-    _wantMaxLoad = ParameterUtils.wantMaxLoad(_request);
-    _wantAvgLoad = ParameterUtils.wantAvgLoad(_request);
+    _wantMaxLoad = ParameterUtils.wantMaxLoad(_handler);
+    _wantAvgLoad = ParameterUtils.wantAvgLoad(_handler);
     if (_wantMaxLoad && _wantAvgLoad) {
       throw new UserRequestException("Parameters to ask for max and avg load are mutually exclusive to each other.");
     }
-    _topic = ParameterUtils.topic(_request);
-    _partitionLowerBoundary = ParameterUtils.partitionBoundary(_request, false);
-    _partitionUpperBoundary = ParameterUtils.partitionBoundary(_request, true);
-    _entries = ParameterUtils.entries(_request);
-    _minValidPartitionRatio = ParameterUtils.minValidPartitionRatio(_request);
-    _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_request);
-    _brokerIds = ParameterUtils.brokerIds(_request, true);
-    _startMs = ParameterUtils.startMsOrDefault(_request, ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL);
-    _endMs = ParameterUtils.endMsOrDefault(_request, System.currentTimeMillis());
+    _topic = ParameterUtils.topic(_handler);
+    _partitionLowerBoundary = ParameterUtils.partitionBoundary(_handler, false);
+    _partitionUpperBoundary = ParameterUtils.partitionBoundary(_handler, true);
+    _entries = ParameterUtils.entries(_handler);
+    _minValidPartitionRatio = ParameterUtils.minValidPartitionRatio(_handler);
+    _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_handler);
+    _brokerIds = ParameterUtils.brokerIds(_handler, true);
+    _startMs = ParameterUtils.startMsOrDefault(_handler, ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL);
+    _endMs = ParameterUtils.endMsOrDefault(_handler, System.currentTimeMillis());
     ParameterUtils.validateTimeRange(_startMs, _endMs);
   }
 

@@ -53,7 +53,11 @@ public class PartitionLoadState extends AbstractCruiseControlResponse {
     _topicNameLength = topicNameLength;
   }
 
-  protected String getPlaintext() {
+  /**
+   *
+   * @return Plain text
+   */
+  public String getPlaintext() {
     StringBuilder sb = new StringBuilder();
     sb.append(String.format("%" + _topicNameLength + "s%10s%30s%20s%20s%20s%20s%20s%n", "PARTITION", "LEADER", "FOLLOWERS",
                             "CPU (%_CORES)", "DISK (MB)", "NW_IN (KB/s)", "NW_OUT (KB/s)", "MSG_IN (#/s)"));
@@ -100,7 +104,11 @@ public class PartitionLoadState extends AbstractCruiseControlResponse {
     _topic = null;
   }
 
-  protected String getJsonString() {
+  /**
+   *
+   * @return JSON string
+   */
+  public String getJsonString() {
     Map<String, Object> partitionMap = new HashMap<>();
     List<Object> partitionList = new ArrayList<>();
     partitionMap.put(VERSION, JSON_VERSION);

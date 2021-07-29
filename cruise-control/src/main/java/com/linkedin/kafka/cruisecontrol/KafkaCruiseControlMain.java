@@ -35,7 +35,7 @@ public final class KafkaCruiseControlMain {
     KafkaCruiseControlConfig config = readConfig(args[0]);
     Integer port = parsePort(args, config);
     String hostname = parseHostname(args, config);
-    KafkaCruiseControlApp app = new KafkaCruiseControlApp(config, port, hostname);
+    KafkaCruiseControlApp app = new KafkaCruiseControlVertxApp(config, port, hostname);
     app.registerShutdownHook();
     app.start();
   }

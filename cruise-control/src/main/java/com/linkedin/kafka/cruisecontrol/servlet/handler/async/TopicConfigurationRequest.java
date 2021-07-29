@@ -21,7 +21,7 @@ public class TopicConfigurationRequest extends AbstractAsyncRequest {
   }
 
   @Override
-  protected OperationFuture handle(String uuid) {
+  public OperationFuture handle(String uuid) {
     OperationFuture future = new OperationFuture("Update Topic Configuration");
     pending(future.operationProgress());
     _asyncKafkaCruiseControl.sessionExecutor().submit(new UpdateTopicConfigurationRunnable(_asyncKafkaCruiseControl, future, uuid, _parameters));

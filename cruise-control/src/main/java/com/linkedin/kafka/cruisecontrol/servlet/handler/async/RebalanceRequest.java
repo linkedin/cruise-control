@@ -9,22 +9,27 @@ import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Rebalance
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RebalanceParameters;
 import java.util.Map;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REBALANCE_PARAMETER_OBJECT_CONFIG;
 import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
-
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REBALANCE_PARAMETER_OBJECT_CONFIG;
 
 public class RebalanceRequest extends AbstractAsyncRequest {
   protected RebalanceParameters _parameters;
+  protected RebalanceRunnable _runnable;
 
   public RebalanceRequest() {
     super();
   }
 
+  public RebalanceRunnable getRunnable() {
+    return _runnable;
+  }
+
   @Override
-  protected OperationFuture handle(String uuid) {
+  public OperationFuture handle(String uuid) {
     OperationFuture future = new OperationFuture("Rebalance");
     pending(future.operationProgress());
-    _asyncKafkaCruiseControl.sessionExecutor().submit(new RebalanceRunnable(_asyncKafkaCruiseControl, future, _parameters, uuid));
+    _runnable = new RebalanceRunnable(_asyncKafkaCruiseControl, future, _parameters, uuid);
+    _asyncKafkaCruiseControl.sessionExecutor().submit(_runnable);
     return future;
   }
 

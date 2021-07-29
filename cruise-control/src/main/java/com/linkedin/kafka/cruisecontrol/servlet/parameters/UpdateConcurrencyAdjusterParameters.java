@@ -13,9 +13,7 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DISABLE_CONCURRENCY_ADJUSTER_FOR_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.ENABLE_CONCURRENCY_ADJUSTER_FOR_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.MIN_ISR_BASED_CONCURRENCY_ADJUSTMENT_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.*;
 
 
 /**
@@ -43,10 +41,10 @@ public class UpdateConcurrencyAdjusterParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    Map<Boolean, Set<ConcurrencyType>> concurrencyAdjusterFor = ParameterUtils.concurrencyAdjusterFor(_request);
+    Map<Boolean, Set<ConcurrencyType>> concurrencyAdjusterFor = ParameterUtils.concurrencyAdjusterFor(_handler);
     _enableConcurrencyAdjusterFor = concurrencyAdjusterFor.get(true);
     _disableConcurrencyAdjusterFor = concurrencyAdjusterFor.get(false);
-    _minIsrBasedConcurrencyAdjustment = ParameterUtils.minIsrBasedConcurrencyAdjustment(_request);
+    _minIsrBasedConcurrencyAdjustment = ParameterUtils.minIsrBasedConcurrencyAdjustment(_handler);
   }
 
   /**

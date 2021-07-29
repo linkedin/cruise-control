@@ -107,20 +107,12 @@ public class JwtSecurityProviderIntegrationTest extends CruiseControlIntegration
     _tokenProviderServer.setHandler(new TestAuthenticatorHandler());
   }
 
-  /**
-   * Starts the token provider and the Kafka environment before test
-   * @throws Exception
-   */
   @Before
   public void setup() throws Exception {
     _tokenProviderServer.start();
     super.start();
   }
 
-  /**
-   * Stops the token provider and the Kafka environment after test
-   * @throws Exception
-   */
   @After
   public void teardown() throws Exception {
     super.stop();

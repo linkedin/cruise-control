@@ -232,7 +232,7 @@ public class AdminRequest extends AbstractSyncRequest {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    _kafkaCruiseControl = _servlet.asyncKafkaCruiseControl();
+    _kafkaCruiseControl = getCruiseControlEndpoints().asyncKafkaCruiseControl();
     _parameters = (AdminParameters) validateNotNull(configs.get(ADMIN_PARAMETER_OBJECT_CONFIG),
                                                     "Parameter configuration is missing from the request.");
   }

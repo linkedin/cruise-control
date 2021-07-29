@@ -5,10 +5,7 @@
 package com.linkedin.cruisecontrol.servlet.handler;
 
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
-import java.io.IOException;
-import java.util.concurrent.ExecutionException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import com.linkedin.cruisecontrol.httframeworkhandler.CruiseControlRequestContext;
 
 
 /**
@@ -19,11 +16,9 @@ import javax.servlet.http.HttpServletResponse;
 public interface Request extends CruiseControlConfigurable {
 
   /**
+   * @param handler The request handler
    * Handle the request and populate the response.
-   *
-   * @param request Http servlet request.
-   * @param response Http servlet response.
    */
-  void handle(HttpServletRequest request, HttpServletResponse response)
-      throws IOException, ExecutionException, InterruptedException;
+  void handle(CruiseControlRequestContext handler)
+          throws Exception;
 }

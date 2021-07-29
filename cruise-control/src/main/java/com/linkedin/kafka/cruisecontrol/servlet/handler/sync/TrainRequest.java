@@ -40,7 +40,7 @@ public class TrainRequest extends AbstractSyncRequest {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    _kafkaCruiseControl = _servlet.asyncKafkaCruiseControl();
+    _kafkaCruiseControl = getCruiseControlEndpoints().asyncKafkaCruiseControl();
     _parameters = (TrainParameters) validateNotNull(configs.get(TRAIN_PARAMETER_OBJECT_CONFIG),
             "Parameter configuration is missing from the request.");
   }

@@ -59,7 +59,11 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
     _anomalyDetectorState = anomalyDetectorState;
   }
 
-  protected String getJsonString(CruiseControlParameters parameters) {
+  /**
+   * @param parameters the cruise control parameters
+   * @return JSON string
+   */
+  public String getJsonString(CruiseControlParameters parameters) {
     Gson gson = new Gson();
     Map<String, Object> jsonStructure = getJsonStructure(((CruiseControlStateParameters) parameters).isVerbose());
     jsonStructure.put(VERSION, JSON_VERSION);
@@ -167,7 +171,11 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
     }
   }
 
-  protected String getPlaintext(CruiseControlParameters parameters) {
+  /**
+   * @param parameters the cruise control parameters
+   * @return Plain text
+   */
+  public String getPlaintext(CruiseControlParameters parameters) {
     boolean verbose = ((CruiseControlStateParameters) parameters).isVerbose();
     boolean superVerbose = ((CruiseControlStateParameters) parameters).isSuperVerbose();
 

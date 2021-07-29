@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import java.util.Collections;
 import java.util.List;
 
-
 /**
  * Flags to indicate if an anomaly detector is ready for initiating a detection.
  *

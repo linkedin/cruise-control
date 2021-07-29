@@ -189,7 +189,7 @@ public class LoadMonitorTaskRunner {
   }
 
   /**
-   * Load the samples from sample store. This task has to be executed before the load monitor actually starts.
+   * load the samples from sample store. This task has to be executed before the load monitor actually starts.
    */
   private void loadSamples() {
     if (_state.compareAndSet(RUNNING, LOADING)) {
@@ -271,7 +271,7 @@ public class LoadMonitorTaskRunner {
     } catch (Exception e) {
       LOG.warn("Received exception when closing sample store.", e);
     }
-    LOG.info("Load monitor task runner shutdown completed.");
+    LOG.info("load monitor task runner shutdown completed.");
   }
 
   /**

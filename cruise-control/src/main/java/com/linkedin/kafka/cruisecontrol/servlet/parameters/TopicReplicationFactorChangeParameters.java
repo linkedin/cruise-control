@@ -63,18 +63,18 @@ public class TopicReplicationFactorChangeParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _topicPatternByReplicationFactor = ParameterUtils.topicPatternByReplicationFactor(_request);
+    _topicPatternByReplicationFactor = ParameterUtils.topicPatternByReplicationFactor(_handler);
     if (_topicPatternByReplicationFactor.keySet().stream().anyMatch(rf -> rf < 1)) {
       throw new UserRequestException("Target replication factor cannot be set to smaller than 1.");
     }
-    _skipRackAwarenessCheck = ParameterUtils.skipRackAwarenessCheck(_request);
-    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true, false);
+    _skipRackAwarenessCheck = ParameterUtils.skipRackAwarenessCheck(_handler);
+    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_handler, true, false);
     _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_request);
-    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false, false);
-    _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_request);
-    _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
-    _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
-    _replicationThrottle = ParameterUtils.replicationThrottle(_request, _config);
+    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_handler, false, false);
+    _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_handler);
+    _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_handler);
+    _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_handler, _config);
+    _replicationThrottle = ParameterUtils.replicationThrottle(_handler, _config);
   }
 
   /**

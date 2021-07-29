@@ -29,7 +29,7 @@ public class PartitionLoadRunnable extends OperationRunnable {
   }
 
   @Override
-  protected PartitionLoadState getResult() throws Exception {
+  public PartitionLoadState getResult() throws Exception {
     _kafkaCruiseControl.sanityCheckBrokerPresence(_parameters.brokerIds());
 
     LoadRunnable loadRunnable = new LoadRunnable(_kafkaCruiseControl, _future, _parameters);

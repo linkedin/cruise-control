@@ -86,7 +86,7 @@ public class RebalanceRunnable extends GoalBasedOperationRunnable {
   }
 
   @Override
-  protected OptimizationResult getResult() throws Exception {
+  public OptimizationResult getResult() throws Exception {
     return new OptimizationResult(computeResult(), _kafkaCruiseControl.config());
   }
 

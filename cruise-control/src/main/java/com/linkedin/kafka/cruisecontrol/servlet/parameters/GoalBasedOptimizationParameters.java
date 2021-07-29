@@ -7,10 +7,10 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.io.UnsupportedEncodingException;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.List;
 import java.util.regex.Pattern;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DATA_FROM_PARAM;
@@ -53,13 +53,13 @@ public abstract class GoalBasedOptimizationParameters extends KafkaOptimizationP
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _dataFrom = ParameterUtils.getDataFrom(_request);
-    _useReadyDefaultGoals = ParameterUtils.useReadyDefaultGoals(_request);
-    _excludedTopics = ParameterUtils.excludedTopics(_request);
-    _excludeRecentlyRemovedBrokers = ParameterUtils.excludeRecentlyRemovedBrokers(_request);
-    List<String> goals = ParameterUtils.getGoals(_request);
+    _dataFrom = ParameterUtils.getDataFrom(_handler);
+    _useReadyDefaultGoals = ParameterUtils.useReadyDefaultGoals(_handler);
+    _excludedTopics = ParameterUtils.excludedTopics(_handler);
+    _excludeRecentlyRemovedBrokers = ParameterUtils.excludeRecentlyRemovedBrokers(_handler);
+    List<String> goals = ParameterUtils.getGoals(_handler);
     _goalsAndRequirements = new GoalsAndRequirements(goals, getRequirements(_dataFrom));
-    _fastMode = ParameterUtils.fastMode(_request);
+    _fastMode = ParameterUtils.fastMode(_handler);
   }
 
   public ParameterUtils.DataFrom dataFrom() {

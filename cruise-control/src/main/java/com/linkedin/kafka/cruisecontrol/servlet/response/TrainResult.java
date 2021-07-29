@@ -21,7 +21,7 @@ public class TrainResult extends AbstractCruiseControlResponse {
   @Override
   protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
     // Cache relevant response.
-    String message = String.format("Load model training started. Check status through the %s endpoint", CruiseControlEndPoint.STATE);
+    String message = String.format("load model training started. Check status through the %s endpoint", CruiseControlEndPoint.STATE);
     _cachedResponse = parameters.json() ? getBaseJsonString(message) : message;
   }
 }
