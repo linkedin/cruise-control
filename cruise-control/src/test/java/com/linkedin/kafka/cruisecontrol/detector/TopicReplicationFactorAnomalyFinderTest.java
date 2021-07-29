@@ -30,14 +30,15 @@ import org.junit.Test;
 import static com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder.DESCRIBE_TOPIC_CONFIG_TIMEOUT_MS;
 import static org.apache.kafka.common.config.TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 
 public class TopicReplicationFactorAnomalyFinderTest {
-  public static final short TARGET_TOPIC_REPLICATION_FACTOR = 2;
+  public static final short TARGET_TOPIC_REPLICATION_FACTOR = 3;
+  public static final short TOPIC_REPLICATION_FACTOR_MARGIN = 2;
   public static final String TOPIC = "topic";
   public static final String HOST = "localhost";
   public static final String CLUSTER_ID = "cluster_id";
+  private static final double DELTA = 0.01;
 
   @Test
   public void testAnomalyDetection() throws InterruptedException, ExecutionException, TimeoutException {
@@ -45,6 +46,7 @@ public class TopicReplicationFactorAnomalyFinderTest {
     AdminClient mockAdminClient = mockAdminClient((short) 1);
     TopicReplicationFactorAnomalyFinder anomalyFinder = new TopicReplicationFactorAnomalyFinder(mockKafkaCruiseControl,
                                                                                                 TARGET_TOPIC_REPLICATION_FACTOR,
+                                                                                                TOPIC_REPLICATION_FACTOR_MARGIN,
                                                                                                 mockAdminClient);
     Set<TopicAnomaly> topicAnomalies = anomalyFinder.topicAnomalies();
     assertEquals(1, topicAnomalies.size());
@@ -52,14 +54,26 @@ public class TopicReplicationFactorAnomalyFinderTest {
   }
 
   @Test
-  public void testSkipTopicWithLargeMinISR() throws InterruptedException, ExecutionException, TimeoutException {
+  public void testAdjustTopicWithLargeMinISR() throws InterruptedException, ExecutionException, TimeoutException {
     KafkaCruiseControl mockKafkaCruiseControl = mockKafkaCruiseControl();
-    AdminClient mockAdminClient = mockAdminClient((short) 2);
+    short expectedMinISR = 2;
+    AdminClient mockAdminClient = mockAdminClient(expectedMinISR);
     TopicReplicationFactorAnomalyFinder anomalyFinder = new TopicReplicationFactorAnomalyFinder(mockKafkaCruiseControl,
                                                                                                 TARGET_TOPIC_REPLICATION_FACTOR,
+                                                                                                TOPIC_REPLICATION_FACTOR_MARGIN,
                                                                                                 mockAdminClient);
     Set<TopicAnomaly> topicAnomalies = anomalyFinder.topicAnomalies();
-    assertTrue(topicAnomalies.isEmpty());
+    assertEquals(1, topicAnomalies.size());
+    TopicReplicationFactorAnomaly topicReplicationFactorAnomaly = (TopicReplicationFactorAnomaly) topicAnomalies.iterator().next();
+    assertEquals(1, topicReplicationFactorAnomaly.badTopicsByDesiredRF().size());
+    // We expect the desired replication factor to be 4 (i.e. TOPIC_REPLICATION_FACTOR_MARGIN + expectedMinISR)
+    assertEquals(TOPIC, topicReplicationFactorAnomaly.badTopicsByDesiredRF()
+                                                     .get((short) (TOPIC_REPLICATION_FACTOR_MARGIN + expectedMinISR))
+                                                     .iterator().next().topicName());
+    // We expect 1 out of 2 partitions of the topic to violate the target RF.
+    assertEquals(0.5, topicReplicationFactorAnomaly.badTopicsByDesiredRF()
+                                                   .get((short) (TOPIC_REPLICATION_FACTOR_MARGIN + expectedMinISR))
+                                                   .iterator().next().violationRatio(), DELTA);
     EasyMock.verify(mockKafkaCruiseControl, mockAdminClient);
   }
 
@@ -92,10 +106,14 @@ public class TopicReplicationFactorAnomalyFinderTest {
   }
 
   private Cluster generateCluster() {
-    Node [] allNodes = new Node [3];
-    IntStream.rangeClosed(0, 2).forEach(i -> allNodes[i] = new Node(i, HOST, 0));
-    Set<PartitionInfo> partitionInfo = new HashSet<>(1);
+    Node [] allNodes = new Node [4];
+    IntStream.rangeClosed(0, 3).forEach(i -> allNodes[i] = new Node(i, HOST, 0));
+    Node [] allButFirstNode = Arrays.copyOfRange(allNodes, 1, allNodes.length);
+    Set<PartitionInfo> partitionInfo = new HashSet<>(2);
+    // Partition with RF=4
     partitionInfo.add(new PartitionInfo(TOPIC, 0, allNodes[0], allNodes, allNodes));
+    // Partition with RF=3
+    partitionInfo.add(new PartitionInfo(TOPIC, 1, allButFirstNode[0], allButFirstNode, allButFirstNode));
     return new Cluster(CLUSTER_ID, Arrays.asList(allNodes), partitionInfo, Collections.emptySet(), Collections.emptySet());
   }
 }

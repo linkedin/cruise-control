@@ -23,7 +23,7 @@ import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorC
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getSelfHealingGoalNames;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyUtils.buildTopicRegex;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyUtils.extractKafkaCruiseControlObjectFromConfig;
-import static com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder.BAD_TOPICS_BY_REPLICATION_FACTOR_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder.BAD_TOPICS_BY_DESIRED_RF_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.TOPIC_ANOMALY;
 
 
@@ -33,14 +33,14 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyTyp
  */
 public class TopicReplicationFactorAnomaly extends TopicAnomaly {
   // Bad topic here refers to the topic having at least one partition, which violates replication factor requirements.
-  protected Map<Short, Set<TopicReplicationFactorAnomalyEntry>> _badTopicsByReplicationFactor;
+  protected Map<Short, Set<TopicReplicationFactorAnomalyEntry>> _badTopicsByDesiredRF;
   protected UpdateTopicConfigurationRunnable _updateTopicConfigurationRunnable;
 
   /**
    * @return An unmodifiable version of the actual bad topic map
    */
-  public Map<Short, Set<TopicReplicationFactorAnomalyEntry>> getBadTopicsByReplicationFactor() {
-    return Collections.unmodifiableMap(_badTopicsByReplicationFactor);
+  public Map<Short, Set<TopicReplicationFactorAnomalyEntry>> badTopicsByDesiredRF() {
+    return Collections.unmodifiableMap(_badTopicsByDesiredRF);
   }
 
   @Override
@@ -61,10 +61,9 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
     super.configure(configs);
     KafkaCruiseControl kafkaCruiseControl = extractKafkaCruiseControlObjectFromConfig(configs, KafkaAnomalyType.TOPIC_ANOMALY);
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
-    _badTopicsByReplicationFactor = (Map<Short, Set<TopicReplicationFactorAnomalyEntry>>) configs.get(BAD_TOPICS_BY_REPLICATION_FACTOR_CONFIG);
-    if (_badTopicsByReplicationFactor == null || _badTopicsByReplicationFactor.isEmpty()) {
-      throw new IllegalArgumentException(String.format("Missing %s for topic replication factor anomaly.",
-                                                       BAD_TOPICS_BY_REPLICATION_FACTOR_CONFIG));
+    _badTopicsByDesiredRF = (Map<Short, Set<TopicReplicationFactorAnomalyEntry>>) configs.get(BAD_TOPICS_BY_DESIRED_RF_CONFIG);
+    if (_badTopicsByDesiredRF == null || _badTopicsByDesiredRF.isEmpty()) {
+      throw new IllegalArgumentException(String.format("Missing %s for topic replication factor anomaly.", BAD_TOPICS_BY_DESIRED_RF_CONFIG));
     }
     boolean allowCapacityEstimation = config.getBoolean(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
     boolean excludeRecentlyDemotedBrokers = config.getBoolean(SELF_HEALING_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
@@ -84,8 +83,8 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
   }
 
   protected Map<Short, Pattern> populateTopicPatternByReplicationFactor() {
-    Map<Short, Pattern> topicPatternByReplicationFactor = new HashMap<>(_badTopicsByReplicationFactor.size());
-    for (Map.Entry<Short, Set<TopicReplicationFactorAnomalyEntry>> entry : _badTopicsByReplicationFactor.entrySet()) {
+    Map<Short, Pattern> topicPatternByReplicationFactor = new HashMap<>(_badTopicsByDesiredRF.size());
+    for (Map.Entry<Short, Set<TopicReplicationFactorAnomalyEntry>> entry : _badTopicsByDesiredRF.entrySet()) {
       Set<String> topics = new HashSet<>(entry.getValue().size());
       entry.getValue().forEach(anomaly -> topics.add(anomaly.topicName()));
       topicPatternByReplicationFactor.put(entry.getKey(), buildTopicRegex(topics));
@@ -102,7 +101,7 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
   public String toString() {
     StringBuilder sb = new StringBuilder();
     sb.append("{Topics with replication factor violations: [");
-    _badTopicsByReplicationFactor.forEach(
+    _badTopicsByDesiredRF.forEach(
         (key, value) -> sb.append(String.format("{With desired RF %d: %s}, ", key, value)));
     sb.setLength(sb.length() - 2);
     sb.append("]}");
