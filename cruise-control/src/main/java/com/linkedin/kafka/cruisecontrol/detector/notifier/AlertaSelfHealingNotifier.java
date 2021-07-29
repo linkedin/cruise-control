@@ -177,8 +177,7 @@ public class AlertaSelfHealingNotifier extends SelfHealingNotifier {
       }
     } else if (topicAnomaly instanceof TopicReplicationFactorAnomaly) {
       TopicReplicationFactorAnomaly topicReplicationFactorAnomaly = (TopicReplicationFactorAnomaly) topicAnomaly;
-      for (Entry<Short, Set<TopicReplicationFactorAnomalyEntry>> entry
-          : topicReplicationFactorAnomaly.getBadTopicsByReplicationFactor().entrySet()) {
+      for (Entry<Short, Set<TopicReplicationFactorAnomalyEntry>> entry : topicReplicationFactorAnomaly.badTopicsByDesiredRF().entrySet()) {
         entry.getValue().forEach(topicReplicationFactorAnomalyEntry -> {
           AlertaMessage alertaMessage = new AlertaMessage(localHostname, ALERT_MESSAGE_PREFIX_TOPIC_REPLICATION_FACTOR_ANOMALY
                                                                          + topicReplicationFactorAnomalyEntry.topicName());
