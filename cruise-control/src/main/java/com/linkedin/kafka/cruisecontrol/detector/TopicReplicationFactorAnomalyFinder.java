@@ -85,16 +85,18 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
    *
    * @param kafkaCruiseControl Cruise control to query cluster metadata.
    * @param targetReplicationFactor The target replication factor.
+   * @param topicReplicationFactorMargin The config for the topic replication factor margin over minISR.
    * @param adminClient Admin client to query topic metadata.
    */
   TopicReplicationFactorAnomalyFinder(KafkaCruiseControl kafkaCruiseControl,
                                       short targetReplicationFactor,
+                                      short topicReplicationFactorMargin,
                                       AdminClient adminClient) {
     _kafkaCruiseControl = kafkaCruiseControl;
     _targetReplicationFactor = targetReplicationFactor;
     _topicExcludedFromCheck = Pattern.compile(DEFAULT_TOPIC_EXCLUDED_FROM_REPLICATION_FACTOR_CHECK);
     _topicReplicationTopicAnomalyClass = DEFAULT_TOPIC_REPLICATION_FACTOR_ANOMALY_CLASS;
-    _topicReplicationFactorMargin = DEFAULT_TOPIC_REPLICATION_FACTOR_MARGIN;
+    _topicReplicationFactorMargin = topicReplicationFactorMargin;
     _topicMinISRRecordRetentionTimeMs = DEFAULT_TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS;
     _adminClient = adminClient;
     _cachedTopicMinISR = new LinkedHashMap<>();
@@ -104,17 +106,12 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
   public Set<TopicAnomaly> topicAnomalies() {
     LOG.info("Start to detect topic replication factor anomaly.");
     Cluster cluster = _kafkaCruiseControl.kafkaCluster();
-    Set<String> topicsToCheck = new HashSet<>();
-    for (String topic : cluster.topics()) {
-      if (_topicExcludedFromCheck.matcher(topic).matches()) {
-        continue;
-      }
-      for (PartitionInfo partition : cluster.partitionsForTopic(topic)) {
-        if (partition.replicas().length != _targetReplicationFactor) {
-          topicsToCheck.add(topic);
-          break;
-        }
-      }
+    Set<String> topicsToCheck;
+    if (_topicExcludedFromCheck.pattern().isEmpty()) {
+      topicsToCheck = new HashSet<>(cluster.topics());
+    } else {
+      topicsToCheck = new HashSet<>();
+      cluster.topics().stream().filter(topic -> !_topicExcludedFromCheck.matcher(topic).matches()).forEach(topicsToCheck::add);
     }
     refreshTopicMinISRCache();
     if (!topicsToCheck.isEmpty()) {
