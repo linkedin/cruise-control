@@ -400,11 +400,38 @@ public final class ExecutionUtils {
   }
 
   /**
+   * Stops the inter-broker replica reassignments using the given admin client.
+   *
+   * @param adminClient The adminClient to stop the inter-broker replica reassignments.
+   * @return The {@link AlterPartitionReassignmentsResult result} of stop reassignment request, {@code null} if there isn't any reassignments.
+   */
+  public static AlterPartitionReassignmentsResult maybeStopPartitionReassignment(AdminClient adminClient) {
+    Set<TopicPartition> partitionsBeingReassigned;
+    try {
+      partitionsBeingReassigned = partitionsBeingReassigned(adminClient);
+    } catch (TimeoutException | InterruptedException | ExecutionException e) {
+      // This may indicate transient (e.g. network) issues.
+      throw new IllegalStateException("Cannot stop partition reassignments due to failure to retrieve whether the Kafka cluster has "
+                                      + "an already ongoing partition reassignment.", e);
+    }
+    if (partitionsBeingReassigned.isEmpty()) {
+      return null;
+    }
+
+    // Cancel all the ongoing replica reassignments.
+    Map<TopicPartition, Optional<NewPartitionReassignment>> newReassignments = new HashMap<>(partitionsBeingReassigned.size());
+    for (TopicPartition tp : partitionsBeingReassigned) {
+      newReassignments.put(tp, cancelReassignmentValue());
+    }
+    return adminClient.alterPartitionReassignments(newReassignments);
+  }
+
+  /**
    * Checks whether the topicPartitions of the execution tasks in the given subset is indeed a subset of the given set.
    *
    * @param set The original set.
    * @param subset The subset to validate whether it is indeed a subset of the given set.
-   * @return True if the topicPartitions of the given subset constitute a subset of the given set, false otherwise.
+   * @return {@code true} if the topicPartitions of the given subset constitute a subset of the given set, {@code false} otherwise.
    */
   public static boolean isSubset(Set<TopicPartition> set, Collection<ExecutionTask> subset) {
     boolean isSubset = true;
