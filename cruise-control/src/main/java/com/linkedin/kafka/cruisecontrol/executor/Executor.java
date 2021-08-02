@@ -912,7 +912,9 @@ public class Executor {
       _executionStoppedByUser.set(true);
     }
     if (stopExternalAgent) {
-      maybeStopExternalAgent();
+      if (maybeStopExternalAgent()) {
+        LOG.info("The request to stop ongoing external agent partition reassignment is submitted successfully.");
+      };
     }
   }
 
