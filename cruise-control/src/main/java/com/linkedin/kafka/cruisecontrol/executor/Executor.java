@@ -729,7 +729,7 @@ public class Executor {
   /**
    * Set the execution mode of the tasks to keep track of the ongoing execution mode via sensors.
    *
-   * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
+   * @param isKafkaAssignerMode {@code true} if kafka assigner mode, {@code false} otherwise.
    */
   private void setExecutionMode(boolean isKafkaAssignerMode) {
     _isKafkaAssignerMode = isKafkaAssignerMode;
@@ -905,11 +905,16 @@ public class Executor {
    *
    * @param forceExecutionStop Whether force execution to stop.
    */
-  public synchronized void userTriggeredStopExecution(boolean forceExecutionStop) {
+  public synchronized void userTriggeredStopExecution(boolean forceExecutionStop, boolean stopExternalAgent) {
     if (stopExecution(forceExecutionStop)) {
       LOG.info("User requested to stop the ongoing proposal execution" + (forceExecutionStop ? " forcefully." : "."));
       _numExecutionStoppedByUser.incrementAndGet();
       _executionStoppedByUser.set(true);
+    }
+    if (stopExternalAgent) {
+      if (maybeStopExternalAgent()) {
+        LOG.info("The request to stop ongoing external agent partition reassignment is submitted successfully.");
+      }
     }
   }
 
@@ -917,7 +922,7 @@ public class Executor {
    * Request the executor to stop any ongoing execution.
    *
    * @param forceExecutionStop Whether force execution to stop.
-   * @return True if the flag to stop the execution is set after the call (i.e. was not set already), false otherwise.
+   * @return {@code true} if the flag to stop the execution is set after the call (i.e. was not set already), {@code false} otherwise.
    */
   private synchronized boolean stopExecution(boolean forceExecutionStop) {
     if ((forceExecutionStop && (_stopSignal.compareAndSet(NO_STOP_EXECUTION, FORCE_STOP_EXECUTION)
@@ -978,8 +983,8 @@ public class Executor {
    * Let executor know the intention regarding modifying the ongoing execution. Only one request at a given time is
    * allowed to modify the ongoing execution.
    *
-   * @param modify True to indicate, false to cancel the intention to modify
-   * @return True if the intention changes the state known by executor, false otherwise.
+   * @param modify {@code true} to indicate, {@code false} to cancel the intention to modify
+   * @return {@code true} if the intention changes the state known by executor, {@code false} otherwise.
    */
   public boolean modifyOngoingExecution(boolean modify) {
     return _ongoingExecutionIsBeingModified.compareAndSet(!modify, modify);
@@ -988,7 +993,7 @@ public class Executor {
   /**
    * Whether there is an ongoing operation triggered by current Cruise Control deployment.
    *
-   * @return True if there is an ongoing execution.
+   * @return {@code true} if there is an ongoing execution.
    */
   public boolean hasOngoingExecution() {
     return _hasOngoingExecution;
@@ -1014,17 +1019,31 @@ public class Executor {
    * execution inside Cruise Control, partition reassignment task batches are sent to Kafka periodically. So, there will
    * be intervals without partition reassignments.
    *
-   * @return True if there is an ongoing partition reassignment on Kafka cluster.
+   * @return {@code true} if there is an ongoing partition reassignment on Kafka cluster.
    */
   public boolean hasOngoingPartitionReassignments() throws InterruptedException, ExecutionException, TimeoutException {
     return !ExecutionUtils.partitionsBeingReassigned(_adminClient).isEmpty();
   }
 
   /**
+   * Stop the inter-broker replica reassignments started by an external agent.
+   *
+   * @return {@code true} if the stop ongoing external agent partition reassignment request is submitted successfully,
+   * {@code false} if there isn't any ongoing external agent partition reassignments on Kafka cluster.
+   */
+  public boolean maybeStopExternalAgent() {
+    if (_hasOngoingExecution) {
+      // Current CC is executing. The chances are low for any external agents to execute. Skip the rest of the check.
+      return false;
+    }
+    return ExecutionUtils.maybeStopPartitionReassignment(_adminClient) != null;
+  }
+
+  /**
    * Check whether there is an ongoing leadership reassignment.
    * This method directly checks the existence of zNode in /admin/preferred_replica_election.
    *
-   * @return True if there is an ongoing leadership reassignment.
+   * @return {@code true} if there is an ongoing leadership reassignment.
    */
   public boolean hasOngoingLeaderElection() {
     return !ExecutorUtils.ongoingLeaderElection(_kafkaZkClient).isEmpty();

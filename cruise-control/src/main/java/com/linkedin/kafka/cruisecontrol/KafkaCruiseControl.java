@@ -737,9 +737,10 @@ public class KafkaCruiseControl {
    * Request the executor to stop any ongoing execution.
    *
    * @param forceExecutionStop Whether force execution to stop.
+   * @param stopExternalAgent Whether to stop ongoing execution started by external agents.
    */
-  public void userTriggeredStopExecution(boolean forceExecutionStop) {
-    _executor.userTriggeredStopExecution(forceExecutionStop);
+  public void userTriggeredStopExecution(boolean forceExecutionStop, boolean stopExternalAgent) {
+    _executor.userTriggeredStopExecution(forceExecutionStop, stopExternalAgent);
   }
 
   /**

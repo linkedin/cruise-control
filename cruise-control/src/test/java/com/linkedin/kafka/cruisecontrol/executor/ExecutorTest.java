@@ -428,7 +428,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                   "Inter-broker replica movement task did not start within the time limit",
                   EXECUTION_DEADLINE_MS, EXECUTION_SHORT_CHECK_MS);
     // Force execution to stop.
-    executor.userTriggeredStopExecution(true);
+    executor.userTriggeredStopExecution(true, false);
     // The execution should finish.
     waitUntilTrue(() -> (!executor.hasOngoingExecution() && executor.state().state() == ExecutorState.State.NO_TASK_IN_PROGRESS),
                   "Proposal execution did not finish within the time limit",
