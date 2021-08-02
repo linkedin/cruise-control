@@ -914,7 +914,7 @@ public class Executor {
     if (stopExternalAgent) {
       if (maybeStopExternalAgent()) {
         LOG.info("The request to stop ongoing external agent partition reassignment is submitted successfully.");
-      };
+      }
     }
   }
 
