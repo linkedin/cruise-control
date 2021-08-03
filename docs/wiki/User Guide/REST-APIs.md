@@ -497,7 +497,7 @@ Supported parameters are:
 
 Note that **Cruise Control does not wait for the ongoing batch to finish when it stops execution**, i.e. the in-progress batch may still be running after Cruise Control stops the execution.
 
-The `stop_external_agent` parameter is a no-op for CC versions before `2.4.66` and `2.5.58`.
+The `stop_external_agent` parameter is a no-op for CC versions before `2.4.73` and `2.5.65`.
 
 ### Pause metrics load sampling
 The following POST request will let Kafka Cruise Control pause an ongoing metrics sampling process:
