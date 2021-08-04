@@ -30,6 +30,7 @@ public class TrustedProxySecurityProviderSpnegoFallbackIntegrationTest extends S
   private static final String AUTH_SERVICE_PRINCIPAL = AUTH_SERVICE_NAME + "/localhost";
   private static final String TEST_USERNAME = "ccTestUser";
   private static final String TEST_USERNAME_PRINCIPAL = TEST_USERNAME + "/localhost";
+  private static final String SOME_OTHER_SERVICE_PRINCIPAL = "someotherservice/localhost";
 
   public TrustedProxySecurityProviderSpnegoFallbackIntegrationTest() throws KrbException {
   }
@@ -71,7 +72,7 @@ public class TrustedProxySecurityProviderSpnegoFallbackIntegrationTest extends S
 
   @Test
   public void testSuccessfulAuthentication() throws Exception {
-    Subject subject = _miniKdc.loginAs(AUTH_SERVICE_PRINCIPAL);
+    Subject subject = _miniKdc.loginAs(TEST_USERNAME_PRINCIPAL);
     Subject.doAs(subject, (PrivilegedAction<Object>) () -> {
 
       HttpURLConnection stateEndpointConnection;
@@ -88,7 +89,7 @@ public class TrustedProxySecurityProviderSpnegoFallbackIntegrationTest extends S
 
   @Test
   public void testUnsuccessfulAuthentication() throws Exception {
-    Subject subject = _miniKdc.loginAs(TEST_USERNAME_PRINCIPAL);
+    Subject subject = _miniKdc.loginAs(SOME_OTHER_SERVICE_PRINCIPAL);
     Subject.doAs(subject, (PrivilegedAction<Object>) () -> {
 
       HttpURLConnection stateEndpointConnection;
