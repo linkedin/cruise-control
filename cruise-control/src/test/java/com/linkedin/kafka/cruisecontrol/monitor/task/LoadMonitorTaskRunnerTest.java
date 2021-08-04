@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.monitor.task;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.cruisecontrol.metricdef.MetricInfo;
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
@@ -32,11 +31,13 @@ import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
-import kafka.admin.RackAwareMode;
-import kafka.zk.AdminZkClient;
-import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.Metadata;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.CreateTopicsResult;
+import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.internals.ClusterResourceListeners;
@@ -63,6 +64,7 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
   private static final int NUM_PARTITIONS = 4;
   private static final long SAMPLING_INTERVAL_MS = TimeUnit.SECONDS.toMillis(100);
   private static final MetricDef METRIC_DEF = KafkaMetricDef.commonMetricDef();
+  private static final String TOPIC_PREFIX = "topic-";
   // Using autoTick = 1
   private static final Time TIME = new MockTime(1L);
 
@@ -72,15 +74,22 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
   @Before
   public void setUp() {
     super.setUp();
-    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
-                                                                              "LoadMonitorTaskRunnerGroup",
-                                                                              "LoadMonitorTaskRunnerSetup",
-                                                                              false);
-    AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
+    Properties adminProps = new Properties();
+    adminProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
+    AdminClient adminClient = AdminClient.create(adminProps);
+    Set<NewTopic> newTopics = new HashSet<>(NUM_TOPICS);
     for (int i = 0; i < NUM_TOPICS; i++) {
-      adminZkClient.createTopic("topic-" + i, NUM_PARTITIONS, 1, new Properties(), RackAwareMode.Safe$.MODULE$);
+      newTopics.add(new NewTopic(TOPIC_PREFIX + i, NUM_PARTITIONS, (short) 1));
     }
-    KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
+    CreateTopicsResult createTopicsResult = adminClient.createTopics(newTopics);
+
+    AtomicInteger adminFailed = new AtomicInteger(0);
+    createTopicsResult.all().whenComplete((v, e) -> {
+      if (e != null) {
+        adminFailed.incrementAndGet();
+      }
+    });
+    assertEquals(0, adminFailed.get());
   }
 
   @After
@@ -123,7 +132,7 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
     Set<TopicPartition> partitionsToSample = new HashSet<>(NUM_TOPICS * NUM_PARTITIONS);
     for (int i = 0; i < NUM_TOPICS; i++) {
       for (int j = 0; j < NUM_PARTITIONS; j++) {
-        partitionsToSample.add(new TopicPartition("topic-" + i, j));
+        partitionsToSample.add(new TopicPartition(TOPIC_PREFIX + i, j));
       }
     }
 
