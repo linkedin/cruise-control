@@ -18,6 +18,7 @@ import org.apache.kafka.clients.admin.DescribeConfigsResult;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.TopicConfig;
+import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,7 +104,7 @@ public class TopicMinIsrCache {
         short minIsr = Short.parseShort(entry.getValue().get().get(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG).value());
         _minIsrWithTimeByTopic.put(entry.getKey().name(), new MinIsrWithTime(minIsr, updateTimeMs));
       } catch (ExecutionException ee) {
-        if (org.apache.kafka.common.errors.TimeoutException.class == ee.getCause().getClass()) {
+        if (Errors.REQUEST_TIMED_OUT.exception().getClass() == ee.getCause().getClass()) {
           LOG.warn("Failed to retrieve value of config {} for {} topics due to describeConfigs request time out. Check for Kafka-side issues"
                    + " and consider increasing the configured timeout (see {}).", TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG,
                    describeConfigsResult.values().size(), ExecutorConfig.ADMIN_CLIENT_REQUEST_TIMEOUT_MS_CONFIG, ee.getCause());

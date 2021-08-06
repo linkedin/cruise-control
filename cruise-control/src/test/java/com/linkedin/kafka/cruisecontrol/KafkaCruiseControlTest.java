@@ -60,12 +60,7 @@ public class KafkaCruiseControlTest extends CruiseControlIntegrationTestHarness 
     // For sanityCheckDryRun(false, XXX) (see #4 below)
     EasyMock.expect(executor.hasOngoingExecution()).andReturn(false).once();
     EasyMock.expect(executor.listPartitionsBeingReassigned()).andReturn(Collections.emptySet());
-    EasyMock.expect(executor.hasOngoingLeaderElection()).andReturn(true);
     // For sanityCheckDryRun(false, XXX) (see #5 below)
-    EasyMock.expect(executor.hasOngoingExecution()).andReturn(false).once();
-    EasyMock.expect(executor.listPartitionsBeingReassigned()).andReturn(Collections.emptySet());
-    EasyMock.expect(executor.hasOngoingLeaderElection()).andReturn(false);
-    // For sanityCheckDryRun(false, XXX) (see #6 below)
     EasyMock.expect(executor.hasOngoingExecution()).andReturn(false).once();
     EasyMock.expect(executor.listPartitionsBeingReassigned()).andThrow(new TimeoutException()).once();
 
@@ -82,11 +77,9 @@ public class KafkaCruiseControlTest extends CruiseControlIntegrationTestHarness 
     assertThrows(IllegalStateException.class, () -> kafkaCruiseControl.sanityCheckDryRun(false, false));
     // 3. Expect failure (dryrun = false), there is no execution started by CC, but ongoing replica reassignment, request to stop is irrelevant.
     assertThrows(IllegalStateException.class, () -> kafkaCruiseControl.sanityCheckDryRun(false, false));
-    // 4. Expect failure (dryrun = false), there is no execution started by CC, but ongoing leader election, request to stop is irrelevant.
-    assertThrows(IllegalStateException.class, () -> kafkaCruiseControl.sanityCheckDryRun(false, false));
-    // 5. Expect failure (dryrun = false), there is no execution started by CC or other tools, request to stop is irrelevant.
+    // 4. Expect failure (dryrun = false), there is no execution started by CC or other tools, request to stop is irrelevant.
     kafkaCruiseControl.sanityCheckDryRun(false, false);
-    // 6. Expect failure (dryrun = false), there is no execution started by CC, but checking ongoing executions started
+    // 5. Expect failure (dryrun = false), there is no execution started by CC, but checking ongoing executions started
     // by other tools timed out, request to stop is irrelevant.
     assertThrows(IllegalStateException.class, () -> kafkaCruiseControl.sanityCheckDryRun(false, false));
 
