@@ -14,8 +14,11 @@ import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.time.Duration;
 import java.util.Collections;
+import java.util.NoSuchElementException;
 import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -53,6 +56,7 @@ import org.apache.kafka.common.requests.AbstractResponse;
 import org.apache.kafka.common.requests.MetadataResponse;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.SystemTime;
+import org.apache.zookeeper.client.ZKClientConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Option;
@@ -504,9 +508,10 @@ public final class KafkaCruiseControlUtils {
    * @return A new instance of KafkaZkClient
    */
   public static KafkaZkClient createKafkaZkClient(String connectString, String metricGroup, String metricType, boolean zkSecurityEnabled) {
-    String zooKeeperClientName = String.format("%s-%s", metricGroup, metricType);
+    Option<String> zkClientName = Option.apply(String.format("%s-%s", metricGroup, metricType));
+    Option<ZKClientConfig> zkConfig = Option.empty();
     return KafkaZkClient.apply(connectString, zkSecurityEnabled, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
-                               new SystemTime(), metricGroup, metricType, Option.apply(zooKeeperClientName), Option.empty());
+                               new SystemTime(), metricGroup, metricType, zkClientName, zkConfig);
   }
 
   /**
@@ -617,7 +622,51 @@ public final class KafkaCruiseControlUtils {
     responseData.setClusterAuthorizedOperations(MetadataResponse.AUTHORIZED_OPERATIONS_OMITTED);
     topicMetadataList.forEach(topicMetadata -> responseData.topics().add(prepareMetadataResponseTopic(topicMetadata)));
 
-    return new MetadataResponse(responseData);
+    try {
+      return createMetadataResponse(responseData);
+    } catch (ClassNotFoundException e) {
+      throw new RuntimeException("Unable to create metadata response instance as class could not be found", e);
+    }
+
+  }
+
+  /**
+   * Creates a {@link MetadataResponse} instance using the appropriate constructor for the version of Kafka on the
+   * classpath. It will attempt to use the 2.8+ version first and then fall back to the 2.5+ version. If neither work, a
+   * {@link NoSuchElementException} will be thrown.
+   *
+   * @param responseData The response data to be included in the returned {@link MetadataResponse} instance.
+   * @return The {@link MetadataResponse} instance containing the supplied {@link MetadataResponseData}.
+   * @throws ClassNotFoundException If a version of {@link MetadataResponse} cannot be found on the classpath.
+   */
+  private static MetadataResponse createMetadataResponse(MetadataResponseData responseData) throws ClassNotFoundException {
+
+    Class<?> metadataResponseClass = Class.forName(MetadataResponse.class.getName());
+
+    MetadataResponse response = null;
+
+    try {
+      // In Kafka 2.8 we need to supply the Metadata response API version (in 2.5 this was version 9 and version 11 in 2.8)
+      Constructor<?> kafka28PlusCon = metadataResponseClass.getConstructor(MetadataResponseData.class, short.class);
+      response = (MetadataResponse) kafka28PlusCon.newInstance(responseData, (short) 11);
+    } catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
+      LOG.debug("Unable to find Kafka 2.8+ constructor for MetadataResponse class", e);
+    }
+
+    if (response == null) {
+      try {
+        Constructor<?> kafka25PlusCon = metadataResponseClass.getConstructor(MetadataResponseData.class);
+        response = (MetadataResponse) kafka25PlusCon.newInstance(responseData);
+      } catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
+        LOG.debug("Unable to find Kafka 2.5+ constructor for MetadataResponse class", e);
+      }
+    }
+
+    if (response != null) {
+      return response;
+    } else {
+      throw new NoSuchElementException("Unable to find viable constructor for MetadataResponse class");
+    }
   }
 
   private static MetadataResponseData.MetadataResponseTopic prepareMetadataResponseTopic(MetadataResponse.TopicMetadata topicMetadata) {
