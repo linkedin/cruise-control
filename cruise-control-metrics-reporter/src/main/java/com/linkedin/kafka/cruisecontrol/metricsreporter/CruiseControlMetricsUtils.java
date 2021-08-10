@@ -3,6 +3,10 @@
  */
 package com.linkedin.kafka.cruisecontrol.metricsreporter;
 
+import com.linkedin.kafka.cruisecontrol.metricsreporter.config.EnvConfigProvider;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -11,6 +15,7 @@ import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.AlterConfigOp;
 import org.apache.kafka.clients.admin.Config;
 import org.apache.kafka.clients.admin.ConfigEntry;
+import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.config.SaslConfigs;
@@ -25,6 +30,9 @@ public final class CruiseControlMetricsUtils {
 
   private static final long DEFAULT_RETRY_BACKOFF_SCALE_MS = TimeUnit.SECONDS.toMillis(5);
   private static final int DEFAULT_RETRY_BACKOFF_BASE = 2;
+
+  public static final String ENV_CONFIG_PROVIDER_NAME = "env";
+  public static final String ENV_CONFIG_PROVIDER_CLASS_CONFIG = ".env.class";
 
   private CruiseControlMetricsUtils() {
 
@@ -189,4 +197,22 @@ public final class CruiseControlMetricsUtils {
   public static void retry(Supplier<Boolean> function, int maxAttempts) {
     retry(function, DEFAULT_RETRY_BACKOFF_SCALE_MS, DEFAULT_RETRY_BACKOFF_BASE, maxAttempts);
   }
+
+  /**
+   * Reads the configuration file, parses and validates the configs. Enables the configs to be passed
+   * in from environment variables.
+   * @param propertiesFile is the file containing the Cruise Control configuration.
+   * @return a parsed {@link CruiseControlMetricsReporterConfig}
+   * @throws IOException if the configuration file can't be read.
+   */
+  public static CruiseControlMetricsReporterConfig readConfig(String propertiesFile) throws IOException {
+    Properties props = new Properties();
+    try (InputStream propStream = new FileInputStream(propertiesFile)) {
+      props.put(AbstractConfig.CONFIG_PROVIDERS_CONFIG, ENV_CONFIG_PROVIDER_NAME);
+      props.put(AbstractConfig.CONFIG_PROVIDERS_CONFIG + ENV_CONFIG_PROVIDER_CLASS_CONFIG, EnvConfigProvider.class.getName());
+      props.load(propStream);
+    }
+    return new CruiseControlMetricsReporterConfig(props, true);
+  }
+
 }

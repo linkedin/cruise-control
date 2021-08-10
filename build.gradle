@@ -371,9 +371,8 @@ project(':cruise-control-metrics-reporter') {
     compile "org.apache.logging.log4j:log4j-slf4j-impl:2.14.1"
     compile "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion"
     compile "org.apache.kafka:kafka-clients:$kafkaVersion"
-    compile 'junit:junit:4.13.2'
-    compile 'org.apache.commons:commons-math3:3.6.1'
 
+    testCompile 'junit:junit:4.13.2'
     testCompile 'org.bouncycastle:bcpkix-jdk15on:1.69'
     testCompile 'org.powermock:powermock-module-junit4:2.0.9'
     testCompile 'org.powermock:powermock-api-easymock:2.0.9'
