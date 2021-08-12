@@ -20,12 +20,12 @@ import java.util.regex.Pattern;
  */
 public class TrustedProxyAuthorizationService extends AbstractLifeCycle implements AuthorizationService {
 
-  private final UserStore _adminUserStore;
+  private final UserStore _serviceUserStore;
   private final Pattern _trustedProxyIpPattern;
 
   TrustedProxyAuthorizationService(List<String> userNames, String trustedProxyIpPattern) {
-    _adminUserStore = new UserStore();
-    userNames.forEach(u -> _adminUserStore.addUser(u, SecurityUtils.NO_CREDENTIAL, new String[] { DefaultRoleSecurityProvider.ADMIN }));
+    _serviceUserStore = new UserStore();
+    userNames.forEach(u -> _serviceUserStore.addUser(u, SecurityUtils.NO_CREDENTIAL, new String[] { DefaultRoleSecurityProvider.ADMIN }));
     if (trustedProxyIpPattern != null) {
       _trustedProxyIpPattern = Pattern.compile(trustedProxyIpPattern);
     } else {
@@ -38,7 +38,7 @@ public class TrustedProxyAuthorizationService extends AbstractLifeCycle implemen
     // ConfigurableSpnegoAuthenticator may pass names in servicename/host format but we only store the servicename
     int nameHostSeparatorIndex = name.indexOf('/');
     String serviceName = nameHostSeparatorIndex > 0 ? name.substring(0, nameHostSeparatorIndex) : name;
-    UserIdentity serviceIdentity = _adminUserStore.getUserIdentity(serviceName);
+    UserIdentity serviceIdentity = _serviceUserStore.getUserIdentity(serviceName);
     if (_trustedProxyIpPattern != null) {
       return _trustedProxyIpPattern.matcher(request.getRemoteAddr()).matches() ? serviceIdentity : null;
     } else {
@@ -48,13 +48,13 @@ public class TrustedProxyAuthorizationService extends AbstractLifeCycle implemen
 
   @Override
   protected void doStart() throws Exception {
-    _adminUserStore.start();
+    _serviceUserStore.start();
     super.doStart();
   }
 
   @Override
   protected void doStop() throws Exception {
     super.doStop();
-    _adminUserStore.stop();
+    _serviceUserStore.stop();
   }
 }
