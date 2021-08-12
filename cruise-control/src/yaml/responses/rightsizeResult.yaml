@@ -1,11 +1,7 @@
 RightsizeResult:
   type: object
   required:
-    - numBrokersToAdd
-    - partitionCount
-    - topic
     - provisionerState
-    - provisionerSummary
     - version
   properties:
     numBrokersToAdd:
@@ -17,8 +13,6 @@ RightsizeResult:
     topic:
       type: string
     provisionerState:
-      type: string
-    provisionerSummary:
       type: string
     version:
       type: integer

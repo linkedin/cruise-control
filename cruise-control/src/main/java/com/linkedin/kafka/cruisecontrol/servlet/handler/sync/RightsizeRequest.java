@@ -29,6 +29,7 @@ public class RightsizeRequest extends AbstractSyncRequest {
   private static final String RECOMMENDER_UP = "Recommender-Under-Provisioned";
   protected KafkaCruiseControl _kafkaCruiseControl;
   protected RightsizeParameters _parameters;
+  protected String _topicName;
 
   public RightsizeRequest() {
     super();
@@ -42,26 +43,63 @@ public class RightsizeRequest extends AbstractSyncRequest {
     Provisioner provisioner = config.getConfiguredInstance(AnomalyDetectorConfig.PROVISIONER_CLASS_CONFIG,
                                                            Provisioner.class,
                                                            overrideConfigs);
-    Supplier<Set<String>> topicNameSupplier = () -> _kafkaCruiseControl.kafkaCluster().topics();
-    Set<String> topicNamesMatchedWithPattern = Utils.getTopicNamesMatchedWithPattern(_parameters.topic(), topicNameSupplier);
-    String topicName;
-    if (topicNamesMatchedWithPattern.size() > 1) {
-      throw new IllegalArgumentException(String.format("The RightsizeEndpoint does not support provisioning for multiple topics {%s}.",
-                                                       String.join(" ,", topicNamesMatchedWithPattern)));
-    } else {
-      topicName = topicNamesMatchedWithPattern.iterator().next();
-    }
-    ProvisionRecommendation recommendation =
-        new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).numBrokers(_parameters.numBrokersToAdd())
-                                                                              .numPartitions(_parameters.partitionCount())
-                                                                              .topic(topicName)
-                                                                              .build();
+    ProvisionRecommendation recommendation = sanityCheckResources();
     Map<String, ProvisionRecommendation> provisionRecommendation;
     provisionRecommendation = Collections.singletonMap(RECOMMENDER_UP, recommendation);
 
     ProvisionerState provisionerState = provisioner.rightsize(provisionRecommendation, new RightsizeOptions());
 
-    return new RightsizeResult(_parameters.numBrokersToAdd(), _parameters.partitionCount(), topicName, provisionerState, config);
+    return new RightsizeResult(_parameters.numBrokersToAdd(), _parameters.partitionCount(), _topicName, provisionerState, config);
+  }
+
+  /**
+   * Ensure that
+   * <ul>
+   *   <li>exactly one resource type is set</li>
+   *   <li>if the resource type is partition, then the corresponding topic must be specified; otherwise, the topic cannot be specified</li>
+   *   <li>if the resource type is partition, then only one topic must be specified</li>
+   * </ul>
+   *
+   * @return The {@link ProvisionRecommendation} to recommend for rightsizing
+   * @throws IllegalArgumentException when the sanity check fails.
+   */
+  private ProvisionRecommendation sanityCheckResources() throws IllegalArgumentException {
+    ProvisionRecommendation recommendation;
+
+    // Validate multiple resources are not set
+    if (_parameters.numBrokersToAdd() != ProvisionRecommendation.DEFAULT_OPTIONAL_INT
+        && _parameters.partitionCount() == ProvisionRecommendation.DEFAULT_OPTIONAL_INT) {
+      //Validate the topic cannot be specified when the resource type is not partition.
+      if (_parameters.topic() != null) {
+        throw new IllegalArgumentException("When the resource type is not partition, topic cannot be specified.");
+      }
+      recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).numBrokers(_parameters.numBrokersToAdd())
+                                                                                             .build();
+    } else if (_parameters.numBrokersToAdd() == ProvisionRecommendation.DEFAULT_OPTIONAL_INT
+               && _parameters.partitionCount() != ProvisionRecommendation.DEFAULT_OPTIONAL_INT) {
+      // Validate the topic parameter is not null
+      if (_parameters.topic() == null) {
+        throw new IllegalArgumentException("When the resource type is partition, the corresponding topic must be specified.");
+      }
+
+      // Validate multiple topics were not provided for provisioning
+      Supplier<Set<String>> topicNameSupplier = () -> _kafkaCruiseControl.kafkaCluster().topics();
+      Set<String> topicNamesMatchedWithPattern = Utils.getTopicNamesMatchedWithPattern(_parameters.topic(), topicNameSupplier);
+      if (topicNamesMatchedWithPattern.size() != 1) {
+        throw new IllegalArgumentException(String.format("The RightsizeEndpoint does not support provisioning for multiple topics {%s}.",
+                                                         String.join(" ,", topicNamesMatchedWithPattern)));
+      } else {
+        _topicName = topicNamesMatchedWithPattern.iterator().next();
+      }
+      recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).numPartitions(_parameters.partitionCount())
+                                                                                             .topic(_topicName)
+                                                                                             .build();
+    } else {
+      throw new IllegalArgumentException(String.format("Exactly one resource type must be set (Brokers:%d Partitions:%d))",
+                                                       _parameters.numBrokersToAdd(),
+                                                       _parameters.partitionCount()));
+    }
+    return recommendation;
   }
 
   @Override

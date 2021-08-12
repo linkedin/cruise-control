@@ -6,32 +6,31 @@ package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.ProvisionerState;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.*;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 
 
 @JsonResponseClass
 public class RightsizeResult extends AbstractCruiseControlResponse {
-  @JsonResponseField
+  @JsonResponseField(required = false)
   protected static final String NUM_BROKERS_TO_ADD = "numBrokersToAdd";
-  @JsonResponseField
+  @JsonResponseField(required = false)
   protected static final String PARTITION_COUNT = "partitionCount";
-  @JsonResponseField
+  @JsonResponseField(required = false)
   protected static final String TOPIC = "topic";
   @JsonResponseField
   protected static final String PROVISIONER_STATE = "provisionerState";
-  @JsonResponseField
-  protected static final String PROVISIONER_SUMMARY = "provisionerSummary";
 
   protected final int _numBrokersToAdd;
   protected final int _partitionCount;
   protected String _topic;
-  protected String _provisionState;
-  protected String _provisionSummary;
+  protected String _provisionerState;
 
   public RightsizeResult(int numBrokersToAdd,
                          int partitionCount,
@@ -43,23 +42,21 @@ public class RightsizeResult extends AbstractCruiseControlResponse {
     _numBrokersToAdd = numBrokersToAdd;
     _partitionCount = partitionCount;
     _topic = topic;
-    _provisionState = provisionerState.state().toString();
-    _provisionSummary = provisionerState.summary();
+    _provisionerState = provisionerState.toString();
   }
 
   protected String getJSONString() {
     Map<String, Object> jsonStructure = new HashMap<>(5);
-    jsonStructure.put(NUM_BROKERS_TO_ADD, _numBrokersToAdd);
-    jsonStructure.put(PARTITION_COUNT, _partitionCount);
+    if (_numBrokersToAdd != ProvisionRecommendation.DEFAULT_OPTIONAL_INT) {
+      jsonStructure.put(NUM_BROKERS_TO_ADD, _numBrokersToAdd);
+    }
+    if (_partitionCount != ProvisionRecommendation.DEFAULT_OPTIONAL_INT) {
+      jsonStructure.put(PARTITION_COUNT, _partitionCount);
+    }
     if (_topic != null && !_topic.isEmpty()) {
       jsonStructure.put(TOPIC, _topic);
     }
-    if (_provisionState != null && !_provisionState.isEmpty()) {
-      jsonStructure.put(PROVISIONER_STATE, _provisionState);
-    }
-    if (_provisionSummary != null && !_provisionSummary.isEmpty()) {
-      jsonStructure.put(PROVISIONER_SUMMARY, _provisionSummary);
-    }
+    jsonStructure.put(PROVISIONER_STATE, _provisionerState);
     jsonStructure.put(VERSION, JSON_VERSION);
     Gson gson = new Gson();
     return gson.toJson(jsonStructure);
@@ -70,7 +67,6 @@ public class RightsizeResult extends AbstractCruiseControlResponse {
     _cachedResponse = getJSONString();
     // Discard irrelevant response.
     _topic = null;
-    _provisionState = null;
-    _provisionSummary = null;
+    _provisionerState = null;
   }
 }
