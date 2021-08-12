@@ -4,9 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.security.trustedproxy;
 
-import com.linkedin.kafka.cruisecontrol.servlet.security.MiniKdc;
-import com.linkedin.kafka.cruisecontrol.CruiseControlIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
+import com.linkedin.kafka.cruisecontrol.servlet.security.SpnegoIntegrationTestHarness;
 import org.apache.kerby.kerberos.kerb.KrbException;
 import org.junit.After;
 import org.junit.Before;
@@ -16,48 +15,35 @@ import javax.servlet.http.HttpServletResponse;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.security.PrivilegedAction;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.STATE;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DO_AS;
-import static com.linkedin.kafka.cruisecontrol.servlet.security.SecurityTestUtils.AUTH_CREDENTIALS_FILE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
-public class TrustedProxySecurityProviderIntegrationTest extends CruiseControlIntegrationTestHarness {
+public class TrustedProxySecurityProviderIntegrationTest extends SpnegoIntegrationTestHarness {
 
   private static final String CRUISE_CONTROL_STATE_ENDPOINT = "kafkacruisecontrol/" + STATE;
 
-  private static final String CC_TEST_ADMIN = "ccTestAdmin";
-  private static final String REALM = "LINKEDINTEST.COM";
   private static final String AUTH_SERVICE_NAME = "testauthservice";
   private static final String AUTH_SERVICE_PRINCIPAL = AUTH_SERVICE_NAME + "/localhost";
-  private static final String SOME_OTHER_SERVICE_PRINCIPAL = "someotherservice/localhost";
-  private static final String SPNEGO_SERVICE_PRINCIPAL = "HTTP/localhost";
-
-  private MiniKdc _miniKdc;
 
   public TrustedProxySecurityProviderIntegrationTest() throws KrbException {
-    List<String> principals = new ArrayList<>();
+  }
+
+  @Override
+  public List<String> principals() {
+    List<String> principals = super.principals();
     principals.add(AUTH_SERVICE_PRINCIPAL);
-    principals.add(SPNEGO_SERVICE_PRINCIPAL);
-    principals.add(SOME_OTHER_SERVICE_PRINCIPAL);
-    _miniKdc = new MiniKdc(REALM, principals);
+    return principals;
   }
 
   @Override
   protected Map<String, Object> withConfigs() {
-    Map<String, Object> configs = new HashMap<>();
-    configs.put(WebServerConfig.WEBSERVER_SECURITY_ENABLE_CONFIG, true);
+    Map<String, Object> configs = super.withConfigs();
     configs.put(WebServerConfig.WEBSERVER_SECURITY_PROVIDER_CONFIG, TrustedProxySecurityProvider.class);
-    configs.put(WebServerConfig.WEBSERVER_AUTH_CREDENTIALS_FILE_CONFIG,
-        Objects.requireNonNull(this.getClass().getClassLoader().getResource(AUTH_CREDENTIALS_FILE)).getPath());
-    configs.put(WebServerConfig.SPNEGO_PRINCIPAL_CONFIG, SPNEGO_SERVICE_PRINCIPAL + "@" + REALM);
-    configs.put(WebServerConfig.SPNEGO_KEYTAB_FILE_CONFIG, _miniKdc.keytab().getAbsolutePath());
     configs.put(WebServerConfig.TRUSTED_PROXY_SERVICES_CONFIG, AUTH_SERVICE_NAME);
 
     return configs;
@@ -69,18 +55,15 @@ public class TrustedProxySecurityProviderIntegrationTest extends CruiseControlIn
    */
   @Before
   public void setup() throws Exception {
-    _miniKdc.start();
     super.start();
   }
 
   /**
    * Stops the test environment.
-   * @throws KrbException
    */
   @After
-  public void teardown() throws KrbException {
+  public void teardown() {
     super.stop();
-    _miniKdc.stop();
   }
 
   @Test

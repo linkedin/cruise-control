@@ -324,6 +324,16 @@ public final class WebServerConfig {
       + "trusted.proxy.services then the operation will be delegated as the user in the doAs parameter. This is an optional "
       + "parameter. Not specifying this means that the IP of the trusted proxy won't be validated.";
 
+  /**
+   * <code>trusted.proxy.spnego.fallback.enabled</code>
+   */
+  public static final String TRUSTED_PROXY_SPNEGO_FALLBACK_ENABLED_CONFIG = "trusted.proxy.spnego.fallback.enabled";
+  public static final boolean DEFAULT_TRUSTED_PROXY_SPNEGO_FALLBACK_ENABLED = false;
+  private static final String TRUSTED_PROXY_SPNEGO_FALLBACK_ENABLED_DOC = "In some cases it is favourable to use "
+      + "the service user if no doAs user is provided. When this flag is enabled and if no doAs user is found in the "
+      + "request, then the service user will be used as the authenticated principal (so there will be no delegation "
+      + "or impersonation but rather a simple fallback to SPNEGO).";
+
   private WebServerConfig() {
   }
 
@@ -487,20 +497,20 @@ public final class WebServerConfig {
                             ConfigDef.Importance.MEDIUM,
                             WEBSERVER_SSL_INCLUDE_CIPHERS_DOC)
                     .define(WEBSERVER_SSL_EXCLUDE_CIPHERS_CONFIG,
-                        ConfigDef.Type.LIST,
-                        DEFAULT_WEBSERVER_SSL_EXCLUDE_CIPHERS,
-                        ConfigDef.Importance.MEDIUM,
-                        WEBSERVER_SSL_EXCLUDE_CIPHERS_DOC)
+                            ConfigDef.Type.LIST,
+                            DEFAULT_WEBSERVER_SSL_EXCLUDE_CIPHERS,
+                            ConfigDef.Importance.MEDIUM,
+                            WEBSERVER_SSL_EXCLUDE_CIPHERS_DOC)
                     .define(WEBSERVER_SSL_INCLUDE_PROTOCOLS_CONFIG,
-                        ConfigDef.Type.LIST,
-                        DEFAULT_WEBSERVER_SSL_INCLUDE_PROTOCOLS,
-                        ConfigDef.Importance.MEDIUM,
-                        WEBSERVER_SSL_INCLUDE_PROTOCOLS_DOC)
+                            ConfigDef.Type.LIST,
+                            DEFAULT_WEBSERVER_SSL_INCLUDE_PROTOCOLS,
+                            ConfigDef.Importance.MEDIUM,
+                            WEBSERVER_SSL_INCLUDE_PROTOCOLS_DOC)
                     .define(WEBSERVER_SSL_EXCLUDE_PROTOCOLS_CONFIG,
-                        ConfigDef.Type.LIST,
-                        DEFAULT_WEBSERVER_SSL_EXCLUDE_PROTOCOLS,
-                        ConfigDef.Importance.MEDIUM,
-                        WEBSERVER_SSL_EXCLUDE_PROTOCOLS_DOC)
+                            ConfigDef.Type.LIST,
+                            DEFAULT_WEBSERVER_SSL_EXCLUDE_PROTOCOLS,
+                            ConfigDef.Importance.MEDIUM,
+                            WEBSERVER_SSL_EXCLUDE_PROTOCOLS_DOC)
                     .define(JWT_AUTHENTICATION_PROVIDER_URL_CONFIG,
                             ConfigDef.Type.STRING,
                             DEFAULT_JWT_AUTHENTICATION_PROVIDER_URL,
@@ -540,6 +550,11 @@ public final class WebServerConfig {
                             ConfigDef.Type.STRING,
                             DEFAULT_TRUSTED_PROXY_SERVICES_IP_REGEX,
                             ConfigDef.Importance.MEDIUM,
-                            TRUSTED_PROXY_SERVICES_IP_REGEX_DOC);
+                            TRUSTED_PROXY_SERVICES_IP_REGEX_DOC)
+                    .define(TRUSTED_PROXY_SPNEGO_FALLBACK_ENABLED_CONFIG,
+                            ConfigDef.Type.BOOLEAN,
+                            DEFAULT_TRUSTED_PROXY_SPNEGO_FALLBACK_ENABLED,
+                            ConfigDef.Importance.MEDIUM,
+                            TRUSTED_PROXY_SPNEGO_FALLBACK_ENABLED_DOC);
   }
 }
