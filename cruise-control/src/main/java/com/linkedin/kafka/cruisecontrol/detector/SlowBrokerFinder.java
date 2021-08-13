@@ -221,9 +221,9 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
       aggregatedMetricValues = metricsHistory.metricValues();
       double[] historicalLogFlushTime = aggregatedMetricValues.valuesFor(BROKER_LOG_FLUSH_TIME_MS_999TH_ID).doubleArray();
       List<Double> historicalValue = new ArrayList<>(historicalLogFlushTime.length);
-      for (int i = 0; i < historicalLogFlushTime.length; i++) {
-        if (historicalLogFlushTime[i] > 5.0) {
-          historicalValue.add(historicalLogFlushTime[i]);
+      for (double v : historicalLogFlushTime) {
+        if (v > 5.0) {
+          historicalValue.add(v);
         }
       }
       historicalLogFlushTimeMetricValues.put(broker, historicalValue);
@@ -326,10 +326,9 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
 
   private String getSlowBrokerDescription(Map<BrokerEntity, Long> detectedBrokers) {
     StringBuilder descriptionSb = new StringBuilder().append("{");
-    detectedBrokers.forEach((broker, time) -> {
-      descriptionSb.append(String.format("%d is slow (score: %d/%d) since %s, ", broker.brokerId(), _brokerSlownessScore.get(broker),
-                                         _slowBrokerDecommissionScore, utcDateFor(time)));
-    });
+    detectedBrokers.forEach((broker, time) -> descriptionSb.append(String.format("%d is slow (score: %d/%d) since %s, ", broker.brokerId(),
+                                                                                 _brokerSlownessScore.get(broker),
+                                                                               _slowBrokerDecommissionScore, utcDateFor(time))));
     descriptionSb.setLength(descriptionSb.length() - 2);
     descriptionSb.append("}");
     return descriptionSb.toString();

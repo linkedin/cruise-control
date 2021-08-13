@@ -6,16 +6,16 @@ plugins {
 
 repositories {
   mavenLocal()
-  jcenter()
+  mavenCentral()
 }
 
 dependencies {
   compile gradleApi()
   compile localGroovy()
 
-  compile 'org.ajoberstar:gradle-git:1.7.2'
+  compile 'org.ajoberstar:grgit:1.7.2'
   compile 'org.apache.httpcomponents:fluent-hc:4.5.13'
-  compile('org.jfrog.buildinfo:build-info-extractor-gradle:4.21.0') {
+  compile('org.jfrog.buildinfo:build-info-extractor-gradle:4.24.14') {
     exclude module: 'groovy-all'
   }
 }

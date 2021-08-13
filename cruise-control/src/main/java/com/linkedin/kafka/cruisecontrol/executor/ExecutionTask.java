@@ -274,7 +274,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   public enum TaskType {
     INTER_BROKER_REPLICA_ACTION, INTRA_BROKER_REPLICA_ACTION, LEADER_ACTION;
 
-    private static final List<TaskType> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
+    private static final List<TaskType> CACHED_VALUES = List.of(values());
 
     /**
      * Use this instead of values() because values() creates a new array each time.

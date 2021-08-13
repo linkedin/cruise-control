@@ -95,8 +95,8 @@ public class ExecutionTaskPlannerTest {
     Cluster expectedCluster = new Cluster(null,
                                           _expectedNodes,
                                           partitions,
-                                          Collections.<String>emptySet(),
-                                          Collections.<String>emptySet());
+                                          Collections.emptySet(),
+                                          Collections.emptySet());
     StrategyOptions strategyOptions = new StrategyOptions.Builder(expectedCluster).build();
 
     planner.addExecutionProposals(proposals, strategyOptions, null);
@@ -173,7 +173,7 @@ public class ExecutionTaskPlannerTest {
     partitions.add(generatePartitionInfoWithUrpHavingOfflineReplica(_partitionMovement3, true));
     partitions.add(generatePartitionInfo(_partitionMovement4, false));
 
-    Cluster expectedCluster = new Cluster(null, _expectedNodes, partitions, Collections.<String>emptySet(), Collections.<String>emptySet());
+    Cluster expectedCluster = new Cluster(null, _expectedNodes, partitions, Collections.emptySet(), Collections.emptySet());
     // This ensures that the _partitionMovement1 and _partitionMovement3 are AtMinISR, while the other partitions are not.
     Map<String, MinIsrWithTime> minIsrWithTimeByTopic
         = Collections.singletonMap(TOPIC2, new MinIsrWithTime((short) (_partitionMovement1.oldReplicas().size() - 1), 0));
@@ -247,7 +247,7 @@ public class ExecutionTaskPlannerTest {
     partitions.add(generatePartitionInfo(_partitionMovement3, true));
     partitions.add(generatePartitionInfo(_partitionMovement4, false));
 
-    Cluster expectedCluster = new Cluster(null, _expectedNodes, partitions, Collections.<String>emptySet(), Collections.<String>emptySet());
+    Cluster expectedCluster = new Cluster(null, _expectedNodes, partitions, Collections.emptySet(), Collections.emptySet());
     StrategyOptions strategyOptions = new StrategyOptions.Builder(expectedCluster).build();
 
     Map<Integer, Integer> readyBrokers = new HashMap<>();
@@ -329,8 +329,8 @@ public class ExecutionTaskPlannerTest {
     Cluster expectedCluster = new Cluster(null,
                                           _expectedNodes,
                                           partitions,
-                                          Collections.<String>emptySet(),
-                                          Collections.<String>emptySet());
+                                          Collections.emptySet(),
+                                          Collections.emptySet());
     StrategyOptions strategyOptions = new StrategyOptions.Builder(expectedCluster).build();
 
     ExecutionTaskPlanner planner =
@@ -359,8 +359,8 @@ public class ExecutionTaskPlannerTest {
     Cluster expectedCluster = new Cluster(null,
                                           _expectedNodes,
                                           partitions,
-                                          Collections.<String>emptySet(),
-                                          Collections.<String>emptySet());
+                                          Collections.emptySet(),
+                                          Collections.emptySet());
     StrategyOptions strategyOptions = new StrategyOptions.Builder(expectedCluster).build();
 
     planner.addExecutionProposals(proposals, strategyOptions, null);

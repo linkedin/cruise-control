@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.detector.notifier;
 
-import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -16,7 +15,6 @@ import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -86,24 +84,16 @@ public class SlackSelfHealingNotifierTest {
     }
 
     private static class MockSlackSelfHealingNotifier extends SlackSelfHealingNotifier {
-        private List<SlackMessage> _slackMessageList;
-        private final Map<AnomalyType, Boolean> _alertCalled;
-        private final Map<AnomalyType, Boolean> _autoFixTriggered;
+        private final List<SlackMessage> _slackMessageList;
 
         MockSlackSelfHealingNotifier(Time time) {
             super(time);
-            _alertCalled = new HashMap<>(KafkaAnomalyType.cachedValues().size());
-            _autoFixTriggered = new HashMap<>(KafkaAnomalyType.cachedValues().size());
-            for (AnomalyType alertType : KafkaAnomalyType.cachedValues()) {
-                _alertCalled.put(alertType, false);
-                _autoFixTriggered.put(alertType, false);
-            }
             _selfHealingEnabled.put(KafkaAnomalyType.BROKER_FAILURE, true);
             _slackMessageList = new ArrayList<>();
         }
 
         @Override
-        protected void sendSlackMessage(SlackMessage slackMessage, String slackWebhookUrl) throws IOException {
+        protected void sendSlackMessage(SlackMessage slackMessage, String slackWebhookUrl) {
             _slackMessageList.add(slackMessage);
         }
 

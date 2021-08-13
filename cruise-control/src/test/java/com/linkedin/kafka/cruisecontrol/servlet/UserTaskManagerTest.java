@@ -84,7 +84,7 @@ public class UserTaskManagerTest {
     // not created for sync request. So in the 2 asserts below , we expect that given a http request, we are able to find request associated UUID
     // for async request but not for sync request.
     UUID savedUUID = userTaskManager.getUserTaskId(mockHttpServletRequest3);
-    Assert.assertEquals(savedUUID, null);
+    Assert.assertNull(savedUUID);
     Assert.assertEquals(future4, future);
 
     EasyMock.reset(mockHttpServletResponse);

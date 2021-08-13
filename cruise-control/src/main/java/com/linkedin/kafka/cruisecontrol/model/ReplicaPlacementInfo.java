@@ -8,8 +8,8 @@ import java.util.Objects;
 
 
 public class ReplicaPlacementInfo {
-  private int _brokerId;
-  private String _logdir;
+  private final int _brokerId;
+  private final String _logdir;
 
   public ReplicaPlacementInfo(int brokerId, String logdir) {
     _brokerId = brokerId;

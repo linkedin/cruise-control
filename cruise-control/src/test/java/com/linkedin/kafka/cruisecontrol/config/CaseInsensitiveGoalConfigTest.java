@@ -12,15 +12,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Properties;
 import org.apache.kafka.common.config.ConfigException;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertThrows;
 
 
 /**
@@ -29,9 +27,6 @@ import static org.junit.Assert.assertTrue;
 @RunWith(Parameterized.class)
 public class CaseInsensitiveGoalConfigTest {
   private static final Logger LOG = LoggerFactory.getLogger(CaseInsensitiveGoalConfigTest.class);
-
-  @Rule
-  public ExpectedException _expected = ExpectedException.none();
 
   private final Properties _properties;
   private final Class<Throwable> _exceptionClass;
@@ -89,10 +84,9 @@ public class CaseInsensitiveGoalConfigTest {
     LOG.debug("Testing case insensitive goal configuration: {}.", _properties);
 
     if (_exceptionClass != null) {
-      _expected.expect(_exceptionClass);
+      assertThrows(_exceptionClass, () -> new KafkaCruiseControlConfig(_properties));
+    } else {
+      new KafkaCruiseControlConfig(_properties);
     }
-
-    new KafkaCruiseControlConfig(_properties);
-    assertTrue("Failed to detect case insensitive goal configs.", true);
   }
 }

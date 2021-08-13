@@ -20,5 +20,5 @@ enum CruiseControlEndpointType implements EndpointType {
   KAFKA_MONITOR,
   CRUISE_CONTROL_MONITOR,
   KAFKA_ADMIN,
-  CRUISE_CONTROL_ADMIN;
+  CRUISE_CONTROL_ADMIN
 }

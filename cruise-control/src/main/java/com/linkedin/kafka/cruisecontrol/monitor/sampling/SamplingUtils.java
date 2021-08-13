@@ -21,11 +21,9 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
@@ -34,8 +32,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.RANDOM;
-import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.RECONNECT_BACKOFF_MS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.createConsumer;
 import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.*;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler.METRIC_REPORTER_SAMPLER_BOOTSTRAP_SERVERS;
@@ -328,20 +325,7 @@ public final class SamplingUtils {
     if (bootstrapServers == null) {
       bootstrapServers = bootstrapServers(configs);
     }
-
-    // Create consumer
-    long randomToken = RANDOM.nextLong();
-    Properties consumerProps = new Properties();
-    consumerProps.putAll(configs);
-    consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, clientIdPrefix + "-consumer-" + randomToken);
-    consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
-    consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
-    consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
-    consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-    consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, MetricSerde.class.getName());
-    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, configs.get(RECONNECT_BACKOFF_MS_CONFIG).toString());
-    return new KafkaConsumer<>(consumerProps);
+    return createConsumer(configs, clientIdPrefix, bootstrapServers, StringDeserializer.class, MetricSerde.class, true);
   }
 
   /**
@@ -367,18 +351,7 @@ public final class SamplingUtils {
    * @param clientIdPrefix Client id prefix.
    * @return A new Kafka consumer
    */
-  public static KafkaConsumer<byte[], byte[]> createSampleStoreConsumer(Map<String, ?> configs, String clientIdPrefix) {
-    long randomToken = RANDOM.nextLong();
-    Properties consumerProps = new Properties();
-    consumerProps.putAll(configs);
-    consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers(configs));
-    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, clientIdPrefix + "-consumer-" + randomToken);
-    consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-    consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
-    consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
-    consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
-    consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
-    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, configs.get(RECONNECT_BACKOFF_MS_CONFIG).toString());
-    return new KafkaConsumer<>(consumerProps);
+  public static Consumer<byte[], byte[]> createSampleStoreConsumer(Map<String, ?> configs, String clientIdPrefix) {
+    return createConsumer(configs, clientIdPrefix, bootstrapServers(configs), ByteArrayDeserializer.class, ByteArrayDeserializer.class, false);
   }
 }

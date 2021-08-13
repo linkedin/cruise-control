@@ -35,7 +35,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -117,10 +116,10 @@ public class ExcludedTopicsTest {
     Collection<Object[]> p = new ArrayList<>();
 
     Set<String> noExclusion = Collections.emptySet();
-    Set<String> excludeT1 = Collections.unmodifiableSet(Collections.singleton(T1));
-    Set<String> excludeAllTopics = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(T1, T2)));
+    Set<String> excludeT1 = Collections.singleton(T1);
+    Set<String> excludeAllTopics = Set.of(T1, T2);
     Set<Integer> noDeadBroker = Collections.emptySet();
-    Set<Integer> deadBroker0 = Collections.unmodifiableSet(Collections.singleton(0));
+    Set<Integer> deadBroker0 = Collections.singleton(0);
 
     // ============RackAwareGoal============
     // With excluded topics, rack aware satisfiable cluster, no dead brokers (No exception, No proposal, Expected to look optimized)

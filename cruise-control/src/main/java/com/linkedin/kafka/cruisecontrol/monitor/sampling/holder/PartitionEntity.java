@@ -34,6 +34,6 @@ public class PartitionEntity extends Entity<String> {
 
   @Override
   public boolean equals(Object other) {
-    return other != null && other instanceof PartitionEntity && _tp.equals(((PartitionEntity) other).tp());
+    return other instanceof PartitionEntity && _tp.equals(((PartitionEntity) other).tp());
   }
 }

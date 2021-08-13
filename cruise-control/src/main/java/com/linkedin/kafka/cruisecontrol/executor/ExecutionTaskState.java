@@ -3,14 +3,13 @@
  */
 package com.linkedin.kafka.cruisecontrol.executor;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 public enum ExecutionTaskState {
     PENDING, IN_PROGRESS, ABORTING, ABORTED, DEAD, COMPLETED;
 
-    private static final List<ExecutionTaskState> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
+    private static final List<ExecutionTaskState> CACHED_VALUES = List.of(values());
 
     /**
      * Use this instead of values() because values() creates a new array each time.
