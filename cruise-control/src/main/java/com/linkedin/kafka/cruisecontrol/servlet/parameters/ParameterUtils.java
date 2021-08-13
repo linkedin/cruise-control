@@ -8,6 +8,7 @@ import com.google.gson.Gson;
 import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.cruisecontrol.servlet.EndPoint;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.IntraBrokerDiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.IntraBrokerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
@@ -58,7 +59,6 @@ import static com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus.AP
 import static com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus.DISCARDED;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.writeErrorResponse;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
-
 
 /**
  * The util class for Kafka Cruise Control parameters.
@@ -138,6 +138,8 @@ public final class ParameterUtils {
   public static final String TOPIC_BY_REPLICATION_FACTOR = "topic_by_replication_factor";
   public static final String NO_REASON_PROVIDED = "No reason provided";
   public static final String DO_AS = "doAs";
+  public static final String NUM_BROKERS_TO_ADD = "num_brokers_to_add";
+  public static final String PARTITION_COUNT = "partition_count";
 
   public static final String STOP_PROPOSAL_PARAMETER_OBJECT_CONFIG = "stop.proposal.parameter.object";
   public static final String BOOTSTRAP_PARAMETER_OBJECT_CONFIG = "bootstrap.parameter.object";
@@ -158,6 +160,7 @@ public final class ParameterUtils {
   public static final String ADMIN_PARAMETER_OBJECT_CONFIG = "admin.parameter.object";
   public static final String REVIEW_PARAMETER_OBJECT_CONFIG = "review.parameter.object";
   public static final String TOPIC_CONFIGURATION_PARAMETER_OBJECT_CONFIG = "topic.configuration.parameter.object";
+  public static final String RIGHTSIZE_PARAMETER_OBJECT_CONFIG = "rightsize.parameter.object";
 
   private ParameterUtils() {
   }
@@ -919,6 +922,44 @@ public final class ParameterUtils {
       throw new UserRequestException("The " + PARTITION_PARAM + " parameter cannot contain multiple dashes.");
     }
     return Integer.parseInt(boundaries[isUpperBound ? 1 : 0]);
+  }
+
+  /**
+   * Get the {@link #NUM_BROKERS_TO_ADD} from the request.
+   *
+   * Default: {@link ProvisionRecommendation#DEFAULT_OPTIONAL_INT}
+   * @return The value of {@link #NUM_BROKERS_TO_ADD} parameter.
+   * @throws UserRequestException if the number of brokers to add is not a positive integer.
+   */
+  static int numBrokersToAdd(HttpServletRequest request) {
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), NUM_BROKERS_TO_ADD);
+    if (parameterString == null) {
+      return ProvisionRecommendation.DEFAULT_OPTIONAL_INT;
+    }
+    int numBrokersToAdd = Integer.parseInt(request.getParameter(parameterString));
+    if (numBrokersToAdd <= 0) {
+      throw new UserRequestException("The requested number of brokers to add must be positive (Requested: " + numBrokersToAdd + ").");
+    }
+    return numBrokersToAdd;
+  }
+
+  /**
+   * Get the {@link #PARTITION_COUNT} from the request.
+   *
+   * Default: {@link ProvisionRecommendation#DEFAULT_OPTIONAL_INT}
+   * @return The value of {@link #PARTITION_COUNT} parameter.
+   * @throws UserRequestException if the targeted partition count is not a positive integer.
+   */
+  static int partitionCount(HttpServletRequest request) {
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), PARTITION_COUNT);
+    if (parameterString == null) {
+      return ProvisionRecommendation.DEFAULT_OPTIONAL_INT;
+    }
+    int targetPartitionCount = Integer.parseInt(request.getParameter(parameterString));
+    if (targetPartitionCount <= 0) {
+      throw new UserRequestException("The requested targeted partition count must be positive (Requested: " + targetPartitionCount + ").");
+    }
+    return targetPartitionCount;
   }
 
   static Set<Integer> brokerIds(HttpServletRequest request, boolean isOptional) throws UnsupportedEncodingException {
