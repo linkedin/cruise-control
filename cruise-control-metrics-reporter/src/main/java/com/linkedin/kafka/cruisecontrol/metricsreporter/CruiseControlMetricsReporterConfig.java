@@ -65,7 +65,7 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   public static final Short DEFAULT_CRUISE_CONTROL_MIN_INSYNC_REPLICAS = -1;
   public static final long DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS = TimeUnit.MINUTES.toMillis(1);
   public static final String PRODUCER_ID = "CruiseControlMetricsReporter";
-  public static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS = (int) TimeUnit.SECONDS.toMillis(5);
+  public static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS = (int) TimeUnit.SECONDS.toMillis(1);
   public static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_MAX_BLOCK_MS = (int) TimeUnit.MINUTES.toMillis(1);
   public static final int DEFAULT_CRUISE_CONTROL_METRICS_BATCH_SIZE = 800 * 1000;
   public static final boolean DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_KUBERNETES_MODE = false;
