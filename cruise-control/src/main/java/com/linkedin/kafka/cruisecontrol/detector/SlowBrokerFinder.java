@@ -328,7 +328,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     StringBuilder descriptionSb = new StringBuilder().append("{");
     detectedBrokers.forEach((broker, time) -> descriptionSb.append(String.format("%d is slow (score: %d/%d) since %s, ", broker.brokerId(),
                                                                                  _brokerSlownessScore.get(broker),
-                                                                               _slowBrokerDecommissionScore, utcDateFor(time))));
+                                                                                 _slowBrokerDecommissionScore, utcDateFor(time))));
     descriptionSb.setLength(descriptionSb.length() - 2);
     descriptionSb.append("}");
     return descriptionSb.toString();
