@@ -88,9 +88,6 @@ public class RightsizeRequest extends AbstractSyncRequest {
       if (topicNamesMatchedWithPattern.size() != 1) {
         throw new UserRequestException(String.format("The RightsizeEndpoint does not support provisioning for multiple topics {%s}.",
                                                          String.join(" ,", topicNamesMatchedWithPattern)));
-      } else if (topicNamesMatchedWithPattern.iterator().next().isEmpty()) {
-        // Validate the topic is not empty
-        throw new UserRequestException("When the resource type is partition, the corresponding topic must be specified.");
       } else {
         _topicName = topicNamesMatchedWithPattern.iterator().next();
       }
