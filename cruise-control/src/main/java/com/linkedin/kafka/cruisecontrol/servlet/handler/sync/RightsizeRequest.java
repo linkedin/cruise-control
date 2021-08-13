@@ -13,6 +13,7 @@ import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.Provisioner;
 import com.linkedin.kafka.cruisecontrol.detector.ProvisionerState;
 import com.linkedin.kafka.cruisecontrol.detector.RightsizeOptions;
+import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RightsizeParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.RightsizeResult;
 import java.util.Collections;
@@ -43,7 +44,7 @@ public class RightsizeRequest extends AbstractSyncRequest {
     Provisioner provisioner = config.getConfiguredInstance(AnomalyDetectorConfig.PROVISIONER_CLASS_CONFIG,
                                                            Provisioner.class,
                                                            overrideConfigs);
-    ProvisionRecommendation recommendation = sanityCheckResources();
+    ProvisionRecommendation recommendation = createProvisionRecommendation();
     Map<String, ProvisionRecommendation> provisionRecommendation;
     provisionRecommendation = Collections.singletonMap(RECOMMENDER_UP, recommendation);
 
@@ -53,7 +54,7 @@ public class RightsizeRequest extends AbstractSyncRequest {
   }
 
   /**
-   * Ensure that
+   * Create a provision recommendation and ensure that
    * <ul>
    *   <li>exactly one resource type is set</li>
    *   <li>if the resource type is partition, then the corresponding topic must be specified; otherwise, the topic cannot be specified</li>
@@ -61,9 +62,9 @@ public class RightsizeRequest extends AbstractSyncRequest {
    * </ul>
    *
    * @return The {@link ProvisionRecommendation} to recommend for rightsizing
-   * @throws IllegalArgumentException when the sanity check fails.
+   * @throws UserRequestException when the sanity check fails.
    */
-  private ProvisionRecommendation sanityCheckResources() throws IllegalArgumentException {
+  private ProvisionRecommendation createProvisionRecommendation() throws UserRequestException {
     ProvisionRecommendation recommendation;
 
     // Validate multiple resources are not set
@@ -71,23 +72,25 @@ public class RightsizeRequest extends AbstractSyncRequest {
         && _parameters.partitionCount() == ProvisionRecommendation.DEFAULT_OPTIONAL_INT) {
       //Validate the topic cannot be specified when the resource type is not partition.
       if (_parameters.topic() != null) {
-        throw new IllegalArgumentException("When the resource type is not partition, topic cannot be specified.");
+        throw new UserRequestException("When the resource type is not partition, topic cannot be specified.");
       }
       recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).numBrokers(_parameters.numBrokersToAdd())
                                                                                              .build();
     } else if (_parameters.numBrokersToAdd() == ProvisionRecommendation.DEFAULT_OPTIONAL_INT
                && _parameters.partitionCount() != ProvisionRecommendation.DEFAULT_OPTIONAL_INT) {
-      // Validate the topic parameter is not null
+      // Validate the topic pattern is not null
       if (_parameters.topic() == null) {
-        throw new IllegalArgumentException("When the resource type is partition, the corresponding topic must be specified.");
+        throw new UserRequestException("When the resource type is partition, the corresponding topic must be specified.");
       }
-
       // Validate multiple topics were not provided for provisioning
       Supplier<Set<String>> topicNameSupplier = () -> _kafkaCruiseControl.kafkaCluster().topics();
       Set<String> topicNamesMatchedWithPattern = Utils.getTopicNamesMatchedWithPattern(_parameters.topic(), topicNameSupplier);
       if (topicNamesMatchedWithPattern.size() != 1) {
-        throw new IllegalArgumentException(String.format("The RightsizeEndpoint does not support provisioning for multiple topics {%s}.",
+        throw new UserRequestException(String.format("The RightsizeEndpoint does not support provisioning for multiple topics {%s}.",
                                                          String.join(" ,", topicNamesMatchedWithPattern)));
+      } else if (topicNamesMatchedWithPattern.iterator().next().isEmpty()) {
+        // Validate the topic is not empty
+        throw new UserRequestException("When the resource type is partition, the corresponding topic must be specified.");
       } else {
         _topicName = topicNamesMatchedWithPattern.iterator().next();
       }
@@ -95,7 +98,7 @@ public class RightsizeRequest extends AbstractSyncRequest {
                                                                                              .topic(_topicName)
                                                                                              .build();
     } else {
-      throw new IllegalArgumentException(String.format("Exactly one resource type must be set (Brokers:%d Partitions:%d))",
+      throw new UserRequestException(String.format("Exactly one resource type must be set (Brokers:%d Partitions:%d))",
                                                        _parameters.numBrokersToAdd(),
                                                        _parameters.partitionCount()));
     }
