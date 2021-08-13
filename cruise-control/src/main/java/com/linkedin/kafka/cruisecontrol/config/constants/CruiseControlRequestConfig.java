@@ -13,6 +13,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.handler.async.PartitionLoadReque
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.ProposalsRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.RebalanceRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.RemoveBrokerRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.RightsizeRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.TopicConfigurationRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.AdminRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.BootstrapRequest;
@@ -173,6 +174,13 @@ public final class CruiseControlRequestConfig {
   public static final String DEFAULT_TOPIC_CONFIGURATION_REQUEST_CLASS = TopicConfigurationRequest.class.getName();
   public static final String TOPIC_CONFIGURATION_REQUEST_CLASS_DOC = "The class to handle a topic configuration request.";
 
+  /**
+   * <code>rightsize.request.class</code>
+   */
+  public static final String RIGHTSIZE_REQUEST_CLASS_CONFIG = "rightsize.request.class";
+  public static final String DEFAULT_RIGHTSIZE_REQUEST_CLASS = RightsizeRequest.class.getName();
+  public static final String RIGHTSIZE_REQUEST_CLASS_DOC = "The class to handle a provision rightsize request.";
+
   private CruiseControlRequestConfig() {
   }
 
@@ -282,6 +290,11 @@ public final class CruiseControlRequestConfig {
                             ConfigDef.Type.CLASS,
                             DEFAULT_TOPIC_CONFIGURATION_REQUEST_CLASS,
                             ConfigDef.Importance.MEDIUM,
-                            TOPIC_CONFIGURATION_REQUEST_CLASS_DOC);
+                            TOPIC_CONFIGURATION_REQUEST_CLASS_DOC)
+                    .define(RIGHTSIZE_REQUEST_CLASS_CONFIG,
+                            ConfigDef.Type.CLASS,
+                            DEFAULT_RIGHTSIZE_REQUEST_CLASS,
+                            ConfigDef.Importance.MEDIUM,
+                            RIGHTSIZE_REQUEST_CLASS_DOC);
   }
 }

@@ -111,6 +111,9 @@ public final class KafkaCruiseControlServletUtils {
     RequestParameterWrapper topicConfiguration = new RequestParameterWrapper(TOPIC_CONFIGURATION_PARAMETERS_CLASS_CONFIG,
                                                                              TOPIC_CONFIGURATION_PARAMETER_OBJECT_CONFIG,
                                                                              TOPIC_CONFIGURATION_REQUEST_CLASS_CONFIG);
+    RequestParameterWrapper rightsize = new RequestParameterWrapper(RIGHTSIZE_PARAMETERS_CLASS_CONFIG,
+                                                                    RIGHTSIZE_PARAMETER_OBJECT_CONFIG,
+                                                                    RIGHTSIZE_REQUEST_CLASS_CONFIG);
 
     requestParameterConfigs.put(BOOTSTRAP, bootstrap);
     requestParameterConfigs.put(TRAIN, train);
@@ -132,6 +135,7 @@ public final class KafkaCruiseControlServletUtils {
     requestParameterConfigs.put(REVIEW, review);
     requestParameterConfigs.put(REVIEW_BOARD, reviewBoard);
     requestParameterConfigs.put(TOPIC_CONFIGURATION, topicConfiguration);
+    requestParameterConfigs.put(RIGHTSIZE, rightsize);
 
     REQUEST_PARAMETER_CONFIGS = Collections.unmodifiableMap(requestParameterConfigs);
   }
