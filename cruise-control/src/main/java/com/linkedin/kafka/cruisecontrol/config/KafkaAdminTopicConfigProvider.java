@@ -18,6 +18,7 @@ import org.apache.kafka.clients.admin.Config;
 import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.config.ConfigResource;
+import org.apache.kafka.common.protocol.Errors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,7 +66,7 @@ public class KafkaAdminTopicConfigProvider implements TopicConfigProvider {
               .get()
               .get(topicResource);
     } catch (ExecutionException ee) {
-      if (org.apache.kafka.common.errors.TimeoutException.class == ee.getCause().getClass()) {
+      if (Errors.REQUEST_TIMED_OUT.exception().getClass() == ee.getCause().getClass()) {
         LOG.warn("Failed to retrieve configuration for topic '{}' due to describeConfigs request time out. Check for Kafka-side issues"
                 + " and consider increasing the configured timeout.", topic);
       } else {
@@ -106,7 +107,7 @@ public class KafkaAdminTopicConfigProvider implements TopicConfigProvider {
           Config config = entry.getValue().get();
           propsMap.put(entry.getKey().name(), convertConfigToProperties(config));
         } catch (ExecutionException ee) {
-          if (org.apache.kafka.common.errors.TimeoutException.class == ee.getCause().getClass()) {
+          if (Errors.REQUEST_TIMED_OUT.exception().getClass() == ee.getCause().getClass()) {
             LOG.warn("Failed to retrieve config for topics due to describeConfigs request timing out. "
                     + "Check for Kafka-side issues and consider increasing the configured timeout.");
             // If one has timed out then they all will so abort the loop.

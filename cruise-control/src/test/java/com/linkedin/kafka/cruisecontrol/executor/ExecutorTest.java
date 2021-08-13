@@ -40,6 +40,7 @@ import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.AlterPartitionReassignmentsResult;
+import org.apache.kafka.clients.admin.ElectLeadersResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.clients.producer.Producer;
@@ -206,6 +207,88 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   }
 
   @Test
+  public void testSubmitPreferredLeaderElection() throws InterruptedException, ExecutionException {
+    Map<String, TopicDescription> topicDescriptions = createTopics(0);
+    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
+        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
+
+    // Case 1: Handle the successful case.
+    ReplicaPlacementInfo oldLeader = new ReplicaPlacementInfo(topicDescriptions.get(TP1.topic()).partitions().get(PARTITION).leader().id());
+    List<ReplicaPlacementInfo> replicas = new ArrayList<>();
+    for (Node node : topicDescriptions.get(TP1.topic()).partitions().get(PARTITION).replicas()) {
+      replicas.add(new ReplicaPlacementInfo(node.id()));
+    }
+
+    List<ReplicaPlacementInfo> newReplicas = new ArrayList<>(replicas.size());
+    for (int i = replicas.size() - 1; i >= 0; i--) {
+      newReplicas.add(new ReplicaPlacementInfo(replicas.get(i).brokerId()));
+    }
+
+    // Reorder replicas before leadership election to change the preferred replica.
+    ExecutionTask swapTask = new ExecutionTask(0,
+                                           new ExecutionProposal(TP1, 0, oldLeader, replicas, newReplicas),
+                                           ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION,
+                                           EXECUTION_ALERTING_THRESHOLD_MS);
+    swapTask.inProgress(MOCK_CURRENT_TIME);
+
+    AlterPartitionReassignmentsResult swapResult = ExecutionUtils.submitReplicaReassignmentTasks(adminClient, Collections.singletonList(swapTask));
+
+    assertEquals(1, swapResult.values().size());
+    // Can retrieve the future if it is successful.
+    swapResult.values().get(TP1).get();
+
+    // Leadership task to transfer the leadership to the preferred replica.
+    ExecutionTask task = new ExecutionTask(0,
+                                           new ExecutionProposal(TP1, 0, oldLeader, newReplicas, newReplicas),
+                                           ExecutionTask.TaskType.LEADER_ACTION,
+                                           EXECUTION_ALERTING_THRESHOLD_MS);
+    task.inProgress(MOCK_CURRENT_TIME);
+
+    ElectLeadersResult result = ExecutionUtils.submitPreferredLeaderElection(adminClient, Collections.singletonList(task));
+    assertTrue(result.partitions().get().get(TP1).isEmpty());
+
+    // Case 2: Handle "election not needed" -- i.e. the leader is already the preferred replica for TP0.
+    oldLeader = new ReplicaPlacementInfo(topicDescriptions.get(TP0.topic()).partitions().get(PARTITION).leader().id());
+    replicas.clear();
+    for (Node node : topicDescriptions.get(TP0.topic()).partitions().get(PARTITION).replicas()) {
+      replicas.add(new ReplicaPlacementInfo(node.id()));
+    }
+    task = new ExecutionTask(0,
+                             new ExecutionProposal(TP0, 0, oldLeader, replicas, replicas),
+                             ExecutionTask.TaskType.LEADER_ACTION,
+                             EXECUTION_ALERTING_THRESHOLD_MS);
+    task.inProgress(MOCK_CURRENT_TIME);
+
+    result = ExecutionUtils.submitPreferredLeaderElection(adminClient, Collections.singletonList(task));
+    assertTrue(result.partitions().get().get(TP0).isPresent());
+    assertEquals(Errors.ELECTION_NOT_NEEDED.exception().getClass(), result.partitions().get().get(TP0).get().getClass());
+
+    // Case 3: Handle "unknown topic or partition" -- i.e. the partition TP2 does not exist, maybe it existed at some point and then deleted
+    task = new ExecutionTask(0,
+                             new ExecutionProposal(TP2, 0, oldLeader, replicas, replicas),
+                             ExecutionTask.TaskType.LEADER_ACTION,
+                             EXECUTION_ALERTING_THRESHOLD_MS);
+    task.inProgress(MOCK_CURRENT_TIME);
+
+    result = ExecutionUtils.submitPreferredLeaderElection(adminClient, Collections.singletonList(task));
+    assertTrue(result.partitions().get().get(TP2).isPresent());
+    assertEquals(Errors.UNKNOWN_TOPIC_OR_PARTITION.exception().getClass(), result.partitions().get().get(TP2).get().getClass());
+
+    // Case 4: Handle the scenario, where we tried to elect the preferred leader but it is offline.
+    _brokers.get(0).shutdown();
+    task = new ExecutionTask(0,
+                             new ExecutionProposal(TP0, 0, oldLeader, replicas, replicas),
+                             ExecutionTask.TaskType.LEADER_ACTION,
+                             EXECUTION_ALERTING_THRESHOLD_MS);
+
+    task.inProgress(MOCK_CURRENT_TIME);
+
+    result = ExecutionUtils.submitPreferredLeaderElection(adminClient, Collections.singletonList(task));
+    assertTrue(result.partitions().get().get(TP0).isPresent());
+    assertEquals(Errors.PREFERRED_LEADER_NOT_AVAILABLE.exception().getClass(), result.partitions().get().get(TP0).get().getClass());
+  }
+
+  @Test
   public void testSubmitReplicaReassignmentTasksWithInProgressTaskAndNonExistingTopic() throws InterruptedException {
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
         AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
@@ -320,7 +403,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   }
 
   @Test
-  public void testTimeoutAndForceExecutionStop() throws InterruptedException, OngoingExecutionException {
+  public void testTimeoutAndExecutionStop() throws InterruptedException, OngoingExecutionException {
     createTopics(0);
     // The proposal tries to move the leader. We fake the replica list to be unchanged so there is no replica
     // movement, but only leader movement.
@@ -427,8 +510,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     waitUntilTrue(() -> (executor.state().state() == ExecutorState.State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS),
                   "Inter-broker replica movement task did not start within the time limit",
                   EXECUTION_DEADLINE_MS, EXECUTION_SHORT_CHECK_MS);
-    // Force execution to stop.
-    executor.userTriggeredStopExecution(true, false);
+    // Stop execution.
+    executor.userTriggeredStopExecution(false);
     // The execution should finish.
     waitUntilTrue(() -> (!executor.hasOngoingExecution() && executor.state().state() == ExecutorState.State.NO_TASK_IN_PROGRESS),
                   "Proposal execution did not finish within the time limit",
@@ -486,8 +569,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
         AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
     try {
-      adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC0, 1, (short) 1),
-                                             new NewTopic(TOPIC1, 1, (short) 2)));
+      adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC0, Collections.singletonMap(0, Collections.singletonList(0))),
+                                             new NewTopic(TOPIC1, Collections.singletonMap(0, List.of(0, 1)))));
     } finally {
       KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
     }

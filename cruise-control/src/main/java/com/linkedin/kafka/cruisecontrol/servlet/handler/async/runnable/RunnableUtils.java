@@ -247,7 +247,7 @@ public final class RunnableUtils {
     while (kafkaCruiseControl.executionState() != NO_TASK_IN_PROGRESS) {
       // Stop ongoing execution, and wait for the execution to stop.
       try {
-        kafkaCruiseControl.userTriggeredStopExecution(false, false);
+        kafkaCruiseControl.userTriggeredStopExecution(false);
         Thread.sleep(kafkaCruiseControl.executionProgressCheckIntervalMs());
       } catch (InterruptedException e) {
         kafkaCruiseControl.modifyOngoingExecution(false);

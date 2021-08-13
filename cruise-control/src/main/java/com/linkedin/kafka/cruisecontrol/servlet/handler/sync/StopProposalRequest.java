@@ -8,12 +8,16 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.StopProposalParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.StopProposalResult;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.FORCE_STOP_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.STOP_PROPOSAL_PARAMETER_OBJECT_CONFIG;
 import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 
 public class StopProposalRequest extends AbstractSyncRequest {
+  private static final Logger LOG = LoggerFactory.getLogger(StopProposalRequest.class);
   protected KafkaCruiseControl _kafkaCruiseControl;
   protected StopProposalParameters _parameters;
 
@@ -23,7 +27,10 @@ public class StopProposalRequest extends AbstractSyncRequest {
 
   @Override
   protected StopProposalResult handle() {
-    _kafkaCruiseControl.userTriggeredStopExecution(_parameters.forceExecutionStop(), _parameters.stopExternalAgent());
+    if (_parameters.forceExecutionStop()) {
+      LOG.info("{} is a deprecated parameter. Force stopping an execution is not supported.", FORCE_STOP_PARAM);
+    }
+    _kafkaCruiseControl.userTriggeredStopExecution(_parameters.stopExternalAgent());
     return new StopProposalResult(_kafkaCruiseControl.config());
   }
 
