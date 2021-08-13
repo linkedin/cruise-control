@@ -245,7 +245,6 @@ public class KafkaCruiseControl {
    * <ol>
    *   <li>execution in current Cruise Control deployment and user does not require stopping the ongoing execution,</li>
    *   <li>partition reassignment triggered by other admin tools or previous Cruise Control deployment.</li>
-   *   <li>leadership reassignment triggered by other admin tools or previous Cruise Control deployment.</li>
    * </ol>
    *
    * This method helps to fail fast if a user attempts to start an execution during an ongoing execution.
@@ -276,9 +275,6 @@ public class KafkaCruiseControl {
       if (!partitionsBeingReassigned.isEmpty()) {
         throw new IllegalStateException(String.format("Cannot execute new proposals while there are ongoing partition reassignments "
                                                       + "initiated by external agent: %s", partitionsBeingReassigned));
-      } else if (_executor.hasOngoingLeaderElection()) {
-        throw new IllegalStateException("Cannot execute new proposals while there are ongoing leadership reassignments initiated by "
-                                        + "external agent.");
       }
     }
   }
@@ -736,11 +732,10 @@ public class KafkaCruiseControl {
   /**
    * Request the executor to stop any ongoing execution.
    *
-   * @param forceExecutionStop Whether force execution to stop.
    * @param stopExternalAgent Whether to stop ongoing execution started by external agents.
    */
-  public void userTriggeredStopExecution(boolean forceExecutionStop, boolean stopExternalAgent) {
-    _executor.userTriggeredStopExecution(forceExecutionStop, stopExternalAgent);
+  public void userTriggeredStopExecution(boolean stopExternalAgent) {
+    _executor.userTriggeredStopExecution(stopExternalAgent);
   }
 
   /**

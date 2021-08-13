@@ -4,15 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.executor
 
-import java.util
 import java.util.Properties
-
-import kafka.admin.PreferredReplicaLeaderElectionCommand
-import kafka.zk.{AdminZkClient, KafkaZkClient}
-import org.apache.kafka.common.TopicPartition
+import kafka.zk.AdminZkClient
 import org.slf4j.{Logger, LoggerFactory}
-
-import scala.jdk.javaapi.CollectionConverters
 
 /**
  * This class is a Java interface wrapper of open source ReassignPartitionCommand. This class is needed because
@@ -20,17 +14,6 @@ import scala.jdk.javaapi.CollectionConverters
  */
 object ExecutorUtils {
   val LOG: Logger = LoggerFactory.getLogger(ExecutorUtils.getClass.getName)
-
-  def executePreferredLeaderElection(kafkaZkClient: KafkaZkClient, tasks: java.util.List[ExecutionTask]): Unit = {
-    val partitionsToExecute = CollectionConverters.asScala(tasks).map(task =>
-      new TopicPartition(task.proposal.topic, task.proposal.partitionId)).toSet
-    val preferredReplicaElectionCommand = new PreferredReplicaLeaderElectionCommand(kafkaZkClient, partitionsToExecute)
-    preferredReplicaElectionCommand.moveLeaderToPreferredReplica()
-  }
-
-  def ongoingLeaderElection(kafkaZkClient: KafkaZkClient): util.Set[TopicPartition] = {
-    CollectionConverters.asJava(kafkaZkClient.getPreferredReplicaElection)
-  }
 
   def changeBrokerConfig(adminZkClient: AdminZkClient, brokerId: Int, config: Properties): Unit = {
     adminZkClient.changeBrokerConfig(Some(brokerId), config)

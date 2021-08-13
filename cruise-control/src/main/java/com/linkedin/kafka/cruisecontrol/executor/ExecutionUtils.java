@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AlterPartitionReassignmentsResult;
+import org.apache.kafka.clients.admin.ElectLeadersResult;
 import org.apache.kafka.clients.admin.ListPartitionReassignmentsResult;
 import org.apache.kafka.clients.admin.NewPartitionReassignment;
 import org.apache.kafka.clients.admin.PartitionReassignment;
@@ -31,10 +32,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import kafka.zk.KafkaZkClient;
-import kafka.zk.ZkVersion;
 import org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult;
 import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.ElectionType;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
@@ -43,6 +43,7 @@ import org.apache.kafka.common.protocol.Errors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_LOG_FLUSH_TIME_MS_999TH;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_999TH;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_PRODUCE_LOCAL_TIME_MS_999TH;
@@ -350,6 +351,44 @@ public final class ExecutionUtils {
   }
 
   /**
+   * Submits the given preferred leader election tasks for execution using the given admin client.
+   *
+   * @param adminClient The adminClient to submit new preferred leader election tasks.
+   * @param tasks Preferred leader election tasks to execute.
+   * @return The {@link ElectLeadersResult result} of preferred leader election request -- cannot be {@code null}.
+   */
+  public static ElectLeadersResult submitPreferredLeaderElection(AdminClient adminClient, List<ExecutionTask> tasks) {
+    if (validateNotNull(tasks, "Tasks to execute cannot be null.").isEmpty()) {
+      throw new IllegalArgumentException("Tasks to execute cannot be empty.");
+    }
+    Set<TopicPartition> partitions = new HashSet<>(tasks.size());
+    for (ExecutionTask task : tasks) {
+      switch (task.state()) {
+        case ABORTING:
+        case ABORTED:
+        case COMPLETED:
+        case DEAD:
+          // No action needed. Contrary to replica reassignments, there is no need to cancel a leadership movement as attempts to elect
+          // the preferred leader, which is down will fail with an Errors#PREFERRED_LEADER_NOT_AVAILABLE exception.
+          LOG.debug("No further action needed for task {}.", task);
+          break;
+        case IN_PROGRESS:
+          // No need to check whether the topic exists or being deleted as the server response will indicate those.
+          partitions.add(task.proposal().topicPartition());
+          LOG.debug("Task {} will be executed.", task);
+          break;
+        default:
+          throw new IllegalStateException(String.format("Unrecognized task state %s.", task.state()));
+      }
+    }
+
+    if (partitions.isEmpty()) {
+      throw new IllegalArgumentException("All tasks submitted for leader election are already completed.");
+    }
+    return adminClient.electLeaders(ElectionType.PREFERRED, partitions);
+  }
+
+  /**
    * Submits the given inter-broker replica reassignment tasks for execution using the given admin client.
    *
    * @param adminClient The adminClient to submit new inter-broker replica reassignments.
@@ -357,8 +396,8 @@ public final class ExecutionUtils {
    * @return The {@link AlterPartitionReassignmentsResult result} of reassignment request -- cannot be {@code null}.
    */
   public static AlterPartitionReassignmentsResult submitReplicaReassignmentTasks(AdminClient adminClient, List<ExecutionTask> tasks) {
-    if (tasks == null || tasks.isEmpty()) {
-      throw new IllegalArgumentException(String.format("Tasks to execute (%s) cannot be null or empty.", tasks));
+    if (validateNotNull(tasks, "Tasks to execute cannot be null.").isEmpty()) {
+      throw new IllegalArgumentException("Tasks to execute cannot be empty.");
     }
 
     // Update the ongoing replica reassignments in case the task status has changed.
@@ -490,7 +529,7 @@ public final class ExecutionUtils {
           // Attempt to cancel/rollback a reassignment that does not exist.
           noReassignmentToCancelTopicPartitions.add(tp);
           LOG.debug("Rollback failed for {} due to lack of corresponding ongoing replica reassignment.", tp);
-        } else if (org.apache.kafka.common.errors.TimeoutException.class == ee.getCause().getClass()) {
+        } else if (Errors.REQUEST_TIMED_OUT.exception().getClass() == ee.getCause().getClass()) {
           throw new IllegalStateException(String.format("alterPartitionReassignments request timed out for partitions: %s. Check for Kafka "
                                                         + "broker- or controller-side issues and consider increasing the configured timeout "
                                                         + "(see %s).",
@@ -498,7 +537,7 @@ public final class ExecutionUtils {
                                                         ExecutorConfig.ADMIN_CLIENT_REQUEST_TIMEOUT_MS_CONFIG), ee.getCause());
         } else {
           // Not expected to happen.
-          throw new IllegalStateException(String.format("%s encountered an unknown execution exception.", tp), ee);
+          throw new IllegalStateException(String.format("%s encountered an unknown execution exception.", tp), ee.getCause());
         }
       } catch (InterruptedException e) {
         LOG.warn("Interrupted during the process of AlterPartitionReassignmentsResult on {}.", result.values().keySet(), e);
@@ -507,22 +546,72 @@ public final class ExecutionUtils {
   }
 
   /**
-   * Deletes zNode for ongoing leadership movement tasks. Then deletes controller zNode to trigger a controller
-   * re-election for the cancellation to take effect.
+   * Process the given {@link ElectLeadersResult result} of electLeaders request to:
+   * <ul>
+   *   <li>ensure that the corresponding request has been accepted,</li>
+   *   <li>identify the set of partitions that were deleted upon submission of the corresponding leadership tasks and populate the given set</li>
+   * </ul>
    *
-   * This operation has side-effects -- i.e. changes the controller. Note that, the executor adopted PartitionReassignment
-   * Kafka API for graceful and instant mechanism to cancel ongoing replica reassignments. Hence, no such side-effects
-   * would be incurred to stop ongoing replica reassignments.
-   *
-   * @param kafkaZkClient KafkaZkClient to use for deleting the relevant zNodes to force stop the execution (if any).
+   * @param result the result of a request to elect leaders, or {@code null} if no new leader election is submitted.
+   * @param deletedTopicPartitions a set to populate with partitions that were deleted upon submission of the corresponding leadership tasks.
    */
-  public static void deleteZNodesToForceStopLeadershipMoves(KafkaZkClient kafkaZkClient) {
-    // delete zNode of ongoing leadership movement tasks.
-    LOG.info("Deleting zNode for ongoing leadership changes {}.", kafkaZkClient.getPreferredReplicaElection());
-    kafkaZkClient.deletePreferredReplicaElection(ZkVersion.MatchAnyVersion());
-    // Delete controller zNode to trigger a controller re-election.
-    LOG.info("Deleting controller zNode to re-elect a new controller. Old controller is {}.", kafkaZkClient.getControllerId());
-    kafkaZkClient.deleteController(ZkVersion.MatchAnyVersion());
+  public static void processElectLeadersResult(ElectLeadersResult result, Set<TopicPartition> deletedTopicPartitions) {
+    if (result == null) {
+      return;
+    }
+    try {
+      Map<TopicPartition, Optional<Throwable>> partitions = result.partitions().get();
+      Set<TopicPartition> noElectionNeeded = new HashSet<>();
+      Set<TopicPartition> preferredLeaderUnavailable = new HashSet<>();
+
+      for (Map.Entry<TopicPartition, Optional<Throwable>> entry : partitions.entrySet()) {
+        TopicPartition tp = entry.getKey();
+        if (entry.getValue().isEmpty()) {
+          LOG.debug("Leader election for {} has succeeded.", tp);
+        } else {
+          if (Errors.ELECTION_NOT_NEEDED.exception().getClass() == entry.getValue().get().getClass()) {
+            // The leader is already the preferred leader.
+            noElectionNeeded.add(tp);
+          } else if (Errors.UNKNOWN_TOPIC_OR_PARTITION.exception().getClass() == entry.getValue().get().getClass()
+                     || Errors.INVALID_TOPIC_EXCEPTION.exception().getClass() == entry.getValue().get().getClass()) {
+            // Topic (1) has been deleted -- i.e. since partition does not exist, it is assumed to be deleted or (2) is being deleted.
+            deletedTopicPartitions.add(tp);
+          } else if (Errors.PREFERRED_LEADER_NOT_AVAILABLE.exception().getClass() == entry.getValue().get().getClass()) {
+            // We tried to elect the preferred leader but it is offline.
+            preferredLeaderUnavailable.add(tp);
+          } else {
+            // Based on the KafkaAdminClient code, looks like there is no handling / retry in response to a Errors.NOT_CONTROLLER -- e.g. if
+            // the controller changes during a request, the leader election will be dropped with an error response. In such cases, a
+            // followup execution would be needed (i.e. see Executor#maybeReexecuteLeadershipTasks(Set<TopicPartition>)).
+            LOG.warn("Failed to elect preferred leader for {}.", tp, entry.getValue().get());
+          }
+        }
+      }
+
+      // Log relevant information for debugging purposes.
+      if (!noElectionNeeded.isEmpty()) {
+        LOG.debug("Leader election not needed for {}.", noElectionNeeded);
+      }
+      if (!preferredLeaderUnavailable.isEmpty()) {
+        LOG.debug("The preferred leader was not available for {}.", preferredLeaderUnavailable);
+      }
+      if (!deletedTopicPartitions.isEmpty()) {
+        LOG.debug("Corresponding topics have been deleted before leader election {}.", deletedTopicPartitions);
+      }
+    } catch (ExecutionException ee) {
+      if (Errors.REQUEST_TIMED_OUT.exception().getClass() == ee.getCause().getClass()) {
+        throw new IllegalStateException(String.format("electLeaders request timed out. Check for Kafka broker- or controller-side issues and"
+                                                      + " consider increasing the configured timeout (see %s).",
+                                                      ExecutorConfig.ADMIN_CLIENT_REQUEST_TIMEOUT_MS_CONFIG), ee.getCause());
+      } else if (Errors.CLUSTER_AUTHORIZATION_FAILED.exception().getClass() == ee.getCause().getClass()) {
+        throw new IllegalStateException("Cruise Control is not authorized to trigger leader election", ee.getCause());
+      } else {
+        // Not expected to happen.
+        throw new IllegalStateException("An unknown execution exception is encountered in response to electLeaders.", ee.getCause());
+      }
+    } catch (InterruptedException e) {
+      LOG.warn("Interrupted during the process of ElectLeadersResult.", e);
+    }
   }
 
   /**
