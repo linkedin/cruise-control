@@ -19,6 +19,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.RebalanceParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RemoveBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ReviewBoardParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ReviewParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.RightsizeParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.StopProposalParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TrainParameters;
@@ -171,6 +172,13 @@ public final class CruiseControlParametersConfig {
   public static final String DEFAULT_TOPIC_CONFIGURATION_PARAMETERS_CLASS = TopicConfigurationParameters.class.getName();
   public static final String TOPIC_CONFIGURATION_PARAMETERS_CLASS_DOC = "The class for parameters of a topic configuration request.";
 
+  /**
+   * <code>rightsize.parameters.class</code>
+   */
+  public static final String RIGHTSIZE_PARAMETERS_CLASS_CONFIG = "rightsize.parameters.class";
+  public static final String DEFAULT_RIGHTSIZE_PARAMETERS_CLASS = RightsizeParameters.class.getName();
+  public static final String RIGHTSIZE_PARAMETERS_CLASS_DOC = "The class for parameters of a provision rightsize request.";
+
   private CruiseControlParametersConfig() {
   }
 
@@ -280,6 +288,11 @@ public final class CruiseControlParametersConfig {
                             ConfigDef.Type.CLASS,
                             DEFAULT_TOPIC_CONFIGURATION_PARAMETERS_CLASS,
                             ConfigDef.Importance.MEDIUM,
-                            TOPIC_CONFIGURATION_PARAMETERS_CLASS_DOC);
+                            TOPIC_CONFIGURATION_PARAMETERS_CLASS_DOC)
+                    .define(RIGHTSIZE_PARAMETERS_CLASS_CONFIG,
+                            ConfigDef.Type.CLASS,
+                            DEFAULT_RIGHTSIZE_PARAMETERS_CLASS,
+                            ConfigDef.Importance.MEDIUM,
+                            RIGHTSIZE_PARAMETERS_CLASS_DOC);
   }
 }

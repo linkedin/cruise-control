@@ -39,6 +39,8 @@ public final class ProvisionRecommendation {
   protected final int _numBrokers;
   protected final int _numRacks;
   protected final int _numDisks;
+  //TODO: Update the ProvisionRecommendation to provide a set of <topic, numPartition> for batch provisioning of partitions
+  //See <a href="https://github.com/linkedin/cruise-control/issues/1650">Issue #1650</a>
   protected final int _numPartitions;
   // If the resource is partition, the name of the topic must be specified.
   protected final String _topic;

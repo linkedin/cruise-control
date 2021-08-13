@@ -227,10 +227,10 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
       }
       _provisionResponse = provisionResponse;
       if (_isProvisionerEnabled) {
-        // Right-size the cluster (if needed)
-        boolean isRightsized = _provisioner.rightsize(_provisionResponse.recommendationByRecommender());
-        if (isRightsized) {
-          LOG.info("Actions have been taken on the cluster towards rightsizing.");
+        // Rightsize the cluster (if needed)
+        ProvisionerState isRightsized = _provisioner.rightsize(_provisionResponse.recommendationByRecommender(), new RightsizeOptions());
+        if (isRightsized != null) {
+          LOG.info(isRightsized.toString());
         }
       }
       Map<Boolean, List<String>> violatedGoalsByFixability = goalViolations.violatedGoalsByFixability();

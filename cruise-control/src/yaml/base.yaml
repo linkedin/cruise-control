@@ -28,6 +28,8 @@ paths:
     $ref: 'endpoints/rebalance.yaml#/RebalanceEndpoint'
   /kafkacruisecontrol/remove_broker:
     $ref: 'endpoints/removeBroker.yaml#/RemoveBrokerEndpoint'
+  /kafkacruisecontrol/rightsize:
+    $ref: 'endpoints/rightsize.yaml#/RightsizeEndpoint'
   /kafkacruisecontrol/resume_sampling:
     $ref: 'endpoints/resumeSampling.yaml#/ResumeSamplingEndpoint'
   /kafkacruisecontrol/review:

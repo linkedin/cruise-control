@@ -13,6 +13,12 @@ import java.util.Map;
  */
 public class NoopProvisioner implements Provisioner {
   @Override
+  public ProvisionerState rightsize(Map<String, ProvisionRecommendation> recommendationByRecommender, RightsizeOptions rightsizeOptions) {
+    return null;
+  }
+
+  @Override
+  @Deprecated
   public boolean rightsize(Map<String, ProvisionRecommendation> recommendationByRecommender) {
     return false;
   }
