@@ -165,19 +165,19 @@ public class ReplicationFactorChangeTest {
   }
 
   private static boolean expectedToOptimize(short replicationFactor, Class<? extends Goal> goalClass, boolean smallCluster) {
-    return (replicationFactor != SMALL_REPLICATION_FACTOR || goalClass != ReplicaDistributionGoal.class || !smallCluster) && (
-        replicationFactor != SMALL_REPLICATION_FACTOR || goalClass != DiskUsageDistributionGoal.class) && (
-               replicationFactor != SMALL_REPLICATION_FACTOR || goalClass != NetworkInboundUsageDistributionGoal.class) && (
-               replicationFactor != SMALL_REPLICATION_FACTOR || goalClass != NetworkOutboundUsageDistributionGoal.class) && (
-               replicationFactor != SMALL_REPLICATION_FACTOR || goalClass != CpuUsageDistributionGoal.class) && (
-               replicationFactor != SMALL_REPLICATION_FACTOR || goalClass != LeaderReplicaDistributionGoal.class || !smallCluster) && (
-               replicationFactor != LARGE_REPLICATION_FACTOR || goalClass != NetworkOutboundUsageDistributionGoal.class || !smallCluster)
-           && (goalClass != LeaderBytesInDistributionGoal.class || (replicationFactor != SMALL_REPLICATION_FACTOR && !smallCluster)) && (
-               replicationFactor != LARGE_REPLICATION_FACTOR || goalClass != DiskUsageDistributionGoal.class || smallCluster) && (
-               replicationFactor != LARGE_REPLICATION_FACTOR || goalClass != NetworkInboundUsageDistributionGoal.class || smallCluster) && (
-               replicationFactor != LARGE_REPLICATION_FACTOR || goalClass != CpuUsageDistributionGoal.class) && (
-               replicationFactor != SMALL_REPLICATION_FACTOR || goalClass != MinTopicLeadersPerBrokerGoal.class) && (
-               replicationFactor != LARGE_REPLICATION_FACTOR || goalClass != MinTopicLeadersPerBrokerGoal.class || smallCluster);
+    return (replicationFactor != SMALL_REPLICATION_FACTOR || goalClass != ReplicaDistributionGoal.class || !smallCluster)
+           && (replicationFactor != SMALL_REPLICATION_FACTOR || goalClass != DiskUsageDistributionGoal.class)
+           && (replicationFactor != SMALL_REPLICATION_FACTOR || goalClass != NetworkInboundUsageDistributionGoal.class)
+           && (replicationFactor != SMALL_REPLICATION_FACTOR || goalClass != NetworkOutboundUsageDistributionGoal.class)
+           && (replicationFactor != SMALL_REPLICATION_FACTOR || goalClass != CpuUsageDistributionGoal.class)
+           && (replicationFactor != SMALL_REPLICATION_FACTOR || goalClass != LeaderReplicaDistributionGoal.class || !smallCluster)
+           && (replicationFactor != LARGE_REPLICATION_FACTOR || goalClass != NetworkOutboundUsageDistributionGoal.class || !smallCluster)
+           && (goalClass != LeaderBytesInDistributionGoal.class || (replicationFactor != SMALL_REPLICATION_FACTOR && !smallCluster))
+           && (replicationFactor != LARGE_REPLICATION_FACTOR || goalClass != DiskUsageDistributionGoal.class || smallCluster)
+           && (replicationFactor != LARGE_REPLICATION_FACTOR || goalClass != NetworkInboundUsageDistributionGoal.class || smallCluster)
+           && (replicationFactor != LARGE_REPLICATION_FACTOR || goalClass != CpuUsageDistributionGoal.class)
+           && (replicationFactor != SMALL_REPLICATION_FACTOR || goalClass != MinTopicLeadersPerBrokerGoal.class)
+           && (replicationFactor != LARGE_REPLICATION_FACTOR || goalClass != MinTopicLeadersPerBrokerGoal.class || smallCluster);
   }
 
   @Test
