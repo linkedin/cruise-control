@@ -73,7 +73,7 @@ public final class OfflineProposalGenerator {
     ClusterModelStats optimizedStats = clusterModel.getClusterStats(balancingConstraint);
 
     double[] testStatistics = AnalyzerUtils.testDifference(origStats.utilizationMatrix(), optimizedStats.utilizationMatrix());
-    System.out.println(Arrays.stream(RawAndDerivedResource.values()).map(x -> x.toString()).collect(Collectors.joining(", ")));
+    System.out.println(Arrays.stream(RawAndDerivedResource.values()).map(Enum::toString).collect(Collectors.joining(", ")));
     System.out.println(Arrays.stream(testStatistics).boxed().map(pValue -> Double.toString(pValue)).collect(Collectors.joining(", ")));
 
   }

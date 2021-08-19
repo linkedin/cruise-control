@@ -34,6 +34,8 @@ import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.KafkaFuture;
@@ -52,6 +54,7 @@ import org.apache.kafka.common.record.RecordBatch;
 import org.apache.kafka.common.requests.AbstractResponse;
 import org.apache.kafka.common.requests.MetadataResponse;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
+import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.utils.SystemTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,6 +70,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.RECONNECT_BACKOFF_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_HARD_GOAL_CHECK_PARAM;
 import static kafka.log.LogConfig.CleanupPolicyProp;
 import static kafka.log.LogConfig.RetentionMsProp;
@@ -757,5 +761,41 @@ public final class KafkaCruiseControlUtils {
       props.load(propStream);
     }
     return new KafkaCruiseControlConfig(props);
+  }
+
+  /**
+   * Create a Kafka consumer with the given properties.
+   *
+   * @param configs The configurations for Cruise Control.
+   * @param clientIdPrefix Client id prefix.
+   * @param bootstrapServers Bootstrap servers.
+   * @param keyDeserializer Key deserializer of the consumer.
+   * @param valueDeserializer Value deserializer of the consumer.
+   * @param isLatestOffsetReset {@code true} to set the value of {@link ConsumerConfig#AUTO_OFFSET_RESET_CONFIG} to "latest", {@code false}
+   * to set it to "earliest".
+   * @param <K> The type of the consumer key.
+   * @param <KT> The type of the key deserializer.
+   * @param <V> The type of the consumer value.
+   * @param <VT> The type of the value deserializer.
+   * @return A new Kafka consumer.
+   */
+  public static <K, KT extends Deserializer<K>, V, VT extends Deserializer<V>> Consumer<K, V> createConsumer(Map<String, ?> configs,
+                                                                                                             String clientIdPrefix,
+                                                                                                             String bootstrapServers,
+                                                                                                             Class<KT> keyDeserializer,
+                                                                                                             Class<VT> valueDeserializer,
+                                                                                                             boolean isLatestOffsetReset) {
+    long randomToken = RANDOM.nextLong();
+    Properties consumerProps = new Properties();
+    consumerProps.putAll(configs);
+    consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, clientIdPrefix + "-consumer-" + randomToken);
+    consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, isLatestOffsetReset ? "latest" : "earliest");
+    consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+    consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
+    consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, keyDeserializer.getName());
+    consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDeserializer.getName());
+    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, configs.get(RECONNECT_BACKOFF_MS_CONFIG).toString());
+    return new KafkaConsumer<>(consumerProps);
   }
 }

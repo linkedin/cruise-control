@@ -48,9 +48,7 @@ import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
@@ -59,6 +57,7 @@ import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.small
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.mediumClusterModel;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
@@ -71,8 +70,6 @@ import static org.junit.Assert.fail;
 public class ReplicationFactorChangeTest {
   private static final short SMALL_REPLICATION_FACTOR = 1;
   private static final short LARGE_REPLICATION_FACTOR = 3;
-  @Rule
-  public ExpectedException _expected = ExpectedException.none();
 
   private final int _testId;
   private final Set<String> _topics;
@@ -167,23 +164,33 @@ public class ReplicationFactorChangeTest {
     return null;
   }
 
+  /**
+   * Check whether the given goal is expected to be optimized with the given replication factor and cluster model.
+   * This function returns {@code false} if the given parameters together fall into any exceptional case, and {@code true} otherwise.
+   *
+   * Each exceptional case for the given set of parameters is indicated individually. For example, {@code ReplicaDistributionGoal} is not
+   * expected to be optimized when replication factor and the cluster is small.
+   *
+   * @param replicationFactor Target replication factor.
+   * @param goalClass The class corresponding to the goal to be optimized.
+   * @param smallCluster {@code true} for optimization under small cluster model, {@code false} otherwise.
+   * @return {@code true} if the goal is expected to be optimized with the given cluster model and replication factor, {@code false} otherwise.
+   */
   private static boolean expectedToOptimize(short replicationFactor, Class<? extends Goal> goalClass, boolean smallCluster) {
-    if ((replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == ReplicaDistributionGoal.class && smallCluster)
-        || (replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == DiskUsageDistributionGoal.class)
-        || (replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == NetworkInboundUsageDistributionGoal.class)
-        || (replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == NetworkOutboundUsageDistributionGoal.class)
-        || (replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == CpuUsageDistributionGoal.class)
-        || (replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == LeaderReplicaDistributionGoal.class && smallCluster)
-        || (replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == NetworkOutboundUsageDistributionGoal.class && smallCluster)
-        || (goalClass == LeaderBytesInDistributionGoal.class && (replicationFactor == SMALL_REPLICATION_FACTOR || smallCluster))
-        || (replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == DiskUsageDistributionGoal.class && !smallCluster)
-        || (replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == NetworkInboundUsageDistributionGoal.class && !smallCluster)
-        || (replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == CpuUsageDistributionGoal.class)
-        || (replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == MinTopicLeadersPerBrokerGoal.class)
-        || (replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == MinTopicLeadersPerBrokerGoal.class && !smallCluster)) {
-      return false;
-    }
-    return true;
+    // Each line indicates an exceptional case. If parameters satisfy any exceptional case, the response will be false.
+    return !(replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == ReplicaDistributionGoal.class && smallCluster
+             || replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == DiskUsageDistributionGoal.class
+             || replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == NetworkInboundUsageDistributionGoal.class
+             || replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == NetworkOutboundUsageDistributionGoal.class
+             || replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == CpuUsageDistributionGoal.class
+             || replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == LeaderReplicaDistributionGoal.class && smallCluster
+             || replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == NetworkOutboundUsageDistributionGoal.class && smallCluster
+             || goalClass == LeaderBytesInDistributionGoal.class && !(replicationFactor != SMALL_REPLICATION_FACTOR && !smallCluster)
+             || replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == DiskUsageDistributionGoal.class && !smallCluster
+             || replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == NetworkInboundUsageDistributionGoal.class && !smallCluster
+             || replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == CpuUsageDistributionGoal.class
+             || replicationFactor == SMALL_REPLICATION_FACTOR && goalClass == MinTopicLeadersPerBrokerGoal.class
+             || replicationFactor == LARGE_REPLICATION_FACTOR && goalClass == MinTopicLeadersPerBrokerGoal.class && !smallCluster);
   }
 
   @Test
@@ -233,9 +240,7 @@ public class ReplicationFactorChangeTest {
         }
       }
     } else {
-      _expected.expect(_exceptionClass);
-      assertTrue("Replication factor change test with goal " + _goal.name() + "failed.",
-                 _goal.optimize(_clusterModel, Collections.emptySet(), _optimizationOptions));
+      assertThrows(_exceptionClass, () -> _goal.optimize(_clusterModel, Collections.emptySet(), _optimizationOptions));
     }
   }
 

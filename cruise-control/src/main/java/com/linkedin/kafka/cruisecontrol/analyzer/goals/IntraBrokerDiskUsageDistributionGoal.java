@@ -20,6 +20,7 @@ import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -338,8 +339,7 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
                                            OptimizationOptions optimizationOptions) {
     Broker broker = disk.broker();
     double brokerUtilization = averageDiskUtilizationPercentage(broker);
-    PriorityQueue<Disk> candidateDiskPQ = new PriorityQueue<>(
-        (d1, d2) -> Double.compare(diskUtilizationPercentage(d1), diskUtilizationPercentage(d2)));
+    PriorityQueue<Disk> candidateDiskPQ = new PriorityQueue<>(Comparator.comparingDouble(GoalUtils::diskUtilizationPercentage));
     for (Disk candidateDisk : broker.disks()) {
       // Get candidate disk on broker to try moving load to -- sorted in the order of trial (ascending load).
       if (candidateDisk.isAlive() && diskUtilizationPercentage(candidateDisk) < brokerUtilization) {
@@ -387,8 +387,7 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
     long swapStartTimeMs = System.currentTimeMillis();
     Broker broker = disk.broker();
 
-    PriorityQueue<Disk> candidateDiskPQ = new PriorityQueue<>(
-        (d1, d2) -> Double.compare(diskUtilizationPercentage(d1), diskUtilizationPercentage(d2)));
+    PriorityQueue<Disk> candidateDiskPQ = new PriorityQueue<>(Comparator.comparingDouble(GoalUtils::diskUtilizationPercentage));
     for (Disk candidateDisk : broker.disks()) {
       // Get candidate disk on broker to try to swap replica with -- sorted in the order of trial (ascending load).
       if (candidateDisk.isAlive() && diskUtilizationPercentage(candidateDisk) < _balanceUpperThresholdByBroker.get(broker)) {
@@ -398,9 +397,7 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
 
     while (!candidateDiskPQ.isEmpty()) {
       Disk candidateDisk = candidateDiskPQ.poll();
-      for (Iterator<Replica> iterator = disk.trackedSortedReplicas(replicaSortName(this, true, false)).sortedReplicas(false).iterator();
-          iterator.hasNext(); ) {
-        Replica sourceReplica = iterator.next();
+      for (Replica sourceReplica : disk.trackedSortedReplicas(replicaSortName(this, true, false)).sortedReplicas(false)) {
         // Try swapping the source with the candidate replicas. Get the swapped in replica if successful, null otherwise.
         Replica swappedIn = maybeSwapReplicaBetweenDisks(clusterModel,
                                                          sourceReplica,
@@ -451,9 +448,7 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
 
     while (!candidateDiskPQ.isEmpty()) {
       Disk candidateDisk = candidateDiskPQ.poll();
-      for (Iterator<Replica> iterator = disk.trackedSortedReplicas(replicaSortName(this, false, false)).sortedReplicas(false).iterator();
-          iterator.hasNext(); ) {
-        Replica sourceReplica = iterator.next();
+      for (Replica sourceReplica : disk.trackedSortedReplicas(replicaSortName(this, false, false)).sortedReplicas(false)) {
         // Try swapping the source with the candidate replicas. Get the swapped in replica if successful, null otherwise.
         Replica swappedIn = maybeSwapReplicaBetweenDisks(clusterModel,
                                                          sourceReplica,

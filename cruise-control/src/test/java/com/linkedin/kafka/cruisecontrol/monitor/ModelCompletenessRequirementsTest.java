@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.monitor;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 
 public class ModelCompletenessRequirementsTest {
@@ -17,6 +18,6 @@ public class ModelCompletenessRequirementsTest {
     ModelCompletenessRequirements combined = r1.stronger(r2);
     assertEquals(5, combined.minRequiredNumWindows());
     assertEquals(0.5, combined.minMonitoredPartitionsPercentage(), 0.0);
-    assertEquals(true, combined.includeAllTopics());
+    assertTrue(combined.includeAllTopics());
   }
 }

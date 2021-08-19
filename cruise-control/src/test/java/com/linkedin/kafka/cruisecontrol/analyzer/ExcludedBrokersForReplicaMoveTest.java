@@ -119,16 +119,16 @@ public class ExcludedBrokersForReplicaMoveTest {
     Collection<Object[]> p = new ArrayList<>();
 
     Set<Integer> noExclusion = Collections.emptySet();
-    Set<Integer> excludeB0 = Collections.unmodifiableSet(Collections.singleton(0));
-    Set<Integer> excludeB1 = Collections.unmodifiableSet(Collections.singleton(1));
-    Set<Integer> excludeB2 = Collections.unmodifiableSet(Collections.singleton(2));
+    Set<Integer> excludeB0 = Collections.singleton(0);
+    Set<Integer> excludeB1 = Collections.singleton(1);
+    Set<Integer> excludeB2 = Collections.singleton(2);
     Set<Integer> excludeAllBrokers = Collections.unmodifiableSet(RACK_BY_BROKER.keySet());
     Set<Integer> excludeB1B2 = new HashSet<>(RACK_BY_BROKER.keySet());
     excludeB1B2.removeAll(excludeB0);
     Set<Integer> noDeadBroker = Collections.emptySet();
-    Set<Integer> deadBroker0 = Collections.unmodifiableSet(Collections.singleton(0));
-    Set<Integer> deadBroker1 = Collections.unmodifiableSet(Collections.singleton(1));
-    Set<Integer> deadBroker2 = Collections.unmodifiableSet(Collections.singleton(2));
+    Set<Integer> deadBroker0 = Collections.singleton(0);
+    Set<Integer> deadBroker1 = Collections.singleton(1);
+    Set<Integer> deadBroker2 = Collections.singleton(2);
 
     // ============RackAwareGoal============
     // With single excluded broker, rack aware satisfiable cluster, no dead brokers (No exception, Generates proposals, Expected to look optimized)

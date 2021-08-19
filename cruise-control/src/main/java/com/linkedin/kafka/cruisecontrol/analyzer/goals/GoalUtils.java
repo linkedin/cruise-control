@@ -454,8 +454,8 @@ public final class GoalUtils {
     Set<Integer> excludedBrokers = optimizationOptions.excludedBrokersForReplicaMove();
     return clusterModel.aliveBrokers()
                        .stream()
-                       .filter(broker -> !excludedBrokers.contains(broker.id()))
                        .map(Broker::id)
+                       .filter(id -> !excludedBrokers.contains(id))
                        .collect(Collectors.toCollection(HashSet::new));
   }
 

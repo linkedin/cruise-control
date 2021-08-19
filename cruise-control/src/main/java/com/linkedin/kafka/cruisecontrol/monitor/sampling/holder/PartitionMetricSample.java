@@ -118,8 +118,7 @@ public class PartitionMetricSample extends MetricSample<String, PartitionEntity>
           .append(", ");
     }
     builder.delete(builder.length() - 2, builder.length()).append("}");
-    return String.format("[brokerId: %d, Partition: %s, time: %s, metrics: %s]", _brokerId, entity().tp(), utcDateFor(_sampleTime),
-                         builder.toString());
+    return String.format("[brokerId: %d, Partition: %s, time: %s, metrics: %s]", _brokerId, entity().tp(), utcDateFor(_sampleTime), builder);
   }
 
   private static PartitionMetricSample readV0(ByteBuffer buffer) {

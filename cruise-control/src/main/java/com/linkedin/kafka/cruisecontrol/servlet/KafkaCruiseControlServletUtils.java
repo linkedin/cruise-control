@@ -287,4 +287,25 @@ public final class KafkaCruiseControlServletUtils {
   public static String httpServletRequestToString(HttpServletRequest request) {
     return String.format("%s %s", request.getMethod(), request.getRequestURI());
   }
+
+  /**
+   * Combines the given base with the query parameters retrieved from the given parameter map.
+   *
+   * @param base The base of the query without parameters
+   * @param parameterMap Parameter map.
+   * @return Query with parameters.
+   */
+  public static String queryWithParameters(String base, Map<String, String[]> parameterMap) {
+    StringBuilder sb = new StringBuilder(base);
+    String queryParamDelimiter = "?";
+    for (Map.Entry<String, String[]> paramSet : parameterMap.entrySet()) {
+      for (String paramValue : paramSet.getValue()) {
+        sb.append(queryParamDelimiter).append(paramSet.getKey()).append("=").append(paramValue);
+        if ("?".equals(queryParamDelimiter)) {
+          queryParamDelimiter = "&";
+        }
+      }
+    }
+    return sb.toString();
+  }
 }

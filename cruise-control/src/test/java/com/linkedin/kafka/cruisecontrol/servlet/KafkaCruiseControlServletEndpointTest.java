@@ -158,7 +158,7 @@ public class KafkaCruiseControlServletEndpointTest {
     // Test Case 1: Get all PROPOSAL or REBALANCE tasks
     Map<String, String []> answerQueryParam1 = new HashMap<>();
     answerQueryParam1.put("param", new String[]{"true"});
-    answerQueryParam1.put("endpoints", new String[]{PROPOSALS.toString() + "," + REBALANCE.toString()});
+    answerQueryParam1.put("endpoints", new String[]{PROPOSALS + "," + REBALANCE});
     HttpServletRequest answerQueryRequest1 = prepareRequest(MOCK_HTTP_SESSION, null, "", USER_TASKS.toString(), answerQueryParam1, GET_METHOD);
     UserTasksParameters parameters1 = mockUserTasksParameters(answerQueryRequest1);
     List<UserTaskManager.UserTaskInfo> result1 = userTaskState.prepareResultList(parameters1);
@@ -181,7 +181,7 @@ public class KafkaCruiseControlServletEndpointTest {
     Map<String, String []> answerQueryParam3 = new HashMap<>();
     answerQueryParam3.put("param", new String[]{"true"});
     answerQueryParam3.put("client_ids", new String[]{"0.0.0.1"});
-    answerQueryParam3.put("endpoints", new String[]{PROPOSALS.toString() + "," + REMOVE_BROKER.toString()});
+    answerQueryParam3.put("endpoints", new String[]{PROPOSALS + "," + REMOVE_BROKER});
     HttpServletRequest answerQueryRequest3 = prepareRequest(MOCK_HTTP_SESSION, null, "", USER_TASKS.toString(), answerQueryParam3, GET_METHOD);
     UserTasksParameters parameters3 = mockUserTasksParameters(answerQueryRequest3);
     List<UserTaskManager.UserTaskInfo> result3 = userTaskState.prepareResultList(parameters3);
@@ -216,7 +216,7 @@ public class KafkaCruiseControlServletEndpointTest {
     // Test Case 5: Get all LOAD or REMOVE_BROKER tasks that's completed and with user task id repeatUUID
     Map<String, String []> answerQueryParam5 = new HashMap<>();
     answerQueryParam5.put("param", new String[]{"true"});
-    answerQueryParam5.put("endpoints", new String[]{LOAD.toString() + "," + REMOVE_BROKER.toString()});
+    answerQueryParam5.put("endpoints", new String[]{LOAD + "," + REMOVE_BROKER});
     answerQueryParam5.put("user_task_ids", new String[]{repeatUUID.toString()});
     answerQueryParam5.put("types", new String[]{UserTaskManager.TaskState.COMPLETED.toString()});
     HttpServletRequest answerQueryRequest5 = prepareRequest(MOCK_HTTP_SESSION, null, "", USER_TASKS.toString(), answerQueryParam5, GET_METHOD);

@@ -35,7 +35,7 @@ public class TopicMinIsrCache {
 
   public TopicMinIsrCache(Duration cacheRetention, int maxCacheSize, Duration cleanerPeriod, Duration cleanerInitialDelay, Time time) {
     _cacheRetention = cacheRetention;
-    _minIsrWithTimeByTopic = new LinkedHashMap<String, MinIsrWithTime>() {
+    _minIsrWithTimeByTopic = new LinkedHashMap<>() {
       @Override
       protected boolean removeEldestEntry(Map.Entry<String, MinIsrWithTime> eldest) {
         return this.size() > maxCacheSize;

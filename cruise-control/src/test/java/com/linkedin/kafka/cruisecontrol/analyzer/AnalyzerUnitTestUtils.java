@@ -41,7 +41,7 @@ public final class AnalyzerUnitTestUtils {
       return constructor.newInstance(balancingConstraint);
     } catch (NoSuchMethodException badConstructor) {
       //Try default constructor
-      return goalClass.newInstance();
+      return goalClass.getDeclaredConstructor().newInstance();
     }
   }
 

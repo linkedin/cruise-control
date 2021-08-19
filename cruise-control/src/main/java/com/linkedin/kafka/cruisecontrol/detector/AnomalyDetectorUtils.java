@@ -16,18 +16,15 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.RANDOM;
-import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.RECONNECT_BACKOFF_MS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.createConsumer;
 
 
 /**
@@ -58,20 +55,7 @@ public final class AnomalyDetectorUtils {
   public static Consumer<String, MaintenancePlan> createMaintenanceEventConsumer(Map<String, ?> configs, String clientIdPrefix) {
     // Get bootstrap servers
     String bootstrapServers = String.join(",", (List<String>) configs.get(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG));
-
-    // Create consumer
-    long randomToken = RANDOM.nextLong();
-    Properties consumerProps = new Properties();
-    consumerProps.putAll(configs);
-    consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, clientIdPrefix + "-consumer-" + randomToken);
-    consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
-    consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
-    consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
-    consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-    consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, MaintenancePlanSerde.class.getName());
-    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, configs.get(RECONNECT_BACKOFF_MS_CONFIG).toString());
-    return new KafkaConsumer<>(consumerProps);
+    return createConsumer(configs, clientIdPrefix, bootstrapServers, StringDeserializer.class, MaintenancePlanSerde.class, true);
   }
 
   /**

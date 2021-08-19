@@ -28,13 +28,13 @@ public class MiniKdc {
   private final SimpleKdcServer _kerbyServer;
   private final File _keytab;
   private final String _realm;
-  private List<String> _principals;
+  private final List<String> _principals;
 
   public MiniKdc(String realm, List<String> principals) throws KrbException {
     _kerbyServer = new SimpleKdcServer();
     _realm = realm;
     _principals = principals;
-    _keytab = Paths.get(System.getProperty(TEMP_DIR_PROPERTY_KEY), UUID.randomUUID().toString() + KEYTAB_FILE_EXTENSION).toFile();
+    _keytab = Paths.get(System.getProperty(TEMP_DIR_PROPERTY_KEY), UUID.randomUUID() + KEYTAB_FILE_EXTENSION).toFile();
   }
 
   public File keytab() {

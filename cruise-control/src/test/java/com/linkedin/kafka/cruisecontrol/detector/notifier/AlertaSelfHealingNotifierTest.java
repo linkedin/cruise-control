@@ -4,13 +4,11 @@
 
 package com.linkedin.kafka.cruisecontrol.detector.notifier;
 
-import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
-import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -112,24 +110,16 @@ public class AlertaSelfHealingNotifierTest {
     }
 
     private static class MockAlertaSelfHealingNotifier extends AlertaSelfHealingNotifier {
-        private List<AlertaMessage> _alertaMessageList;
-        private final Map<AnomalyType, Boolean> _alertCalled;
-        private final Map<AnomalyType, Boolean> _autoFixTriggered;
+        private final List<AlertaMessage> _alertaMessageList;
 
         MockAlertaSelfHealingNotifier(Time time) {
             super(time);
-            _alertCalled = new HashMap<>(KafkaAnomalyType.cachedValues().size());
-            _autoFixTriggered = new HashMap<>(KafkaAnomalyType.cachedValues().size());
-            for (AnomalyType alertType : KafkaAnomalyType.cachedValues()) {
-                _alertCalled.put(alertType, false);
-                _autoFixTriggered.put(alertType, false);
-            }
             _selfHealingEnabled.put(KafkaAnomalyType.BROKER_FAILURE, true);
             _alertaMessageList = new ArrayList<>();
         }
 
         @Override
-        protected void sendAlertaMessage(AlertaMessage alertaMessage) throws IOException {
+        protected void sendAlertaMessage(AlertaMessage alertaMessage) {
           _alertaMessageList.add(alertaMessage);
         }
 

@@ -313,7 +313,7 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() {
     // nothing to do.
   }
 
