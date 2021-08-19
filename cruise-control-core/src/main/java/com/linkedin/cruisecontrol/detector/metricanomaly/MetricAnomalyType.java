@@ -4,7 +4,6 @@
 
 package com.linkedin.cruisecontrol.detector.metricanomaly;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -24,7 +23,7 @@ import java.util.Map;
 public enum MetricAnomalyType {
   SUSPECT, RECENT, PERSISTENT;
 
-  private static final List<MetricAnomalyType> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
+  private static final List<MetricAnomalyType> CACHED_VALUES = List.of(values());
 
   /**
    * Use this instead of values() because values() creates a new array each time.

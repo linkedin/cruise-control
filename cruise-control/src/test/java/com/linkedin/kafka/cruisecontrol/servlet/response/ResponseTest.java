@@ -103,20 +103,18 @@ public class ResponseTest {
    * @param operation The OpenAPI operation for certain endpoint.
    */
   private void checkOperation(Operation operation) {
-    operation.getResponses().forEach((responseStatus, apiResponse) -> {
-      apiResponse.getContent().forEach((header, type) -> {
-        switch (header) {
-          case JSON_CONTENT_TYPE : String refName = type.getSchema().get$ref();
-                                   String className = refName.substring(refName.lastIndexOf('/') + 1);
-                                   checkSchema(_openAPI.getComponents().getSchemas().get(className), className, true);
-                                   break;
-          case PLAIN_TEXT_CONTENT_TYPE : assertTrue(type.getSchema() instanceof StringSchema);
-                                         break;
-          default: fail("Unknown content type " + header);
-                   break;
-        }
-      });
-    });
+    operation.getResponses().forEach((responseStatus, apiResponse) -> apiResponse.getContent().forEach((header, type) -> {
+      switch (header) {
+        case JSON_CONTENT_TYPE : String refName = type.getSchema().get$ref();
+                                 String className = refName.substring(refName.lastIndexOf('/') + 1);
+                                 checkSchema(_openAPI.getComponents().getSchemas().get(className), className, true);
+                                 break;
+        case PLAIN_TEXT_CONTENT_TYPE : assertTrue(type.getSchema() instanceof StringSchema);
+                                       break;
+        default: fail("Unknown content type " + header);
+                 break;
+      }
+    }));
   }
 
   /**

@@ -230,7 +230,7 @@ public final class ParameterUtils {
     if (!userParams.isEmpty()) {
       // User request specifies parameters that are not a subset of the valid parameters.
       String errorMessage = String.format("Unrecognized endpoint parameters in %s %s request: %s.",
-                                          endPoint, request.getMethod(), userParams.toString());
+                                          endPoint, request.getMethod(), userParams);
       writeErrorResponse(response, null, errorMessage, SC_BAD_REQUEST, wantJSON(request), wantResponseSchema(request), config);
       return false;
     }
@@ -379,8 +379,8 @@ public final class ParameterUtils {
   }
 
   static boolean capacityOnly(HttpServletRequest request) {
-    Set<String> excludeParameters = Collections.unmodifiableSet(
-        new HashSet<>(Arrays.asList(TIME_PARAM, END_MS_PARAM, START_MS_PARAM, ALLOW_CAPACITY_ESTIMATION_PARAM, POPULATE_DISK_INFO_PARAM)));
+    Set<String> excludeParameters =
+        Set.of(TIME_PARAM, END_MS_PARAM, START_MS_PARAM, ALLOW_CAPACITY_ESTIMATION_PARAM, POPULATE_DISK_INFO_PARAM);
     return getBooleanExcludeGiven(request, CAPACITY_ONLY_PARAM, excludeParameters);
   }
 
@@ -437,7 +437,7 @@ public final class ParameterUtils {
     }
 
     String timeString = request.getParameter(parameterString);
-    return timeString.toUpperCase().equals("NOW") ? System.currentTimeMillis() : Long.parseLong(timeString);
+    return "NOW".equalsIgnoreCase(timeString) ? System.currentTimeMillis() : Long.parseLong(timeString);
   }
 
   static Long startMsOrDefault(HttpServletRequest request, @Nullable Long defaultIfMissing) {
@@ -771,15 +771,13 @@ public final class ParameterUtils {
       if (!goals.isEmpty()) {
         throw new UserRequestException("Kafka assigner mode does not support explicitly specifying goals in request.");
       }
-      return Collections.unmodifiableList(Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
-                                                        KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName()));
+      return List.of(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(), KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName());
     }
     if (isRebalanceDiskMode) {
       if (!goals.isEmpty()) {
         throw new UserRequestException("Rebalance disk mode does not support explicitly specifying goals in request.");
       }
-      return Collections.unmodifiableList(Arrays.asList(IntraBrokerDiskCapacityGoal.class.getSimpleName(),
-                                                        IntraBrokerDiskUsageDistributionGoal.class.getSimpleName()));
+      return List.of(IntraBrokerDiskCapacityGoal.class.getSimpleName(), IntraBrokerDiskUsageDistributionGoal.class.getSimpleName());
     }
     return goals;
   }

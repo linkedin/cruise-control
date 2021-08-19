@@ -10,7 +10,6 @@ import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
-import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Disk;
@@ -88,9 +87,7 @@ public class PreferredLeaderElectionGoalTest {
     Set<TopicPartition> leaderPartitionsOnDemotedBroker = new HashSet<>();
     clusterModel.broker(0).leaderReplicas().forEach(r -> leaderPartitionsOnDemotedBroker.add(r.topicPartition()));
     Map<TopicPartition, Integer> leaderDistributionBeforeBrokerDemotion = new HashMap<>();
-    clusterModel.brokers().forEach(b -> {
-      b.leaderReplicas().forEach(r -> leaderDistributionBeforeBrokerDemotion.put(r.topicPartition(), b.id()));
-    });
+    clusterModel.brokers().forEach(b -> b.leaderReplicas().forEach(r -> leaderDistributionBeforeBrokerDemotion.put(r.topicPartition(), b.id())));
 
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
     // Before the optimization, goals are expected to be undecided wrt their provision status.
@@ -136,9 +133,7 @@ public class PreferredLeaderElectionGoalTest {
                 .forEach(r -> leaderPartitionsOnDemotedDisk.add(r.topicPartition()));
 
     Map<TopicPartition, Integer> leaderDistributionBeforeBrokerDemotion = new HashMap<>();
-    clusterModel.brokers().forEach(b -> {
-      b.leaderReplicas().forEach(r -> leaderDistributionBeforeBrokerDemotion.put(r.topicPartition(), b.id()));
-    });
+    clusterModel.brokers().forEach(b -> b.leaderReplicas().forEach(r -> leaderDistributionBeforeBrokerDemotion.put(r.topicPartition(), b.id())));
 
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
     // Before the optimization, goals are expected to be undecided wrt their provision status.
@@ -184,9 +179,7 @@ public class PreferredLeaderElectionGoalTest {
                 .forEach(r -> leaderPartitionsToBeDemoted.add(r.topicPartition()));
 
     Map<TopicPartition, Integer> leaderDistributionBeforeBrokerDemotion = new HashMap<>();
-    clusterModel.brokers().forEach(b -> {
-      b.leaderReplicas().forEach(r -> leaderDistributionBeforeBrokerDemotion.put(r.topicPartition(), b.id()));
-    });
+    clusterModel.brokers().forEach(b -> b.leaderReplicas().forEach(r -> leaderDistributionBeforeBrokerDemotion.put(r.topicPartition(), b.id())));
 
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
     // Before the optimization, goals are expected to be undecided wrt their provision status.
@@ -221,7 +214,7 @@ public class PreferredLeaderElectionGoalTest {
   }
 
   @Test
-  public void testOptimizeWithDemotedBrokersAndSkipUrpDemotion() throws KafkaCruiseControlException {
+  public void testOptimizeWithDemotedBrokersAndSkipUrpDemotion() {
     ClusterModelAndInfo clusterModelAndInfo = createClusterModel(false, false);
     ClusterModel clusterModel = clusterModelAndInfo.clusterModel();
     Cluster cluster = clusterModelAndInfo.clusterInfo();

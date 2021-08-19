@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -28,7 +27,7 @@ public enum ActionType {
   INTER_BROKER_REPLICA_SWAP("SWAP"),
   INTRA_BROKER_REPLICA_SWAP("INTRA_BROKER_SWAP");
 
-  private static final List<ActionType> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
+  private static final List<ActionType> CACHED_VALUES = List.of(values());
   private final String _balancingAction;
 
   ActionType(String balancingAction) {

@@ -208,9 +208,7 @@ public class ExecutionTaskTracker {
     Map<TaskType, Map<ExecutionTaskState, Set<ExecutionTask>>> tasksByState = new HashMap<>(taskTypesToGetFullList.size());
     for (TaskType type : taskTypesToGetFullList) {
       tasksByState.put(type, new HashMap<>());
-      _tasksByType.get(type).forEach((k, v) -> {
-        tasksByState.get(type).put(k, new HashSet<>(v));
-      });
+      _tasksByType.get(type).forEach((k, v) -> tasksByState.get(type).put(k, new HashSet<>(v)));
     }
     return tasksByState;
   }

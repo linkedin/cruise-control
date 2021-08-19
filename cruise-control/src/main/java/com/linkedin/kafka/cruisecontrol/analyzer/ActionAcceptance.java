@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -23,7 +22,7 @@ import java.util.List;
 public enum ActionAcceptance {
   ACCEPT, REPLICA_REJECT, BROKER_REJECT;
 
-  private static final List<ActionAcceptance> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
+  private static final List<ActionAcceptance> CACHED_VALUES = List.of(values());
 
   /**
    * Use this instead of values() because values() creates a new array each time.

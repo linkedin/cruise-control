@@ -39,8 +39,8 @@ import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.EMPTY_BROKER
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.*;
 import static com.linkedin.kafka.cruisecontrol.model.ModelUtils.estimateLeaderCpuUtilPerCore;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 
@@ -82,7 +82,7 @@ public class CruiseControlMetricsProcessorTest {
   private static final double T1P1_BYTES_SIZE = 300.0;
   private static final double T2P0_BYTES_SIZE = 200.0;
   private static final double T2P1_BYTES_SIZE = 500.0;
-  private static final Set<TopicPartition> TEST_PARTITIONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(T1P0, T1P1, T2P0, T2P1)));
+  private static final Set<TopicPartition> TEST_PARTITIONS = Set.of(T1P0, T1P1, T2P0, T2P1);
   private static final Map<TopicPartition, Double> CPU_UTIL = new HashMap<>(4);
   static {
     CPU_UTIL.put(T1P0, MOCK_NUM_CPU_CORES
@@ -227,7 +227,7 @@ public class CruiseControlMetricsProcessorTest {
       }
     }
 
-    assertTrue(!samples.partitionMetricSamples().isEmpty());
+    assertFalse(samples.partitionMetricSamples().isEmpty());
   }
 
   @Test

@@ -54,11 +54,11 @@ public class PartitionMetricSampleTest {
       sample.record(KafkaMetricDef.resourceToMetricInfo(r).get(0), i);
       i++;
     }
-    sample.record(metricDef.metricInfo(PRODUCE_RATE.name()), (double) i++);
-    sample.record(metricDef.metricInfo(FETCH_RATE.name()), (double) i++);
-    sample.record(metricDef.metricInfo(MESSAGE_IN_RATE.name()), (double) i++);
-    sample.record(metricDef.metricInfo(REPLICATION_BYTES_IN_RATE.name()), (double) i++);
-    sample.record(metricDef.metricInfo(REPLICATION_BYTES_OUT_RATE.name()), (double) i);
+    sample.record(metricDef.metricInfo(PRODUCE_RATE.name()), i++);
+    sample.record(metricDef.metricInfo(FETCH_RATE.name()), i++);
+    sample.record(metricDef.metricInfo(MESSAGE_IN_RATE.name()), i++);
+    sample.record(metricDef.metricInfo(REPLICATION_BYTES_IN_RATE.name()), i++);
+    sample.record(metricDef.metricInfo(REPLICATION_BYTES_OUT_RATE.name()), i);
     sample.close(10);
     byte[] bytes = sample.toBytes();
     PartitionMetricSample deserializedSample = PartitionMetricSample.fromBytes(bytes);

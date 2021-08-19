@@ -8,8 +8,8 @@ import org.eclipse.jetty.security.SpnegoUserPrincipal;
 
 public class TrustedProxyPrincipal extends SpnegoUserPrincipal {
 
-  private SpnegoUserPrincipal _serviceUserPrincipal;
-  private String _doAsPrincipal;
+  private final SpnegoUserPrincipal _serviceUserPrincipal;
+  private final String _doAsPrincipal;
 
   public TrustedProxyPrincipal(String doAsPrincipal, SpnegoUserPrincipal serviceUserPrincipal) {
     super(doAsPrincipal, serviceUserPrincipal.getEncodedToken());

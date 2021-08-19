@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -26,7 +25,7 @@ public enum MaintenanceEventType {
   // Do not change the order of enums. Append new ones to the end.
   ADD_BROKER, REMOVE_BROKER, FIX_OFFLINE_REPLICAS, REBALANCE, DEMOTE_BROKER, TOPIC_REPLICATION_FACTOR;
 
-  private static final List<MaintenanceEventType> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
+  private static final List<MaintenanceEventType> CACHED_VALUES = List.of(values());
 
   // This id helps with serialization and deserialization of event types
   byte id() {

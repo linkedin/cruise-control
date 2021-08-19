@@ -516,7 +516,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
       numAbandonedSamples += rawValues.resetWindowIndices(prevOldestWindowIndex, numIndicesToReset);
     }
 
-    for (; iterator.hasNext(); ) {
+    while (iterator.hasNext()) {
       RawMetricValues rawValues = iterator.next();
       rawValues.updateOldestWindowIndex(currentOldestWindowIndex);
       numAbandonedSamples += rawValues.resetWindowIndices(prevOldestWindowIndex, numIndicesToReset);

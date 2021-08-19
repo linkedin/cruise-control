@@ -96,7 +96,7 @@ public class OperationProgress {
     for (int i = 0; i < _steps.size(); i++) {
       OperationStep step = _steps.get(i);
       long time = (i == _steps.size() - 1 ? System.currentTimeMillis() : _startTimes.get(i + 1)) - _startTimes.get(i);
-      sb.append(new StepProgress(step, time).toString());
+      sb.append(new StepProgress(step, time));
     }
     return sb.toString();
   }

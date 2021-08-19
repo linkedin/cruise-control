@@ -444,9 +444,4 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
       }
     }
   }
-
-  @Override
-  public void finish() {
-    super.finish();
-  }
 }

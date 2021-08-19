@@ -436,8 +436,8 @@ task buildApiWiki(type: Exec) {
 }
 
 static def getScalaBinaryVersion(versionStr) {
-  String[] versionList = versionStr.split("\\.");
-  return versionList[0] + "." + versionList[1];
+  String[] versionList = versionStr.split("\\.")
+  return versionList[0] + "." + versionList[1]
 }
 
 //wrapper generation task

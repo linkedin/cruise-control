@@ -201,17 +201,15 @@ public class AlertaSelfHealingNotifier extends SelfHealingNotifier {
   private void alertDiskFailure(AnomalyType anomalyType, final String localHostname,
                                 List<AlertaMessage> alertaMessages, DiskFailures diskFailures) {
     Map<Integer, Map<String, Long>> failedDisks = diskFailures.failedDisks();
-    failedDisks.forEach((brokerId, failures) -> {
-      failures.forEach((logdir, eventTime) -> {
-        AlertaMessage alertaMessage = new AlertaMessage(localHostname + " - " + ALERT_MESSAGE_BROKER + brokerId,
-                                                        anomalyType.toString() + " - " + logdir);
-        alertaMessage.setSeverity(NotifierUtils.getAlertSeverity(anomalyType).toString());
-        alertaMessage.setGroup(AlertaAlertGroup.STORAGE.toString());
-        alertaMessage.setCreateTime(CruiseControlUtils.utcDateFor(eventTime, 3, ChronoUnit.SECONDS));
-        alertaMessage.setValue(logdir);
-        alertaMessages.add(alertaMessage);
-      });
-    });
+    failedDisks.forEach((brokerId, failures) -> failures.forEach((logdir, eventTime) -> {
+      AlertaMessage alertaMessage = new AlertaMessage(localHostname + " - " + ALERT_MESSAGE_BROKER + brokerId,
+                                                      anomalyType.toString() + " - " + logdir);
+      alertaMessage.setSeverity(NotifierUtils.getAlertSeverity(anomalyType).toString());
+      alertaMessage.setGroup(AlertaAlertGroup.STORAGE.toString());
+      alertaMessage.setCreateTime(CruiseControlUtils.utcDateFor(eventTime, 3, ChronoUnit.SECONDS));
+      alertaMessage.setValue(logdir);
+      alertaMessages.add(alertaMessage);
+    }));
   }
 
   private void alertMetricAnomaly(AnomalyType anomalyType, final String localHostname,

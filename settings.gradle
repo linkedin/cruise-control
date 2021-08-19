@@ -28,6 +28,6 @@ include 'cruise-control', 'cruise-control-metrics-reporter', 'cruise-control-cor
 def gradleVer = GradleVersion.current()
 def minimumVersion = GradleVersion.version("3.5")
 if (gradleVer < minimumVersion) {
-  throw new GradleScriptException("this build cannot be run with gradle < " + minimumVersion + ". current detection version is "
-      + gradleVer + ". use newer gradle or (better yet) use the wrapper", null)
+  throw new GradleScriptException("this build cannot be run with gradle < " + minimumVersion + ". current detection version is " +
+      gradleVer + ". use newer gradle or (better yet) use the wrapper", null)
 }

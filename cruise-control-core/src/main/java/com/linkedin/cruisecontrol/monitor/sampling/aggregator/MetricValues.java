@@ -207,7 +207,7 @@ public class MetricValues {
     for (int i = 0; i < _values.length; i++) {
       joiner.add(i + ":" + _values[i]);
     }
-    return String.format("{avg:%f, max:%f, %s}", avg(), max(), joiner.toString());
+    return String.format("{avg:%f, max:%f, %s}", avg(), max(), joiner);
   }
 
   private float updateMax() {

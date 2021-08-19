@@ -60,7 +60,7 @@ public class ClusterModelStatsValue {
                                                  _potentialNwOutUtilizationStats.get(stat),
                                                  _replicaStats.get(stat),
                                                  _leaderReplicaStats.get(stat),
-                                                 _topicReplicaStats.get(stat)).toString());
+                                                 _topicReplicaStats.get(stat)));
     }
     return sb.substring(0, sb.length() - 2);
   }

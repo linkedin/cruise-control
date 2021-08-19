@@ -86,7 +86,7 @@ public class AnomalyDetectorState {
     _numCachedRecentAnomalyStates = numCachedRecentAnomalyStates;
     _recentAnomaliesByType = new HashMap<>(KafkaAnomalyType.cachedValues().size());
     for (AnomalyType anomalyType : KafkaAnomalyType.cachedValues()) {
-      _recentAnomaliesByType.put(anomalyType, new LinkedHashMap<String, AnomalyState>() {
+      _recentAnomaliesByType.put(anomalyType, new LinkedHashMap<>() {
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, AnomalyState> eldest) {
           return this.size() > _numCachedRecentAnomalyStates;

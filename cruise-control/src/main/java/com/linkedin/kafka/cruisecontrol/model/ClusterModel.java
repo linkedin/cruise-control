@@ -1298,11 +1298,9 @@ public class ClusterModel implements Serializable {
    */
   public BrokerStats brokerStats(KafkaCruiseControlConfig config) {
     BrokerStats brokerStats = new BrokerStats(config);
-    brokers().forEach(broker -> {
-      brokerStats.addSingleBrokerStats(broker,
-                                       potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT),
-                                       _capacityEstimationInfoByBrokerId.get(broker.id()) != null);
-    });
+    brokers().forEach(broker -> brokerStats.addSingleBrokerStats(broker,
+                                                                 potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT),
+                                                                 _capacityEstimationInfoByBrokerId.get(broker.id()) != null));
     return brokerStats;
   }
 
