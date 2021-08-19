@@ -60,7 +60,7 @@ public class BrokerFailures extends KafkaAnomaly {
     // Fix the cluster by removing the failed brokers (mode: non-Kafka_assigner).
     if (_removeBrokersRunnable != null && _fixable) {
       _optimizationResult = new OptimizationResult(_removeBrokersRunnable.computeResult(), null);
-      hasProposalsToFix = hasProposalsToFix();
+      hasProposalsToFix = hasProposalsToFix(_optimizationResult);
       // Ensure that only the relevant response is cached to avoid memory pressure.
       _optimizationResult.discardIrrelevantAndCacheJsonAndPlaintext();
     }

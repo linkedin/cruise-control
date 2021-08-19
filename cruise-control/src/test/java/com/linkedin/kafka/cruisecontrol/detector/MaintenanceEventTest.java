@@ -156,7 +156,7 @@ public class MaintenanceEventTest {
     assertEquals(String.format("%s{Handling %s%s", SELF_HEALING_REASON_PREFIX, MaintenanceEventType.ADD_BROKER,
                                WITH_BROKERS_REASON_SUFFIX), maintenanceEvent.reasonSupplier().get());
     assertEquals(MAINTENANCE_EVENT, maintenanceEvent.anomalyType());
-    assertThrows(IllegalArgumentException.class, maintenanceEvent::hasProposalsToFix);
+    assertThrows(IllegalArgumentException.class, () -> maintenanceEvent.hasProposalsToFix(maintenanceEvent._optimizationResult));
 
     assertTrue(maintenanceEvent.fix());
 
@@ -227,7 +227,7 @@ public class MaintenanceEventTest {
     assertEquals(String.format("%s{Handling %s%s", SELF_HEALING_REASON_PREFIX, MaintenanceEventType.REMOVE_BROKER,
                                WITH_BROKERS_REASON_SUFFIX), maintenanceEvent.reasonSupplier().get());
     assertEquals(MAINTENANCE_EVENT, maintenanceEvent.anomalyType());
-    assertThrows(IllegalArgumentException.class, maintenanceEvent::hasProposalsToFix);
+    assertThrows(IllegalArgumentException.class, () -> maintenanceEvent.hasProposalsToFix(maintenanceEvent._optimizationResult));
 
     assertTrue(maintenanceEvent.fix());
 
@@ -298,7 +298,7 @@ public class MaintenanceEventTest {
     assertEquals(String.format("%s{Handling %s}", SELF_HEALING_REASON_PREFIX, MaintenanceEventType.FIX_OFFLINE_REPLICAS),
                  maintenanceEvent.reasonSupplier().get());
     assertEquals(MAINTENANCE_EVENT, maintenanceEvent.anomalyType());
-    assertThrows(IllegalArgumentException.class, maintenanceEvent::hasProposalsToFix);
+    assertThrows(IllegalArgumentException.class, () -> maintenanceEvent.hasProposalsToFix(maintenanceEvent._optimizationResult));
 
     assertTrue(maintenanceEvent.fix());
 
@@ -386,7 +386,7 @@ public class MaintenanceEventTest {
     assertEquals(String.format("%s{Handling %s}", SELF_HEALING_REASON_PREFIX, MaintenanceEventType.REBALANCE),
                  maintenanceEvent.reasonSupplier().get());
     assertEquals(MAINTENANCE_EVENT, maintenanceEvent.anomalyType());
-    assertThrows(IllegalArgumentException.class, maintenanceEvent::hasProposalsToFix);
+    assertThrows(IllegalArgumentException.class, () -> maintenanceEvent.hasProposalsToFix(maintenanceEvent._optimizationResult));
 
     assertTrue(maintenanceEvent.fix());
 
@@ -455,7 +455,7 @@ public class MaintenanceEventTest {
     assertEquals(String.format("%s{Handling %s%s", SELF_HEALING_REASON_PREFIX, MaintenanceEventType.DEMOTE_BROKER,
                                WITH_BROKERS_REASON_SUFFIX), maintenanceEvent.reasonSupplier().get());
     assertEquals(MAINTENANCE_EVENT, maintenanceEvent.anomalyType());
-    assertThrows(IllegalArgumentException.class, maintenanceEvent::hasProposalsToFix);
+    assertThrows(IllegalArgumentException.class, () -> maintenanceEvent.hasProposalsToFix(maintenanceEvent._optimizationResult));
 
     assertTrue(maintenanceEvent.fix());
 
@@ -530,7 +530,7 @@ public class MaintenanceEventTest {
     assertEquals(String.format("%s{Handling %s%s", SELF_HEALING_REASON_PREFIX, MaintenanceEventType.TOPIC_REPLICATION_FACTOR,
                                WITH_RF_UPDATE_SUFFIX), maintenanceEvent.reasonSupplier().get());
     assertEquals(MAINTENANCE_EVENT, maintenanceEvent.anomalyType());
-    assertThrows(IllegalArgumentException.class, maintenanceEvent::hasProposalsToFix);
+    assertThrows(IllegalArgumentException.class, () -> maintenanceEvent.hasProposalsToFix(maintenanceEvent._optimizationResult));
     assertTrue(maintenanceEvent.fix());
 
     // Verify mocks.

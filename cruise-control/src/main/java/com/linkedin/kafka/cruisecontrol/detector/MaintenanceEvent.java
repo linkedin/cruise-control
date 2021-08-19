@@ -78,7 +78,7 @@ public class MaintenanceEvent extends KafkaAnomaly {
   public boolean fix() throws KafkaCruiseControlException {
     // Start the relevant fix for the maintenance event.
     _optimizationResult = new OptimizationResult(_goalBasedOperationRunnable.computeResult(), null);
-    boolean hasProposalsToFix = hasProposalsToFix();
+    boolean hasProposalsToFix = hasProposalsToFix(_optimizationResult);
     // Ensure that only the relevant response is cached to avoid memory pressure.
     _optimizationResult.discardIrrelevantAndCacheJsonAndPlaintext();
     return hasProposalsToFix;

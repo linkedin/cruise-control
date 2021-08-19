@@ -87,7 +87,7 @@ public class GoalViolations extends KafkaAnomaly {
       try {
         // Fix the fixable goal violations with rebalance operation.
         _optimizationResult = new OptimizationResult(_rebalanceRunnable.computeResult(), null);
-        hasProposalsToFix = hasProposalsToFix();
+        hasProposalsToFix = hasProposalsToFix(_optimizationResult);
         // Ensure that only the relevant response is cached to avoid memory pressure.
         _optimizationResult.discardIrrelevantAndCacheJsonAndPlaintext();
       } catch (IllegalStateException e) {

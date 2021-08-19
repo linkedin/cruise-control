@@ -49,7 +49,7 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
       return false;
     }
     _optimizationResult = _updateTopicConfigurationRunnable.getResult();
-    boolean hasProposalsToFix = hasProposalsToFix();
+    boolean hasProposalsToFix = hasProposalsToFix(_optimizationResult);
     // Ensure that only the relevant response is cached to avoid memory pressure.
     _optimizationResult.discardIrrelevantAndCacheJsonAndPlaintext();
     return hasProposalsToFix;
