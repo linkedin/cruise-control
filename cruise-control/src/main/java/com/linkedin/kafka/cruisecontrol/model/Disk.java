@@ -87,7 +87,7 @@ public class Disk implements Comparable<Disk> {
   }
 
   public Set<Replica> leaderReplicas() {
-    return Collections.unmodifiableSet(_replicas.stream().filter(Replica::isLeader).collect(Collectors.toSet()));
+    return _replicas.stream().filter(Replica::isLeader).collect(Collectors.toUnmodifiableSet());
   }
 
   public Broker broker() {

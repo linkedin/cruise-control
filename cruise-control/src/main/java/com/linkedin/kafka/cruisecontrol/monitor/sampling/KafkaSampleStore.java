@@ -28,7 +28,6 @@ import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -81,7 +80,7 @@ public class KafkaSampleStore extends AbstractKafkaSampleStore {
   protected static final String PRODUCER_CLIENT_ID = "KafkaCruiseControlSampleStoreProducer";
   protected static final String CONSUMER_CLIENT_ID_PREFIX = "KafkaCruiseControlSampleStore";
 
-  protected List<KafkaConsumer<byte[], byte[]>> _consumers;
+  protected List<Consumer<byte[], byte[]>> _consumers;
   protected ExecutorService _metricProcessorExecutor;
   protected String _partitionMetricSampleStoreTopic;
   protected String _brokerMetricSampleStoreTopic;
@@ -212,7 +211,7 @@ public class KafkaSampleStore extends AbstractKafkaSampleStore {
     try {
       prepareConsumers();
 
-      for (KafkaConsumer<byte[], byte[]> consumer : _consumers) {
+      for (Consumer<byte[], byte[]> consumer : _consumers) {
         _metricProcessorExecutor.submit(
             new MetricLoader(consumer, sampleLoader, numLoadedSamples, numPartitionMetricSamples, numBrokerMetricSamples,
                              totalSamples));
@@ -252,7 +251,7 @@ public class KafkaSampleStore extends AbstractKafkaSampleStore {
   public void close() {
     super.close();
     // Close consumers.
-    for (KafkaConsumer<byte[], byte[]> consumer : _consumers) {
+    for (Consumer<byte[], byte[]> consumer : _consumers) {
       consumer.close(CONSUMER_CLOSE_TIMEOUT);
     }
   }
@@ -280,9 +279,9 @@ public class KafkaSampleStore extends AbstractKafkaSampleStore {
     protected final AtomicLong _numPartitionMetricSamples;
     protected final AtomicLong _numBrokerMetricSamples;
     protected final AtomicLong _totalSamples;
-    protected final KafkaConsumer<byte[], byte[]> _consumer;
+    protected final Consumer<byte[], byte[]> _consumer;
 
-    MetricLoader(KafkaConsumer<byte[], byte[]> consumer,
+    MetricLoader(Consumer<byte[], byte[]> consumer,
                  SampleLoader sampleLoader,
                  AtomicLong numLoadedSamples,
                  AtomicLong numPartitionMetricSamples,

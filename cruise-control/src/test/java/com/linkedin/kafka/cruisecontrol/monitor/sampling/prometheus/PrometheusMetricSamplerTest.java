@@ -184,7 +184,7 @@ public class PrometheusMetricSamplerTest {
         config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "http://kafka-cluster-1.org:9090");
         addCapacityConfig(config);
 
-        Set<String> topics = new HashSet<String>(Arrays.asList(TEST_TOPIC, TEST_TOPIC_WITH_DOT));
+        Set<String> topics = new HashSet<>(Arrays.asList(TEST_TOPIC, TEST_TOPIC_WITH_DOT));
         for (String topic: topics) {
             setUp();
             _prometheusMetricSampler.configure(config);

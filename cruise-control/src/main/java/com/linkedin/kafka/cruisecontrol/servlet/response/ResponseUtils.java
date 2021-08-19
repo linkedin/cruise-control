@@ -38,7 +38,7 @@ public final class ResponseUtils {
     response.setStatus(code);
     response.setContentType(json ? "application/json" : "text/plain");
     response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-    boolean corsEnabled = config == null ? false : config.getBoolean(WebServerConfig.WEBSERVER_HTTP_CORS_ENABLED_CONFIG);
+    boolean corsEnabled = config != null && config.getBoolean(WebServerConfig.WEBSERVER_HTTP_CORS_ENABLED_CONFIG);
     if (corsEnabled) {
       // These headers are exposed to the browser
       response.setHeader("Access-Control-Allow-Origin",
@@ -178,8 +178,8 @@ public final class ResponseUtils {
     private static final String STACK_TRACE = "stackTrace";
     @JsonResponseField
     private static final String ERROR_MESSAGE = "errorMessage";
-    private Exception _exception;
-    private String _errorMessage;
+    private final Exception _exception;
+    private final String _errorMessage;
 
     ErrorResponse(Exception exception, String errorMessage) {
       _errorMessage = errorMessage;

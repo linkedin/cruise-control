@@ -42,26 +42,13 @@ public final class DeterministicCluster {
   public static final String CLUSTER_ID = "DETERMINISTIC_CLUSTER";
   public static final int PORT = 0;
   static {
-    Map<Integer, Integer> racksByBrokerIds = new HashMap<>(3);
-    racksByBrokerIds.put(0, 0);
-    racksByBrokerIds.put(1, 0);
-    racksByBrokerIds.put(2, 1);
-    RACK_BY_BROKER = Collections.unmodifiableMap(racksByBrokerIds);
+    RACK_BY_BROKER = Map.of(0, 0, 1, 0, 2, 1);
   }
   static {
-    Map<Integer, Integer> racksByBrokerIds = new HashMap<>(3);
-    racksByBrokerIds.put(0, 0);
-    racksByBrokerIds.put(1, 1);
-    racksByBrokerIds.put(2, 1);
-    RACK_BY_BROKER2 = Collections.unmodifiableMap(racksByBrokerIds);
+    RACK_BY_BROKER2 = Map.of(0, 0, 1, 1, 2, 1);
   }
   static {
-    Map<Integer, Integer> racksByBrokerIds = new HashMap<>(4);
-    racksByBrokerIds.put(0, 0);
-    racksByBrokerIds.put(1, 1);
-    racksByBrokerIds.put(2, 1);
-    racksByBrokerIds.put(3, 1);
-    RACK_BY_BROKER3 = Collections.unmodifiableMap(racksByBrokerIds);
+    RACK_BY_BROKER3 = Map.of(0, 0, 1, 1, 2, 1, 3, 1);
   }
   private DeterministicCluster() {
 

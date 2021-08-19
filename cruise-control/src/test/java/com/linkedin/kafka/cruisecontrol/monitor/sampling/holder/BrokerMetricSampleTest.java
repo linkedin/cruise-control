@@ -9,6 +9,7 @@ import com.linkedin.cruisecontrol.metricdef.MetricInfo;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
+import java.util.Set;
 import java.util.regex.Pattern;
 import org.junit.Test;
 
@@ -39,8 +40,8 @@ public class BrokerMetricSampleTest {
 
     // Disk usage is not one of the broker raw metric type so we add 1.
     int expectedNumRecords = 1;
-    expectedNumRecords += RawMetricType.brokerMetricTypesDiffByVersion().entrySet().stream()
-                                       .mapToInt(entry -> entry.getValue().size()).sum();
+    expectedNumRecords += RawMetricType.brokerMetricTypesDiffByVersion().values().stream()
+                                       .mapToInt(Set::size).sum();
 
     assertEquals(expectedNumRecords, deserializedSample.allMetricValues().size());
 

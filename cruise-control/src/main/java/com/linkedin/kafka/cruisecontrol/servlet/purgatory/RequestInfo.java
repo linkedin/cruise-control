@@ -18,6 +18,7 @@ import java.util.Set;
 import javax.servlet.http.HttpServletRequest;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.getClientIpAddress;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.queryWithParameters;
 import static com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus.*;
 
 
@@ -100,17 +101,7 @@ public class RequestInfo {
    * @return A String that combines the endpoint with parameters.
    */
   public String endpointWithParams() {
-    StringBuilder sb = new StringBuilder(_endPoint.toString());
-    String queryParamDelimiter = "?";
-    for (Map.Entry<String, String[]> paramSet : _parameterMap.entrySet()) {
-      for (String paramValue : paramSet.getValue()) {
-        sb.append(queryParamDelimiter).append(paramSet.getKey()).append("=").append(paramValue);
-        if ("?".equals(queryParamDelimiter)) {
-          queryParamDelimiter = "&";
-        }
-      }
-    }
-    return sb.toString();
+    return queryWithParameters(_endPoint.toString(), _parameterMap);
   }
 
   public EndPoint endPoint() {

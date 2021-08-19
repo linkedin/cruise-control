@@ -178,13 +178,13 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
     return new BrokerFailureDetector(anomalies, mockKafkaCruiseControl);
   }
 
-  private void killBroker(int index) throws Exception {
+  private void killBroker(int index) {
     CCEmbeddedBroker broker = _brokers.get(index);
     broker.shutdown();
     broker.awaitShutdown();
   }
 
-  private void restartDeadBroker(int index) throws Exception {
+  private void restartDeadBroker(int index) {
     _brokers.get(index).startup();
   }
 

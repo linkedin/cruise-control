@@ -10,14 +10,14 @@ import org.jfrog.gradle.plugin.artifactory.dsl.ArtifactoryPluginConvention
 class DistributeTask extends DefaultTask {
 
   @TaskAction
-  public void distributeBuild() {
+  void distributeBuild() {
     ArtifactoryPluginConvention convention = project.convention.plugins.artifactory
     def buildNumber = convention.clientConfig.info.buildNumber
     def buildName = convention.clientConfig.info.buildName
     def context = convention.clientConfig.publisher.contextUrl
     def password = convention.clientConfig.publisher.password
 
-    if (password == null || password.equals("")) {
+    if (password == null || password == "") {
       throw new IllegalArgumentException("password not set")
     }
 
@@ -41,8 +41,8 @@ class DistributeTask extends DefaultTask {
         .returnResponse()
 
     def bout = new ByteArrayOutputStream()
-    response.getEntity().writeTo(bout);
-    String errMsg = new String(bout.toByteArray());
+    response.getEntity().writeTo(bout)
+    String errMsg = new String(bout.toByteArray())
     logger.lifecycle("Distribute Response: {} {}", response, errMsg)
 
     if (!Integer.toString(response.getStatusLine().getStatusCode()).startsWith("2")) {

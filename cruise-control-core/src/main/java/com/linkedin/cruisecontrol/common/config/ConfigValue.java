@@ -18,7 +18,7 @@ public class ConfigValue {
     private boolean _visible;
 
     public ConfigValue(String name) {
-        this(name, null, new ArrayList<>(), new ArrayList<String>());
+        this(name, null, new ArrayList<>(), new ArrayList<>());
     }
 
     public ConfigValue(String name, Object value, List<Object> recommendedValues, List<String> errorMessages) {

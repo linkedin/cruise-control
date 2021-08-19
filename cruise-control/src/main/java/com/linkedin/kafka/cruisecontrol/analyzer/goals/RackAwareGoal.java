@@ -16,6 +16,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
 import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -209,8 +210,7 @@ public class RackAwareGoal extends AbstractRackAwareGoal {
     // same cluster, keep its rack id in the list.
     partitionRackIds.remove(replica.broker().rack().id());
 
-    SortedSet<Broker> rackAwareEligibleBrokers = new TreeSet<>((o1, o2) -> {
-      return Integer.compare(o1.id(), o2.id()); });
+    SortedSet<Broker> rackAwareEligibleBrokers = new TreeSet<>(Comparator.comparingInt(Broker::id));
     for (Broker broker : clusterModel.aliveBrokers()) {
       if (!partitionRackIds.contains(broker.rack().id())) {
         rackAwareEligibleBrokers.add(broker);

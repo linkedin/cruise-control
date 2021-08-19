@@ -98,7 +98,7 @@ public class JwtAuthenticator extends LoginAuthenticator {
     String serializedJWT;
     HttpServletRequest req = (HttpServletRequest) request;
     // we'll skip the authentication for CORS preflight requests
-    if (HttpMethod.OPTIONS.name().toLowerCase().equals(req.getMethod().toLowerCase())) {
+    if (HttpMethod.OPTIONS.name().equalsIgnoreCase(req.getMethod())) {
       return Authentication.NOT_CHECKED;
     }
     serializedJWT = getJwtFromBearerAuthorization(req);

@@ -18,7 +18,7 @@ public class CCEmbeddedZookeeper implements AutoCloseable {
   private final int _port;
   private final ZooKeeperServer _zk;
   private final ServerCnxnFactory _cnxnFactory;
-  private CountDownLatch _shutdownLatch = null;
+  private final CountDownLatch _shutdownLatch = null;
 
   public CCEmbeddedZookeeper() {
     int tickTime = 500;

@@ -211,18 +211,15 @@ public class KafkaCruiseControl {
    * Shutdown Cruise Control.
    */
   public void shutdown() {
-    Thread t = new Thread() {
-      @Override
-      public void run() {
-        LOG.info("Shutting down Kafka Cruise Control...");
-        _loadMonitor.shutdown();
-        _executor.shutdown();
-        _anomalyDetectorManager.shutdown();
-        _goalOptimizer.shutdown();
-        closeAdminClientWithTimeout(_adminClient);
-        LOG.info("Kafka Cruise Control shutdown completed.");
-      }
-    };
+    Thread t = new Thread(() -> {
+      LOG.info("Shutting down Kafka Cruise Control...");
+      _loadMonitor.shutdown();
+      _executor.shutdown();
+      _anomalyDetectorManager.shutdown();
+      _goalOptimizer.shutdown();
+      closeAdminClientWithTimeout(_adminClient);
+      LOG.info("Kafka Cruise Control shutdown completed.");
+    });
     t.setDaemon(true);
     t.start();
     try {

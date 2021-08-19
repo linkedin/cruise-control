@@ -178,7 +178,7 @@ public final class CruiseControlMetricsUtils {
             }
             timeToSleep *= base;
             Thread.sleep(timeToSleep);
-          } catch (InterruptedException e) {
+          } catch (InterruptedException ignored) {
 
           }
         }

@@ -51,6 +51,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.USER_TASK_MANAGER_SENSOR;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.ensureHeaderNotPresent;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.httpServletRequestToString;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.queryWithParameters;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REVIEW_ID_PARAM;
 
 /**
@@ -93,7 +94,7 @@ public class UserTaskManager implements Closeable {
                          Purgatory purgatory) {
     _purgatory = purgatory;
     _sessionKeyToUserTaskIdMap = new HashMap<>();
-    List<CruiseControlEndpointType> endpointTypes = Collections.unmodifiableList(Arrays.asList(CruiseControlEndpointType.values()));
+    List<CruiseControlEndpointType> endpointTypes = List.of(CruiseControlEndpointType.values());
     _uuidToCompletedUserTaskInfoMap = new HashMap<>(endpointTypes.size());
     _completedUserTaskRetentionTimeMs = new HashMap<>(endpointTypes.size());
     initCompletedUserTaskRetentionPolicy(config, endpointTypes);
@@ -123,11 +124,11 @@ public class UserTaskManager implements Closeable {
     _purgatory = null;
     _sessionKeyToUserTaskIdMap = new HashMap<>();
     _uuidToActiveUserTaskInfoMap = new LinkedHashMap<>(maxActiveUserTasks);
-    List<CruiseControlEndpointType> endpointTypes = Collections.unmodifiableList(Arrays.asList(CruiseControlEndpointType.values()));
+    List<CruiseControlEndpointType> endpointTypes = List.of(CruiseControlEndpointType.values());
     _uuidToCompletedUserTaskInfoMap = new HashMap<>(endpointTypes.size());
     _completedUserTaskRetentionTimeMs = new HashMap<>(endpointTypes.size());
     for (CruiseControlEndpointType endpointType : endpointTypes) {
-      _uuidToCompletedUserTaskInfoMap.put(endpointType, new LinkedHashMap<UUID, UserTaskInfo>() {
+      _uuidToCompletedUserTaskInfoMap.put(endpointType, new LinkedHashMap<>() {
         @Override
         protected boolean removeEldestEntry(Map.Entry<UUID, UserTaskInfo> eldest) {
           return this.size() > maxCachedCompletedUserTasks;
@@ -191,7 +192,7 @@ public class UserTaskManager implements Closeable {
           throw new IllegalStateException("Unknown endpoint type " + endpointType);
       }
       Integer mapSize = maxCachedCompletedUserTasks == null ? defaultMaxCachedCompletedUserTasks : maxCachedCompletedUserTasks;
-      _uuidToCompletedUserTaskInfoMap.put(endpointType, new LinkedHashMap<UUID, UserTaskInfo>() {
+      _uuidToCompletedUserTaskInfoMap.put(endpointType, new LinkedHashMap<>() {
         @Override
         protected boolean removeEldestEntry(Map.Entry<UUID, UserTaskInfo> eldest) {
           return this.size() > mapSize;
@@ -706,17 +707,7 @@ public class UserTaskManager implements Closeable {
      * @return User request along with its parameters as a String.
      */
     public String requestWithParams() {
-      StringBuilder sb = new StringBuilder(_requestUrl);
-      String queryParamDelimiter = "?";
-      for (Map.Entry<String, String[]> paramSet : _queryParams.entrySet()) {
-        for (String paramValue : paramSet.getValue()) {
-          sb.append(queryParamDelimiter).append(paramSet.getKey()).append("=").append(paramValue);
-          if ("?".equals(queryParamDelimiter)) {
-            queryParamDelimiter = "&";
-          }
-        }
-      }
-      return sb.toString();
+      return queryWithParameters(_requestUrl, _queryParams);
     }
 
     /**
@@ -774,7 +765,7 @@ public class UserTaskManager implements Closeable {
             // as the "originalResponse".
             jsonObjectMap.put(ORIGINAL_RESPONSE, TaskState.COMPLETED_WITH_ERROR.toString());
           } else {
-            throw new IllegalStateException("Error happened in fetching response for task " + _userTaskId.toString(), e);
+            throw new IllegalStateException("Error happened in fetching response for task " + _userTaskId, e);
           }
         }
       }
@@ -813,7 +804,7 @@ public class UserTaskManager implements Closeable {
     COMPLETED("Completed"),
     COMPLETED_WITH_ERROR("CompletedWithError");
 
-    private static final List<TaskState> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
+    private static final List<TaskState> CACHED_VALUES = List.of(values());
     private final String _type;
     TaskState(String type) {
       _type = type;

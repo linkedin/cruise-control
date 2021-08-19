@@ -115,11 +115,11 @@ public class GoalViolations extends KafkaAnomaly {
     sb.append(String.format("{%s: {", UNFIXABLE_GOAL_VIOLATIONS));
     StringJoiner joiner = new StringJoiner(",");
     _violatedGoalsByFixability.getOrDefault(false, Collections.emptyList()).forEach(joiner::add);
-    sb.append(joiner.toString());
+    sb.append(joiner);
     sb.append(String.format("}, %s: {", FIXABLE_GOAL_VIOLATIONS));
     joiner = new StringJoiner(",");
     _violatedGoalsByFixability.getOrDefault(true, Collections.emptyList()).forEach(joiner::add);
-    sb.append(joiner.toString());
+    sb.append(joiner);
     sb.append(String.format("}, Exclude brokers recently (removed: %s demoted: %s)%s}",
                             _excludeRecentlyRemovedBrokers, _excludeRecentlyDemotedBrokers,
                             _provisionResponse == null ? "" : String.format(", Provision: %s", _provisionResponse)));

@@ -7,11 +7,10 @@ package com.linkedin.kafka.cruisecontrol.detector.notifier;
 import java.io.Serializable;
 
 public final class SlackMessage implements Serializable {
-
-    private String _username;
-    private String _text;
-    private String _iconEmoji;
-    private String _channel;
+    private final String _username;
+    private final String _text;
+    private final String _iconEmoji;
+    private final String _channel;
 
     public SlackMessage(String username, String text, String iconEmoji, String channel) {
         _username = username;

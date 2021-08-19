@@ -187,17 +187,15 @@ public class LinearRegressionModelParameters {
     int leaderBytesInIndex = 0;
     int leaderBytesOutIndex = 1;
     int followerBytesInIndex = ignoreLeaderBytesOutRate ? 1 : 2;
-    for (int i = 0; i < sampleBytesRateData.length; i++) {
-      int leaderToFollowerRatio
-          = sampleBytesRateData[i][followerBytesInIndex] == 0.0
-            ? 10000000 : (int) ((sampleBytesRateData[i][leaderBytesInIndex] / sampleBytesRateData[i][followerBytesInIndex]) * 10);
+    for (double[] sampleBytesRateDatum : sampleBytesRateData) {
+      int leaderToFollowerRatio = sampleBytesRateDatum[followerBytesInIndex] == 0.0 ? 10000000 : (int) (
+          (sampleBytesRateDatum[leaderBytesInIndex] / sampleBytesRateDatum[followerBytesInIndex]) * 10);
       int count = usedLeaderToFollowerRatio.getOrDefault(leaderToFollowerRatio, 0);
       usedLeaderToFollowerRatio.put(leaderToFollowerRatio, count + 1);
 
       if (!ignoreLeaderBytesOutRate) {
-        int leaderBytesInToBytesOutRatio
-            = sampleBytesRateData[i][leaderBytesOutIndex] == 0.0
-              ? 10000000 : (int) ((sampleBytesRateData[i][leaderBytesInIndex] / sampleBytesRateData[i][leaderBytesOutIndex]) * 10);
+        int leaderBytesInToBytesOutRatio = sampleBytesRateDatum[leaderBytesOutIndex] == 0.0 ? 10000000 : (int) (
+            (sampleBytesRateDatum[leaderBytesInIndex] / sampleBytesRateDatum[leaderBytesOutIndex]) * 10);
         count = usedLeaderBytesInToBytesOutRatio.getOrDefault(leaderBytesInToBytesOutRatio, 0);
         usedLeaderBytesInToBytesOutRatio.put(leaderBytesInToBytesOutRatio, count + 1);
       }
@@ -205,12 +203,10 @@ public class LinearRegressionModelParameters {
     regression.newSampleData(aggregateSampleCpuUtilData(), sampleBytesRateData);
     double[] parameters = regression.estimateRegressionParameters();
     coefficientFromAvailableData.put(ModelCoefficient.LEADER_BYTES_IN, parameters[leaderBytesInIndex]);
-    if (ignoreLeaderBytesOutRate) {
-      coefficientFromAvailableData.put(ModelCoefficient.FOLLOWER_BYTES_IN, parameters[followerBytesInIndex]);
-    } else {
+    if (!ignoreLeaderBytesOutRate) {
       coefficientFromAvailableData.put(ModelCoefficient.LEADER_BYTES_OUT, parameters[leaderBytesOutIndex]);
-      coefficientFromAvailableData.put(ModelCoefficient.FOLLOWER_BYTES_IN, parameters[followerBytesInIndex]);
     }
+    coefficientFromAvailableData.put(ModelCoefficient.FOLLOWER_BYTES_IN, parameters[followerBytesInIndex]);
     return new LinearRegressionModelState(detailCompleteness, coefficientFromAvailableData,
                                           OBSERVED_LEADER_TO_FOLLOWER_BYTES_RATIO,
                                           OBSERVED_LEADER_BYTES_IN_TO_BYTES_OUT_RATIO,

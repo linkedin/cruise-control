@@ -56,7 +56,7 @@ public class AbstractConfig {
       _values.put(update.getKey(), update.getValue());
     }
     definition.parse(_values);
-    _used = Collections.synchronizedSet(new HashSet<String>());
+    _used = Collections.synchronizedSet(new HashSet<>());
     this._definition = definition;
     if (doLog) {
       logAll();
@@ -291,7 +291,7 @@ public class AbstractConfig {
   public <T> List<T> getConfiguredInstances(String key, Class<T> t, Map<String, Object> configOverrides)
       throws CruiseControlException {
     List<String> klasses = getList(key);
-    List<T> objects = new ArrayList<T>();
+    List<T> objects = new ArrayList<>();
     if (klasses == null) {
       return objects;
     }

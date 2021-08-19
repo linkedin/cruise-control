@@ -151,13 +151,13 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
       StringJoiner joiner = new StringJoiner(", ");
       brokersUnderLowerThreshold.forEach(b -> joiner.add(String.format("%d:(%.3f)", b.id(), diskUsage(b))));
       LOG.warn("There are still {} brokers under the lower threshold of {}. The brokers are {}",
-               brokersUnderLowerThreshold.size(), dWrap(lowerThreshold), joiner.toString());
+               brokersUnderLowerThreshold.size(), dWrap(lowerThreshold), joiner);
     }
     if (!brokersAboveUpperThreshold.isEmpty()) {
       StringJoiner joiner = new StringJoiner(", ");
       brokersAboveUpperThreshold.forEach(b -> joiner.add(String.format("%d:(%.3f)", b.id(), diskUsage(b))));
       LOG.warn("There are still {} brokers above the upper threshold of {}. The brokers are {}",
-               brokersAboveUpperThreshold.size(), dWrap(upperThreshold), joiner.toString());
+               brokersAboveUpperThreshold.size(), dWrap(upperThreshold), joiner);
     }
     return brokersUnderLowerThreshold.isEmpty() && brokersAboveUpperThreshold.isEmpty();
   }
