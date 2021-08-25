@@ -49,7 +49,7 @@ public final class ResponseUtils {
     }
   }
 
-  static String getBaseJSONString(String message) {
+  static String getBaseJsonString(String message) {
     Map<String, Object> jsonResponse = new HashMap<>(2);
     jsonResponse.put(VERSION, JSON_VERSION);
     jsonResponse.put(MESSAGE, message);

@@ -49,7 +49,7 @@ public class KafkaCruiseControlServletEndpointTest {
 
   private static final Collection<Object[]> INITIALIZE_SERVLET_REQUESTS_OUTPUT = new ArrayList<>();
   private static final Collection<Object[]> POPULATE_USER_TASK_MANAGER_OUTPUT = new ArrayList<>();
-  private static final UserTaskManager.UUIDGenerator MOCK_UUID_GENERATOR;
+  private static final UserTaskManager.UuidGenerator MOCK_UUID_GENERATOR;
   private static final HttpSession MOCK_HTTP_SESSION;
   private static final HttpServletResponse MOCK_HTTP_SERVLET_RESPONSE;
   private static final UserTaskManager USER_TASK_MANAGER;
@@ -66,7 +66,7 @@ public class KafkaCruiseControlServletEndpointTest {
     DIFF_PARAM.put("param", new String[]{"true"});
 
     Time mockTime = new MockTime();
-    MOCK_UUID_GENERATOR = EasyMock.mock(UserTaskManager.UUIDGenerator.class);
+    MOCK_UUID_GENERATOR = EasyMock.mock(UserTaskManager.UuidGenerator.class);
     MOCK_HTTP_SESSION = EasyMock.mock(HttpSession.class);
     MOCK_HTTP_SERVLET_RESPONSE = EasyMock.mock(HttpServletResponse.class);
     EasyMock.expect(MOCK_HTTP_SESSION.getLastAccessedTime()).andReturn(mockTime.milliseconds()).anyTimes();
@@ -111,7 +111,7 @@ public class KafkaCruiseControlServletEndpointTest {
   }
 
   // Creates 6 requests below. These will create 5 entries of UserTaskInfo (request 5 and 6 have same id, so will be 1 UserTaskInfo)
-  private void initializeServletRequests(HttpSession mockHttpSession, UserTaskManager.UUIDGenerator mockUUIDGenerator) {
+  private void initializeServletRequests(HttpSession mockHttpSession, UserTaskManager.UuidGenerator mockUuidGenerator) {
     Collection<Object[]> allParams = new ArrayList<>();
 
     allParams.add(inputRequestParams(null, "0.0.0.1", LOAD.toString(), EMPTY_PARAM, false, GET_METHOD));
@@ -123,7 +123,7 @@ public class KafkaCruiseControlServletEndpointTest {
 
     for (Object[] params : allParams) {
       HttpServletRequest mockHttpServletRequest = prepareTestRequest(mockHttpSession, params[0], params[1], params[2],
-                                                                     params[3], mockUUIDGenerator, params[4], params[5]);
+                                                                     params[3], mockUuidGenerator, params[4], params[5]);
       INITIALIZE_SERVLET_REQUESTS_OUTPUT.add(outputRequestInfo(mockHttpServletRequest));
     }
   }
@@ -244,12 +244,12 @@ public class KafkaCruiseControlServletEndpointTest {
 
   @SuppressWarnings("unchecked")
   private HttpServletRequest prepareTestRequest(HttpSession session, Object userTaskId, Object clientId, Object resource,
-                                                Object params, UserTaskManager.UUIDGenerator mockUUIDGenerator, Object addToRequest, Object method) {
+                                                Object params, UserTaskManager.UuidGenerator mockUuidGenerator, Object addToRequest, Object method) {
 
     UUID uuidForGenerator = (userTaskId == null ? UUID.randomUUID() : (UUID) userTaskId);
     String uuidForRequest = (((Boolean) addToRequest && userTaskId != null) ? userTaskId.toString() : null);
 
-    EasyMock.expect(mockUUIDGenerator.randomUUID()).andReturn(uuidForGenerator).once();
+    EasyMock.expect(mockUuidGenerator.randomUUID()).andReturn(uuidForGenerator).once();
     return prepareRequest(session, uuidForRequest, (String) clientId, (String) resource, (Map<String, String []>) params, (String) method);
   }
 

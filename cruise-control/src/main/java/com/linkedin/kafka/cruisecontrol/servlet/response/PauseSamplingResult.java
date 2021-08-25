@@ -7,7 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.response;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.getBaseJSONString;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.getBaseJsonString;
 
 @JsonResponseClass
 @JsonResponseExternalFields(ResponseUtils.class)
@@ -21,6 +21,6 @@ public class PauseSamplingResult extends AbstractCruiseControlResponse {
   protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
     // Cache relevant response.
     String message = "Metric sampling paused.";
-    _cachedResponse = parameters.json() ? getBaseJSONString(message) : message;
+    _cachedResponse = parameters.json() ? getBaseJsonString(message) : message;
   }
 }

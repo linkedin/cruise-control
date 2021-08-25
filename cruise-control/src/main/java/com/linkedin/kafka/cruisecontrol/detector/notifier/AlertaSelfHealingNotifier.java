@@ -100,8 +100,8 @@ public class AlertaSelfHealingNotifier extends SelfHealingNotifier {
     String tmpLocalHostname;
     try {
       tmpLocalHostname = InetAddress.getLocalHost().getCanonicalHostName();
-    } catch (UnknownHostException e1) {
-      LOG.warn("Unable to get the hostname of the Cruise Control server");
+    } catch (UnknownHostException e) {
+      LOG.warn("Unable to get the hostname of the Cruise Control server", e);
       tmpLocalHostname = ALERT_CRUISE_CONTROL;
     }
     final String localHostname = tmpLocalHostname;
