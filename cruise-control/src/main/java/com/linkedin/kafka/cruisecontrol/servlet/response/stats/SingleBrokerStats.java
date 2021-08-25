@@ -78,14 +78,14 @@ public class SingleBrokerStats extends BasicStats {
   /**
    * @return An object that can be further used to encode into JSON.
    */
-  public Map<String, Object> getJSONStructure() {
-    Map<String, Object> entry = super.getJSONStructure();
+  public Map<String, Object> getJsonStructure() {
+    Map<String, Object> entry = super.getJsonStructure();
     entry.put(HOST, _host);
     entry.put(BROKER, _id);
     entry.put(BROKER_STATE, _state);
     if (!_diskStatsByLogdir.isEmpty()) {
       Map<String, Object> diskStates = new HashMap<>(_diskStatsByLogdir.size());
-      _diskStatsByLogdir.forEach((k, v) -> diskStates.put(k, v.getJSONStructure()));
+      _diskStatsByLogdir.forEach((k, v) -> diskStates.put(k, v.getJsonStructure()));
       entry.put(DISK_STATE, diskStates);
     }
     entry.put(RACK, _rack);

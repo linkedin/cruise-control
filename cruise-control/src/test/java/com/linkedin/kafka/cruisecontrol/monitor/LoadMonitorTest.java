@@ -286,7 +286,7 @@ public class LoadMonitorTest {
 
   // Test build cluster model for JBOD broker.
   @Test
-  public void testJBODClusterModel() throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
+  public void testJbodClusterModel() throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
     TestContext context = prepareContext(NUM_WINDOWS, true);
     LoadMonitor loadMonitor = context.loadmonitor();
     KafkaPartitionMetricSampleAggregator aggregator = context.aggregator();

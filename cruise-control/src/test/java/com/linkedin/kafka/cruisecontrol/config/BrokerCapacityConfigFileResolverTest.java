@@ -55,7 +55,7 @@ public class BrokerCapacityConfigFileResolverTest {
   }
 
   @Test
-  public void testParseConfigJBODFile() throws TimeoutException, BrokerCapacityResolutionException {
+  public void testParseConfigJbodFile() throws TimeoutException, BrokerCapacityResolutionException {
     BrokerCapacityConfigResolver configResolver = getBrokerCapacityConfigResolver("testCapacityConfigJBOD.json", this.getClass());
 
     assertEquals(2000000.0, configResolver.capacityForBroker("", "", 0, BROKER_CAPACITY_FETCH_TIMEOUT_MS, false)

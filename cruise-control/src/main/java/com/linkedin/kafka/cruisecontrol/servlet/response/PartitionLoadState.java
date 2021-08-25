@@ -94,13 +94,13 @@ public class PartitionLoadState extends AbstractCruiseControlResponse {
   @Override
   protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
     // Cache relevant response.
-    _cachedResponse = parameters.json() ? getJSONString() : getPlaintext();
+    _cachedResponse = parameters.json() ? getJsonString() : getPlaintext();
     // Discard irrelevant response.
     _sortedPartitions.clear();
     _topic = null;
   }
 
-  protected String getJSONString() {
+  protected String getJsonString() {
     Map<String, Object> partitionMap = new HashMap<>();
     List<Object> partitionList = new ArrayList<>();
     partitionMap.put(VERSION, JSON_VERSION);

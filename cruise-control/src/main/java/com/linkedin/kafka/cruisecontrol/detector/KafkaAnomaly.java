@@ -32,7 +32,7 @@ public abstract class KafkaAnomaly implements Anomaly, CruiseControlConfigurable
     if (_optimizationResult == null) {
       return null;
     }
-    return isJson ? _optimizationResult.cachedJSONResponse() : _optimizationResult.cachedPlaintextResponse();
+    return isJson ? _optimizationResult.cachedJsonResponse() : _optimizationResult.cachedPlaintextResponse();
   }
 
   /**
