@@ -83,7 +83,7 @@ public class UserTaskManager implements Closeable {
       Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("UserTaskScanner"));
   private final ExecutorService _userTaskLoggerExecutor =
       Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("UserTaskLogger"));
-  private final UUIDGenerator _uuidGenerator;
+  private final UuidGenerator _uuidGenerator;
   private final Map<EndPoint, Timer> _successfulRequestExecutionTimer;
   private final Map<EndpointType, Long> _completedUserTaskRetentionTimeMs;
   private final Purgatory _purgatory;
@@ -102,7 +102,7 @@ public class UserTaskManager implements Closeable {
     _maxActiveUserTasks = config.getInt(WebServerConfig.MAX_ACTIVE_USER_TASKS_CONFIG);
     _uuidToActiveUserTaskInfoMap = new LinkedHashMap<>(_maxActiveUserTasks);
     _time = Time.SYSTEM;
-    _uuidGenerator = new UUIDGenerator();
+    _uuidGenerator = new UuidGenerator();
     _userTaskScannerExecutor.scheduleAtFixedRate(new UserTaskScanner(),
                                                  USER_TASK_SCANNER_INITIAL_DELAY_SECONDS,
                                                  USER_TASK_SCANNER_PERIOD_SECONDS,
@@ -120,7 +120,7 @@ public class UserTaskManager implements Closeable {
                   long completedUserTaskRetentionTimeMs,
                   int maxCachedCompletedUserTasks,
                   Time time,
-                  UUIDGenerator uuidGenerator) {
+                  UuidGenerator uuidGenerator) {
     _purgatory = null;
     _sessionKeyToUserTaskIdMap = new HashMap<>();
     _uuidToActiveUserTaskInfoMap = new LinkedHashMap<>(maxActiveUserTasks);
@@ -154,7 +154,7 @@ public class UserTaskManager implements Closeable {
                   long completedUserTaskRetentionTimeMs,
                   int maxCachedCompletedUserTasks,
                   Time time) {
-    this(sessionExpiryMs, maxActiveUserTasks, completedUserTaskRetentionTimeMs, maxCachedCompletedUserTasks, time, new UUIDGenerator());
+    this(sessionExpiryMs, maxActiveUserTasks, completedUserTaskRetentionTimeMs, maxCachedCompletedUserTasks, time, new UuidGenerator());
   }
 
   private void initCompletedUserTaskRetentionPolicy(KafkaCruiseControlConfig config, List<CruiseControlEndpointType> endpointTypes) {
@@ -609,7 +609,7 @@ public class UserTaskManager implements Closeable {
   /**
    * A internal class for generating random UUID for user tasks.
    */
-  public static class UUIDGenerator {
+  public static class UuidGenerator {
     UUID randomUUID() {
       return UUID.randomUUID();
     }

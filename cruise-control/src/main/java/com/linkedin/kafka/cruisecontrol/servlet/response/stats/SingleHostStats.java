@@ -28,8 +28,8 @@ public class SingleHostStats extends BasicStats {
    *
    * @return The map describing host statistics.
    */
-  public Map<String, Object> getJSONStructure() {
-    Map<String, Object> hostEntry = super.getJSONStructure();
+  public Map<String, Object> getJsonStructure() {
+    Map<String, Object> hostEntry = super.getJsonStructure();
     hostEntry.put(HOST, _host);
     hostEntry.put(RACK, _rack);
     return hostEntry;

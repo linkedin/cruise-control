@@ -40,13 +40,13 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
   @JsonResponseField(required = false)
   protected static final String LOAD_BEFORE_OPTIMIZATION = "loadBeforeOptimization";
   protected OptimizerResult _optimizerResult;
-  protected String _cachedJSONResponse;
+  protected String _cachedJsonResponse;
   protected String _cachedPlaintextResponse;
 
   public OptimizationResult(OptimizerResult optimizerResult, KafkaCruiseControlConfig config) {
     super(config);
     _optimizerResult = optimizerResult;
-    _cachedJSONResponse = null;
+    _cachedJsonResponse = null;
     _cachedPlaintextResponse = null;
   }
 
@@ -57,8 +57,8 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
   /**
    * @return JSON response if cached, null otherwise.
    */
-  public String cachedJSONResponse() {
-    return _cachedJSONResponse;
+  public String cachedJsonResponse() {
+    return _cachedJsonResponse;
   }
 
   /**
@@ -110,9 +110,9 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
   protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
     // Cache relevant response.
     boolean isVerbose = ((KafkaOptimizationParameters) parameters).isVerbose();
-    _cachedResponse = parameters.json() ? getJSONString(isVerbose) : getPlaintext(isVerbose, getPlaintextPretext(parameters));
+    _cachedResponse = parameters.json() ? getJsonString(isVerbose) : getPlaintext(isVerbose, getPlaintextPretext(parameters));
     if (parameters.json()) {
-      _cachedJSONResponse = _cachedResponse;
+      _cachedJsonResponse = _cachedResponse;
     } else {
       _cachedPlaintextResponse = _cachedResponse;
     }
@@ -125,14 +125,14 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
    */
   public void discardIrrelevantAndCacheJsonAndPlaintext() {
     if (_optimizerResult != null) {
-      _cachedJSONResponse = getJSONString(false);
+      _cachedJsonResponse = getJsonString(false);
       _cachedPlaintextResponse = getPlaintext(false, String.format("%n%nCluster load after self-healing:%n"));
       // Discard irrelevant response.
       _optimizerResult = null;
     }
   }
 
-  protected String getJSONString(boolean isVerbose) {
+  protected String getJsonString(boolean isVerbose) {
     Map<String, Object> optimizationResult = new HashMap<>();
     if (isVerbose) {
       optimizationResult.put(PROPOSALS, _optimizerResult.goalProposals().stream()

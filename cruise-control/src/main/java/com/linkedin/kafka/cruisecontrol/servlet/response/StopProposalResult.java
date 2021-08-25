@@ -8,7 +8,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.StopProposalParameters;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.getBaseJSONString;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.getBaseJsonString;
 
 @JsonResponseClass
 @JsonResponseExternalFields(ResponseUtils.class)
@@ -26,6 +26,6 @@ public class StopProposalResult extends AbstractCruiseControlResponse {
     if (((StopProposalParameters) parameters).forceExecutionStop()) {
       message += FORCE_STOP_SUFFIX;
     }
-    _cachedResponse = parameters.json() ? getBaseJSONString(message) : message;
+    _cachedResponse = parameters.json() ? getBaseJsonString(message) : message;
   }
 }

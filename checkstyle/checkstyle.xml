@@ -259,6 +259,12 @@ LinkedIn Java style.
         <module name="ParameterName"/>
         <!-- Type names must be camel case starting with an uppercase letter -->
         <module name="TypeName"/>
+        <!-- Abbreviation in names must contain no more than '4' consecutive capital letters -->
+        <module name="AbbreviationAsWordInName"/>
+        <!-- Ensure that catch parameter names conform to a specified pattern -->
+        <module name="CatchParameterName">
+            <property name="format" value="^(e|t|[a-z][a-z][a-zA-Z]*)$"/>
+        </module>
 
         <!-- WHITESPACE -->
 

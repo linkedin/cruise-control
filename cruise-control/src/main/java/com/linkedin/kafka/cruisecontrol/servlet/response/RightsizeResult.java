@@ -45,7 +45,7 @@ public class RightsizeResult extends AbstractCruiseControlResponse {
     _provisionerState = provisionerState.toString();
   }
 
-  protected String getJSONString() {
+  protected String getJsonString() {
     Map<String, Object> jsonStructure = new HashMap<>(5);
     if (_numBrokersToAdd != ProvisionRecommendation.DEFAULT_OPTIONAL_INT) {
       jsonStructure.put(NUM_BROKERS_TO_ADD, _numBrokersToAdd);
@@ -64,7 +64,7 @@ public class RightsizeResult extends AbstractCruiseControlResponse {
 
   @Override
   protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
-    _cachedResponse = getJSONString();
+    _cachedResponse = getJsonString();
     // Discard irrelevant response.
     _topic = null;
     _provisionerState = null;

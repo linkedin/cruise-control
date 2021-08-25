@@ -60,7 +60,7 @@ public class DiskStats {
   /**
    * @return An object that can be further used to encode into JSON.
    */
-  public Map<String, Object> getJSONStructure() {
+  public Map<String, Object> getJsonStructure() {
     Map<String, Object> entry = new HashMap<>(4);
     entry.put(DISK_MB, _utilization == null ? DEAD_STATE : _utilization);
     entry.put(DISK_PCT, _utilization == null ? DEAD_STATE : utilizationPercentage());
