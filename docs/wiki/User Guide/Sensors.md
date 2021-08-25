@@ -1,3 +1,4 @@
+# Cruise Control Metrics
 Cruise Control uses [dropwizzard](http://www.dropwizard.io) metrics to report its own status. 
 
 Cruise Control metrics are useful to monitor the state of Cruise Control itself. There are metrics for the following sensor types:
@@ -110,3 +111,6 @@ Cruise Control metrics are useful to monitor the state of Cruise Control itself.
 |---------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
 | Service time of a successful request in ms for each endpoint  | kafka.cruisecontrol:name=KafkaCruiseControlServlet.<endpoint-name>-successful-request-execution-timer |
 | Request rate for each endpoint                                | kafka.cruisecontrol:name=KafkaCruiseControlServlet.<endpoint-name>-request-rate                       |
+---
+# Metrics Collection
+You can easily expose Cruise Control metrics by [enabling](https://github.com/linkedin/cruise-control/blob/master/kafka-cruise-control-start.sh#L64) Java Management Extensions (JMX), and collect them by using your favourite JMX collection tool (e.g - [jmx_exporter](https://github.com/prometheus/jmx_exporter)).
