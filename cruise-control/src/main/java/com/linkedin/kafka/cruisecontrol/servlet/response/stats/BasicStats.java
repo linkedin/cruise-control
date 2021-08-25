@@ -159,7 +159,7 @@ public class BasicStats {
    *
    * @return The map describing basic statistics.
    */
-  public Map<String, Object> getJSONStructure() {
+  public Map<String, Object> getJsonStructure() {
     Map<String, Object> entry = new HashMap<>(13);
     entry.put(DISK_MB, diskUtil());
     entry.put(DISK_PCT, diskUtilPct());

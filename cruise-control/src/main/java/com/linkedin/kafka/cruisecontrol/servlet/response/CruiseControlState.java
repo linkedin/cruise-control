@@ -59,7 +59,7 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
     _anomalyDetectorState = anomalyDetectorState;
   }
 
-  protected String getJSONString(CruiseControlParameters parameters) {
+  protected String getJsonString(CruiseControlParameters parameters) {
     Gson gson = new Gson();
     Map<String, Object> jsonStructure = getJsonStructure(((CruiseControlStateParameters) parameters).isVerbose());
     jsonStructure.put(VERSION, JSON_VERSION);
@@ -192,7 +192,7 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
   @Override
   protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
     // Cache relevant response.
-    _cachedResponse = parameters.json() ? getJSONString(parameters) : getPlaintext(parameters);
+    _cachedResponse = parameters.json() ? getJsonString(parameters) : getPlaintext(parameters);
     // Discard irrelevant response.
     _executorState = null;
     _monitorState = null;

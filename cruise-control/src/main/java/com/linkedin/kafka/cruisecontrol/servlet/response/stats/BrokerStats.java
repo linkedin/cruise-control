@@ -38,7 +38,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
   protected int _rackFieldLength;
   protected int _logdirFieldLength;
   protected String _cachedPlainTextResponse;
-  protected String _cachedJSONResponse;
+  protected String _cachedJsonResponse;
   protected boolean _isBrokerStatsEstimated;
 
   public BrokerStats(KafkaCruiseControlConfig config) {
@@ -49,7 +49,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
     _rackFieldLength = 10;
     _logdirFieldLength = 1;
     _cachedPlainTextResponse = null;
-    _cachedJSONResponse = null;
+    _cachedJsonResponse = null;
     _isBrokerStatsEstimated = false;
   }
 
@@ -79,7 +79,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
     return _isBrokerStatsEstimated;
   }
 
-  protected String getJSONString() {
+  protected String getJsonString() {
     Gson gson = new Gson();
     Map<String, Object> jsonStructure = getJsonStructure();
     jsonStructure.put(VERSION, JSON_VERSION);
@@ -94,13 +94,13 @@ public class BrokerStats extends AbstractCruiseControlResponse {
 
     // host level statistics
     for (Map.Entry<String, SingleHostStats> entry : _hostStats.entrySet()) {
-      hostStats.add(entry.getValue().getJSONStructure());
+      hostStats.add(entry.getValue().getJsonStructure());
     }
 
     // broker level statistics
     List<Map<String, Object>> brokerStats = new ArrayList<>(_brokerStats.size());
     for (SingleBrokerStats stats : _brokerStats) {
-      Map<String, Object> brokerEntry = stats.getJSONStructure();
+      Map<String, Object> brokerEntry = stats.getJsonStructure();
       brokerStats.add(brokerEntry);
     }
 
@@ -114,7 +114,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
   @Override
   protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
     // Cache relevant response.
-    _cachedJSONResponse = getJSONString();
+    _cachedJsonResponse = getJsonString();
     _cachedPlainTextResponse = toString();
     // Discard irrelevant response.
     _brokerStats.clear();
@@ -123,13 +123,13 @@ public class BrokerStats extends AbstractCruiseControlResponse {
 
   @Override
   public void discardIrrelevantResponse(CruiseControlParameters parameters) {
-    if (_cachedJSONResponse == null || _cachedPlainTextResponse == null) {
+    if (_cachedJsonResponse == null || _cachedPlainTextResponse == null) {
       discardIrrelevantAndCacheRelevant(parameters);
-      if (_cachedJSONResponse == null || _cachedPlainTextResponse == null) {
+      if (_cachedJsonResponse == null || _cachedPlainTextResponse == null) {
         throw new IllegalStateException("Failed to cache the relevant response.");
       }
     }
-    _cachedResponse = parameters.json() ? _cachedJSONResponse : _cachedPlainTextResponse;
+    _cachedResponse = parameters.json() ? _cachedJsonResponse : _cachedPlainTextResponse;
   }
 
   @Override
