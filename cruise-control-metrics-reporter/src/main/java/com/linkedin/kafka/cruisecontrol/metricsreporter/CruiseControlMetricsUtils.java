@@ -163,8 +163,10 @@ public final class CruiseControlMetricsUtils {
    * @param scaleMs the scale for computing the delay
    * @param base the base for computing the delay
    * @param maxAttempts the max number of attempts on calling the function
+   * @return {@code false} if the function requires a retry, but it cannot be retried, because the max attempts have been exceeded.
+   * {@code true} if the function stopped requiring a retry before exceeding the max attempts.
    */
-  public static void retry(Supplier<Boolean> function, long scaleMs, int base, int maxAttempts) {
+  public static boolean retry(Supplier<Boolean> function, long scaleMs, int base, int maxAttempts) {
     if (maxAttempts > 0) {
       int attempts = 0;
       long timeToSleep = scaleMs;
@@ -174,7 +176,7 @@ public final class CruiseControlMetricsUtils {
         if (retry) {
           try {
             if (++attempts == maxAttempts) {
-              break;
+              return false;
             }
             timeToSleep *= base;
             Thread.sleep(timeToSleep);
@@ -186,6 +188,7 @@ public final class CruiseControlMetricsUtils {
     } else {
       throw new ConfigException("Max attempts on metrics topic creation has to be greater than zero.");
     }
+    return true;
   }
 
   /**
@@ -193,9 +196,11 @@ public final class CruiseControlMetricsUtils {
    * It uses {@code DEFAULT_RETRY_BACKOFF_SCALE_MS} and {@code DEFAULT_RETRY_BACKOFF_BASE} for scale and base to compute the delay.
    * @param function the code to call and retry if needed
    * @param maxAttempts the max number of attempts on calling the function
+   * @return {@code false} if the function requires a retry, but it cannot be retried, because the max attempts have been exceeded.
+   * {@code true} if the function stopped requiring a retry before exceeding the max attempts.
    */
-  public static void retry(Supplier<Boolean> function, int maxAttempts) {
-    retry(function, DEFAULT_RETRY_BACKOFF_SCALE_MS, DEFAULT_RETRY_BACKOFF_BASE, maxAttempts);
+  public static boolean retry(Supplier<Boolean> function, int maxAttempts) {
+    return retry(function, DEFAULT_RETRY_BACKOFF_SCALE_MS, DEFAULT_RETRY_BACKOFF_BASE, maxAttempts);
   }
 
   /**
