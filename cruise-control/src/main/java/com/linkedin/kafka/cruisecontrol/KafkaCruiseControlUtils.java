@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.time.Duration;
@@ -106,6 +107,7 @@ public final class KafkaCruiseControlUtils {
   public static final String ENV_CONFIG_PROVIDER_NAME = "env";
   public static final String ENV_CONFIG_PROVIDER_CLASS_CONFIG = ".env.class";
   public static final long CLIENT_REQUEST_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(30);
+  public static final int TOPIC_AUTO_CREATE_RETRIES = 5;
   public static final String DEFAULT_CLEANUP_POLICY = "delete";
   public static final Random RANDOM = new Random();
   public static final ConfigResource CLUSTER_CONFIG = new ConfigResource(ConfigResource.Type.BROKER, "");
@@ -171,17 +173,29 @@ public final class KafkaCruiseControlUtils {
    */
   public static boolean createTopic(AdminClient adminClient, NewTopic topicToBeCreated) {
     try {
-      CreateTopicsResult createTopicsResult = adminClient.createTopics(Collections.singletonList(topicToBeCreated));
-      createTopicsResult.values().get(topicToBeCreated.name()).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-      LOG.info("Topic {} has been created.", topicToBeCreated.name());
-    } catch (InterruptedException | ExecutionException | TimeoutException e) {
-      if (e.getCause() instanceof TopicExistsException) {
-        return false;
+      boolean retryResponse = CruiseControlMetricsUtils.retry(() -> {
+        try {
+          CreateTopicsResult createTopicsResult = adminClient.createTopics(Collections.singletonList(topicToBeCreated));
+          createTopicsResult.values().get(topicToBeCreated.name()).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+          LOG.info("Topic {} has been created.", topicToBeCreated.name());
+          return false;
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+          if (e.getCause() instanceof TopicExistsException) {
+            throw (TopicExistsException) e.getCause();
+          }
+          LOG.warn("Unable to create topic {}.", topicToBeCreated.name(), e);
+          return true;
+        }
+      }, TOPIC_AUTO_CREATE_RETRIES);
+      if (!retryResponse) {
+        throw new IllegalStateException(String.format("Failed to create topic %s.", topicToBeCreated.name()));
       }
-      throw new IllegalStateException(String.format("Unable to create topic %s.", topicToBeCreated.name()), e);
+    } catch (TopicExistsException e) {
+      return false;
     }
     return true;
   }
+
   /**
    * Describe cluster configs.
    *
