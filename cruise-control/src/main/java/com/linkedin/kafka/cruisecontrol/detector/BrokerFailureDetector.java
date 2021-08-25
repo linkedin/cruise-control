@@ -30,7 +30,7 @@ import org.I0Itec.zkclient.exception.ZkMarshallingError;
 import org.I0Itec.zkclient.serialize.ZkSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.collection.JavaConversions;
+import scala.collection.JavaConverters;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ZK_SESSION_TIMEOUT;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ZK_CONNECTION_TIMEOUT;
@@ -168,8 +168,8 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector {
 
   private Set<Integer> aliveBrokers() {
     // We get the alive brokers from ZK directly.
-    return JavaConversions.asJavaCollection(_kafkaZkClient.getAllBrokersInCluster())
-                          .stream().map(Broker::id).collect(toSet());
+    return JavaConverters.asJavaCollection(_kafkaZkClient.getAllBrokersInCluster())
+                         .stream().map(Broker::id).collect(toSet());
   }
 
   private String failedBrokerString() {

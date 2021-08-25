@@ -11,11 +11,11 @@ import kafka.zk.AdminZkClient;
 import kafka.zk.KafkaZkClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.collection.JavaConversions;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import scala.collection.JavaConverters;
 
 
 /**
@@ -95,7 +95,7 @@ public class KafkaTopicConfigProvider extends JsonFileTopicConfigProvider {
                                                                               _zkSecurityEnabled);
     try {
       AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
-      return JavaConversions.mapAsJavaMap(adminZkClient.getAllTopicConfigs());
+      return JavaConverters.mapAsJavaMap(adminZkClient.getAllTopicConfigs());
     } finally {
       KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
     }
