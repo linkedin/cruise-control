@@ -43,6 +43,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *    &amp;replication_throttle=[bytes_per_second]
  *    &amp;review_id=[id]&amp;reason=[reason-for-request]&amp;get_response_schema=[true/false]
  *    &amp;execution_progress_check_interval_ms=[interval_in_ms]&amp;stop_ongoing_execution=[true/false]&amp;fast_mode=[true/false]
+ *    &amp;doAs=[user]
  * </pre>
  */
 public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameters {

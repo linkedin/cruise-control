@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import java.util.Collections;
+import java.util.regex.Pattern;
 import org.junit.Test;
 
 import static org.junit.Assert.assertThrows;
@@ -37,7 +38,8 @@ public class ProvisionRecommendationTest {
 
     // Verify: topic
     assertThrows(IllegalArgumentException.class, () -> new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).topic(null));
-    assertThrows(IllegalArgumentException.class, () -> new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).topic(""));
+    Pattern emptyPattern = Pattern.compile("");
+    assertThrows(IllegalArgumentException.class, () -> new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).topic(emptyPattern));
 
     // Verify: typicalBrokerId
     assertThrows(IllegalArgumentException.class, () -> new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).typicalBrokerId(-1));

@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import java.util.Collections;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 
 /**
@@ -23,7 +24,7 @@ import java.util.Set;
  *
  * <p>Constraints include:
  * <ul>
- *   <li>Topic name: If the resource is partition, the name of the topic must be specified.</li>
+ *   <li>Topic name regex: If the resource is partition, the regex name of the topic must be specified.</li>
  *   <li>A typical broker id and its capacity (one cannot be specified without the other)</li>
  *   <li>Specific resource, such as {@link Resource#DISK}.</li>
  *   <li>Excluded racks -- i.e. racks for which brokers should not be added to or removed from</li>
@@ -39,11 +40,9 @@ public final class ProvisionRecommendation {
   protected final int _numBrokers;
   protected final int _numRacks;
   protected final int _numDisks;
-  //TODO: Update the ProvisionRecommendation to provide a set of <topic, numPartition> for batch provisioning of partitions
-  //See <a href="https://github.com/linkedin/cruise-control/issues/1650">Issue #1650</a>
   protected final int _numPartitions;
   // If the resource is partition, the name of the topic must be specified.
-  protected final String _topic;
+  protected final Pattern _topic;
   // A typical broker id and its capacity (one cannot be specified without the other)
   protected final int _typicalBrokerId;
   protected final double _typicalBrokerCapacity;
@@ -62,7 +61,7 @@ public final class ProvisionRecommendation {
     private int _numRacks = DEFAULT_OPTIONAL_INT;
     private int _numDisks = DEFAULT_OPTIONAL_INT;
     private int _numPartitions = DEFAULT_OPTIONAL_INT;
-    private String _topic = null;
+    private Pattern _topic = null;
     private int _typicalBrokerId = DEFAULT_OPTIONAL_INT;
     private double _typicalBrokerCapacity = DEFAULT_OPTIONAL_DOUBLE;
     private Resource _resource = null;
@@ -129,13 +128,13 @@ public final class ProvisionRecommendation {
     }
 
     /**
-     * (Optional) Set the topic name
-     * @param topic Topic name for which to add partitions
+     * (Optional) Set the topic name regex
+     * @param topic Topic name regex for which to add partitions
      * @return this builder.
      */
-    public Builder topic(String topic) {
-      if (topic == null || topic.isEmpty()) {
-        throw new IllegalArgumentException("The name of the topic must be specified");
+    public Builder topic(Pattern topic) {
+      if (topic == null || topic.pattern().isEmpty()) {
+        throw new IllegalArgumentException("The regex name of the topic must be specified");
       }
       _topic = topic;
       return this;
@@ -268,10 +267,10 @@ public final class ProvisionRecommendation {
       if (builder._status != ProvisionStatus.UNDER_PROVISIONED) {
         throw new IllegalArgumentException("When the resource type is partition, the cluster must be under provisioned.");
       } else if (builder._topic == null) {
-        throw new IllegalArgumentException("When the resource type is partition, the corresponding topic must be specified.");
+        throw new IllegalArgumentException("When the resource type is partition, the corresponding topic regex must be specified.");
       }
     } else if (builder._topic != null) {
-      throw new IllegalArgumentException("When the resource type is not partition, topic cannot be specified.");
+      throw new IllegalArgumentException("When the resource type is not partition, topic regex cannot be specified.");
     }
   }
 
@@ -339,7 +338,7 @@ public final class ProvisionRecommendation {
     return _numPartitions;
   }
 
-  public String topic() {
+  public Pattern topic() {
     return _topic;
   }
 

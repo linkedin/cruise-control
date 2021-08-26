@@ -31,7 +31,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *    &amp;exclude_recently_removed_brokers=[true/false]&amp;replica_movement_strategies=[strategy1,strategy2...]
  *    &amp;destination_broker_ids=[id1,id2...]&amp;review_id=[id]&amp;replication_throttle=[bytes_per_second]
  *    &amp;execution_progress_check_interval_ms=[interval_in_ms]&amp;reason=[reason-for-request]
- *    &amp;stop_ongoing_execution=[true/false]&amp;get_response_schema=[true/false]&amp;fast_mode=[true/false]
+ *    &amp;stop_ongoing_execution=[true/false]&amp;get_response_schema=[true/false]&amp;fast_mode=[true/false]&amp;doAs=[user]
  * </pre>
  */
 public class RemoveBrokerParameters extends AddedOrRemovedBrokerParameters {

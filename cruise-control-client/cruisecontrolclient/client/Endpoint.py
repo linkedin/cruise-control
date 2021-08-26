@@ -503,6 +503,23 @@ class ReviewBoardEndpoint(AbstractEndpoint):
     }
 
 
+class RightsizeEndpoint(AbstractEndpoint):
+    name = "rightsize"
+    description = "Rightsize the broker or partition count"
+    http_method = "POST"
+    can_execute_proposal = False
+    available_Parameters = (
+        CCParameter.JSONParameter,
+        CCParameter.TopicParameter,
+        CCParameter.PartitionCountParameter,
+        CCParameter.NumBrokersToAddParameter
+    )
+    argparse_properties = {
+        'args': (name,),
+        'kwargs': dict(aliases=[name.replace('_', '-')], help=description)
+    }
+
+
 class StateEndpoint(AbstractEndpoint):
     name = "state"
     description = "Get the state of cruise control"

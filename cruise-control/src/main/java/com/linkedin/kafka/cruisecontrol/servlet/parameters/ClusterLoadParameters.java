@@ -31,6 +31,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  * Get the cluster load
  *    GET /kafkacruisecontrol/load?start=[START_TIMESTAMP]&amp;end=[END_TIMESTAMP]&amp;time=[END_TIMESTAMP]&amp;allow_capacity_estimation=[true/false]
  *    &amp;json=[true/false]&amp;populate_disk_info=[true/false]&amp;get_response_schema=[true/false]&amp;capacity_only=[true/false]
+ *    &amp;doAs=[user]
  * </pre>
  */
 public class ClusterLoadParameters extends AbstractParameters {

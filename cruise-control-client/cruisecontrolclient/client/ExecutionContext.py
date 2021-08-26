@@ -52,6 +52,7 @@ class ExecutionContext:
     #  "remove_broker": RemoveBrokerEndpoint,
     #  "remove_brokers": RemoveBrokerEndpoint,
     #  "resume_sampling": ResumeSamplingEndpoint,
+    #  "rightsize": RightsizeEndpoint,
     #  "state": StateEndpoint,
     #  "stop_proposal_execution": StopProposalExecutionEndpoint,
     #  "stop": StopProposalExecutionEndpoint,

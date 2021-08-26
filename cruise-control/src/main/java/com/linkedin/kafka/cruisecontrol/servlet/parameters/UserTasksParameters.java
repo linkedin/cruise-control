@@ -29,7 +29,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  * Retrieve the recent user tasks.
  *    GET /kafkacruisecontrol/user_tasks?json=[true/false]&amp;user_task_ids=[Set-of-USER-TASK-IDS]&amp;client_ids=[Set-of-ClientIdentity]&amp;
  *    endpoints=[Set-of-{@link CruiseControlEndPoint}]&amp;types=[Set-of-{@link UserTaskManager.TaskState}]&amp;entries=[POSITIVE-INTEGER]
- *    &amp;fetch_completed_task=[true/false]&amp;get_response_schema=[true/false]
+ *    &amp;fetch_completed_task=[true/false]&amp;get_response_schema=[true/false]&amp;doAs=[user]
  * </pre>
  */
 public class UserTasksParameters extends AbstractParameters {
