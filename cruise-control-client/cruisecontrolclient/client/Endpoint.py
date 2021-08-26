@@ -507,7 +507,7 @@ class RightsizeEndpoint(AbstractEndpoint):
     name = "rightsize"
     description = "Rightsize the broker or partition count"
     http_method = "POST"
-    can_execute_proposal = False
+    can_execute_proposal = True
     available_Parameters = (
         CCParameter.JSONParameter,
         CCParameter.TopicParameter,
@@ -516,7 +516,7 @@ class RightsizeEndpoint(AbstractEndpoint):
     )
     argparse_properties = {
         'args': (name,),
-        'kwargs': dict(aliases=[name.replace('_', '-')], help=description)
+        'kwargs': dict(help=description)
     }
 
 

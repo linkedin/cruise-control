@@ -24,6 +24,7 @@ class ExecutionContext:
         Endpoint.RebalanceEndpoint,
         Endpoint.RemoveBrokerEndpoint,
         Endpoint.ResumeSamplingEndpoint,
+        Endpoint.RightsizeEndpoint,
         Endpoint.ReviewBoardEndpoint,
         Endpoint.ReviewEndpoint,
         Endpoint.StateEndpoint,
