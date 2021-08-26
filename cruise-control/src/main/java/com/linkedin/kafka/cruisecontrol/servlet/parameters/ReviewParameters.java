@@ -23,7 +23,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *
  * <pre>
  *    POST /kafkacruisecontrol/review?json=[true/false]&amp;approve=[id1,id2,...]&amp;discard=[id1,id2,...]
- *    &amp;reason=[reason-for-review]&amp;get_response_schema=[true/false]
+ *    &amp;reason=[reason-for-review]&amp;get_response_schema=[true/false]&amp;doAs=[user]
  * </pre>
  */
 public class ReviewParameters extends AbstractParameters {

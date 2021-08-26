@@ -23,7 +23,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *
  * <pre>
  *    GET /kafkacruisecontrol/state?verbose=[true/false]&amp;substates=[SUBSTATES]&amp;super_verbose=[true/false]
- *    &amp;json=[true/false]&amp;get_response_schema=[true/false]
+ *    &amp;json=[true/false]&amp;get_response_schema=[true/false]&amp;doAs=[user]
  * </pre>
  */
 public class CruiseControlStateParameters extends AbstractParameters {

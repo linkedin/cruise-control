@@ -30,6 +30,7 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -205,7 +206,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     for (Map.Entry<String, Integer> numLeadersPerTopic : numLeadersByTopicNames.entrySet()) {
       if (numLeadersPerTopic.getValue() < totalMinimumLeaderCount) {
         ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
-            .numPartitions(totalMinimumLeaderCount).topic(numLeadersPerTopic.getKey()).build();
+            .numPartitions(totalMinimumLeaderCount).topicPattern(Pattern.compile(numLeadersPerTopic.getKey())).build();
         throw new OptimizationFailureException(
             String.format("[%s] Cannot distribute %d leaders over %d broker(s) with minimum required per broker leader count %d for topic %s.",
                           name(), numLeadersPerTopic.getValue(), eligibleBrokersForLeadership.size(), minTopicLeadersPerBroker(),
@@ -329,10 +330,10 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     }
     // Try to elect follower replica(s) of the interested topic on this broker to be leader
     List<Replica> followerReplicas = broker.trackedSortedReplicas(_replicaSortName)
-                                          .sortedReplicas(false).stream().filter(
-                                              replica -> !replica.isLeader()
-                                                         && replica.topicPartition().topic().equals(topicMustHaveLeaderPerBroker))
-                                          .collect(Collectors.toList());
+                                           .sortedReplicas(false).stream().filter(
+            replica -> !replica.isLeader()
+                       && replica.topicPartition().topic().equals(topicMustHaveLeaderPerBroker))
+                                           .collect(Collectors.toList());
 
     for (Replica followerReplica : followerReplicas) {
       Replica leader = clusterModel.partition(followerReplica.topicPartition()).leader();
@@ -355,13 +356,13 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     while (!brokersWithExcessiveLeaderToMove.isEmpty()) {
       Broker brokerWithExcessiveLeaderToMove = brokersWithExcessiveLeaderToMove.poll();
       List<Replica> leadersOfTopic = brokerWithExcessiveLeaderToMove.trackedSortedReplicas(_replicaSortName)
-                                                                                  .sortedReplicas(false).stream()
-                                                                                  .filter(replica ->
-                                                                                              replica.isLeader()
-                                                                                              && replica.topicPartition()
-                                                                                                        .topic()
-                                                                                                        .equals(topicMustHaveLeaderPerBroker))
-                                                                                  .collect(Collectors.toList());
+                                                                    .sortedReplicas(false).stream()
+                                                                    .filter(replica ->
+                                                                                replica.isLeader()
+                                                                                && replica.topicPartition()
+                                                                                          .topic()
+                                                                                          .equals(topicMustHaveLeaderPerBroker))
+                                                                    .collect(Collectors.toList());
       boolean leaderMoved = false;
       int topicLeaderCountOnGiverBroker = leadersOfTopic.size();
       for (Replica leaderOfTopic : leadersOfTopic) {
