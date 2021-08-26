@@ -22,7 +22,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  * <pre>
  * Retrieve the kafka cluster state.
  *    GET /kafkacruisecontrol/kafka_cluster_state?verbose=[true/false]&amp;json=[true/false]&amp;topic=[topic]
- *    &amp;get_response_schema=[true/false]
+ *    &amp;get_response_schema=[true/false]&amp;doAs=[user]
  * </pre>
  */
 public class KafkaClusterStateParameters extends AbstractParameters {
