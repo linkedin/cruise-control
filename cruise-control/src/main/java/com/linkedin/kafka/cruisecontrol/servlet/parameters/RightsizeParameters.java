@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
 import java.util.Collections;
 import java.util.SortedSet;
@@ -15,6 +16,18 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.TOPIC_PARAM;
 
 
+/**
+ * Parameters for {@link CruiseControlEndPoint#RIGHTSIZE}.
+ *
+ * <ul>
+ *   <li>Note that "num_brokers_to_add" is mutually exclusive to the "partition_count" parameter -- i.e. they cannot be used together.</li>
+ * </ul>
+ *
+ * <pre>
+ *    POST /kafkacruisecontrol/rightsize?json=[true/false]&amp;get_response_schema=[true/false]
+ *    &amp;doAs=[user]&amp;num_brokers_to_add=[POSITIVE-INTEGER]&amp;partition_count=[POSITIVE-INTEGER]&amp;topic=[topic]
+ * </pre>
+ */
 public class RightsizeParameters extends AbstractParameters {
   protected static final SortedSet<String> CASE_INSENSITIVE_PARAMETER_NAMES;
   static {

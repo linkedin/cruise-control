@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.ProvisionerState;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
@@ -29,12 +30,12 @@ public class RightsizeResult extends AbstractCruiseControlResponse {
 
   protected final int _numBrokersToAdd;
   protected final int _partitionCount;
-  protected String _topic;
+  protected Pattern _topic;
   protected String _provisionerState;
 
   public RightsizeResult(int numBrokersToAdd,
                          int partitionCount,
-                         String topic,
+                         Pattern topic,
                          ProvisionerState provisionerState,
                          KafkaCruiseControlConfig config) {
     super(config);
@@ -53,8 +54,8 @@ public class RightsizeResult extends AbstractCruiseControlResponse {
     if (_partitionCount != ProvisionRecommendation.DEFAULT_OPTIONAL_INT) {
       jsonStructure.put(PARTITION_COUNT, _partitionCount);
     }
-    if (_topic != null && !_topic.isEmpty()) {
-      jsonStructure.put(TOPIC, _topic);
+    if (_topic != null && !_topic.pattern().isEmpty()) {
+      jsonStructure.put(TOPIC, _topic.pattern());
     }
     jsonStructure.put(PROVISIONER_STATE, _provisionerState);
     jsonStructure.put(VERSION, JSON_VERSION);

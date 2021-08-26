@@ -60,3 +60,23 @@ class ReplicationFactorParameter(AbstractPositiveIntegerParameter):
         'args': ('--replication-factor',),
         'kwargs': dict(metavar='K', help=description, type=int)
     }
+
+
+class PartitionCountParameter(AbstractPositiveIntegerParameter):
+    """partition_count=[target_partition_count]"""
+    name = 'partition_count'
+    description = 'The target partition count to which the specified topics should be set'
+    argparse_properties = {
+        'args': ('--partition-count',),
+        'kwargs': dict(metavar='K', help=description, type=int)
+    }
+
+
+class NumBrokersToAddParameter(AbstractPositiveIntegerParameter):
+    """num_brokers_to_add=[num_brokers_to_add]"""
+    name = 'num_brokers_to_add'
+    description = 'The broker count to add to the cluster'
+    argparse_properties = {
+        'args': ('--num-brokers-to-add',),
+        'kwargs': dict(metavar='K', help=description, type=int)
+    }
