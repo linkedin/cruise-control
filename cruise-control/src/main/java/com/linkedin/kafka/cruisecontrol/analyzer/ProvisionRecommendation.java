@@ -41,8 +41,8 @@ public final class ProvisionRecommendation {
   protected final int _numRacks;
   protected final int _numDisks;
   protected final int _numPartitions;
-  // If the resource is partition, the name of the topic must be specified.
-  protected final Pattern _topic;
+  // If the resource is partition, the regex name of the topic must be specified.
+  protected final Pattern _topicPattern;
   // A typical broker id and its capacity (one cannot be specified without the other)
   protected final int _typicalBrokerId;
   protected final double _typicalBrokerCapacity;
@@ -61,7 +61,7 @@ public final class ProvisionRecommendation {
     private int _numRacks = DEFAULT_OPTIONAL_INT;
     private int _numDisks = DEFAULT_OPTIONAL_INT;
     private int _numPartitions = DEFAULT_OPTIONAL_INT;
-    private Pattern _topic = null;
+    private Pattern _topicPattern = null;
     private int _typicalBrokerId = DEFAULT_OPTIONAL_INT;
     private double _typicalBrokerCapacity = DEFAULT_OPTIONAL_DOUBLE;
     private Resource _resource = null;
@@ -129,14 +129,14 @@ public final class ProvisionRecommendation {
 
     /**
      * (Optional) Set the topic name regex
-     * @param topic Topic name regex for which to add partitions
+     * @param topicPattern Topic name regex for which to add partitions
      * @return this builder.
      */
-    public Builder topic(Pattern topic) {
-      if (topic == null || topic.pattern().isEmpty()) {
+    public Builder topicPattern(Pattern topicPattern) {
+      if (topicPattern == null || topicPattern.pattern().isEmpty()) {
         throw new IllegalArgumentException("The regex name of the topic must be specified");
       }
-      _topic = topic;
+      _topicPattern = topicPattern;
       return this;
     }
 
@@ -223,7 +223,7 @@ public final class ProvisionRecommendation {
     _numRacks = builder._numRacks;
     _numDisks = builder._numDisks;
     _numPartitions = builder._numPartitions;
-    _topic = builder._topic;
+    _topicPattern = builder._topicPattern;
     _typicalBrokerId = builder._typicalBrokerId;
     _typicalBrokerCapacity = builder._typicalBrokerCapacity;
     _resource = builder._resource;
@@ -237,7 +237,7 @@ public final class ProvisionRecommendation {
    * <ul>
    *   <li>exactly one resource type is set</li>
    *   <li>if the resource type is partition, then the cluster is under provisioned</li>
-   *   <li>if the resource type is partition, then the corresponding topic must be specified; otherwise, the topic cannot be specified</li>
+   *   <li>if the resource type is partition, then the corresponding topic regex must be specified; otherwise, the topic regex must be omitted</li>
    * </ul>
    *
    * @param builder The builder for sanity check upon construction
@@ -266,10 +266,10 @@ public final class ProvisionRecommendation {
     if (builder._numPartitions != DEFAULT_OPTIONAL_INT) {
       if (builder._status != ProvisionStatus.UNDER_PROVISIONED) {
         throw new IllegalArgumentException("When the resource type is partition, the cluster must be under provisioned.");
-      } else if (builder._topic == null) {
+      } else if (builder._topicPattern == null) {
         throw new IllegalArgumentException("When the resource type is partition, the corresponding topic regex must be specified.");
       }
-    } else if (builder._topic != null) {
+    } else if (builder._topicPattern != null) {
       throw new IllegalArgumentException("When the resource type is not partition, topic regex cannot be specified.");
     }
   }
@@ -338,8 +338,8 @@ public final class ProvisionRecommendation {
     return _numPartitions;
   }
 
-  public Pattern topic() {
-    return _topic;
+  public Pattern topicPattern() {
+    return _topicPattern;
   }
 
   public int typicalBrokerId() {
@@ -375,8 +375,8 @@ public final class ProvisionRecommendation {
     } else if (_numDisks != DEFAULT_OPTIONAL_INT) {
       sb.append(String.format("%d disk%s", _numDisks, _numDisks > 1 ? "s" : ""));
     } else if (_numPartitions != DEFAULT_OPTIONAL_INT) {
-      sb.append(String.format("the minimum number of partitions so that the topic %s has %d partition%s",
-                              _topic, _numPartitions, _numPartitions > 1 ? "s" : ""));
+      sb.append(String.format("the minimum number of partitions so that the topic regex %s has %d partition%s",
+                              _topicPattern, _numPartitions, _numPartitions > 1 ? "s" : ""));
     }
     // 3. (optional) Typical broker id, its capacity, and resource
     if (_typicalBrokerId != DEFAULT_OPTIONAL_INT) {

@@ -36,10 +36,11 @@ public class ProvisionRecommendationTest {
     assertThrows(IllegalArgumentException.class, () -> new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).numPartitions(0));
     assertThrows(IllegalArgumentException.class, () -> new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).numPartitions(-1));
 
-    // Verify: topic
-    assertThrows(IllegalArgumentException.class, () -> new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).topic(null));
+    // Verify: topic pattern
+    assertThrows(IllegalArgumentException.class, () -> new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).topicPattern(null));
     Pattern emptyPattern = Pattern.compile("");
-    assertThrows(IllegalArgumentException.class, () -> new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).topic(emptyPattern));
+    assertThrows(IllegalArgumentException.class, () -> new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
+        .topicPattern(emptyPattern));
 
     // Verify: typicalBrokerId
     assertThrows(IllegalArgumentException.class, () -> new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).typicalBrokerId(-1));

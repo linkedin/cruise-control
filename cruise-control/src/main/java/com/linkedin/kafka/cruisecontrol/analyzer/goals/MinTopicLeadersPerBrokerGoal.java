@@ -206,7 +206,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     for (Map.Entry<String, Integer> numLeadersPerTopic : numLeadersByTopicNames.entrySet()) {
       if (numLeadersPerTopic.getValue() < totalMinimumLeaderCount) {
         ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
-            .numPartitions(totalMinimumLeaderCount).topic(Pattern.compile(numLeadersPerTopic.getKey())).build();
+            .numPartitions(totalMinimumLeaderCount).topicPattern(Pattern.compile(numLeadersPerTopic.getKey())).build();
         throw new OptimizationFailureException(
             String.format("[%s] Cannot distribute %d leaders over %d broker(s) with minimum required per broker leader count %d for topic %s.",
                           name(), numLeadersPerTopic.getValue(), eligibleBrokersForLeadership.size(), minTopicLeadersPerBroker(),

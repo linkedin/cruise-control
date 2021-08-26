@@ -81,7 +81,7 @@ public class RightsizeRequest extends AbstractSyncRequest {
         throw new UserRequestException("When the resource type is partition, a corresponding non-empty topic regex must be specified.");
       }
       recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).numPartitions(_parameters.partitionCount())
-                                                                                             .topic(topic)
+                                                                                             .topicPattern(topic)
                                                                                              .build();
     } else {
       throw new UserRequestException(String.format("Exactly one resource type must be set (Brokers:%d Partitions:%d))",
