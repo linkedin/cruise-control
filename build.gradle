@@ -95,13 +95,13 @@ subprojects {
 
   //code quality and inspections
   checkstyle {
-    toolVersion = '8.44'
+    toolVersion = '8.45.1'
     ignoreFailures = false
     configDir = file("$rootDir/checkstyle")
   }
 
   spotbugs {
-    toolVersion = '4.3.0'
+    toolVersion = '4.4.0'
     excludeFilter = file("$rootDir/gradle/findbugs-exclude.xml")
     ignoreFailures = false
     jvmArgs = [ '-Xms512m' ]
@@ -250,13 +250,13 @@ project(':cruise-control') {
     compile 'org.apache.commons:commons-math3:3.6.1'
     compile 'org.apache.httpcomponents:httpclient:4.5.13'
     compile 'commons-codec:commons-codec:1.15'
-    compile 'com.google.code.gson:gson:2.8.7'
+    compile 'com.google.code.gson:gson:2.8.8'
     compile "org.eclipse.jetty:jetty-server:${jettyVersion}"
     compile 'io.dropwizard.metrics:metrics-core:3.2.6'
-    compile 'com.nimbusds:nimbus-jose-jwt:9.11.1'
+    compile 'com.nimbusds:nimbus-jose-jwt:9.13'
     compile 'com.101tec:zkclient:0.11'
     compile 'io.swagger.parser.v3:swagger-parser-v3:2.0.27'
-    compile 'io.github.classgraph:classgraph:4.8.110'
+    compile 'io.github.classgraph:classgraph:4.8.115'
 
     testCompile project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
     testCompile project(path: ':cruise-control-core', configuration: 'testOutput')
