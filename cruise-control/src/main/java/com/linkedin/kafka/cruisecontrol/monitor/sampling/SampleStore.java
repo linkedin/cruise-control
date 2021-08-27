@@ -62,6 +62,11 @@ public interface SampleStore extends CruiseControlConfigurable {
       _brokerMetricSampleAggregator = brokerMetricSampleAggregator;
     }
 
+    /**
+     * Load the given samples to the relevant metric sample aggregators.
+     *
+     * @param samples Samples to load.
+     */
     public void loadSamples(MetricSampler.Samples samples) {
       for (PartitionMetricSample sample : samples.partitionMetricSamples()) {
         _partitionMetricSampleAggregator.addSample(sample, false);
