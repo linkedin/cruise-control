@@ -9,6 +9,7 @@ import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.provider.ConfigProvider;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -32,14 +33,16 @@ public class EnvConfigProvider implements ConfigProvider {
 
   @Override
   public void close() {
-    _preConfiguredEnvironmentVariables.clear();
+    if (_preConfiguredEnvironmentVariables != null) {
+      _preConfiguredEnvironmentVariables.clear();
+    }
   }
 
   @Override
   public void configure(Map<String, ?> configs) {
     _preConfiguredEnvironmentVariables = configs.entrySet()
         .stream()
-        .collect(Collectors.toMap(Map.Entry::getKey, kv -> (String) kv.getValue()));
+        .collect(Collectors.toMap(Entry::getKey, kv -> (String) kv.getValue()));
   }
 
   private static void assertNoPath(String path) {
@@ -52,7 +55,9 @@ public class EnvConfigProvider implements ConfigProvider {
     if (_preConfiguredEnvironmentVariables == null) {
       return System.getenv();
     } else {
-      return _preConfiguredEnvironmentVariables;
+      Map<String, String> result = new HashMap<>(_preConfiguredEnvironmentVariables);
+      result.putAll(System.getenv());
+      return result;
     }
   }
 }

@@ -57,7 +57,9 @@ public class EnvConfigProvider implements ConfigProvider {
     if (_preConfiguredEnvironmentVariables == null) {
       return System.getenv();
     } else {
-      return _preConfiguredEnvironmentVariables;
+      Map<String, String> result = new HashMap<>(_preConfiguredEnvironmentVariables);
+      result.putAll(System.getenv());
+      return result;
     }
   }
 
