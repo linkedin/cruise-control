@@ -15,8 +15,8 @@ import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
 import com.linkedin.kafka.cruisecontrol.detector.MaintenanceEvent;
 import com.linkedin.kafka.cruisecontrol.detector.NoopMaintenanceEventReader;
 import com.linkedin.kafka.cruisecontrol.detector.NoopMetricAnomalyFinder;
-import com.linkedin.kafka.cruisecontrol.detector.NoopProvisioner;
 import com.linkedin.kafka.cruisecontrol.detector.NoopTopicAnomalyFinder;
+import com.linkedin.kafka.cruisecontrol.detector.PartitionProvisioner;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.NoopNotifier;
 import java.util.Collections;
 import java.util.List;
@@ -274,7 +274,7 @@ public final class AnomalyDetectorConfig {
    * <code>provisioner.class</code>
    */
   public static final String PROVISIONER_CLASS_CONFIG = "provisioner.class";
-  public static final String DEFAULT_PROVISIONER_CLASS = NoopProvisioner.class.getName();
+  public static final String DEFAULT_PROVISIONER_CLASS = PartitionProvisioner.class.getName();
   public static final String PROVISIONER_CLASS_DOC = "A provisioner class for adding / removing resources to / from the cluster. Different"
       + " platforms (e.g. Azure) should implement their own custom provisioners.";
 

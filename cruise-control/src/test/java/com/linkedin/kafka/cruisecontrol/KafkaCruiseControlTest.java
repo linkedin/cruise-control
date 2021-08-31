@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorManager;
+import com.linkedin.kafka.cruisecontrol.detector.NoopProvisioner;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.util.concurrent.ExecutionException;
@@ -62,7 +63,7 @@ public class KafkaCruiseControlTest extends CruiseControlIntegrationTestHarness 
 
     EasyMock.replay(time, anomalyDetectorManager, executor, loadMonitor, goalOptimizerExecutor, goalOptimizer);
     KafkaCruiseControl kafkaCruiseControl = new KafkaCruiseControl(_config, time, anomalyDetectorManager, executor,
-                                                                   loadMonitor, goalOptimizerExecutor, goalOptimizer);
+                                                                   loadMonitor, goalOptimizerExecutor, goalOptimizer, new NoopProvisioner());
 
     // Expect no failure (dryrun = true) regardless of ongoing executions.
     kafkaCruiseControl.sanityCheckDryRun(true, false);

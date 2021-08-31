@@ -13,6 +13,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus.UNDER_PROVISIONED;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 
@@ -27,23 +29,32 @@ public class RightsizeResult extends AbstractCruiseControlResponse {
   protected static final String TOPIC = "topic";
   @JsonResponseField
   protected static final String PROVISIONER_STATE = "provisionerState";
+  private static final String NO_ACTION = "No actions were taken on the cluster towards rightsizing it";
 
   protected final int _numBrokersToAdd;
   protected final int _partitionCount;
   protected Pattern _topic;
   protected String _provisionerState;
 
-  public RightsizeResult(int numBrokersToAdd,
-                         int partitionCount,
-                         Pattern topic,
-                         ProvisionerState provisionerState,
-                         KafkaCruiseControlConfig config) {
+  /**
+   * Note: {@link RightsizeResult} can only be constructed with a {@link ProvisionRecommendation}, whose status is
+   * {@link com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus#UNDER_PROVISIONED under-provisioned}.
+   *
+   * @param recommendation Provision recommendation that was used in rightsizing.
+   * @param provisionerState {@link ProvisionerState} of actions taken on the cluster towards rightsizing or {@code null} if no actions were taken.
+   * @param config The configurations for Cruise Control.
+   */
+  public RightsizeResult(ProvisionRecommendation recommendation, ProvisionerState provisionerState, KafkaCruiseControlConfig config) {
     super(config);
 
-    _numBrokersToAdd = numBrokersToAdd;
-    _partitionCount = partitionCount;
-    _topic = topic;
-    _provisionerState = provisionerState.toString();
+    if (validateNotNull(recommendation, "Provision recommendation cannot be null.").status() != UNDER_PROVISIONED) {
+      throw new IllegalArgumentException(String.format("Cannot construct a RightsizeResult with the provision recommendation [%s], because "
+                                                       + "its status is not %s.", recommendation, UNDER_PROVISIONED));
+    }
+    _numBrokersToAdd = recommendation.numBrokers();
+    _partitionCount = recommendation.numPartitions();
+    _topic = recommendation.topicPattern();
+    _provisionerState = provisionerState == null ? NO_ACTION : provisionerState.toString();
   }
 
   protected String getJsonString() {
