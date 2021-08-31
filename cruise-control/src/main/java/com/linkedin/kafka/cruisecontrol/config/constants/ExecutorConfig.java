@@ -38,20 +38,103 @@ public final class ExecutorConfig {
   public static final boolean DEFAULT_ZOOKEEPER_SECURITY_ENABLED = false;
   public static final String ZOOKEEPER_SECURITY_ENABLED_DOC = "Specify if ZooKeeper is secured, true or false";
 
-  public static final String ZOOKEEPER_SSL_CLIENT_ENABLE_CONFIG = "zookeeper.ssl.client.enable";
-  public static final String ZOOKEEPER_SSL_CNXN_SOCKET_CONFIG = "zookeeper.clientCnxnSocket";
-  public static final String ZOOKEEPER_SSL_KEYSTORE_LOCATION_CONFIG = "zookeeper.ssl.keystore.location";
-  public static final String ZOOKEEPER_SSL_KEYSTORE_PASSWORD_CONFIG = "zookeeper.ssl.keystore.password";
-  public static final String ZOOKEEPER_SSL_KEYSTORE_TYPE_CONFIG = "zookeeper.ssl.keystore.type";
-  public static final String ZOOKEEPER_SSL_TRUSTSTORE_LOCATION_CONFIG = "zookeeper.ssl.truststore.location";
-  public static final String ZOOKEEPER_SSL_TRUSTSTORE_PASSWORD_CONFIG = "zookeeper.ssl.truststore.password";
-  public static final String ZOOKEEPER_SSL_TRUSTSTORE_TYPE_CONFIG = "zookeeper.ssl.truststore.type";
-  public static final String ZOOKEEPER_SSL_PROTOCOL_CONFIG = "zookeeper.ssl.protocol";
-  public static final String ZOOKEEPER_SSL_ENABLED_PROTOCOLS_CONFIG = "zookeeper.ssl.enabled.protocols";
-  public static final String ZOOKEEPER_SSL_CIPHER_SUITES_CONFIG = "zookeeper.ssl.cipher.suites";
-  public static final String ZOOKEEPER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG = "zookeeper.ssl.endpoint.identification.algorithm";
-  public static final String ZOOKEEPER_SSL_CRL_ENABLE_CONFIG = "zookeeper.ssl.crl.enable";
-  public static final String ZOOKEEPER_SSL_OCSP_ENABLE_CONFIG = "zookeeper.ssl.ocsp.enable";
+  /**
+   * <code>zookeeper.ssl.client.enable</code>
+   */
+  public static final String ZOOKEEPER_SSL_CLIENT_ENABLE_CONFIG = KafkaConfig.ZkSslClientEnableProp();
+  public static final boolean DEFAULT_ZOOKEEPER_SSL_CLIENT_ENABLE = false;
+  public static final String ZOOKEEPER_SSL_CLIENT_ENABLE_DOC = KafkaConfig.ZkSslClientEnableDoc();
+
+  /**
+   * <code>zookeeper.clientCnxnSocket</code>
+   */
+  public static final String ZOOKEEPER_SSL_CNXN_SOCKET_CONFIG = KafkaConfig.ZkClientCnxnSocketProp();
+  public static final String DEFAULT_ZOOKEEPER_SSL_CNXN_SOCKET = null;
+  public static final String ZOOKEEPER_SSL_CNXN_SOCKET_DOC = KafkaConfig.ZkClientCnxnSocketDoc();
+
+  /**
+   * <code>zookeeper.ssl.keystore.location</code>
+   */
+  public static final String ZOOKEEPER_SSL_KEYSTORE_LOCATION_CONFIG = KafkaConfig.ZkSslKeyStoreLocationProp();
+  public static final String DEFAULT_ZOOKEEPER_SSL_KEYSTORE_LOCATION = null;
+  public static final String ZOOKEEPER_SSL_KEYSTORE_LOCATION_DOC = KafkaConfig.ZkSslKeyStoreLocationDoc();
+
+  /**
+   * <code>zookeeper.ssl.keystore.password</code>
+   */
+  public static final String ZOOKEEPER_SSL_KEYSTORE_PASSWORD_CONFIG = KafkaConfig.ZkSslKeyStorePasswordProp();
+  public static final String DEFAULT_ZOOKEEPER_SSL_KEYSTORE_PASSWORD = null;
+  public static final String ZOOKEEPER_SSL_KEYSTORE_PASSWORD_DOC = KafkaConfig.ZkSslKeyStorePasswordDoc();
+
+  /**
+   * <code>zookeeper.ssl.keystore.type</code>
+   */
+  public static final String ZOOKEEPER_SSL_KEYSTORE_TYPE_CONFIG = KafkaConfig.ZkSslKeyStoreTypeProp();
+  public static final String DEFAULT_ZOOKEEPER_SSL_KEYSTORE_TYPE = null;
+  public static final String ZOOKEEPER_SSL_KEYSTORE_TYPE_DOC = KafkaConfig.ZkSslKeyStoreTypeDoc();
+
+  /**
+   * <code>zookeeper.ssl.truststore.location</code>
+   */
+  public static final String ZOOKEEPER_SSL_TRUSTSTORE_LOCATION_CONFIG = KafkaConfig.ZkSslTrustStoreLocationProp();
+  public static final String DEFAULT_ZOOKEEPER_SSL_TRUSTSTORE_LOCATION = null;
+  public static final String ZOOKEEPER_SSL_TRUSTSTORE_LOCATION_DOC = KafkaConfig.ZkSslTrustStoreLocationDoc();
+
+  /**
+   * <code>zookeeper.ssl.truststore.password</code>
+   */
+  public static final String ZOOKEEPER_SSL_TRUSTSTORE_PASSWORD_CONFIG = KafkaConfig.ZkSslTrustStorePasswordProp();
+  public static final String DEFAULT_ZOOKEEPER_SSL_TRUSTSTORE_PASSWORD = null;
+  public static final String ZOOKEEPER_SSL_TRUSTSTORE_PASSWORD_DOC = KafkaConfig.ZkSslTrustStorePasswordDoc();
+
+  /**
+   * <code>zookeeper.ssl.truststore.type</code>
+   */
+  public static final String ZOOKEEPER_SSL_TRUSTSTORE_TYPE_CONFIG = KafkaConfig.ZkSslTrustStoreTypeProp();
+  public static final String DEFAULT_ZOOKEEPER_SSL_TRUSTSTORE_TYPE = null;
+  public static final String ZOOKEEPER_SSL_TRUSTSTORE_TYPE_DOC = KafkaConfig.ZkSslTrustStoreTypeDoc();
+
+  /**
+   * <code>zookeeper.ssl.protocol</code>
+   */
+  public static final String ZOOKEEPER_SSL_PROTOCOL_CONFIG = KafkaConfig.ZkSslProtocolProp();
+  public static final String DEFAULT_ZOOKEEPER_SSL_PROTOCOL = "TLSv1.2";
+  public static final String ZOOKEEPER_SSL_PROTOCOL_DOC = KafkaConfig.ZkSslProtocolDoc();
+
+  /**
+   * <code>zookeeper.ssl.enabled.protocols</code>
+   */
+  public static final String ZOOKEEPER_SSL_ENABLED_PROTOCOLS_CONFIG = KafkaConfig.ZkSslEnabledProtocolsProp();
+  public static final String DEFAULT_ZOOKEEPER_SSL_ENABLED_PROTOCOLS = null;
+  public static final String ZOOKEEPER_SSL_ENABLED_PROTOCOLS_DOC = KafkaConfig.ZkSslEnabledProtocolsDoc();
+
+  /**
+   * <code>zookeeper.ssl.cipher.suites</code>
+   */
+  public static final String ZOOKEEPER_SSL_CIPHER_SUITES_CONFIG = KafkaConfig.ZkSslCipherSuitesProp();
+  public static final String DEFAULT_ZOOKEEPER_SSL_CIPHER_SUITES = null;
+  public static final String ZOOKEEPER_SSL_CIPHER_SUITES_DOC = KafkaConfig.ZkSslCipherSuitesDoc();
+
+  /**
+   * <code>zookeeper.ssl.endpoint.identification.algorithm</code>
+   */
+  public static final String ZOOKEEPER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG = KafkaConfig.ZkSslEndpointIdentificationAlgorithmProp();
+  public static final String DEFAULT_ZOOKEEPER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM = "HTTPS";
+  public static final String ZOOKEEPER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_DOC = KafkaConfig.ZkSslEndpointIdentificationAlgorithmDoc();
+
+  /**
+   * <code>zookeeper.ssl.crl.enable</code>
+   */
+  public static final String ZOOKEEPER_SSL_CRL_ENABLE_CONFIG = KafkaConfig.ZkSslCrlEnableProp();
+  public static final boolean DEFAULT_ZOOKEEPER_SSL_CRL_ENABLE = false;
+  public static final String ZOOKEEPER_SSL_CRL_ENABLE_DOC = KafkaConfig.ZkSslCrlEnableDoc();
+
+  /**
+   * <code>zookeeper.ssl.ocsp.enable</code>
+   */
+  public static final String ZOOKEEPER_SSL_OCSP_ENABLE_CONFIG = KafkaConfig.ZkSslOcspEnableProp();
+  public static final boolean DEFAULT_ZOOKEEPER_SSL_OCSP_ENABLE = false;
+  public static final String ZOOKEEPER_SSL_OCSP_ENABLE_DOC = KafkaConfig.ZkSslOcspEnableDoc();
 
   /**
    * <code>num.concurrent.partition.movements.per.broker</code>
@@ -472,74 +555,74 @@ public final class ExecutorConfig {
                             ZOOKEEPER_SECURITY_ENABLED_DOC)
                     .define(ZOOKEEPER_SSL_CLIENT_ENABLE_CONFIG,
                             ConfigDef.Type.BOOLEAN,
-                            false,
+                            DEFAULT_ZOOKEEPER_SSL_CLIENT_ENABLE,
                             ConfigDef.Importance.MEDIUM,
-                            "")
+                            ZOOKEEPER_SSL_CLIENT_ENABLE_DOC)
                     .define(ZOOKEEPER_SSL_CNXN_SOCKET_CONFIG,
                             ConfigDef.Type.STRING,
-                            null,
+                            DEFAULT_ZOOKEEPER_SSL_CNXN_SOCKET,
                             ConfigDef.Importance.MEDIUM,
-                            "")
+                            ZOOKEEPER_SSL_CNXN_SOCKET_DOC)
                     .define(ZOOKEEPER_SSL_KEYSTORE_LOCATION_CONFIG,
                             ConfigDef.Type.STRING,
-                            null,
+                            DEFAULT_ZOOKEEPER_SSL_KEYSTORE_LOCATION,
                             ConfigDef.Importance.MEDIUM,
-                            "")
+                            ZOOKEEPER_SSL_KEYSTORE_LOCATION_DOC)
                     .define(ZOOKEEPER_SSL_KEYSTORE_PASSWORD_CONFIG,
                             ConfigDef.Type.PASSWORD,
-                            null,
+                            DEFAULT_ZOOKEEPER_SSL_KEYSTORE_PASSWORD,
                             ConfigDef.Importance.MEDIUM,
-                            "")
+                            ZOOKEEPER_SSL_KEYSTORE_PASSWORD_DOC)
                     .define(ZOOKEEPER_SSL_KEYSTORE_TYPE_CONFIG,
                             ConfigDef.Type.STRING,
-                            null,
+                            DEFAULT_ZOOKEEPER_SSL_KEYSTORE_TYPE,
                             ConfigDef.Importance.MEDIUM,
-                            "")
+                            ZOOKEEPER_SSL_KEYSTORE_TYPE_DOC)
                     .define(ZOOKEEPER_SSL_TRUSTSTORE_LOCATION_CONFIG,
                             ConfigDef.Type.STRING,
-                            null,
+                            DEFAULT_ZOOKEEPER_SSL_TRUSTSTORE_LOCATION,
                             ConfigDef.Importance.MEDIUM,
-                            "")
+                            ZOOKEEPER_SSL_TRUSTSTORE_LOCATION_DOC)
                     .define(ZOOKEEPER_SSL_TRUSTSTORE_PASSWORD_CONFIG,
                             ConfigDef.Type.PASSWORD,
-                            null,
+                            DEFAULT_ZOOKEEPER_SSL_TRUSTSTORE_PASSWORD,
                             ConfigDef.Importance.MEDIUM,
-                            "")
+                            ZOOKEEPER_SSL_TRUSTSTORE_PASSWORD_DOC)
                     .define(ZOOKEEPER_SSL_TRUSTSTORE_TYPE_CONFIG,
                             ConfigDef.Type.STRING,
-                            null,
+                            DEFAULT_ZOOKEEPER_SSL_TRUSTSTORE_TYPE,
                             ConfigDef.Importance.MEDIUM,
-                            "")
+                            ZOOKEEPER_SSL_TRUSTSTORE_TYPE_DOC)
                     .define(ZOOKEEPER_SSL_PROTOCOL_CONFIG,
                             ConfigDef.Type.STRING,
-                            "TLSv1.2",
+                            DEFAULT_ZOOKEEPER_SSL_PROTOCOL,
                             ConfigDef.Importance.LOW,
-                            "")
+                            ZOOKEEPER_SSL_PROTOCOL_DOC)
                     .define(ZOOKEEPER_SSL_ENABLED_PROTOCOLS_CONFIG,
                             ConfigDef.Type.LIST,
-                            null,
+                            DEFAULT_ZOOKEEPER_SSL_ENABLED_PROTOCOLS,
                             ConfigDef.Importance.LOW,
-                            "")
+                            ZOOKEEPER_SSL_ENABLED_PROTOCOLS_DOC)
                     .define(ZOOKEEPER_SSL_CIPHER_SUITES_CONFIG,
                             ConfigDef.Type.LIST,
-                            null,
+                            DEFAULT_ZOOKEEPER_SSL_CIPHER_SUITES,
                             ConfigDef.Importance.LOW,
-                            "")
+                            ZOOKEEPER_SSL_CIPHER_SUITES_DOC)
                     .define(ZOOKEEPER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG,
                             ConfigDef.Type.STRING,
-                            "HTTPS",
+                            DEFAULT_ZOOKEEPER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM,
                             ConfigDef.Importance.LOW,
-                            "")
+                            ZOOKEEPER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_DOC)
                     .define(ZOOKEEPER_SSL_CRL_ENABLE_CONFIG,
                             ConfigDef.Type.BOOLEAN,
-                            false,
+                            DEFAULT_ZOOKEEPER_SSL_CRL_ENABLE,
                             ConfigDef.Importance.LOW,
-                            "")
+                            ZOOKEEPER_SSL_CRL_ENABLE_DOC)
                     .define(ZOOKEEPER_SSL_OCSP_ENABLE_CONFIG,
                             ConfigDef.Type.BOOLEAN,
-                            false,
+                            DEFAULT_ZOOKEEPER_SSL_OCSP_ENABLE,
                             ConfigDef.Importance.LOW,
-                            "")
+                            ZOOKEEPER_SSL_OCSP_ENABLE_DOC)
                     .define(NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG,
                             ConfigDef.Type.INT,
                             DEFAULT_NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER,

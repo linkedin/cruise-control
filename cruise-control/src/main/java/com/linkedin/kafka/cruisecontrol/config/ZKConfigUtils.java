@@ -49,19 +49,9 @@ public final class ZKConfigUtils {
         } else {
             ZKClientConfig clientConfig = new ZKClientConfig();
             clientConfig.setProperty(ZKClientConfig.SECURE_CLIENT, "true");
-            setZooKeeperClientProperty(clientConfig, ExecutorConfig.ZOOKEEPER_SSL_CNXN_SOCKET_CONFIG, config);
-            setZooKeeperClientProperty(clientConfig, ExecutorConfig.ZOOKEEPER_SSL_KEYSTORE_LOCATION_CONFIG, config);
-            setZooKeeperClientProperty(clientConfig, ExecutorConfig.ZOOKEEPER_SSL_KEYSTORE_PASSWORD_CONFIG, config);
-            setZooKeeperClientProperty(clientConfig, ExecutorConfig.ZOOKEEPER_SSL_KEYSTORE_TYPE_CONFIG, config);
-            setZooKeeperClientProperty(clientConfig, ExecutorConfig.ZOOKEEPER_SSL_TRUSTSTORE_LOCATION_CONFIG, config);
-            setZooKeeperClientProperty(clientConfig, ExecutorConfig.ZOOKEEPER_SSL_TRUSTSTORE_PASSWORD_CONFIG, config);
-            setZooKeeperClientProperty(clientConfig, ExecutorConfig.ZOOKEEPER_SSL_TRUSTSTORE_TYPE_CONFIG, config);
-            setZooKeeperClientProperty(clientConfig, ExecutorConfig.ZOOKEEPER_SSL_PROTOCOL_CONFIG, config);
-            setZooKeeperClientProperty(clientConfig, ExecutorConfig.ZOOKEEPER_SSL_ENABLED_PROTOCOLS_CONFIG, config);
-            setZooKeeperClientProperty(clientConfig, ExecutorConfig.ZOOKEEPER_SSL_CIPHER_SUITES_CONFIG, config);
-            setZooKeeperClientProperty(clientConfig, ExecutorConfig.ZOOKEEPER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, config);
-            setZooKeeperClientProperty(clientConfig, ExecutorConfig.ZOOKEEPER_SSL_CRL_ENABLE_CONFIG, config);
-            setZooKeeperClientProperty(clientConfig, ExecutorConfig.ZOOKEEPER_SSL_OCSP_ENABLE_CONFIG, config);
+            for (String key : ZK_PROPERTIES.keySet()) {
+                setZooKeeperClientProperty(clientConfig, key, config);
+            }
             return clientConfig;
         }
     }

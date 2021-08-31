@@ -526,6 +526,7 @@ public final class KafkaCruiseControlUtils {
    * @param metricGroup Metric group
    * @param metricType Metric type
    * @param zkSecurityEnabled {@code true} if zkSecurityEnabled, {@code false} otherwise.
+   * @param zkClientConfig The ZooKeeper client configuration
    * @return A new instance of KafkaZkClient
    */
   public static KafkaZkClient createKafkaZkClient(String connectString,
