@@ -7,7 +7,7 @@ package com.linkedin.kafka.cruisecontrol;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
-import com.linkedin.kafka.cruisecontrol.config.EnvConfigProvider;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.config.EnvConfigProvider;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
