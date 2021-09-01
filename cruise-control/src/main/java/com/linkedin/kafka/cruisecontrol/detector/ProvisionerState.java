@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 
@@ -30,8 +31,8 @@ public class ProvisionerState {
   }
 
   public ProvisionerState(State state, String summary) {
-    _state = state;
-    _summary = Utils.validateNotNull(summary, "ProvisionerState summary cannot be null.");
+    _state = Utils.validateNotNull(state, "State cannot be null.");
+    _summary = Utils.validateNotNull(summary, "Summary cannot be null.");
     _createdMs = System.currentTimeMillis();
     _updatedMs = _createdMs;
   }
@@ -97,11 +98,24 @@ public class ProvisionerState {
   }
 
   @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ProvisionerState that = (ProvisionerState) o;
+    return _createdMs == that._createdMs && _updatedMs == that._updatedMs && _state == that._state && _summary.equals(that._summary);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(_state, _summary, _createdMs, _updatedMs);
+  }
+
+  @Override
   public String toString() {
-    return String.format("ProvisionerState:{state: %s, summary: %s, createdMs: %d, updated: %d}",
-                         _state.toString(),
-                         _summary,
-                         _createdMs,
-                         _updatedMs);
+    return String.format("{[%s] %s [createdMs: %d, updatedMs: %d]}", _state.toString(), _summary, _createdMs, _updatedMs);
   }
 }

@@ -16,9 +16,11 @@ import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorManager;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorState;
+import com.linkedin.kafka.cruisecontrol.detector.Provisioner;
 import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolutionException;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.exception.OngoingExecutionException;
@@ -64,6 +66,7 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.closeAdminClientWithTimeout;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.createAdminClient;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPriority;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.partitionWithOfflineReplicas;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.STOP_ONGOING_EXECUTION_PARAM;
 
@@ -81,6 +84,7 @@ public class KafkaCruiseControl {
   private final AnomalyDetectorManager _anomalyDetectorManager;
   private final Time _time;
   private final AdminClient _adminClient;
+  private final Provisioner _provisioner;
 
   private static final String VERSION;
   private static final String COMMIT_ID;
@@ -112,6 +116,9 @@ public class KafkaCruiseControl {
 
     // Instantiate the components.
     _adminClient = createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
+    _provisioner = config.getConfiguredInstance(AnomalyDetectorConfig.PROVISIONER_CLASS_CONFIG,
+                                                Provisioner.class,
+                                                Collections.singletonMap(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, this));
     _anomalyDetectorManager = new AnomalyDetectorManager(this, _time, dropwizardMetricRegistry);
     _executor = new Executor(config, _time, dropwizardMetricRegistry, _anomalyDetectorManager);
     _loadMonitor = new LoadMonitor(config, _time, dropwizardMetricRegistry, KafkaMetricDef.commonMetricDef());
@@ -128,7 +135,8 @@ public class KafkaCruiseControl {
                      Executor executor,
                      LoadMonitor loadMonitor,
                      ExecutorService goalOptimizerExecutor,
-                     GoalOptimizer goalOptimizer) {
+                     GoalOptimizer goalOptimizer,
+                     Provisioner provisioner) {
     _config = config;
     _time = time;
     _adminClient = createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
@@ -137,6 +145,7 @@ public class KafkaCruiseControl {
     _loadMonitor = loadMonitor;
     _goalOptimizerExecutor = goalOptimizerExecutor;
     _goalOptimizer = goalOptimizer;
+    _provisioner = provisioner;
   }
 
   /**
@@ -168,6 +177,14 @@ public class KafkaCruiseControl {
    */
   public AdminClient adminClient() {
     return _adminClient;
+  }
+
+  /**
+   * Retrieve the Provisioner (expected to be thread-safe).
+   * @return Provisioner of Cruise Control.
+   */
+  public Provisioner provisioner() {
+    return _provisioner;
   }
 
   /**
