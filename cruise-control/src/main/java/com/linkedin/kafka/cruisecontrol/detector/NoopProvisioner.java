@@ -18,12 +18,6 @@ public class NoopProvisioner implements Provisioner {
   }
 
   @Override
-  @Deprecated
-  public boolean rightsize(Map<String, ProvisionRecommendation> recommendationByRecommender) {
-    return false;
-  }
-
-  @Override
   public void configure(Map<String, ?> configs) {
   }
 }

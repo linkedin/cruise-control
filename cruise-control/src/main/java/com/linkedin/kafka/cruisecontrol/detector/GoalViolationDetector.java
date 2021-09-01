@@ -93,10 +93,7 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
                                                                  overrideConfigs);
     _goalViolationDetectionTimer = dropwizardMetricRegistry.timer(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR,
                                                                                       "goal-violation-detection-timer"));
-    overrideConfigs = Collections.singletonMap(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, kafkaCruiseControl);
-    _provisioner = config.getConfiguredInstance(AnomalyDetectorConfig.PROVISIONER_CLASS_CONFIG,
-                                                Provisioner.class,
-                                                overrideConfigs);
+    _provisioner = kafkaCruiseControl.provisioner();
     _isProvisionerEnabled = config.getBoolean(AnomalyDetectorConfig.PROVISIONER_ENABLE_CONFIG);
   }
 
@@ -228,9 +225,9 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
       _provisionResponse = provisionResponse;
       if (_isProvisionerEnabled) {
         // Rightsize the cluster (if needed)
-        ProvisionerState isRightsized = _provisioner.rightsize(_provisionResponse.recommendationByRecommender(), new RightsizeOptions());
-        if (isRightsized != null) {
-          LOG.info(isRightsized.toString());
+        ProvisionerState provisionerState = _provisioner.rightsize(_provisionResponse.recommendationByRecommender(), new RightsizeOptions());
+        if (provisionerState != null) {
+          LOG.info("Provisioner state: {}.", provisionerState);
         }
       }
       Map<Boolean, List<String>> violatedGoalsByFixability = goalViolations.violatedGoalsByFixability();

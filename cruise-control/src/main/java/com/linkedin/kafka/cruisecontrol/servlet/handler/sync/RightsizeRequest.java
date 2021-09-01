@@ -8,8 +8,6 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
-import com.linkedin.kafka.cruisecontrol.detector.Provisioner;
 import com.linkedin.kafka.cruisecontrol.detector.ProvisionerState;
 import com.linkedin.kafka.cruisecontrol.detector.RightsizeOptions;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
@@ -20,7 +18,6 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
-import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.RIGHTSIZE_PARAMETER_OBJECT_CONFIG;
 
 
@@ -36,18 +33,13 @@ public class RightsizeRequest extends AbstractSyncRequest {
   @Override
   protected RightsizeResult handle() {
     KafkaCruiseControlConfig config = _kafkaCruiseControl.config();
-    Map<String, Object> overrideConfigs;
-    overrideConfigs = Collections.singletonMap(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl);
-    Provisioner provisioner = config.getConfiguredInstance(AnomalyDetectorConfig.PROVISIONER_CLASS_CONFIG,
-                                                           Provisioner.class,
-                                                           overrideConfigs);
     ProvisionRecommendation recommendation = createProvisionRecommendation();
     Map<String, ProvisionRecommendation> provisionRecommendation;
     provisionRecommendation = Collections.singletonMap(RECOMMENDER_UP, recommendation);
 
-    ProvisionerState provisionerState = provisioner.rightsize(provisionRecommendation, new RightsizeOptions());
+    ProvisionerState provisionerState = _kafkaCruiseControl.provisioner().rightsize(provisionRecommendation, new RightsizeOptions());
 
-    return new RightsizeResult(_parameters.numBrokersToAdd(), _parameters.partitionCount(), _parameters.topic(), provisionerState, config);
+    return new RightsizeResult(recommendation, provisionerState, config);
   }
 
   /**
