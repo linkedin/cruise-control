@@ -385,10 +385,14 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     LOG.debug("Finished reporting KafkaMetrics.");
   }
 
-  private void reportCpuUtils(long now) throws IOException {
+  private void reportCpuUtils(long now) {
     LOG.debug("Reporting CPU util.");
-    sendCruiseControlMetric(MetricsUtils.getCpuMetric(now, _brokerId, _kubernetesMode));
-    LOG.debug("Finished reporting CPU util.");
+    try {
+      sendCruiseControlMetric(MetricsUtils.getCpuMetric(now, _brokerId, _kubernetesMode));
+      LOG.debug("Finished reporting CPU util.");
+    } catch (IOException e) {
+      LOG.warn("Failed reporting CPU util.", e);
+    }
   }
 
   private void addMetricIfInterested(KafkaMetric metric) {
