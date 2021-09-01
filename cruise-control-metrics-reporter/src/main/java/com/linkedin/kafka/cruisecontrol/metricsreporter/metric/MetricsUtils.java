@@ -397,7 +397,7 @@ public final class MetricsUtils {
     }
 
     if (cpuUtil < 0) {
-      throw new IllegalStateException("Java Virtual Machine recent CPU usage is not available.");
+      throw new IOException("Java Virtual Machine recent CPU usage is not available.");
     }
     return new BrokerMetric(RawMetricType.BROKER_CPU_UTIL, now, brokerId, cpuUtil);
   }
