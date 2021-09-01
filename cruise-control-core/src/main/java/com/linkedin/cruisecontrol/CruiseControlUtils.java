@@ -21,12 +21,15 @@ public final class CruiseControlUtils {
   }
 
   /**
-   * Ensure the string value of the string key is not null or empty.
+   * Ensure that the given String value of the given String key is not {@code null} or empty.
+   *
+   * @param key The key corresponding to the given String value.
+   * @param value String value to be checked for being non-empty.
    */
-  public static void ensureValidString(String fieldName, String toCheck) {
-    validateNotNull(toCheck, () -> fieldName + " cannot be null");
-    if (toCheck.isEmpty()) {
-      throw new IllegalArgumentException(fieldName + " cannot be empty");
+  public static void ensureValidString(String key, String value) {
+    validateNotNull(value, () -> key + " cannot be null");
+    if (value.isEmpty()) {
+      throw new IllegalArgumentException(key + " cannot be empty");
     }
   }
 

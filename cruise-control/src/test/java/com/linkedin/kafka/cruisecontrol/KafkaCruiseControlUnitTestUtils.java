@@ -78,6 +78,10 @@ public final class KafkaCruiseControlUnitTestUtils {
   }
 
   /**
+   * @param cpuUsage CPU usage.
+   * @param networkInBoundUsage Network inbound usage.
+   * @param networkOutBoundUsage Network outbound usage.
+   * @param diskUsage Disk usage.
    * @return The aggregated metric values with the given resource usage.
    */
   public static AggregatedMetricValues getAggregatedMetricValues(double cpuUsage,
@@ -118,6 +122,10 @@ public final class KafkaCruiseControlUnitTestUtils {
   /**
    * Set the utilization values of all metrics for a resource in the given AggregatedMetricValues.
    * The first metric has the full resource utilization value, all the rest of the metrics has 0.
+   *
+   * @param aggregatedMetricValues Aggregated metric values.
+   * @param resource Resource for which the metric value will be set.
+   * @param value The metric value to be used as the utilization value.
    */
   public static void setValueForResource(AggregatedMetricValues aggregatedMetricValues,
                                          Resource resource,

@@ -213,7 +213,7 @@ public final class ParameterUtils {
    * @param response HTTP response of Cruise Control. Populated in case of an error.
    * @param config The configurations for Cruise Control.
    * @param parameters Request parameters
-   * @return True if the request has valid parameter names, false otherwise (and response is populated).
+   * @return True if the request has valid parameter names, {@code false} otherwise (and response is populated).
    */
   public static boolean hasValidParameterNames(HttpServletRequest request,
                                                HttpServletResponse response,
@@ -238,6 +238,8 @@ public final class ParameterUtils {
   }
 
   /**
+   * @param parameterMap Parameter map
+   * @param parameter Parameter to parse from the parameter map.
    * @return The case sensitive request parameter name, or <code>null</code> if the parameter does not exist.
    */
   public static String caseSensitiveParameterName(Map<String, String[]> parameterMap, String parameter) {
@@ -331,6 +333,7 @@ public final class ParameterUtils {
   /**
    * Default: {@code false} -- i.e. recently demoted brokers may receive leadership from the other brokers as long as
    * {@link ExecutorConfig#DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG}.
+   * @param request Http servlet request.
    * @return The value of {@link #EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM} parameter.
    */
   static boolean excludeRecentlyDemotedBrokers(HttpServletRequest request) {
@@ -340,6 +343,7 @@ public final class ParameterUtils {
   /**
    * Default: {@code true} -- i.e. recently removed brokers may not receive replicas from the other brokers as long as
    * {@link ExecutorConfig#REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG}.
+   * @param request Http servlet request.
    * @return The value of {@link #EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM} parameter.
    */
   static boolean excludeRecentlyRemovedBrokers(HttpServletRequest request) {
@@ -544,7 +548,7 @@ public final class ParameterUtils {
    * Get the {@link #REASON_PARAM} from the request.
    *
    * @param request HTTP request received by Cruise Control.
-   * @param reasonRequired True if the {@link #REASON_PARAM} parameter is required, false otherwise.
+   * @param reasonRequired True if the {@link #REASON_PARAM} parameter is required, {@code false} otherwise.
    * @return The specified value for the {@link #REASON_PARAM} parameter, or {@link #NO_REASON_PROVIDED} if parameter
    * does not exist in the request.
    */
@@ -595,6 +599,7 @@ public final class ParameterUtils {
 
   /**
    * Empty parameter means all substates are requested.
+   * @param request Http servlet request.
    * @return The value of {@link #SUBSTATES_PARAM} parameter.
    */
   static Set<CruiseControlState.SubState> substates(HttpServletRequest request) throws UnsupportedEncodingException {
@@ -651,6 +656,7 @@ public final class ParameterUtils {
    * Get self healing types for {@link #ENABLE_SELF_HEALING_FOR_PARAM} and {@link #DISABLE_SELF_HEALING_FOR_PARAM}.
    *
    * Sanity check ensures that the same anomaly is not specified in both configs at the same request.
+   * @param request Http servlet request.
    * @return The self healing types for {@link #ENABLE_SELF_HEALING_FOR_PARAM} and {@link #DISABLE_SELF_HEALING_FOR_PARAM}.
    */
   static Map<Boolean, Set<AnomalyType>> selfHealingFor(HttpServletRequest request) throws UnsupportedEncodingException {
@@ -672,6 +678,7 @@ public final class ParameterUtils {
    * Get concurrency adjuster types for {@link #ENABLE_CONCURRENCY_ADJUSTER_FOR_PARAM} and {@link #DISABLE_CONCURRENCY_ADJUSTER_FOR_PARAM}.
    *
    * Sanity check ensures that the same concurrency type is not specified in both configs at the same request.
+   * @param request Http servlet request.
    * @return The concurrency adjuster types for {@link #ENABLE_CONCURRENCY_ADJUSTER_FOR_PARAM} and {@link #DISABLE_CONCURRENCY_ADJUSTER_FOR_PARAM}.
    */
   static Map<Boolean, Set<ConcurrencyType>> concurrencyAdjusterFor(HttpServletRequest request) throws UnsupportedEncodingException {
@@ -808,6 +815,7 @@ public final class ParameterUtils {
 
   /**
    * Default: An empty set.
+   * @param request Http servlet request.
    * @return Review Ids.
    */
   public static Set<Integer> reviewIds(HttpServletRequest request) throws UnsupportedEncodingException {
@@ -823,6 +831,8 @@ public final class ParameterUtils {
 
   /**
    * Mutually exclusive with the other parameters and can only be used if two step verification is enabled.
+   * @param request Http servlet request.
+   * @param twoStepVerificationEnabled {@code true} if two-step verification is enabled, {@code false} otherwise.
    * @return Review Id.
    */
   public static Integer reviewId(HttpServletRequest request, boolean twoStepVerificationEnabled) {
@@ -902,6 +912,7 @@ public final class ParameterUtils {
 
   /**
    * Default: {@link Integer#MAX_VALUE} for upper bound parameter, or {@link Integer#MIN_VALUE} otherwise.
+   * @param request Http servlet request.
    * @param isUpperBound True if upper bound, false if lower bound.
    * @return The value of {@link #PARTITION_PARAM} parameter.
    */
@@ -926,6 +937,7 @@ public final class ParameterUtils {
    * Get the {@link #NUM_BROKERS_TO_ADD} from the request.
    *
    * Default: {@link ProvisionRecommendation#DEFAULT_OPTIONAL_INT}
+   * @param request Http servlet request.
    * @return The value of {@link #NUM_BROKERS_TO_ADD} parameter.
    * @throws UserRequestException if the number of brokers to add is not a positive integer.
    */
@@ -945,6 +957,7 @@ public final class ParameterUtils {
    * Get the {@link #PARTITION_COUNT} from the request.
    *
    * Default: {@link ProvisionRecommendation#DEFAULT_OPTIONAL_INT}
+   * @param request Http servlet request.
    * @return The value of {@link #PARTITION_COUNT} parameter.
    * @throws UserRequestException if the targeted partition count is not a positive integer.
    */
@@ -986,6 +999,7 @@ public final class ParameterUtils {
 
   /**
    * Default: An empty set.
+   * @param request Http servlet request.
    * @return The value of {@link #DESTINATION_BROKER_IDS_PARAM} parameter.
    */
   static Set<Integer> destinationBrokerIds(HttpServletRequest request) throws UnsupportedEncodingException {
@@ -1005,6 +1019,8 @@ public final class ParameterUtils {
 
   /**
    * Default: An empty set.
+   * @param request Http servlet request.
+   * @param isApprove {@code true} for {@link #APPROVE_PARAM}, {@code false} for {@link #DISCARD_PARAM}
    * @return The value of {@link #APPROVE_PARAM} parameter for approve or {@link #DISCARD_PARAM} parameter for discard.
    */
   private static Set<Integer> review(HttpServletRequest request, boolean isApprove) throws UnsupportedEncodingException {
@@ -1017,6 +1033,7 @@ public final class ParameterUtils {
    * {@link #DISCARD_PARAM}.
    *
    * Sanity check ensures that the same request cannot be specified in both configs.
+   * @param request Http servlet request.
    * @return {@link ReviewStatus#APPROVED} and {@link ReviewStatus#DISCARDED} requests via {@link #APPROVE_PARAM} and {@link #DISCARD_PARAM}.
    */
   static Map<ReviewStatus, Set<Integer>> reviewRequests(HttpServletRequest request) throws UnsupportedEncodingException {
@@ -1040,6 +1057,7 @@ public final class ParameterUtils {
 
   /**
    * Default: An empty map.
+   * @param request Http servlet request.
    * @return The value for {@link #BROKER_ID_AND_LOGDIRS_PARAM} parameter.
    */
   static Map<Integer, Set<String>> brokerIdAndLogdirs(HttpServletRequest request) throws UnsupportedEncodingException {
@@ -1058,6 +1076,7 @@ public final class ParameterUtils {
 
   /**
    * Default: An empty set.
+   * @param request Http servlet request.
    * @return User task ids.
    */
   public static Set<UUID> userTaskIds(HttpServletRequest request) throws UnsupportedEncodingException {
@@ -1069,6 +1088,7 @@ public final class ParameterUtils {
 
   /**
    * Default: An empty set.
+   * @param request Http servlet request.
    * @return Client ids.
    */
   public static Set<String> clientIds(HttpServletRequest request) throws UnsupportedEncodingException {
@@ -1079,6 +1099,7 @@ public final class ParameterUtils {
 
   /**
    * Default: An empty set.
+   * @param request Http servlet request.
    * @return Endpoints.
    */
   public static Set<CruiseControlEndPoint> endPoints(HttpServletRequest request) throws UnsupportedEncodingException {
@@ -1097,6 +1118,7 @@ public final class ParameterUtils {
 
   /**
    * Default: An empty set.
+   * @param request Http servlet request.
    * @return Types.
    */
   public static Set<UserTaskManager.TaskState> types(HttpServletRequest request) throws UnsupportedEncodingException {
@@ -1113,6 +1135,7 @@ public final class ParameterUtils {
 
   /**
    * Default: {@link DataFrom#VALID_WINDOWS}
+   * @param request Http servlet request.
    * @return The value for {@link #DATA_FROM_PARAM} parameter.
    */
   static DataFrom getDataFrom(HttpServletRequest request) {
@@ -1126,6 +1149,7 @@ public final class ParameterUtils {
 
   /**
    * Check whether to skip the hard goal check.
+   * @param request Http servlet request.
    * @return {@code true} if hard goal check should be skipped, {@code false} otherwise.
    */
   static boolean skipHardGoalCheck(HttpServletRequest request) {
@@ -1153,7 +1177,7 @@ public final class ParameterUtils {
   }
 
   /**
-   * Check whether all the passed-in parameters are null or not.
+   * Check whether all the passed-in parameters are {@code null} or not.
    *
    * @param parameters Arbitrary number of parameters to check.
    * @return True if all parameters are null; false otherwise.

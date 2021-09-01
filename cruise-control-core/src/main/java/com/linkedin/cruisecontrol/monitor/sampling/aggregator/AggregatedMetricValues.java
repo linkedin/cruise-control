@@ -127,7 +127,7 @@ public class AggregatedMetricValues {
    * Check if the AggregatedMetricValues contains value for any metrics. Note that this call does not verify
    * if the values array for a particular metric is empty or not.
    *
-   * @return True the aggregated metric values is empty, false otherwise.
+   * @return True the aggregated metric values is empty, {@code false} otherwise.
    */
   public boolean isEmpty() {
     return _metricValues.isEmpty();

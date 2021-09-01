@@ -55,7 +55,7 @@ public class ExecutionTaskManager {
    * The constructor of The Execution task manager.
    *
    * @param adminClient The adminClient use to query logdir information of replicas.
-   * @param dropwizardMetricRegistry The metric registry.
+   * @param dropwizardMetricRegistry The metric registry that holds all the metrics for monitoring Cruise Control.
    * @param time The time object to get the time.
    * @param config config object that holds all Kafka Cruise control related configs
    */
@@ -268,7 +268,7 @@ public class ExecutionTaskManager {
   /**
    * Set the execution mode of the tasks to keep track of the ongoing execution mode via sensors.
    *
-   * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
+   * @param isKafkaAssignerMode {@code true} if kafka assigner mode, {@code false} otherwise.
    */
   public synchronized void setExecutionModeForTaskTracker(boolean isKafkaAssignerMode) {
     _isKafkaAssignerMode = isKafkaAssignerMode;
@@ -276,6 +276,7 @@ public class ExecutionTaskManager {
 
   /**
    * Mark the given tasks as in progress. Tasks are executed homogeneously -- all tasks have the same balancing action.
+   * @param tasks Execution tasks to mark.
    */
   public synchronized void markTasksInProgress(List<ExecutionTask> tasks) {
     for (ExecutionTask task : tasks) {
@@ -303,6 +304,7 @@ public class ExecutionTaskManager {
   /**
    * Mark the successful completion of a given task. In-progress execution will yield successful completion.
    * Aborting execution will yield Aborted completion.
+   * @param task Execution task to mark.
    */
   public synchronized void markTaskDone(ExecutionTask task) {
     if (task.state() == ExecutionTaskState.IN_PROGRESS) {
@@ -316,6 +318,7 @@ public class ExecutionTaskManager {
 
   /**
    * Mark an in-progress task as aborting (1) if an error is encountered and (2) the rollback is possible.
+   * @param task Execution task to mark.
    */
   public synchronized void markTaskAborting(ExecutionTask task) {
     if (task.state() == ExecutionTaskState.IN_PROGRESS) {
@@ -325,6 +328,7 @@ public class ExecutionTaskManager {
 
   /**
    * Mark an in-progress task as aborting (1) if an error is encountered and (2) the rollback is not possible.
+   * @param task Execution task to mark.
    */
   public synchronized void markTaskDead(ExecutionTask task) {
     if (task.state() != ExecutionTaskState.DEAD) {
@@ -335,6 +339,7 @@ public class ExecutionTaskManager {
 
   /**
    * Mark a given tasks as completed.
+   * @param task Execution task to mark.
    */
   private void completeTask(ExecutionTask task) {
     switch (task.type()) {

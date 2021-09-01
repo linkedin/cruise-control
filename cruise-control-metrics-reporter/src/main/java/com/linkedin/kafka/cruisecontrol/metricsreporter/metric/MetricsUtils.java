@@ -142,7 +142,13 @@ public final class MetricsUtils {
   }
 
   /**
-   * build a CruiseControlMetric object.
+   * Build a CruiseControlMetric object.
+   *
+   * @param now The current time in milliseconds.
+   * @param brokerId Broker Id.
+   * @param name Name of the metric.
+   * @param tags Tags of the metric.
+   * @param value Metric value.
    * @return A {@link CruiseControlMetric} object with the given properties.
    */
   private static CruiseControlMetric toCruiseControlMetric(long now,
@@ -154,7 +160,14 @@ public final class MetricsUtils {
   }
 
   /**
-   * build a CruiseControlMetric object.
+   * Build a CruiseControlMetric object.
+   *
+   * @param now The current time in milliseconds.
+   * @param brokerId Broker Id.
+   * @param name Name of the metric.
+   * @param tags Tags of the metric.
+   * @param value Metric value.
+   * @param attribute Metric attribute -- can be {@code null}.
    * @return A {@link CruiseControlMetric} object with the given properties.
    */
   private static CruiseControlMetric toCruiseControlMetric(long now,
@@ -406,7 +419,7 @@ public final class MetricsUtils {
    * Check whether the kafkaMetric is an interested metric.
    *
    * @param metricName Kafka metric name.
-   * @return True if a kafkaMetric is an interested metric, false otherwise.
+   * @return True if a kafkaMetric is an interested metric, {@code false} otherwise.
    */
   public static boolean isInterested(org.apache.kafka.common.MetricName metricName) {
     String group = metricName.group();
@@ -419,7 +432,7 @@ public final class MetricsUtils {
    * Check whether the yammer metric name is an interested metric.
    *
    * @param metricName Yammer metric name.
-   * @return True if the yammer metric name is an interested metric, false otherwise.
+   * @return True if the yammer metric name is an interested metric, {@code false} otherwise.
    */
   public static boolean isInterested(com.yammer.metrics.core.MetricName metricName) {
     Map<String, String> tags = yammerMetricScopeToTags(metricName.getScope());
@@ -428,6 +441,10 @@ public final class MetricsUtils {
 
   /**
    * Check if a metric is an interested metric.
+   * @param group Group of the metric.
+   * @param name Name of the metric.
+   * @param type Type of the metric.
+   * @param tags Tags of the metric.
    * @return {@code true} for a metric of interest, {@code false} otherwise.
    */
   private static boolean isInterested(String group, String name, String type, Map<String, String> tags) {

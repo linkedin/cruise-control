@@ -120,6 +120,7 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
   }
 
   /**
+   * @param metricId Metric id.
    * @return the metric name from metric id.
    */
   protected abstract String toMetricName(Short metricId);

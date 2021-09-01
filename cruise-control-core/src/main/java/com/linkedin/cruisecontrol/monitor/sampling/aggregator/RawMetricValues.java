@@ -161,7 +161,7 @@ public class RawMetricValues extends WindowIndexedArrays {
    * 2. The number of windows with extrapolation is less than the given maxAllowedWindowsWithExtrapolation.
    *
    * @param maxAllowedWindowsWithExtrapolation the maximum number of allowed windows with extrapolation.
-   * @return True if the raw metric value is valid, false otherwise.
+   * @return {@code true} if the raw metric value is valid, {@code false} otherwise.
    */
   public synchronized boolean isValid(int maxAllowedWindowsWithExtrapolation) {
     int currentArrayIndex = arrayIndex(currentWindowIndex());
@@ -186,7 +186,7 @@ public class RawMetricValues extends WindowIndexedArrays {
    * Assumes {@link #sanityCheckWindowIndex(long)} is called before this function.
    *
    * @param windowIndex the window index to check.
-   * @return True if the given window is valid, false otherwise.
+   * @return {@code true} if the given window is valid, {@code false} otherwise.
    */
   public synchronized boolean isValidAtWindowIndex(long windowIndex) {
     return _validity.get(arrayIndex(windowIndex));
@@ -197,7 +197,7 @@ public class RawMetricValues extends WindowIndexedArrays {
    * Assumes {@link #sanityCheckWindowIndex(long)} is called before this function.
    *
    * @param windowIndex the index of the window to check.
-   * @return True if the window is extrapolated, false otherwise.
+   * @return {@code true} if the window is extrapolated, {@code false} otherwise.
    */
   public synchronized boolean isExtrapolatedAtWindowIndex(long windowIndex) {
     return _extrapolations.get(arrayIndex(windowIndex));
@@ -206,6 +206,7 @@ public class RawMetricValues extends WindowIndexedArrays {
   /**
    * Assumes {@link #sanityCheckWindowIndex(long)} is called before this function.
    *
+   * @param windowIndex Window index.
    * @return sample counts at window index.
    */
   public synchronized byte sampleCountsAtWindowIndex(long windowIndex) {
@@ -336,6 +337,7 @@ public class RawMetricValues extends WindowIndexedArrays {
   /**
    * Peek the value for the current window.
    *
+   * @param currentWindowIndex Current window index.
    * @param metricDef the metric definitions.
    * @return The aggregated values and extrapolations of the given sorted set of windows in that order.
    */
@@ -417,6 +419,7 @@ public class RawMetricValues extends WindowIndexedArrays {
   }
 
   /**
+   * @param arrayIndex Array index.
    * @return if there are {@link #_minSamplesPerWindow}, then valid: true, extrapolation: false
    */
   private boolean updateEnoughSamples(int arrayIndex) {
@@ -429,6 +432,7 @@ public class RawMetricValues extends WindowIndexedArrays {
   }
 
   /**
+   * @param arrayIndex Array index.
    * @return regardless of the number of samples in the given arrayIndex, if next and previous array indices are valid and have
    * more than {@link #_minSamplesPerWindow}, then valid: true, extrapolation: true
    */
@@ -447,6 +451,7 @@ public class RawMetricValues extends WindowIndexedArrays {
   }
 
   /**
+   * @param arrayIndex Array index.
    * @return if there is at least one sample, then valid: true, extrapolation: true
    */
   private boolean updateForcedInsufficient(int arrayIndex) {

@@ -165,7 +165,7 @@ public class CCEmbeddedBrokerBuilder {
   /**
    * Set enableControlledShutdown.
    *
-   * @param enableControlledShutdown True to enable controlled shutdown, false otherwise.
+   * @param enableControlledShutdown True to enable controlled shutdown, {@code false} otherwise.
    * @return This
    */
   public CCEmbeddedBrokerBuilder enableControlledShutdown(boolean enableControlledShutdown) {
@@ -185,7 +185,7 @@ public class CCEmbeddedBrokerBuilder {
   /**
    * Enable delete topic.
    *
-   * @param enableDeleteTopic True to enable delete topic, false otherwise.
+   * @param enableDeleteTopic True to enable delete topic, {@code false} otherwise.
    * @return This
    */
   public CCEmbeddedBrokerBuilder enableDeleteTopic(boolean enableDeleteTopic) {
@@ -196,7 +196,7 @@ public class CCEmbeddedBrokerBuilder {
   /**
    * Enable log cleaner.
    *
-   * @param enableLogCleaner True to enable log cleaner, false otherwise.
+   * @param enableLogCleaner True to enable log cleaner, {@code false} otherwise.
    * @return This.
    */
   public CCEmbeddedBrokerBuilder enableLogCleaner(boolean enableLogCleaner) {

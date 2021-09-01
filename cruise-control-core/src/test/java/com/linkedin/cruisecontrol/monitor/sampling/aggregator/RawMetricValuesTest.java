@@ -367,6 +367,9 @@ public class RawMetricValuesTest {
 
   /**
    * Test code should ensure that the {@link #NUM_RAW_METRICS} size matches the metrics generated here
+   * @param v1 First value to be recorded.
+   * @param v2 Second value to be recorded.
+   * @param v3 Third value to be recorded.
    * @return A metric sample with the given metric values.
    */
   private MetricSample<String, IntegerEntity> getMetricSample(float v1, float v2, float v3) {

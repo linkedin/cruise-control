@@ -98,7 +98,8 @@ public final class ResponseUtils {
    * @param e Exception (if any) corresponding to the error, {@code null} otherwise.
    * @param errorMessage Error message to return in the response message.
    * @param responseCode HTTP Status code to indicate the error.
-   * @param json True if json, false otherwise.
+   * @param json {@code true} if json, {@code false} otherwise.
+   * @param wantJsonSchema {@code true} for json error response, {@code false} otherwise.
    * @param config The configurations for Cruise Control.
    */
   public static void writeErrorResponse(HttpServletResponse response,

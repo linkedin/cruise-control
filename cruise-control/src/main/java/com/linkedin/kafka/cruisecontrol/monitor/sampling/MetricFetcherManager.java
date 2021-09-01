@@ -82,7 +82,7 @@ public class MetricFetcherManager {
    * @param metadataClient    The metadata of the cluster.
    * @param metricDef the metric definitions.
    * @param time        The time object.
-   * @param dropwizardMetricRegistry The Metric Registry object.
+   * @param dropwizardMetricRegistry The metric registry that holds all the metrics for monitoring Cruise Control.
    * @param brokerCapacityConfigResolver The resolver for retrieving broker capacities.
    * @param sampler Metric fetcher or {@code null} to create one using {@link MonitorConfig#METRIC_SAMPLER_CLASS_CONFIG}.
    */
@@ -143,7 +143,7 @@ public class MetricFetcherManager {
    * @param timeoutMs the timeout.
    * @param sampleStore the sample store to save the broker and partition metric samples.
    * @param samplingMode the sampling mode to indicate which type of samples is interested.
-   * @return True if there was no fetching error, false otherwise.
+   * @return True if there was no fetching error, {@code false} otherwise.
    */
   public boolean fetchMetricSamples(long startMs,
                                     long endMs,
@@ -161,7 +161,7 @@ public class MetricFetcherManager {
    * @param sampleStore the sample store to save the broker and partition metric samples.
    * @param sampleStoreForPartitionMetricOnExecution the sample store to save the partition metrics samples during ongoing execution.
    * @param samplingMode the sampling mode to indicate which type of samples is interested.
-   * @return True if there was no fetching error, false otherwise.
+   * @return True if there was no fetching error, {@code false} otherwise.
    */
   public boolean fetchMetricSamples(long startMs,
                                     long endMs,
@@ -196,7 +196,7 @@ public class MetricFetcherManager {
    * @param endMs the end time of the fetching period.
    * @param timeoutMs the timeout.
    * @param sampleStore the sample store to save the broker metric samples.
-   * @return True if there was no fetching error, false otherwise.
+   * @return True if there was no fetching error, {@code false} otherwise.
    */
   public boolean fetchBrokerMetricSamples(long startMs, long endMs, long timeoutMs, SampleStore sampleStore) {
     LOG.info("Kicking off broker metric sampling for time range [{}, {}], duration {} ms with timeout {} ms.",

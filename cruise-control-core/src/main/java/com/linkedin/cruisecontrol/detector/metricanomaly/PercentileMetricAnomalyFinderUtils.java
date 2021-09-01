@@ -23,7 +23,7 @@ public final class PercentileMetricAnomalyFinderUtils {
    * @param sampleCount Number of samples.
    * @param upperPercentile The requested upper percentile.
    * @param lowerPercentile The requested lower percentile.
-   * @return True if there is enough samples, false otherwise.
+   * @return True if there is enough samples, {@code false} otherwise.
    */
   public static boolean isDataSufficient(int sampleCount,
                                          double upperPercentile,

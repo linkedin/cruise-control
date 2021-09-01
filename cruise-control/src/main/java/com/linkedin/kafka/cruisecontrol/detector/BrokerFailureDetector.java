@@ -147,7 +147,7 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector {
    * If {@link #_failedBrokers} has changed, update it.
    *
    * @param aliveBrokers Alive brokers in the cluster.
-   * @return True if {@link #_failedBrokers} has been updated, false otherwise.
+   * @return True if {@link #_failedBrokers} has been updated, {@code false} otherwise.
    */
   private boolean updateFailedBrokers(Set<Integer> aliveBrokers) {
     // We get the complete broker list from metadata. i.e. any broker that still has a partition assigned to it is

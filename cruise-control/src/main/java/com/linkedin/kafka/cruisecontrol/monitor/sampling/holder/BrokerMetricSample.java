@@ -141,7 +141,7 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
     buffer.putDouble(metricValue(DISK_USAGE));
     buffer.putDouble(metricValue(PRODUCE_RATE));
     buffer.putDouble(metricValue(FETCH_RATE));
-    buffer.putLong(_sampleTime);
+    buffer.putLong(_sampleTimeMs);
     buffer.putInt(metricValue(BROKER_REQUEST_QUEUE_SIZE).intValue());
     buffer.putInt(metricValue(BROKER_RESPONSE_QUEUE_SIZE).intValue());
     buffer.putDouble(metricValue(BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_MAX));

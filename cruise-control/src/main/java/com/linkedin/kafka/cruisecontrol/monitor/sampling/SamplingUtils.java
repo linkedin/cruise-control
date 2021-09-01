@@ -255,7 +255,7 @@ public final class SamplingUtils {
    * @param leaderId Leader Id of partition.
    * @param brokerLoad Load information for the broker that the leader of the partition resides.
    * @param cachedNumCoresByBroker Cached number of cores by broker.
-   * @return True to skip generating partition metric sample, false otherwise.
+   * @return True to skip generating partition metric sample, {@code false} otherwise.
    */
   private static boolean skipBuildingPartitionMetricSample(TopicPartition tpDotNotHandled,
                                                            TopicPartition tpWithDotHandled,
@@ -288,7 +288,7 @@ public final class SamplingUtils {
    *
    * @param brokerLoad Broker load.
    * @param brokerId Broker id
-   * @return True to skip generating broker metric sample, false otherwise.
+   * @return True to skip generating broker metric sample, {@code false} otherwise.
    */
   private static boolean skipBuildingBrokerMetricSample(BrokerLoad brokerLoad, int brokerId) {
     if (brokerLoad == null) {

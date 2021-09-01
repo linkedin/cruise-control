@@ -162,8 +162,8 @@ public final class RunnableUtils {
    * Check if the ClusterAndGeneration needs to be refreshed to retrieve the requested substates.
    *
    * @param substates Substates for which the need for refreshing the ClusterAndGeneration will be evaluated.
-   * @return True if substates contain {@link CruiseControlState.SubState#ANALYZER} or
-   * {@link CruiseControlState.SubState#MONITOR}, false otherwise.
+   * @return {@code true} if substates contain {@link CruiseControlState.SubState#ANALYZER} or
+   * {@link CruiseControlState.SubState#MONITOR}, {@code false} otherwise.
    */
   public static boolean shouldRefreshClusterAndGeneration(Set<CruiseControlState.SubState> substates) {
     return substates.stream()
@@ -193,7 +193,7 @@ public final class RunnableUtils {
    * Check whether any of the given goals contain a Kafka Assigner goal.
    *
    * @param goals The goals to check
-   * @return True if the given goals contain a Kafka Assigner goal, false otherwise.
+   * @return {@code true} if the given goals contain a Kafka Assigner goal, {@code false} otherwise.
    */
   public static boolean isKafkaAssignerMode(Collection<String> goals) {
     return goals.stream().anyMatch(KAFKA_ASSIGNER_GOALS::contains);
@@ -307,7 +307,7 @@ public final class RunnableUtils {
    *
    * @param kafkaCruiseControl The Kafka Cruise Control instance.
    * @param brokersToDrop Brokers to drop from recently removed and demoted brokers (if exist).
-   * @param dryRun True if dryrun, false otherwise.
+   * @param dryRun {@code true} if dryrun, {@code false} otherwise.
    * @return Recent brokers that are intended to be excluded from relevant replica and/or leadership transfer operations.
    */
   private static RecentBrokers maybeDropFromRecentBrokers(KafkaCruiseControl kafkaCruiseControl,

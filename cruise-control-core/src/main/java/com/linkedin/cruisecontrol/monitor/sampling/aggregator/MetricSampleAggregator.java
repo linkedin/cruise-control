@@ -562,10 +562,11 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
   }
 
   /**
+   * @param timeMs Time in milliseconds.
    * @return The absolute window index of the given timestamp.
    */
-  private long windowIndex(long time) {
-    return time / _windowMs + 1;
+  private long windowIndex(long timeMs) {
+    return timeMs / _windowMs + 1;
   }
 
   /**

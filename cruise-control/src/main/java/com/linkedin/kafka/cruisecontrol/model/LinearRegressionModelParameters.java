@@ -65,7 +65,7 @@ public class LinearRegressionModelParameters {
 
   /**
    * Trigger the calculation of the model parameters.
-   * @return True if the parameters are generated, otherwise false;
+   * @return {@code true} if the parameters are generated, otherwise {@code false};
    */
   public synchronized boolean updateModelCoefficient() {
     if (validBuckets().size() < minCpuUtilObservationBuckets) {

@@ -118,12 +118,12 @@ public abstract class CapacityGoal extends AbstractGoal {
   /**
    * This is a hard goal; hence, the proposals are not limited to broken broker replicas in case of self-healing.
    * Check if requirements of this goal are not violated if this action is applied to the given cluster state,
-   * false otherwise.
+   * {@code false} otherwise.
    *
    * @param clusterModel The state of the cluster.
    * @param action Action containing information about potential modification to the given cluster model.
-   * @return True if requirements of this goal are not violated if this action is applied to the given cluster state,
-   * false otherwise.
+   * @return {@code true} if requirements of this goal are not violated if this action is applied to the given cluster state,
+   * {@code false} otherwise.
    */
   @Override
   protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
@@ -388,7 +388,7 @@ public abstract class CapacityGoal extends AbstractGoal {
    * @param resource Resource to be checked for capacity limit violation.
    * @param brokerCapacityLimit Capacity limit for the broker.
    * @param hostCapacityLimit Capacity limit for the host.
-   * @return True if utilization is over the limit, false otherwise.
+   * @return {@code true} if utilization is over the limit, {@code false} otherwise.
    */
   private boolean isUtilizationOverLimit(Broker broker,
                                          Resource resource,
@@ -416,8 +416,8 @@ public abstract class CapacityGoal extends AbstractGoal {
    *
    * @param sourceReplica     Source replica.
    * @param destinationBroker Destination broker.
-   * @return True if movement of utilization for the given resource from the given source replica to given
-   * destination broker is acceptable for this goal, false otherwise.
+   * @return {@code true} if movement of utilization for the given resource from the given source replica to given
+   * destination broker is acceptable for this goal, {@code false} otherwise.
    */
   private boolean isMovementAcceptableForCapacity(Replica sourceReplica, Broker destinationBroker) {
     // The action is unacceptable if the movement of replica or leadership makes the utilization of the destination
@@ -431,8 +431,8 @@ public abstract class CapacityGoal extends AbstractGoal {
    *
    * @param sourceReplica Source replica.
    * @param destinationReplica Destination replica.
-   * @return True if the swap for the current resource between source and destination replicas is acceptable for this
-   * goal, false otherwise
+   * @return {@code true} if the swap for the current resource between source and destination replicas is acceptable for this
+   * goal, {@code false} otherwise
    */
   private boolean isSwapAcceptableForCapacity(Replica sourceReplica, Replica destinationReplica) {
     double sourceReplicaUtilization = sourceReplica.load().expectedUtilizationFor(resource());
@@ -450,7 +450,7 @@ public abstract class CapacityGoal extends AbstractGoal {
    *
    * @param destinationBroker Destination broker.
    * @param replicaUtilization Replica utilization for the given resource.
-   * @return True if utilization is equal or above the capacity limit, false otherwise.
+   * @return {@code true} if utilization is equal or above the capacity limit, false otherwise.
    */
   private boolean isUtilizationUnderLimitAfterAddingLoad(Broker destinationBroker, double replicaUtilization) {
     Resource resource = resource();

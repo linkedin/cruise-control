@@ -38,7 +38,7 @@ public abstract class KafkaAnomaly implements Anomaly, CruiseControlConfigurable
   /**
    * Checks whether the optimization result has any proposals to fix.
    *
-   * @return True if {@link #_optimizationResult} has proposals to fix, false otherwise.
+   * @return {@code true} if {@link #_optimizationResult} has proposals to fix, {@code false} otherwise.
    */
   protected boolean hasProposalsToFix() {
     if (_optimizationResult == null) {

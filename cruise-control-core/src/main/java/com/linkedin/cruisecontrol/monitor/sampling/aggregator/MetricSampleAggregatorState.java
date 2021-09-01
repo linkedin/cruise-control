@@ -153,6 +153,7 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
    * @param fromWindowIndex the index of the starting window (inclusive)
    * @param toWindowIndex the index of the end window (inclusive)
    * @param options the {@link AggregationOptions}
+   * @param currentGeneration Current generation.
    * @return The {@link MetricSampleCompleteness} for the given parameters.
    */
   synchronized MetricSampleCompleteness<G, E> completeness(long fromWindowIndex,

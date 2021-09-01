@@ -70,7 +70,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
    * Add a sample to the metric aggregator. This method is thread safe.
    *
    * @param sample The metric sample to add.
-   * @return True if the sample is accepted, false if the sample is ignored.
+   * @return {@code true} if the sample is accepted, {@code false} if the sample is ignored.
    */
   public boolean addSample(PartitionMetricSample sample) {
     return addSample(sample, true);
@@ -82,7 +82,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
    * @param sample The metric sample to add.
    * @param leaderValidation whether perform the leader validation or not.
    *
-   * @return True if the sample is accepted, false if the sample is ignored.
+   * @return {@code true} if the sample is accepted, {@code false} if the sample is ignored.
    */
   public boolean addSample(PartitionMetricSample sample, boolean leaderValidation) {
     // Sanity check the sample

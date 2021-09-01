@@ -163,7 +163,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
    * @param clusterModel The state of the cluster.
    * @param partition The partition whose replica might be moved.
    * @param replicaPosition The position of the replica in the given partition.
-   * @return True if a move is applied, false otherwise.
+   * @return True if a move is applied, {@code false} otherwise.
    */
   private boolean maybeApplyMove(ClusterModel clusterModel, Partition partition, int replicaPosition) {
     // Racks with replica whose position is in [0, replicaPosition - 1] are ineligible for assignment.
@@ -285,7 +285,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
    * @param partition The partition of replica to be checked.
    * @param position The position of replica in the given partition.
    * @param excludedTopics The excluded topics set.
-   * @return True if the replica should be excluded, false otherwise.
+   * @return True if the replica should be excluded, {@code false} otherwise.
    */
   private boolean shouldExclude(Partition partition, int position, Set<String> excludedTopics) {
     Replica replica = replicaAtPosition(partition, position);

@@ -112,6 +112,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    *
    * @param computedLimit Computed balance upper or lower limit
    * @param average Average topic replicas on broker.
+   * @param isLowerLimit {@code true} if lower limit, {@code false} otherwise.
    * @return A balance limit that falls into [minGap, maxGap] for topic replica balance.*
    * @see com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig#TOPIC_REPLICA_COUNT_BALANCE_MIN_GAP_DOC
    * @see com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig#TOPIC_REPLICA_COUNT_BALANCE_MAX_GAP_DOC
@@ -297,8 +298,8 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    * @param clusterModel The state of the cluster.
    * @param action Action containing information about potential modification to the given cluster model. Assumed to be
    * of type {@link ActionType#INTER_BROKER_REPLICA_MOVEMENT}.
-   * @return True if requirements of this goal are not violated if this proposal is applied to the given cluster state,
-   * false otherwise.
+   * @return {@code true} if requirements of this goal are not violated if this proposal is applied to the given cluster state,
+   * {@code false} otherwise.
    */
   @Override
   protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {

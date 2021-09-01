@@ -149,7 +149,7 @@ public class RequestInfo {
    * Check if the status transfer is possible.
    *
    * @param targetStatus The status to transfer to.
-   * @return True if the transfer is valid, false otherwise.
+   * @return True if the transfer is valid, {@code false} otherwise.
    */
   private boolean canTransferToStatus(ReviewStatus targetStatus) {
     return VALID_TRANSFER.get(_status).contains(targetStatus);

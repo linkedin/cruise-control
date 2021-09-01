@@ -35,7 +35,7 @@ public class BrokerCapacityInfo {
    * BrokerCapacityInfo with the given capacity, estimation, per absolute logDir disk capacity, and number of CPU cores.
    *
    * @param capacity Capacity information for each resource.
-   * @param estimationInfo Description if there is any capacity estimation, null or {@link #DEFAULT_ESTIMATION_INFO} otherwise.
+   * @param estimationInfo Description if there is any capacity estimation, {@code null} or {@link #DEFAULT_ESTIMATION_INFO} otherwise.
    * @param diskCapacityByLogDir Disk capacity by absolute logDir.
    * @param numCpuCores Number of CPU cores.
    */
@@ -75,7 +75,7 @@ public class BrokerCapacityInfo {
    * BrokerCapacityInfo with the given capacity, estimation, and per absolute logDir disk capacity.
    *
    * @param capacity Capacity information for each resource.
-   * @param estimationInfo Description if there is any capacity estimation, null or {@link #DEFAULT_ESTIMATION_INFO} otherwise.
+   * @param estimationInfo Description if there is any capacity estimation, {@code null} or {@link #DEFAULT_ESTIMATION_INFO} otherwise.
    * @param diskCapacityByLogDir Disk capacity by absolute logDir.
    */
   public BrokerCapacityInfo(Map<Resource, Double> capacity, String estimationInfo, Map<String, Double> diskCapacityByLogDir) {
@@ -86,7 +86,7 @@ public class BrokerCapacityInfo {
    * BrokerCapacityInfo with no capacity information specified per absolute logDir.
    *
    * @param capacity Capacity information for each resource.
-   * @param estimationInfo Description if there is any capacity estimation, null or {@link #DEFAULT_ESTIMATION_INFO} otherwise.
+   * @param estimationInfo Description if there is any capacity estimation, {@code null} or {@link #DEFAULT_ESTIMATION_INFO} otherwise.
    */
   public BrokerCapacityInfo(Map<Resource, Double> capacity, String estimationInfo) {
     this(capacity, estimationInfo, DEFAULT_DISK_CAPACITY_BY_LOGDIR, DEFAULT_NUM_CPU_CORES);
@@ -119,7 +119,7 @@ public class BrokerCapacityInfo {
   }
 
   /**
-   * @return True if the capacity of the broker for at least one resource is based on an estimation, false otherwise.
+   * @return True if the capacity of the broker for at least one resource is based on an estimation, {@code false} otherwise.
    */
   public boolean isEstimated() {
     return !_estimationInfo.isEmpty();
