@@ -349,7 +349,9 @@ public final class AnalyzerConfig {
   public static final String MIN_TOPIC_LEADERS_PER_BROKER_CONFIG = "min.topic.leaders.per.broker";
   public static final int DEFAULT_MIN_TOPIC_LEADERS_PER_BROKER = 1;
   public static final String MIN_TOPIC_LEADERS_PER_BROKER_DOC = "The minimum required number of leaders per broker"
-      + " for topics that must have leader on brokers that are not excluded for replica move.";
+      + " for topics that must have leader on brokers that are not excluded for replica move."
+      + " When set to a value less than 1, the minimum number of leaders per broker is computed"
+      + " dynamically for each topic as no-of-topic-leaders / no-of-brokers";
 
   /**
    * <code>topics.excluded.from.partition.movement</code>
@@ -584,7 +586,6 @@ public final class AnalyzerConfig {
                     .define(MIN_TOPIC_LEADERS_PER_BROKER_CONFIG,
                             ConfigDef.Type.INT,
                             DEFAULT_MIN_TOPIC_LEADERS_PER_BROKER,
-                            atLeast(1),
                             ConfigDef.Importance.LOW,
                             MIN_TOPIC_LEADERS_PER_BROKER_DOC)
                     .define(GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG,
