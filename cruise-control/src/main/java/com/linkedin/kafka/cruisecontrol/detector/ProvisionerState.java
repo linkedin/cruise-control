@@ -40,7 +40,7 @@ public class ProvisionerState {
   /**
    * Check if the state transfer is possible.
    * @param targetState the state to transfer to.
-   * @return True if the transfer is valid, false otherwise.
+   * @return {@code true} if the transfer is valid, {@code false} otherwise.
    */
   public boolean canTransferToState(ProvisionerState.State targetState) {
     return VALID_TRANSFER.get(_state).contains(targetState);

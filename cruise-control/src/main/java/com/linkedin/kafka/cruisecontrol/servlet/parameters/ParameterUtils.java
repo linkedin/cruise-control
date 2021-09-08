@@ -207,13 +207,13 @@ public final class ParameterUtils {
 
   /**
    * Check whether the request has valid parameter names. If not, populate the HTTP response with the corresponding
-   * error message and return false, return true otherwise.
+   * error message and return {@code false}, return {@code true} otherwise.
    *
    * @param request HTTP request received by Cruise Control.
    * @param response HTTP response of Cruise Control. Populated in case of an error.
    * @param config The configurations for Cruise Control.
    * @param parameters Request parameters
-   * @return True if the request has valid parameter names, {@code false} otherwise (and response is populated).
+   * @return {@code true} if the request has valid parameter names, {@code false} otherwise (and response is populated).
    */
   public static boolean hasValidParameterNames(HttpServletRequest request,
                                                HttpServletResponse response,
@@ -548,7 +548,7 @@ public final class ParameterUtils {
    * Get the {@link #REASON_PARAM} from the request.
    *
    * @param request HTTP request received by Cruise Control.
-   * @param reasonRequired True if the {@link #REASON_PARAM} parameter is required, {@code false} otherwise.
+   * @param reasonRequired {@code true} if the {@link #REASON_PARAM} parameter is required, {@code false} otherwise.
    * @return The specified value for the {@link #REASON_PARAM} parameter, or {@link #NO_REASON_PROVIDED} if parameter
    * does not exist in the request.
    */
@@ -883,8 +883,8 @@ public final class ParameterUtils {
    * </ul>
    *
    * @param request                        The Http request.
-   * @param isInterBrokerPartitionMovement True if inter-broker partition movement per broker.
-   * @param isIntraBrokerPartitionMovement True if intra-broker partition movement.
+   * @param isInterBrokerPartitionMovement {@code true} if inter-broker partition movement per broker.
+   * @param isIntraBrokerPartitionMovement {@code true} if intra-broker partition movement.
    * @return The execution concurrency requirement dynamically set from the Http request.
    */
   static Integer concurrentMovements(HttpServletRequest request,
@@ -913,7 +913,7 @@ public final class ParameterUtils {
   /**
    * Default: {@link Integer#MAX_VALUE} for upper bound parameter, or {@link Integer#MIN_VALUE} otherwise.
    * @param request Http servlet request.
-   * @param isUpperBound True if upper bound, false if lower bound.
+   * @param isUpperBound {@code true} if upper bound, {@code false} if lower bound.
    * @return The value of {@link #PARTITION_PARAM} parameter.
    */
   static int partitionBoundary(HttpServletRequest request, boolean isUpperBound) {
@@ -1180,7 +1180,7 @@ public final class ParameterUtils {
    * Check whether all the passed-in parameters are {@code null} or not.
    *
    * @param parameters Arbitrary number of parameters to check.
-   * @return True if all parameters are null; false otherwise.
+   * @return {@code true} if all parameters are null; {@code false} otherwise.
    */
   public static boolean areAllParametersNull(CruiseControlParameters... parameters) {
     return Arrays.stream(parameters).allMatch(Objects::isNull);

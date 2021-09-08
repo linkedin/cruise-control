@@ -418,7 +418,7 @@ public class LoadMonitor {
   /**
    * Get the most recent cluster load model before the given timestamp.
    *
-   * @param now The current time in millisecond.
+   * @param nowMs The current time in millisecond.
    * @param requirements the load requirements for getting the cluster model.
    * @param allowCapacityEstimation whether allow capacity estimation in cluster model if the underlying live broker capacity is unavailable.
    * @param operationProgress the progress to report.
@@ -427,12 +427,12 @@ public class LoadMonitor {
    * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity in time.
    * @throws BrokerCapacityResolutionException If broker capacity resolver fails to resolve broker capacity.
    */
-  public ClusterModel clusterModel(long now,
+  public ClusterModel clusterModel(long nowMs,
                                    ModelCompletenessRequirements requirements,
                                    boolean allowCapacityEstimation,
                                    OperationProgress operationProgress)
       throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
-    ClusterModel clusterModel = clusterModel(DEFAULT_START_TIME_FOR_CLUSTER_MODEL, now, requirements, allowCapacityEstimation, operationProgress);
+    ClusterModel clusterModel = clusterModel(DEFAULT_START_TIME_FOR_CLUSTER_MODEL, nowMs, requirements, allowCapacityEstimation, operationProgress);
     // Micro optimization: put the broker stats construction out of the lock.
     BrokerStats brokerStats = clusterModel.brokerStats(_config);
     // update the cached brokerLoadStats

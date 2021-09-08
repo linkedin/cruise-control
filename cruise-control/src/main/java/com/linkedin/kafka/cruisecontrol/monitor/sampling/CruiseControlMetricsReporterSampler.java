@@ -123,7 +123,7 @@ public class CruiseControlMetricsReporterSampler extends AbstractMetricSampler {
    * Ensure that the {@link #_metricConsumer} is assigned to the latest partitions of the {@link #_metricReporterTopic}.
    * This enables metrics reporter sampler to handle dynamic partition size increases in {@link #_metricReporterTopic}.
    *
-   * @return True if the set of partitions currently assigned to this consumer is empty, {@code false} otherwise.
+   * @return {@code true} if the set of partitions currently assigned to this consumer is empty, {@code false} otherwise.
    */
   protected boolean refreshPartitionAssignment() {
     List<PartitionInfo> remotePartitionInfo = _metricConsumer.partitionsFor(_metricReporterTopic);

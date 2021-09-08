@@ -100,7 +100,7 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector {
   /**
    * Detect broker failures. Skip reporting if the failed brokers have not changed and skipReportingIfNotUpdated is true.
    *
-   * @param skipReportingIfNotUpdated True if broker failure reporting will be skipped if failed brokers have not changed.
+   * @param skipReportingIfNotUpdated {@code true} if broker failure reporting will be skipped if failed brokers have not changed.
    */
   synchronized void detectBrokerFailures(boolean skipReportingIfNotUpdated) {
     detectBrokerFailures(aliveBrokers(), skipReportingIfNotUpdated);
@@ -147,7 +147,7 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector {
    * If {@link #_failedBrokers} has changed, update it.
    *
    * @param aliveBrokers Alive brokers in the cluster.
-   * @return True if {@link #_failedBrokers} has been updated, {@code false} otherwise.
+   * @return {@code true} if {@link #_failedBrokers} has been updated, {@code false} otherwise.
    */
   private boolean updateFailedBrokers(Set<Integer> aliveBrokers) {
     // We get the complete broker list from metadata. i.e. any broker that still has a partition assigned to it is

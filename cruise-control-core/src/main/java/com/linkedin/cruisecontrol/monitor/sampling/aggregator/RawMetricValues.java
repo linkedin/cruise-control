@@ -420,7 +420,7 @@ public class RawMetricValues extends WindowIndexedArrays {
 
   /**
    * @param arrayIndex Array index.
-   * @return if there are {@link #_minSamplesPerWindow}, then valid: true, extrapolation: false
+   * @return if there are {@link #_minSamplesPerWindow}, then valid: {@code true}, extrapolation: {@code false}
    */
   private boolean updateEnoughSamples(int arrayIndex) {
     if (_counts[arrayIndex] == _minSamplesPerWindow) {

@@ -61,7 +61,7 @@ public interface Goal extends CruiseControlConfigurable {
    *                       optimization of the previously optimized goals.
    * @param optimizedGoals Goals that have already been optimized. These goals cannot be violated.
    * @param optimizationOptions Options to take into account during optimization.
-   * @return {@code true} if the goal is met after the optimization, false otherwise. Note that for hard goals,
+   * @return {@code true} if the goal is met after the optimization, {@code false} otherwise. Note that for hard goals,
    * the implementation should just throw exceptions if the goal is not met.
    * @throws KafkaCruiseControlException
    */

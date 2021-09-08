@@ -31,14 +31,14 @@ public interface Anomaly {
   /**
    * Fix the anomaly with the system.
    *
-   * @return True if fix was started successfully (i.e. there is actual work towards a fix), {@code false} otherwise.
+   * @return {@code true} if fix was started successfully (i.e. there is actual work towards a fix), {@code false} otherwise.
    */
   boolean fix() throws Exception;
 
   /**
    * Get the optimization result of self healing process, or null if no optimization result is available.
    *
-   * @param isJson True for JSON response, {@code false} otherwise.
+   * @param isJson {@code true} for JSON response, {@code false} otherwise.
    * @return The optimization result of self healing process, or null if no optimization result is available.
    */
   String optimizationResult(boolean isJson);

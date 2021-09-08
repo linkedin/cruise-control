@@ -189,7 +189,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
 
   /**
    * Check if requirements of this goal are not violated if this action is applied to the given cluster state,
-   * false otherwise. An action is acceptable if: (1) destination broker utilization for the given resource is less
+   * {@code false} otherwise. An action is acceptable if: (1) destination broker utilization for the given resource is less
    * than the source broker utilization. (2) movement is acceptable (i.e. under the broker balance limit for balanced
    * resources) for already balanced resources. Already balanced resources are the ones that have gone through the
    * "resource distribution" process specified in this goal.
@@ -537,7 +537,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    * @param clusterModel The state of the cluster.
    * @param excludedTopics Excluded topics for which the replicas will be remove from the returned candidate replicas.
    * @param loadLimit Load limit determining the lower cutoff in descending order, upper cutoff in ascending order.
-   * @param isAscending True if sort requested in ascending order, false otherwise.
+   * @param isAscending {@code true} if sort requested in ascending order, {@code false} otherwise.
    * @param followersOnly Candidate replicas contain only the followers.
    * @param leadersOnly Candidate replicas contain only the leaders.
    * @param immigrantsOnly Candidate replicas contain only the immigrant replicas.
@@ -941,7 +941,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    *
    * @param sourceReplica Source replica to be moved.
    * @param destinationBroker Destination broker to receive the source replica utilization.
-   * @return True if the change would lead to a better balance, false otherwise.
+   * @return {@code true} if the change would lead to a better balance, {@code false} otherwise.
    */
   private boolean isAcceptableAfterReplicaMove(Replica sourceReplica, Broker destinationBroker) {
     double sourceUtilizationDelta = - sourceReplica.load().expectedUtilizationFor(resource());
@@ -953,7 +953,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    *
    * @param sourceReplica Source replica to be swapped.
    * @param destinationReplica Destination replica to be swapped.
-   * @return True if the change would lead to a better balance, false otherwise.
+   * @return {@code true} if the change would lead to a better balance, {@code false} otherwise.
    */
   private boolean isSelfSatisfiedAfterSwap(Replica sourceReplica, Replica destinationReplica) {
     double sourceUtilizationDelta = destinationReplica.load().expectedUtilizationFor(resource())
@@ -968,7 +968,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    * @param sourceBroker Source broker.
    * @param sourceUtilizationDelta Utilization that would be removed from the destination and added to source broker.
    * @param destinationBroker Destination broker.
-   * @return True if the change would lead to a better balance, false otherwise.
+   * @return {@code true} if the change would lead to a better balance, {@code false} otherwise.
    */
   private boolean isGettingMoreBalanced(Broker sourceBroker, double sourceUtilizationDelta, Broker destinationBroker) {
     double sourceBrokerUtilization = sourceBroker.load().expectedUtilizationFor(resource());

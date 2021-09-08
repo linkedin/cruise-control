@@ -281,7 +281,7 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
    * @param clusterModel         The current cluster model.
    * @param optimizedGoals       Optimized goals.
    * @param optimizationOptions  Options to take into account during optimization -- e.g. excluded topics.
-   * @return True if the disk to balance is still underloaded, {@code false} otherwise.
+   * @return {@code true} if the disk to balance is still underloaded, {@code false} otherwise.
    */
   private boolean rebalanceByMovingLoadIn(Disk disk,
                                           ClusterModel clusterModel,
@@ -331,7 +331,7 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
    * @param clusterModel         The current cluster model.
    * @param optimizedGoals       Optimized goals.
    * @param optimizationOptions  Options to take into account during optimization -- e.g. excluded topics.
-   * @return True if the disk to balance is still overloaded, {@code false} otherwise.
+   * @return {@code true} if the disk to balance is still overloaded, {@code false} otherwise.
    */
   private boolean rebalanceByMovingLoadOut(Disk disk,
                                            ClusterModel clusterModel,

@@ -160,7 +160,7 @@ public class AnomalyDetectorState {
   }
 
   /**
-   * @return {@code true} if the latest goal violation contains unfixable goals, false if either the latest goal violation
+   * @return {@code true} if the latest goal violation contains unfixable goals, {@code false} if either the latest goal violation
    * contains no unfixable goals or if any execution was started after the latest goal violation.
    */
   public boolean hasUnfixableGoals() {

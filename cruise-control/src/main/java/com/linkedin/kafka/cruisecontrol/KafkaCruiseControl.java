@@ -264,7 +264,7 @@ public class KafkaCruiseControl {
    * This method helps to fail fast if a user attempts to start an execution during an ongoing execution.
    *
    * @param dryRun {@code true} if the request is just a dryrun, {@code false} if the intention is to start an execution.
-   * @param stopOngoingExecution True to stop the ongoing execution (if any) and start executing the given proposals,
+   * @param stopOngoingExecution {@code true} to stop the ongoing execution (if any) and start executing the given proposals,
    *                             {@code false} otherwise.
    */
   public void sanityCheckDryRun(boolean dryRun, boolean stopOngoingExecution) {
@@ -299,7 +299,7 @@ public class KafkaCruiseControl {
    * Let executor know the intention regarding modifying the ongoing execution. Only one request at a given time is
    * allowed to modify the ongoing execution.
    *
-   * @param modify True to indicate, false to cancel the intention to modify
+   * @param modify {@code true} to indicate, {@code false} to cancel the intention to modify
    * @return {@code true} if the intention changes the state known by executor, {@code false} otherwise.
    */
   public boolean modifyOngoingExecution(boolean modify) {
@@ -438,7 +438,7 @@ public class KafkaCruiseControl {
    * Drop the given brokers from the recently removed/demoted brokers.
    *
    * @param brokersToDrop Brokers to drop from the recently removed or demoted brokers.
-   * @param isRemoved True to drop recently removed brokers, false to drop recently demoted brokers
+   * @param isRemoved {@code true} to drop recently removed brokers, {@code false} to drop recently demoted brokers
    * @return {@code true} if any elements were removed from the requested set of brokers.
    */
   public boolean dropRecentBrokers(Set<Integer> brokersToDrop, boolean isRemoved) {
@@ -449,7 +449,7 @@ public class KafkaCruiseControl {
    * Add the given brokers to the recently removed/demoted brokers permanently -- i.e. until they are explicitly dropped by user.
    *
    * @param brokersToAdd Brokers to add to the recently removed or demoted brokers.
-   * @param isRemoved True to add to recently removed brokers, false to add recently demoted brokers
+   * @param isRemoved {@code true} to add to recently removed brokers, {@code false} to add recently demoted brokers
    */
   public void addRecentBrokersPermanently(Set<Integer> brokersToAdd, boolean isRemoved) {
     if (isRemoved) {
@@ -462,7 +462,7 @@ public class KafkaCruiseControl {
   /**
    * Get {@link Executor#recentlyRemovedBrokers()} if isRemoved is true, {@link Executor#recentlyDemotedBrokers()} otherwise.
    *
-   * @param isRemoved True to get recently removed brokers, false to get recently demoted brokers
+   * @param isRemoved {@code true} to get recently removed brokers, {@code false} to get recently demoted brokers
    * @return IDs of requested brokers.
    */
   public Set<Integer> recentBrokers(boolean isRemoved) {
@@ -548,12 +548,12 @@ public class KafkaCruiseControl {
    * @param requirements Model completeness requirements.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
    * @param excludeBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
-   * @param ignoreProposalCache True to explicitly ignore the proposal cache, {@code false} otherwise.
+   * @param ignoreProposalCache {@code true} to explicitly ignore the proposal cache, {@code false} otherwise.
    * @param isTriggeredByGoalViolation {@code true} if proposals is triggered by goal violation, {@code false} otherwise.
    * @param requestedDestinationBrokerIds Explicitly requested destination broker Ids to limit the replica movement to
    *                                      these brokers (if empty, no explicit filter is enforced -- cannot be null).
-   * @param isRebalanceDiskMode True to generate proposal to rebalance between disks within the brokers, {@code false} otherwise.
-   * @return True to ignore proposal cache, {@code false} otherwise.
+   * @param isRebalanceDiskMode {@code true} to generate proposal to rebalance between disks within the brokers, {@code false} otherwise.
+   * @return {@code true} to ignore proposal cache, {@code false} otherwise.
    */
   public boolean ignoreProposalCache(List<String> goals,
                                      ModelCompletenessRequirements requirements,

@@ -924,7 +924,7 @@ public class Executor {
    * Let executor know the intention regarding modifying the ongoing execution. Only one request at a given time is
    * allowed to modify the ongoing execution.
    *
-   * @param modify True to indicate, false to cancel the intention to modify
+   * @param modify {@code true} to indicate, {@code false} to cancel the intention to modify
    * @return {@code true} if the intention changes the state known by executor, {@code false} otherwise.
    */
   public boolean modifyOngoingExecution(boolean modify) {

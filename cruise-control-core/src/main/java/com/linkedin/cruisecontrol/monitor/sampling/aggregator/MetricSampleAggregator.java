@@ -136,7 +136,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
    *
    * @param sample The metric sample to add.
    *
-   * @return True if the sample is accepted, false if the sample is ignored.
+   * @return {@code true} if the sample is accepted, {@code false} if the sample is ignored.
    */
   public boolean addSample(MetricSample<G, E> sample) {
     if (!sample.isValid(_metricDef)) {

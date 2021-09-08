@@ -119,7 +119,7 @@ public class BrokerCapacityInfo {
   }
 
   /**
-   * @return True if the capacity of the broker for at least one resource is based on an estimation, {@code false} otherwise.
+   * @return {@code true} if the capacity of the broker for at least one resource is based on an estimation, {@code false} otherwise.
    */
   public boolean isEstimated() {
     return !_estimationInfo.isEmpty();

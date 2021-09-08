@@ -21,7 +21,7 @@ public interface CruiseControlParameters extends CruiseControlConfigurable {
    * Parse the parameters set in HTTP request to initialize object.
    *
    * @param response HTTP response of Cruise Control. Populated in case of a parameter parse exception.
-   * @return True if there has been a failure to parse parameters, {@code false} otherwise. If the object is already initialized,
+   * @return {@code true} if there has been a failure to parse parameters, {@code false} otherwise. If the object is already initialized,
    *         directly return false.
    */
   boolean parseParameters(HttpServletResponse response);
@@ -32,12 +32,12 @@ public interface CruiseControlParameters extends CruiseControlConfigurable {
   EndPoint endPoint();
 
   /**
-   * @return True if requested response is in JSON, {@code false} otherwise.
+   * @return {@code true} if requested response is in JSON, {@code false} otherwise.
    */
   boolean json();
 
   /**
-   * @return True if requested response should contain a JSON schema in the header, {@code false} otherwise.
+   * @return {@code true} if requested response should contain a JSON schema in the header, {@code false} otherwise.
    */
   boolean wantResponseSchema();
 

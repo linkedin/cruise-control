@@ -293,7 +293,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
 
   /**
    * Check if requirements of this goal are not violated if this proposal is applied to the given cluster state,
-   * false otherwise.
+   * {@code false} otherwise.
    *
    * @param clusterModel The state of the cluster.
    * @param action Action containing information about potential modification to the given cluster model. Assumed to be

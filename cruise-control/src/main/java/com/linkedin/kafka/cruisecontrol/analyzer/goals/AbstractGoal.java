@@ -169,7 +169,7 @@ public abstract class AbstractGoal implements Goal {
    *
    * @param clusterModel The state of the cluster.
    * @param action Action containing information about potential modification to the given cluster model.
-   * @return True if requirements of this goal are not violated if this action is applied to the given cluster state,
+   * @return {@code true} if requirements of this goal are not violated if this action is applied to the given cluster state,
    * {@code false} otherwise.
    */
   protected abstract boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action);

@@ -450,7 +450,7 @@ public abstract class CapacityGoal extends AbstractGoal {
    *
    * @param destinationBroker Destination broker.
    * @param replicaUtilization Replica utilization for the given resource.
-   * @return {@code true} if utilization is equal or above the capacity limit, false otherwise.
+   * @return {@code true} if utilization is equal or above the capacity limit, {@code false} otherwise.
    */
   private boolean isUtilizationUnderLimitAfterAddingLoad(Broker destinationBroker, double replicaUtilization) {
     Resource resource = resource();

@@ -1126,8 +1126,8 @@ public class ClusterModel implements Serializable {
   /**
    * Sort the partitions in the cluster by the utilization of the given resource.
    * @param resource The resource type.
-   * @param wantMaxLoad True if the requested utilization represents the peak load, false otherwise.
-   * @param wantAvgLoad True if the requested utilization represents the avg load, false otherwise.
+   * @param wantMaxLoad {@code true} if the requested utilization represents the peak load, {@code false} otherwise.
+   * @param wantAvgLoad {@code true} if the requested utilization represents the avg load, {@code false} otherwise.
    * @return A list of partitions sorted by utilization of the given resource.
    */
   public List<Partition> replicasSortedByUtilization(Resource resource, boolean wantMaxLoad, boolean wantAvgLoad) {
