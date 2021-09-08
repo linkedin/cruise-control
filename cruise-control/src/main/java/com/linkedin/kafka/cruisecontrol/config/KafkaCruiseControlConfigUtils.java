@@ -21,6 +21,7 @@ public final class KafkaCruiseControlConfigUtils {
    * @param c The concrete class of the returned instance
    * @param t The interface of the returned instance
    * @param configs Configuration to used to config the returned instance.
+   * @param <T> The type of the instance to be returned.
    * @return A configured instance of the class c
    */
   public static <T> T getConfiguredInstance(Class<?> c, Class<T> t, Map<String, Object> configs) {

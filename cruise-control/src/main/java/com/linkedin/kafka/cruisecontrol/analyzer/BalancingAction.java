@@ -257,7 +257,7 @@ public class BalancingAction {
    * Compare the given object with this object.
    *
    * @param other Other object to be compared with this object.
-   * @return True if other object equals this object, false otherwise.
+   * @return {@code true} if other object equals this object, {@code false} otherwise.
    */
   @Override
   public boolean equals(Object other) {

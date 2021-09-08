@@ -72,7 +72,7 @@ public final class ModelParameters {
 
   /**
    * Trigger the calculation of the model parameters.
-   * @return True if the parameters are generated, otherwise false;
+   * @return {@code true} if the parameters are generated, otherwise false;
    */
   public static boolean updateModelCoefficient() {
     return LINEAR_REGRESSION_PARAMETERS.updateModelCoefficient();

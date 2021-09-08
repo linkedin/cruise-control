@@ -60,7 +60,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
   /**
    * Return an object that can be further used to encode into JSON.
    *
-   * @param verbose True if verbose, false otherwise.
+   * @param verbose {@code true} if verbose, {@code false} otherwise.
    * @param topic Regex of topic to filter partition states by, is null if no filter is to be applied
    * @return An object that can be further used to encode into JSON.
    */

@@ -117,7 +117,7 @@ public class LoadMonitor {
    *
    * @param config The load monitor configuration.
    * @param time   The time object.
-   * @param dropwizardMetricRegistry The sensor registry for cruise control
+   * @param dropwizardMetricRegistry The metric registry that holds all the metrics for monitoring Cruise Control.
    * @param metricDef The metric definitions.
    */
   public LoadMonitor(KafkaCruiseControlConfig config, Time time, MetricRegistry dropwizardMetricRegistry, MetricDef metricDef) {
@@ -224,13 +224,14 @@ public class LoadMonitor {
   }
 
   /**
+   * @param cluster Kafka cluster.
    * @return The state of the load monitor.
    */
-  public LoadMonitorState state(Cluster kafkaCluster) {
+  public LoadMonitorState state(Cluster cluster) {
     LoadMonitorTaskRunner.LoadMonitorTaskRunnerState state = _loadMonitorTaskRunner.state();
 
     // Get the window to monitored partitions percentage mapping.
-    SortedMap<Long, Float> validPartitionRatio = _partitionMetricSampleAggregator.validPartitionRatioByWindows(kafkaCluster);
+    SortedMap<Long, Float> validPartitionRatio = _partitionMetricSampleAggregator.validPartitionRatioByWindows(cluster);
 
     switch (state) {
       case NOT_STARTED:
@@ -417,7 +418,7 @@ public class LoadMonitor {
   /**
    * Get the most recent cluster load model before the given timestamp.
    *
-   * @param now The current time in millisecond.
+   * @param nowMs The current time in millisecond.
    * @param requirements the load requirements for getting the cluster model.
    * @param allowCapacityEstimation whether allow capacity estimation in cluster model if the underlying live broker capacity is unavailable.
    * @param operationProgress the progress to report.
@@ -426,12 +427,12 @@ public class LoadMonitor {
    * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity in time.
    * @throws BrokerCapacityResolutionException If broker capacity resolver fails to resolve broker capacity.
    */
-  public ClusterModel clusterModel(long now,
+  public ClusterModel clusterModel(long nowMs,
                                    ModelCompletenessRequirements requirements,
                                    boolean allowCapacityEstimation,
                                    OperationProgress operationProgress)
       throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
-    ClusterModel clusterModel = clusterModel(DEFAULT_START_TIME_FOR_CLUSTER_MODEL, now, requirements, allowCapacityEstimation, operationProgress);
+    ClusterModel clusterModel = clusterModel(DEFAULT_START_TIME_FOR_CLUSTER_MODEL, nowMs, requirements, allowCapacityEstimation, operationProgress);
     // Micro optimization: put the broker stats construction out of the lock.
     BrokerStats brokerStats = clusterModel.brokerStats(_config);
     // update the cached brokerLoadStats
@@ -603,6 +604,7 @@ public class LoadMonitor {
 
   /**
    * Get the cached load.
+   * @param allowCapacityEstimation {@code true} to allow capacity estimation, {@code false} otherwise.
    * @return The cached load, or null if (1) load or metadata is stale or (2) cached load violates capacity requirements.
    */
   public synchronized BrokerStats cachedBrokerLoadStats(boolean allowCapacityEstimation) {
@@ -636,7 +638,9 @@ public class LoadMonitor {
   }
 
   /**
-   * @return True if the monitored load meets the given completeness requirements, false otherwise.
+   * @param cluster Kafka cluster.
+   * @param requirements Model completeness requirements.
+   * @return {@code true} if the monitored load meets the given completeness requirements, {@code false} otherwise.
    */
   public boolean meetCompletenessRequirements(Cluster cluster, ModelCompletenessRequirements requirements) {
     int numValidWindows =
@@ -646,7 +650,8 @@ public class LoadMonitor {
   }
 
   /**
-   * @return True if the monitored load meets the load requirements, false otherwise.
+   * @param requirements Model completeness requirements.
+   * @return {@code true} if the monitored load meets the load requirements, {@code false} otherwise.
    */
   public boolean meetCompletenessRequirements(ModelCompletenessRequirements requirements) {
     MetadataClient.ClusterAndGeneration clusterAndGeneration = refreshClusterAndGeneration();

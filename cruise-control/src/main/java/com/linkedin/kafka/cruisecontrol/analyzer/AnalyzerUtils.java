@@ -144,6 +144,7 @@ public final class AnalyzerUtils {
    *
    * @param d1 The first {@code double} to compare.
    * @param d2 The second {@code double} to compare.
+   * @param epsilon Epsilon to be used in comparing doubles.
    * @return 1 if first &gt; second, -1 if first &lt; second, 0 otherwise.
    */
   public static int compare(double d1, double d2, double epsilon) {
@@ -160,6 +161,7 @@ public final class AnalyzerUtils {
   }
 
   /**
+   * @param config The configurations for Cruise Control.
    * @return The list of default goals sorted by highest to lowest default priority.
    */
   public static List<Goal> getGoalsByPriority(KafkaCruiseControlConfig config) {
@@ -167,6 +169,7 @@ public final class AnalyzerUtils {
   }
 
   /**
+   * @param config The configurations for Cruise Control.
    * @return A goal map with goal name as the keys.
    */
   public static Map<String, Goal> getCaseInsensitiveGoalsByName(KafkaCruiseControlConfig config) {

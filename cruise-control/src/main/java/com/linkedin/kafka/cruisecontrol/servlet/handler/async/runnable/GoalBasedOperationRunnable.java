@@ -185,7 +185,7 @@ public abstract class GoalBasedOperationRunnable extends OperationRunnable {
   }
 
   /**
-   * @return True to generate an optimizer result with {@link #workWithClusterModel()}, and false to generate an
+   * @return {@code true} to generate an optimizer result with {@link #workWithClusterModel()}, and {@code false} to generate an
    * optimizer result with {@link #workWithoutClusterModel()}.
    */
   protected abstract boolean shouldWorkWithClusterModel();

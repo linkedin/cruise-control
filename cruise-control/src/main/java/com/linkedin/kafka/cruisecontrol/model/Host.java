@@ -160,6 +160,8 @@ public class Host implements Serializable {
 
   /**
    * Set broker state and update the capacity
+   * @param brokerId Broker id.
+   * @param newState The new state of the broker.
    */
   void setBrokerState(int brokerId, Broker.State newState) {
     Broker broker = broker(brokerId);

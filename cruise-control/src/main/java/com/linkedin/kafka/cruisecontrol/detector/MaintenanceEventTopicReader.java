@@ -218,7 +218,7 @@ public class MaintenanceEventTopicReader implements MaintenanceEventReader {
    * Ensure that the {@link #_consumer} is assigned to the latest partitions of the {@link #_maintenanceEventTopic}.
    * This enables metrics reporter sampler to handle dynamic partition size increases in {@link #_maintenanceEventTopic}.
    *
-   * @return True if the set of partitions currently assigned to this consumer is empty, false otherwise.
+   * @return {@code true} if the set of partitions currently assigned to this consumer is empty, {@code false} otherwise.
    */
   protected boolean refreshPartitionAssignment() {
     List<PartitionInfo> remotePartitionInfo = _consumer.partitionsFor(_maintenanceEventTopic);

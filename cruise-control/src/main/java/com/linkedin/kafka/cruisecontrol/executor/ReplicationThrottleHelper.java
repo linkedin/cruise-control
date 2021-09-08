@@ -221,7 +221,7 @@ class ReplicationThrottleHelper {
    * @param config configuration properties
    * @param topic name of topic which contains <code>replicas</code>
    * @param replicas replicas to remove from the configuration properties
-   * @return true if the given configuration properties are modified and false otherwise
+   * @return {@code true} if the given configuration properties are modified and {@code false} otherwise
    */
   private boolean removeLeaderThrottledReplicasFromTopic(Properties config, String topic, Set<String> replicas) {
     String currLeaderThrottledReplicas = config.getProperty(LEADER_THROTTLED_REPLICAS);
@@ -251,7 +251,7 @@ class ReplicationThrottleHelper {
    * @param config configuration properties
    * @param topic name of topic which contains <code>replicas</code>
    * @param replicas replicas to remove from the configuration properties
-   * @return true if the given configuration properties are modified and false otherwise
+   * @return {@code true} if the given configuration properties are modified and {@code false} otherwise
    */
   private boolean removeFollowerThrottledReplicasFromTopic(Properties config, String topic, Set<String> replicas) {
     String currLeaderThrottledReplicas = config.getProperty(FOLLOWER_THROTTLED_REPLICAS);

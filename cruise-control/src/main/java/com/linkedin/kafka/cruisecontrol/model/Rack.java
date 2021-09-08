@@ -125,7 +125,7 @@ public class Rack implements Serializable {
   /**
    * Checks if rack has at least one alive servers. If none of the servers is alive, rack is considered dead.
    *
-   * @return True if rack is alive, false otherwise.
+   * @return {@code true} if rack is alive, {@code false} otherwise.
    */
   public boolean isRackAlive() {
     for (Host host : _hosts.values()) {
@@ -232,9 +232,10 @@ public class Rack implements Serializable {
   /**
    * Set the replica load.
    *
-   * @param brokerId       Broker Id containing the replica with the given topic partition.
+   * @param brokerId Broker Id containing the replica with the given topic partition.
    * @param tp Topic partition that identifies the replica in this broker.
-   * @param aggregatedMetricValues   The metric values for this replica..
+   * @param aggregatedMetricValues The metric values for this replica.
+   * @param windows The windows list of the aggregated metric values.
    */
   void setReplicaLoad(int brokerId, TopicPartition tp, AggregatedMetricValues aggregatedMetricValues, List<Long> windows) {
     Host host = _brokers.get(brokerId).host();
@@ -269,6 +270,8 @@ public class Rack implements Serializable {
 
   /**
    * Set the broker state and update the capacity
+   * @param brokerId Broker id.
+   * @param newState The new state of the broker.
    */
   void setBrokerState(int brokerId, Broker.State newState) {
     // Broker is dead

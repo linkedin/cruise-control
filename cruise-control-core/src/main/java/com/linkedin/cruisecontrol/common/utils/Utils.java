@@ -17,6 +17,8 @@ public final class Utils {
   }
 
   /**
+   * @param c Class for which a new instance will be instantiated.
+   * @param <T> The type of the instance to be returned.
    * @return Instantiated class.
    */
   public static <T> T newInstance(Class<T> c) throws CruiseControlException {
@@ -69,6 +71,7 @@ public final class Utils {
    * Create a string representation of a list joined by the given separator
    * @param list The list of items
    * @param separator The separator
+   * @param <T> The type of the items in the given list.
    * @return The string representation.
    */
   public static <T> String join(Collection<T> list, String separator) {

@@ -263,9 +263,9 @@ public class KafkaCruiseControl {
    *
    * This method helps to fail fast if a user attempts to start an execution during an ongoing execution.
    *
-   * @param dryRun True if the request is just a dryrun, false if the intention is to start an execution.
-   * @param stopOngoingExecution True to stop the ongoing execution (if any) and start executing the given proposals,
-   *                             false otherwise.
+   * @param dryRun {@code true} if the request is just a dryrun, {@code false} if the intention is to start an execution.
+   * @param stopOngoingExecution {@code true} to stop the ongoing execution (if any) and start executing the given proposals,
+   *                             {@code false} otherwise.
    */
   public void sanityCheckDryRun(boolean dryRun, boolean stopOngoingExecution) {
     if (dryRun) {
@@ -294,7 +294,7 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * @return True if there is an ongoing execution started by Cruise Control.
+   * @return {@code true} if there is an ongoing execution started by Cruise Control.
    */
   public boolean hasOngoingExecution() {
     return _executor.hasOngoingExecution();
@@ -304,8 +304,8 @@ public class KafkaCruiseControl {
    * Let executor know the intention regarding modifying the ongoing execution. Only one request at a given time is
    * allowed to modify the ongoing execution.
    *
-   * @param modify True to indicate, false to cancel the intention to modify
-   * @return True if the intention changes the state known by executor, false otherwise.
+   * @param modify {@code true} to indicate, {@code false} to cancel the intention to modify
+   * @return {@code true} if the intention changes the state known by executor, {@code false} otherwise.
    */
   public boolean modifyOngoingExecution(boolean modify) {
     return _executor.modifyOngoingExecution(modify);
@@ -411,7 +411,7 @@ public class KafkaCruiseControl {
    * Enable or disable self healing for the given anomaly type in the anomaly detector.
    *
    * @param anomalyType Type of anomaly for which to enable or disable self healing.
-   * @param isSelfHealingEnabled True if self healing is enabled for the given anomaly type, false otherwise.
+   * @param isSelfHealingEnabled {@code true} if self healing is enabled for the given anomaly type, {@code false} otherwise.
    * @return The old value of self healing for the given anomaly type.
    */
   public boolean setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled) {
@@ -443,7 +443,7 @@ public class KafkaCruiseControl {
    * Drop the given brokers from the recently removed/demoted brokers.
    *
    * @param brokersToDrop Brokers to drop from the recently removed or demoted brokers.
-   * @param isRemoved True to drop recently removed brokers, false to drop recently demoted brokers
+   * @param isRemoved {@code true} to drop recently removed brokers, {@code false} to drop recently demoted brokers
    * @return {@code true} if any elements were removed from the requested set of brokers.
    */
   public boolean dropRecentBrokers(Set<Integer> brokersToDrop, boolean isRemoved) {
@@ -454,7 +454,7 @@ public class KafkaCruiseControl {
    * Add the given brokers to the recently removed/demoted brokers permanently -- i.e. until they are explicitly dropped by user.
    *
    * @param brokersToAdd Brokers to add to the recently removed or demoted brokers.
-   * @param isRemoved True to add to recently removed brokers, false to add recently demoted brokers
+   * @param isRemoved {@code true} to add to recently removed brokers, {@code false} to add recently demoted brokers
    */
   public void addRecentBrokersPermanently(Set<Integer> brokersToAdd, boolean isRemoved) {
     if (isRemoved) {
@@ -467,7 +467,7 @@ public class KafkaCruiseControl {
   /**
    * Get {@link Executor#recentlyRemovedBrokers()} if isRemoved is true, {@link Executor#recentlyDemotedBrokers()} otherwise.
    *
-   * @param isRemoved True to get recently removed brokers, false to get recently demoted brokers
+   * @param isRemoved {@code true} to get recently removed brokers, {@code false} to get recently demoted brokers
    * @return IDs of requested brokers.
    */
   public Set<Integer> recentBrokers(boolean isRemoved) {
@@ -553,12 +553,12 @@ public class KafkaCruiseControl {
    * @param requirements Model completeness requirements.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
    * @param excludeBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
-   * @param ignoreProposalCache True to explicitly ignore the proposal cache, false otherwise.
-   * @param isTriggeredByGoalViolation True if proposals is triggered by goal violation, false otherwise.
+   * @param ignoreProposalCache {@code true} to explicitly ignore the proposal cache, {@code false} otherwise.
+   * @param isTriggeredByGoalViolation {@code true} if proposals is triggered by goal violation, {@code false} otherwise.
    * @param requestedDestinationBrokerIds Explicitly requested destination broker Ids to limit the replica movement to
    *                                      these brokers (if empty, no explicit filter is enforced -- cannot be null).
-   * @param isRebalanceDiskMode True to generate proposal to rebalance between disks within the brokers, false otherwise.
-   * @return True to ignore proposal cache, false otherwise.
+   * @param isRebalanceDiskMode {@code true} to generate proposal to rebalance between disks within the brokers, {@code false} otherwise.
+   * @return {@code true} to ignore proposal cache, {@code false} otherwise.
    */
   public boolean ignoreProposalCache(List<String> goals,
                                      ModelCompletenessRequirements requirements,
@@ -582,6 +582,16 @@ public class KafkaCruiseControl {
 
   /**
    * See {@link GoalOptimizer#optimizations(ClusterModel, List, OperationProgress, Map, OptimizationOptions)}.
+   *
+   * @param clusterModel The state of the cluster.
+   * @param goalsByPriority the goals ordered by priority.
+   * @param operationProgress to report the job progress.
+   * @param initReplicaDistribution The initial replica distribution of the cluster. This is only needed if the passed in clusterModel is not
+   *                                the original cluster model so that initial replica distribution can not be deducted from that cluster model,
+   *                                otherwise it is null. One case explicitly specifying initial replica distribution needed is to increase/decrease
+   *                                specific topic partition's replication factor, in this case some replicas are tentatively deleted/added in
+   *                                cluster model before passing it in to generate proposals.
+   * @param optimizationOptions Optimization options.
    * @return Results of optimization containing the proposals and stats.
    */
   public synchronized OptimizerResult optimizations(ClusterModel clusterModel,
@@ -595,6 +605,8 @@ public class KafkaCruiseControl {
 
   /**
    * See {@link GoalOptimizer#excludedTopics(ClusterModel, Pattern)}.
+   * @param clusterModel The state of the cluster.
+   * @param requestedExcludedTopics Pattern used to exclude topics, or {@code null} to use the default excluded topics.
    * @return Set of excluded topics in the given cluster model.
    */
   public Set<String> excludedTopics(ClusterModel clusterModel, Pattern requestedExcludedTopics) {
@@ -620,7 +632,7 @@ public class KafkaCruiseControl {
    * Execute the given balancing proposals for non-(demote/remove) operations.
    * @param proposals the given balancing proposals
    * @param unthrottledBrokers Brokers for which the rate of replica movements from/to will not be throttled.
-   * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
+   * @param isKafkaAssignerMode {@code true} if kafka assigner mode, {@code false} otherwise.
    * @param concurrentInterBrokerPartitionMovements The maximum number of concurrent inter-broker partition movements per broker
    *                                                (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentIntraBrokerPartitionMovements The maximum number of concurrent intra-broker partition movements
@@ -666,7 +678,7 @@ public class KafkaCruiseControl {
    * @param proposals the given balancing proposals
    * @param throttleDecommissionedBroker Whether throttle the brokers that are being decommissioned.
    * @param removedBrokers Brokers to be removed, null if no brokers has been removed.
-   * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
+   * @param isKafkaAssignerMode {@code true} if kafka assigner mode, {@code false} otherwise.
    * @param concurrentInterBrokerPartitionMovements The maximum number of concurrent inter-broker partition movements per broker
    *                                                (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
@@ -863,7 +875,7 @@ public class KafkaCruiseControl {
    * Check if the completeness requirements are met for the given goals.
    *
    * @param goals A list of goals to check completeness for.
-   * @return True if completeness requirements are met for the given goals, false otherwise.
+   * @return {@code true} if completeness requirements are met for the given goals, {@code false} otherwise.
    */
   public boolean meetCompletenessRequirements(List<String> goals) {
     MetadataClient.ClusterAndGeneration clusterAndGeneration = _loadMonitor.refreshClusterAndGeneration();

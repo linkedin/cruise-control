@@ -522,6 +522,9 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   /**
    * Proposal#1: [TPO] move from original broker to the other one -- e.g. 0 -> 1
    * Proposal#2: [TP1] change order and leader -- e.g. [0, 1] -> [1, 0]
+   * @param proposalToExecute Proposals to execute.
+   * @param proposalToVerify Proposals to verify.
+   * @param topicSize Topic size in bytes.
    */
   private void populateProposals(List<ExecutionProposal> proposalToExecute,
                                  List<ExecutionProposal> proposalToVerify,

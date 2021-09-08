@@ -133,6 +133,7 @@ public class MetricDef {
   }
 
   /**
+   * @param id The index corresponding to the requested {@link MetricInfo}.
    * @return The {@link MetricInfo} by id;
    */
   public MetricInfo metricInfo(short id) {

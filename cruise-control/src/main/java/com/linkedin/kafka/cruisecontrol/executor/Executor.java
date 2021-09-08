@@ -273,6 +273,7 @@ public class Executor {
 
   /**
    * Register gauge sensors.
+   * @param dropwizardMetricRegistry The metric registry that holds all the metrics for monitoring Cruise Control.
    */
   private void registerGaugeSensors(MetricRegistry dropwizardMetricRegistry) {
     dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR,

@@ -90,6 +90,7 @@ public class RandomClusterTest {
   /**
    * Populate parameters for the {@link OptimizationVerifier}. All brokers are alive.
    *
+   * @param distribution Load distribution type.
    * @return Parameters for the {@link OptimizationVerifier}.
    */
   public static Collection<Object[]> data(TestConstants.Distribution distribution) {

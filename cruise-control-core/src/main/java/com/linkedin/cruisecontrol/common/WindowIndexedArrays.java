@@ -93,7 +93,7 @@ public abstract class WindowIndexedArrays {
    * and current window index(exclusive).
    *
    * @param windowIndex the window index to check.
-   * @return True if the window index is valid, false otherwise.
+   * @return {@code true} if the window index is valid, {@code false} otherwise.
    */
   protected boolean inValidWindowRange(long windowIndex) {
     return windowIndex >= _oldestWindowIndex && windowIndex <= lastWindowIndex();

@@ -22,7 +22,7 @@ public class KafkaNetworkClientProvider implements NetworkClientProvider {
   }
 
   @Override
-  public NetworkClient createNetworkClient(long connectionMaxIdleMS,
+  public NetworkClient createNetworkClient(long connectionMaxIdleMs,
                                            Metrics metrics,
                                            Time time,
                                            String metricGrpPrefix,
@@ -39,7 +39,7 @@ public class KafkaNetworkClientProvider implements NetworkClientProvider {
                                            long connectionSetupTimeoutMaxMs,
                                            boolean discoverBrokerVersions,
                                            ApiVersions apiVersions) {
-    return new NetworkClient(new Selector(connectionMaxIdleMS, metrics, time, metricGrpPrefix, channelBuilder, new LogContext()),
+    return new NetworkClient(new Selector(connectionMaxIdleMs, metrics, time, metricGrpPrefix, channelBuilder, new LogContext()),
                              metadata, clientId, maxInFlightRequestsPerConnection, reconnectBackoffMs,
                              reconnectBackoffMax, socketSendBuffer, socketReceiveBuffer, defaultRequestTimeoutMs,
                              connectionSetupTimeoutMs, connectionSetupTimeoutMaxMs, ClientDnsLookup.DEFAULT,

@@ -204,28 +204,28 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
-   * @return True if the broker is not dead, false otherwise.
+   * @return {@code true} if the broker is not dead, {@code false} otherwise.
    */
   public boolean isAlive() {
     return _state != State.DEAD;
   }
 
   /**
-   * @return True if the broker is using JBOD, false otherwise
+   * @return {@code true} if the broker is using JBOD, {@code false} otherwise
    */
   public boolean isUsingJBOD() {
     return !_diskByLogdir.isEmpty();
   }
 
   /**
-   * @return True if the broker is a new broker, false otherwise.
+   * @return {@code true} if the broker is a new broker, {@code false} otherwise.
    */
   public boolean isNew() {
     return _state == State.NEW;
   }
 
   /**
-   * @return True if the broker has been demoted, false otherwise.
+   * @return {@code true} if the broker has been demoted, {@code false} otherwise.
    */
   public boolean isDemoted() {
     return _state == State.DEMOTED;
@@ -236,7 +236,7 @@ public class Broker implements Serializable, Comparable<Broker> {
    * Note that contrary to {@link State#DEAD}, a {@link State#BAD_DISKS} broker might receive replicas from other
    * brokers during a rebalance.
    *
-   * @return True if the broker has bad disks, false otherwise.
+   * @return {@code true} if the broker has bad disks, {@code false} otherwise.
    */
   public boolean hasBadDisks() {
     return _state == State.BAD_DISKS;

@@ -58,7 +58,7 @@ final class HolderUtils {
    * @param cluster The Kafka cluster.
    * @param brokerId The id of the broker whose raw metric is missing
    * @param rawMetricType The raw metric type that is missing.
-   * @return True if the missing is allowed, false otherwise.
+   * @return {@code true} if the missing is allowed, {@code false} otherwise.
    */
   static boolean allowMissingBrokerMetric(Cluster cluster, int brokerId, RawMetricType rawMetricType) {
     switch (rawMetricType) {

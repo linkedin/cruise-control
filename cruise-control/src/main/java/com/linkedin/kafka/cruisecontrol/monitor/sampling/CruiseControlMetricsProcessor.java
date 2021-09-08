@@ -45,7 +45,7 @@ public class CruiseControlMetricsProcessor {
 
   /**
    * @param brokerCapacityConfigResolver The resolver for retrieving broker capacities.
-   * @param allowCpuCapacityEstimation True to allow CPU capacity estimation of brokers used for CPU utilization estimation.
+   * @param allowCpuCapacityEstimation {@code true} to allow CPU capacity estimation of brokers used for CPU utilization estimation.
    */
   CruiseControlMetricsProcessor(BrokerCapacityConfigResolver brokerCapacityConfigResolver, boolean allowCpuCapacityEstimation) {
     _brokerLoad = new HashMap<>();

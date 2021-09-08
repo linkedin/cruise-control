@@ -151,7 +151,7 @@ public abstract class AbstractRackAwareGoal extends AbstractGoal {
    *
    * @param replica An alive replica to check whether it should stay in the current broker.
    * @param clusterModel The state of the cluster.
-   * @return True if the given alive replica should stay in the current broker, false otherwise.
+   * @return {@code true} if the given alive replica should stay in the current broker, {@code false} otherwise.
    */
   protected abstract boolean shouldKeepInTheCurrentBroker(Replica replica, ClusterModel clusterModel);
 

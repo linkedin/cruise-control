@@ -198,6 +198,7 @@ public class AbstractConfig {
    * put all the remaining keys with the prefix stripped and their parsed values in the result map.
    *
    * This is useful if one wants to allow prefixed configs to override default ones.
+   * @param prefix The prefix to use as override.
    * @return Values with prefix override.
    */
   public Map<String, Object> valuesWithPrefixOverride(String prefix) {
@@ -249,6 +250,7 @@ public class AbstractConfig {
    *
    * @param key The configuration key for the class
    * @param t The interface the class should implement
+   * @param <T> The type of the configured instance to be returned.
    * @return A configured instance of the class
    */
   public <T> T getConfiguredInstance(String key, Class<T> t) throws CruiseControlException {
@@ -268,10 +270,11 @@ public class AbstractConfig {
 
   /**
    * Get a list of configured instances of the given class specified by the given configuration key. The configuration
-   * may specify either null or an empty string to indicate no configured instances. In both cases, this method
+   * may specify either {@code null} or an empty string to indicate no configured instances. In both cases, this method
    * returns an empty list to indicate no configured instances.
    * @param key The configuration key for the class
    * @param t The interface the class should implement
+   * @param <T> The type of the configured instance to be returned.
    * @return The list of configured instances
    */
   @SuppressWarnings("unchecked")
@@ -281,11 +284,12 @@ public class AbstractConfig {
 
   /**
    * Get a list of configured instances of the given class specified by the given configuration key. The configuration
-   * may specify either null or an empty string to indicate no configured instances. In both cases, this method
+   * may specify either {@code null} or an empty string to indicate no configured instances. In both cases, this method
    * returns an empty list to indicate no configured instances.
    * @param key The configuration key for the class
    * @param t The interface the class should implement
    * @param configOverrides Configuration overrides to use.
+   * @param <T> The type of the configured instances to be returned.
    * @return The list of configured instances
    */
   public <T> List<T> getConfiguredInstances(String key, Class<T> t, Map<String, Object> configOverrides)

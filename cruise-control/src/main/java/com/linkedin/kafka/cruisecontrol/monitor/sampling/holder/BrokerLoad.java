@@ -89,7 +89,7 @@ public class BrokerLoad {
    * Check whether all dot handled topic metrics are available for the given dot-handled topic name.
    *
    * @param dotHandledTopic Dot-handled topic name.
-   * @return True if all dot handled topic metrics are available for the given dot-handled topic name, false otherwise.
+   * @return {@code true} if all dot handled topic metrics are available for the given dot-handled topic name, {@code false} otherwise.
    */
   public boolean allDotHandledTopicMetricsAvailable(String dotHandledTopic) {
     // We rely on the partition size metric to determine whether a topic metric is available or not.
@@ -111,7 +111,7 @@ public class BrokerLoad {
    *
    * @param tpWithDotHandled Topic partition with dot-handled topic name.
    * @param rawMetricType Raw metric type.
-   * @return True if partition metrics are available for the given dot-handled partition name and raw metric type, false
+   * @return {@code true} if partition metrics are available for the given dot-handled partition name and raw metric type, false
    * otherwise.
    */
   public boolean partitionMetricAvailable(TopicPartition tpWithDotHandled, RawMetricType rawMetricType) {
@@ -286,7 +286,7 @@ public class BrokerLoad {
    *
    * @param cluster The Kafka cluster.
    * @param brokerId The broker id to check.
-   * @return True if there are enough topic level metrics, false otherwise.
+   * @return {@code true} if there are enough topic level metrics, {@code false} otherwise.
    */
   private boolean enoughTopicPartitionMetrics(Cluster cluster, int brokerId) {
     Set<String> missingTopics = new HashSet<>();

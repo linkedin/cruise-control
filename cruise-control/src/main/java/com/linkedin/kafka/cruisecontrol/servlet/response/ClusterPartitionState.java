@@ -84,7 +84,7 @@ public class ClusterPartitionState {
    * @param otherPartitions state of partitions other than offline or urp.
    * @param partitionsWithOfflineReplicas state of partitions with offline replicas.
    * @param underMinIsrPartitions state of under min isr partitions.
-   * @param verbose true if requested to gather state of partitions other than offline or urp.
+   * @param verbose {@code true} if requested to gather state of partitions other than offline or urp.
    * @param topicPattern regex of topic to filter partition states by, is null if no filter is to be applied
    */
   protected void populateKafkaPartitionState(Set<PartitionInfo> underReplicatedPartitions,
@@ -153,7 +153,7 @@ public class ClusterPartitionState {
   /**
    * Write partition summary
    * @param sb String builder to write the response to.
-   * @param verbose True if verbose, false otherwise.
+   * @param verbose {@code true} if verbose, {@code false} otherwise.
    */
   public void writePartitionSummary(StringBuilder sb, boolean verbose) {
     int topicNameLength = _kafkaCluster.topics().stream().mapToInt(String::length).max().orElse(20) + 5;

@@ -246,7 +246,7 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
    * Check whether the combined replica utilization is above the given disk capacity limits.
    *
    * @param disk Disk to be checked for capacity limit violation.
-   * @return True if utilization is over the limit, false otherwise.
+   * @return {@code true} if utilization is over the limit, {@code false} otherwise.
    */
   private boolean isUtilizationOverLimit(Disk disk) {
     return disk.utilization() > disk.capacity() * _balancingConstraint.capacityThreshold(RESOURCE);
@@ -257,7 +257,7 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
    *
    * @param sourceReplica   Source replica.
    * @param destinationDisk Destination disk.
-   * @return True if movement is acceptable for this goal, false otherwise.
+   * @return {@code true} if movement is acceptable for this goal, {@code false} otherwise.
    */
   private boolean isMovementAcceptableForCapacity(Replica sourceReplica, Disk destinationDisk) {
     double replicaUtilization = sourceReplica.load().expectedUtilizationFor(RESOURCE);
@@ -269,8 +269,8 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
    *
    * @param sourceReplica Source replica.
    * @param destinationReplica Destination replica.
-   * @return True if the swap for the current resource between source and destination replicas is acceptable for this
-   *         goal, false otherwise.
+   * @return {@code true} if the swap for the current resource between source and destination replicas is acceptable for this
+   *         goal, {@code false} otherwise.
    */
   private boolean isSwapAcceptableForCapacity(Replica sourceReplica, Replica destinationReplica) {
     double sourceReplicaUtilization = sourceReplica.load().expectedUtilizationFor(RESOURCE);
@@ -285,7 +285,7 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
    *
    * @param destinationDisk Destination disk.
    * @param utilizationToAdd Utilization to add.
-   * @return True if utilization is less than the capacity limit, false otherwise.
+   * @return {@code true} if utilization is less than the capacity limit, {@code false} otherwise.
    */
   private boolean isUtilizationUnderLimitAfterAddingLoad(Disk destinationDisk, double utilizationToAdd) {
     double capacityLimit = destinationDisk.capacity() * _balancingConstraint.capacityThreshold(RESOURCE);

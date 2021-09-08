@@ -381,8 +381,11 @@ public final class KafkaCruiseControlUtils {
    *   <li>All partitions are paused</li>
    * </ul>
    *
+   * @param consumer Consumer
    * @param offsets Offsets for each partition consumption to catch up.
-   * @return True if the consumption is done, false otherwise.
+   * @param <K> The type of the consumer key.
+   * @param <V> The type of the consumer value.
+   * @return {@code true} if the consumption is done, {@code false} otherwise.
    */
   public static <K, V> boolean consumptionDone(Consumer<K, V> consumer, Map<TopicPartition, Long> offsets) {
     Set<TopicPartition> partitionsNotPaused = new HashSet<>(consumer.assignment());
@@ -410,7 +413,7 @@ public final class KafkaCruiseControlUtils {
    * </ul>
    *
    * @param goals A list of goal names (i.e. each matching {@link Goal#name()}) to check.
-   * @param skipHardGoalCheck True if hard goal checking is not needed.
+   * @param skipHardGoalCheck {@code true} if hard goal checking is not needed.
    * @param config The configurations for Cruise Control.
    */
   public static void sanityCheckGoals(List<String> goals, boolean skipHardGoalCheck, KafkaCruiseControlConfig config) {
@@ -508,7 +511,7 @@ public final class KafkaCruiseControlUtils {
    * Check if set a contains any element in set b.
    * @param a the first set.
    * @param b the second set.
-   * @return True if a contains at least one of the element in b. false otherwise;
+   * @return {@code true} if a contains at least one of the element in b. {@code false} otherwise;
    */
   public static boolean containsAny(Set<Integer> a, Set<Integer> b) {
     return b.stream().mapToInt(i -> i).anyMatch(a::contains);
@@ -522,7 +525,7 @@ public final class KafkaCruiseControlUtils {
    * @param connectString Comma separated host:port pairs, each corresponding to a zk server
    * @param metricGroup Metric group
    * @param metricType Metric type
-   * @param zkSecurityEnabled True if zkSecurityEnabled, false otherwise.
+   * @param zkSecurityEnabled {@code true} if zkSecurityEnabled, {@code false} otherwise.
    * @return A new instance of KafkaZkClient
    */
   public static KafkaZkClient createKafkaZkClient(String connectString, String metricGroup, String metricType, boolean zkSecurityEnabled) {
@@ -737,7 +740,7 @@ public final class KafkaCruiseControlUtils {
    * Check if the partition is currently under replicated.
    * @param cluster The current cluster state.
    * @param tp The topic partition to check.
-   * @return True if the partition is currently under replicated.
+   * @return {@code true} if the partition is currently under replicated.
    */
   public static boolean isPartitionUnderReplicated(Cluster cluster, TopicPartition tp) {
     PartitionInfo partitionInfo = cluster.partition(tp);

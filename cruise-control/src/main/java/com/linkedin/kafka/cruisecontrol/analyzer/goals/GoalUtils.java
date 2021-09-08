@@ -184,7 +184,7 @@ public final class GoalUtils {
    * @param destinationBroker Destination broker.
    * @param clusterModel Cluster model.
    * @param actionType Action type.
-   * @return True if the move is legit, false otherwise.
+   * @return {@code true} if the move is legit, {@code false} otherwise.
    */
   public static boolean legitMove(Replica replica,
                                   Broker destinationBroker,
@@ -208,7 +208,7 @@ public final class GoalUtils {
    * @param replica Replica that is affected from the given action type.
    * @param destinationDisk Destination disk.
    * @param actionType Action type.
-   * @return True if the move is legit, false otherwise.
+   * @return {@code true} if the move is legit, {@code false} otherwise.
    */
   public static boolean legitMoveBetweenDisks(Replica replica,
                                               Disk destinationDisk,
@@ -319,7 +319,7 @@ public final class GoalUtils {
    * Get a filtered set of leaders from the given broker based on given filtering requirements.
    *
    * @param broker Broker whose replicas will be filters.
-   * @param immigrantsOnly True if replicas should be filtered to ensure that they contain only the immigrants.
+   * @param immigrantsOnly {@code true} if replicas should be filtered to ensure that they contain only the immigrants.
    * @return A filtered set of leaders from the given broker based on given filtering requirements.
    */
   public static Set<Replica> filterLeaders(Broker broker, boolean immigrantsOnly) {

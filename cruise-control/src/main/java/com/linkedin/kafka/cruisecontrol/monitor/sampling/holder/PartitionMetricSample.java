@@ -80,7 +80,7 @@ public class PartitionMetricSample extends MetricSample<String, PartitionEntity>
     buffer.putDouble(_valuesByMetricId.get(metricDef.metricInfo(MESSAGE_IN_RATE.name()).id()));
     buffer.putDouble(_valuesByMetricId.get(metricDef.metricInfo(REPLICATION_BYTES_IN_RATE.name()).id()));
     buffer.putDouble(_valuesByMetricId.get(metricDef.metricInfo(REPLICATION_BYTES_OUT_RATE.name()).id()));
-    buffer.putLong(_sampleTime);
+    buffer.putLong(_sampleTimeMs);
     buffer.putInt(entity().tp().partition());
     buffer.put(topicStringBytes);
     return buffer.array();
@@ -118,7 +118,7 @@ public class PartitionMetricSample extends MetricSample<String, PartitionEntity>
           .append(", ");
     }
     builder.delete(builder.length() - 2, builder.length()).append("}");
-    return String.format("[brokerId: %d, Partition: %s, time: %s, metrics: %s]", _brokerId, entity().tp(), utcDateFor(_sampleTime), builder);
+    return String.format("[brokerId: %d, Partition: %s, time: %s, metrics: %s]", _brokerId, entity().tp(), utcDateFor(_sampleTimeMs), builder);
   }
 
   private static PartitionMetricSample readV0(ByteBuffer buffer) {

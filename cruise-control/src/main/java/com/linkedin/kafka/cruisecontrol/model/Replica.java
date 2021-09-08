@@ -52,7 +52,7 @@ public class Replica implements Serializable, Comparable<Replica> {
    * @param tp Topic partition information of the replica.
    * @param broker The broker of the replica.
    * @param isLeader A flag to represent whether the replica is the isLeader or not.
-   * @param isOriginalOffline True if the replica is offline in its original location, false otherwise.
+   * @param isOriginalOffline {@code true} if the replica is offline in its original location, {@code false} otherwise.
    * @param disk The disk of the replica. If replica placement over disk information is not populated, this parameter is null.
    */
   Replica(TopicPartition tp, Broker broker, boolean isLeader, boolean isOriginalOffline, Disk disk) {
@@ -69,7 +69,7 @@ public class Replica implements Serializable, Comparable<Replica> {
   /**
    * Get the original state of the replica before rebalance.
    *
-   * @return True if the replica is offline in its original location (e.g. due to broken disk or broker), false otherwise.
+   * @return {@code true} if the replica is offline in its original location (e.g. due to broken disk or broker), {@code false} otherwise.
    */
   public boolean isOriginalOffline() {
     return _isOriginalOffline || !_originalBroker.isAlive();
@@ -78,7 +78,7 @@ public class Replica implements Serializable, Comparable<Replica> {
   /**
    * Check whether the replica is currently offline.
    *
-   * @return True if the replica is currently offline (e.g. due to broken disk or broker), false otherwise.
+   * @return {@code true} if the replica is currently offline (e.g. due to broken disk or broker), {@code false} otherwise.
    */
   public boolean isCurrentOffline() {
     return (isOriginalOffline() && _broker.id() == _originalBroker.id()) || !_broker.isAlive();
@@ -125,14 +125,14 @@ public class Replica implements Serializable, Comparable<Replica> {
   }
 
   /**
-   * @return True if the replica is leader, false otherwise.
+   * @return {@code true} if the replica is leader, {@code false} otherwise.
    */
   public boolean isLeader() {
     return _isLeader;
   }
 
   /**
-   * @return True if the replica is an immigrant replica of the broker, false otherwise.
+   * @return {@code true} if the replica is an immigrant replica of the broker, {@code false} otherwise.
    */
   public boolean isImmigrant() {
     return _originalBroker != _broker;
@@ -177,7 +177,7 @@ public class Replica implements Serializable, Comparable<Replica> {
   /**
    * Set Leadership status of the broker
    *
-   * @param leader True if leader, false otherwise.
+   * @param leader {@code true} if leader, {@code false} otherwise.
    */
   void setLeadership(boolean leader) {
     _isLeader = leader;
