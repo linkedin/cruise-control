@@ -526,11 +526,16 @@ public final class KafkaCruiseControlUtils {
    * @param metricGroup Metric group
    * @param metricType Metric type
    * @param zkSecurityEnabled {@code true} if zkSecurityEnabled, {@code false} otherwise.
+   * @param zkClientConfig The ZooKeeper client configuration
    * @return A new instance of KafkaZkClient
    */
-  public static KafkaZkClient createKafkaZkClient(String connectString, String metricGroup, String metricType, boolean zkSecurityEnabled) {
+  public static KafkaZkClient createKafkaZkClient(String connectString,
+                                                  String metricGroup,
+                                                  String metricType,
+                                                  boolean zkSecurityEnabled,
+                                                  ZKClientConfig zkClientConfig) {
     Option<String> zkClientName = Option.apply(String.format("%s-%s", metricGroup, metricType));
-    Option<ZKClientConfig> zkConfig = Option.empty();
+    Option<ZKClientConfig> zkConfig = Option.apply(zkClientConfig);
     return KafkaZkClient.apply(connectString, zkSecurityEnabled, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
                                new SystemTime(), metricGroup, metricType, zkClientName, zkConfig);
   }

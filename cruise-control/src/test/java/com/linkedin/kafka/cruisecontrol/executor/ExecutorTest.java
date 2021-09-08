@@ -5,11 +5,13 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.codahale.metrics.MetricRegistry;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.ZKConfigUtils;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
@@ -54,6 +56,7 @@ import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
+import org.apache.zookeeper.client.ZKClientConfig;
 import org.easymock.Capture;
 import org.easymock.CaptureType;
 import org.easymock.EasyMock;
@@ -97,6 +100,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   private static final int LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS = 1;
   private static final long EXECUTION_ALERTING_THRESHOLD_MS = 100L;
   private static final long MOCK_CURRENT_TIME = 1596842708000L;
+  private final ZKClientConfig _zkClientConfig = ZKConfigUtils.zkClientConfigFromKafkaConfig(
+          new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
 
   @Override
   public int clusterSize() {
@@ -118,7 +123,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
                                                                               "ExecutorTestMetricGroup",
                                                                               "ReplicaReassignment",
-                                                                              false);
+                                                                              false,
+                                                                              _zkClientConfig);
     try {
       List<ExecutionProposal> proposalsToExecute = new ArrayList<>();
       List<ExecutionProposal> proposalsToCheck = new ArrayList<>();
@@ -134,7 +140,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
                                                                               "ExecutorTestMetricGroup",
                                                                               "ReplicaReassignmentProgressWithThrottle",
-                                                                              false);
+                                                                              false,
+                                                                              _zkClientConfig);
     try {
       List<ExecutionProposal> proposalsToExecute = new ArrayList<>();
       List<ExecutionProposal> proposalsToCheck = new ArrayList<>();
@@ -151,7 +158,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
                                                                               "ExecutorTestMetricGroup",
                                                                               "BrokerDiesBeforeMovingPartition",
-                                                                              false);
+                                                                              false,
+                                                                              _zkClientConfig);
     try {
       Map<String, TopicDescription> topicDescriptions = createTopics((int) PRODUCE_SIZE_IN_BYTES);
       // initialLeader0 will be alive after killing a broker in cluster.

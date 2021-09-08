@@ -184,8 +184,9 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     createTopics();
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
                                                                   "ReplicationThrottleHelperTestMetricGroup",
-                                                                   "AddingThrottlesWithNoPreExistingThrottles",
-                                                              false);
+                                                                  "AddingThrottlesWithNoPreExistingThrottles",
+                                                                  false,
+                                                                  null);
 
     final long throttleRate = 100L;
 
@@ -219,8 +220,9 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     createTopics();
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
                                                                   "ReplicationThrottleHelperTestMetricGroup",
-                                                                   "AddingThrottlesWithNoPreExistingThrottles",
-                                                              false);
+                                                                  "AddingThrottlesWithNoPreExistingThrottles",
+                                                                  false,
+                                                                  null);
 
     final long throttleRate = 100L;
 
@@ -284,8 +286,9 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
 
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
                                                                   "ReplicationThrottleHelperTestMetricGroup",
-                                                                   "AddingThrottlesWithNoPreExistingThrottles",
-                                                              false);
+                                                                  "AddingThrottlesWithNoPreExistingThrottles",
+                                                                  false,
+                                                                  null);
 
     // Set replica throttle config values for both topics
     setWildcardThrottleReplicaForTopic(kafkaZkClient, TOPIC0);
@@ -357,8 +360,9 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     createTopics();
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
                                                                   "ReplicationThrottleHelperTestMetricGroup",
-                                                                   "AddingThrottlesWithNoPreExistingThrottles",
-                                                              false);
+                                                                  "AddingThrottlesWithNoPreExistingThrottles",
+                                                                  false,
+                                                                  null);
 
     final long throttleRate = 100L;
 
