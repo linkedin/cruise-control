@@ -178,7 +178,7 @@ public class ExecutionTaskTracker {
   /**
    * Set the execution mode of the tasks to keep track of the ongoing execution mode via sensors.
    *
-   * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
+   * @param isKafkaAssignerMode {@code true} if kafka assigner mode, {@code false} otherwise.
    */
   public void setExecutionMode(boolean isKafkaAssignerMode) {
     _isKafkaAssignerMode = isKafkaAssignerMode;

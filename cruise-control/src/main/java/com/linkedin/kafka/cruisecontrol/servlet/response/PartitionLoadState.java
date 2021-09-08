@@ -83,7 +83,7 @@ public class PartitionLoadState extends AbstractCruiseControlResponse {
    * Skips the partition if it does not match the requested topic pattern, or is out of the requested partition scope.
    *
    * @param partition Partition to check whether be included in the response.
-   * @return True to skip partition, false otherwise.
+   * @return {@code true} to skip partition, {@code false} otherwise.
    */
   private boolean shouldSkipPartition(Partition partition) {
     return (_topic != null && !_topic.matcher(partition.topicPartition().topic()).matches())

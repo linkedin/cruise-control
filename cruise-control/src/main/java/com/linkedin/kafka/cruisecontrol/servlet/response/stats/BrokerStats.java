@@ -58,7 +58,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
    *
    * @param broker The broker whose stats are requested.
    * @param potentialBytesOutRate Potential bytes out rate.
-   * @param isEstimated True if the broker capacity is estimated, false otherwise.
+   * @param isEstimated {@code true} if the broker capacity is estimated, {@code false} otherwise.
    */
   public void addSingleBrokerStats(Broker broker, double potentialBytesOutRate, boolean isEstimated) {
     String host = broker.host().name();

@@ -38,10 +38,11 @@ public final class AnomalyNotificationResult {
   }
 
   /**
+   * @param delayMs Delay in milliseconds.
    * @return A notification result to indicate checking the anomaly at a later time.
    */
-  public static AnomalyNotificationResult check(long delay) {
-    return new AnomalyNotificationResult(Action.CHECK, delay);
+  public static AnomalyNotificationResult check(long delayMs) {
+    return new AnomalyNotificationResult(Action.CHECK, delayMs);
   }
 
   /**

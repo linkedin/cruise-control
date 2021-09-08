@@ -153,6 +153,7 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
    * and topic's minISR plus value of {@link #TOPIC_REPLICATION_FACTOR_MARGIN_CONFIG}.
    *
    * @param topicsToCheck Set of topics to check.
+   * @param cluster Kafka cluster.
    * @return Map of detected topic replication factor anomaly entries by target (i.e. desired) replication factor.
    */
   private Map<Short, Set<TopicReplicationFactorAnomalyEntry>> populateBadTopicsByDesiredRF(Set<String> topicsToCheck, Cluster cluster) {

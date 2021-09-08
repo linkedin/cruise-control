@@ -28,7 +28,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
    * Construct the Cruise Control
    *
    * @param config the configuration of Cruise Control.
-   * @param dropwizardMetricRegistry the metric registry for metrics.
+   * @param dropwizardMetricRegistry The metric registry that holds all the metrics for monitoring Cruise Control.
    */
   public AsyncKafkaCruiseControl(KafkaCruiseControlConfig config, MetricRegistry dropwizardMetricRegistry) {
     super(config, dropwizardMetricRegistry);

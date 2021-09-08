@@ -379,6 +379,7 @@ public final class ExecutorState {
   }
 
   /**
+   * @param verbose {@code true} if verbose, {@code false} otherwise.
    * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure(boolean verbose) {

@@ -13,6 +13,7 @@ public interface CruiseControlConfigurable {
 
     /**
      * Configure this class with the given key-value pairs
+     * @param configs Configurations.
      */
     void configure(Map<String, ?> configs);
 

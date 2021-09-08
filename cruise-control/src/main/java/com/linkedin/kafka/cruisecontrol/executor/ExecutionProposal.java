@@ -115,7 +115,7 @@ public class ExecutionProposal {
    * ordered replicas in the given cluster and all replicas are in-sync.
    *
    * @param partitionInfo Current partition state.
-   * @return True if successfully completed, false otherwise.
+   * @return {@code true} if successfully completed, {@code false} otherwise.
    */
   public boolean isInterBrokerMovementCompleted(PartitionInfo partitionInfo) {
     return brokerOrderMatched(partitionInfo.replicas(), _newReplicas) && areAllReplicasInSync(partitionInfo);
@@ -128,7 +128,7 @@ public class ExecutionProposal {
    * In that case, we treat it as aborted as well.
    *
    * @param partitionInfo Current partition state.
-   * @return True if aborted, false otherwise.
+   * @return {@code true} if aborted, {@code false} otherwise.
    */
   public boolean isInterBrokerMovementAborted(PartitionInfo partitionInfo) {
     return isInterBrokerMovementCompleted(partitionInfo)

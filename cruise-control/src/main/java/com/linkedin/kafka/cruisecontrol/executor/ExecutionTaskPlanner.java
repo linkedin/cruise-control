@@ -428,6 +428,8 @@ public class ExecutionTaskPlanner {
   /**
    * A proposal is executable if the source broker and all the destination brokers are ready. i.e. has slots to
    * execute more proposals.
+   * @param proposal Proposal to check whether it is executable or not.
+   * @param readyBrokers Brokers that are ready to execute a proposal.
    * @return {@code true} if the proposal is executable, {@code false} otherwise.
    */
   private boolean isExecutableProposal(ExecutionProposal proposal, Map<Integer, Integer> readyBrokers) {

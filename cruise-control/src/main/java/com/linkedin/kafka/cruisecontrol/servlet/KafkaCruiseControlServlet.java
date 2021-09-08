@@ -150,6 +150,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
   /**
    * The GET method allows users to perform actions supported by {@link CruiseControlEndPoint#getEndpoints()}.
+   * @param request HTTP request received by Cruise Control.
+   * @param response HTTP response of Cruise Control.
+   * @param endPoint A GET endpoint of Cruise Control.
+   * @param requestConfigOverrides Config overrides to be used while creating the {@link Request}.
+   * @param parameterConfigOverrides Config overrides to be used while creating the {@link CruiseControlParameters}.
    */
   private void handleGet(HttpServletRequest request,
                          HttpServletResponse response,
@@ -177,6 +182,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
   /**
    * The POST method allows users to perform actions supported by {@link CruiseControlEndPoint#postEndpoints()}.
+   * @param request HTTP request received by Cruise Control.
+   * @param response HTTP response of Cruise Control.
+   * @param endPoint A POST endpoint of Cruise Control.
+   * @param requestConfigOverrides Config overrides to be used while creating the {@link Request}.
+   * @param parameterConfigOverrides Config overrides to be used while creating the {@link CruiseControlParameters}.
    */
   private void handlePost(HttpServletRequest request,
                           HttpServletResponse response,

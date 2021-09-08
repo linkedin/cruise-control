@@ -68,14 +68,14 @@ public enum Resource {
   }
 
   /**
-   * @return True if host resource, false otherwise.
+   * @return {@code true} if host resource, {@code false} otherwise.
    */
   public boolean isHostResource() {
     return _isHostResource;
   }
 
   /**
-   * @return True if broker resource, false otherwise.
+   * @return {@code true} if broker resource, {@code false} otherwise.
    */
   public boolean isBrokerResource() {
     return _isBrokerResource;

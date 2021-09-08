@@ -69,7 +69,7 @@ public class SingleBrokerStats extends BasicStats {
   }
 
   /**
-   * @return True if the broker capacity has been estimated, false otherwise.
+   * @return {@code true} if the broker capacity has been estimated, {@code false} otherwise.
    */
   public boolean isEstimated() {
     return _isEstimated;

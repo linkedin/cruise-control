@@ -78,6 +78,11 @@ public class UserTaskState extends AbstractCruiseControlResponse {
    * We use userTasksIds, clientIds, endPoints, and types of User Task State to determine what UserTasks to add to the
    * result list. The ordering of the filters do not matter. We limit the returned result with entries so as to save
    * memory
+   *
+   * @param filteredTasks Filtered tasks to be populated
+   * @param userTasks All user tasks
+   * @param parameters User task parameters to use in filtering
+   * @param entries Maximum number of entries to be added to the filtered tasks.
    */
   protected static void populateFilteredTasks(List<UserTaskManager.UserTaskInfo> filteredTasks,
                                               List<UserTaskManager.UserTaskInfo> userTasks,

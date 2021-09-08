@@ -83,6 +83,13 @@ public class WindowState<G, E extends Entity<G>> extends LongGenerationed {
    * Fill in the valid entity ratio and valid entity group ratio for the given window index and aggregation option.
    *
    * Also get valid entities and groups.
+   *
+   * @param windowIndex Window index.
+   * @param completeness Metric sample completeness.
+   * @param includedExtrapolationsByEntity The number of extrapolations per corresponding entity.
+   * @param options The {@link AggregationOptions}
+   * @param validEntitiesForOption A set to be populated with valid entities.
+   * @param validGroupsForOption A set to be populated with valid groups.
    */
   private void fillInValidRatios(long windowIndex,
                                  MetricSampleCompleteness<G, E> completeness,

@@ -179,8 +179,8 @@ public class PotentialNwOutGoal extends AbstractGoal {
    *
    * @param clusterModel The state of the cluster.
    * @param action Action containing information about potential modification to the given cluster model.
-   * @return True if requirements of this goal are not violated if this action is applied to the given cluster state,
-   * false otherwise.
+   * @return {@code true} if requirements of this goal are not violated if this action is applied to the given cluster state,
+   * {@code false} otherwise.
    */
   @Override
   protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {

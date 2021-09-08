@@ -174,6 +174,7 @@ public class AnomalyDetectorManager {
 
   /**
    * Register gauge sensors.
+   * @param dropwizardMetricRegistry The metric registry that holds all the metrics for monitoring Cruise Control.
    */
   private void registerGaugeSensors(MetricRegistry dropwizardMetricRegistry) {
     dropwizardMetricRegistry.register(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "balancedness-score"),
@@ -309,7 +310,7 @@ public class AnomalyDetectorManager {
    * (1) Enable or disable self healing for the given anomaly type and (2) update the cached anomaly detector state.
    *
    * @param anomalyType Type of anomaly for which to enable or disable self healing.
-   * @param isSelfHealingEnabled True if self healing is enabled, false otherwise.
+   * @param isSelfHealingEnabled {@code true} if self healing is enabled, {@code false} otherwise.
    * @return The old value of self healing for the given anomaly type.
    */
   public boolean setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled) {
@@ -497,7 +498,8 @@ public class AnomalyDetectorManager {
      * Check whether the anomaly in progress is ready for fix. An anomaly is ready if it (1) meets completeness
      * requirements and (2) load monitor is not in an unexpected state.
      *
-     * @return True if ready for a fix, false otherwise.
+     * @param anomalyType The type of anomaly.
+     * @return {@code true} if ready for a fix, {@code false} otherwise.
      */
     private boolean isAnomalyInProgressReadyToFix(AnomalyType anomalyType) {
       LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _kafkaCruiseControl.getLoadMonitorTaskRunnerState();

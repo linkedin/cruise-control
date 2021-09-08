@@ -74,8 +74,8 @@ public class Load implements Serializable {
    * </ol>
    *
    * @param resource Resource for which the expected utilization will be provided.
-   * @param wantMaxLoad True if the requested utilization represents the peak load, false otherwise.
-   * @param wantAvgLoad True if the requested utilization represents the avg load, false otherwise.
+   * @param wantMaxLoad {@code true} if the requested utilization represents the peak load, {@code false} otherwise.
+   * @param wantAvgLoad {@code true} if the requested utilization represents the avg load, {@code false} otherwise.
    * @return A single representative utilization value on a resource.
    */
   public double expectedUtilizationFor(Resource resource, boolean wantMaxLoad, boolean wantAvgLoad) {
@@ -108,8 +108,8 @@ public class Load implements Serializable {
    * </ol>
    *
    * @param metric KafkaMetric type for which the expected utilization will be provided.
-   * @param wantMaxLoad True if the requested utilization represents the peak load, false otherwise.
-   * @param wantAvgLoad True if the requested utilization represents the avg load, false otherwise.
+   * @param wantMaxLoad {@code true} if the requested utilization represents the peak load, {@code false} otherwise.
+   * @param wantAvgLoad {@code true} if the requested utilization represents the avg load, {@code false} otherwise.
    * @return A single representative utilization value on a metric type.
    */
   public double expectedUtilizationFor(KafkaMetricDef metric, boolean wantMaxLoad, boolean wantAvgLoad) {
@@ -146,7 +146,7 @@ public class Load implements Serializable {
   }
 
   /**
-   * @return True if this load is empty, false otherwise.
+   * @return {@code true} if this load is empty, {@code false} otherwise.
    */
   boolean isEmpty() {
     return _metricValues.isEmpty();

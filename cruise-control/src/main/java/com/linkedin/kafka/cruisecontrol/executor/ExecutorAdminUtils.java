@@ -102,7 +102,7 @@ public final class ExecutorAdminUtils {
    * @param brokersToCheck List of broker to check.
    * @param adminClient The adminClient to send describeLogDirs request.
    * @param config The config object that holds all the Cruise Control related configs
-   * @return True if there is ongoing intra-broker replica movement.
+   * @return {@code true} if there is ongoing intra-broker replica movement.
    */
   static boolean hasOngoingIntraBrokerReplicaMovement(Collection<Integer> brokersToCheck, AdminClient adminClient,
                                                       KafkaCruiseControlConfig config)

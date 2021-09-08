@@ -194,7 +194,7 @@ public class OptimizerResult {
   }
 
   /**
-   * @return True if the broker capacity is estimated in the underlying cluster model, false otherwise.
+   * @return {@code true} if the broker capacity is estimated in the underlying cluster model, {@code false} otherwise.
    */
   public boolean isCapacityEstimated() {
     return !_capacityEstimationInfoByBrokerId.isEmpty();
@@ -238,6 +238,7 @@ public class OptimizerResult {
   }
 
   /**
+    @param goalName Goal name.
    * @return The string describing goal result.
    */
   public String goalResultDescription(String goalName) {

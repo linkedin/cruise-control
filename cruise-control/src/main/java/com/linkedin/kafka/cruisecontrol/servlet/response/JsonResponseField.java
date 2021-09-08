@@ -19,7 +19,7 @@ public @interface JsonResponseField {
 
   /**
    * Whether the field is a required field in response or not.
-   * @return True if it is a required field; otherwise it is an optional field.
+   * @return {@code true} if it is a required field; otherwise it is an optional field.
    */
   boolean required() default true;
 }

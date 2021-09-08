@@ -108,30 +108,32 @@ public final class MonitorUtils {
   }
 
   /**
-   * @return True if the metadata has changed, false otherwise.
+   * @param previous Previous cluster state.
+   * @param current Current cluster state.
+   * @return {@code true} if the metadata has changed, {@code false} otherwise.
    */
-  public static boolean metadataChanged(Cluster prev, Cluster curr) {
+  public static boolean metadataChanged(Cluster previous, Cluster current) {
     // Broker has changed.
-    Set<Node> prevNodeSet = new HashSet<>(prev.nodes());
-    if (prevNodeSet.size() != curr.nodes().size()) {
+    Set<Node> prevNodeSet = new HashSet<>(previous.nodes());
+    if (prevNodeSet.size() != current.nodes().size()) {
       return true;
     }
-    prevNodeSet.removeAll(curr.nodes());
+    current.nodes().forEach(prevNodeSet::remove);
     if (!prevNodeSet.isEmpty()) {
       return true;
     }
     // Topic has changed
-    if (!prev.topics().equals(curr.topics())) {
+    if (!previous.topics().equals(current.topics())) {
       return true;
     }
 
     // partition has changed.
-    for (String topic : prev.topics()) {
-      if (!prev.partitionCountForTopic(topic).equals(curr.partitionCountForTopic(topic))) {
+    for (String topic : previous.topics()) {
+      if (!previous.partitionCountForTopic(topic).equals(current.partitionCountForTopic(topic))) {
         return true;
       }
-      for (PartitionInfo prevPartInfo : prev.partitionsForTopic(topic)) {
-        PartitionInfo currPartInfo = curr.partition(new TopicPartition(prevPartInfo.topic(), prevPartInfo.partition()));
+      for (PartitionInfo prevPartInfo : previous.partitionsForTopic(topic)) {
+        PartitionInfo currPartInfo = current.partition(new TopicPartition(prevPartInfo.topic(), prevPartInfo.partition()));
         if (leaderChanged(prevPartInfo, currPartInfo) || replicaListChanged(prevPartInfo, currPartInfo)) {
           return true;
         }

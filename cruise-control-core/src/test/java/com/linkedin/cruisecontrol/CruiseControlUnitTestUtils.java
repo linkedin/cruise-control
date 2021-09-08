@@ -24,6 +24,15 @@ public final class CruiseControlUnitTestUtils {
 
   /**
    * Populate sample aggregator with the given parameters.
+   * @param numWindows The number of windows.
+   * @param numSamplesPerWindow The number of samples per window.
+   * @param metricSampleAggregator Metric sample aggregator.
+   * @param entity Entity for which metric samples will be generated.
+   * @param startingWindow Staring window.
+   * @param windowMs Window size in milliseconds.
+   * @param metricDef The definition of metrics.
+   * @param <G> The aggregation entity group class.
+   * @param <E> The entity class.
    */
   public static <G, E extends Entity<G>> void populateSampleAggregator(int numWindows,
                                                                        int numSamplesPerWindow,

@@ -694,6 +694,7 @@ public final class DeterministicCluster {
    * </ul>
    * </ul>
    *
+   * @param brokerCapacity Broker capacity.
    * @return Small scale cluster.
    */
   public static ClusterModel smallClusterModel(Map<Resource, Double> brokerCapacity) {
@@ -743,6 +744,7 @@ public final class DeterministicCluster {
    *   <li>Partitions/Topic: T1:4, T2:4</li>
    * </p>
    *
+   * @param brokerCapacity Broker capacity.
    * @return A test cluster containing a dead broker.
    */
   public static ClusterModel deadBroker(Map<Resource, Double> brokerCapacity) {
@@ -815,6 +817,7 @@ public final class DeterministicCluster {
    * <li>Replication factor/Topic: A:2, B:2, C:2, D:2</li>
    * <li>Partitions/Topic: A: 3, B:1, C:1, D:1</li>
    *
+   * @param brokerCapacity Broker capacity.
    * @return A medium test cluster.
    */
   public static ClusterModel mediumClusterModel(Map<Resource, Double> brokerCapacity) {

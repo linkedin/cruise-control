@@ -48,7 +48,7 @@ public class BrokerFailures extends KafkaAnomaly {
    * Whether detected broker failures are fixable or not.
    * If there are too many broker failures at the same time, the anomaly is taken as unfixable and needs human intervention.
    *
-   * @return True is detected broker failures are fixable.
+   * @return {@code true} is detected broker failures are fixable.
    */
   public boolean fixable() {
     return _fixable;

@@ -84,6 +84,10 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   }
 
   /**
+   * @param key The name of the concrete class of the returned instance
+   * @param t The interface of the returned instance
+   * @param configOverrides Configuration overrides to use.
+   * @param <T> The type of the instance to be returned.
    * @return Configured instance.
    */
   public <T> T getConfiguredInstance(String key, Class<T> t, Map<String, Object> configOverrides) {
@@ -353,6 +357,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    *
    * The metrics reporting interval should not be larger than the metrics sampling interval in order to ensure there is always
    * data to be collected.
+   * @param originals Original configs.
    */
   private void sanityCheckSamplingPeriod(Map<?, ?> originals) {
     long samplingIntervalMs = getLong(MonitorConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG);
