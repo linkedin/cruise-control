@@ -84,7 +84,7 @@ public interface AnomalyNotifier extends CruiseControlConfigurable {
    * Enable or disable self healing for the given anomaly type.
    *
    * @param anomalyType Type of anomaly for which to enable or disable self healing.
-   * @param isSelfHealingEnabled True if self healing is enabled, false otherwise.
+   * @param isSelfHealingEnabled {@code true} if self healing is enabled, {@code false} otherwise.
    * @return The old value of self healing for the given anomaly type.
    */
   boolean setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled);

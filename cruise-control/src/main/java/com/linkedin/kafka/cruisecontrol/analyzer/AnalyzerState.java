@@ -34,7 +34,7 @@ public class AnalyzerState {
   private final Map<Goal, Boolean> _readyGoals;
 
   /**
-   * @param isProposalReady True if the goal optimizer has valid cached proposals for optimization with the default goals.
+   * @param isProposalReady {@code true} if the goal optimizer has valid cached proposals for optimization with the default goals.
    * @param readyGoals Goals that are ready for self-healing.
    */
   public AnalyzerState(boolean isProposalReady, Map<Goal, Boolean> readyGoals) {
@@ -43,7 +43,7 @@ public class AnalyzerState {
   }
 
   /**
-   * @return True if the proposal is ready, false otherwise.
+   * @return {@code true} if the proposal is ready, {@code false} otherwise.
    */
   public boolean proposalReady() {
     return _isProposalReady;
@@ -57,7 +57,7 @@ public class AnalyzerState {
   }
 
   /**
-   * @param verbose True if verbose, false otherwise.
+   * @param verbose {@code true} if verbose, {@code false} otherwise.
    * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure(boolean verbose) {

@@ -88,19 +88,20 @@ public class MetadataClient {
 
   /**
    * Refresh the metadata. The method is synchronized because the network client is not thread safe.
+   * @param timeoutMs Timeout in milliseconds.
    * @return A new {@link ClusterAndGeneration} with latest cluster and generation.
    */
-  public synchronized ClusterAndGeneration refreshMetadata(long timeout) {
+  public synchronized ClusterAndGeneration refreshMetadata(long timeoutMs) {
     // Do not update metadata if the metadata has just been refreshed.
     if (_time.milliseconds() >= _metadata.lastSuccessfulUpdate() + _metadataTTL) {
-      doRefreshMetadata(timeout);
+      doRefreshMetadata(timeoutMs);
     }
     return clusterAndGeneration();
   }
 
-  private void doRefreshMetadata(long timeout) {
+  private void doRefreshMetadata(long timeoutMs) {
     int updateVersion = _metadata.requestUpdate();
-    long remaining = timeout;
+    long remaining = timeoutMs;
     Cluster beforeUpdate = cluster();
     boolean isMetadataUpdated = _metadata.updateVersion() > updateVersion;
     while (!isMetadataUpdated && remaining > 0) {
@@ -119,7 +120,7 @@ public class MetadataClient {
       }
     } else {
       LOG.warn("Failed to update metadata in {}ms. Using old metadata with version {} and last successful update {}.",
-               timeout, _metadata.updateVersion(), _metadata.lastSuccessfulUpdate());
+               timeoutMs, _metadata.updateVersion(), _metadata.lastSuccessfulUpdate());
     }
   }
 

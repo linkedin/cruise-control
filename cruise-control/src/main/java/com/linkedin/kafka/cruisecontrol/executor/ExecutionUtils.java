@@ -279,7 +279,7 @@ public final class ExecutionUtils {
    *
    * @param set The original set.
    * @param subset The subset to validate whether it is indeed a subset of the given set.
-   * @return True if the topicPartitions of the given subset constitute a subset of the given set, false otherwise.
+   * @return {@code true} if the topicPartitions of the given subset constitute a subset of the given set, {@code false} otherwise.
    */
   public static boolean isSubset(Set<TopicPartition> set, Collection<ExecutionTask> subset) {
     boolean isSubset = true;

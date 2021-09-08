@@ -267,6 +267,7 @@ public class Executor {
 
   /**
    * Register gauge sensors.
+   * @param dropwizardMetricRegistry The metric registry that holds all the metrics for monitoring Cruise Control.
    */
   private void registerGaugeSensors(MetricRegistry dropwizardMetricRegistry) {
     dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR,
@@ -723,7 +724,7 @@ public class Executor {
   /**
    * Set the execution mode of the tasks to keep track of the ongoing execution mode via sensors.
    *
-   * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
+   * @param isKafkaAssignerMode {@code true} if kafka assigner mode, {@code false} otherwise.
    */
   private void setExecutionMode(boolean isKafkaAssignerMode) {
     _isKafkaAssignerMode = isKafkaAssignerMode;
@@ -882,7 +883,7 @@ public class Executor {
    * Request the executor to stop any ongoing execution.
    *
    * @param forceExecutionStop Whether force execution to stop.
-   * @return True if the flag to stop the execution is set after the call (i.e. was not set already), false otherwise.
+   * @return {@code true} if the flag to stop the execution is set after the call (i.e. was not set already), {@code false} otherwise.
    */
   private synchronized boolean stopExecution(boolean forceExecutionStop) {
     if ((forceExecutionStop && (_stopSignal.compareAndSet(NO_STOP_EXECUTION, FORCE_STOP_EXECUTION)
@@ -923,8 +924,8 @@ public class Executor {
    * Let executor know the intention regarding modifying the ongoing execution. Only one request at a given time is
    * allowed to modify the ongoing execution.
    *
-   * @param modify True to indicate, false to cancel the intention to modify
-   * @return True if the intention changes the state known by executor, false otherwise.
+   * @param modify {@code true} to indicate, {@code false} to cancel the intention to modify
+   * @return {@code true} if the intention changes the state known by executor, {@code false} otherwise.
    */
   public boolean modifyOngoingExecution(boolean modify) {
     return _ongoingExecutionIsBeingModified.compareAndSet(!modify, modify);
@@ -933,7 +934,7 @@ public class Executor {
   /**
    * Whether there is an ongoing operation triggered by current Cruise Control deployment.
    *
-   * @return True if there is an ongoing execution.
+   * @return {@code true} if there is an ongoing execution.
    */
   public boolean hasOngoingExecution() {
     return _hasOngoingExecution;
@@ -946,7 +947,7 @@ public class Executor {
    * execution inside Cruise Control, partition reassignment task batches are sent to Kafka periodically. So, there will
    * be intervals without partition reassignments.
    *
-   * @return True if there is an ongoing partition reassignment on Kafka cluster.
+   * @return {@code true} if there is an ongoing partition reassignment on Kafka cluster.
    */
   public boolean hasOngoingPartitionReassignments() {
     return !ExecutorUtils.partitionsBeingReassigned(_kafkaZkClient).isEmpty();
@@ -956,7 +957,7 @@ public class Executor {
    * Check whether there is an ongoing leadership reassignment.
    * This method directly checks the existence of zNode in /admin/preferred_replica_election.
    *
-   * @return True if there is an ongoing leadership reassignment.
+   * @return {@code true} if there is an ongoing leadership reassignment.
    */
   public boolean hasOngoingLeaderElection() {
     return !ExecutorUtils.ongoingLeaderElection(_kafkaZkClient).isEmpty();
@@ -1547,7 +1548,7 @@ public class Executor {
      * @param cluster the kafka cluster
      * @param logdirInfoByTask  disk information for ongoing intra-broker replica movement tasks
      * @param task the task to check
-     * @return True if the task is marked as dead or aborting, false otherwise.
+     * @return {@code true} if the task is marked as dead or aborting, {@code false} otherwise.
      */
     private boolean maybeMarkTaskAsDeadOrAborting(Cluster cluster,
                                                   Map<ExecutionTask, ReplicaLogDirInfo> logdirInfoByTask,

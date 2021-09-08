@@ -208,8 +208,8 @@ public class SelfHealingNotifier implements AnomalyNotifier {
    * Check whether the given broker failures with the corresponding autoFixTriggered contains a new failure to alert.
    *
    * @param brokerFailures The detected broker failures
-   * @param autoFixTriggered True if auto fix has been triggered, false otherwise.
-   * @return True if any of the broker failures with the corresponding autoFixTriggered has not been alerted, false otherwise.
+   * @param autoFixTriggered {@code true} if auto fix has been triggered, {@code false} otherwise.
+   * @return {@code true} if any of the broker failures with the corresponding autoFixTriggered has not been alerted, {@code false} otherwise.
    */
   private boolean hasNewFailureToAlert(BrokerFailures brokerFailures, boolean autoFixTriggered) {
     Map<Integer, Long> failedBrokers = _latestFailedBrokersByAutoFixTriggered.get(autoFixTriggered);
@@ -245,8 +245,8 @@ public class SelfHealingNotifier implements AnomalyNotifier {
       if (hasNewFailureToAlert(brokerFailures, false)) {
         alert(brokerFailures, false, selfHealingTimeMs, KafkaAnomalyType.BROKER_FAILURE);
       }
-      long delay = selfHealingTimeMs - nowMs;
-      result = AnomalyNotificationResult.check(delay);
+      long delayMs = selfHealingTimeMs - nowMs;
+      result = AnomalyNotificationResult.check(delayMs);
     } else {
       // Reached auto fix threshold. Alert and fix if self healing is enabled and anomaly is fixable.
       boolean autoFixTriggered = _selfHealingEnabled.get(KafkaAnomalyType.BROKER_FAILURE) && brokerFailures.fixable();
@@ -262,7 +262,7 @@ public class SelfHealingNotifier implements AnomalyNotifier {
    * Alert on anomaly.
    *
    * @param anomaly Detected anomaly.
-   * @param autoFixTriggered True if auto fix has been triggered, false otherwise.
+   * @param autoFixTriggered {@code true} if auto fix has been triggered, {@code false} otherwise.
    * @param selfHealingStartTime The time that the self healing started.
    * @param anomalyType Type of anomaly.
    */

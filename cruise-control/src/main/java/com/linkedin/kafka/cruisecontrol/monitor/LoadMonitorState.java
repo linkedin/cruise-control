@@ -92,6 +92,12 @@ public final class LoadMonitorState {
 
   /**
    * Default value for {@link #_bootstrapProgress} and {@link #_loadingProgress} are {@link #UNDEFINED_PROGRESS}.
+   * @param numValidWindows Number of valid windows.
+   * @param partitionCoverageByWindows Partition coverage by window.
+   * @param validPartitionsRatio Valid partitions ratio.
+   * @param totalNumPartitions Total number of partitions.
+   * @param numPartitionsWithExtrapolations Number of partitions with extrapolations.
+   * @param reasonOfLatestResume Reason of the latest resume.
    * @return Running state for load monitor.
    */
   public static LoadMonitorState running(int numValidWindows,
@@ -99,7 +105,7 @@ public final class LoadMonitorState {
                                          double validPartitionsRatio,
                                          int totalNumPartitions,
                                          int numPartitionsWithExtrapolations,
-                                         String reasonOfLatestPauseOrResume) {
+                                         String reasonOfLatestResume) {
     return new LoadMonitorState(LoadMonitorTaskRunnerState.RUNNING,
                                 numValidWindows,
                                 partitionCoverageByWindows,
@@ -108,11 +114,17 @@ public final class LoadMonitorState {
                                 numPartitionsWithExtrapolations,
                                 UNDEFINED_PROGRESS,
                                 UNDEFINED_PROGRESS,
-                                reasonOfLatestPauseOrResume);
+                                reasonOfLatestResume);
   }
 
   /**
    * Default value for {@link #_bootstrapProgress} and {@link #_loadingProgress} are {@link #UNDEFINED_PROGRESS}.
+   * @param numValidWindows Number of valid windows.
+   * @param monitoredSnapshotWindows Monitored snapshot windows.
+   * @param validPartitionsRatio Valid partitions ratio.
+   * @param totalNumPartitions Total number of partitions.
+   * @param numPartitionsWithExtrapolations Number of partitions with extrapolations.
+   * @param reasonOfLatestPause Reason of the latest pause.
    * @return Paused state for load monitor.
    */
   public static LoadMonitorState paused(int numValidWindows,
@@ -120,7 +132,7 @@ public final class LoadMonitorState {
                                         double validPartitionsRatio,
                                         int totalNumPartitions,
                                         int numPartitionsWithExtrapolations,
-                                        String reasonOfLatestPauseOrResume) {
+                                        String reasonOfLatestPause) {
     return new LoadMonitorState(LoadMonitorTaskRunnerState.PAUSED,
                                 numValidWindows,
                                 monitoredSnapshotWindows,
@@ -129,11 +141,16 @@ public final class LoadMonitorState {
                                 numPartitionsWithExtrapolations,
                                 UNDEFINED_PROGRESS,
                                 UNDEFINED_PROGRESS,
-                                reasonOfLatestPauseOrResume);
+                                reasonOfLatestPause);
   }
 
   /**
    * Default value for {@link #_bootstrapProgress} and {@link #_loadingProgress} are {@link #UNDEFINED_PROGRESS}.
+   * @param numValidWindows Number of valid windows.
+   * @param monitoredSnapshotWindows Monitored snapshot windows.
+   * @param validPartitionsRatio Valid partitions ratio.
+   * @param totalNumPartitions Total number of partitions.
+   * @param numPartitionsWithExtrapolations Number of partitions with extrapolations.
    * @return Sampling state for load monitor.
    */
   public static LoadMonitorState sampling(int numValidWindows,
@@ -153,6 +170,12 @@ public final class LoadMonitorState {
 
   /**
    * Default value for {@link #_bootstrapProgress} and {@link #_loadingProgress} are {@link #UNDEFINED_PROGRESS}.
+   * @param numValidWindows Number of valid windows.
+   * @param monitoredSnapshotWindows Monitored snapshot windows.
+   * @param validPartitionsRatio Valid partitions ratio.
+   * @param totalNumPartitions Total number of partitions.
+   * @param bootstrapProgress Bootstrap progress -- should be between 0 and 1.
+   * @param numPartitionsWithExtrapolations Number of partitions with extrapolations.
    * @return Bootstrapping state for load monitor.
    */
   public static LoadMonitorState bootstrapping(int numValidWindows,
@@ -173,6 +196,11 @@ public final class LoadMonitorState {
 
   /**
    * Default value for {@link #_bootstrapProgress} and {@link #_loadingProgress} are {@link #UNDEFINED_PROGRESS}.
+   * @param numValidWindows Number of valid windows.
+   * @param monitoredSnapshotWindows Monitored snapshot windows.
+   * @param validPartitionsRatio Valid partitions ratio.
+   * @param totalNumPartitions Total number of partitions.
+   * @param numPartitionsWithExtrapolations Number of partitions with extrapolations.
    * @return Training state for load monitor.
    */
   public static LoadMonitorState training(int numValidWindows,
@@ -192,6 +220,11 @@ public final class LoadMonitorState {
 
   /**
    * Default value for {@link #_bootstrapProgress} and {@link #_loadingProgress} are {@link #UNDEFINED_PROGRESS}.
+   * @param numValidWindows Number of valid windows.
+   * @param monitoredSnapshotWindows Monitored snapshot windows.
+   * @param validPartitionsRatio Valid partitions ratio.
+   * @param totalNumPartitions Total number of partitions.
+   * @param loadingProgress Loading progress -- should be between 0 and 1.
    * @return Loading state for load monitor.
    */
   public static LoadMonitorState loading(int numValidWindows,
@@ -212,7 +245,7 @@ public final class LoadMonitorState {
   /**
    * Set the common JSON generic attribute collection.
    *
-   * @param verbose True if verbose, false otherwise.
+   * @param verbose {@code true} if verbose, {@code false} otherwise.
    * @param loadMonitorState Load monitor state.
    */
   private void setCommonJsonGenericAttributeCollection(boolean verbose, Map<String, Object> loadMonitorState) {
@@ -231,7 +264,7 @@ public final class LoadMonitorState {
   }
 
   /**
-   * @param verbose True if verbose, false otherwise.
+   * @param verbose {@code true} if verbose, {@code false} otherwise.
    * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure(boolean verbose) {

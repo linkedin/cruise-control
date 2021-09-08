@@ -256,7 +256,7 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
 
   /**
    * @param clusterModel The state of the cluster.
-   * @return True to skip goal violation detection due to offline replicas in the cluster model.
+   * @return {@code true} to skip goal violation detection due to offline replicas in the cluster model.
    */
   protected boolean skipDueToOfflineReplicas(ClusterModel clusterModel) {
     if (!clusterModel.deadBrokers().isEmpty()) {

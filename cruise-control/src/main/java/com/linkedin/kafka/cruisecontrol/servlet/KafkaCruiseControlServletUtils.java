@@ -209,6 +209,10 @@ public final class KafkaCruiseControlServletUtils {
 
   /**
    * Creates a {@link HttpServletResponse#SC_BAD_REQUEST} Http servlet response.
+   * @param ure User request exception to be handled.
+   * @param request HTTP request received by Cruise Control.
+   * @param response HTTP response of Cruise Control.
+   * @param config The configurations for Cruise Control.
    * @return The error message.
    */
   static String handleUserRequestException(UserRequestException ure,
@@ -223,6 +227,10 @@ public final class KafkaCruiseControlServletUtils {
 
   /**
    * Creates a {@link HttpServletResponse#SC_FORBIDDEN} Http servlet response.
+   * @param ce Config exception to be handled.
+   * @param request HTTP request received by Cruise Control.
+   * @param response HTTP response of Cruise Control.
+   * @param config The configurations for Cruise Control.
    * @return The error message.
    */
   static String handleConfigException(ConfigException ce,
@@ -238,6 +246,10 @@ public final class KafkaCruiseControlServletUtils {
 
   /**
    * Creates a {@link HttpServletResponse#SC_INTERNAL_SERVER_ERROR} Http servlet response.
+   * @param e Exception to be handled
+   * @param request HTTP request received by Cruise Control.
+   * @param response HTTP response of Cruise Control.
+   * @param config The configurations for Cruise Control.
    * @return The error message.
    */
   static String handleException(Exception e,

@@ -282,7 +282,7 @@ public class Partition implements Serializable {
    * Check if the broker is eligible to host the replica of the partition.
    *
    * @param candidateBroker The candidate broker.
-   * @return True if the broker is eligible to host the replica of the partition, false otherwise.
+   * @return {@code true} if the broker is eligible to host the replica of the partition, {@code false} otherwise.
    */
   public boolean canAssignReplicaToBroker(Broker candidateBroker) {
     return !_ineligibleBrokers.contains(candidateBroker);

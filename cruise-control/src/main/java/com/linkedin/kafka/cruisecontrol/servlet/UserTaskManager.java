@@ -744,6 +744,7 @@ public class UserTaskManager implements Closeable {
     }
 
     /**
+     * @param fetchCompletedTask {@code true} to fetch completed task, {@code false} otherwise.
      * @return An object that can be further used to encode into JSON.
      */
     public Map<String, Object> getJsonStructure(boolean fetchCompletedTask) {

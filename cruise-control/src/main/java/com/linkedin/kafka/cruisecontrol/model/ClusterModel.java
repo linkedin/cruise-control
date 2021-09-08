@@ -401,7 +401,7 @@ public class ClusterModel implements Serializable {
    * @param tp      Topic partition of this replica.
    * @param sourceBrokerId      Source broker id.
    * @param destinationBrokerId Destination broker id.
-   * @return True if relocation is successful, false otherwise.
+   * @return {@code true} if relocation is successful, {@code false} otherwise.
    */
   public boolean relocateLeadership(TopicPartition tp, int sourceBrokerId, int destinationBrokerId) {
     // Sanity check to see if the source replica is the leader.
@@ -511,7 +511,7 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * @return True if at least one rack is alive in the cluster, false otherwise.
+   * @return {@code true} if at least one rack is alive in the cluster, {@code false} otherwise.
    */
   public boolean isClusterAlive() {
     for (Rack rack : _racksById.values()) {
@@ -801,7 +801,7 @@ public class ClusterModel implements Serializable {
    * @param brokerId       Broker id under which the replica will be created.
    * @param tp             Topic partition information of the replica.
    * @param index          The index of the replica in the replica list.
-   * @param isLeader       True if the replica is a leader, false otherwise.
+   * @param isLeader       {@code true} if the replica is a leader, {@code false} otherwise.
    * @return Created replica.
    */
   public Replica createReplica(String rackId, int brokerId, TopicPartition tp, int index, boolean isLeader) {
@@ -816,11 +816,11 @@ public class ClusterModel implements Serializable {
    * @param brokerId       Broker id under which the replica will be created.
    * @param tp             Topic partition information of the replica.
    * @param index          The index of the replica in the replica list.
-   * @param isLeader       True if the replica is a leader, false otherwise.
-   * @param isOffline      True if the replica is offline in its original location, false otherwise.
+   * @param isLeader       {@code true} if the replica is a leader, {@code false} otherwise.
+   * @param isOffline      {@code true} if the replica is offline in its original location, {@code false} otherwise.
    * @param logdir         The logdir of replica's hosting disk. If replica placement over disk information is not populated,
    *                       this parameter is null.
-   * @param isFuture       True if the replica does not correspond to any existing replica in the cluster, but a replica
+   * @param isFuture       {@code true} if the replica does not correspond to any existing replica in the cluster, but a replica
    *                       we are going to add to the cluster. This replica's original broker will not be any existing broker
    *                       so that it will be treated as an immigrant replica for whatever broker it is assigned to and
    *                       grant goals greatest freedom to allocate to an existing broker.
@@ -1126,8 +1126,8 @@ public class ClusterModel implements Serializable {
   /**
    * Sort the partitions in the cluster by the utilization of the given resource.
    * @param resource The resource type.
-   * @param wantMaxLoad True if the requested utilization represents the peak load, false otherwise.
-   * @param wantAvgLoad True if the requested utilization represents the avg load, false otherwise.
+   * @param wantMaxLoad {@code true} if the requested utilization represents the peak load, {@code false} otherwise.
+   * @param wantAvgLoad {@code true} if the requested utilization represents the avg load, {@code false} otherwise.
    * @return A list of partitions sorted by utilization of the given resource.
    */
   public List<Partition> replicasSortedByUtilization(Resource resource, boolean wantMaxLoad, boolean wantAvgLoad) {
@@ -1294,6 +1294,7 @@ public class ClusterModel implements Serializable {
   }
 
   /**
+   * @param config The configurations for Cruise Control.
    * @return Broker level stats.
    */
   public BrokerStats brokerStats(KafkaCruiseControlConfig config) {

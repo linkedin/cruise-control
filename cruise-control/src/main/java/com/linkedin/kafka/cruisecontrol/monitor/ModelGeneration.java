@@ -48,7 +48,7 @@ public class ModelGeneration implements Serializable {
    * generation more than the acceptable staleness limit.
    *
    * @param latestModelGeneration The model generation to compare against this model generation for staleness check.
-   * @return True if this model generation is beyond the acceptable staleness limits, false otherwise.
+   * @return {@code true} if this model generation is beyond the acceptable staleness limits, {@code false} otherwise.
    */
   public boolean isStale(ModelGeneration latestModelGeneration) {
     return latestModelGeneration.clusterGeneration() - _clusterGeneration > CLUSTER_GENERATION_ACCEPTABLE_STALENESS_LAG

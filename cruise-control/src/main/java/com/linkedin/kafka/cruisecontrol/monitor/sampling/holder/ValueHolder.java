@@ -27,7 +27,7 @@ interface ValueHolder {
   double value();
 
   /**
-   * @param assertNonZeroCount True to assert that at least a single record exist, false otherwise.
+   * @param assertNonZeroCount {@code true} to assert that at least a single record exist, {@code false} otherwise.
    * @return The value associated with the holder, or custom value if no record exists when non zero count is asserted.
    */
   double value(boolean assertNonZeroCount);

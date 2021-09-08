@@ -21,12 +21,12 @@ import java.util.StringJoiner;
 public class MetricSample<G, E extends Entity<G>> {
   protected final E _entity;
   protected final Map<Short, Double> _valuesByMetricId;
-  protected long _sampleTime;
+  protected long _sampleTimeMs;
 
   public MetricSample(E entity) {
     _entity = entity;
     _valuesByMetricId = new HashMap<>();
-    _sampleTime = -1L;
+    _sampleTimeMs = -1L;
   }
 
   /**
@@ -36,7 +36,7 @@ public class MetricSample<G, E extends Entity<G>> {
    * @param sampleValue the sample value.
    */
   public void record(MetricInfo info, double sampleValue) {
-    if (_sampleTime >= 0) {
+    if (_sampleTimeMs >= 0) {
       throw new IllegalStateException("The metric sample has been closed.");
     }
 
@@ -55,13 +55,14 @@ public class MetricSample<G, E extends Entity<G>> {
   }
 
   /**
-   * @return The time this sample was taken.
+   * @return The time this sample was taken in milliseconds.
    */
   public long sampleTime() {
-    return _sampleTime;
+    return _sampleTimeMs;
   }
 
   /**
+   * @param metricId Metric id.
    * @return The metric for the specified metric id.
    */
   public Double metricValue(short metricId) {
@@ -77,15 +78,16 @@ public class MetricSample<G, E extends Entity<G>> {
 
   /**
    * Close this metric sample. The timestamp will be used to determine which window the metric sample will be in.
+   * @param closingTimeMs closing time in milliseconds.
    */
-  public void close(long closingTime) {
-    if (closingTime < 0) {
-      throw new IllegalArgumentException("Invalid closing time " + closingTime
+  public void close(long closingTimeMs) {
+    if (closingTimeMs < 0) {
+      throw new IllegalArgumentException("Invalid closing time " + closingTimeMs
                                              + ". The closing time cannot be negative.");
     }
 
-    if (_sampleTime < 0) {
-      _sampleTime = closingTime;
+    if (_sampleTimeMs < 0) {
+      _sampleTimeMs = closingTimeMs;
     }
   }
 
@@ -101,7 +103,8 @@ public class MetricSample<G, E extends Entity<G>> {
   /**
    * Validate the metric sample.
    *
-   * @return True if valid, false otherwise.
+   * @param metricDef The metric definitions.
+   * @return {@code true} if valid, {@code false} otherwise.
    */
   public boolean isValid(MetricDef metricDef) {
     return _valuesByMetricId.size() == metricDef.size();
@@ -111,11 +114,11 @@ public class MetricSample<G, E extends Entity<G>> {
   public String toString() {
     MetricDef metricDef = metricDefForToString();
     if (metricDef == null) {
-      return String.format("{entity=%s,sampleTime=%d,metrics=%s}", _entity, _sampleTime, _valuesByMetricId);
+      return String.format("{entity=%s,sampleTime=%d,metrics=%s}", _entity, _sampleTimeMs, _valuesByMetricId);
     } else {
       StringJoiner sj = new StringJoiner(",", "{", "}");
       sj.add(String.format("entity=(%s)", _entity));
-      sj.add(String.format("sampleTime=%d", _sampleTime));
+      sj.add(String.format("sampleTime=%d", _sampleTimeMs));
       for (MetricInfo metricInfo : metricDefForToString().all()) {
         sj.add(String.format("%s=%.3f", metricInfo.name(), _valuesByMetricId.get(metricInfo.id())));
       }

@@ -366,6 +366,10 @@ public class GoalOptimizer implements Runnable {
    * </ul>
    *
    * See {@link GoalOptimizer#optimizations(ClusterModel, List, OperationProgress, Map, OptimizationOptions)}.
+   *
+   * @param clusterModel The state of the cluster.
+   * @param goalsByPriority The goals ordered by priority.
+   * @param operationProgress To report the optimization progress.
    * @return Results of optimization containing the proposals and stats.
    */
   public OptimizerResult optimizations(ClusterModel clusterModel,
@@ -412,6 +416,7 @@ public class GoalOptimizer implements Runnable {
    *                                                     specific topic partition's replication factor, in this case some
    *                                                     replicas are tentatively deleted/added in cluster model before
    *                                                     passing it in to generate proposals.
+   * @param optimizationOptions Optimization options.
    * @return Results of optimization containing the proposals and stats.
    */
   public OptimizerResult optimizations(ClusterModel clusterModel,
@@ -506,9 +511,10 @@ public class GoalOptimizer implements Runnable {
   /**
    * Log the progress of goal optimizer.
    *
-   * @param isSelfHeal     True if self healing, false otherwise.
-   * @param goalName       Goal name.
-   * @param proposals      Goal proposals.
+   * @param isSelfHeal {@code true} if self-healing {@code false} otherwise.
+   * @param goalName Goal name.
+   * @param numOptimizedGoals Number of optimized goals.
+   * @param proposals Goal proposals.
    */
   private void logProgress(boolean isSelfHeal,
                            String goalName,

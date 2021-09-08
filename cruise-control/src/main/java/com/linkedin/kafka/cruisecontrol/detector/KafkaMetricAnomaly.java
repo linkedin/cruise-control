@@ -46,7 +46,7 @@ public class KafkaMetricAnomaly extends KafkaAnomaly implements MetricAnomaly<Br
   /**
    * Whether the detected metric anomaly is fixable or not.
    *
-   * @return True if the anomaly is fixable.
+   * @return {@code true} if the anomaly is fixable.
    */
   public boolean fixable() {
     return _fixable;

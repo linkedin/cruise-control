@@ -841,6 +841,8 @@ public class ConfigDef {
     }
 
     /**
+     * @param min Minimum bound.
+     * @param max Maximum bound.
      * @return A numeric range that checks both the upper and lower bound
      */
     public static Range between(Number min, Number max) {
@@ -1167,6 +1169,8 @@ public class ConfigDef {
 
   /**
    * Shared content on Rst and Enriched Rst.
+   * @param key Config key.
+   * @param b String builder to append relevant information.
    */
   private void getConfigKeyRst(ConfigKey key, StringBuilder b) {
     b.append("``").append(key._name).append("``").append("\n");
@@ -1230,6 +1234,11 @@ public class ConfigDef {
 
   /**
    * For each {@link ConfigKey} in the given child, creates a {@link ConfigKey} and passes it to {@link #define(ConfigKey)}.
+   *
+   * @param keyPrefix Key prefix.
+   * @param groupPrefix Group prefix.
+   * @param startingOrd Staring order.
+   * @param child Child config definition.
    */
   public void embed(final String keyPrefix, final String groupPrefix, final int startingOrd, final ConfigDef child) {
     int orderInGroup = startingOrd;
@@ -1242,6 +1251,8 @@ public class ConfigDef {
   }
 
   /**
+   * @param keyPrefix Key prefix.
+   * @param base Base validator.
    * @return A new validator instance that delegates to the base validator but unprefixes the config name along the way.
    */
   private static Validator embeddedValidator(final String keyPrefix, final Validator base) {
@@ -1258,6 +1269,8 @@ public class ConfigDef {
 
   /**
    * Updated list of dependent configs with the specified {@code prefix} added.
+   * @param keyPrefix Key prefix to be added.
+   * @param dependents Dependents to be updated.
    * @return Updated dependents.
    */
   private static List<String> embeddedDependents(final String keyPrefix, final List<String> dependents) {
@@ -1272,6 +1285,8 @@ public class ConfigDef {
   }
 
   /**
+   * @param keyPrefix Key prefix.
+   * @param base The base recommender.
    * @return A new recommender instance that delegates to the base recommender but unprefixes the input parameters along the way.
    */
   private static Recommender embeddedRecommender(final String keyPrefix, final Recommender base) {

@@ -160,7 +160,7 @@ public class AnomalyDetectorState {
   }
 
   /**
-   * @return True if the latest goal violation contains unfixable goals, false if either the latest goal violation
+   * @return {@code true} if the latest goal violation contains unfixable goals, {@code false} if either the latest goal violation
    * contains no unfixable goals or if any execution was started after the latest goal violation.
    */
   public boolean hasUnfixableGoals() {
@@ -331,7 +331,7 @@ public class AnomalyDetectorState {
    * Set self healing for the given anomaly type.
    *
    * @param anomalyType Type of anomaly.
-   * @param isSelfHealingEnabled True if self healing is enabled, false otherwise.
+   * @param isSelfHealingEnabled {@code true} if self healing is enabled, {@code false} otherwise.
    */
   public synchronized void setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled) {
     _selfHealingEnabled.put(anomalyType, isSelfHealingEnabled);

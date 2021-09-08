@@ -326,7 +326,7 @@ public class LoadMonitorTaskRunner {
 
   /**
    * Allow tasks to know if another thread, e.g. executor, is waiting on sampling to pause.
-   * @return True if another thread is waiting on sampling to pause, false otherwise.
+   * @return {@code true} if another thread is waiting on sampling to pause, {@code false} otherwise.
    */
   public boolean awaitingPauseSampling() {
     return _awaitingPauseSampling;

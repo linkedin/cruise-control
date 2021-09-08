@@ -72,7 +72,7 @@ public class OperationFuture extends CompletableFuture<CruiseControlResponse> {
    * and a non-null thread is set to be execution thread.
    *
    * @param t the thread working for this future.
-   * @return True if the execution thread is set successfully, false otherwise.
+   * @return {@code true} if the execution thread is set successfully, {@code false} otherwise.
    */
   public synchronized boolean setExecutionThread(Thread t) {
     // The setting only fails if a thread tries to pick up a canceled operation.

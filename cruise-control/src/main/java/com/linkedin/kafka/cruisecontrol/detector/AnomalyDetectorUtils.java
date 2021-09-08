@@ -59,6 +59,7 @@ public final class AnomalyDetectorUtils {
   }
 
   /**
+   * @param config The configurations for Cruise Control.
    * @return A list of names for goals {@link AnomalyDetectorConfig#SELF_HEALING_GOALS_CONFIG} in the order of priority.
    */
   public static List<String> getSelfHealingGoalNames(KafkaCruiseControlConfig config) {
@@ -123,7 +124,7 @@ public final class AnomalyDetectorUtils {
    * Check whether the given goal violations has unfixable goals.
    *
    * @param goalViolations Goal violations to check whether there are unfixable goals.
-   * @return True if the given goal violations contain unfixable goals, false otherwise.
+   * @return {@code true} if the given goal violations contain unfixable goals, {@code false} otherwise.
    */
   public static boolean hasUnfixableGoals(GoalViolations goalViolations) {
     List<String> unfixableGoals = goalViolations.violatedGoalsByFixability().get(false);
