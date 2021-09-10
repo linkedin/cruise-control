@@ -76,6 +76,7 @@ subprojects {
   version = rootProject.version
 
   apply plugin: 'java'
+  apply plugin: 'java-library'
   apply plugin: 'checkstyle'
   apply plugin: "com.github.spotbugs"
   apply plugin: 'jacoco'
@@ -97,7 +98,7 @@ subprojects {
   checkstyle {
     toolVersion = '8.45.1'
     ignoreFailures = false
-    configDir = file("$rootDir/checkstyle")
+    configDirectory = file("$rootDir/checkstyle")
   }
 
   spotbugs {
@@ -158,12 +159,12 @@ project(':cruise-control-core') {
       exclude group: 'org.slf4j', module: 'slf4j-log4j12'
       exclude group: 'log4j', module: 'log4j'
     }
-    compile "org.slf4j:slf4j-api:1.7.32"
-    compile "org.apache.logging.log4j:log4j-slf4j-impl:2.14.1"
-    compile 'org.apache.commons:commons-math3:3.6.1'
-    compile "org.eclipse.jetty:jetty-servlet:${jettyVersion}"
+    api "org.slf4j:slf4j-api:1.7.32"
+    api "org.apache.logging.log4j:log4j-slf4j-impl:2.14.1"
+    api 'org.apache.commons:commons-math3:3.6.1'
+    api "org.eclipse.jetty:jetty-servlet:${jettyVersion}"
 
-    testCompile 'junit:junit:4.13.2'
+    testImplementation 'junit:junit:4.13.2'
 
     implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'
     testOutput sourceSets.test.output
@@ -237,38 +238,38 @@ project(':cruise-control') {
       exclude group: 'org.slf4j', module: 'slf4j-log4j12'
       exclude group: 'log4j', module: 'log4j'
     }
-    compile project(':cruise-control-metrics-reporter')
-    compile project(':cruise-control-core')
-    compile "org.slf4j:slf4j-api:1.7.32"
-    compile "org.apache.logging.log4j:log4j-slf4j-impl:2.14.1"
-    compile "org.apache.zookeeper:zookeeper:${zookeeperVersion}"
-    compile "io.netty:netty-handler:${nettyVersion}"
-    compile "io.netty:netty-transport-native-epoll:${nettyVersion}"
-    compile "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion"
-    compile "org.apache.kafka:kafka-clients:$kafkaVersion"
-    compile "org.scala-lang:scala-library:$scalaVersion"
-    compile 'org.apache.commons:commons-math3:3.6.1'
-    compile 'org.apache.httpcomponents:httpclient:4.5.13'
-    compile 'commons-codec:commons-codec:1.15'
-    compile 'com.google.code.gson:gson:2.8.8'
-    compile "org.eclipse.jetty:jetty-server:${jettyVersion}"
-    compile 'io.dropwizard.metrics:metrics-core:3.2.6'
-    compile 'com.nimbusds:nimbus-jose-jwt:9.13'
-    compile 'com.101tec:zkclient:0.11'
-    compile 'io.swagger.parser.v3:swagger-parser-v3:2.0.27'
-    compile 'io.github.classgraph:classgraph:4.8.115'
+    api project(':cruise-control-metrics-reporter')
+    api project(':cruise-control-core')
+    api "org.slf4j:slf4j-api:1.7.32"
+    api "org.apache.logging.log4j:log4j-slf4j-impl:2.14.1"
+    api "org.apache.zookeeper:zookeeper:${zookeeperVersion}"
+    api "io.netty:netty-handler:${nettyVersion}"
+    api "io.netty:netty-transport-native-epoll:${nettyVersion}"
+    api "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion"
+    api "org.apache.kafka:kafka-clients:$kafkaVersion"
+    api "org.scala-lang:scala-library:$scalaVersion"
+    api 'org.apache.commons:commons-math3:3.6.1'
+    api 'org.apache.httpcomponents:httpclient:4.5.13'
+    api 'commons-codec:commons-codec:1.15'
+    api 'com.google.code.gson:gson:2.8.8'
+    api "org.eclipse.jetty:jetty-server:${jettyVersion}"
+    api 'io.dropwizard.metrics:metrics-core:3.2.6'
+    api 'com.nimbusds:nimbus-jose-jwt:9.13'
+    api 'com.101tec:zkclient:0.11'
+    api 'io.swagger.parser.v3:swagger-parser-v3:2.0.27'
+    api 'io.github.classgraph:classgraph:4.8.115'
 
-    testCompile project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
-    testCompile project(path: ':cruise-control-core', configuration: 'testOutput')
-    testCompile "org.scala-lang:scala-library:$scalaVersion"
-    testCompile 'junit:junit:4.13.2'
-    testCompile 'org.easymock:easymock:4.3'
-    testCompile "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion:test"
-    testCompile "org.apache.kafka:kafka-clients:$kafkaVersion:test"
-    testCompile 'commons-io:commons-io:2.11.0'
-    testCompile 'org.apache.httpcomponents:httpclient:4.5.13:tests'
-    testCompile 'org.bouncycastle:bcpkix-jdk15on:1.69'
-    testCompile 'org.apache.kerby:kerb-simplekdc:2.0.1'
+    testImplementation project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
+    testImplementation project(path: ':cruise-control-core', configuration: 'testOutput')
+    testImplementation "org.scala-lang:scala-library:$scalaVersion"
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.easymock:easymock:4.3'
+    testImplementation "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion:test"
+    testImplementation "org.apache.kafka:kafka-clients:$kafkaVersion:test"
+    testImplementation 'commons-io:commons-io:2.11.0'
+    testImplementation 'org.apache.httpcomponents:httpclient:4.5.13:tests'
+    testImplementation 'org.bouncycastle:bcpkix-jdk15on:1.69'
+    testImplementation 'org.apache.kerby:kerb-simplekdc:2.0.1'
 
     implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'
 
@@ -294,10 +295,10 @@ project(':cruise-control') {
   artifactoryPublish.dependsOn publishToMavenLocal
 
   tasks.create(name: "copyDependantLibs", type: Copy) {
-    from (configurations.testRuntime) {
+    from (configurations.testRuntimeClasspath) {
       include('log4j-slf4j-impl*')
     }
-    from (configurations.runtime) {
+    from (configurations.runtimeClasspath) {
 
     }
     into "$buildDir/dependant-libs"
@@ -305,7 +306,7 @@ project(':cruise-control') {
   }
 
   tasks.create(name: "buildFatJar", type: Jar) {
-    baseName = project.name + '-all'
+    archiveBaseName = project.name + '-all'
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
   }
@@ -369,18 +370,18 @@ project(':cruise-control-metrics-reporter') {
       exclude group: 'org.slf4j', module: 'slf4j-log4j12'
       exclude group: 'log4j', module: 'log4j'
     }
-    compile "org.slf4j:slf4j-api:1.7.32"
-    compile "org.apache.logging.log4j:log4j-slf4j-impl:2.14.1"
-    compile "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion"
-    compile "org.apache.kafka:kafka-clients:$kafkaVersion"
+    api "org.slf4j:slf4j-api:1.7.32"
+    api "org.apache.logging.log4j:log4j-slf4j-impl:2.14.1"
+    api "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion"
+    api "org.apache.kafka:kafka-clients:$kafkaVersion"
 
-    testCompile 'junit:junit:4.13.2'
-    testCompile 'org.bouncycastle:bcpkix-jdk15on:1.69'
-    testCompile 'org.powermock:powermock-module-junit4:2.0.9'
-    testCompile 'org.powermock:powermock-api-easymock:2.0.9'
-    testCompile "org.apache.kafka:kafka-clients:$kafkaVersion:test"
-    testCompile "org.apache.kafka:kafka-clients:$kafkaVersion"
-    testCompile 'commons-io:commons-io:2.11.0'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.bouncycastle:bcpkix-jdk15on:1.69'
+    testImplementation 'org.powermock:powermock-module-junit4:2.0.9'
+    testImplementation 'org.powermock:powermock-api-easymock:2.0.9'
+    testImplementation "org.apache.kafka:kafka-clients:$kafkaVersion:test"
+    testImplementation "org.apache.kafka:kafka-clients:$kafkaVersion"
+    testImplementation 'commons-io:commons-io:2.11.0'
     testOutput sourceSets.test.output
 
     implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'
@@ -442,6 +443,6 @@ static def getScalaBinaryVersion(versionStr) {
 
 //wrapper generation task
 wrapper {
-  gradleVersion = '6.9'
+  gradleVersion = '7.2'
   distributionType = Wrapper.DistributionType.ALL
 }
