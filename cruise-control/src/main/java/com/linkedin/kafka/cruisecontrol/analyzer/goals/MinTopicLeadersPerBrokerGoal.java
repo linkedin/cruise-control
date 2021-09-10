@@ -149,8 +149,12 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
       return false;
     }
     final String topic = replicaToBeRemoved.topicPartition().topic();
+    if (!_mustHaveTopicMinLeadersPerBroker.containsKey(topic)) {
+      // Moving a replica from a non-applicable topic does not violate/affect this goal
+      return false;
+    }
     int topicLeaderCountOnSourceBroker = replicaToBeRemoved.broker().numLeadersFor(topic);
-    return _mustHaveTopicMinLeadersPerBroker.containsKey(topic) && topicLeaderCountOnSourceBroker <= minTopicLeadersPerBroker(topic);
+    return topicLeaderCountOnSourceBroker <= minTopicLeadersPerBroker(topic);
   }
 
   /**
