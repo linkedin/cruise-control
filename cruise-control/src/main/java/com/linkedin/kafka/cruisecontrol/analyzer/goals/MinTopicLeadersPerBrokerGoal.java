@@ -54,7 +54,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
   private final String _replicaSortName = replicaSortName(this, true, false);
   // Map holding the number of min leaders per broker for each topic
   // When {@link AnalyzerConfig#MIN_TOPIC_LEADERS_PER_BROKER_CONFIG} is set to 0 the number
-  // of leaders are computed computed dynamically as no-of-topic-leaders / no-of-brokers-available.
+  // of leaders are computed dynamically as no-of-topic-leaders / no-of-brokers-available.
   // When set to a positive value, this is used instead
   private Map<String, Integer> _mustHaveTopicMinLeadersPerBroker;
 
@@ -150,7 +150,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     }
     final String topic = replicaToBeRemoved.topicPartition().topic();
     int topicLeaderCountOnSourceBroker = replicaToBeRemoved.broker().numLeadersFor(topic);
-    return topicLeaderCountOnSourceBroker <= minTopicLeadersPerBroker(topic);
+    return _mustHaveTopicMinLeadersPerBroker.containsKey(topic) && topicLeaderCountOnSourceBroker <= minTopicLeadersPerBroker(topic);
   }
 
   /**
@@ -166,24 +166,24 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
       throws OptimizationFailureException {
     Set<String> mustHaveTopicLeadersPerBroker = Collections.unmodifiableSet(
         Utils.getTopicNamesMatchedWithPattern(_balancingConstraint.topicsWithMinLeadersPerBrokerPattern(), clusterModel::topics));
-    _mustHaveTopicMinLeadersPerBroker = new HashMap<>();
     // populate min leaders per broker for each topic when dynamic computation is configured
+    _mustHaveTopicMinLeadersPerBroker = new HashMap<>();
     if (mustHaveTopicLeadersPerBroker.isEmpty()) {
       return;
     }
     Map<String, Integer> numLeadersByTopicNames = clusterModel.numLeadersPerTopic(mustHaveTopicLeadersPerBroker);
-    int eligibleBrokersForLeadership = eligibleBrokersForLeadership(clusterModel, optimizationOptions).size();
+    Set<Broker> eligibleBrokersForLeadership = eligibleBrokersForLeadership(clusterModel, optimizationOptions);
 
     for (String topicName : mustHaveTopicLeadersPerBroker) {
       int topicNumLeaders = numLeadersByTopicNames.get(topicName);
       _mustHaveTopicMinLeadersPerBroker.put(topicName,
               _balancingConstraint.minTopicLeadersPerBroker() == 0
-                      ? eligibleBrokersForLeadership == 0 ? 0 : topicNumLeaders / eligibleBrokersForLeadership
+                      ? eligibleBrokersForLeadership.size() == 0 ? 0 : topicNumLeaders / eligibleBrokersForLeadership.size()
                       : _balancingConstraint.minTopicLeadersPerBroker());
     }
     // Sanity checks
     validateTopicsWithMinLeaderIsNotExcluded(optimizationOptions);
-    validateEnoughLeaderToDistribute(clusterModel, optimizationOptions);
+    validateEnoughLeaderToDistribute(numLeadersByTopicNames, eligibleBrokersForLeadership);
     validateBrokersAllowedReplicaMoveExist(clusterModel, optimizationOptions);
     boolean onlyMoveImmigrantReplicas = optimizationOptions.onlyMoveImmigrantReplicas();
     new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(), onlyMoveImmigrantReplicas)
@@ -193,7 +193,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
   }
 
   private int minTopicLeadersPerBroker(String topic) {
-    return _mustHaveTopicMinLeadersPerBroker.getOrDefault(topic, 0);
+    return _mustHaveTopicMinLeadersPerBroker.get(topic);
   }
 
   private void validateTopicsWithMinLeaderIsNotExcluded(OptimizationOptions optimizationOptions)
@@ -215,11 +215,8 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
     }
   }
 
-  private void validateEnoughLeaderToDistribute(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
+  private void validateEnoughLeaderToDistribute(Map<String, Integer> numLeadersByTopicNames, Set<Broker> eligibleBrokersForLeadership)
       throws OptimizationFailureException {
-    Map<String, Integer> numLeadersByTopicNames = clusterModel.numLeadersPerTopic(_mustHaveTopicMinLeadersPerBroker.keySet());
-    Set<Broker> eligibleBrokersForLeadership = eligibleBrokersForLeadership(clusterModel, optimizationOptions);
-
     for (Map.Entry<String, Integer> numLeadersPerTopic : numLeadersByTopicNames.entrySet()) {
       int totalMinimumLeaderCount = eligibleBrokersForLeadership.size() * minTopicLeadersPerBroker(numLeadersPerTopic.getKey());
       if (numLeadersPerTopic.getValue() < totalMinimumLeaderCount) {
