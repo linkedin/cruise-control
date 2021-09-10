@@ -166,7 +166,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
       throws OptimizationFailureException {
     Set<String> mustHaveTopicLeadersPerBroker = Collections.unmodifiableSet(
         Utils.getTopicNamesMatchedWithPattern(_balancingConstraint.topicsWithMinLeadersPerBrokerPattern(), clusterModel::topics));
-    // populate min leaders per broker for each topic when dynamic computation is configured
+    // populate min leaders per broker for each topic
     _mustHaveTopicMinLeadersPerBroker = new HashMap<>();
     if (mustHaveTopicLeadersPerBroker.isEmpty()) {
       return;
