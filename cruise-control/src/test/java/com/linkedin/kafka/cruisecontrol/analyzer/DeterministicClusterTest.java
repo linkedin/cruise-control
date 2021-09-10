@@ -244,7 +244,7 @@ public class DeterministicClusterTest {
                  Collections.singletonList(MinTopicLeadersPerBrokerGoal.class.getName()), verifications, null));
     // Min-topic-leader-replica-per-broker satisfiable5 to test the case where two topics need to have the leaders evenly distributed to 3 brokers
     properties = getDefaultCruiseControlProperties();
-    properties.setProperty(AnalyzerConfig.MIN_TOPIC_LEADERS_PER_BROKER_CONFIG, "-1");
+    properties.setProperty(AnalyzerConfig.MIN_TOPIC_LEADERS_PER_BROKER_CONFIG, "0");
     // Try to match "topic0" and "topic1"
     properties.setProperty(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG, "topic\\d");
     p.add(params(new BalancingConstraint(new KafkaCruiseControlConfig(properties)), DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable5(),

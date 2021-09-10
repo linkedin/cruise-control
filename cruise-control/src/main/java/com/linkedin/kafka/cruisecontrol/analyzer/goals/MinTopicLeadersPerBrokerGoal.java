@@ -52,6 +52,10 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaS
 public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(MinTopicLeadersPerBrokerGoal.class);
   private final String _replicaSortName = replicaSortName(this, true, false);
+  // Map holding the number of min leaders per broker for each topic
+  // When {@link AnalyzerConfig#MIN_TOPIC_LEADERS_PER_BROKER_CONFIG} is set to 0 the number
+  // of leaders are computed computed dynamically as no-of-topic-leaders / no-of-brokers-available.
+  // When set to a positive value, this is used instead
   private Map<String, Integer> _mustHaveTopicMinLeadersPerBroker;
 
   public MinTopicLeadersPerBrokerGoal() {
@@ -162,15 +166,20 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
       throws OptimizationFailureException {
     Set<String> mustHaveTopicLeadersPerBroker = Collections.unmodifiableSet(
         Utils.getTopicNamesMatchedWithPattern(_balancingConstraint.topicsWithMinLeadersPerBrokerPattern(), clusterModel::topics));
-    Map<String, Integer> numLeadersByTopicNames = clusterModel.numLeadersPerTopic(mustHaveTopicLeadersPerBroker);
-    int eligibleBrokersForLeadership = eligibleBrokersForLeadership(clusterModel, optimizationOptions).size();
     _mustHaveTopicMinLeadersPerBroker = new HashMap<>();
-    for (String topicName : mustHaveTopicLeadersPerBroker) {
-      int topicNumLeaders = numLeadersByTopicNames.get(topicName);
-      _mustHaveTopicMinLeadersPerBroker.put(topicName, eligibleBrokersForLeadership == 0 ? 0 : topicNumLeaders / eligibleBrokersForLeadership);
-    }
+    // populate min leaders per broker for each topic when dynamic computation is configured
     if (mustHaveTopicLeadersPerBroker.isEmpty()) {
       return;
+    }
+    Map<String, Integer> numLeadersByTopicNames = clusterModel.numLeadersPerTopic(mustHaveTopicLeadersPerBroker);
+    int eligibleBrokersForLeadership = eligibleBrokersForLeadership(clusterModel, optimizationOptions).size();
+
+    for (String topicName : mustHaveTopicLeadersPerBroker) {
+      int topicNumLeaders = numLeadersByTopicNames.get(topicName);
+      _mustHaveTopicMinLeadersPerBroker.put(topicName,
+              _balancingConstraint.minTopicLeadersPerBroker() == 0
+                      ? eligibleBrokersForLeadership == 0 ? 0 : topicNumLeaders / eligibleBrokersForLeadership
+                      : _balancingConstraint.minTopicLeadersPerBroker());
     }
     // Sanity checks
     validateTopicsWithMinLeaderIsNotExcluded(optimizationOptions);
@@ -184,9 +193,7 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
   }
 
   private int minTopicLeadersPerBroker(String topic) {
-    return _balancingConstraint.minTopicLeadersPerBroker() > 0
-            ? _balancingConstraint.minTopicLeadersPerBroker()
-            : _mustHaveTopicMinLeadersPerBroker.get(topic);
+    return _mustHaveTopicMinLeadersPerBroker.getOrDefault(topic, 0);
   }
 
   private void validateTopicsWithMinLeaderIsNotExcluded(OptimizationOptions optimizationOptions)
