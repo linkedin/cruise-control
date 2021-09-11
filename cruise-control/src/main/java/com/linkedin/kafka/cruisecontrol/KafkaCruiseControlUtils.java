@@ -238,7 +238,7 @@ public final class KafkaCruiseControlUtils {
     }
 
     NewTopic newTopic = new NewTopic(topic, partitionCount, replicationFactor);
-    Map<String, String> config = new HashMap<>(2);
+    Map<String, String> config = new HashMap<>();
     config.put(RetentionMsProp(), Long.toString(retentionMs));
     config.put(CleanupPolicyProp(), DEFAULT_CLEANUP_POLICY);
     newTopic.configs(config);
@@ -796,7 +796,7 @@ public final class KafkaCruiseControlUtils {
       throw new IllegalArgumentException(String.format("Balancedness weights must be positive (priority:%f, strictness:%f).",
                                                        priorityWeight, strictnessWeight));
     }
-    Map<String, Double> balancednessCostByGoal = new HashMap<>(goals.size());
+    Map<String, Double> balancednessCostByGoal = new HashMap<>();
     // Step-1: Get weights.
     double weightSum = 0.0;
     double previousGoalPriorityWeight = (1 / priorityWeight);

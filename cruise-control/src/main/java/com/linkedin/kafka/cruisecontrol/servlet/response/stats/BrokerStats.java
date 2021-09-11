@@ -105,7 +105,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
     }
 
     // consolidated
-    Map<String, Object> stats = new HashMap<>(2);
+    Map<String, Object> stats = new HashMap<>();
     stats.put(HOSTS, hostStats);
     stats.put(BROKERS, brokerStats);
     return stats;

@@ -130,7 +130,7 @@ public final class RunnableUtils {
    */
   public static Map<Short, Set<String>> topicsForReplicationFactorChange(Map<Short, Pattern> topicPatternByReplicationFactor,
                                                                          Cluster cluster) {
-    Map<Short, Set<String>> topicsToChangeByReplicationFactor = new HashMap<>(topicPatternByReplicationFactor.size());
+    Map<Short, Set<String>> topicsToChangeByReplicationFactor = new HashMap<>();
     for (Map.Entry<Short, Pattern> entry : topicPatternByReplicationFactor.entrySet()) {
       short replicationFactor = entry.getKey();
       Pattern topicPattern = entry.getValue();

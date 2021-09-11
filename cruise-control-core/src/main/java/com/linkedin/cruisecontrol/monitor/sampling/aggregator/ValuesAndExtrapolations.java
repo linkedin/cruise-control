@@ -88,11 +88,11 @@ public class ValuesAndExtrapolations {
    * @return An empty ValuesAndExtrapolations.
    */
   static ValuesAndExtrapolations empty(int numWindows, MetricDef metricDef) {
-    Map<Short, MetricValues> values = new HashMap<>(metricDef.all().size());
+    Map<Short, MetricValues> values = new HashMap<>();
     for (short i = 0; i < metricDef.all().size(); i++) {
       values.put(i, new MetricValues(numWindows));
     }
-    Map<Integer, Extrapolation> extrapolations = new HashMap<>(numWindows);
+    Map<Integer, Extrapolation> extrapolations = new HashMap<>();
     for (int i = 0; i < numWindows; i++) {
       extrapolations.put(i, Extrapolation.NO_VALID_EXTRAPOLATION);
     }

@@ -49,7 +49,7 @@ public final class KafkaCruiseControlServletUtils {
   private static final Map<EndPoint, RequestParameterWrapper> REQUEST_PARAMETER_CONFIGS;
 
   static {
-    Map<EndPoint, RequestParameterWrapper> requestParameterConfigs = new HashMap<>(CruiseControlEndPoint.cachedValues().size());
+    Map<EndPoint, RequestParameterWrapper> requestParameterConfigs = new HashMap<>();
 
     RequestParameterWrapper bootstrap = new RequestParameterWrapper(BOOTSTRAP_PARAMETERS_CLASS_CONFIG,
                                                                     BOOTSTRAP_PARAMETER_OBJECT_CONFIG,

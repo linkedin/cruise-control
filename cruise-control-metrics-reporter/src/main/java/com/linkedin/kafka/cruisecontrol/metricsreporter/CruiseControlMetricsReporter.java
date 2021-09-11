@@ -227,7 +227,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
 
     NewTopic newTopic = new NewTopic(cruiseControlMetricsTopic, cruiseControlMetricsTopicNumPartition, cruiseControlMetricsTopicReplicaFactor);
 
-    Map<String, String> config = new HashMap<>(cruiseControlMetricsTopicMinInsyncReplicas > 0 ? 3 : 2);
+    Map<String, String> config = new HashMap<>();
     config.put(LogConfig.RetentionMsProp(),
                Long.toString(reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_RETENTION_MS_CONFIG)));
     config.put(LogConfig.CleanupPolicyProp(), CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY);
@@ -277,7 +277,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       DescribeConfigsResult describeConfigsResult = _adminClient.describeConfigs(Collections.singleton(topicResource));
       Config topicConfig = describeConfigsResult.values().get(topicResource).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
       Set<AlterConfigOp> alterConfigOps = new HashSet<>(2);
-      Map<String, String> configsToSet = new HashMap<>(2);
+      Map<String, String> configsToSet = new HashMap<>();
       configsToSet.put(LogConfig.RetentionMsProp(), _metricsTopic.configs().get(LogConfig.RetentionMsProp()));
       configsToSet.put(LogConfig.CleanupPolicyProp(), _metricsTopic.configs().get(LogConfig.CleanupPolicyProp()));
       maybeUpdateConfig(alterConfigOps, configsToSet, topicConfig);

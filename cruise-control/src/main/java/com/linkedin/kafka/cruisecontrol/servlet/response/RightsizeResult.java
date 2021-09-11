@@ -58,7 +58,7 @@ public class RightsizeResult extends AbstractCruiseControlResponse {
   }
 
   protected String getJsonString() {
-    Map<String, Object> jsonStructure = new HashMap<>(5);
+    Map<String, Object> jsonStructure = new HashMap<>();
     if (_numBrokersToAdd != ProvisionRecommendation.DEFAULT_OPTIONAL_INT) {
       jsonStructure.put(NUM_BROKERS_TO_ADD, _numBrokersToAdd);
     }

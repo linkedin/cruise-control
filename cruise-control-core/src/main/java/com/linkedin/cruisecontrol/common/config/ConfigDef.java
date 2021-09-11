@@ -1198,7 +1198,7 @@ public class ConfigDef {
    * @return A list of configs sorted taking the 'group' and 'orderInGroup' into account.
    */
   private List<ConfigKey> sortedConfigs() {
-    final Map<String, Integer> groupOrd = new HashMap<>(_groups.size());
+    final Map<String, Integer> groupOrd = new HashMap<>();
     int ord = 0;
     for (String group : _groups) {
       groupOrd.put(group, ord++);
@@ -1299,7 +1299,7 @@ public class ConfigDef {
       }
 
       private Map<String, Object> unprefixed(Map<String, Object> parsedConfig) {
-        final Map<String, Object> unprefixedParsedConfig = new HashMap<>(parsedConfig.size());
+        final Map<String, Object> unprefixedParsedConfig = new HashMap<>();
         for (Map.Entry<String, Object> e : parsedConfig.entrySet()) {
           if (e.getKey().startsWith(keyPrefix)) {
             unprefixedParsedConfig.put(unprefixed(e.getKey()), e.getValue());

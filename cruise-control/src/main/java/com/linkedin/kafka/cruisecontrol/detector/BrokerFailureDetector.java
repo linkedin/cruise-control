@@ -207,7 +207,7 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector {
 
   private void reportBrokerFailures() {
     if (!_failedBrokers.isEmpty()) {
-      Map<String, Object> parameterConfigOverrides = new HashMap<>(4);
+      Map<String, Object> parameterConfigOverrides = new HashMap<>();
       parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl);
       Map<Integer, Long> failedBrokers = failedBrokers();
       parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, failedBrokers);

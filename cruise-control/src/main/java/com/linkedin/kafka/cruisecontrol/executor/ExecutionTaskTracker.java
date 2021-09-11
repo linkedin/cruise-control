@@ -50,9 +50,9 @@ public class ExecutionTaskTracker {
   ExecutionTaskTracker(MetricRegistry dropwizardMetricRegistry, Time time) {
     List<ExecutionTaskState> states = ExecutionTaskState.cachedValues();
     List<TaskType> taskTypes = TaskType.cachedValues();
-    _tasksByType = new HashMap<>(taskTypes.size());
+    _tasksByType = new HashMap<>();
     for (TaskType type : taskTypes) {
-      Map<ExecutionTaskState, Set<ExecutionTask>> taskMap = new HashMap<>(states.size());
+      Map<ExecutionTaskState, Set<ExecutionTask>> taskMap = new HashMap<>();
       for (ExecutionTaskState state : states) {
         taskMap.put(state, new HashSet<>());
       }
@@ -190,7 +190,7 @@ public class ExecutionTaskTracker {
    * @return The statistic of task execution state.
    */
   private Map<TaskType, Map<ExecutionTaskState, Integer>> taskStat() {
-    Map<TaskType, Map<ExecutionTaskState, Integer>> taskStatMap = new HashMap<>(TaskType.cachedValues().size());
+    Map<TaskType, Map<ExecutionTaskState, Integer>> taskStatMap = new HashMap<>();
     for (TaskType type : TaskType.cachedValues()) {
       taskStatMap.put(type, new HashMap<>());
       _tasksByType.get(type).forEach((k, v) -> taskStatMap.get(type).put(k, v.size()));
@@ -205,7 +205,7 @@ public class ExecutionTaskTracker {
    * @return                        A filtered list of tasks.
    */
   private Map<TaskType, Map<ExecutionTaskState, Set<ExecutionTask>>> filteredTasksByState(Set<TaskType> taskTypesToGetFullList) {
-    Map<TaskType, Map<ExecutionTaskState, Set<ExecutionTask>>> tasksByState = new HashMap<>(taskTypesToGetFullList.size());
+    Map<TaskType, Map<ExecutionTaskState, Set<ExecutionTask>>> tasksByState = new HashMap<>();
     for (TaskType type : taskTypesToGetFullList) {
       tasksByState.put(type, new HashMap<>());
       _tasksByType.get(type).forEach((k, v) -> tasksByState.get(type).put(k, new HashSet<>(v)));

@@ -53,7 +53,7 @@ public class ClusterPartitionState {
     _otherPartitions = new TreeSet<>(comparator);
     _partitionsWithOfflineReplicas = new TreeSet<>(comparator);
     _underMinIsrPartitions = new TreeSet<>(comparator);
-    _minIsrByTopic = new HashMap<>(_kafkaCluster.topics().size());
+    _minIsrByTopic = new HashMap<>();
     // Gather the partition state.
     populateKafkaPartitionState(_underReplicatedPartitions, _offlinePartitions, _otherPartitions,
                                 _partitionsWithOfflineReplicas, _underMinIsrPartitions, verbose, topicPattern);

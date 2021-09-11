@@ -223,7 +223,7 @@ public class ExecutionTaskPlanner {
     }
 
     if (!replicasToCheckLogdir.isEmpty()) {
-      Map<TopicPartitionReplica, String> currentLogdirByReplica = new HashMap<>(replicasToCheckLogdir.size());
+      Map<TopicPartitionReplica, String> currentLogdirByReplica = new HashMap<>();
       Map<TopicPartitionReplica, KafkaFuture<ReplicaLogDirInfo>> logDirsByReplicas =
           _adminClient.describeReplicaLogDirs(replicasToCheckLogdir).values();
       for (Map.Entry<TopicPartitionReplica, KafkaFuture<ReplicaLogDirInfo>> entry : logDirsByReplicas.entrySet()) {

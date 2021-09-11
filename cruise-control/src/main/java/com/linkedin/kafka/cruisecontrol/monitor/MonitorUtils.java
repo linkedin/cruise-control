@@ -55,7 +55,7 @@ public final class MonitorUtils {
   public static final long BROKER_CAPACITY_FETCH_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
 
   static {
-    Map<Resource, Double> emptyBrokerCapacity = new HashMap<>(Resource.cachedValues().size());
+    Map<Resource, Double> emptyBrokerCapacity = new HashMap<>();
     Resource.cachedValues().forEach(r -> emptyBrokerCapacity.put(r, 0.0));
     EMPTY_BROKER_CAPACITY = Collections.unmodifiableMap(emptyBrokerCapacity);
   }

@@ -139,7 +139,7 @@ public class MaintenanceEvent extends KafkaAnomaly {
 
   protected Map<Short, Pattern> topicPatternByReplicationFactor(Map<String, ?> configs) {
     initTopicsWithRFUpdate(configs);
-    Map<Short, Pattern> topicPatternByReplicationFactor = new HashMap<>(_topicsWithRFUpdate.size());
+    Map<Short, Pattern> topicPatternByReplicationFactor = new HashMap<>();
     _topicsWithRFUpdate.forEach((key, value) -> topicPatternByReplicationFactor.put(key, Pattern.compile(value)));
     return topicPatternByReplicationFactor;
   }

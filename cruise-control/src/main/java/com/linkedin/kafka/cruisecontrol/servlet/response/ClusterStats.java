@@ -83,7 +83,7 @@ public class ClusterStats {
    */
   public Map<String, Object> getJsonStructure() {
     // Write the cluster summary.
-    Map<String, Object> jsonMap = new HashMap<>(11);
+    Map<String, Object> jsonMap = new HashMap<>();
     jsonMap.put(BROKERS, _numBrokers);
     jsonMap.put(TOPICS, _numTopics);
     jsonMap.put(REPLICAS, _numReplicas);

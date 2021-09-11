@@ -95,8 +95,8 @@ public class UserTaskManager implements Closeable {
     _purgatory = purgatory;
     _sessionKeyToUserTaskIdMap = new HashMap<>();
     List<CruiseControlEndpointType> endpointTypes = List.of(CruiseControlEndpointType.values());
-    _uuidToCompletedUserTaskInfoMap = new HashMap<>(endpointTypes.size());
-    _completedUserTaskRetentionTimeMs = new HashMap<>(endpointTypes.size());
+    _uuidToCompletedUserTaskInfoMap = new HashMap<>();
+    _completedUserTaskRetentionTimeMs = new HashMap<>();
     initCompletedUserTaskRetentionPolicy(config, endpointTypes);
     _sessionExpiryMs = config.getLong(WebServerConfig.WEBSERVER_SESSION_EXPIRY_MS_CONFIG);
     _maxActiveUserTasks = config.getInt(WebServerConfig.MAX_ACTIVE_USER_TASKS_CONFIG);
@@ -125,8 +125,8 @@ public class UserTaskManager implements Closeable {
     _sessionKeyToUserTaskIdMap = new HashMap<>();
     _uuidToActiveUserTaskInfoMap = new LinkedHashMap<>(maxActiveUserTasks);
     List<CruiseControlEndpointType> endpointTypes = List.of(CruiseControlEndpointType.values());
-    _uuidToCompletedUserTaskInfoMap = new HashMap<>(endpointTypes.size());
-    _completedUserTaskRetentionTimeMs = new HashMap<>(endpointTypes.size());
+    _uuidToCompletedUserTaskInfoMap = new HashMap<>();
+    _completedUserTaskRetentionTimeMs = new HashMap<>();
     for (CruiseControlEndpointType endpointType : endpointTypes) {
       _uuidToCompletedUserTaskInfoMap.put(endpointType, new LinkedHashMap<>() {
         @Override
@@ -748,7 +748,7 @@ public class UserTaskManager implements Closeable {
      * @return An object that can be further used to encode into JSON.
      */
     public Map<String, Object> getJsonStructure(boolean fetchCompletedTask) {
-      Map<String, Object> jsonObjectMap = new HashMap<>(fetchCompletedTask ? 6 : 5);
+      Map<String, Object> jsonObjectMap = new HashMap<>();
       String status = _state.toString();
       jsonObjectMap.put(USER_TASK_ID, _userTaskId.toString());
       jsonObjectMap.put(REQUEST_URL, requestWithParams());
