@@ -162,7 +162,7 @@ public class ClusterModel implements Serializable {
    * @return The replica distribution of leader and follower replicas in the cluster at the point of call.
    */
   public Map<TopicPartition, List<ReplicaPlacementInfo>> getReplicaDistribution() {
-    Map<TopicPartition, List<ReplicaPlacementInfo>> replicaDistribution = new HashMap<>(_partitionsByTopicPartition.size());
+    Map<TopicPartition, List<ReplicaPlacementInfo>> replicaDistribution = new HashMap<>();
 
     for (Map.Entry<TopicPartition, Partition> entry : _partitionsByTopicPartition.entrySet()) {
       TopicPartition tp = entry.getKey();
@@ -182,7 +182,7 @@ public class ClusterModel implements Serializable {
    * @return Leader broker ids for each partition.
    */
   public Map<TopicPartition, ReplicaPlacementInfo> getLeaderDistribution() {
-    Map<TopicPartition, ReplicaPlacementInfo> leaders = new HashMap<>(_partitionsByTopicPartition.size());
+    Map<TopicPartition, ReplicaPlacementInfo> leaders = new HashMap<>();
     for (Map.Entry<TopicPartition, Partition> entry : _partitionsByTopicPartition.entrySet()) {
       Replica leaderReplica = entry.getValue().leader();
       if (leaderReplica.disk() == null) {
@@ -271,7 +271,7 @@ public class ClusterModel implements Serializable {
    * @return A map from topic names to the number of leader replicas of each topic
    */
   public Map<String, Integer> numLeadersPerTopic(Set<String> topics) {
-    Map<String, Integer> leaderCountByTopicNames = new HashMap<>(topics.size());
+    Map<String, Integer> leaderCountByTopicNames = new HashMap<>();
     for (TopicPartition tp : _partitionsByTopicPartition.keySet()) {
       String topicName = tp.topic();
       if (topics.contains(topicName)) {
@@ -1215,9 +1215,9 @@ public class ClusterModel implements Serializable {
     }
 
     // Check equality of sum of the broker load to their rack load for each resource.
-    Map<Resource, Double> sumOfRackUtilizationByResource = new HashMap<>(Resource.cachedValues().size());
+    Map<Resource, Double> sumOfRackUtilizationByResource = new HashMap<>();
     for (Rack rack : _racksById.values()) {
-      Map<Resource, Double> sumOfHostUtilizationByResource = new HashMap<>(Resource.cachedValues().size());
+      Map<Resource, Double> sumOfHostUtilizationByResource = new HashMap<>();
       for (Host host : rack.hosts()) {
         for (Resource resource : Resource.cachedValues()) {
           double sumOfBrokerUtilization = 0.0;

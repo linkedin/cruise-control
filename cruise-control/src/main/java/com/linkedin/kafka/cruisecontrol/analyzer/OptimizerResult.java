@@ -300,7 +300,7 @@ public class OptimizerResult {
    */
   public Map<String, Object> getProposalSummaryForJson() {
     List<Number> moveStats = getMovementStats();
-    Map<String, Object> ret = new HashMap<>(13);
+    Map<String, Object> ret = new HashMap<>();
     ret.put(NUM_INTER_BROKER_REPLICA_MOVEMENTS, moveStats.get(0).intValue());
     ret.put(INTER_BROKER_DATA_TO_MOVE_MB, moveStats.get(1).longValue());
     ret.put(NUM_INTRA_BROKER_REPLICA_MOVEMENTS, moveStats.get(2).intValue());

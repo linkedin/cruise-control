@@ -100,7 +100,7 @@ public class DiskFailureDetector extends AbstractAnomalyDetector implements Runn
         }
       });
       if (!failedDisksByBroker.isEmpty()) {
-        Map<String, Object> parameterConfigOverrides = new HashMap<>(3);
+        Map<String, Object> parameterConfigOverrides = new HashMap<>();
         parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl);
         parameterConfigOverrides.put(FAILED_DISKS_OBJECT_CONFIG, failedDisksByBroker);
         parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());

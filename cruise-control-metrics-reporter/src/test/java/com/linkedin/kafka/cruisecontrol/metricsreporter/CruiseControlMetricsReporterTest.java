@@ -226,7 +226,7 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     assertEquals("1234", bootstrapServers.split(":")[1]);
 
     // Test with "listeners" and "port" config together.
-    listenersMap = new HashMap<>(2);
+    listenersMap = new HashMap<>();
     listenersMap.put(KafkaConfig.ListenersProp(), listeners);
     listenersMap.put(KafkaConfig.PortProp(), "43");
     bootstrapServers = CruiseControlMetricsReporter.getBootstrapServers(listenersMap);

@@ -52,7 +52,7 @@ public class RawMetricValues extends WindowIndexedArrays {
       throw new IllegalArgumentException("The number of windows should be at least 2 because at least one available"
                                          + " window and one current window are needed.");
     }
-    _windowValuesByMetricId = new HashMap<>(numMetricTypesInSample);
+    _windowValuesByMetricId = new HashMap<>();
     _counts = new byte[numWindowsToKeep];
     _extrapolations = new BitSet(numWindowsToKeep);
     _validity = new BitSet(numWindowsToKeep);
@@ -271,7 +271,7 @@ public class RawMetricValues extends WindowIndexedArrays {
     if (_windowValuesByMetricId.isEmpty()) {
       return ValuesAndExtrapolations.empty(windowIndices.size(), metricDef);
     }
-    Map<Short, MetricValues> aggValues = new HashMap<>(_windowValuesByMetricId.size());
+    Map<Short, MetricValues> aggValues = new HashMap<>();
     SortedMap<Integer, Extrapolation> extrapolations = new TreeMap<>();
     for (Map.Entry<Short, float[]> entry : _windowValuesByMetricId.entrySet()) {
       short metricId = entry.getKey();

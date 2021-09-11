@@ -73,7 +73,7 @@ public class AdminResult extends AbstractCruiseControlResponse {
 
   protected String getJsonString() {
     // Set initial capacity to max possible capacity to avoid rehashing.
-    Map<String, Object> jsonStructure = new HashMap<>(8);
+    Map<String, Object> jsonStructure = new HashMap<>();
     if (!_selfHealingEnabledBefore.isEmpty()) {
       jsonStructure.put(SELF_HEALING_ENABLED_BEFORE, _selfHealingEnabledBefore);
       jsonStructure.put(SELF_HEALING_ENABLED_AFTER, _selfHealingEnabledAfter);

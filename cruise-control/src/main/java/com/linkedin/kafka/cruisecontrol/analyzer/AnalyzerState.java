@@ -61,7 +61,7 @@ public class AnalyzerState {
    * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure(boolean verbose) {
-    Map<String, Object> analyzerState = new HashMap<>(verbose ? 3 : 2);
+    Map<String, Object> analyzerState = new HashMap<>();
     Set<String> readyGoalNames = new HashSet<>();
     for (Map.Entry<Goal, Boolean> entry : _readyGoals.entrySet()) {
       if (entry.getValue()) {

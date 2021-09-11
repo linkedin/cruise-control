@@ -382,7 +382,7 @@ public class KafkaSampleStore extends AbstractKafkaSampleStore {
      * to prevent loading these stale data, manually seek the consumers' staring offset to the offset at proper timestamp.
      */
     protected void prepareConsumerOffset() {
-      Map<TopicPartition, Long> beginningTimestamp = new HashMap<>(_consumer.assignment().size());
+      Map<TopicPartition, Long> beginningTimestamp = new HashMap<>();
       long currentTimeMs = System.currentTimeMillis();
       for (TopicPartition tp : _consumer.assignment()) {
         if (tp.topic().equals(_brokerMetricSampleStoreTopic)) {

@@ -37,7 +37,7 @@ public class ClusterModelStatsValue {
   protected Map<String, Object> getJsonStructure() {
     List<Statistic> cachedStatistic = Statistic.cachedValues();
     // List of all statistics AVG, MAX, MIN, STD
-    Map<String, Object> allStatMap = new HashMap<>(cachedStatistic.size());
+    Map<String, Object> allStatMap = new HashMap<>();
     for (Statistic stat : cachedStatistic) {
       allStatMap.put(stat.stat(), new ClusterModelStatsValueHolder(_resourceUtilizationStats.get(stat),
                                                                    _potentialNwOutUtilizationStats.get(stat),

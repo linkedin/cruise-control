@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -49,23 +48,15 @@ public class PartitionState {
     _leader = partitionInfo.leader() == null ? -1 : partitionInfo.leader().id();
     _replicas = Arrays.stream(partitionInfo.replicas()).map(Node::id).collect(Collectors.toList());
     _inSyncReplicas = Arrays.stream(partitionInfo.inSyncReplicas()).map(Node::id).collect(Collectors.toList());
-    _outOfSyncReplicas = new HashSet<>(_replicas);
+    _outOfSyncReplicas = new HashSet<>();
     _outOfSyncReplicas.removeAll(_inSyncReplicas);
     _offlineReplicas = Arrays.stream(partitionInfo.offlineReplicas()).map(Node::id).collect(Collectors.toSet());
     _minIsr = minIsr;
   }
 
   protected Map<String, Object> getJsonStructure() {
-    Map<String, Object> recordMap = new HashMap<>(8);
-    recordMap.put(TOPIC, _topic);
-    recordMap.put(PARTITION, _partition);
-    recordMap.put(LEADER, _leader);
-    recordMap.put(REPLICAS, _replicas);
-    recordMap.put(IN_SYNC, _inSyncReplicas);
-    recordMap.put(OUT_OF_SYNC, _outOfSyncReplicas);
-    recordMap.put(OFFLINE, _offlineReplicas);
-    recordMap.put(MIN_ISR, _minIsr);
-    return recordMap;
+    return Map.of(TOPIC, _topic, PARTITION, _partition, LEADER, _leader, REPLICAS, _replicas, IN_SYNC, _inSyncReplicas,
+                  OUT_OF_SYNC, _outOfSyncReplicas, OFFLINE, _offlineReplicas, MIN_ISR, _minIsr);
   }
 
   protected String writeKafkaPartitionState(int topicNameLength) {
