@@ -84,7 +84,7 @@ public class SingleBrokerStats extends BasicStats {
     entry.put(BROKER, _id);
     entry.put(BROKER_STATE, _state);
     if (!_diskStatsByLogdir.isEmpty()) {
-      Map<String, Object> diskStates = new HashMap<>(_diskStatsByLogdir.size());
+      Map<String, Object> diskStates = new HashMap<>();
       _diskStatsByLogdir.forEach((k, v) -> diskStates.put(k, v.getJsonStructure()));
       entry.put(DISK_STATE, diskStates);
     }

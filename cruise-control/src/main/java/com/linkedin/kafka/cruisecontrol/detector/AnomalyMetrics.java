@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
 import java.util.Map;
-import java.util.HashMap;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
 
@@ -115,13 +114,9 @@ public class AnomalyMetrics {
    * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure() {
-    Map<String, Object> metrics = new HashMap<>(5);
-    metrics.put(MEAN_TIME_BETWEEN_ANOMALIES_MS, meanTimeBetweenAnomaliesMs().getJsonStructure());
-    metrics.put(MEAN_TIME_TO_START_FIX_MS, meanTimeToStartFixMs());
-    metrics.put(NUM_SELF_HEALING_STARTED, numSelfHealingStarted());
-    metrics.put(NUM_SELF_HEALING_FAILED_TO_START, numSelfHealingFailedToStart());
-    metrics.put(ONGOING_ANOMALY_DURATION_MS, ongoingAnomalyDurationMs());
-    return metrics;
+    return Map.of(MEAN_TIME_BETWEEN_ANOMALIES_MS, meanTimeBetweenAnomaliesMs().getJsonStructure(),
+                  MEAN_TIME_TO_START_FIX_MS, meanTimeToStartFixMs(), NUM_SELF_HEALING_STARTED, numSelfHealingStarted(),
+                  NUM_SELF_HEALING_FAILED_TO_START, numSelfHealingFailedToStart(), ONGOING_ANOMALY_DURATION_MS, ongoingAnomalyDurationMs());
   }
 
   @Override

@@ -214,7 +214,7 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
 
   @SuppressWarnings("unchecked")
   private static Map<Resource, Double> getTotalCapacity(Map<Resource, Object> brokerCapacity, boolean hasNumCores) {
-    Map<Resource, Double> totalCapacity = new HashMap<>(brokerCapacity.size());
+    Map<Resource, Double> totalCapacity = new HashMap<>();
     if (isJBOD(brokerCapacity)) {
       for (Map.Entry<Resource, Object> entry : brokerCapacity.entrySet()) {
         Resource resource = entry.getKey();
@@ -255,7 +255,7 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
     }
 
     Map<String, String> stringDiskCapacityByLogDir = (Map<String, String>) brokerCapacity.get(Resource.DISK);
-    Map<String, Double> diskCapacityByLogDir = new HashMap<>(stringDiskCapacityByLogDir.size());
+    Map<String, Double> diskCapacityByLogDir = new HashMap<>();
     stringDiskCapacityByLogDir.forEach((key, value) -> diskCapacityByLogDir.put(key, Double.parseDouble(value)));
 
     return diskCapacityByLogDir;
@@ -296,8 +296,8 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
       reader = new JsonReader(new InputStreamReader(new FileInputStream(_configFile), StandardCharsets.UTF_8));
       Gson gson = new Gson();
       Set<BrokerCapacity> brokerCapacities = ((BrokerCapacities) gson.fromJson(reader, BrokerCapacities.class)).brokerCapacities;
-      capacitiesForBrokers = new HashMap<>(brokerCapacities.size());
-      Set<Boolean> numCoresConfigConsistency = new HashSet<>(1);
+      capacitiesForBrokers = new HashMap<>();
+      Set<Boolean> numCoresConfigConsistency = new HashSet<>();
       for (BrokerCapacity bc : brokerCapacities) {
         capacitiesForBrokers.put(bc.brokerId, getBrokerCapacityInfo(bc, numCoresConfigConsistency));
       }

@@ -33,7 +33,7 @@ public class ProgressResult extends AbstractCruiseControlResponse {
   }
 
   protected String getJsonString() {
-    Map<String, Object> jsonResponse = new HashMap<>(2);
+    Map<String, Object> jsonResponse = new HashMap<>();
     jsonResponse.put(VERSION, JSON_VERSION);
     List<Object> progress = new ArrayList<>(_futures.size());
     for (OperationFuture future: _futures) {

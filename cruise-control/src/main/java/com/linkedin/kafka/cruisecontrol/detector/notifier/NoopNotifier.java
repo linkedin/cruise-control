@@ -23,7 +23,7 @@ public class NoopNotifier implements AnomalyNotifier {
   private final Map<AnomalyType, Boolean> _selfHealingEnabled;
 
   public NoopNotifier() {
-    _selfHealingEnabled = new HashMap<>(KafkaAnomalyType.cachedValues().size());
+    _selfHealingEnabled = new HashMap<>();
   }
 
   @Override
@@ -73,7 +73,7 @@ public class NoopNotifier implements AnomalyNotifier {
 
   @Override
   public Map<AnomalyType, Float> selfHealingEnabledRatio() {
-    Map<AnomalyType, Float> selfHealingEnabledRatio = new HashMap<>(KafkaAnomalyType.cachedValues().size());
+    Map<AnomalyType, Float> selfHealingEnabledRatio = new HashMap<>();
     for (AnomalyType anomalyType : KafkaAnomalyType.cachedValues()) {
       selfHealingEnabledRatio.put(anomalyType, 0.0f);
     }

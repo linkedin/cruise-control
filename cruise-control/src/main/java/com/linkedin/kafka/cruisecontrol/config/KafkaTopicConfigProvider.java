@@ -68,7 +68,7 @@ public class KafkaTopicConfigProvider extends JsonFileTopicConfigProvider {
                                                                               ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP,
                                                                               ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE,
                                                                               _zkSecurityEnabled);
-    Map<String, Properties> topicConfigs = new HashMap<>(topics.size());
+    Map<String, Properties> topicConfigs = new HashMap<>();
     try {
       AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
 

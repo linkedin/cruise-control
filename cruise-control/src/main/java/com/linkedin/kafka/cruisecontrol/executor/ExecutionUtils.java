@@ -73,11 +73,11 @@ public final class ExecutionUtils {
   public static final String GAUGE_EXECUTION_LEADERSHIP_MOVEMENTS_GLOBAL_CAP = "leadership-movements-global-cap";
   public static final long EXECUTION_HISTORY_SCANNER_PERIOD_SECONDS = 5;
   public static final long EXECUTION_HISTORY_SCANNER_INITIAL_DELAY_SECONDS = 0;
-  static final Map<ConcurrencyType, Integer> ADDITIVE_INCREASE = new HashMap<>(ConcurrencyType.cachedValues().size());
-  static final Map<ConcurrencyType, Integer> MULTIPLICATIVE_DECREASE = new HashMap<>(ConcurrencyType.cachedValues().size());
-  static final Map<ConcurrencyType, Integer> MAX_CONCURRENCY = new HashMap<>(ConcurrencyType.cachedValues().size());
-  static final Map<ConcurrencyType, Integer> MIN_CONCURRENCY = new HashMap<>(ConcurrencyType.cachedValues().size());
-  static final Map<String, Double> CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME = new HashMap<>(5);
+  static final Map<ConcurrencyType, Integer> ADDITIVE_INCREASE = new HashMap<>();
+  static final Map<ConcurrencyType, Integer> MULTIPLICATIVE_DECREASE = new HashMap<>();
+  static final Map<ConcurrencyType, Integer> MAX_CONCURRENCY = new HashMap<>();
+  static final Map<ConcurrencyType, Integer> MIN_CONCURRENCY = new HashMap<>();
+  static final Map<String, Double> CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME = new HashMap<>();
   private static long listPartitionReassignmentsTimeoutMs;
   private static int listPartitionReassignmentsMaxAttempts;
 
@@ -134,8 +134,7 @@ public final class ExecutionUtils {
   static boolean withinConcurrencyAdjusterLimit(Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker) {
     boolean withinLimit = true;
     Set<BrokerEntity> brokersWithNoMetrics = new HashSet<>();
-    Map<String, StringBuilder> overLimitDetailsByMetricName = new HashMap<>(
-        CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.size());
+    Map<String, StringBuilder> overLimitDetailsByMetricName = new HashMap<>();
     for (String metricName : CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.keySet()) {
       overLimitDetailsByMetricName.put(metricName, new StringBuilder());
     }

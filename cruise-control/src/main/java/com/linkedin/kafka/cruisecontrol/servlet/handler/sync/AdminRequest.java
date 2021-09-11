@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.servlet.handler.sync;
 
 import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
 import com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AdminParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ChangeExecutionConcurrencyParameters;
@@ -53,16 +52,16 @@ public class AdminRequest extends AbstractSyncRequest {
     String ongoingConcurrencyChangeRequest = processChangeExecutionConcurrencyRequest();
 
     // 2. Enable/disable self-healing for the specified anomaly types.
-    Map<AnomalyType, Boolean> selfHealingBefore = new HashMap<>(KafkaAnomalyType.cachedValues().size());
-    Map<AnomalyType, Boolean> selfHealingAfter = new HashMap<>(KafkaAnomalyType.cachedValues().size());
+    Map<AnomalyType, Boolean> selfHealingBefore = new HashMap<>();
+    Map<AnomalyType, Boolean> selfHealingAfter = new HashMap<>();
     processUpdateSelfHealingRequest(selfHealingBefore, selfHealingAfter);
 
     // 3. Drop selected recently removed/demoted brokers.
     String dropRecentBrokersRequest = processDropRecentBrokersRequest();
 
     // 4. Enable/disable (1) the specified concurrency adjusters and/or (2) the MinISR-based concurrency adjustment.
-    Map<ConcurrencyType, Boolean> concurrencyAdjusterBefore = new HashMap<>(ConcurrencyType.cachedValues().size());
-    Map<ConcurrencyType, Boolean> concurrencyAdjusterAfter = new HashMap<>(ConcurrencyType.cachedValues().size());
+    Map<ConcurrencyType, Boolean> concurrencyAdjusterBefore = new HashMap<>();
+    Map<ConcurrencyType, Boolean> concurrencyAdjusterAfter = new HashMap<>();
     StringBuilder minIsrBasedConcurrencyAdjustmentRequest = new StringBuilder();
     processUpdateConcurrencyAdjusterRequest(concurrencyAdjusterBefore, concurrencyAdjusterAfter, minIsrBasedConcurrencyAdjustmentRequest);
 
