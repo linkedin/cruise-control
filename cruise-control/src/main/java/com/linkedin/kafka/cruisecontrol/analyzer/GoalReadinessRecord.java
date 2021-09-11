@@ -8,7 +8,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
 import java.util.Map;
-import java.util.HashMap;
 
 @JsonResponseClass
 public class GoalReadinessRecord {
@@ -28,11 +27,7 @@ public class GoalReadinessRecord {
   }
 
   protected Map<String, Object> getJsonStructure() {
-    Map<String, Object> goalReadinessRecord = new HashMap<>(3);
-    goalReadinessRecord.put(NAME, _goal.getClass().getSimpleName());
-    goalReadinessRecord.put(MODEL_COMPLETE_REQUIREMENT,
-        _goal.clusterModelCompletenessRequirements().getJsonStructure());
-    goalReadinessRecord.put(STATUS, _status);
-    return goalReadinessRecord;
+    return Map.of(NAME, _goal.getClass().getSimpleName(), MODEL_COMPLETE_REQUIREMENT, _goal.clusterModelCompletenessRequirements().getJsonStructure(),
+                  STATUS, _status);
   }
 }

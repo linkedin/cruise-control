@@ -212,7 +212,7 @@ public class ExecutionTaskManager {
    */
   private Map<Integer, Integer> brokersReadyForReplicaMovement(Map<Integer, Integer> inProgressReplicaMovementsByBrokerId,
                                                                int throttledConcurrency) {
-    Map<Integer, Integer> readyBrokers = new HashMap<>(inProgressReplicaMovementsByBrokerId.size());
+    Map<Integer, Integer> readyBrokers = new HashMap<>();
     int unthrottledConcurrency = unthrottledConcurrency(inProgressReplicaMovementsByBrokerId.keySet(), throttledConcurrency);
     inProgressReplicaMovementsByBrokerId.forEach((bid, inProgressReplicaMovements) -> {
       int brokerConcurrency = _brokersToSkipConcurrencyCheck.contains(bid) ? unthrottledConcurrency : throttledConcurrency;

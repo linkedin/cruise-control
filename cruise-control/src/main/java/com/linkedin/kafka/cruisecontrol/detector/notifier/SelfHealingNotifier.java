@@ -90,16 +90,15 @@ public class SelfHealingNotifier implements AnomalyNotifier {
   SelfHealingNotifier(Time time) {
     _time = time;
     _notifierStartTimeMs = _time.milliseconds();
-    int numAnomalyTypes = KafkaAnomalyType.cachedValues().size();
-    _selfHealingEnabled = new HashMap<>(numAnomalyTypes);
+    _selfHealingEnabled = new HashMap<>();
     // Init self-healing state change time.
-    _selfHealingStateChangeTimeMs = new HashMap<>(2);
-    _selfHealingStateChangeTimeMs.put(true, new HashMap<>(numAnomalyTypes));
-    _selfHealingStateChangeTimeMs.put(false, new HashMap<>(numAnomalyTypes));
+    _selfHealingStateChangeTimeMs = new HashMap<>();
+    _selfHealingStateChangeTimeMs.put(true, new HashMap<>());
+    _selfHealingStateChangeTimeMs.put(false, new HashMap<>());
     // Init self-healing historical duration.
-    _selfHealingEnabledHistoricalDurationMs = new HashMap<>(numAnomalyTypes);
+    _selfHealingEnabledHistoricalDurationMs = new HashMap<>();
     KafkaAnomalyType.cachedValues().forEach(anomalyType -> _selfHealingEnabledHistoricalDurationMs.put(anomalyType, 0L));
-    _latestFailedBrokersByAutoFixTriggered = new HashMap<>(2);
+    _latestFailedBrokersByAutoFixTriggered = new HashMap<>();
     _latestFailedBrokersByAutoFixTriggered.put(true, new HashMap<>());
     _latestFailedBrokersByAutoFixTriggered.put(false, new HashMap<>());
   }
@@ -192,7 +191,7 @@ public class SelfHealingNotifier implements AnomalyNotifier {
 
   @Override
   public synchronized Map<AnomalyType, Float> selfHealingEnabledRatio() {
-    Map<AnomalyType, Float> selfHealingEnabledRatio = new HashMap<>(_selfHealingEnabled.size());
+    Map<AnomalyType, Float> selfHealingEnabledRatio = new HashMap<>();
     long nowMs = _time.milliseconds();
     long uptimeMs = uptimeMs(nowMs);
 

@@ -87,7 +87,7 @@ public class AnomalyDetectorManager {
     _anomalies = new PriorityBlockingQueue<>(ANOMALY_QUEUE_INITIAL_CAPACITY, anomalyComparator());
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
     Long anomalyDetectionIntervalMs = config.getLong(AnomalyDetectorConfig.ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
-    _anomalyDetectionIntervalMsByType = new HashMap<>(KafkaAnomalyType.cachedValues().size() - 2);
+    _anomalyDetectionIntervalMsByType = new HashMap<>();
     Long goalViolationDetectionIntervalMs = config.getLong(AnomalyDetectorConfig.GOAL_VIOLATION_DETECTION_INTERVAL_MS_CONFIG);
     _anomalyDetectionIntervalMsByType.put(GOAL_VIOLATION, goalViolationDetectionIntervalMs == null ? anomalyDetectionIntervalMs
                                                                                                    : goalViolationDetectionIntervalMs);
@@ -123,7 +123,7 @@ public class AnomalyDetectorManager {
     _numCheckedWithDelay = new AtomicLong();
     _shutdownLock = new Object();
     // Register gauge sensors.
-    _selfHealingFixGenerationTimer = new HashMap<>(KafkaAnomalyType.cachedValues().size());
+    _selfHealingFixGenerationTimer = new HashMap<>();
     registerGaugeSensors(dropwizardMetricRegistry);
     _anomalyDetectorState = new AnomalyDetectorState(time,
                                                      _anomalyNotifier.selfHealingEnabled(),
@@ -146,7 +146,7 @@ public class AnomalyDetectorManager {
                          MaintenanceEventDetector maintenanceEventDetector,
                          ScheduledExecutorService detectorScheduler) {
     _anomalies = anomalies;
-    _anomalyDetectionIntervalMsByType = new HashMap<>(KafkaAnomalyType.cachedValues().size() - 1);
+    _anomalyDetectionIntervalMsByType = new HashMap<>();
     KafkaAnomalyType.cachedValues().stream().filter(type -> type != BROKER_FAILURE)
                     .forEach(type -> _anomalyDetectionIntervalMsByType.put(type, anomalyDetectionIntervalMs));
 
@@ -166,10 +166,10 @@ public class AnomalyDetectorManager {
     _anomalyInProgress = null;
     _numCheckedWithDelay = new AtomicLong();
     _shutdownLock = new Object();
-    _selfHealingFixGenerationTimer = new HashMap<>(KafkaAnomalyType.cachedValues().size());
+    _selfHealingFixGenerationTimer = new HashMap<>();
     cachedValues().forEach(anomalyType -> _selfHealingFixGenerationTimer.put(anomalyType, new Timer()));
     // Add anomaly detector state
-    _anomalyDetectorState = new AnomalyDetectorState(new SystemTime(), new HashMap<>(KafkaAnomalyType.cachedValues().size()), 10, null);
+    _anomalyDetectorState = new AnomalyDetectorState(new SystemTime(), new HashMap<>(), 10, null);
   }
 
   /**

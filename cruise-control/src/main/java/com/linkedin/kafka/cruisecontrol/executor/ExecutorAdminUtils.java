@@ -46,9 +46,9 @@ public final class ExecutorAdminUtils {
   static Map<ExecutionTask, ReplicaLogDirInfo> getLogdirInfoForExecutionTask(Collection<ExecutionTask> tasks,
                                                                              AdminClient adminClient,
                                                                              KafkaCruiseControlConfig config) {
-    Set<TopicPartitionReplica> replicasToCheck = new HashSet<>(tasks.size());
-    Map<ExecutionTask, ReplicaLogDirInfo> logdirInfoByTask = new HashMap<>(tasks.size());
-    Map<TopicPartitionReplica, ExecutionTask> taskByReplica = new HashMap<>(tasks.size());
+    Set<TopicPartitionReplica> replicasToCheck = new HashSet<>();
+    Map<ExecutionTask, ReplicaLogDirInfo> logdirInfoByTask = new HashMap<>();
+    Map<TopicPartitionReplica, ExecutionTask> taskByReplica = new HashMap<>();
     tasks.forEach(t -> {
       TopicPartitionReplica tpr = new TopicPartitionReplica(t.proposal().topic(), t.proposal().partitionId(), t.brokerId());
       replicasToCheck.add(tpr);
@@ -78,8 +78,8 @@ public final class ExecutorAdminUtils {
                                                  AdminClient adminClient,
                                                  ExecutionTaskManager executionTaskManager,
                                                  KafkaCruiseControlConfig config) {
-    Map<TopicPartitionReplica, String> replicaAssignment = new HashMap<>(tasksToExecute.size());
-    Map<TopicPartitionReplica, ExecutionTask> replicaToTask = new HashMap<>(tasksToExecute.size());
+    Map<TopicPartitionReplica, String> replicaAssignment = new HashMap<>();
+    Map<TopicPartitionReplica, ExecutionTask> replicaToTask = new HashMap<>();
     tasksToExecute.forEach(t -> {
       TopicPartitionReplica tpr = new TopicPartitionReplica(t.proposal().topic(), t.proposal().partitionId(), t.brokerId());
       replicaAssignment.put(tpr, t.proposal().replicasToMoveBetweenDisksByBroker().get(t.brokerId()).logdir());

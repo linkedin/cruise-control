@@ -232,14 +232,12 @@ public class ClusterModelStats {
    * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure() {
-    Map<String, Object> statMap = new HashMap<>(2);
-    statMap.put(METADATA, new ClusterModelStatsMetaData(numBrokers(), numReplicasInCluster(), numTopics()).getJsonStructure());
-    statMap.put(STATISTICS, new ClusterModelStatsValue(_resourceUtilizationStats,
-                                                       _potentialNwOutUtilizationStats,
-                                                       _replicaStats,
-                                                       _leaderReplicaStats,
-                                                       _topicReplicaStats).getJsonStructure());
-    return statMap;
+    return Map.of(METADATA, new ClusterModelStatsMetaData(numBrokers(), numReplicasInCluster(), numTopics()).getJsonStructure(),
+                  STATISTICS, new ClusterModelStatsValue(_resourceUtilizationStats,
+                                                         _potentialNwOutUtilizationStats,
+                                                         _replicaStats,
+                                                         _leaderReplicaStats,
+                                                         _topicReplicaStats).getJsonStructure());
   }
 
   /**
@@ -268,10 +266,10 @@ public class ClusterModelStats {
    */
   private void utilizationForResources(ClusterModel clusterModel, OptimizationOptions optimizationOptions, Set<Broker> aliveBrokers) {
     // Average, maximum, and standard deviation of utilization by resource.
-    Map<Resource, Double> avgUtilizationByResource = new HashMap<>(Resource.cachedValues().size());
-    Map<Resource, Double> maxUtilizationByResource = new HashMap<>(Resource.cachedValues().size());
-    Map<Resource, Double> minUtilizationByResource = new HashMap<>(Resource.cachedValues().size());
-    Map<Resource, Double> stDevUtilizationByResource = new HashMap<>(Resource.cachedValues().size());
+    Map<Resource, Double> avgUtilizationByResource = new HashMap<>();
+    Map<Resource, Double> maxUtilizationByResource = new HashMap<>();
+    Map<Resource, Double> minUtilizationByResource = new HashMap<>();
+    Map<Resource, Double> stDevUtilizationByResource = new HashMap<>();
     for (Resource resource : Resource.cachedValues()) {
       double resourceUtilization = clusterModel.load().expectedUtilizationFor(resource);
       double avgUtilizationPercentage = resourceUtilization / clusterModel.capacityWithAllowedReplicaMovesFor(resource, optimizationOptions);

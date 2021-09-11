@@ -57,7 +57,7 @@ public final class SamplingUtils {
    */
   static Map<Integer, Map<String, Integer>> leaderDistribution(Cluster cluster) {
     List<Node> clusterNodes = cluster.nodes();
-    Map<Integer, Map<String, Integer>> stats = new HashMap<>(clusterNodes.size());
+    Map<Integer, Map<String, Integer>> stats = new HashMap<>();
     for (Node node : clusterNodes) {
       Map<String, Integer> numLeadersByTopic = new HashMap<>();
       stats.put(node.id(), numLeadersByTopic);

@@ -60,7 +60,7 @@ public class CruiseControlMetricsReporterSampler extends AbstractMetricSampler {
       return 0;
     }
     // Now seek to the startTimeMs.
-    Map<TopicPartition, Long> timestampToSeek = new HashMap<>(_currentPartitionAssignment.size());
+    Map<TopicPartition, Long> timestampToSeek = new HashMap<>();
     for (TopicPartition tp : _currentPartitionAssignment) {
       timestampToSeek.put(tp, metricSamplerOptions.startTimeMs());
     }

@@ -34,8 +34,8 @@ public final class ProvisionerUtils {
    * {@link ProvisionerState.State#COMPLETED_WITH_ERROR} otherwise.
    */
   public static ProvisionerState increasePartitionCount(AdminClient adminClient, Set<NewTopic> topicsToAddPartitions) {
-    Map<String, Integer> numPartitionsBySucceededTopic = new HashMap<>(topicsToAddPartitions.size());
-    Map<String, Integer> numPartitionsByFailedTopic = new HashMap<>(topicsToAddPartitions.size());
+    Map<String, Integer> numPartitionsBySucceededTopic = new HashMap<>();
+    Map<String, Integer> numPartitionsByFailedTopic = new HashMap<>();
 
     for (NewTopic topicToAddPartitions : topicsToAddPartitions) {
       boolean success = maybeIncreasePartitionCount(adminClient, topicToAddPartitions);

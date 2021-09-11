@@ -667,10 +667,7 @@ public final class ParameterUtils {
     ensureDisjoint(enableSelfHealingFor, disableSelfHealingFor,
                    "The same anomaly cannot be specified in both disable and enable parameters");
 
-    Map<Boolean, Set<AnomalyType>> selfHealingFor = new HashMap<>(2);
-    selfHealingFor.put(true, enableSelfHealingFor);
-    selfHealingFor.put(false, disableSelfHealingFor);
-
+    Map<Boolean, Set<AnomalyType>> selfHealingFor = Map.of(true, enableSelfHealingFor, false, disableSelfHealingFor);
     return selfHealingFor;
   }
 
@@ -689,10 +686,8 @@ public final class ParameterUtils {
     ensureDisjoint(enableConcurrencyAdjusterFor, disableConcurrencyAdjusterFor,
                    "The same concurrency type cannot be specified in both disable and enable parameters");
 
-    Map<Boolean, Set<ConcurrencyType>> concurrencyAdjusterFor = new HashMap<>(2);
-    concurrencyAdjusterFor.put(true, enableConcurrencyAdjusterFor);
-    concurrencyAdjusterFor.put(false, disableConcurrencyAdjusterFor);
-
+    Map<Boolean, Set<ConcurrencyType>> concurrencyAdjusterFor = Map.of(true, enableConcurrencyAdjusterFor,
+                                                                       false, disableConcurrencyAdjusterFor);
     return concurrencyAdjusterFor;
   }
 
@@ -1048,10 +1043,7 @@ public final class ParameterUtils {
                                                    REVIEW, APPROVE_PARAM, DISCARD_PARAM));
     }
 
-    Map<ReviewStatus, Set<Integer>> reviewRequest = new HashMap<>(2);
-    reviewRequest.put(APPROVED, approve);
-    reviewRequest.put(DISCARDED, discard);
-
+    Map<ReviewStatus, Set<Integer>> reviewRequest = Map.of(APPROVED, approve, DISCARDED, discard);
     return reviewRequest;
   }
 

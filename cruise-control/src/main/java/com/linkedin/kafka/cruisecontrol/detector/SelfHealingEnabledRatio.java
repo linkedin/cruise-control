@@ -17,7 +17,7 @@ public class SelfHealingEnabledRatio {
     protected Map<String, Float> _selfHealingEnabledRatioMap;
 
     SelfHealingEnabledRatio(int size) {
-        _selfHealingEnabledRatioMap = new HashMap<>(size);
+        _selfHealingEnabledRatioMap = new HashMap<>();
     }
 
     public void put(AnomalyType anomalyType, Float value) {

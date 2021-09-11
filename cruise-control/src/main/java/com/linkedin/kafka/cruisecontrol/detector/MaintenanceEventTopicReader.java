@@ -97,7 +97,7 @@ public class MaintenanceEventTopicReader implements MaintenanceEventReader {
    * @return End offsets by the partitions to be consumed.
    */
   protected Map<TopicPartition, Long> seekToRelevantOffsets() throws SamplingException {
-    Map<TopicPartition, Long> timestampToSeek = new HashMap<>(_currentPartitionAssignment.size());
+    Map<TopicPartition, Long> timestampToSeek = new HashMap<>();
     for (TopicPartition tp : _currentPartitionAssignment) {
       timestampToSeek.put(tp, _lastEventReadPeriodEndTimeMs);
     }
@@ -119,7 +119,7 @@ public class MaintenanceEventTopicReader implements MaintenanceEventReader {
 
   protected void addMaintenancePlan(MaintenancePlan maintenancePlan, Set<MaintenanceEvent> maintenanceEvents) {
     LOG.debug("Retrieved maintenance plan {}.", maintenancePlan);
-    Map<String, Object> parameterConfigOverrides = new HashMap<>(4);
+    Map<String, Object> parameterConfigOverrides = new HashMap<>();
     parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl);
     parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
     parameterConfigOverrides.put(MAINTENANCE_EVENT_TYPE_CONFIG, maintenancePlan.maintenanceEventType());

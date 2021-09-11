@@ -107,7 +107,7 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
    * @return A map containing the number of replicas by rack id that these replicas reside in.
    */
   private static Map<String, Integer> numPartitionReplicasByRackId(Set<Broker> partitionBrokers) {
-    Map<String, Integer> numPartitionReplicasByRackId = new HashMap<>(partitionBrokers.size());
+    Map<String, Integer> numPartitionReplicasByRackId = new HashMap<>();
     for (Broker broker : partitionBrokers) {
       numPartitionReplicasByRackId.merge(broker.rack().id(), 1, Integer::sum);
     }
@@ -381,8 +381,8 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
         throw new OptimizationFailureException("All alive racks are excluded from replica moves.", recommendation);
       }
       int maxReplicationFactor = clusterModel.maxReplicationFactor();
-      _baseLimitByRF = new HashMap<>(maxReplicationFactor);
-      _numRacksWithOneMoreReplicaByRF = new HashMap<>(maxReplicationFactor);
+      _baseLimitByRF = new HashMap<>();
+      _numRacksWithOneMoreReplicaByRF = new HashMap<>();
 
       // Precompute the limits for each possible replication factor up to maximum replication factor.
       for (int replicationFactor = 1; replicationFactor <= maxReplicationFactor; replicationFactor++) {
