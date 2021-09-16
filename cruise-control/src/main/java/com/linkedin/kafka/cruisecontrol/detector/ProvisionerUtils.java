@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,17 +37,23 @@ public final class ProvisionerUtils {
   public static ProvisionerState increasePartitionCount(AdminClient adminClient, Set<NewTopic> topicsToAddPartitions) {
     Map<String, Integer> numPartitionsBySucceededTopic = new HashMap<>();
     Map<String, Integer> numPartitionsByFailedTopic = new HashMap<>();
+    Map<String, Integer> numPartitionsByIgnoredTopic = new HashMap<>();
 
     for (NewTopic topicToAddPartitions : topicsToAddPartitions) {
-      boolean success = maybeIncreasePartitionCount(adminClient, topicToAddPartitions);
-      if (success) {
+      KafkaCruiseControlUtils.CompletionType completionType = maybeIncreasePartitionCount(adminClient, topicToAddPartitions);
+      if (completionType == KafkaCruiseControlUtils.CompletionType.COMPLETED) {
         numPartitionsBySucceededTopic.put(topicToAddPartitions.name(), topicToAddPartitions.numPartitions());
-      } else {
+      } else if (completionType == KafkaCruiseControlUtils.CompletionType.COMPLETED_WITH_ERROR) {
         numPartitionsByFailedTopic.put(topicToAddPartitions.name(), topicToAddPartitions.numPartitions());
+      } else {
+        numPartitionsByIgnoredTopic.put(topicToAddPartitions.name(), topicToAddPartitions.numPartitions());
       }
     }
-    String summary = String.format("Setting partition count by topic succeeded: %s failed: %s.",
-                                   numPartitionsBySucceededTopic, numPartitionsByFailedTopic);
+    String summary = String.format("Setting partition count by topic%s%s%s.",
+                                   numPartitionsBySucceededTopic.isEmpty() ? "" : String.format(" || Succeeded: %s", numPartitionsBySucceededTopic),
+                                   numPartitionsByFailedTopic.isEmpty() ? "" : String.format(" || Failed: %s", numPartitionsByFailedTopic),
+                                   numPartitionsByIgnoredTopic.isEmpty() ? "" : String.format(" || Ignored: %s", numPartitionsByIgnoredTopic));
+
     return new ProvisionerState(numPartitionsByFailedTopic.isEmpty() ? COMPLETED : COMPLETED_WITH_ERROR, summary);
   }
 
