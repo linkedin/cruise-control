@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -70,7 +71,7 @@ public class RightsizeResult extends AbstractCruiseControlResponse {
     }
     jsonStructure.put(PROVISIONER_STATE, _provisionerState);
     jsonStructure.put(VERSION, JSON_VERSION);
-    Gson gson = new Gson();
+    Gson gson = new GsonBuilder().disableHtmlEscaping().create();
     return gson.toJson(jsonStructure);
   }
 
