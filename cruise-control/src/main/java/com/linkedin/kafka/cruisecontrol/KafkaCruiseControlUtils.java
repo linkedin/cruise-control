@@ -309,9 +309,10 @@ public final class KafkaCruiseControlUtils {
    *
    * @param adminClient The adminClient to send describeTopics and createPartitions requests.
    * @param topicToAddPartitions Existing topic to add more partitions if needed -- cannot be {@code null}.
-   * @return {@code true} if the request is completed successfully, {@code false} if there are any exceptions.
+   * @return {@link CompletionType#COMPLETED} if the request is completed successfully, {@link CompletionType#COMPLETED_WITH_ERROR} if there
+   * are any exceptions, and {@link CompletionType#NO_ACTION} if the partition count is already greater than or equal to the requested count.
    */
-  public static boolean maybeIncreasePartitionCount(AdminClient adminClient, NewTopic topicToAddPartitions) {
+  public static CompletionType maybeIncreasePartitionCount(AdminClient adminClient, NewTopic topicToAddPartitions) {
     String topicName = topicToAddPartitions.name();
 
     // Retrieve partition count of topic to check if it needs a partition count update.
@@ -321,7 +322,7 @@ public final class KafkaCruiseControlUtils {
                                     .get(topicName).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
     } catch (InterruptedException | ExecutionException | TimeoutException e) {
       LOG.warn("Partition count increase check for topic {} failed due to failure to describe cluster.", topicName, e);
-      return false;
+      return CompletionType.COMPLETED_WITH_ERROR;
     }
 
     // Update partition count of topic if needed.
@@ -334,11 +335,13 @@ public final class KafkaCruiseControlUtils {
       } catch (InterruptedException | ExecutionException | TimeoutException e) {
         LOG.warn("Partition count increase to {} for topic {} failed{}.", topicToAddPartitions.numPartitions(), topicName,
                  (e.getCause() instanceof ReassignmentInProgressException) ? " due to ongoing reassignment" : "", e);
-        return false;
+        return CompletionType.COMPLETED_WITH_ERROR;
       }
+    } else {
+      return CompletionType.NO_ACTION;
     }
 
-    return true;
+    return CompletionType.COMPLETED;
   }
 
   /**
@@ -868,5 +871,19 @@ public final class KafkaCruiseControlUtils {
     consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDeserializer.getName());
     consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, configs.get(RECONNECT_BACKOFF_MS_CONFIG).toString());
     return new KafkaConsumer<>(consumerProps);
+  }
+
+  public enum CompletionType {
+    NO_ACTION, COMPLETED, COMPLETED_WITH_ERROR;
+
+    private static final List<CompletionType> CACHED_VALUES = List.of(values());
+
+    /**
+     * Use this instead of values() because values() creates a new array each time.
+     * @return enumerated values in the same order as values()
+     */
+    public static List<CompletionType> cachedValues() {
+      return Collections.unmodifiableList(CACHED_VALUES);
+    }
   }
 }

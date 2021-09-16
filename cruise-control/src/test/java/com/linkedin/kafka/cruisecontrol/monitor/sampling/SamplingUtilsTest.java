@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.maybeUpda
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.wrapTopic;
 import static kafka.log.LogConfig.CleanupPolicyProp;
 import static kafka.log.LogConfig.RetentionMsProp;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 
@@ -103,9 +105,9 @@ public class SamplingUtilsTest {
     EasyMock.expect(createPartitionsResult.values()).andReturn(createPartitionsValues);
 
     EasyMock.replay(adminClient, describeTopicsResult, topicDescriptionFuture, topicDescription, createPartitionsResult);
-    boolean increasePartitionCount = maybeIncreasePartitionCount(adminClient, topicToAddPartitions);
+    KafkaCruiseControlUtils.CompletionType increasePartitionCount = maybeIncreasePartitionCount(adminClient, topicToAddPartitions);
 
     EasyMock.verify(adminClient, describeTopicsResult, topicDescriptionFuture, topicDescription, createPartitionsResult);
-    assertTrue(increasePartitionCount);
+    assertEquals(KafkaCruiseControlUtils.CompletionType.COMPLETED, increasePartitionCount);
   }
 }

@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -64,6 +65,7 @@ public class PartitionProvisionerTest {
                                                                                       Collections.singletonList(MOCK_TOPIC_PARTITION_INFO));
   // Create resources for (1) the cluster and (2) each broker.
   private static final Pattern MOCK_TOPIC_PATTERN = Pattern.compile(MOCK_TOPIC);
+  private static final int MOCK_IGNORED_PARTITION_COUNT = 1;
   private static final int MOCK_PARTITION_COUNT = 2;
 
   static {
@@ -101,26 +103,37 @@ public class PartitionProvisionerTest {
   public void testProvisionPartitionIncreaseConstructsCompletedResponse()
       throws ExecutionException, InterruptedException, TimeoutException {
     ProvisionerState.State expectedState = ProvisionerState.State.COMPLETED;
-    String expectedSummary = String.format("[Recommender-Under-Provisioned] Setting partition count by topic succeeded: {%s=%d} failed: {}.",
+    String expectedSummary = String.format("[Recommender-Under-Provisioned] Setting partition count by topic || Succeeded: {%s=%d}.",
                                            MOCK_TOPIC, MOCK_PARTITION_COUNT);
-    assertProvisionPartitionIncreaseConstructsCorrectResponse(true, expectedState, expectedSummary);
+    assertProvisionPartitionIncreaseConstructsCorrectResponse(KafkaCruiseControlUtils.CompletionType.COMPLETED, expectedState, expectedSummary);
+  }
+
+  @Test
+  public void testProvisionPartitionIncreaseConstructsCompletedWithIgnoreResponse()
+      throws ExecutionException, InterruptedException, TimeoutException {
+    ProvisionerState.State expectedState = ProvisionerState.State.COMPLETED;
+    String expectedSummary = String.format("[Recommender-Under-Provisioned] Setting partition count by topic || Ignored: {%s=%d}.",
+                                           MOCK_TOPIC, MOCK_IGNORED_PARTITION_COUNT);
+    assertProvisionPartitionIncreaseConstructsCorrectResponse(KafkaCruiseControlUtils.CompletionType.NO_ACTION, expectedState, expectedSummary);
   }
 
   @Test
   public void testProvisionPartitionIncreaseConstructsCompletedWithErrorResponse()
       throws ExecutionException, InterruptedException, TimeoutException {
     ProvisionerState.State expectedState = ProvisionerState.State.COMPLETED_WITH_ERROR;
-    String expectedSummary = String.format("[Recommender-Under-Provisioned] Setting partition count by topic succeeded: {} failed: {%s=%d}.",
+    String expectedSummary = String.format("[Recommender-Under-Provisioned] Setting partition count by topic || Failed: {%s=%d}.",
                                            MOCK_TOPIC, MOCK_PARTITION_COUNT);
-    assertProvisionPartitionIncreaseConstructsCorrectResponse(false, expectedState, expectedSummary);
+    assertProvisionPartitionIncreaseConstructsCorrectResponse(KafkaCruiseControlUtils.CompletionType.COMPLETED_WITH_ERROR, expectedState,
+                                                              expectedSummary);
   }
 
-  private void assertProvisionPartitionIncreaseConstructsCorrectResponse(boolean partitionIncreaseSucceeded,
+  private void assertProvisionPartitionIncreaseConstructsCorrectResponse(KafkaCruiseControlUtils.CompletionType partitionIncreaseCompletion,
                                                                          ProvisionerState.State expectedState,
                                                                          String expectedSummary)
       throws ExecutionException, InterruptedException, TimeoutException {
+    int recommendedPartitionCount = expectedSummary.contains("Ignored") ? MOCK_IGNORED_PARTITION_COUNT : MOCK_PARTITION_COUNT;
     ProvisionRecommendation recommendation =
-        new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).numPartitions(MOCK_PARTITION_COUNT)
+        new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).numPartitions(recommendedPartitionCount)
                                                                               .topicPattern(MOCK_TOPIC_PATTERN).build();
     Map<String, ProvisionRecommendation> provisionRecommendation = Collections.singletonMap(RECOMMENDER_UP, recommendation);
     Map<String, KafkaFuture<TopicDescription>> describeTopicsValues = Collections.singletonMap(MOCK_TOPIC, MOCK_TOPIC_DESCRIPTION_FUTURE);
@@ -128,7 +141,7 @@ public class PartitionProvisionerTest {
     EasyMock.expect(MOCK_ADMIN_CLIENT.describeTopics(Collections.singletonList(MOCK_TOPIC))).andReturn(MOCK_DESCRIBE_TOPICS_RESULT);
     EasyMock.expect(MOCK_DESCRIBE_TOPICS_RESULT.values()).andReturn(describeTopicsValues);
 
-    if (partitionIncreaseSucceeded) {
+    if (partitionIncreaseCompletion == KafkaCruiseControlUtils.CompletionType.COMPLETED) {
       EasyMock.expect(MOCK_TOPIC_DESCRIPTION_FUTURE.get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS)).andReturn(MOCK_TOPIC_DESCRIPTION);
 
       // Create partitions: for this test, we ignore the fact that the mock cluster has one node -- i.e. in reality a request to increase
@@ -139,9 +152,11 @@ public class PartitionProvisionerTest {
       EasyMock.expect(MOCK_CREATE_PARTITIONS_RESULT.values()).andReturn(createPartitionsResultValues);
       EasyMock.expect(MOCK_CREATE_PARTITIONS_FUTURE.get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS)).andReturn(null);
 
-    } else {
+    } else if (partitionIncreaseCompletion == KafkaCruiseControlUtils.CompletionType.COMPLETED_WITH_ERROR) {
       EasyMock.expect(MOCK_TOPIC_DESCRIPTION_FUTURE.get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS))
               .andThrow(new ExecutionException(new InvalidTopicException()));
+    } else {
+      EasyMock.expect(MOCK_TOPIC_DESCRIPTION_FUTURE.get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS)).andReturn(MOCK_TOPIC_DESCRIPTION);
     }
 
     EasyMock.replay(MOCK_ADMIN_CLIENT, MOCK_DESCRIBE_TOPICS_RESULT, MOCK_TOPIC_DESCRIPTION_FUTURE,
