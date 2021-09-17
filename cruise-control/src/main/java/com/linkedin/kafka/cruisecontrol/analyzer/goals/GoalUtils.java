@@ -497,7 +497,7 @@ public final class GoalUtils {
     }
 
     if (sb.length() > 0) {
-      sb.append("Then, re-run your original request.");
+      sb.append(" Then, re-run your original request.");
     }
 
     return sb.toString();
