@@ -97,6 +97,13 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
       assertTrue(detector.failedBrokers().isEmpty());
       failedBrokerListString = detector.loadPersistedFailedBrokerList();
       assertTrue(failedBrokerListString.isEmpty());
+      // Kill the 2nd broker after 15 sec
+      Thread.sleep(15000);
+      killBroker(1);
+      while (anomalies.size() == 1 && System.currentTimeMillis() < start + 30000) {
+        // wait for the anomalies to be drained.
+      }
+      assertEquals("Two broker failure should have been detected before timeout.", 2, anomalies.size());
     } finally {
       detector.shutdown();
       Files.delete(failedBrokersFile.toPath());

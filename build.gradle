@@ -256,7 +256,6 @@ project(':cruise-control') {
     api "org.eclipse.jetty:jetty-server:${jettyVersion}"
     api 'io.dropwizard.metrics:metrics-core:3.2.6'
     api 'com.nimbusds:nimbus-jose-jwt:9.13'
-    api 'com.101tec:zkclient:0.11'
     api 'io.swagger.parser.v3:swagger-parser-v3:2.0.27'
     api 'io.github.classgraph:classgraph:4.8.115'
 

@@ -17,25 +17,21 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import kafka.cluster.Broker;
 import kafka.zk.BrokerIdsZNode;
 import kafka.zk.KafkaZkClient;
-import org.I0Itec.zkclient.IZkChildListener;
-import org.I0Itec.zkclient.ZkClient;
-import org.I0Itec.zkclient.ZkConnection;
-import org.I0Itec.zkclient.exception.ZkMarshallingError;
-import org.I0Itec.zkclient.serialize.ZkSerializer;
 import org.apache.zookeeper.client.ZKClientConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import kafka.zookeeper.ZNodeChildChangeHandler;
 import scala.jdk.javaapi.CollectionConverters;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ZK_SESSION_TIMEOUT;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ZK_CONNECTION_TIMEOUT;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
@@ -55,35 +51,44 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector {
   private static final String ZK_BROKER_FAILURE_METRIC_GROUP = "CruiseControlAnomaly";
   private static final String ZK_BROKER_FAILURE_METRIC_TYPE = "BrokerFailure";
   private final File _failedBrokersFile;
-  private final ZkClient _zkClient;
   private final KafkaZkClient _kafkaZkClient;
   private final Map<Integer, Long> _failedBrokers;
   private final short _fixableFailedBrokerCountThreshold;
   private final double _fixableFailedBrokerPercentageThreshold;
+  private final ExecutorService _detectionExecutor;
 
   public BrokerFailureDetector(Queue<Anomaly> anomalies, KafkaCruiseControl kafkaCruiseControl) {
     super(anomalies, kafkaCruiseControl);
     KafkaCruiseControlConfig config = _kafkaCruiseControl.config();
     String zkUrl = config.getString(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG);
     boolean zkSecurityEnabled = config.getBoolean(ExecutorConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
-    ZkConnection zkConnection = new ZkConnection(zkUrl, ZK_SESSION_TIMEOUT);
     ZKClientConfig zkClientConfig = ZKConfigUtils.zkClientConfigFromKafkaConfig(config);
-    _zkClient = new ZkClient(zkConnection, ZK_CONNECTION_TIMEOUT, new ZkStringSerializer());
     _kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zkUrl, ZK_BROKER_FAILURE_METRIC_GROUP, ZK_BROKER_FAILURE_METRIC_TYPE,
                                                                  zkSecurityEnabled, zkClientConfig);
     _failedBrokers = new HashMap<>();
     _failedBrokersFile = new File(config.getString(AnomalyDetectorConfig.FAILED_BROKERS_FILE_PATH_CONFIG));
     _fixableFailedBrokerCountThreshold = config.getShort(AnomalyDetectorConfig.FIXABLE_FAILED_BROKER_COUNT_THRESHOLD_CONFIG);
     _fixableFailedBrokerPercentageThreshold = config.getDouble(AnomalyDetectorConfig.FIXABLE_FAILED_BROKER_PERCENTAGE_THRESHOLD_CONFIG);
+    _detectionExecutor = Executors.newSingleThreadExecutor();
   }
 
+  /**
+   * Start broker failure detection. Load already persisted failed brokers and detect new broker failures. After
+   * that register a ZNodeChildChangeHandler to be able to run detection automatically when ZK event happened.
+   *
+   * ZkClient needs the registerZNodeChildChangeHandler and getChildren methods to register
+   * a ZNodeChildChangeHandler as the ZK docs said.
+   * {@link kafka.zookeeper.ZooKeeperClient#registerZNodeChildChangeHandler(ZNodeChildChangeHandler)}
+   */
   void startDetection() {
     // Load the failed broker information from zookeeper.
     String failedBrokerListString = loadPersistedFailedBrokerList();
     parsePersistedFailedBrokers(failedBrokerListString);
     // Detect broker failures.
     detectBrokerFailures(false);
-    _zkClient.subscribeChildChanges(BrokerIdsZNode.path(), new BrokerFailureListener());
+    // Register ZNodeChildChangeHandler to ZK.
+    _kafkaZkClient.registerZNodeChildChangeHandler(new BrokerFailureHandler(BrokerIdsZNode.path()));
+    _kafkaZkClient.getChildren(BrokerIdsZNode.path());
   }
 
   private synchronized void detectBrokerFailures(Set<Integer> aliveBrokers, boolean skipReportingIfNotUpdated) {
@@ -113,7 +118,15 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector {
   }
 
   void shutdown() {
-    _zkClient.close();
+    _detectionExecutor.shutdown();
+    try {
+      _detectionExecutor.awaitTermination(2, TimeUnit.MINUTES);
+    } catch (InterruptedException e) {
+      LOG.warn("Unable to shut down BrokerFailureDetector narmally, the active detection may be terminated.", e);
+      if (!_detectionExecutor.isTerminated()) {
+        _detectionExecutor.shutdownNow();
+      }
+    }
     KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(_kafkaZkClient);
   }
 
@@ -223,31 +236,27 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector {
   }
 
   /**
-   * The zookeeper listener for failure detection.
+   * The zookeeper handler for failure detection.
    */
-  private class BrokerFailureListener implements IZkChildListener {
+  private final class BrokerFailureHandler implements ZNodeChildChangeHandler {
+
+    private String _path;
+
+    private BrokerFailureHandler(String path) {
+      _path = path;
+    }
 
     @Override
-    public void handleChildChange(String parentPath, List<String> currentChildren) {
+    public String path() {
+      return _path;
+    }
+
+    @Override
+    public void handleChildChange() {
       // Ensure that broker failures are not reported if there are no updates in already known failed brokers.
       // Anomaly Detector guarantees that a broker failure detection will not be lost. Skipping reporting if not updated
       // ensures that the broker failure detector will not report superfluous broker failures due to flaky zNode.
-      detectBrokerFailures(currentChildren.stream().map(Integer::parseInt).collect(toSet()), true);
-    }
-  }
-
-  /**
-   * Serde class for ZkClient.
-   */
-  private static class ZkStringSerializer implements ZkSerializer {
-    @Override
-    public byte[] serialize(Object data) throws ZkMarshallingError {
-      return ((String) data).getBytes(StandardCharsets.UTF_8);
-    }
-
-    @Override
-    public Object deserialize(byte[] bytes) throws ZkMarshallingError {
-      return new String(bytes, StandardCharsets.UTF_8);
+      _detectionExecutor.submit(() -> detectBrokerFailures(true));
     }
   }
 
