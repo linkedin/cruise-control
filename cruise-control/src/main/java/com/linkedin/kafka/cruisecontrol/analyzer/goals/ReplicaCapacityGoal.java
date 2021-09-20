@@ -209,8 +209,8 @@ public class ReplicaCapacityGoal extends AbstractGoal {
       if (numBrokerReplicas > _balancingConstraint.maxReplicasPerBroker()) {
         ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).numBrokers(1).build();
         throw new OptimizationFailureException(
-            String.format("[%s] Replica count in broker %d exceeds the maximum allowed number of replicas per broker: %d.",
-                          name(), numBrokerReplicas, _balancingConstraint.maxReplicasPerBroker()), recommendation);
+            String.format("[%s] Replica count (%d) in broker %d exceeds the maximum allowed number of replicas per broker: %d.",
+                          name(), numBrokerReplicas, broker.id(), _balancingConstraint.maxReplicasPerBroker()), recommendation);
       }
     }
   }
