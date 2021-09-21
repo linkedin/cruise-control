@@ -9,6 +9,7 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.detector.AnomalyType;
+import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotifier;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
@@ -61,7 +62,7 @@ public class AnomalyDetectorState {
   // Recent anomalies with anomaly state by the anomaly type.
   private final Map<AnomalyType, Map<String, AnomalyState>> _recentAnomaliesByType;
   private Anomaly _ongoingSelfHealingAnomaly;
-  private final Map<AnomalyType, Boolean> _selfHealingEnabled;
+  private final AnomalyNotifier _anomalyNotifier;
   private SelfHealingEnabledRatio _selfHealingEnabledRatio;
   // Maximum number of anomalies to keep in the anomaly detector state.
   private final int _numCachedRecentAnomalyStates;
@@ -79,7 +80,7 @@ public class AnomalyDetectorState {
   private boolean _hasUnfixableGoals;
 
   public AnomalyDetectorState(Time time,
-                              Map<AnomalyType, Boolean> selfHealingEnabled,
+                              AnomalyNotifier anomalyNotifier,
                               int numCachedRecentAnomalyStates,
                               MetricRegistry dropwizardMetricRegistry) {
     _time = time;
@@ -93,7 +94,7 @@ public class AnomalyDetectorState {
         }
       });
     }
-    _selfHealingEnabled = selfHealingEnabled;
+    _anomalyNotifier = anomalyNotifier;
     _selfHealingEnabledRatio = null;
     _ongoingSelfHealingAnomaly = null;
     _ongoingAnomalyDetectionTimeMs = NO_ONGOING_ANOMALY_FLAG;
@@ -332,9 +333,10 @@ public class AnomalyDetectorState {
    *
    * @param anomalyType Type of anomaly.
    * @param isSelfHealingEnabled {@code true} if self healing is enabled, {@code false} otherwise.
+   * @return The old value of self healing for the given anomaly type.
    */
-  public synchronized void setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled) {
-    _selfHealingEnabled.put(anomalyType, isSelfHealingEnabled);
+  public synchronized boolean setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled) {
+    return _anomalyNotifier.setSelfHealingFor(anomalyType, isSelfHealingEnabled);
   }
 
   /**
@@ -356,7 +358,7 @@ public class AnomalyDetectorState {
 
   private Map<Boolean, Set<String>> getSelfHealingByEnableStatus() {
     Map<Boolean, Set<String>> selfHealingByEnableStatus = Map.of(true, new HashSet<>(), false, new HashSet<>());
-    _selfHealingEnabled.forEach((key, value) -> selfHealingByEnableStatus.get(value).add(key.toString()));
+    _anomalyNotifier.selfHealingEnabled().forEach((key, value) -> selfHealingByEnableStatus.get(value).add(key.toString()));
     return selfHealingByEnableStatus;
   }
 
