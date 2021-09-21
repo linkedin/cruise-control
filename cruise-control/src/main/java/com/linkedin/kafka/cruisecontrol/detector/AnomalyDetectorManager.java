@@ -125,10 +125,7 @@ public class AnomalyDetectorManager {
     // Register gauge sensors.
     _selfHealingFixGenerationTimer = new HashMap<>();
     registerGaugeSensors(dropwizardMetricRegistry);
-    _anomalyDetectorState = new AnomalyDetectorState(time,
-                                                     _anomalyNotifier.selfHealingEnabled(),
-                                                     numCachedRecentAnomalyStates,
-                                                     dropwizardMetricRegistry);
+    _anomalyDetectorState = new AnomalyDetectorState(time, _anomalyNotifier, numCachedRecentAnomalyStates, dropwizardMetricRegistry);
   }
 
   /**
@@ -169,7 +166,7 @@ public class AnomalyDetectorManager {
     _selfHealingFixGenerationTimer = new HashMap<>();
     cachedValues().forEach(anomalyType -> _selfHealingFixGenerationTimer.put(anomalyType, new Timer()));
     // Add anomaly detector state
-    _anomalyDetectorState = new AnomalyDetectorState(new SystemTime(), new HashMap<>(), 10, null);
+    _anomalyDetectorState = new AnomalyDetectorState(new SystemTime(), _anomalyNotifier, 10, null);
   }
 
   /**
@@ -314,10 +311,7 @@ public class AnomalyDetectorManager {
    * @return The old value of self healing for the given anomaly type.
    */
   public boolean setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled) {
-    boolean oldSelfHealingEnabled = _anomalyNotifier.setSelfHealingFor(anomalyType, isSelfHealingEnabled);
-    _anomalyDetectorState.setSelfHealingFor(anomalyType, isSelfHealingEnabled);
-
-    return oldSelfHealingEnabled;
+    return _anomalyDetectorState.setSelfHealingFor(anomalyType, isSelfHealingEnabled);
   }
 
   /**
