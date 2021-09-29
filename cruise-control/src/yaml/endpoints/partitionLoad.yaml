@@ -113,6 +113,11 @@ PartitionLoadEndpoint:
         description: The user specified by a trusted proxy in that authentication model.
         schema:
           type: string
+      - name: reason
+        in: query
+        description: Reason for request.
+        schema:
+          type: string
     responses:
       '200':
         description: Successful partition load state response.

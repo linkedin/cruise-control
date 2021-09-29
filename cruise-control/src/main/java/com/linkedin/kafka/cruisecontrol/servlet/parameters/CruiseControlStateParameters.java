@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SUBSTATES_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.VERBOSE_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SUPER_VERBOSE_PARAM;
@@ -23,7 +24,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *
  * <pre>
  *    GET /kafkacruisecontrol/state?verbose=[true/false]&amp;substates=[SUBSTATES]&amp;super_verbose=[true/false]
- *    &amp;json=[true/false]&amp;get_response_schema=[true/false]&amp;doAs=[user]
+ *    &amp;json=[true/false]&amp;get_response_schema=[true/false]&amp;doAs=[user];&amp;reason=[reason-for-request]
  * </pre>
  */
 public class CruiseControlStateParameters extends AbstractParameters {
@@ -33,6 +34,7 @@ public class CruiseControlStateParameters extends AbstractParameters {
     validParameterNames.add(SUBSTATES_PARAM);
     validParameterNames.add(VERBOSE_PARAM);
     validParameterNames.add(SUPER_VERBOSE_PARAM);
+    validParameterNames.add(REASON_PARAM);
     validParameterNames.addAll(AbstractParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
     CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
   }

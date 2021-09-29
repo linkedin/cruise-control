@@ -108,6 +108,11 @@ ProposalsEndpoint:
         schema:
           type: boolean
           default: true
+      - name: reason
+        in: query
+        description: Reason for request.
+        schema:
+          type: string
     responses:
       '200':
         description: Successful optimization proposals response.
