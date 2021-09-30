@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
+import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.ZKConfigUtils;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
@@ -69,7 +70,7 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector {
     _failedBrokersFile = new File(config.getString(AnomalyDetectorConfig.FAILED_BROKERS_FILE_PATH_CONFIG));
     _fixableFailedBrokerCountThreshold = config.getShort(AnomalyDetectorConfig.FIXABLE_FAILED_BROKER_COUNT_THRESHOLD_CONFIG);
     _fixableFailedBrokerPercentageThreshold = config.getDouble(AnomalyDetectorConfig.FIXABLE_FAILED_BROKER_PERCENTAGE_THRESHOLD_CONFIG);
-    _detectionExecutor = Executors.newSingleThreadExecutor();
+    _detectionExecutor = Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("BrokerFailureDetectorExecutor"));
   }
 
   /**
@@ -87,7 +88,7 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector {
     // Detect broker failures.
     detectBrokerFailures(false);
     // Register ZNodeChildChangeHandler to ZK.
-    _kafkaZkClient.registerZNodeChildChangeHandler(new BrokerFailureHandler(BrokerIdsZNode.path()));
+    _kafkaZkClient.registerZNodeChildChangeHandler(new BrokerFailureHandler());
     _kafkaZkClient.getChildren(BrokerIdsZNode.path());
   }
 
@@ -118,11 +119,12 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector {
   }
 
   void shutdown() {
+    _kafkaZkClient.unregisterZNodeChildChangeHandler(BrokerIdsZNode.path());
     _detectionExecutor.shutdown();
     try {
-      _detectionExecutor.awaitTermination(2, TimeUnit.MINUTES);
+      _detectionExecutor.awaitTermination(30, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
-      LOG.warn("Unable to shut down BrokerFailureDetector narmally, the active detection may be terminated.", e);
+      LOG.warn("Unable to shutdown BrokerFailureDetector normally, the active detection may be terminated.", e);
       if (!_detectionExecutor.isTerminated()) {
         _detectionExecutor.shutdownNow();
       }
@@ -240,15 +242,9 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector {
    */
   private final class BrokerFailureHandler implements ZNodeChildChangeHandler {
 
-    private String _path;
-
-    private BrokerFailureHandler(String path) {
-      _path = path;
-    }
-
     @Override
     public String path() {
-      return _path;
+      return BrokerIdsZNode.path();
     }
 
     @Override
