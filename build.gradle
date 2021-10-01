@@ -8,7 +8,7 @@ plugins {
   id "idea"
   id "jacoco" // Java Code Coverage plugin
   id "com.github.ben-manes.versions" version "0.39.0"
-  id "com.github.spotbugs" version "4.7.2" apply false
+  id "com.github.spotbugs" version "4.7.6" apply false
   id "checkstyle"
 }
 
@@ -97,13 +97,13 @@ subprojects {
 
   //code quality and inspections
   checkstyle {
-    toolVersion = '8.45.1'
+    toolVersion = '9.0'
     ignoreFailures = false
     configDirectory = file("$rootDir/checkstyle")
   }
 
   spotbugs {
-    toolVersion = '4.4.0'
+    toolVersion = '4.4.1'
     excludeFilter = file("$rootDir/gradle/findbugs-exclude.xml")
     ignoreFailures = false
     jvmArgs = [ '-Xms512m' ]
@@ -255,9 +255,9 @@ project(':cruise-control') {
     api 'com.google.code.gson:gson:2.8.8'
     api "org.eclipse.jetty:jetty-server:${jettyVersion}"
     api 'io.dropwizard.metrics:metrics-core:3.2.6'
-    api 'com.nimbusds:nimbus-jose-jwt:9.13'
-    api 'io.swagger.parser.v3:swagger-parser-v3:2.0.27'
-    api 'io.github.classgraph:classgraph:4.8.115'
+    api 'com.nimbusds:nimbus-jose-jwt:9.15.2'
+    api 'io.swagger.parser.v3:swagger-parser-v3:2.0.28'
+    api 'io.github.classgraph:classgraph:4.8.117'
 
     testImplementation project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
     testImplementation project(path: ':cruise-control-core', configuration: 'testOutput')
