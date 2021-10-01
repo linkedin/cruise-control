@@ -84,26 +84,30 @@ public abstract class CCKafkaIntegrationTestHarness extends CCAbstractZookeeperT
   protected List<Map<Object, Object>> buildBrokerConfigs() {
     List<Map<Object, Object>> configs = new ArrayList<>();
     for (int i = 0; i < clusterSize(); i++) {
-      CCEmbeddedBrokerBuilder builder = new CCEmbeddedBrokerBuilder();
-      builder.zkConnect(zookeeper());
-      builder.nodeId(i);
-      builder.enable(securityProtocol());
-      if (securityProtocol() == SecurityProtocol.SSL) {
-        if (trustStoreFile() != null) {
-          builder.trustStore(trustStoreFile());
-        }
-      } else {
-        if (trustStoreFile() != null) {
-          throw new AssertionError("security protocol not set yet trust store file provided");
-        }
-      }
-      Map<Object, Object> config = builder.buildConfig();
-      config.putAll(overridingProps());
-      configs.add(config);
+      configs.add(createBrokerConfig(i));
     }
     return configs;
   }
 
+  protected Map<Object, Object> createBrokerConfig(int brokerId) {
+    CCEmbeddedBrokerBuilder builder = new CCEmbeddedBrokerBuilder();
+    builder.zkConnect(zookeeper());
+    builder.nodeId(brokerId);
+    builder.enable(securityProtocol());
+    if (securityProtocol() == SecurityProtocol.SSL) {
+      if (trustStoreFile() != null) {
+        builder.trustStore(trustStoreFile());
+      }
+    } else {
+      if (trustStoreFile() != null) {
+        throw new AssertionError("security protocol not set yet trust store file provided");
+      }
+    }
+    Map<Object, Object> config = builder.buildConfig();
+    config.putAll(overridingProps());
+    return config;
+  }
+  
   protected SecurityProtocol securityProtocol() {
     return SecurityProtocol.PLAINTEXT;
   }
