@@ -41,6 +41,11 @@ RightsizeEndpoint:
         schema:
           type: boolean
           default: false
+      - name: reason
+          in: query
+          description: Reason for request.
+          schema:
+            type: string
     responses:
       '200':
         description: Successful rightsize response.
