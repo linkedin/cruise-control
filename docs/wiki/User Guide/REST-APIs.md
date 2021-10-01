@@ -87,13 +87,14 @@ User can query the state of Kafka Cruise Control at any time by issuing a HTTP G
 
 Supported parameters are:
 
-| PARAMETER     | TYPE      | DESCRIPTION                                                                                                                                   | DEFAULT       | OPTIONAL  |
-|---------------|-----------|-----------------------------------------------------------------------------------------------------------------------------------------------|---------------|-----------|
-| substates     | list      | substates for which to retrieve state from cruise-control, available substates are `analyzer`, `monitor`, `executor` and `anomaly_detector`   | all substates | yes       | 
-| json          | boolean   | return in JSON format or not                                                                                                                  | false         | yes       | 
-| verbose       | boolean   | return detailed state information                                                                                                             | false         | yes       | 
-| super_verbose | boolean   | return more detailed state information                                                                                                        | false         | yes       |
-| doAs          | string    | propagated user by the trusted proxy service                                                                                                  | null          | yes       | 
+| PARAMETER     | TYPE      | DESCRIPTION                                                                                                                                   | DEFAULT               | OPTIONAL  |
+|---------------|-----------|-----------------------------------------------------------------------------------------------------------------------------------------------|-----------------------|-----------|
+| substates     | list      | substates for which to retrieve state from cruise-control, available substates are `analyzer`, `monitor`, `executor` and `anomaly_detector`   | all substates         | yes       | 
+| json          | boolean   | return in JSON format or not                                                                                                                  | false                 | yes       | 
+| verbose       | boolean   | return detailed state information                                                                                                             | false                 | yes       | 
+| super_verbose | boolean   | return more detailed state information                                                                                                        | false                 | yes       |
+| doAs          | string    | propagated user by the trusted proxy service                                                                                                  | null                  | yes       | 
+| reason        | string    | reason for the request                                                                                                                        | "No reason provided"  | yes       | 
 
 The returned state contains the following information:
 * **Monitor State**:
@@ -150,6 +151,7 @@ Supported parameters are:
 | json                      | boolean   | return in JSON format or not                                                      | false                         | yes       | 
 | verbose                   | boolean   | return detailed state information                                                 | false                         | yes       |
 | doAs                      | string    | propagated user by the trusted proxy service                                      | null                          | yes       | 
+| reason                    | string    | reason for the request                                                            | "No reason provided"          | yes       | 
 
 If the number of workload snapshots for the given timestamp is not sufficient to generate a good load model, an exception will be returned.
 
@@ -183,6 +185,7 @@ Supported parameters are:
 | min_valid_partition_ratio | double        | minimal valid partition ratio requirement for cluster model                                                       | null                          | yes       |
 | brokerid                  | int           | broker id to to filter partition load to report                                                                   | null                          | yes       |
 | doAs                      | string        | propagated user by the trusted proxy service                                                                      | null                          | yes       |
+| reason                    | string        | reason for the request                                                                                            | "No reason provided"          | yes       | 
 
 The returned result would be a partition list sorted by the utilization of the specified resource in the time range specified by `start` and `end`. The resource can be `CPU`, `NW_IN`, `NW_OUT` and `DISK`. By default, the `start` is the earliest monitored time, the `end` is current wall clock time, `resource` is `DISK`, and `entries` is the all partitions in the cluster.
 
@@ -199,12 +202,13 @@ The following GET request gives partition healthiness on the cluster:
 
 Supported parameters are:
 
-| PARAMETER | TYPE      | DESCRIPTION                                                                       | DEFAULT   | OPTIONAL  |
-|-----------|-----------|-----------------------------------------------------------------------------------|-----------|-----------|
-| topic     | regex     | regular expression to filter partition state to report based on partition's topic | null      | yes       | 
-| json      | boolean   | return in JSON format or not                                                      | false     | yes       | 
-| verbose   | boolean   | return detailed state information                                                 | false     | yes       |
-| doAs      | string    | propagated user by the trusted proxy service                                      | null      | yes       | 
+| PARAMETER | TYPE      | DESCRIPTION                                                                       | DEFAULT              | OPTIONAL  |
+|-----------|-----------|-----------------------------------------------------------------------------------|----------------------|-----------|
+| topic     | regex     | regular expression to filter partition state to report based on partition's topic | null                 | yes       | 
+| json      | boolean   | return in JSON format or not                                                      | false                | yes       | 
+| verbose   | boolean   | return detailed state information                                                 | false                | yes       |
+| doAs      | string    | propagated user by the trusted proxy service                                      | null                 | yes       | 
+| reason    | string    | reason for the request                                                            | "No reason provided" | yes       | 
 
 The returned result contains the following information
 * For each broker
@@ -221,23 +225,24 @@ The following GET request returns the optimization proposals generated based on 
 
 Supported parameters are:
 
-| PARAMETER                         | TYPE      | DESCRIPTION                                                                           | DEFAULT           | OPTIONAL  |
-|-----------------------------------|-----------|---------------------------------------------------------------------------------------|-------------------|-----------|
-| ignore_proposal_cache             | boolean   | whether to ignore the cached proposal or not                                          | false             | yes       | 
-| data_from                         | string    | whether to calculate proposal from available valid partitions or valid windows        | `VALID_WINDOWS`   | yes       |
-| goals                             | list      | list of goals used to generate proposal                                               | default goals     | yes       |
-| kafka_assigner                    | boolean   | whether to use Kafka assigner mode to generate proposals                              | false             | yes       |
-| allow_capacity_estimation         | boolean   | whether to allow broker capacity to be estimated                                      | true              | yes       |
-| excluded_topics                   | regex     | regular expression to specify topics excluded from replica and leadership movement    | null              | yes       |
-| use_ready_default_goals           | boolean   | whether to use only ready goals to generate proposals                                 | false             | yes       |
-| exclude_recently_demoted_brokers  | boolean   | whether to allow leader replicas to be moved to recently demoted brokers              | false             | yes       |
-| exclude_recently_removed_brokers  | boolean   | whether allow replicas to be moved to recently removed broker                         | false             | yes       |
-| destination_broker_ids            | boolean   | specify brokers to move replicas to                                                   | available brokers | yes       |
-| rebalance_disk                    | boolean   | whether to balance load between disks within brokers (requires JBOD Kafka deployment) | false             | yes       |
-| json                              | boolean   | return in JSON format or not                                                          | false             | yes       | 
-| verbose                           | boolean   | return detailed state information                                                     | false             | yes       |
-| doAs                              | string    | propagated user by the trusted proxy service                                          | null              | yes       | 
-| fast_mode                         | boolean   | true to compute proposals in fast mode, false otherwise                               | true              | yes       |
+| PARAMETER                         | TYPE      | DESCRIPTION                                                                           | DEFAULT              | OPTIONAL  |
+|-----------------------------------|-----------|---------------------------------------------------------------------------------------|----------------------|-----------|
+| ignore_proposal_cache             | boolean   | whether to ignore the cached proposal or not                                          | false                | yes       | 
+| data_from                         | string    | whether to calculate proposal from available valid partitions or valid windows        | `VALID_WINDOWS`      | yes       |
+| goals                             | list      | list of goals used to generate proposal                                               | default goals        | yes       |
+| kafka_assigner                    | boolean   | whether to use Kafka assigner mode to generate proposals                              | false                | yes       |
+| allow_capacity_estimation         | boolean   | whether to allow broker capacity to be estimated                                      | true                 | yes       |
+| excluded_topics                   | regex     | regular expression to specify topics excluded from replica and leadership movement    | null                 | yes       |
+| use_ready_default_goals           | boolean   | whether to use only ready goals to generate proposals                                 | false                | yes       |
+| exclude_recently_demoted_brokers  | boolean   | whether to allow leader replicas to be moved to recently demoted brokers              | false                | yes       |
+| exclude_recently_removed_brokers  | boolean   | whether allow replicas to be moved to recently removed broker                         | false                | yes       |
+| destination_broker_ids            | boolean   | specify brokers to move replicas to                                                   | available brokers    | yes       |
+| rebalance_disk                    | boolean   | whether to balance load between disks within brokers (requires JBOD Kafka deployment) | false                | yes       |
+| json                              | boolean   | return in JSON format or not                                                          | false                | yes       | 
+| verbose                           | boolean   | return detailed state information                                                     | false                | yes       |
+| doAs                              | string    | propagated user by the trusted proxy service                                          | null                 | yes       | 
+| fast_mode                         | boolean   | true to compute proposals in fast mode, false otherwise                               | true                 | yes       |
+| reason                            | string    | reason for the request                                                                | "No reason provided" | yes       | 
 
 Proposal can be generated based on **valid_window** or **valid_partitions**.
 
@@ -266,16 +271,17 @@ The following get request allows user to get a full list of all the active/compl
 
 Supported parameters are:
 
-| PARAMETER             | TYPE      | DESCRIPTION                                                                           | DEFAULT           | OPTIONAL  |
-|-----------------------|-----------|---------------------------------------------------------------------------------------|-------------------|-----------|
-| user_task_ids         | list      | comma separated UUIDs to filter the task results Cruise Control report                | all tasks         | yes       | 
-| client_ids            | list      | comma separated IP addresses to filter the task results Cruise Control report         | all users         | yes       | 
-| entries               | integer   | number of partition load entries to report in response                                | `MAX_INT`         | yes       |
-| endpoints             | list      | comma separated endpoints to filter the task results Cruise Control report            | all endpoints     | yes       | 
-| types                 | string    | comma separated HTTP request types to filter the task results Cruise Control report   | all request types | yes       | 
-| json                  | boolean   | return in JSON format or not                                                          | false             | yes       | 
-| fetch_completed_task  | boolean   | whether return the original request's final response                                  | false             | yes       |
-| doAs                  | string    | propagated user by the trusted proxy service                                          | null              | yes       |
+| PARAMETER             | TYPE      | DESCRIPTION                                                                           | DEFAULT              | OPTIONAL  |
+|-----------------------|-----------|---------------------------------------------------------------------------------------|----------------------|-----------|
+| user_task_ids         | list      | comma separated UUIDs to filter the task results Cruise Control report                | all tasks            | yes       | 
+| client_ids            | list      | comma separated IP addresses to filter the task results Cruise Control report         | all users            | yes       | 
+| entries               | integer   | number of partition load entries to report in response                                | `MAX_INT`            | yes       |
+| endpoints             | list      | comma separated endpoints to filter the task results Cruise Control report            | all endpoints        | yes       | 
+| types                 | string    | comma separated HTTP request types to filter the task results Cruise Control report   | all request types    | yes       | 
+| json                  | boolean   | return in JSON format or not                                                          | false                | yes       | 
+| fetch_completed_task  | boolean   | whether return the original request's final response                                  | false                | yes       |
+| doAs                  | string    | propagated user by the trusted proxy service                                          | null                 | yes       |
+| reason                | string    | reason for the request                                                                | "No reason provided" | yes       | 
 
 User can use `user_task_ids`/`client_ids`/`endpoints`/`types` make Cruise Control only return requests they are interested. By default all the requests get returned.
 
@@ -487,14 +493,15 @@ The following POST request will let Kafka Cruise Control stop an ongoing `rebala
 
 Supported parameters are:
 
-| PARAMETER           | TYPE      | DESCRIPTION                                                                                                   | DEFAULT   | OPTIONAL  |
-|---------------------|-----------|---------------------------------------------------------------------------------------------------------------|-----------|-----------|
-| force_stop          | boolean   | (not supported in Kafka 2.4 or above) stop an ongoing execution forcefully by deleting Kafka internal zNodes  | false     | yes       |
-| stop_external_agent | boolean   | (required Kafka 2.4 or above) stop an ongoing execution even if it is started by an external agent            | true      | yes       |
-| review_id           | integer   | review id for 2-step verification                                                                             | N/A       | yes       |
-| json                | boolean   | return in JSON format or not                                                                                  | false     | yes       |
-| get_response_schema | boolean   | return JSON schema in response header or not                                                                  | false     | yes       |
-| doAs                | string    | propagated user by the trusted proxy service                                                                  | null      | yes       |
+| PARAMETER           | TYPE      | DESCRIPTION                                                                                                   | DEFAULT               | OPTIONAL  |
+|---------------------|-----------|---------------------------------------------------------------------------------------------------------------|-----------------------|-----------|
+| force_stop          | boolean   | (not supported in Kafka 2.4 or above) stop an ongoing execution forcefully by deleting Kafka internal zNodes  | false                 | yes       |
+| stop_external_agent | boolean   | (required Kafka 2.4 or above) stop an ongoing execution even if it is started by an external agent            | true                  | yes       |
+| review_id           | integer   | review id for 2-step verification                                                                             | N/A                   | yes       |
+| json                | boolean   | return in JSON format or not                                                                                  | false                 | yes       |
+| get_response_schema | boolean   | return JSON schema in response header or not                                                                  | false                 | yes       |
+| doAs                | string    | propagated user by the trusted proxy service                                                                  | null                  | yes       |
+| reason              | string    | reason for the request                                                                                        | "No reason provided"  | yes       | 
 
 Note that **Cruise Control does not wait for the ongoing batch to finish when it stops execution**, i.e. the in-progress batch may still be running after Cruise Control stops the execution.
 
@@ -572,23 +579,24 @@ Some Cruise Control configs can be changed dynamically via `admin` endpoint, whi
 
 Supported parameters are:
 
-| PARAMETER                                     | TYPE      | DESCRIPTION                                                               | DEFAULT   | OPTIONAL  |
-|-----------------------------------------------|-----------|---------------------------------------------------------------------------|-----------|-----------|
-| disable_self_healing_for                      | list      | list of anomaly types to disable self-healing                             | N/A       | yes       |
-| enable_self_healing_for                       | list      | list of anomaly types to enable self-healing                              | N/A       | yes       |
-| concurrent_partition_movements_per_broker     | integer   | upper bound of ongoing replica movements into/out of a broker             | N/A       | yes       |
-| concurrent_intra_broker_partition_movements   | integer   | upper bound of ongoing replica movements between disks within a broker    | N/A       | yes       |
-| concurrent_leader_movements                   | integer   | upper bound of ongoing leadership movements                               | N/A       | yes       |
-| drop_recently_removed_brokers                 | list      | list of id of recently removed brokers to be dropped                      | N/A       | yes       |
-| drop_recently_demoted_brokers                 | list      | list of id of recently demoted brokers to be dropped                      | N/A       | yes       |
-| doAs                                          | string    | propagated user by the trusted proxy service                              | null      | yes       | 
-| json                                          | boolean   | return in JSON format or not                                              | false     | yes       |
-| review_id                                     | integer   | review id for 2-step verification                                         | N/A       | yes       |
-| execution_progress_check_interval_ms          | long      | execution progress check interval in milliseconds                         | N/A       | yes       |
-| get_response_schema                           | boolean   | return JSON schema in response header or not                              | false     | yes       |
-| disable_concurrency_adjuster_for              | list      | disable concurrency adjuster for given concurrency types                  | N/A       | yes       |
-| enable_concurrency_adjuster_for               | list      | enable concurrency adjuster for given concurrency types                   | N/A       | yes       |
-| min_isr_based_concurrency_adjustment          | boolean   | enable (true) or disable (false) MinISR-based concurrency adjustment      | N/A       | yes       |
+| PARAMETER                                     | TYPE      | DESCRIPTION                                                               | DEFAULT               | OPTIONAL  |
+|-----------------------------------------------|-----------|---------------------------------------------------------------------------|-----------------------|-----------|
+| disable_self_healing_for                      | list      | list of anomaly types to disable self-healing                             | N/A                   | yes       |
+| enable_self_healing_for                       | list      | list of anomaly types to enable self-healing                              | N/A                   | yes       |
+| concurrent_partition_movements_per_broker     | integer   | upper bound of ongoing replica movements into/out of a broker             | N/A                   | yes       |
+| concurrent_intra_broker_partition_movements   | integer   | upper bound of ongoing replica movements between disks within a broker    | N/A                   | yes       |
+| concurrent_leader_movements                   | integer   | upper bound of ongoing leadership movements                               | N/A                   | yes       |
+| drop_recently_removed_brokers                 | list      | list of id of recently removed brokers to be dropped                      | N/A                   | yes       |
+| drop_recently_demoted_brokers                 | list      | list of id of recently demoted brokers to be dropped                      | N/A                   | yes       |
+| doAs                                          | string    | propagated user by the trusted proxy service                              | null                  | yes       | 
+| json                                          | boolean   | return in JSON format or not                                              | false                 | yes       |
+| review_id                                     | integer   | review id for 2-step verification                                         | N/A                   | yes       |
+| execution_progress_check_interval_ms          | long      | execution progress check interval in milliseconds                         | N/A                   | yes       |
+| get_response_schema                           | boolean   | return JSON schema in response header or not                              | false                 | yes       |
+| disable_concurrency_adjuster_for              | list      | disable concurrency adjuster for given concurrency types                  | N/A                   | yes       |
+| enable_concurrency_adjuster_for               | list      | enable concurrency adjuster for given concurrency types                   | N/A                   | yes       |
+| min_isr_based_concurrency_adjustment          | boolean   | enable (true) or disable (false) MinISR-based concurrency adjustment      | N/A                   | yes       |
+| reason                                        | string    | reason for the request                                                    | "No reason provided"  | yes       | 
 
 To Enable/disable self-healing, send POST request like:
 
@@ -613,11 +621,12 @@ The following POST request can create a request to the provisioner to rightsize 
 
 Supported parameters are:
 
-| PARAMETER                           | TYPE      | DESCRIPTION                                                                       | DEFAULT   | OPTIONAL  |
-|-------------------------------------|-----------|-----------------------------------------------------------------------------------|-----------|-----------|
-| num_brokers_to_add                  | integer   | difference in broker count to rightsize towards                                   | -1        | yes       |
-| partition_count                     | integer   | target number of partitions to rightsize towards                                  | -1        | yes       |
-| topic                               | regex     | regular expression to specify subject topics                                      | null      | yes       | 
-| doAs                                | string    | propagated user by the trusted proxy service                                      | null      | yes       |
-| get_response_schema                 | boolean   | return JSON schema in response header or not                                      | false     | yes       |
-| json                                | boolean   | return in JSON format or not                                                      | false     | yes       |
+| PARAMETER                           | TYPE      | DESCRIPTION                                                                       | DEFAULT               | OPTIONAL  |
+|-------------------------------------|-----------|-----------------------------------------------------------------------------------|-----------------------|-----------|
+| num_brokers_to_add                  | integer   | difference in broker count to rightsize towards                                   | -1                    | yes       |
+| partition_count                     | integer   | target number of partitions to rightsize towards                                  | -1                    | yes       |
+| topic                               | regex     | regular expression to specify subject topics                                      | null                  | yes       | 
+| doAs                                | string    | propagated user by the trusted proxy service                                      | null                  | yes       |
+| get_response_schema                 | boolean   | return JSON schema in response header or not                                      | false                 | yes       |
+| json                                | boolean   | return in JSON format or not                                                      | false                 | yes       |
+| reason                              | string    | reason for the request                                                            | "No reason provided"  | yes       | 
