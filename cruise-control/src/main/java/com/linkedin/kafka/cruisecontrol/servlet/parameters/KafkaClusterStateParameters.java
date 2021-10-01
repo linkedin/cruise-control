@@ -14,6 +14,7 @@ import java.util.regex.Pattern;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.VERBOSE_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.TOPIC_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
 
 
 /**
@@ -22,7 +23,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  * <pre>
  * Retrieve the kafka cluster state.
  *    GET /kafkacruisecontrol/kafka_cluster_state?verbose=[true/false]&amp;json=[true/false]&amp;topic=[topic]
- *    &amp;get_response_schema=[true/false]&amp;doAs=[user]
+ *    &amp;get_response_schema=[true/false]&amp;doAs=[user]&amp;reason=[reason-for-request]
  * </pre>
  */
 public class KafkaClusterStateParameters extends AbstractParameters {
@@ -31,6 +32,7 @@ public class KafkaClusterStateParameters extends AbstractParameters {
     SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     validParameterNames.add(VERBOSE_PARAM);
     validParameterNames.add(TOPIC_PARAM);
+    validParameterNames.add(REASON_PARAM);
     validParameterNames.addAll(AbstractParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
     CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
   }

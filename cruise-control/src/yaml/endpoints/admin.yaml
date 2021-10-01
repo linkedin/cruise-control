@@ -131,6 +131,11 @@ AdminEndpoint:
         description: Whether to enable (true) or disable (false) MinISR-based concurrency adjustment
         schema:
           type: boolean
+      - name: reason
+        in: query
+        description: Reason for request.
+        schema:
+          type: string
     responses:
       '200':
         description: Successful admin response.

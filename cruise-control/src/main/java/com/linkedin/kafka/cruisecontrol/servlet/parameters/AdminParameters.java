@@ -16,6 +16,7 @@ import java.util.TreeSet;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.areAllParametersNull;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REVIEW_ID_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ChangeExecutionConcurrencyParameters.maybeBuildChangeExecutionConcurrencyParameters;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.DropRecentBrokersParameters.maybeBuildDropRecentBrokersParameters;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.UpdateConcurrencyAdjusterParameters.maybeBuildUpdateConcurrencyAdjusterParameters;
@@ -37,7 +38,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.UpdateSelfHeal
  *    &amp;execution_progress_check_interval_ms=[interval_in_ms]&amp;get_response_schema=[true/false]
  *    &amp;disable_concurrency_adjuster_for=[Set-of-{@link com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType}]
  *    &amp;enable_concurrency_adjuster_for=[Set-of-{@link com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType}]
- *    &amp;min_isr_based_concurrency_adjustment=[true/false]&amp;doAs=[user]
+ *    &amp;min_isr_based_concurrency_adjustment=[true/false]&amp;doAs=[user]&amp;reason=[reason-for-request]
  * </pre>
  */
 public class AdminParameters extends AbstractParameters {
@@ -45,6 +46,7 @@ public class AdminParameters extends AbstractParameters {
   static {
     SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     validParameterNames.add(REVIEW_ID_PARAM);
+    validParameterNames.add(REASON_PARAM);
     validParameterNames.addAll(DropRecentBrokersParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
     validParameterNames.addAll(UpdateSelfHealingParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
     validParameterNames.addAll(ChangeExecutionConcurrencyParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
