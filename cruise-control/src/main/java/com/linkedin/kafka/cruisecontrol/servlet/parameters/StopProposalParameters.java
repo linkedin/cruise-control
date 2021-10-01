@@ -28,7 +28,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  * <pre>
  * Stop the proposal execution.
  *    POST /kafkacruisecontrol/stop_proposal_execution?json=[true/false]&amp;review_id=[id]&amp;force_stop=[true/false]
- *    &amp;get_response_schema=[true/false]&amp;stop_external_agent=[true/false]&amp;doAs=[user]
+ *    &amp;get_response_schema=[true/false]&amp;stop_external_agent=[true/false]&amp;doAs=[user]&amp;reason=[reason-for-request]
  * </pre>
  */
 public class StopProposalParameters extends AbstractParameters {
@@ -38,6 +38,7 @@ public class StopProposalParameters extends AbstractParameters {
     validParameterNames.add(REVIEW_ID_PARAM);
     validParameterNames.add(FORCE_STOP_PARAM);
     validParameterNames.add(STOP_EXTERNAL_AGENT_PARAM);
+    validParameterNames.add(REASON_PARAM);
     validParameterNames.addAll(AbstractParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
     CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
   }

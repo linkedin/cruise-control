@@ -16,6 +16,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.KAFKA_ASSIGNER_MODE_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DESTINATION_BROKER_IDS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REBALANCE_DISK_MODE_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
 
 
 /**
@@ -27,7 +28,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *    &amp;use_ready_default_goals=[true/false]&amp;allow_capacity_estimation=[true/false]&amp;json=[true/false]
  *    &amp;exclude_recently_demoted_brokers=[true/false]&amp;exclude_recently_removed_brokers=[true/false]
  *    &amp;destination_broker_ids=[id1,id2...]&amp;kafka_assigner=[true/false]&amp;rebalance_disk=[true/false]
- *    &amp;get_response_schema=[true/false]&amp;fast_mode=[true/false]&amp;doAs=[user]
+ *    &amp;get_response_schema=[true/false]&amp;fast_mode=[true/false]&amp;doAs=[user]&amp;reason=[reason-for-request]
  * </pre>
  */
 public class ProposalsParameters extends GoalBasedOptimizationParameters {
@@ -38,6 +39,7 @@ public class ProposalsParameters extends GoalBasedOptimizationParameters {
     validParameterNames.add(DESTINATION_BROKER_IDS_PARAM);
     validParameterNames.add(IGNORE_PROPOSAL_CACHE_PARAM);
     validParameterNames.add(REBALANCE_DISK_MODE_PARAM);
+    validParameterNames.add(REASON_PARAM);
     validParameterNames.addAll(GoalBasedOptimizationParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
     CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
   }

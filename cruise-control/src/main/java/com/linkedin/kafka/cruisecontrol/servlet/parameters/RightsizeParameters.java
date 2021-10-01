@@ -14,6 +14,7 @@ import java.util.regex.Pattern;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.NUM_BROKERS_TO_ADD;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.PARTITION_COUNT;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.TOPIC_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
 
 
 /**
@@ -26,6 +27,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  * <pre>
  *    POST /kafkacruisecontrol/rightsize?json=[true/false]&amp;get_response_schema=[true/false]
  *    &amp;doAs=[user]&amp;num_brokers_to_add=[POSITIVE-INTEGER]&amp;partition_count=[POSITIVE-INTEGER]&amp;topic=[topic]
+ *    &amp;reason=[reason-for-request]
  * </pre>
  */
 public class RightsizeParameters extends AbstractParameters {
@@ -35,6 +37,7 @@ public class RightsizeParameters extends AbstractParameters {
     validParameterNames.add(NUM_BROKERS_TO_ADD);
     validParameterNames.add(PARTITION_COUNT);
     validParameterNames.add(TOPIC_PARAM);
+    validParameterNames.add(REASON_PARAM);
     validParameterNames.addAll(AbstractParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
     CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
   }
