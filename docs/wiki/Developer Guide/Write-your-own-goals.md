@@ -1,9 +1,9 @@
 Cruise Control has provided a few goals out of the box for users to choose from. In addition to that, Cruise Control allows users to write their own goals to optimize a Kafka cluster in whichever way they want. We encourage users to implement more Cruise Control goals and share it with the community.
 
 ## Goal Interface
-A Cruise Control goal is an implementation of the [`Goal interface`](https://github.com/linkedin/cruise-control/blob/master/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/analyzer/goals/Goal.java)
+A Cruise Control goal is an implementation of the [`Goal interface`](https://github.com/linkedin/cruise-control/blob/migrate_to_kafka_2_4/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/analyzer/goals/Goal.java)
 
-We have provided an [abstract goal](https://github.com/linkedin/cruise-control/blob/master/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/analyzer/goals/AbstractGoal.java) class with some defined steps of optimization.
+We have provided an [abstract goal](https://github.com/linkedin/cruise-control/blob/migrate_to_kafka_2_4/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/analyzer/goals/AbstractGoal.java) class with some defined steps of optimization.
 
 ## Tips for implementing a goal
 * **Cluster Healthiness** - It is important to always check if a cluster has dead brokers or not. Usually an unhealthy cluster needs to be handled differently because something has to be done to fix it. And sometimes you may not want to do anything other than fixing the cluster.

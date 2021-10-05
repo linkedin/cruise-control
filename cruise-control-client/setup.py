@@ -5,7 +5,7 @@ import setuptools
 
 LONG_DESCRIPTION ='''`cruise-control-client` is an API-complete Python client for [`cruise-control`](https://github.com/linkedin/cruise-control).
 
-It comes with a command-line interface to the client (`cccli`) (see [README](https://github.com/linkedin/cruise-control/tree/master/docs/wiki/Python%20Client)).
+It comes with a command-line interface to the client (`cccli`) (see [README](https://github.com/linkedin/cruise-control/tree/migrate_to_kafka_2_4/docs/wiki/Python%20Client)).
 
 `cruise-control-client` can also be used in Python applications needing programmatic access to `cruise-control`.'''
 

@@ -113,4 +113,4 @@ Cruise Control metrics are useful to monitor the state of Cruise Control itself.
 | Request rate for each endpoint                                | kafka.cruisecontrol:name=KafkaCruiseControlServlet.<endpoint-name>-request-rate                       |
 ---
 # Metrics Collection
-You can easily expose Cruise Control metrics by [enabling](https://github.com/linkedin/cruise-control/blob/master/kafka-cruise-control-start.sh#L64) Java Management Extensions (JMX), and collect them by using your favourite JMX collection tool (e.g - [jmx_exporter](https://github.com/prometheus/jmx_exporter)).
+You can easily expose Cruise Control metrics by [enabling](https://github.com/linkedin/cruise-control/blob/migrate_to_kafka_2_4/kafka-cruise-control-start.sh#L64) Java Management Extensions (JMX), and collect them by using your favourite JMX collection tool (e.g - [jmx_exporter](https://github.com/prometheus/jmx_exporter)).

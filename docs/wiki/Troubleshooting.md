@@ -16,7 +16,7 @@ This document contains some common exceptions, warnings and issues that might su
 
 ### `ERROR _metricConsumer  returned null for _metricReporterTopic  __CruiseControlMetrics`
 
-This means that Cruise Control could not find the `__CruiseControlMetrics` topic in the Kafka cluster. CC uses that topic (configured via [`metric.reporter.topic`](https://github.com/linkedin/cruise-control/blob/master/config/cruisecontrol.properties#L50)) to read broker metrics that help in generating the cluster model.
+This means that Cruise Control could not find the `__CruiseControlMetrics` topic in the Kafka cluster. CC uses that topic (configured via [`metric.reporter.topic`](https://github.com/linkedin/cruise-control/blob/migrate_to_kafka_2_4/config/cruisecontrol.properties#L50)) to read broker metrics that help in generating the cluster model.
 
 #### Resolution
 
@@ -105,4 +105,4 @@ The general resolution is to ensure that the brokers with the missing metrics ar
 
 ## Contributing
 
-Found an error/interesting behaviour of Cruise Control and have a resolution for it? Consider adding that to this guide by following the [contributing guidelines](https://github.com/linkedin/cruise-control/blob/master/CONTRIBUTING.md) for the project.
+Found an error/interesting behaviour of Cruise Control and have a resolution for it? Consider adding that to this guide by following the [contributing guidelines](https://github.com/linkedin/cruise-control/blob/migrate_to_kafka_2_4/CONTRIBUTING.md) for the project.
