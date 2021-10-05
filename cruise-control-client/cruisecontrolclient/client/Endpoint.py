@@ -21,7 +21,7 @@ class AbstractEndpoint(metaclass=ABCMeta):
 
     # A string, like 'load' or 'state'
     # Meant to match those enumerated Strings at:
-    # https://github.com/linkedin/cruise-control/blob/master/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/servlet/EndPoint.java#L15
+    # https://github.com/linkedin/cruise-control/blob/migrate_to_kafka_2_4/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/servlet/CruiseControlEndPoint.java#L16
     name: ClassVar[str]
 
     # A human-readable string that describes this endpoint

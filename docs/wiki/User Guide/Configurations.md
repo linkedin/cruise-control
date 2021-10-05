@@ -344,9 +344,9 @@ explicitly specifies capacities for brokers with specific ids provided by user.
 resolver to dynamically resolve the broker capacities if you have a source to provide the capacity information. 
 Using this approach, you may avoid restarting your CC instance upon a (1) capacity change or (2) addition of a broker 
 with a non-default capacity. See:
-1. [The relevant interface](https://github.com/linkedin/cruise-control/blob/master/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/config/BrokerCapacityConfigResolver.java),
-2. Its default implementation by [BrokerCapacityConfigFileResolver](https://github.com/linkedin/cruise-control/blob/master/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/config/BrokerCapacityConfigFileResolver.java), and 
-3. The [relevant configuration](https://github.com/linkedin/cruise-control/blob/master/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/config/constants/MonitorConfig.java#L294) to set the config resolver to be used.
+1. [The relevant interface](https://github.com/linkedin/cruise-control/blob/migrate_to_kafka_2_4/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/config/BrokerCapacityConfigResolver.java),
+2. Its default implementation by [BrokerCapacityConfigFileResolver](https://github.com/linkedin/cruise-control/blob/migrate_to_kafka_2_4/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/config/BrokerCapacityConfigFileResolver.java), and 
+3. The [relevant configuration](https://github.com/linkedin/cruise-control/blob/migrate_to_kafka_2_4/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/config/constants/MonitorConfig.java#L294) to set the config resolver to be used.
 
 ### SelfHealingNotifier configurations
 | Name                                     | Type    | Required? | Default Value            | Description                                                                                                                                                                                                                                                          |

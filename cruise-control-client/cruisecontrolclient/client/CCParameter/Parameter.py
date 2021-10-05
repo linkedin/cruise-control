@@ -17,7 +17,7 @@ class AbstractParameter(metaclass=ABCMeta):
     # value for this.
     #
     # This property is meant to correspond to the parameters listed at
-    # https://github.com/linkedin/cruise-control/tree/master/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/servlet/parameters
+    # https://github.com/linkedin/cruise-control/tree/migrate_to_kafka_2_4/cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/servlet/parameters
     name: ClassVar[str] = None
     description: ClassVar[str] = None
     # Define a convenience data structure to help in programmatically building CLIs
