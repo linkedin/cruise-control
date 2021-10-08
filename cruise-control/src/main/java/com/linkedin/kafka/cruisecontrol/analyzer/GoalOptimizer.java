@@ -431,7 +431,7 @@ public class GoalOptimizer implements Runnable {
 
     // Set of balancing proposals that will be applied to the given cluster state to satisfy goals (leadership
     // transfer AFTER partition transfer.)
-    Set<Goal> optimizedGoals = new HashSet<>(goalsByPriority.size());
+    Set<Goal> optimizedGoals = new HashSet<>();
     Set<String> violatedGoalNamesBeforeOptimization = new HashSet<>();
     Set<String> violatedGoalNamesAfterOptimization = new HashSet<>();
     LinkedHashMap<Goal, ClusterModelStats> statsByGoalPriority = new LinkedHashMap<>(goalsByPriority.size());

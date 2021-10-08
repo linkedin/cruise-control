@@ -37,7 +37,7 @@ public class IdempotenceCacheTest {
   private static final long MOCK_DISTINCT_ANOMALY_TIME_MS = 2 * MOCK_INITIAL_ANOMALY_TIME_MS;
   private static final Set<Integer> MOCK_BROKERS_OBJECT;
   static {
-    Set<Integer> mockBrokersObject = new HashSet<>(2);
+    Set<Integer> mockBrokersObject = new HashSet<>();
     for (int brokerId = 0; brokerId < 2; brokerId++) {
       mockBrokersObject.add(brokerId);
     }
@@ -66,7 +66,7 @@ public class IdempotenceCacheTest {
     // 1. Generate initial and duplicate events
     Set<MaintenanceEvent> initialEvents = new HashSet<>();
     Set<MaintenanceEvent> duplicateEvents = new HashSet<>();
-    Map<String, Object> parameterConfigOverrides = new HashMap<>(5);
+    Map<String, Object> parameterConfigOverrides = new HashMap<>();
     parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _mockKafkaCruiseControl);
     parameterConfigOverrides.put(BROKERS_OBJECT_CONFIG, MOCK_BROKERS_OBJECT);
     parameterConfigOverrides.put(TOPICS_WITH_RF_UPDATE_CONFIG, MOCK_TOPICS_WITH_RF_UPDATE);

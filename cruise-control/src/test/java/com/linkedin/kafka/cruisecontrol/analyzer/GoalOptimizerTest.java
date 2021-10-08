@@ -59,7 +59,7 @@ public class GoalOptimizerTest {
     String excludedTopicPrefix = "excluded_topic_";
     String notExcludedTopicPrefix = "not_excluded_topic_";
     Set<String> expectedExcludedTopics = Set.of(excludedTopicPrefix + 1, excludedTopicPrefix + 2);
-    Set<String> allTopics = new HashSet<>(4);
+    Set<String> allTopics = new HashSet<>();
     allTopics.addAll(expectedExcludedTopics);
     allTopics.add(notExcludedTopicPrefix + 1);
     allTopics.add(notExcludedTopicPrefix + 2);

@@ -576,7 +576,7 @@ public final class ParameterUtils {
   public static Set<String> parseParamToStringSet(HttpServletRequest request, String param) throws UnsupportedEncodingException {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), param);
     Set<String> paramsString = parameterString == null
-                               ? new HashSet<>(0)
+                               ? new HashSet<>()
                                : new HashSet<>(Arrays.asList(urlDecode(request.getParameter(parameterString)).split(",")));
     paramsString.removeIf(String::isEmpty);
     return paramsString;
@@ -592,7 +592,7 @@ public final class ParameterUtils {
   public static Set<Integer> parseParamToIntegerSet(HttpServletRequest request, String param) throws UnsupportedEncodingException {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), param);
 
-    return parameterString == null ? new HashSet<>(0)
+    return parameterString == null ? new HashSet<>()
                                    : Arrays.stream(urlDecode(request.getParameter(parameterString)).split(","))
                                            .map(Integer::parseInt).collect(Collectors.toSet());
   }
@@ -605,7 +605,7 @@ public final class ParameterUtils {
   static Set<CruiseControlState.SubState> substates(HttpServletRequest request) throws UnsupportedEncodingException {
     Set<String> substatesString = parseParamToStringSet(request, SUBSTATES_PARAM);
 
-    Set<CruiseControlState.SubState> substates = new HashSet<>(substatesString.size());
+    Set<CruiseControlState.SubState> substates = new HashSet<>();
     try {
       for (String substateString : substatesString) {
         substates.add(CruiseControlState.SubState.valueOf(substateString.toUpperCase()));
@@ -622,7 +622,7 @@ public final class ParameterUtils {
     Set<String> selfHealingForString = parseParamToStringSet(request, isEnable ? ENABLE_SELF_HEALING_FOR_PARAM
                                                                                : DISABLE_SELF_HEALING_FOR_PARAM);
 
-    Set<AnomalyType> anomalyTypes = new HashSet<>(selfHealingForString.size());
+    Set<AnomalyType> anomalyTypes = new HashSet<>();
     try {
       for (String shfString : selfHealingForString) {
         anomalyTypes.add(KafkaAnomalyType.valueOf(shfString.toUpperCase()));
@@ -639,7 +639,7 @@ public final class ParameterUtils {
     Set<String> concurrencyForStringSet = parseParamToStringSet(request, isEnable ? ENABLE_CONCURRENCY_ADJUSTER_FOR_PARAM
                                                                                   : DISABLE_CONCURRENCY_ADJUSTER_FOR_PARAM);
 
-    Set<ConcurrencyType> concurrencyTypes = new HashSet<>(concurrencyForStringSet.size());
+    Set<ConcurrencyType> concurrencyTypes = new HashSet<>();
     try {
       for (String concurrencyForString : concurrencyForStringSet) {
         concurrencyTypes.add(ConcurrencyType.valueOf(concurrencyForString.toUpperCase()));
@@ -805,7 +805,7 @@ public final class ParameterUtils {
    * @return A set of negative integer values contained in the given set.
    */
   private static Set<Integer> getNegatives(Set<Integer> values) {
-    return values.stream().filter(v -> v < 0).collect(Collectors.toCollection(() -> new HashSet<>(values.size())));
+    return values.stream().filter(v -> v < 0).collect(Collectors.toCollection(() -> new HashSet<>()));
   }
 
   /**

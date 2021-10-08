@@ -475,7 +475,7 @@ public class PrometheusMetricSamplerTest {
 
     private static Cluster generateCluster(String topic) {
         Node[] allNodes = new Node[TOTAL_BROKERS];
-        Set<PartitionInfo> partitionInfo = new HashSet<>(TOTAL_BROKERS);
+        Set<PartitionInfo> partitionInfo = new HashSet<>();
         for (int brokerId = 0; brokerId < TOTAL_BROKERS; brokerId++) {
             allNodes[brokerId] = new Node(brokerId, "broker-" + brokerId + ".test-cluster.org", 9092);
         }

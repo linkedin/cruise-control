@@ -407,7 +407,7 @@ public class Executor {
         return;
       }
 
-      Set<ConfigResource> topicResourcesToCheck = new HashSet<>(topicsToCheck.size());
+      Set<ConfigResource> topicResourcesToCheck = new HashSet<>();
       topicsToCheck.forEach(t -> topicResourcesToCheck.add(new ConfigResource(ConfigResource.Type.TOPIC, t)));
       DescribeConfigsResult describeConfigsResult = _adminClient.describeConfigs(topicResourcesToCheck);
       _topicMinIsrCache.putTopicMinIsr(describeConfigsResult);
@@ -1518,7 +1518,7 @@ public class Executor {
       // Process result to ensure acceptance of reassignment request on broker-side and identify dead/deleted tasks.
       Set<TopicPartition> deletedUponSubmission = new HashSet<>();
       Set<TopicPartition> deadUponSubmission = new HashSet<>();
-      Set<TopicPartition> noReassignmentToCancel = new HashSet<>(0);
+      Set<TopicPartition> noReassignmentToCancel = new HashSet<>();
       ExecutionUtils.processAlterPartitionReassignmentsResult(result, deletedUponSubmission, deadUponSubmission, noReassignmentToCancel);
       if (!noReassignmentToCancel.isEmpty()) {
         throw new IllegalStateException(String.format("Attempt to cancel reassignment of partitions %s during regular execution.",

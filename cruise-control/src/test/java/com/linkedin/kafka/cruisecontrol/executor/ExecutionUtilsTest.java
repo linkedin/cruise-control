@@ -73,7 +73,7 @@ public class ExecutionUtilsTest {
             .andReturn(getKafkaFutureByTopicPartition(new ExecutionException(Errors.INVALID_REPLICA_ASSIGNMENT.exception())))
             .once();
     EasyMock.replay(result);
-    Set<TopicPartition> deadTopicPartitions = new HashSet<>(1);
+    Set<TopicPartition> deadTopicPartitions = new HashSet<>();
     ExecutionUtils.processAlterPartitionReassignmentsResult(result, Collections.emptySet(), deadTopicPartitions, Collections.emptySet());
     assertEquals(Collections.singleton(new TopicPartition(TOPIC_NAME, P0.partition())), deadTopicPartitions);
     EasyMock.verify(result);
@@ -84,7 +84,7 @@ public class ExecutionUtilsTest {
             .andReturn(getKafkaFutureByTopicPartition(new ExecutionException(Errors.UNKNOWN_TOPIC_OR_PARTITION.exception())))
             .once();
     EasyMock.replay(result);
-    Set<TopicPartition> deletedTopicPartitions = new HashSet<>(1);
+    Set<TopicPartition> deletedTopicPartitions = new HashSet<>();
     ExecutionUtils.processAlterPartitionReassignmentsResult(result, deletedTopicPartitions, Collections.emptySet(), Collections.emptySet());
     assertEquals(Collections.singleton(new TopicPartition(TOPIC_NAME, P0.partition())), deletedTopicPartitions);
     EasyMock.verify(result);
@@ -95,7 +95,7 @@ public class ExecutionUtilsTest {
             .andReturn(getKafkaFutureByTopicPartition(new ExecutionException(Errors.NO_REASSIGNMENT_IN_PROGRESS.exception())))
             .once();
     EasyMock.replay(result);
-    Set<TopicPartition> noReassignmentToCancelTopicPartitions = new HashSet<>(1);
+    Set<TopicPartition> noReassignmentToCancelTopicPartitions = new HashSet<>();
     ExecutionUtils.processAlterPartitionReassignmentsResult(result,
                                                             Collections.emptySet(),
                                                             Collections.emptySet(),
@@ -199,7 +199,7 @@ public class ExecutionUtilsTest {
   }
 
   private static Map<TopicPartition, KafkaFuture<Void>> getKafkaFutureByTopicPartition(@Nullable Exception futureException) throws Exception {
-    Map<TopicPartition, KafkaFuture<Void>> futureByTopicPartition = new HashMap<>(1);
+    Map<TopicPartition, KafkaFuture<Void>> futureByTopicPartition = new HashMap<>();
     KafkaFuture<Void> kafkaFuture = EasyMock.mock(KafkaFuture.class);
     if (futureException == null) {
       EasyMock.expect(kafkaFuture.get()).andReturn(null).once();

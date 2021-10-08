@@ -724,7 +724,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), null, mockExecutorNotifier,
                                      mockAnomalyDetectorManager);
     executor.setUserTaskManager(mockUserTaskManager);
-    Map<TopicPartition, Integer> replicationFactors = new HashMap<>(proposalsToCheck.size());
+    Map<TopicPartition, Integer> replicationFactors = new HashMap<>();
     for (ExecutionProposal proposal : proposalsToCheck) {
       TopicPartition tp = new TopicPartition(proposal.topic(), proposal.partitionId());
       replicationFactors.put(tp, proposal.oldReplicas().size());
