@@ -103,7 +103,7 @@ public class AlertaSelfHealingNotifierTest {
         assertEquals(KafkaAnomalyType.BROKER_FAILURE.toString(), _notifier.getAlertaMessageList().get(1).getEvent());
         assertEquals(_notifier._alertaEnvironment, _notifier.getAlertaMessageList().get(0).getEnvironment());
         // Depends on the underneath Java implementation, TEST_DATETIME_ALARM_1 can either be in the front of the list,
-        if (TEST_DATETIME_ALARM_1 == _notifier.getAlertaMessageList().get(0).getCreateTime()) {
+        if (TEST_DATETIME_ALARM_1.equals(_notifier.getAlertaMessageList().get(0).getCreateTime())) {
           assertEquals(TEST_DATETIME_ALARM_2, _notifier.getAlertaMessageList().get(1).getCreateTime());
         } else {
           // Or, in the back of the list. We flip the get order in this case.
