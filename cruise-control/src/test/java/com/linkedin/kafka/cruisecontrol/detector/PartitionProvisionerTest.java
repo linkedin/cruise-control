@@ -4,15 +4,13 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -33,16 +31,16 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.CLIENT_REQUEST_TIMEOUT_MS;
-import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.CompletionType.COMPLETED;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.sync.RightsizeRequest.RECOMMENDER_UP;
 import static org.junit.Assert.assertEquals;
 
 
-public class PartitionProvisionerTest {
-  private static final Map<String, ?> CONFIG;
-  private static final KafkaCruiseControl MOCK_KAFKA_CRUISE_CONTROL = EasyMock.createMock(KafkaCruiseControl.class);
+/**
+ * A partition provisioner test based on using {@link BasicProvisioner} for partition provisioning.
+ */
+public class PartitionProvisionerTest extends AbstractProvisionerTest {
   private static final AdminClient MOCK_ADMIN_CLIENT = EasyMock.createMock(AdminClient.class);
   // Mocks for describe topics
   private static final DescribeTopicsResult MOCK_DESCRIBE_TOPICS_RESULT = EasyMock.createMock(DescribeTopicsResult.class);
@@ -51,7 +49,6 @@ public class PartitionProvisionerTest {
   private static final CreatePartitionsResult MOCK_CREATE_PARTITIONS_RESULT = EasyMock.createMock(CreatePartitionsResult.class);
   private static final KafkaFuture<Void> MOCK_CREATE_PARTITIONS_FUTURE = EasyMock.createMock(KafkaFuture.class);
 
-  private static final RightsizeOptions RIGHTSIZE_OPTIONS = new RightsizeOptions();
   private static final String MOCK_TOPIC = "mock-topic";
   public static final List<Node> NODES = Collections.singletonList(new Node(0, "host0", 0));
   private static final Cluster MOCK_KAFKA_CLUSTER;
@@ -68,24 +65,16 @@ public class PartitionProvisionerTest {
   private static final int MOCK_IGNORED_PARTITION_COUNT = 1;
   private static final int MOCK_PARTITION_COUNT = 2;
 
-  static {
-    Properties props = getKafkaCruiseControlProperties();
-    props.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, MOCK_KAFKA_CRUISE_CONTROL);
-    KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(props);
-    CONFIG = config.mergedConfigValues();
-  }
-  private Provisioner _provisioner;
-
   /**
    * Execute before every test case.
    */
   @Before
+  @Override
   public void setUp() {
-    _provisioner = new PartitionProvisioner();
+    super.setUp();
     EasyMock.expect(MOCK_KAFKA_CRUISE_CONTROL.adminClient()).andReturn(MOCK_ADMIN_CLIENT);
     EasyMock.expect(MOCK_KAFKA_CRUISE_CONTROL.kafkaCluster()).andReturn(MOCK_KAFKA_CLUSTER);
     EasyMock.replay(MOCK_KAFKA_CRUISE_CONTROL);
-    _provisioner.configure(CONFIG);
   }
 
   /**
@@ -105,7 +94,7 @@ public class PartitionProvisionerTest {
     ProvisionerState.State expectedState = ProvisionerState.State.COMPLETED;
     String expectedSummary = String.format("[Recommender-Under-Provisioned] Setting partition count by topic || Succeeded: {%s=%d}.",
                                            MOCK_TOPIC, MOCK_PARTITION_COUNT);
-    assertProvisionPartitionIncreaseConstructsCorrectResponse(KafkaCruiseControlUtils.CompletionType.COMPLETED, expectedState, expectedSummary);
+    assertProvisionPartitionIncreaseConstructsCorrectResponse(COMPLETED, expectedState, expectedSummary);
   }
 
   @Test
@@ -127,21 +116,48 @@ public class PartitionProvisionerTest {
                                                               expectedSummary);
   }
 
+  @Test
+  public void testProvisionPartitionIncreaseWithBrokerRecommendation()
+      throws ExecutionException, InterruptedException, TimeoutException {
+    ProvisionerState.State expectedState = ProvisionerState.State.COMPLETED;
+
+    String expectedBrokerSummary = String.format("Provisioner support is missing. Skip recommendation: %s", BROKER_REC_TO_EXECUTE);
+    String expectedSummary = String.format("[Recommender-Under-Provisioned] Setting partition count by topic || Succeeded: {%s=%d}. || %s",
+                                           MOCK_TOPIC, MOCK_PARTITION_COUNT, expectedBrokerSummary);
+    assertProvisionPartitionIncreaseConstructsCorrectResponse(COMPLETED, expectedState, expectedSummary, true);
+  }
+
   private void assertProvisionPartitionIncreaseConstructsCorrectResponse(KafkaCruiseControlUtils.CompletionType partitionIncreaseCompletion,
                                                                          ProvisionerState.State expectedState,
                                                                          String expectedSummary)
       throws ExecutionException, InterruptedException, TimeoutException {
+    assertProvisionPartitionIncreaseConstructsCorrectResponse(partitionIncreaseCompletion, expectedState, expectedSummary, false);
+  }
+
+  private void assertProvisionPartitionIncreaseConstructsCorrectResponse(KafkaCruiseControlUtils.CompletionType partitionIncreaseCompletion,
+                                                                         ProvisionerState.State expectedState,
+                                                                         String expectedSummary,
+                                                                         boolean hasBrokerRecommendation)
+      throws ExecutionException, InterruptedException, TimeoutException {
     int recommendedPartitionCount = expectedSummary.contains("Ignored") ? MOCK_IGNORED_PARTITION_COUNT : MOCK_PARTITION_COUNT;
     ProvisionRecommendation recommendation =
         new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).numPartitions(recommendedPartitionCount)
+
                                                                               .topicPattern(MOCK_TOPIC_PATTERN).build();
-    Map<String, ProvisionRecommendation> provisionRecommendation = Collections.singletonMap(RECOMMENDER_UP, recommendation);
+    Map<String, ProvisionRecommendation> provisionRecommendation;
+    if (hasBrokerRecommendation) {
+      provisionRecommendation = new HashMap<>();
+      provisionRecommendation.put(RECOMMENDER_UP, recommendation);
+      provisionRecommendation.put(RECOMMENDER_TO_EXECUTE, BROKER_REC_TO_EXECUTE);
+    } else {
+      provisionRecommendation = Collections.singletonMap(RECOMMENDER_UP, recommendation);
+    }
     Map<String, KafkaFuture<TopicDescription>> describeTopicsValues = Collections.singletonMap(MOCK_TOPIC, MOCK_TOPIC_DESCRIPTION_FUTURE);
 
     EasyMock.expect(MOCK_ADMIN_CLIENT.describeTopics(Collections.singletonList(MOCK_TOPIC))).andReturn(MOCK_DESCRIBE_TOPICS_RESULT);
     EasyMock.expect(MOCK_DESCRIBE_TOPICS_RESULT.values()).andReturn(describeTopicsValues);
 
-    if (partitionIncreaseCompletion == KafkaCruiseControlUtils.CompletionType.COMPLETED) {
+    if (partitionIncreaseCompletion == COMPLETED) {
       EasyMock.expect(MOCK_TOPIC_DESCRIPTION_FUTURE.get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS)).andReturn(MOCK_TOPIC_DESCRIPTION);
 
       // Create partitions: for this test, we ignore the fact that the mock cluster has one node -- i.e. in reality a request to increase
