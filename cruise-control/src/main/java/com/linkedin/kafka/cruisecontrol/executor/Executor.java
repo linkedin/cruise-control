@@ -410,7 +410,7 @@ public class Executor {
         return;
       }
 
-      Set<ConfigResource> topicResourcesToCheck = new HashSet<>(topicsToCheck.size());
+      Set<ConfigResource> topicResourcesToCheck = new HashSet<>();
       topicsToCheck.forEach(t -> topicResourcesToCheck.add(new ConfigResource(ConfigResource.Type.TOPIC, t)));
       DescribeConfigsResult describeConfigsResult = _adminClient.describeConfigs(topicResourcesToCheck);
       _topicMinIsrCache.putTopicMinIsr(describeConfigsResult);

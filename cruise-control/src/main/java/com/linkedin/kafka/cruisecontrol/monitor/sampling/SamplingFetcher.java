@@ -61,7 +61,7 @@ class SamplingFetcher extends MetricFetcher {
   @Override
   protected void usePartitionMetricSamples(Set<PartitionMetricSample> partitionMetricSamples) {
     // Give an initial capacity to avoid resizing.
-    Set<TopicPartition> returnedPartitions = new HashSet<>(_assignedPartitions.size());
+    Set<TopicPartition> returnedPartitions = new HashSet<>();
     // Ignore the null value if the metric sampler did not return a sample
     if (partitionMetricSamples != null) {
       int discarded = 0;

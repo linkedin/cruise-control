@@ -76,7 +76,7 @@ public class AnomalyDetectorManagerTest {
   private static final long MOCK_ANOMALY_DETECTION_INTERVAL_MS = TimeUnit.SECONDS.toMillis(3);
   private static final long MOCK_ANOMALY_DETECTOR_SHUTDOWN_MS = TimeUnit.SECONDS.toMillis(5);
   private static final long MOCK_DELAY_CHECK_MS = TimeUnit.SECONDS.toMillis(1);
-  private static final Map<AnomalyType, Float> MOCK_SELF_HEALING_ENABLED_RATIO = new HashMap<>(KafkaAnomalyType.cachedValues().size());
+  private static final Map<AnomalyType, Float> MOCK_SELF_HEALING_ENABLED_RATIO = new HashMap<>();
   static {
     for (AnomalyType anomalyType : KafkaAnomalyType.cachedValues()) {
       MOCK_SELF_HEALING_ENABLED_RATIO.put(anomalyType, 0.99f);
@@ -197,11 +197,10 @@ public class AnomalyDetectorManagerTest {
 
     try {
       anomalyDetectorManager.startDetection();
-      Map<String, Object> parameterConfigOverrides = new HashMap<>(4);
-      parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
-      parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, Collections.singletonMap(0, 100L));
-      parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 100L);
-      parameterConfigOverrides.put(BROKER_FAILURES_FIXABLE_CONFIG, true);
+      Map<String, Object> parameterConfigOverrides = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl,
+                                                            FAILED_BROKERS_OBJECT_CONFIG, Collections.singletonMap(0, 100L),
+                                                            ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 100L,
+                                                            BROKER_FAILURES_FIXABLE_CONFIG, true);
       anomalies.add(kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
                                                                    BrokerFailures.class,
                                                                    parameterConfigOverrides));
@@ -434,7 +433,7 @@ public class AnomalyDetectorManagerTest {
                                      mockMaintenanceEventDetector, mockDetectorScheduler);
 
     try {
-      Map<String, Object> parameterConfigOverrides = new HashMap<>(10);
+      Map<String, Object> parameterConfigOverrides = new HashMap<>();
       parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
       parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 100L);
       if (anomalyType == KafkaAnomalyType.GOAL_VIOLATION
@@ -546,9 +545,8 @@ public class AnomalyDetectorManagerTest {
 
     try {
       anomalyDetectorManager.startDetection();
-      Map<String, Object> parameterConfigOverrides = new HashMap<>(2);
-      parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
-      parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 100L);
+      Map<String, Object> parameterConfigOverrides = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl,
+                                                            ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 100L);
       anomalies.add(kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.GOAL_VIOLATIONS_CLASS_CONFIG,
                                                                    GoalViolations.class,
                                                                    parameterConfigOverrides));

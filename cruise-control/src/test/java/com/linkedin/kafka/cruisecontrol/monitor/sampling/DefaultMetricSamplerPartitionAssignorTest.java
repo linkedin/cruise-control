@@ -66,7 +66,7 @@ public class DefaultMetricSamplerPartitionAssignorTest {
                                      new LogContext(),
                                      new ClusterResourceListeners());
 
-    Map<String, Set<PartitionInfo>> topicToTopicPartitions = new HashMap<>(partitions.size());
+    Map<String, Set<PartitionInfo>> topicToTopicPartitions = new HashMap<>();
     for (PartitionInfo tp : partitions) {
       topicToTopicPartitions.putIfAbsent(tp.topic(), new HashSet<>());
       topicToTopicPartitions.get(tp.topic()).add(tp);

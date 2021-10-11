@@ -237,7 +237,7 @@ public class MaintenanceEventTopicReader implements MaintenanceEventReader {
       return false;
     }
 
-    _currentPartitionAssignment = new HashSet<>(remotePartitionInfo.size());
+    _currentPartitionAssignment = new HashSet<>();
     for (PartitionInfo partitionInfo : remotePartitionInfo) {
       _currentPartitionAssignment.add(new TopicPartition(partitionInfo.topic(), partitionInfo.partition()));
     }

@@ -5,9 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.HashMap;
@@ -129,15 +126,10 @@ public final class ExecutorState {
     GENERATING_PROPOSALS_FOR_EXECUTION
   }
 
-  public static final Set<State> IN_PROGRESS_STATES;
-  static {
-    Set<State> inProgressStates = new HashSet<>(4);
-    inProgressStates.addAll(Arrays.asList(State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS,
-                                          State.INTRA_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS,
-                                          State.LEADER_MOVEMENT_TASK_IN_PROGRESS,
-                                          State.STOPPING_EXECUTION));
-    IN_PROGRESS_STATES = Collections.unmodifiableSet(inProgressStates);
-  }
+  public static final Set<State> IN_PROGRESS_STATES = Set.of(State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS,
+                                                             State.INTRA_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS,
+                                                             State.LEADER_MOVEMENT_TASK_IN_PROGRESS,
+                                                             State.STOPPING_EXECUTION);
   private final State _state;
   // Execution task statistics to report.
   private final ExecutionTaskTracker.ExecutionTasksSummary _executionTasksSummary;

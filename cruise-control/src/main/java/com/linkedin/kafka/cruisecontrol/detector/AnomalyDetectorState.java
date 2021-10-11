@@ -349,7 +349,7 @@ public class AnomalyDetectorState {
 
   private Set<Map<String, Object>> recentAnomalies(AnomalyType anomalyType, boolean isJson) {
     Map<String, AnomalyState> anomaliesById = _recentAnomaliesByType.get(anomalyType);
-    Set<Map<String, Object>> recentAnomalies = new HashSet<>(_numCachedRecentAnomalyStates);
+    Set<Map<String, Object>> recentAnomalies = new HashSet<>();
     for (Map.Entry<String, AnomalyState> entry: anomaliesById.entrySet()) {
       recentAnomalies.add(new AnomalyDetails(entry.getValue(), anomalyType, false, isJson).populateAnomalyDetails());
     }

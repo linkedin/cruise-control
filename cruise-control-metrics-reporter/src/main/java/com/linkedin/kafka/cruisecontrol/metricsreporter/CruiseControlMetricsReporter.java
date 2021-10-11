@@ -276,7 +276,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       ConfigResource topicResource = new ConfigResource(ConfigResource.Type.TOPIC, _cruiseControlMetricsTopic);
       DescribeConfigsResult describeConfigsResult = _adminClient.describeConfigs(Collections.singleton(topicResource));
       Config topicConfig = describeConfigsResult.values().get(topicResource).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-      Set<AlterConfigOp> alterConfigOps = new HashSet<>(2);
+      Set<AlterConfigOp> alterConfigOps = new HashSet<>();
       Map<String, String> configsToSet = new HashMap<>();
       configsToSet.put(LogConfig.RetentionMsProp(), _metricsTopic.configs().get(LogConfig.RetentionMsProp()));
       configsToSet.put(LogConfig.CleanupPolicyProp(), _metricsTopic.configs().get(LogConfig.CleanupPolicyProp()));
