@@ -1518,7 +1518,7 @@ public class Executor {
       // Process result to ensure acceptance of reassignment request on broker-side and identify dead/deleted tasks.
       Set<TopicPartition> deletedUponSubmission = new HashSet<>();
       Set<TopicPartition> deadUponSubmission = new HashSet<>();
-      Set<TopicPartition> noReassignmentToCancel = new HashSet<>();
+      Set<TopicPartition> noReassignmentToCancel = new HashSet<>(0);
       ExecutionUtils.processAlterPartitionReassignmentsResult(result, deletedUponSubmission, deadUponSubmission, noReassignmentToCancel);
       if (!noReassignmentToCancel.isEmpty()) {
         throw new IllegalStateException(String.format("Attempt to cancel reassignment of partitions %s during regular execution.",

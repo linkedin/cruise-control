@@ -576,7 +576,7 @@ public final class ParameterUtils {
   public static Set<String> parseParamToStringSet(HttpServletRequest request, String param) throws UnsupportedEncodingException {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), param);
     Set<String> paramsString = parameterString == null
-                               ? new HashSet<>()
+                               ? new HashSet<>(0)
                                : new HashSet<>(Arrays.asList(urlDecode(request.getParameter(parameterString)).split(",")));
     paramsString.removeIf(String::isEmpty);
     return paramsString;
@@ -592,7 +592,7 @@ public final class ParameterUtils {
   public static Set<Integer> parseParamToIntegerSet(HttpServletRequest request, String param) throws UnsupportedEncodingException {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), param);
 
-    return parameterString == null ? new HashSet<>()
+    return parameterString == null ? new HashSet<>(0)
                                    : Arrays.stream(urlDecode(request.getParameter(parameterString)).split(","))
                                            .map(Integer::parseInt).collect(Collectors.toSet());
   }
