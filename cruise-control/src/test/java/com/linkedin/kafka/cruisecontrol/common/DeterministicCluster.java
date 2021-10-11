@@ -65,9 +65,7 @@ public final class DeterministicCluster {
   }
 
   private static ClusterModel createUnbalanced(Set<String> topics, int numBrokers) {
-    Map<Integer, Integer> rackByBrokerId = new HashMap<>(2);
-    rackByBrokerId.put(0, 0);
-    rackByBrokerId.put(1, 1);
+    Map<Integer, Integer> rackByBrokerId = Map.of(0, 0, 1, 1);
     ClusterModel cluster = getHomogeneousCluster(rackByBrokerId, TestConstants.BROKER_CAPACITY, TestConstants.DISK_CAPACITY);
 
     for (String topic : topics) {
@@ -97,9 +95,7 @@ public final class DeterministicCluster {
    * @return Cluster model for the tests.
    */
   public static ClusterModel unbalanced5() {
-    Set<String> topics = new HashSet<>(2);
-    topics.add(T1);
-    topics.add(T2);
+    Set<String> topics = Set.of(T1, T2);
     return createUnbalanced(topics, 14);
   }
 

@@ -76,7 +76,7 @@ public class PartitionProvisioner implements Provisioner {
    */
   protected ProvisionerState provisionPartition(ProvisionRecommendation recommendation) {
     Set<String> topicNames = getTopicNamesMatchedWithPattern(recommendation.topicPattern(), () -> _kafkaCruiseControl.kafkaCluster().topics());
-    Set<NewTopic> topicsToAddPartitions = new HashSet<>(topicNames.size());
+    Set<NewTopic> topicsToAddPartitions = new HashSet<>();
     for (String topicName : topicNames) {
       topicsToAddPartitions.add(new NewTopic(topicName, Optional.of(recommendation.numPartitions()), Optional.empty()));
     }

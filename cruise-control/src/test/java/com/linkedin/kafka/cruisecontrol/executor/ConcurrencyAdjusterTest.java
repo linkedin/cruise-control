@@ -63,7 +63,7 @@ public class ConcurrencyAdjusterTest {
   }
 
   private static Map<Short, Double> populateMetricValues(int numOverLimitMetrics) {
-    Map<Short, Double> metricValueById = new HashMap<>(4);
+    Map<Short, Double> metricValueById = new HashMap<>();
     int remainingOverLimitMetrics = numOverLimitMetrics;
     for (String name : ExecutionUtils.CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.keySet()) {
       // Generate a number in [1.0, MOCK_COMMON_CONCURRENCY_ADJUSTER_LIMIT + 1.0]
@@ -83,9 +83,9 @@ public class ConcurrencyAdjusterTest {
    * @return The load for the brokers.
    */
   public static Map<BrokerEntity, ValuesAndExtrapolations> createCurrentMetrics(List<Map<Short, Double>> metricValueByIdPerBroker) {
-    Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = new HashMap<>(metricValueByIdPerBroker.size());
+    Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = new HashMap<>();
     for (int i = 0; i < metricValueByIdPerBroker.size(); i++) {
-      Map<Short, MetricValues> valuesByMetricId = new HashMap<>(metricValueByIdPerBroker.get(i).size());
+      Map<Short, MetricValues> valuesByMetricId = new HashMap<>();
       for (Map.Entry<Short, Double> entry : metricValueByIdPerBroker.get(i).entrySet()) {
         MetricValues currentMetricValues = new MetricValues(1);
         double[] values = new double[] {entry.getValue()};

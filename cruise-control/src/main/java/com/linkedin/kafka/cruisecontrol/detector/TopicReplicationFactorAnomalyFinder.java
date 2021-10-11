@@ -129,7 +129,7 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
    * @param topicsToCheck Set of topics to check.
    */
   private void maybeRetrieveAndCacheTopicMinISR(Set<String> topicsToCheck) {
-    Set<ConfigResource> topicResourcesToCheck = new HashSet<>(topicsToCheck.size());
+    Set<ConfigResource> topicResourcesToCheck = new HashSet<>();
     topicsToCheck.stream().filter(t -> !_cachedTopicMinISR.containsKey(t))
                           .forEach(t -> topicResourcesToCheck.add(new ConfigResource(ConfigResource.Type.TOPIC, t)));
     if (topicResourcesToCheck.isEmpty()) {
