@@ -85,7 +85,7 @@ public class TopicReplicationFactorAnomaly extends TopicAnomaly {
   protected Map<Short, Pattern> populateTopicPatternByReplicationFactor() {
     Map<Short, Pattern> topicPatternByReplicationFactor = new HashMap<>();
     for (Map.Entry<Short, Set<TopicReplicationFactorAnomalyEntry>> entry : _badTopicsByDesiredRF.entrySet()) {
-      Set<String> topics = new HashSet<>(entry.getValue().size());
+      Set<String> topics = new HashSet<>();
       entry.getValue().forEach(anomaly -> topics.add(anomaly.topicName()));
       topicPatternByReplicationFactor.put(entry.getKey(), buildTopicRegex(topics));
     }

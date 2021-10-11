@@ -250,7 +250,7 @@ public class OptimizerResult {
    * @return The topics of partitions which are going to be modified by proposals.
    */
   public Set<String> topicsWithReplicationFactorChange() {
-    Set<String> topics = new HashSet<>(_proposals.size());
+    Set<String> topics = new HashSet<>();
     _proposals.stream().filter(p -> p.newReplicas().size() != p.oldReplicas().size()).forEach(p -> topics.add(p.topic()));
     return topics;
   }

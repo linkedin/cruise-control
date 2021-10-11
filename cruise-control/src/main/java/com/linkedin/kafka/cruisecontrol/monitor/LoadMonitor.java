@@ -663,7 +663,7 @@ public class LoadMonitor {
    */
   public MetricSampleAggregationResult<String, BrokerEntity> brokerMetrics() {
     List<Node> nodes = kafkaCluster().nodes();
-    Set<BrokerEntity> brokerEntities = new HashSet<>(nodes.size());
+    Set<BrokerEntity> brokerEntities = new HashSet<>();
     for (Node node : nodes) {
       brokerEntities.add(new BrokerEntity(node.host(), node.id()));
     }

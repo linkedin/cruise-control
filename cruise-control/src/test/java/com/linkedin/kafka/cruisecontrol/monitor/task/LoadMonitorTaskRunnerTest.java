@@ -77,7 +77,7 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
     Properties adminProps = new Properties();
     adminProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
     AdminClient adminClient = AdminClient.create(adminProps);
-    Set<NewTopic> newTopics = new HashSet<>(NUM_TOPICS);
+    Set<NewTopic> newTopics = new HashSet<>();
     for (int i = 0; i < NUM_TOPICS; i++) {
       newTopics.add(new NewTopic(TOPIC_PREFIX + i, NUM_PARTITIONS, (short) 1));
     }
@@ -129,7 +129,7 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
     }
     loadMonitorTaskRunner.start(true);
 
-    Set<TopicPartition> partitionsToSample = new HashSet<>(NUM_TOPICS * NUM_PARTITIONS);
+    Set<TopicPartition> partitionsToSample = new HashSet<>();
     for (int i = 0; i < NUM_TOPICS; i++) {
       for (int j = 0; j < NUM_PARTITIONS; j++) {
         partitionsToSample.add(new TopicPartition(TOPIC_PREFIX + i, j));
@@ -233,8 +233,7 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
         _exceptionsLeft--;
         throw new SamplingException("Error");
       }
-      Set<PartitionMetricSample> partitionMetricSamples =
-          new HashSet<>(metricSamplerOptions.assignedPartitions().size());
+      Set<PartitionMetricSample> partitionMetricSamples = new HashSet<>();
       for (TopicPartition tp : metricSamplerOptions.assignedPartitions()) {
         PartitionMetricSample sample = new PartitionMetricSample(
             metricSamplerOptions.cluster().partition(tp).leader().id(), tp);

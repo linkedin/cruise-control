@@ -71,8 +71,8 @@ public class SlowBrokerFinderTest {
   @Test
   public void testDetectingSlowBrokerFromPeer() {
     SlowBrokerFinder slowBrokerFinder = createSlowBrokerFinder();
-    Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = new HashMap<>(BROKER_ENTITIES.size());
-    Map<BrokerEntity, ValuesAndExtrapolations> history = new HashMap<>(BROKER_ENTITIES.size());
+    Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = new HashMap<>();
+    Map<BrokerEntity, ValuesAndExtrapolations> history = new HashMap<>();
     currentMetrics.putAll(createCurrentMetrics(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE,
                                                        NORMAL_LOG_FLUSH_TIME_MS * METRIC_ANOMALY_MULTIPLIER),
                                                CURRENT_METRIC_WINDOW, BROKER_ENTITIES.get(0)));
@@ -107,8 +107,8 @@ public class SlowBrokerFinderTest {
   @Test
   public void testExcludingSmallTrafficBroker() {
     SlowBrokerFinder slowBrokerFinder = createSlowBrokerFinder();
-    Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = new HashMap<>(BROKER_ENTITIES.size());
-    Map<BrokerEntity, ValuesAndExtrapolations> history = new HashMap<>(BROKER_ENTITIES.size());
+    Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = new HashMap<>();
+    Map<BrokerEntity, ValuesAndExtrapolations> history = new HashMap<>();
     currentMetrics.putAll(createCurrentMetrics(populateMetricValues(SMALL_BYTES_IN_RATE, SMALL_BYTES_IN_RATE, NORMAL_LOG_FLUSH_TIME_MS),
                           CURRENT_METRIC_WINDOW, BROKER_ENTITIES.get(0)));
     history.putAll(createHistory(populateMetricValues(SMALL_BYTES_IN_RATE, SMALL_BYTES_IN_RATE, NORMAL_LOG_FLUSH_TIME_MS),
@@ -183,8 +183,8 @@ public class SlowBrokerFinderTest {
   @Test
   public void testNoFalsePositiveDetectionOnSmallLogFlushTime() {
     SlowBrokerFinder slowBrokerFinder = createSlowBrokerFinder();
-    Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = new HashMap<>(BROKER_ENTITIES.size());
-    Map<BrokerEntity, ValuesAndExtrapolations> history = new HashMap<>(BROKER_ENTITIES.size());
+    Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = new HashMap<>();
+    Map<BrokerEntity, ValuesAndExtrapolations> history = new HashMap<>();
     currentMetrics.putAll(createCurrentMetrics(populateMetricValues(NORMAL_BYTES_IN_RATE, NORMAL_BYTES_IN_RATE,
                                                                     NORMAL_LOG_FLUSH_TIME_MS / 10 * METRIC_ANOMALY_MULTIPLIER),
                                                CURRENT_METRIC_WINDOW, BROKER_ENTITIES.get(0)));
@@ -211,11 +211,9 @@ public class SlowBrokerFinderTest {
   }
 
   private Map<Short, Double> populateMetricValues(double leaderBytesInRate, double replicationBytesInRate, double logFlushTimeMs) {
-    Map<Short, Double> metricValueById = new HashMap<>(3);
-    metricValueById.put(KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.BROKER_LOG_FLUSH_TIME_MS_999TH.name()).id(), logFlushTimeMs);
-    metricValueById.put(KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.LEADER_BYTES_IN.name()).id(), leaderBytesInRate);
-    metricValueById.put(KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.REPLICATION_BYTES_IN_RATE.name()).id(), replicationBytesInRate);
-    return metricValueById;
+    return Map.of(KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.BROKER_LOG_FLUSH_TIME_MS_999TH.name()).id(), logFlushTimeMs,
+                  KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.LEADER_BYTES_IN.name()).id(), leaderBytesInRate,
+                  KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.REPLICATION_BYTES_IN_RATE.name()).id(), replicationBytesInRate);
   }
 
   private SlowBrokerFinder createSlowBrokerFinder() {

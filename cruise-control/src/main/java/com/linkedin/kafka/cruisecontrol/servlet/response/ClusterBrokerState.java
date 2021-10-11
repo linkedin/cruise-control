@@ -147,7 +147,7 @@ public class ClusterBrokerState {
                                                 Set<Integer> brokers)
       throws ExecutionException, InterruptedException {
     // If the broker does not show up in latest metadata, the broker is dead.
-    Set<Integer> aliveBrokers = new HashSet<>(brokers.size());
+    Set<Integer> aliveBrokers = new HashSet<>();
     _kafkaCluster.nodes().forEach(node -> aliveBrokers.add(node.id()));
     for (Integer broker: brokers) {
       if (!aliveBrokers.contains(broker)) {

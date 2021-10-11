@@ -12,7 +12,6 @@ import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -56,14 +55,12 @@ public class AlertaSelfHealingNotifierTest {
         KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
         EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).anyTimes();
         EasyMock.replay(mockKafkaCruiseControl);
-        Map<Integer, Long> failedBrokers = new HashMap<>();
-        failedBrokers.put(1, new SimpleDateFormat("yyyy-M-dd hh:mm:ssX").parse(TEST_DATETIME_1).getTime());
-        failedBrokers.put(2, new SimpleDateFormat("yyyy-M-dd hh:mm:ssX").parse(TEST_DATETIME_2).getTime());
-        Map<String, Object> parameterConfigOverrides = new HashMap<>(4);
-        parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
-        parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 200L);
-        parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, failedBrokers);
-        parameterConfigOverrides.put(BROKER_FAILURES_FIXABLE_CONFIG, true);
+        Map<Integer, Long> failedBrokers = Map.of(1, new SimpleDateFormat("yyyy-M-dd hh:mm:ssX").parse(TEST_DATETIME_1).getTime(),
+                                                  2, new SimpleDateFormat("yyyy-M-dd hh:mm:ssX").parse(TEST_DATETIME_2).getTime());
+        Map<String, Object> parameterConfigOverrides = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl,
+                                                              ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 200L,
+                                                              FAILED_BROKERS_OBJECT_CONFIG, failedBrokers,
+                                                              BROKER_FAILURES_FIXABLE_CONFIG, true);
         failures = kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
                                                                   BrokerFailures.class,
                                                                   parameterConfigOverrides);
@@ -105,8 +102,14 @@ public class AlertaSelfHealingNotifierTest {
         assertEquals(KafkaAnomalyType.BROKER_FAILURE.toString(), _notifier.getAlertaMessageList().get(0).getEvent());
         assertEquals(KafkaAnomalyType.BROKER_FAILURE.toString(), _notifier.getAlertaMessageList().get(1).getEvent());
         assertEquals(_notifier._alertaEnvironment, _notifier.getAlertaMessageList().get(0).getEnvironment());
-        assertEquals(TEST_DATETIME_ALARM_1, _notifier.getAlertaMessageList().get(0).getCreateTime());
-        assertEquals(TEST_DATETIME_ALARM_2, _notifier.getAlertaMessageList().get(1).getCreateTime());
+        // Depends on the underneath Java implementation, TEST_DATETIME_ALARM_1 can either be in the front of the list,
+        if (TEST_DATETIME_ALARM_1.equals(_notifier.getAlertaMessageList().get(0).getCreateTime())) {
+          assertEquals(TEST_DATETIME_ALARM_2, _notifier.getAlertaMessageList().get(1).getCreateTime());
+        } else {
+          // Or, in the back of the list. We flip the get order in this case.
+          assertEquals(TEST_DATETIME_ALARM_1, _notifier.getAlertaMessageList().get(1).getCreateTime());
+          assertEquals(TEST_DATETIME_ALARM_2, _notifier.getAlertaMessageList().get(0).getCreateTime());
+        }
     }
 
     private static class MockAlertaSelfHealingNotifier extends AlertaSelfHealingNotifier {

@@ -327,7 +327,7 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
         // alive racks allowed replica moves or (2) more replicas that they could have been placed into other racks.
         boolean someAliveRacksHaveNoReplicas = numReplicasByRack.size() < _balanceLimit.numAliveRacksAllowedReplicaMoves();
         if (someAliveRacksHaveNoReplicas || maxNumReplicasInARack - min(numReplicasByRack.values()) > 1) {
-          Set<String> excludedRackIds = new HashSet<>(numReplicasByRack.size());
+          Set<String> excludedRackIds = new HashSet<>();
           if (someAliveRacksHaveNoReplicas) {
             // Exclude all racks containing replicas of this partition.
             excludedRackIds.addAll(numReplicasByRack.keySet());
