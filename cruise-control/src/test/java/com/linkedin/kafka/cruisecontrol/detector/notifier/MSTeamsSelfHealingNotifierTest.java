@@ -88,8 +88,8 @@ public class MSTeamsSelfHealingNotifierTest {
         }
 
         @Override
-        protected void sendMSTeamsMessage(MSTeamsMessage slackMessage, String msTeamsWebhookUrl) {
-            _msTeamsMessageList.add(slackMessage);
+        protected void sendMSTeamsMessage(MSTeamsMessage msTeamsMessage, String msTeamsWebhookUrl) {
+            _msTeamsMessageList.add(msTeamsMessage);
         }
 
         List<MSTeamsMessage> getMSTeamsMessageList() {

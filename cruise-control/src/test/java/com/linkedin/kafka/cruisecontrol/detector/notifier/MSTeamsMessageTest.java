@@ -13,12 +13,10 @@ import static org.junit.Assert.assertEquals;
 public class MSTeamsMessageTest {
 
     @Test
-    public void testSlackMessageJsonFormat() {
+    public void testMSTeamsMessageJsonFormat() {
         String expectedJson = "{\"@type\": \"MessageCard\",\"@context\": \"http://schema.org/extensions\","
             + "\"themeColor\": \"0076D7\",\"summary\": \"Cruise-Control Alert\",\"sections\": "
-            + "[{\"facts\": [{\"name\": \"title1\", \"value\": \"description1\"},"
-            + "{\"name\": \"title2\", \"value\": \"description2\"}]}]}";
-        assertEquals(expectedJson,
-            new MSTeamsMessage(Map.of("title1", "description1", "title2", "description2")).toString());
+            + "[{\"facts\": [{\"name\": \"title1\", \"value\": \"description1\"}]}]}";
+        assertEquals(expectedJson, new MSTeamsMessage(Map.of("title1", "description1")).toString());
     }
 }
