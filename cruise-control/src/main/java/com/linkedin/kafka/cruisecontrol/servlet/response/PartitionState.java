@@ -48,7 +48,7 @@ public class PartitionState {
     _leader = partitionInfo.leader() == null ? -1 : partitionInfo.leader().id();
     _replicas = Arrays.stream(partitionInfo.replicas()).map(Node::id).collect(Collectors.toList());
     _inSyncReplicas = Arrays.stream(partitionInfo.inSyncReplicas()).map(Node::id).collect(Collectors.toList());
-    _outOfSyncReplicas = new HashSet<>();
+    _outOfSyncReplicas = new HashSet<>(_replicas);
     _outOfSyncReplicas.removeAll(_inSyncReplicas);
     _offlineReplicas = Arrays.stream(partitionInfo.offlineReplicas()).map(Node::id).collect(Collectors.toSet());
     _minIsr = minIsr;
