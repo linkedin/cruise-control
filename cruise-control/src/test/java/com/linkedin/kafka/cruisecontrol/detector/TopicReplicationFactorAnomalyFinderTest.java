@@ -109,7 +109,7 @@ public class TopicReplicationFactorAnomalyFinderTest {
     Node [] allNodes = new Node [4];
     IntStream.rangeClosed(0, 3).forEach(i -> allNodes[i] = new Node(i, HOST, 0));
     Node [] allButFirstNode = Arrays.copyOfRange(allNodes, 1, allNodes.length);
-    Set<PartitionInfo> partitionInfo = new HashSet<>(2);
+    Set<PartitionInfo> partitionInfo = new HashSet<>();
     // Partition with RF=4
     partitionInfo.add(new PartitionInfo(TOPIC, 0, allNodes[0], allNodes, allNodes));
     // Partition with RF=3

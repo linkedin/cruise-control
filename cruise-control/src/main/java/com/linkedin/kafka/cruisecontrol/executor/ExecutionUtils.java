@@ -360,7 +360,7 @@ public final class ExecutionUtils {
     if (validateNotNull(tasks, "Tasks to execute cannot be null.").isEmpty()) {
       throw new IllegalArgumentException("Tasks to execute cannot be empty.");
     }
-    Set<TopicPartition> partitions = new HashSet<>(tasks.size());
+    Set<TopicPartition> partitions = new HashSet<>();
     for (ExecutionTask task : tasks) {
       switch (task.state()) {
         case ABORTING:
@@ -400,7 +400,7 @@ public final class ExecutionUtils {
     }
 
     // Update the ongoing replica reassignments in case the task status has changed.
-    Map<TopicPartition, Optional<NewPartitionReassignment>> newReassignments = new HashMap<>(tasks.size());
+    Map<TopicPartition, Optional<NewPartitionReassignment>> newReassignments = new HashMap<>();
     for (ExecutionTask task : tasks) {
       TopicPartition tp = task.proposal().topicPartition();
       List<Integer> newReplicas = new ArrayList<>(task.proposal().newReplicas().size());
@@ -457,7 +457,7 @@ public final class ExecutionUtils {
     }
 
     // Cancel all the ongoing replica reassignments.
-    Map<TopicPartition, Optional<NewPartitionReassignment>> newReassignments = new HashMap<>(partitionsBeingReassigned.size());
+    Map<TopicPartition, Optional<NewPartitionReassignment>> newReassignments = new HashMap<>();
     for (TopicPartition tp : partitionsBeingReassigned) {
       newReassignments.put(tp, cancelReassignmentValue());
     }

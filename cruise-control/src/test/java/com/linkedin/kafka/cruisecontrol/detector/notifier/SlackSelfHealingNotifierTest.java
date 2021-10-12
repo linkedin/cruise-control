@@ -16,7 +16,6 @@ import org.easymock.EasyMock;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -44,14 +43,11 @@ public class SlackSelfHealingNotifierTest {
         KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
         EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).anyTimes();
         EasyMock.replay(mockKafkaCruiseControl);
-        Map<Integer, Long> failedBrokers = new HashMap<>();
-        failedBrokers.put(1, 200L);
-        failedBrokers.put(2, 400L);
-        Map<String, Object> parameterConfigOverrides = new HashMap<>(4);
-        parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
-        parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 200L);
-        parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, failedBrokers);
-        parameterConfigOverrides.put(BROKER_FAILURES_FIXABLE_CONFIG, true);
+        Map<Integer, Long> failedBrokers = Map.of(1, 200L, 2, 400L);
+        Map<String, Object> parameterConfigOverrides = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl,
+                                                              ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 200L,
+                                                              FAILED_BROKERS_OBJECT_CONFIG, failedBrokers,
+                                                              BROKER_FAILURES_FIXABLE_CONFIG, true);
         failures = kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
                                                                   BrokerFailures.class,
                                                                   parameterConfigOverrides);

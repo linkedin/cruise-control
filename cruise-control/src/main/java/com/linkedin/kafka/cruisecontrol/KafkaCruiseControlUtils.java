@@ -283,7 +283,7 @@ public final class KafkaCruiseControlUtils {
     // Update configs if needed.
     Map<String, String> desiredConfig = topicToUpdateConfigs.configs();
     if (desiredConfig != null) {
-      Set<AlterConfigOp> alterConfigOps = new HashSet<>(desiredConfig.size());
+      Set<AlterConfigOp> alterConfigOps = new HashSet<>();
       maybeUpdateConfig(alterConfigOps, desiredConfig, topicConfig);
       if (!alterConfigOps.isEmpty()) {
         AlterConfigsResult alterConfigsResult
