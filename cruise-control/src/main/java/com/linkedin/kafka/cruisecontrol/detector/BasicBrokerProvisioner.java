@@ -75,7 +75,8 @@ public class BasicBrokerProvisioner extends AbstractSingleResourceProvisioner {
 
     // 1. Identify the recommender for the recommendation to execute.
     String recommender = null;
-    int numBrokersToAddOrRemove = ProvisionRecommendation.DEFAULT_OPTIONAL_INT;
+    int numBrokersToAddOrRemove = (brokerRecommendations.values().iterator().next().status() == ProvisionStatus.UNDER_PROVISIONED)
+                                  ? Integer.MIN_VALUE : Integer.MAX_VALUE;
     for (Map.Entry<String, ProvisionRecommendation> recommendationEntry : brokerRecommendations.entrySet()) {
       int recommendedNumBrokers = recommendationEntry.getValue().numBrokers();
       if (((recommendationEntry.getValue().status() == ProvisionStatus.UNDER_PROVISIONED) ? (recommendedNumBrokers > numBrokersToAddOrRemove)
