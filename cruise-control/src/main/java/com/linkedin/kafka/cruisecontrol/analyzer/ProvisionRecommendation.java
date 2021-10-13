@@ -355,7 +355,7 @@ public final class ProvisionRecommendation {
   }
 
   public Set<String> excludedRackIds() {
-    return Collections.unmodifiableSet(_excludedRackIds);
+    return _excludedRackIds == null ? null : Collections.unmodifiableSet(_excludedRackIds);
   }
 
   public double totalCapacity() {

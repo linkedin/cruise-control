@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -13,9 +12,7 @@ import java.util.Optional;
 import java.util.Set;
 import org.apache.kafka.clients.admin.NewTopic;
 
-import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 import static com.linkedin.kafka.cruisecontrol.common.Utils.getTopicNamesMatchedWithPattern;
-import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.ProvisionerState.State.COMPLETED;
 import static com.linkedin.kafka.cruisecontrol.detector.ProvisionerState.State.COMPLETED_WITH_ERROR;
 import static com.linkedin.kafka.cruisecontrol.detector.ProvisionerUtils.increasePartitionCount;
@@ -25,32 +22,35 @@ import static com.linkedin.kafka.cruisecontrol.detector.ProvisionerUtils.partiti
 /**
  * A provisioner that honors {@link ProvisionRecommendation provision recommendations} of partitions and ignores recommendations for other resources.
  */
-public class PartitionProvisioner implements Provisioner {
-  protected KafkaCruiseControl _kafkaCruiseControl;
+public class PartitionProvisioner extends AbstractSingleResourceProvisioner {
 
-  @Override
-  public synchronized ProvisionerState rightsize(Map<String, ProvisionRecommendation> recommendationByRecommender, RightsizeOptions options) {
-    validateNotNull(recommendationByRecommender, "Provision recommendations cannot be null.");
-
-    // 1. Retrieve partition recommendations.
-    Map<String, ProvisionRecommendation> partitionRecommendations = partitionRecommendations(recommendationByRecommender);
-    if (partitionRecommendations.isEmpty()) {
-      // No actions will be taken towards rightsizing.
-      return null;
-    }
-
-    // 2. Apply the partition recommendations.
-    Map<String, ProvisionerState> provisionerStateByRecommender = applyPartitionRecommendations(partitionRecommendations);
-
-    // 3. Aggregate and return the result of applying partition recommendations.
-    return aggregateProvisionerStates(provisionerStateByRecommender);
+  protected Map<String, ProvisionRecommendation> filteredRecommendations(Map<String, ProvisionRecommendation> recommendationByRecommender) {
+    return partitionRecommendations(recommendationByRecommender);
   }
 
-  @Override
-  public void configure(Map<String, ?> configs) {
-    _kafkaCruiseControl = (KafkaCruiseControl) validateNotNull(configs.get(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG),
-                                                               () -> String.format("Missing %s when creating Partition Provisioner",
-                                                                                   KAFKA_CRUISE_CONTROL_OBJECT_CONFIG));
+  /**
+   * Check whether the provisioner can take actions towards rightsizing using the given partition recommendations.
+   * Provisioner can rightsize only if there is at least one partition recommendation to rightsize.
+   *
+   * @param partitionRecommendations Partition recommendations by recommender -- cannot be {@code null}.
+   * @return {@code true} if the provisioner can take actions towards rightsizing, {@code false} otherwise.
+   */
+  protected boolean canRightsize(Map<String, ProvisionRecommendation> partitionRecommendations) {
+    return !partitionRecommendations.isEmpty();
+  }
+
+  /**
+   * Execute the given partition recommendations to add partitions. Then aggregate and return the result of applying partition recommendations.
+   *
+   * @param partitionRecommendations Partition recommendations by recommender for which the provision actions will be applied.
+   * @return The aggregated {@link ProvisionerState} of the provisioning actions, or {@code null} if no result is provided to aggregate.
+   */
+  protected ProvisionerState executeFor(Map<String, ProvisionRecommendation> partitionRecommendations) {
+    // 1. Apply the partition recommendations.
+    Map<String, ProvisionerState> provisionerStateByRecommender = applyPartitionRecommendations(partitionRecommendations);
+
+    // 2. Aggregate and return the result of applying partition recommendations.
+    return aggregateProvisionerStates(provisionerStateByRecommender);
   }
 
   /**
