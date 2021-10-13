@@ -25,7 +25,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.ProvisionerState.State.C
  * <ul>
  *   <li>{@link #BROKER_PROVISIONER_CLASS_CONFIG}: A provisioner class for adding / removing brokers to / from the cluster. Users must implement
  *   their custom broker provisioner, which works in their platform (e.g. on Azure). The default value {@link #DEFAULT_BROKER_PROVISIONER_CLASS}
- *   returns a {@link ProvisionerState} that always indicates {@link ProvisionerState.State#COMPLETED_WITH_ERROR} upon rightsizing.</li>
+ *   returns a {@link ProvisionerState} that always indicates {@link ProvisionerState.State#COMPLETED} upon rightsizing.</li>
  *   <li>{@link #PARTITION_PROVISIONER_CLASS_CONFIG}: A provisioner class for adding partitions to the cluster. The default value
  *   {@link #DEFAULT_PARTITION_PROVISIONER_CLASS} is platform independent.</li>
  * </ul>

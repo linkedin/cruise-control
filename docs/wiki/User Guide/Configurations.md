@@ -19,6 +19,7 @@
     - [CruiseControlMetricsReporter configurations](#cruisecontrolmetricsreporter-configurations)
     - [PercentileMetricAnomalyFinder configurations](#percentilemetricanomalyfinder-configurations)
     - [SlowBrokerFinder configurations](#slowbrokerfinder-configurations)
+    - [BasicProvisioner configurations](#basicprovisioner-configurations)
 - [Resolving environment variables as config values](#resolving-environment-variables-as-config-values)
 
 ## Configurations inherited from Kafka clients
@@ -362,6 +363,8 @@ with a non-default capacity. See:
 | cruise.control.metrics.topic.retention.ms                     | Long      | N         | 18000000                 | The retention time in milliseconds for metric messages in the Cruise Control metrics topic. |
 | cruise.control.metrics.topic.min.insync.replicas              | Integer   | N         | Kafka cluster default    | The minimum number of insync replicas for the Cruise Control metrics topic. |
 
+Besides the above configurations, CruiseControlMetricsReporter takes all the configurations for vanilla KafkaProducer with a prefix of "cruise.control.metrics.reporter."
+
 ### PercentileMetricAnomalyFinder configurations
 | Name                                      | Type   | Required? | Default Value  | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 |-------------------------------------------|--------|-----------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -384,7 +387,11 @@ with a non-default capacity. See:
 | slow.broker.decommission.score                    | Integer| N         | 50             | The score threshold to trigger a removal for slow broker.                                                                       |
 | slow.broker.self.healing.unfixable.ratio          | Double | N         | 0.1            | The maximum ratio of slow broker in the cluster to trigger self-healing operation.                                              |
 
-Besides the above configurations, CruiseControlMetricsReporter takes all the configurations for vanilla KafkaProducer with a prefix of "cruise.control.metrics.reporter."
+### BasicProvisioner configurations
+| Name                          | Type  | Required? | Default Value                                                     | Description                                                           |
+|-------------------------------|-------|-----------|-------------------------------------------------------------------|-----------------------------------------------------------------------|
+| broker.provisioner.class      | Class | N         | com.linkedin.kafka.cruisecontrol.detector.BasicBrokerProvisioner  | A provisioner that honors provision recommendations of brokers.       |
+| partition.provisioner.class   | Class | N         | com.linkedin.kafka.cruisecontrol.detector.PartitionProvisioner    | A provisioner that honors provision recommendations of partitions.    |
 
 ## Resolving environment variables as config values
 It is often required to resolve an environment variable as a config value. Such case is when a password is set by the environment to avoid putting them into config files.
