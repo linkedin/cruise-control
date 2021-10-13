@@ -73,4 +73,21 @@ public final class ProvisionerUtils {
     }
     return partitionRecommendations;
   }
+
+  /**
+   * Create a new subset map of the given recommendation-by-recommender map containing only the entries, where the resource is a broker.
+   * If the given map has no recommendations, where the resource is a broker, then the response would be an empty map.
+   *
+   * @param recommendationByRecommender Provision recommendations provided by corresponding recommenders.
+   * @return A new subset map of the given recommendation-by-recommender map containing only the entries, where the resource is a broker.
+   */
+  public static Map<String, ProvisionRecommendation> brokerRecommendations(Map<String, ProvisionRecommendation> recommendationByRecommender) {
+    Map<String, ProvisionRecommendation> brokerRecommendations = new HashMap<>();
+    for (Map.Entry<String, ProvisionRecommendation> recommendationEntry : recommendationByRecommender.entrySet()) {
+      if (recommendationEntry.getValue().numBrokers() != ProvisionRecommendation.DEFAULT_OPTIONAL_INT) {
+        brokerRecommendations.put(recommendationEntry.getKey(), recommendationEntry.getValue());
+      }
+    }
+    return brokerRecommendations;
+  }
 }
