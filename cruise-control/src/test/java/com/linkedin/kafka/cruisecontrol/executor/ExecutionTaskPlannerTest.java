@@ -167,6 +167,13 @@ public class ExecutionTaskPlannerTest {
     ExecutionTaskPlanner prioritizeMinIsrMovementPlanner = new ExecutionTaskPlanner(null,
                                                                                     new KafkaCruiseControlConfig(prioritizeMinIsrMovementProps));
 
+    // Create prioritizeMinIsrMovementPlanner
+    int partitions_max_cap = 4;
+    Properties capMaxPartitionsProps = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
+    capMaxPartitionsProps.setProperty(ExecutorConfig.MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG, String.valueOf(partitions_max_cap));
+    ExecutionTaskPlanner capMaxPartitionsMovementPlanner = new ExecutionTaskPlanner(null,
+                                                                                    new KafkaCruiseControlConfig(capMaxPartitionsProps));
+
     Set<PartitionInfo> partitions = new HashSet<>();
     partitions.add(generatePartitionInfoWithUrpHavingOfflineReplica(_partitionMovement1, true));
     partitions.add(generatePartitionInfo(_partitionMovement2, false));
@@ -229,6 +236,18 @@ public class ExecutionTaskPlannerTest {
     assertEquals("Second task should be partitionMovement3", _partitionMovement3, partitionMovementTasks.get(1).proposal());
     assertEquals("Third task should be partitionMovement4", _partitionMovement4, partitionMovementTasks.get(2).proposal());
     assertEquals("Fourth task should be partitionMovement2", _partitionMovement2, partitionMovementTasks.get(3).proposal());
+
+    readyBrokers.put(0, 14);
+    readyBrokers.put(1, 14);
+    readyBrokers.put(2, 14);
+    readyBrokers.put(3, 14);
+
+    capMaxPartitionsMovementPlanner.addExecutionProposals(proposals, strategyOptions, null);
+    partitionMovementTasks = capMaxPartitionsMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet());
+    assertEquals(partitions_max_cap, partitionMovementTasks.size());
+    partitionMovementTasks =
+        capMaxPartitionsMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, new HashSet<>(partitions_max_cap));
+    assertEquals(0, partitionMovementTasks.size());
   }
 
   @Test

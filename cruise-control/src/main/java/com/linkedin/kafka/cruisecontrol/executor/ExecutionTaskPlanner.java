@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG;
@@ -77,6 +78,7 @@ public class ExecutionTaskPlanner {
   private final long _taskExecutionAlertingThresholdMs;
   private final double _interBrokerReplicaMovementRateAlertingThreshold;
   private final double _intraBrokerReplicaMovementRateAlertingThreshold;
+  private final int _maxNumClusterPartitionMovements;
 
   /**
    *
@@ -94,6 +96,7 @@ public class ExecutionTaskPlanner {
     _taskExecutionAlertingThresholdMs = config.getLong(TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG);
     _interBrokerReplicaMovementRateAlertingThreshold = config.getDouble(INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG);
     _intraBrokerReplicaMovementRateAlertingThreshold = config.getDouble(INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG);
+    _maxNumClusterPartitionMovements = config.getInt(MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG);
     _adminClient = adminClient;
     List<String> defaultReplicaMovementStrategies = config.getList(DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG);
     if (defaultReplicaMovementStrategies == null || defaultReplicaMovementStrategies.isEmpty()) {
@@ -312,7 +315,8 @@ public class ExecutionTaskPlanner {
   }
 
   /**
-   * Get a list of executable inter-broker replica movements that comply with the concurrency constraint.
+   * Get a list of executable inter-broker replica movements that comply with the concurrency constraint
+   * and default max partitions in move constraint.
    *
    * @param readyBrokers The brokers that is ready to execute more movements.
    * @param inProgressPartitions Topic partitions of replicas that are already in progress. This is needed because the
@@ -322,6 +326,24 @@ public class ExecutionTaskPlanner {
    */
   public List<ExecutionTask> getInterBrokerReplicaMovementTasks(Map<Integer, Integer> readyBrokers,
                                                                 Set<TopicPartition> inProgressPartitions) {
+    return getInterBrokerReplicaMovementTasks(
+        readyBrokers, inProgressPartitions, _maxNumClusterPartitionMovements);
+  }
+
+  /**
+   * Get a list of executable inter-broker replica movements that comply with the concurrency constraint
+   * and partitions in move constraint provided.
+   *
+   * @param readyBrokers The brokers that is ready to execute more movements.
+   * @param inProgressPartitions Topic partitions of replicas that are already in progress. This is needed because the
+   *                             controller does not allow updating the ongoing replica reassignment for a partition
+   *                             whose replica is being reassigned.
+   * @param maxInterBrokerPartitionMovements Maximum cap for number of partitions to move at any time
+   * @return A list of movements that is executable for the ready brokers.
+   */
+  public List<ExecutionTask> getInterBrokerReplicaMovementTasks(Map<Integer, Integer> readyBrokers,
+                                                                Set<TopicPartition> inProgressPartitions,
+                                                                int maxInterBrokerPartitionMovements) {
     LOG.trace("Getting inter-broker replica movement tasks for brokers with concurrency {}", readyBrokers);
     List<ExecutionTask> executableReplicaMovements = new ArrayList<>();
 
@@ -333,14 +355,18 @@ public class ExecutionTaskPlanner {
     boolean newTaskAdded = true;
     Set<Integer> brokerInvolved = new HashSet<>();
     Set<TopicPartition> partitionsInvolved = new HashSet<>();
-    while (newTaskAdded) {
+    
+    int newInProgressPartitions = inProgressPartitions.size();
+    boolean maxPartitionMovesReached = false;
+
+    while (newTaskAdded && !maxPartitionMovesReached) {
       newTaskAdded = false;
       brokerInvolved.clear();
       for (Map.Entry<Integer, Integer> brokerEntry : readyBrokers.entrySet()) {
         int brokerId = brokerEntry.getKey();
         // If this broker has already involved in this round, skip it.
-        if (brokerInvolved.contains(brokerId)) {
-          continue;
+        if (maxPartitionMovesReached) {
+          break;
         }
 
         // Check the available balancing proposals of this broker to see if we can find one ready to execute.
@@ -348,6 +374,15 @@ public class ExecutionTaskPlanner {
         LOG.trace("Execution task for broker {} are {}", brokerId, proposalsForBroker);
         if (proposalsForBroker != null) {
           for (ExecutionTask task : proposalsForBroker) {
+
+            // Return if max cap reached
+            if (newInProgressPartitions >= maxInterBrokerPartitionMovements) {
+              LOG.trace("Max partitions to move across cluster {} reached/exceeded. " +
+                  "Not adding anymore tasks.", maxInterBrokerPartitionMovements);
+              maxPartitionMovesReached = true;
+              break;
+            }
+
             // Skip this proposal if either source broker or destination broker of this proposal has already
             // involved in this round.
             int sourceBroker = task.proposal().oldLeader().brokerId();
@@ -376,6 +411,7 @@ public class ExecutionTaskPlanner {
               }
               // Mark proposal added to true so we will have another round of check.
               newTaskAdded = true;
+              newInProgressPartitions++;
               LOG.debug("Found ready task {} for broker {}. Broker concurrency state: {}", task, brokerId, readyBrokers);
               // We can stop the check for proposals for this broker because we have found a proposal.
               break;
