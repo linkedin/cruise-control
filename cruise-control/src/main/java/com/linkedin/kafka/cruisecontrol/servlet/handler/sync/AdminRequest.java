@@ -141,6 +141,13 @@ public class AdminRequest extends AbstractSyncRequest {
       sb.append(String.format("Execution progress check interval is set to %dMs%n", executionProgressCheckIntervalMs));
       LOG.info("Execution progress check interval is set to: {}Ms by user.", executionProgressCheckIntervalMs);
     }
+    // 5. Change max inter-broker partition concurrency.
+    Integer maxInterBrokerPartitionMovements = changeExecutionConcurrencyParameters.maxInterBrokerPartitionMovements();
+    if (maxInterBrokerPartitionMovements != null) {
+      _kafkaCruiseControl.setRequestedMaxInterBrokerPartitionMovements(maxInterBrokerPartitionMovements);
+      sb.append(String.format("Max Inter-broker partition movements is set to %d%n", maxInterBrokerPartitionMovements));
+      LOG.info("Max Inter-broker partition movements is set to: {} by user.", maxInterBrokerPartitionMovements);
+    }
 
     return sb.toString();
   }

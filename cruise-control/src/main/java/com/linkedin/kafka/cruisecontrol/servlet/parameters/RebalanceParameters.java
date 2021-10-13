@@ -20,6 +20,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_LEADER_MOVEMENTS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_HARD_GOAL_CHECK_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICA_MOVEMENT_STRATEGIES_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICATION_THROTTLE_PARAM;
@@ -57,6 +58,7 @@ public class RebalanceParameters extends ProposalsParameters {
     validParameterNames.add(DRY_RUN_PARAM);
     validParameterNames.add(REASON_PARAM);
     validParameterNames.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
+    validParameterNames.add(MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM);
     validParameterNames.add(CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM);
     validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
     validParameterNames.add(EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
@@ -70,6 +72,7 @@ public class RebalanceParameters extends ProposalsParameters {
   }
   protected boolean _dryRun;
   protected Integer _concurrentInterBrokerPartitionMovements;
+  protected Integer _maxInterBrokerPartitionMovements;
   protected Integer _concurrentIntraBrokerPartitionMovements;
   protected Integer _concurrentLeaderMovements;
   protected Long _executionProgressCheckIntervalMs;
@@ -89,6 +92,7 @@ public class RebalanceParameters extends ProposalsParameters {
     super.initParameters();
     _dryRun = ParameterUtils.getDryRun(_request);
     _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true, false);
+    _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_request);
     _concurrentIntraBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, false, true);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false, false);
     _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_request);
@@ -127,6 +131,10 @@ public class RebalanceParameters extends ProposalsParameters {
 
   public Integer concurrentIntraBrokerPartitionMovements() {
     return _concurrentIntraBrokerPartitionMovements;
+  }
+  
+  public Integer maxInterBrokerPartitionMovements() {
+    return _maxInterBrokerPartitionMovements;
   }
 
   public Long executionProgressCheckIntervalMs() {
