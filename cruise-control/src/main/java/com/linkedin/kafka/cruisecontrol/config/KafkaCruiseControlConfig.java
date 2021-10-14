@@ -223,6 +223,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    */
   void sanityCheckConcurrency() {
     int maxClusterPartitionMovementConcurrency = getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
+    
+    int maxClusterPartitionMovements = getInt(ExecutorConfig.MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG);
+    if (maxClusterPartitionMovements >= maxClusterPartitionMovementConcurrency) {
+      throw new ConfigException(String.format("Maximum Inter-broker partition movement [%d] must be smaller than the "
+                                              + "maximum number of allowed movements in cluster [%d].",
+                                              maxClusterPartitionMovements, maxClusterPartitionMovementConcurrency));
+    }
 
     int interBrokerPartitionMovementConcurrency = getInt(ExecutorConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG);
     if (interBrokerPartitionMovementConcurrency >= maxClusterPartitionMovementConcurrency) {

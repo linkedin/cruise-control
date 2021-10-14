@@ -158,7 +158,10 @@ public class ExecutionTaskManager {
     return _requestedInterBrokerPartitionMovementConcurrency == null ? _defaultInterBrokerPartitionMovementConcurrency
                                                                      : _requestedInterBrokerPartitionMovementConcurrency;
   }
-  
+
+  /**
+   * @return Allowed upper bound of inter broker partition movements in cluster
+   */
   public synchronized int maxInterBrokerPartitionMovements() {
     return _requestedMaxInterBrokerPartitionMovements == null ? _defaultMaxInterBrokerPartitionMovements
         : _requestedMaxInterBrokerPartitionMovements;

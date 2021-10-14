@@ -74,7 +74,7 @@ public class IdempotenceCacheTest {
     for (MaintenanceEventType eventType : MaintenanceEventType.cachedValues()) {
       parameterConfigOverrides.put(MAINTENANCE_EVENT_TYPE_CONFIG, eventType);
       // Expect mocks.
-      EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(4);
+      EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).atLeastOnce();
       EasyMock.replay(_mockKafkaCruiseControl);
       parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_INITIAL_ANOMALY_TIME_MS);
       initialEvents.add(_config.getConfiguredInstance(AnomalyDetectorConfig.MAINTENANCE_EVENT_CLASS_CONFIG,
@@ -97,7 +97,7 @@ public class IdempotenceCacheTest {
     for (MaintenanceEventType eventType : MaintenanceEventType.cachedValues()) {
       parameterConfigOverrides.put(MAINTENANCE_EVENT_TYPE_CONFIG, eventType);
       // Expect mocks.
-      EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(2);
+      EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).atLeastOnce();
       EasyMock.replay(_mockKafkaCruiseControl);
       parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_DISTINCT_ANOMALY_TIME_MS);
       distinctEvents.add(_config.getConfiguredInstance(AnomalyDetectorConfig.MAINTENANCE_EVENT_CLASS_CONFIG,
@@ -108,7 +108,7 @@ public class IdempotenceCacheTest {
     }
     assertEquals(MaintenanceEventType.cachedValues().size(), distinctEvents.size());
 
-    // 3. Test idempotence.
+    // 3. TesConcurrencyConfigTestt idempotence.
     EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).once();
     // The background thread cannot remove the events.
     EasyMock.expect(_mockKafkaCruiseControl.timeMs()).andReturn(MOCK_INITIAL_ANOMALY_TIME_MS).anyTimes();
