@@ -168,9 +168,9 @@ public class ExecutionTaskPlannerTest {
                                                                                     new KafkaCruiseControlConfig(prioritizeMinIsrMovementProps));
 
     // Create prioritizeMinIsrMovementPlanner
-    int partitions_max_cap = 4;
+    int partitionsMaxCap = 4;
     Properties capMaxPartitionsProps = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    capMaxPartitionsProps.setProperty(ExecutorConfig.MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG, String.valueOf(partitions_max_cap));
+    capMaxPartitionsProps.setProperty(ExecutorConfig.MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG, String.valueOf(partitionsMaxCap));
     ExecutionTaskPlanner capMaxPartitionsMovementPlanner = new ExecutionTaskPlanner(null,
                                                                                     new KafkaCruiseControlConfig(capMaxPartitionsProps));
 
@@ -244,9 +244,9 @@ public class ExecutionTaskPlannerTest {
 
     capMaxPartitionsMovementPlanner.addExecutionProposals(proposals, strategyOptions, null);
     partitionMovementTasks = capMaxPartitionsMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet());
-    assertEquals(partitions_max_cap, partitionMovementTasks.size());
+    assertEquals(partitionsMaxCap, partitionMovementTasks.size());
     partitionMovementTasks =
-        capMaxPartitionsMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, new HashSet<>(partitions_max_cap));
+        capMaxPartitionsMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, new HashSet<>(partitionsMaxCap));
     assertEquals(0, partitionMovementTasks.size());
   }
 
