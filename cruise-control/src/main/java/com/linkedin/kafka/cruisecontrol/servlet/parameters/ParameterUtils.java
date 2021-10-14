@@ -905,6 +905,7 @@ public final class ParameterUtils {
    * Get the max partiton movements requirement dynamically set from the Http request.
    *
    * @param request The HTTP Request
+   * @return The execution upper bound requirement dynamically set from the Http request.
    */
   static Integer maxPartitionMovements(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM);

@@ -377,8 +377,8 @@ public class ExecutionTaskPlanner {
 
             // Return if max cap reached
             if (newInProgressPartitions >= maxInterBrokerPartitionMovements) {
-              LOG.trace("Max partitions to move across cluster {} reached/exceeded. " +
-                  "Not adding anymore tasks.", maxInterBrokerPartitionMovements);
+              LOG.trace("Max partitions to move across cluster {} reached/exceeded. "
+                        + "Not adding anymore tasks.", maxInterBrokerPartitionMovements);
               maxPartitionMovesReached = true;
               break;
             }

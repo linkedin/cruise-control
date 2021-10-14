@@ -645,8 +645,10 @@ public class KafkaCruiseControl {
    * @param isKafkaAssignerMode {@code true} if kafka assigner mode, {@code false} otherwise.
    * @param concurrentInterBrokerPartitionMovements The maximum number of concurrent inter-broker partition movements per broker
    *                                                (if null, use num.concurrent.partition.movements.per.broker).
+   * @param maxInterBrokerPartitionMovements The upper bound of concurrent inter-broker partition movements in cluster
+   *                                                (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentIntraBrokerPartitionMovements The maximum number of concurrent intra-broker partition movements
-   *                                                (if null, use num.concurrent.intra.broker.partition.movements).
+   *                                                (if null, use max.num.cluster.partition.movements).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
    * @param executionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
@@ -691,6 +693,8 @@ public class KafkaCruiseControl {
    * @param removedBrokers Brokers to be removed, null if no brokers has been removed.
    * @param isKafkaAssignerMode {@code true} if kafka assigner mode, {@code false} otherwise.
    * @param concurrentInterBrokerPartitionMovements The maximum number of concurrent inter-broker partition movements per broker
+   *                                                (if null, use num.concurrent.partition.movements.per.broker).
+   * @param maxInterBrokerPartitionMovements The upper bound of concurrent inter-broker partition movements in cluster
    *                                                (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
