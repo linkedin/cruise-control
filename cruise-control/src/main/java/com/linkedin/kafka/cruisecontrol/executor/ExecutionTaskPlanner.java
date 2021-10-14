@@ -364,11 +364,16 @@ public class ExecutionTaskPlanner {
       brokerInvolved.clear();
       for (Map.Entry<Integer, Integer> brokerEntry : readyBrokers.entrySet()) {
         int brokerId = brokerEntry.getKey();
-        // If this broker has already involved in this round, skip it.
+
+        // If max partition moves limit reached, no need to check other brokers
         if (maxPartitionMovesReached) {
           break;
         }
-
+        // If this broker has already involved in this round, skip it.
+        if (brokerInvolved.contains(brokerId)) {
+          continue;
+        }
+          
         // Check the available balancing proposals of this broker to see if we can find one ready to execute.
         SortedSet<ExecutionTask> proposalsForBroker = _interPartMoveTaskByBrokerId.get(brokerId);
         LOG.trace("Execution task for broker {} are {}", brokerId, proposalsForBroker);
