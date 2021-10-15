@@ -559,9 +559,9 @@ public class Executor {
    * @param requestedIntraBrokerPartitionMovementConcurrency The maximum number of concurrent intra-broker partition movements
    *                                                         (if null, use num.concurrent.intra.broker.partition.movements).
    * @param requestedMaxClusterPartitionMovements The upper bound of concurrent inter broker partition movements in cluster
-   *                                              (if null, use num.concurrent.intra.broker.partition.movements).
+   *                                              (if null, use max.num.cluster.partition.movements).
    * @param requestedLeadershipMovementConcurrency The maximum number of concurrent leader movements
-   *                                               (if null, use max.num.cluster.partition.movements).
+   *                                               (if null, use num.concurrent.leader.movements).
    * @param requestedExecutionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
    *                                                  execution (if null, use execution.progress.check.interval.ms).
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
