@@ -42,6 +42,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.RANDOM;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckGoals;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.anomalyComparator;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getSelfHealingGoalNames;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getSelfHealingIntraBrokerGoalNames;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.SHUTDOWN_ANOMALY;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType.*;
 
@@ -63,6 +64,7 @@ public class AnomalyDetectorManager {
   private final AnomalyNotifier _anomalyNotifier;
   // Detectors
   private final GoalViolationDetector _goalViolationDetector;
+  private final IntraBrokerGoalViolationDetector _intraBrokerGoalViolationDetector;
   private final BrokerFailureDetector _brokerFailureDetector;
   private final MetricAnomalyDetector _metricAnomalyDetector;
   private final DiskFailureDetector _diskFailureDetector;
@@ -75,6 +77,7 @@ public class AnomalyDetectorManager {
   private volatile boolean _shutdown;
   private final AnomalyDetectorState _anomalyDetectorState;
   private final List<String> _selfHealingGoals;
+  private final List<String> _selfHealingIntraBrokerGoals;
   private final ExecutorService _anomalyLoggerExecutor;
   private volatile Anomaly _anomalyInProgress;
   private final AtomicLong _numCheckedWithDelay;
@@ -91,6 +94,8 @@ public class AnomalyDetectorManager {
     Long goalViolationDetectionIntervalMs = config.getLong(AnomalyDetectorConfig.GOAL_VIOLATION_DETECTION_INTERVAL_MS_CONFIG);
     _anomalyDetectionIntervalMsByType.put(GOAL_VIOLATION, goalViolationDetectionIntervalMs == null ? anomalyDetectionIntervalMs
                                                                                                    : goalViolationDetectionIntervalMs);
+    _anomalyDetectionIntervalMsByType.put(INTRA_BROKER_GOAL_VIOLATION, goalViolationDetectionIntervalMs == null ? anomalyDetectionIntervalMs
+            : goalViolationDetectionIntervalMs);
     Long metricAnomalyDetectionIntervalMs = config.getLong(AnomalyDetectorConfig.METRIC_ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
     _anomalyDetectionIntervalMsByType.put(METRIC_ANOMALY, metricAnomalyDetectionIntervalMs == null ? anomalyDetectionIntervalMs
                                                                                                    : metricAnomalyDetectionIntervalMs);
@@ -105,8 +110,10 @@ public class AnomalyDetectorManager {
                                                     AnomalyNotifier.class);
     _kafkaCruiseControl = kafkaCruiseControl;
     _selfHealingGoals = getSelfHealingGoalNames(config);
+    _selfHealingIntraBrokerGoals = getSelfHealingIntraBrokerGoalNames(config);
     sanityCheckGoals(_selfHealingGoals, false, config);
     _goalViolationDetector = new GoalViolationDetector(_anomalies, _kafkaCruiseControl, dropwizardMetricRegistry);
+    _intraBrokerGoalViolationDetector = new IntraBrokerGoalViolationDetector(_anomalies, _kafkaCruiseControl, dropwizardMetricRegistry);
     _brokerFailureDetector = new BrokerFailureDetector(_anomalies, _kafkaCruiseControl);
     _metricAnomalyDetector = new MetricAnomalyDetector(_anomalies, _kafkaCruiseControl);
     _diskFailureDetector = new DiskFailureDetector(_anomalies, _kafkaCruiseControl);
@@ -136,6 +143,7 @@ public class AnomalyDetectorManager {
                          KafkaCruiseControl kafkaCruiseControl,
                          AnomalyNotifier anomalyNotifier,
                          GoalViolationDetector goalViolationDetector,
+                         IntraBrokerGoalViolationDetector intraBrokerGoalViolationDetector,
                          BrokerFailureDetector brokerFailureDetector,
                          MetricAnomalyDetector metricAnomalyDetector,
                          DiskFailureDetector diskFailureDetector,
@@ -150,6 +158,7 @@ public class AnomalyDetectorManager {
     _brokerFailureDetectionBackoffMs = anomalyDetectionIntervalMs;
     _anomalyNotifier = anomalyNotifier;
     _goalViolationDetector = goalViolationDetector;
+    _intraBrokerGoalViolationDetector = intraBrokerGoalViolationDetector;
     _brokerFailureDetector = brokerFailureDetector;
     _metricAnomalyDetector = metricAnomalyDetector;
     _diskFailureDetector = diskFailureDetector;
@@ -159,6 +168,7 @@ public class AnomalyDetectorManager {
     _detectorScheduler = detectorScheduler;
     _shutdown = false;
     _selfHealingGoals = Collections.emptyList();
+    _selfHealingIntraBrokerGoals = Collections.emptyList();
     _anomalyLoggerExecutor = Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("AnomalyLogger"));
     _anomalyInProgress = null;
     _numCheckedWithDelay = new AtomicLong();
@@ -230,6 +240,7 @@ public class AnomalyDetectorManager {
     LOG.info("Starting {} detector.", BROKER_FAILURE);
     _brokerFailureDetector.startDetection();
     scheduleDetectorAtFixedRate(GOAL_VIOLATION, _goalViolationDetector);
+    scheduleDetectorAtFixedRate(INTRA_BROKER_GOAL_VIOLATION, _intraBrokerGoalViolationDetector);
     scheduleDetectorAtFixedRate(METRIC_ANOMALY, _metricAnomalyDetector);
     scheduleDetectorAtFixedRate(TOPIC_ANOMALY, _topicAnomalyDetector);
     scheduleDetectorAtFixedRate(DISK_FAILURE, _diskFailureDetector);
@@ -436,6 +447,11 @@ public class AnomalyDetectorManager {
           notificationResult = _anomalyNotifier.onGoalViolation(goalViolations);
           _anomalyDetectorState.refreshHasUnfixableGoal(goalViolations);
           break;
+        case INTRA_BROKER_GOAL_VIOLATION:
+          IntraBrokerGoalViolations intraBrokerGoalViolations = (IntraBrokerGoalViolations) _anomalyInProgress;
+          notificationResult = _anomalyNotifier.onIntraBrokerGoalViolation(intraBrokerGoalViolations);
+          _anomalyDetectorState.refreshHasUnfixableGoal(intraBrokerGoalViolations);
+          break;
         case BROKER_FAILURE:
           BrokerFailures brokerFailures = (BrokerFailures) _anomalyInProgress;
           notificationResult = _anomalyNotifier.onBrokerFailure(brokerFailures);
@@ -504,7 +520,11 @@ public class AnomalyDetectorManager {
         LOG.info("Skipping {} fix because load monitor is in {} state.", anomalyType, loadMonitorTaskRunnerState);
         _anomalyDetectorState.onAnomalyHandle(_anomalyInProgress, AnomalyState.Status.LOAD_MONITOR_NOT_READY);
       } else {
-        if (_kafkaCruiseControl.meetCompletenessRequirements(_selfHealingGoals)) {
+        // Need to deal with Intra Broker Goal Violations differently
+        if (anomalyType == KafkaAnomalyType.INTRA_BROKER_GOAL_VIOLATION
+                && _kafkaCruiseControl.meetCompletenessRequirements(_selfHealingIntraBrokerGoals)) {
+          return true;
+        } else if (_kafkaCruiseControl.meetCompletenessRequirements(_selfHealingGoals)) {
           return true;
         } else {
           LOG.warn("Skipping {} fix because load completeness requirement is not met for goals.", anomalyType);

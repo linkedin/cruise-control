@@ -64,6 +64,7 @@ public class GoalOptimizer implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(GoalOptimizer.class);
   private static final long HALF_MINUTE_IN_MS = TimeUnit.SECONDS.toMillis(30);
   private final List<Goal> _goalsByPriority;
+  private final List<Goal> _intraBrokerGoals;
   private final BalancingConstraint _balancingConstraint;
   private final Pattern _defaultExcludedTopics;
   private final LoadMonitor _loadMonitor;
@@ -101,6 +102,7 @@ public class GoalOptimizer implements Runnable {
                        Executor executor,
                        AdminClient adminClient) {
     _goalsByPriority = AnalyzerUtils.getGoalsByPriority(config);
+    _intraBrokerGoals = AnalyzerUtils.getIntraBrokerGoalsByPriority(config);
     _defaultModelCompletenessRequirements = MonitorUtils.combineLoadRequirementOptions(_goalsByPriority);
     _requirementsWithAvailableValidWindows = new ModelCompletenessRequirements(
         1,
@@ -136,7 +138,7 @@ public class GoalOptimizer implements Runnable {
 
   @Override
   public void run() {
-    // We need to get this thread so it can be interrupted if the cached proposal has been invalidated.
+    // We need to get this thread, so it can be interrupted if the cached proposal has been invalidated.
     _proposalPrecomputingSchedulerThread = Thread.currentThread();
     LOG.info("Starting proposal candidate computation.");
     while (!_shutdown && _numPrecomputingThreads > 0) {
@@ -506,6 +508,41 @@ public class GoalOptimizer implements Runnable {
     return Utils.getTopicNamesMatchedWithPattern(topicsToExclude, clusterModel::topics);
   }
 
+  /**
+   * Log the progress of goal optimizer.
+   *
+   * @param isSelfHeal {@code true} if self-healing {@code false} otherwise.
+   * @param goalName Goal name.
+   * @param numOptimizedGoals Number of optimized goals.
+   * @param proposals Goal proposals.
+   */
+  private void logProgress(boolean isSelfHeal,
+                           String goalName,
+                           int numOptimizedGoals,
+                           Set<ExecutionProposal> proposals) {
+    LOG.debug("[{}/{}] Generated {} proposals for {}{}.", numOptimizedGoals, _goalsByPriority.size(), proposals.size(),
+              isSelfHeal ? "self-healing " : "", goalName);
+    LOG.trace("Proposals for {}{}.{}%n", isSelfHeal ? "self-healing " : "", goalName, proposals);
+  }
+
+  /**
+   * Checks if the list of Goals includes {@link #_intraBrokerGoals}
+   * @param goals The list of goals to look in
+   * @return return true if the list of goals contains an Intra Broker Goal
+   */
+  protected boolean containsIntraBrokerGoal(List<Goal> goals) {
+    boolean result = false;
+    List<String> goalNames = AnalyzerUtils.convertGoalsToString(goals);
+
+    for (String goal : AnalyzerUtils.convertGoalsToString(_intraBrokerGoals)) {
+      if (goalNames.contains(goal)) {
+        result = true;
+        break;
+      }
+    }
+    return result;
+  }
+
   private OptimizerResult updateCachedProposals(OptimizerResult result) {
     synchronized (_cacheLock) {
       _hasOngoingExplicitPrecomputation = false;
@@ -553,7 +590,15 @@ public class GoalOptimizer implements Runnable {
         // We compute the proposal even if there is not enough modeled partitions.
         ModelCompletenessRequirements requirements = _loadMonitor.meetCompletenessRequirements(_defaultModelCompletenessRequirements)
                                                      ? _defaultModelCompletenessRequirements : _requirementsWithAvailableValidWindows;
-        ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), requirements, _allowCapacityEstimation, operationProgress);
+
+        ClusterModel clusterModel = null;
+        // We check for Intra broker goals among Default goals - if we have intra broker goals, set replicaPlacementInfo to true
+        if (containsIntraBrokerGoal(_goalsByPriority)) {
+          clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), requirements, _allowCapacityEstimation, true, operationProgress);
+        } else {
+          clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), requirements, _allowCapacityEstimation, operationProgress);
+        }
+
         if (!clusterModel.topics().isEmpty()) {
           OptimizerResult result = optimizations(clusterModel, _goalsByPriority, operationProgress);
           LOG.debug("Generated a proposal candidate in {} ms.", _time.milliseconds() - startMs);
