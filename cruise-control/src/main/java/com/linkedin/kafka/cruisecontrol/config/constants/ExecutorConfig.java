@@ -441,9 +441,8 @@ public final class ExecutorConfig {
    */
   public static final String HONOR_EXTERNAL_AGENT_PARTITION_REASSIGNMENT_CONFIG = "honor.external.agent.partition.reassignment";
   public static final boolean DEFAULT_HONOR_EXTERNAL_PARTITION_REASSIGNMENT_AGENT = false;
-  public static final String HONOR_EXTERNAL_AGENT_PARTITION_REASSIGNMENT_DOC = "When starting a new proposal execution, "
-      + "honor the external agent ongoing partition reassignment (if any) to skip executing the given proposal, "
-      + "or stop the reassignment then start executing.";
+  public static final String HONOR_EXTERNAL_AGENT_PARTITION_REASSIGNMENT_DOC = "Honor the external agent ongoing partition reassignment (if any) "
+      + "to skip starting executing a new proposal. Set to false to stop the external agent reassignment then start executing the new proposal.";
 
   private ExecutorConfig() {
   }
