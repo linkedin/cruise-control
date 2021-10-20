@@ -58,6 +58,7 @@ public class KafkaCruiseControlTest extends CruiseControlIntegrationTestHarness 
     // For sanityCheckDryRun(false, XXX) (see #3 below)
     EasyMock.expect(executor.hasOngoingExecution()).andReturn(false).once();
     EasyMock.expect(executor.listPartitionsBeingReassigned()).andReturn(DUMMY_ONGOING_PARTITION_REASSIGNMENTS);
+    EasyMock.expect(executor.maybeStopExternalAgent()).andReturn(true);
     // For sanityCheckDryRun(false, XXX) (see #4 below)
     EasyMock.expect(executor.hasOngoingExecution()).andReturn(false).once();
     EasyMock.expect(executor.listPartitionsBeingReassigned()).andReturn(Collections.emptySet());
@@ -76,9 +77,9 @@ public class KafkaCruiseControlTest extends CruiseControlIntegrationTestHarness 
     kafkaCruiseControl.sanityCheckDryRun(false, true);
     // 2. Expect failure (dryrun = false), if there is ongoing execution started by CC, not requested to stop.
     assertThrows(IllegalStateException.class, () -> kafkaCruiseControl.sanityCheckDryRun(false, false));
-    // 3. Expect failure (dryrun = false), there is no execution started by CC, but ongoing replica reassignment, request to stop is irrelevant.
-    assertThrows(IllegalStateException.class, () -> kafkaCruiseControl.sanityCheckDryRun(false, false));
-    // 4. Expect failure (dryrun = false), there is no execution started by CC or other tools, request to stop is irrelevant.
+    // 3. Expect no failure (dryrun = false), there is no execution started by CC, but ongoing replica reassignment, request to stop is irrelevant.
+    kafkaCruiseControl.sanityCheckDryRun(false, false);
+    // 4. Expect no failure (dryrun = false), there is no execution started by CC or other tools, request to stop is irrelevant.
     kafkaCruiseControl.sanityCheckDryRun(false, false);
     // 5. Expect failure (dryrun = false), there is no execution started by CC, but checking ongoing executions started
     // by other tools timed out, request to stop is irrelevant.

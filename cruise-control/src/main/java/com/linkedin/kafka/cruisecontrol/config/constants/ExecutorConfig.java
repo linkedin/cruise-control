@@ -436,6 +436,15 @@ public final class ExecutorConfig {
   public static final String CONCURRENCY_ADJUSTER_MIN_ISR_RETENTION_MS_DOC = "The maximum time in ms to cache min.insync.replicas of topics."
       + " Relevant only if concurrency adjuster is enabled based on (At/Under)MinISR status of partitions.";
 
+  /**
+   * <code>honor.external.agent.partition.reassignment</code>
+   */
+  public static final String HONOR_EXTERNAL_AGENT_PARTITION_REASSIGNMENT_CONFIG = "honor.external.agent.partition.reassignment";
+  public static final boolean DEFAULT_HONOR_EXTERNAL_PARTITION_REASSIGNMENT_AGENT = false;
+  public static final String HONOR_EXTERNAL_AGENT_PARTITION_REASSIGNMENT_DOC = "When starting a new proposal execution, "
+      + "honor the external agent ongoing partition reassignment (if any) to skip executing the given proposal, "
+      + "or stop the reassignment then start executing.";
+
   private ExecutorConfig() {
   }
 
@@ -698,6 +707,11 @@ public final class ExecutorConfig {
                             DEFAULT_CONCURRENCY_ADJUSTER_MIN_ISR_RETENTION_MS,
                             atLeast(1),
                             ConfigDef.Importance.LOW,
-                            CONCURRENCY_ADJUSTER_MIN_ISR_RETENTION_MS_DOC);
+                            CONCURRENCY_ADJUSTER_MIN_ISR_RETENTION_MS_DOC)
+                    .define(HONOR_EXTERNAL_AGENT_PARTITION_REASSIGNMENT_CONFIG,
+                            ConfigDef.Type.BOOLEAN,
+                            DEFAULT_HONOR_EXTERNAL_PARTITION_REASSIGNMENT_AGENT,
+                            ConfigDef.Importance.MEDIUM,
+                            HONOR_EXTERNAL_AGENT_PARTITION_REASSIGNMENT_DOC);
   }
 }

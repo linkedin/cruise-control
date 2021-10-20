@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
+import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -27,7 +28,6 @@ import com.linkedin.kafka.cruisecontrol.exception.OngoingExecutionException;
 import com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
-import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -287,8 +287,19 @@ public class KafkaCruiseControl {
                                         + "an already ongoing partition reassignment.", e);
       }
       if (!partitionsBeingReassigned.isEmpty()) {
-        throw new IllegalStateException(String.format("Cannot execute new proposals while there are ongoing partition reassignments "
-                                                      + "initiated by external agent: %s", partitionsBeingReassigned));
+        if (_config.getBoolean(ExecutorConfig.HONOR_EXTERNAL_AGENT_PARTITION_REASSIGNMENT_CONFIG)) {
+          throw new IllegalStateException(String.format("Cannot execute new proposals while there are ongoing partition reassignments "
+                                                        + "initiated by external agent: %s", partitionsBeingReassigned));
+        } else {
+          // Stop the external agent reassignment.
+          if (_executor.maybeStopExternalAgent()) {
+            LOG.info(String.format("External agent is reassigning partitions. "
+                                   + "The request to stop it is submitted successfully: %s", partitionsBeingReassigned));
+          } else {
+            LOG.warn(String.format("Attempt to stop external agent ongoing reassignment failed: %s"
+                                   + "Executing the given proposal regardless.", partitionsBeingReassigned));
+          }
+        }
       }
     }
   }
