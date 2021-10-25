@@ -293,11 +293,8 @@ public class KafkaCruiseControl {
         } else {
           // Stop the external agent reassignment.
           if (_executor.maybeStopExternalAgent()) {
-            LOG.info(String.format("External agent is reassigning partitions. "
-                                   + "The request to stop it is submitted successfully: %s", partitionsBeingReassigned));
-          } else {
-            LOG.warn(String.format("Attempt to stop external agent ongoing reassignment failed: %s"
-                                   + "Executing the given proposal regardless.", partitionsBeingReassigned));
+            LOG.info("External agent is reassigning partitions. "
+                                   + "The request to stop it is submitted successfully: {}", partitionsBeingReassigned);
           }
         }
       }
