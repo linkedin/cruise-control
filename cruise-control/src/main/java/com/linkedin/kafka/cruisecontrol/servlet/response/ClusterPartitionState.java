@@ -7,12 +7,14 @@ package com.linkedin.kafka.cruisecontrol.servlet.response;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.PartitionInfo;
 
@@ -156,7 +158,17 @@ public class ClusterPartitionState {
    * @param verbose {@code true} if verbose, {@code false} otherwise.
    */
   public void writePartitionSummary(StringBuilder sb, boolean verbose) {
-    int topicNameLength = _kafkaCluster.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
+    Stream<String> topicStream;
+    if (verbose) {
+      topicStream = _kafkaCluster.topics().stream();
+    } else {
+      Set<PartitionInfo> topicPartitionInfos = new HashSet<>(_offlinePartitions);
+      topicPartitionInfos.addAll(_partitionsWithOfflineReplicas);
+      topicPartitionInfos.addAll(_underReplicatedPartitions);
+      topicPartitionInfos.addAll(_underMinIsrPartitions);
+      topicStream = topicPartitionInfos.stream().map(PartitionInfo::topic);
+    }
+    int topicNameLength = topicStream.mapToInt(String::length).max().orElse(20) + 5;
 
     String initMessage = verbose ? "All Partitions in the Cluster (verbose):"
                                  : "Under Replicated, Offline, and Under MinIsr Partitions:";
