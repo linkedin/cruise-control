@@ -6,8 +6,6 @@
 package com.linkedin.kafka.cruisecontrol;
 
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
@@ -24,8 +22,6 @@ import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import net.minidev.json.JSONArray;
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.junit.After;
 import org.junit.Before;
@@ -86,30 +82,19 @@ public class TopicAnomalyIntegrationTest extends CruiseControlIntegrationTestHar
 
   @Test
   public void testTopicAnomalyFinder() throws ExecutionException, InterruptedException {
-    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections
-        .singletonMap(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
-    try {
-      adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC0, PARTITION_COUNT, (short) 2))).all().get();
+    KafkaCruiseControlIntegrationTestUtils.createTopic(broker(0).plaintextAddr(), 
+        new NewTopic(TOPIC0, PARTITION_COUNT, (short) 2));
 
-    } finally {
-      KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
-    }
-
-    // wait until metadata propagates to Cruise Control
-    KafkaCruiseControlIntegrationTestUtils.waitForConditionMeet(() -> {
-        String responseMessage = KafkaCruiseControlIntegrationTestUtils
-            .callCruiseControl(_app.serverUrl(), CRUISE_CONTROL_KAFKA_CLUSTER_STATE_ENDPOINT);
-        JSONArray partitionLeadersArray = JsonPath.read(responseMessage,
-            "$.KafkaPartitionState.other[?(@.topic == '" + TOPIC0 + "')].leader");
-        List<Integer> partitionLeaders = JsonPath.parse(partitionLeadersArray, _gsonJsonConfig)
-            .read("$.*", new TypeRef<>() { });
-        return partitionLeaders.size() == PARTITION_COUNT;
-    }, 20, new AssertionError("Topic partitions not found for " + TOPIC0));
+    waitForMetadataPropogates();
 
     KafkaCruiseControlIntegrationTestUtils.produceRandomDataToTopic(TOPIC0, 4000,
         KafkaCruiseControlIntegrationTestUtils.getDefaultProducerProperties(bootstrapServers()));
 
-    // wait until new replicas appear for the topic
+    waitUntilNewReplicasAppearForTheTopic();
+
+  }
+
+  private void waitUntilNewReplicasAppearForTheTopic() {
     KafkaCruiseControlIntegrationTestUtils.waitForConditionMeet(() -> {
       String responseMessage = KafkaCruiseControlIntegrationTestUtils
           .callCruiseControl(_app.serverUrl(), CRUISE_CONTROL_KAFKA_CLUSTER_STATE_ENDPOINT);
@@ -118,8 +103,19 @@ public class TopicAnomalyIntegrationTest extends CruiseControlIntegrationTestHar
       List<List<Integer>> partitionReplicas = JsonPath.parse(replicasArray, _gsonJsonConfig)
           .read("$.*", new TypeRef<>() { });
       return partitionReplicas.stream().allMatch(i -> i.size() == EXPECTED_REPLICA_COUNT);
-    }, 200, Duration.ofSeconds(15), new AssertionError("Replica count not match"));
+    }, Duration.ofSeconds(200), Duration.ofSeconds(15), new AssertionError("Replica count not match"));
+  }
 
+  private void waitForMetadataPropogates() {
+    KafkaCruiseControlIntegrationTestUtils.waitForConditionMeet(() -> {
+        String responseMessage = KafkaCruiseControlIntegrationTestUtils
+            .callCruiseControl(_app.serverUrl(), CRUISE_CONTROL_KAFKA_CLUSTER_STATE_ENDPOINT);
+        JSONArray partitionLeadersArray = JsonPath.read(responseMessage,
+            "$.KafkaPartitionState.other[?(@.topic == '" + TOPIC0 + "')].leader");
+        List<Integer> partitionLeaders = JsonPath.parse(partitionLeadersArray, _gsonJsonConfig)
+            .read("$.*", new TypeRef<>() { });
+        return partitionLeaders.size() == PARTITION_COUNT;
+    }, 80, new AssertionError("Topic partitions not found for " + TOPIC0));
   }
 
 }

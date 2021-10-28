@@ -11,7 +11,9 @@ import java.net.URI;
 import java.nio.charset.Charset;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
@@ -23,11 +25,18 @@ import com.jayway.jsonpath.spi.json.JacksonJsonProvider;
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
+import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomalyFinder;
+import com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.SelfHealingNotifier;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
 import kafka.server.KafkaConfig;
 import org.apache.commons.io.IOUtils;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -68,21 +77,20 @@ public final class KafkaCruiseControlIntegrationTestUtils {
     }
   }
   
-  public static void waitForConditionMeet(BooleanSupplier condition, int retries, Error retriesExceededException) {
-    waitForConditionMeet(condition, retries, Duration.ofSeconds(4), retriesExceededException);
+  public static void waitForConditionMeet(BooleanSupplier condition, int timeOutInSeconds, Error retriesExceededException) {
+    waitForConditionMeet(condition, Duration.ofSeconds(timeOutInSeconds), Duration.ofSeconds(4), retriesExceededException);
   }
   /**
    * Execute boolean condition until it returns true
    * @param condition the condition to evaluate
-   * @param retries the number of retries
+   * @param timeOut the timeout before throwing the retriesExceededException
    * @param retryBackoff the milliseconds between retries
    * @param retriesExceededException the exception if we run out of retries
    */
-  public static void waitForConditionMeet(BooleanSupplier condition, int retries, Duration retryBackoff,
+  public static void waitForConditionMeet(BooleanSupplier condition, Duration timeOut, Duration retryBackoff,
                                     Error retriesExceededException) {
-    int counter = 0;
-    while (! (counter == retries)) {
-      counter++;
+    long endTime = System.currentTimeMillis() + timeOut.toMillis();
+    while (System.currentTimeMillis() < endTime) {
       boolean conditionResult = false;
       try {
         conditionResult = condition.getAsBoolean();
@@ -100,6 +108,7 @@ public final class KafkaCruiseControlIntegrationTestUtils {
       }
     }
     if (retriesExceededException != null) {
+      LOG.warn("Retry timeout exceeded");
       throw retriesExceededException;
     }
   }
@@ -152,8 +161,7 @@ public final class KafkaCruiseControlIntegrationTestUtils {
    */
   public static Map<Object, Object> createBrokerProps() {
     Map<Object, Object> props = new HashMap<>();
-    props.put("metric.reporters",
-        "com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter");
+    props.put("metric.reporters", CruiseControlMetricsReporter.class.getName());
     StringJoiner csvJoiner = new StringJoiner(",");
     csvJoiner.add(SecurityProtocol.PLAINTEXT.name + "://localhost:"
         + KafkaCruiseControlIntegrationTestUtils.findRandomOpenPortOnAllLocalInterfaces());
@@ -169,16 +177,13 @@ public final class KafkaCruiseControlIntegrationTestUtils {
    */
   public static Map<String, Object> ccConfigOverrides() {
     Map<String, Object> configs = new HashMap<>();
-    configs.put(AnomalyDetectorConfig.METRIC_ANOMALY_FINDER_CLASSES_CONFIG,
-        "com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomalyFinder");
-    configs.put(AnomalyDetectorConfig.TOPIC_ANOMALY_FINDER_CLASSES_CONFIG,
-        "com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder");
-    configs.put(AnomalyDetectorConfig.ANOMALY_NOTIFIER_CLASS_CONFIG,
-        "com.linkedin.kafka.cruisecontrol.detector.notifier.SelfHealingNotifier");
+    configs.put(AnomalyDetectorConfig.METRIC_ANOMALY_FINDER_CLASSES_CONFIG, KafkaMetricAnomalyFinder.class.getName());
+    configs.put(AnomalyDetectorConfig.TOPIC_ANOMALY_FINDER_CLASSES_CONFIG, 
+        TopicReplicationFactorAnomalyFinder.class.getName());
+    configs.put(AnomalyDetectorConfig.ANOMALY_NOTIFIER_CLASS_CONFIG, SelfHealingNotifier.class.getName());
     configs.put(AnomalyDetectorConfig.RF_SELF_HEALING_SKIP_RACK_AWARENESS_CHECK_CONFIG, "true");
 
-    configs.put(MonitorConfig.METRIC_SAMPLER_CLASS_CONFIG,
-        "com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler");
+    configs.put(MonitorConfig.METRIC_SAMPLER_CLASS_CONFIG, CruiseControlMetricsReporterSampler.class.getName());
     configs.put(MonitorConfig.BROKER_METRICS_WINDOW_MS_CONFIG, "36000");
     configs.put(MonitorConfig.PARTITION_METRICS_WINDOW_MS_CONFIG, "36000");
     configs.put(MonitorConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG, "3");
@@ -211,6 +216,28 @@ public final class KafkaCruiseControlIntegrationTestUtils {
       } catch (InterruptedException | ExecutionException e) {
         throw new RuntimeException(e);
       }
+    }
+  }
+  
+  public static void createTopic(String brokerAddress, NewTopic topic) {
+    createTopic(brokerAddress, Collections.singletonList(topic));
+  }
+  /**
+   * Create topics for testing
+   * @param brokerAddress the broker address
+   * @param topics the topics to create
+   */
+  public static void createTopic(String brokerAddress, List<NewTopic> topics) {
+    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections
+        .singletonMap(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, brokerAddress));
+    try {
+      try {
+        adminClient.createTopics(topics).all().get();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    } finally {
+      KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
     }
   }
 }

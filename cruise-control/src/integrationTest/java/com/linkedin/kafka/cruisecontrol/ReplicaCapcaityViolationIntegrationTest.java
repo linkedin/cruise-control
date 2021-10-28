@@ -5,8 +5,6 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
@@ -26,8 +24,6 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsRepo
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCEmbeddedBroker;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import net.minidev.json.JSONArray;
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.junit.After;
 import org.junit.Before;
@@ -100,15 +96,29 @@ public class ReplicaCapcaityViolationIntegrationTest extends CruiseControlIntegr
 
   @Test
   public void testReplicaCapacityViolation() throws InterruptedException, ExecutionException {
-    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections
-        .singletonMap(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
-    try {
-      adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC0, PARTITION_COUNT, (short) 2))).all().get();
+    KafkaCruiseControlIntegrationTestUtils.createTopic(broker(0).plaintextAddr(), 
+        new NewTopic(TOPIC0, PARTITION_COUNT, (short) 2));
 
-    } finally {
-      KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
-    }
+    waitForReplicaCapacityGoalViolation();
 
+    Map<Object, Object> createBrokerConfig = createBrokerConfig(BROKER_ID_TO_ADD);
+    CCEmbeddedBroker broker = new CCEmbeddedBroker(createBrokerConfig);
+    broker.startup();
+    
+    waitForReplicasCreatedOnNewBroker();
+  }
+
+  private void waitForReplicasCreatedOnNewBroker() {
+    KafkaCruiseControlIntegrationTestUtils.waitForConditionMeet(() -> {
+        String responseMessage = KafkaCruiseControlIntegrationTestUtils
+            .callCruiseControl(_app.serverUrl(), CRUISE_CONTROL_KAFKA_CLUSTER_STATE_ENDPOINT);
+        Integer replicaCountOnBroker = JsonPath.<Integer>read(responseMessage, "KafkaBrokerState.ReplicaCountByBrokerId."
+          + BROKER_ID_TO_ADD);
+        return replicaCountOnBroker > 0;
+    }, 600, new AssertionError("No replica found on the new broker"));
+  }
+
+  private void waitForReplicaCapacityGoalViolation() {
     KafkaCruiseControlIntegrationTestUtils.waitForConditionMeet(() -> {
         String responseMessage = KafkaCruiseControlIntegrationTestUtils
             .callCruiseControl(_app.serverUrl(), CRUISE_CONTROL_STATE_ENDPOINT);
@@ -117,19 +127,7 @@ public class ReplicaCapcaityViolationIntegrationTest extends CruiseControlIntegr
         List<String> unfixableGoals = JsonPath.parse(unfixableGoalsArray, _gsonJsonConfig)
             .read("$..*", new TypeRef<List<String>>() { });
         return unfixableGoals.contains("ReplicaCapacityGoal");
-    }, 90, new AssertionError("Replica capacity goal violation not found"));
-
-    Map<Object, Object> createBrokerConfig = createBrokerConfig(BROKER_ID_TO_ADD);
-    CCEmbeddedBroker broker = new CCEmbeddedBroker(createBrokerConfig);
-    broker.startup();
-    
-    KafkaCruiseControlIntegrationTestUtils.waitForConditionMeet(() -> {
-        String responseMessage = KafkaCruiseControlIntegrationTestUtils
-            .callCruiseControl(_app.serverUrl(), CRUISE_CONTROL_KAFKA_CLUSTER_STATE_ENDPOINT);
-        Integer replicaCountOnBroker = JsonPath.<Integer>read(responseMessage, "KafkaBrokerState.ReplicaCountByBrokerId."
-          + BROKER_ID_TO_ADD);
-        return replicaCountOnBroker > 0;
-    }, 200, new AssertionError("No replica found on the new broker"));
+    }, 300, new AssertionError("Replica capacity goal violation not found"));
   }
 
 }

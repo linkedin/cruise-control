@@ -6,8 +6,6 @@
 package com.linkedin.kafka.cruisecontrol;
 
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
@@ -25,8 +23,6 @@ import com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFi
 import com.linkedin.kafka.cruisecontrol.detector.notifier.SelfHealingNotifier;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import net.minidev.json.JSONArray;
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.junit.After;
 import org.junit.Before;
@@ -92,39 +88,23 @@ public class BrokerFailureIntegrationTest extends CruiseControlIntegrationTestHa
 
   @Test
   public void testBrokerFailure() throws ExecutionException, InterruptedException {
-    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections
-        .singletonMap(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
-    try {
-      adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC0, PARTITION_COUNT, (short) 2))).all().get();
+    KafkaCruiseControlIntegrationTestUtils.createTopic(broker(0).plaintextAddr(), 
+        new NewTopic(TOPIC0, PARTITION_COUNT, (short) 2));
 
-    } finally {
-      KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
-    }
-
-    // wait until metadata propagates to Cruise Control
-    KafkaCruiseControlIntegrationTestUtils.waitForConditionMeet(() -> {
-        String responseMessage = KafkaCruiseControlIntegrationTestUtils
-          .callCruiseControl(_app.serverUrl(), CRUISE_CONTROL_KAFKA_CLUSTER_STATE_ENDPOINT);
-        JSONArray partitionLeadersArray = JsonPath.read(responseMessage,
-            "$.KafkaPartitionState.other[?(@.topic == '" + TOPIC0 + "')].leader");
-        List<Integer> partitionLeaders = JsonPath.parse(partitionLeadersArray, _gsonJsonConfig)
-            .read("$.*", new TypeRef<>() { });
-        return partitionLeaders.size() == PARTITION_COUNT;
-    }, 20, new AssertionError("Topic partitions not found for " + TOPIC0));
+    waitForMetadataPropogates();
 
     KafkaCruiseControlIntegrationTestUtils.produceRandomDataToTopic(TOPIC0, 4000, 
         KafkaCruiseControlIntegrationTestUtils.getDefaultProducerProperties(bootstrapServers()));
 
-    // wait for a valid proposal
-    KafkaCruiseControlIntegrationTestUtils.waitForConditionMeet(() -> {
-      String responseMessage = KafkaCruiseControlIntegrationTestUtils
-          .callCruiseControl(_app.serverUrl(), CRUISE_CONTROL_STATE_ENDPOINT);
-      return JsonPath.<Boolean>read(responseMessage, "AnalyzerState.isProposalReady");
-    }, 200, Duration.ofSeconds(15), new AssertionError("No proposals were ready"));
+    waitForProposal();
 
     // shut down a broker to initiate a self-healing action
     broker(BROKER_ID_TO_REMOVE).shutdown();
 
+    waitForSelfHealing();
+  }
+
+  private void waitForSelfHealing() {
     KafkaCruiseControlIntegrationTestUtils.waitForConditionMeet(() -> {
       String responseMessage = KafkaCruiseControlIntegrationTestUtils
           .callCruiseControl(_app.serverUrl(), CRUISE_CONTROL_KAFKA_CLUSTER_STATE_ENDPOINT);
@@ -133,8 +113,31 @@ public class BrokerFailureIntegrationTest extends CruiseControlIntegrationTestHa
             "$.KafkaPartitionState.other[?(@.topic == '" + TOPIC0 + "')].leader");
         List<Integer> partitionLeaders = JsonPath.parse(partitionLeadersArray, _gsonJsonConfig)
             .read("$.*", new TypeRef<>() { });
-        return partitionLeaders.size() == PARTITION_COUNT && brokers == KAFKA_CLUSTER_SIZE - 1;
-    }, 200, new AssertionError("Topic replicas not fixed after broker removed"));
+        Map<String, String> offlineReplicas = JsonPath.read(responseMessage,
+            "$.KafkaBrokerState.OfflineReplicaCountByBrokerId");
+        return partitionLeaders.size() == PARTITION_COUNT && brokers == KAFKA_CLUSTER_SIZE - 1
+            && offlineReplicas.isEmpty();
+    }, 800, new AssertionError("Topic replicas not fixed after broker removed"));
+  }
+
+  private void waitForProposal() {
+    KafkaCruiseControlIntegrationTestUtils.waitForConditionMeet(() -> {
+      String responseMessage = KafkaCruiseControlIntegrationTestUtils
+          .callCruiseControl(_app.serverUrl(), CRUISE_CONTROL_STATE_ENDPOINT);
+      return JsonPath.<Boolean>read(responseMessage, "AnalyzerState.isProposalReady");
+    }, Duration.ofSeconds(800), Duration.ofSeconds(15), new AssertionError("No proposals were ready"));
+  }
+
+  private void waitForMetadataPropogates() {
+    KafkaCruiseControlIntegrationTestUtils.waitForConditionMeet(() -> {
+        String responseMessage = KafkaCruiseControlIntegrationTestUtils
+          .callCruiseControl(_app.serverUrl(), CRUISE_CONTROL_KAFKA_CLUSTER_STATE_ENDPOINT);
+        JSONArray partitionLeadersArray = JsonPath.read(responseMessage,
+            "$.KafkaPartitionState.other[?(@.topic == '" + TOPIC0 + "')].leader");
+        List<Integer> partitionLeaders = JsonPath.parse(partitionLeadersArray, _gsonJsonConfig)
+            .read("$.*", new TypeRef<>() { });
+        return partitionLeaders.size() == PARTITION_COUNT;
+    }, 80, new AssertionError("Topic partitions not found for " + TOPIC0));
   }
 
 }
