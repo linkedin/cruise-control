@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ * Copyright 2021 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.detector.notifier;
@@ -68,7 +68,7 @@ public class MSTeamsSelfHealingNotifierTest {
     @Test
     public void testMSTeamsAlertWithDefaultOptions() {
         _notifier = new MockMSTeamsSelfHealingNotifier(mockTime);
-        _notifier._msTeamsWebhook = "http://dummy.slack.webhook";
+        _notifier._msTeamsWebhook = "https://dummy.webhook.office.com/webhookb2";
         _notifier.alert(failures, false, 1L, KafkaAnomalyType.BROKER_FAILURE);
         assertEquals(1, _notifier.getMSTeamsMessageList().size());
         MSTeamsMessage message = _notifier.getMSTeamsMessageList().get(0);
