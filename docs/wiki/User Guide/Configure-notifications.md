@@ -20,6 +20,16 @@ User name to display in the slack notification message. (default: Cruise Control
 Icon to display in the slack notification message. (default: `information_source` )
 To enable Slack notification, set `anomaly.notifier.class=com.linkedin.kafka.cruisecontrol.detector.notifier.SlackSelfHealingNotifier`
 
+## MS Teams
+
+**Changelog**: The MSTeamsSelfHealingNotifier extends SelfHealingNotifier and merely override the alerts method to send the notification to MS Teams.
+
+**Configuration**: The following property requires to be configured on `cruisecontrol.properties`
+
+`msteams.self.healing.notifier.webhook` (Required)
+(MSTeams webhook URL) Ref:https://docs.microsoft.com/en-us/microsoftteams/office-365-custom-connectors
+To enable MSTeams notification, set `anomaly.notifier.class=com.linkedin.kafka.cruisecontrol.detector.notifier.MSTeamsSelfHealingNotifier`
+
 ## Alerta.io
 
 -- Excerpt from [PR#1510](https://github.com/linkedin/cruise-control/pull/1510) by [jrevillard](https://github.com/jrevillard)
