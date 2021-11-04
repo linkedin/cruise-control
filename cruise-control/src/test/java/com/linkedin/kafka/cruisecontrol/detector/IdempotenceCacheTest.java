@@ -108,7 +108,7 @@ public class IdempotenceCacheTest {
     }
     assertEquals(MaintenanceEventType.cachedValues().size(), distinctEvents.size());
 
-    // 3. TesConcurrencyConfigTestt idempotence.
+    // 3. TestConcurrencyConfigTest idempotence.
     EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).once();
     // The background thread cannot remove the events.
     EasyMock.expect(_mockKafkaCruiseControl.timeMs()).andReturn(MOCK_INITIAL_ANOMALY_TIME_MS).anyTimes();

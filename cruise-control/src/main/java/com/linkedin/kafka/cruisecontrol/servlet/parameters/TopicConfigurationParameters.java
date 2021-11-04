@@ -48,6 +48,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicReplicati
  *    &amp;replication_factor=[target_replication_factor]&amp;skip_rack_awareness_check=[true/false]
  *    &amp;dryRun=[true/false]&amp;goals=[goal1,goal2...]&amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]
  *    &amp;allow_capacity_estimation=[true/false]&amp;concurrent_partition_movements_per_broker=[POSITIVE-INTEGER]
+ *    &amp;max_partition_movements_in_cluster=[POSITIVE-INTEGER]
  *    &amp;concurrent_leader_movements=[POSITIVE-INTEGER]&amp;exclude_recently_demoted_brokers=[true/false]
  *    &amp;exclude_recently_removed_brokers=[true/false]&amp;replica_movement_strategies=[strategy1,strategy2...]
  *    &amp;review_id=[id]&amp;replication_throttle=[bytes_per_second]

@@ -78,7 +78,6 @@ public class ExecutionTaskPlanner {
   private final long _taskExecutionAlertingThresholdMs;
   private final double _interBrokerReplicaMovementRateAlertingThreshold;
   private final double _intraBrokerReplicaMovementRateAlertingThreshold;
-  private final int _maxNumClusterPartitionMovements;
 
   /**
    *
@@ -96,7 +95,6 @@ public class ExecutionTaskPlanner {
     _taskExecutionAlertingThresholdMs = config.getLong(TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG);
     _interBrokerReplicaMovementRateAlertingThreshold = config.getDouble(INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG);
     _intraBrokerReplicaMovementRateAlertingThreshold = config.getDouble(INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG);
-    _maxNumClusterPartitionMovements = config.getInt(MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG);
     _adminClient = adminClient;
     List<String> defaultReplicaMovementStrategies = config.getList(DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG);
     if (defaultReplicaMovementStrategies == null || defaultReplicaMovementStrategies.isEmpty()) {
@@ -313,22 +311,7 @@ public class ExecutionTaskPlanner {
     }
     return leadershipMovementsList;
   }
-
-  /**
-   * Get a list of executable inter-broker replica movements that comply with the concurrency constraint
-   * and default max partitions in move constraint.
-   *
-   * @param readyBrokers The brokers that is ready to execute more movements.
-   * @param inProgressPartitions Topic partitions of replicas that are already in progress. This is needed because the
-   *                             controller does not allow updating the ongoing replica reassignment for a partition
-   *                             whose replica is being reassigned.
-   * @return A list of movements that is executable for the ready brokers.
-   */
-  public List<ExecutionTask> getInterBrokerReplicaMovementTasks(Map<Integer, Integer> readyBrokers,
-                                                                Set<TopicPartition> inProgressPartitions) {
-    return getInterBrokerReplicaMovementTasks(
-        readyBrokers, inProgressPartitions, _maxNumClusterPartitionMovements);
-  }
+  
 
   /**
    * Get a list of executable inter-broker replica movements that comply with the concurrency constraint
@@ -356,7 +339,7 @@ public class ExecutionTaskPlanner {
     Set<Integer> brokerInvolved = new HashSet<>();
     Set<TopicPartition> partitionsInvolved = new HashSet<>();
     
-    int newInProgressPartitions = inProgressPartitions.size();
+    int numInProgressPartitions = inProgressPartitions.size();
     boolean maxPartitionMovesReached = false;
 
     while (newTaskAdded && !maxPartitionMovesReached) {
@@ -373,17 +356,16 @@ public class ExecutionTaskPlanner {
         if (brokerInvolved.contains(brokerId)) {
           continue;
         }
-          
         // Check the available balancing proposals of this broker to see if we can find one ready to execute.
         SortedSet<ExecutionTask> proposalsForBroker = _interPartMoveTaskByBrokerId.get(brokerId);
         LOG.trace("Execution task for broker {} are {}", brokerId, proposalsForBroker);
         if (proposalsForBroker != null) {
           for (ExecutionTask task : proposalsForBroker) {
-
-            // Return if max cap reached
-            if (newInProgressPartitions >= maxInterBrokerPartitionMovements) {
-              LOG.trace("Max partitions to move across cluster {} reached/exceeded. "
-                        + "Not adding anymore tasks.", maxInterBrokerPartitionMovements);
+            // Break if max cap reached
+            if (numInProgressPartitions >= maxInterBrokerPartitionMovements) {
+              LOG.trace(
+                  "In progress Partitions {} reached/exceeded Max partitions to move in cluster {}. " + "Not adding anymore tasks.",
+                  numInProgressPartitions, maxInterBrokerPartitionMovements);
               maxPartitionMovesReached = true;
               break;
             }
@@ -416,7 +398,7 @@ public class ExecutionTaskPlanner {
               }
               // Mark proposal added to true so we will have another round of check.
               newTaskAdded = true;
-              newInProgressPartitions++;
+              numInProgressPartitions++;
               LOG.debug("Found ready task {} for broker {}. Broker concurrency state: {}", task, brokerId, readyBrokers);
               // We can stop the check for proposals for this broker because we have found a proposal.
               break;

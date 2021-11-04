@@ -673,7 +673,7 @@ public class Executor {
     sanityCheckExecuteProposals(loadMonitor, uuid);
     _skipInterBrokerReplicaConcurrencyAdjustment = true;
     try {
-      initProposalExecution(proposals, demotedBrokers, concurrentSwaps, 0, 0, requestedLeadershipMovementConcurrency,
+      initProposalExecution(proposals, demotedBrokers, concurrentSwaps, null, 0, requestedLeadershipMovementConcurrency,
                             requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, isTriggeredByUserRequest, loadMonitor);
       startExecution(loadMonitor, demotedBrokers, null, replicationThrottle, isTriggeredByUserRequest);
     } catch (Exception e) {

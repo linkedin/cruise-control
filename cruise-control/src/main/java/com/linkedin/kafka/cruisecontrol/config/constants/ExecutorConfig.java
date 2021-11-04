@@ -83,7 +83,7 @@ public final class ExecutorConfig {
    */
   public static final String MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG = "max.num.cluster.partition.movements";
   // Keeping smaller than allowed cluster movements
-  public static final int DEFAULT_MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG = 1200; 
+  public static final int DEFAULT_MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG = 1250; 
   public static final String MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_DOC = "The maximum number of allowed partition movements in the cluster."
       + " This global limit cannot be exceeded regardless of the per-broker replica movement "
       + "concurrency. While max.num.cluster.movements corresponds to the default zNode size limit, "

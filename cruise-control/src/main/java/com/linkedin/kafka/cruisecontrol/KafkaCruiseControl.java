@@ -102,6 +102,7 @@ public class KafkaCruiseControl {
     COMMIT_ID = props.getProperty("commitId", "unknown").trim();
     LOG.info("COMMIT INFO: " + VERSION + "---" + COMMIT_ID);
   }
+
   /**
    * Construct the Cruise Control
    *
@@ -116,8 +117,7 @@ public class KafkaCruiseControl {
 
     // Instantiate the components.
     _adminClient = createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
-    _provisioner = config.getConfiguredInstance(AnomalyDetectorConfig.PROVISIONER_CLASS_CONFIG,
-                                                Provisioner.class,
+    _provisioner = config.getConfiguredInstance(AnomalyDetectorConfig.PROVISIONER_CLASS_CONFIG, Provisioner.class,
                                                 Collections.singletonMap(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, this));
     _anomalyDetectorManager = new AnomalyDetectorManager(this, _time, dropwizardMetricRegistry);
     _executor = new Executor(config, _time, dropwizardMetricRegistry, _anomalyDetectorManager);
@@ -129,14 +129,8 @@ public class KafkaCruiseControl {
   /**
    * Package private constructor for unit tests w/o static state initialization.
    */
-  KafkaCruiseControl(KafkaCruiseControlConfig config,
-                     Time time,
-                     AnomalyDetectorManager anomalyDetectorManager,
-                     Executor executor,
-                     LoadMonitor loadMonitor,
-                     ExecutorService goalOptimizerExecutor,
-                     GoalOptimizer goalOptimizer,
-                     Provisioner provisioner) {
+  KafkaCruiseControl(KafkaCruiseControlConfig config, Time time, AnomalyDetectorManager anomalyDetectorManager, Executor executor,
+                     LoadMonitor loadMonitor, ExecutorService goalOptimizerExecutor, GoalOptimizer goalOptimizer, Provisioner provisioner) {
     _config = config;
     _time = time;
     _adminClient = createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
@@ -193,8 +187,7 @@ public class KafkaCruiseControl {
    * @param operationProgress the progress for the job.
    * @return A new auto closeable semaphore for the cluster model generation.
    */
-  public LoadMonitor.AutoCloseableSemaphore acquireForModelGeneration(OperationProgress operationProgress)
-      throws InterruptedException {
+  public LoadMonitor.AutoCloseableSemaphore acquireForModelGeneration(OperationProgress operationProgress) throws InterruptedException {
     return _loadMonitor.acquireForModelGeneration(operationProgress);
   }
 
@@ -287,8 +280,9 @@ public class KafkaCruiseControl {
                                         + "an already ongoing partition reassignment.", e);
       }
       if (!partitionsBeingReassigned.isEmpty()) {
-        throw new IllegalStateException(String.format("Cannot execute new proposals while there are ongoing partition reassignments "
-                                                      + "initiated by external agent: %s", partitionsBeingReassigned));
+        throw new IllegalStateException(String.format(
+            "Cannot execute new proposals while there are ongoing partition reassignments " + "initiated by external agent: %s",
+            partitionsBeingReassigned));
       }
     }
   }
@@ -330,8 +324,7 @@ public class KafkaCruiseControl {
    * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity in time.
    * @throws BrokerCapacityResolutionException If broker capacity resolver fails to resolve broker capacity.
    */
-  public ClusterModel clusterModel(ModelCompletenessRequirements requirements,
-                                   boolean allowCapacityEstimation,
+  public ClusterModel clusterModel(ModelCompletenessRequirements requirements, boolean allowCapacityEstimation,
                                    OperationProgress operationProgress)
       throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
     return _loadMonitor.clusterModel(timeMs(), requirements, allowCapacityEstimation, operationProgress);
@@ -350,12 +343,8 @@ public class KafkaCruiseControl {
    * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity in time.
    * @throws BrokerCapacityResolutionException If broker capacity resolver fails to resolve broker capacity.
    */
-  public ClusterModel clusterModel(long from,
-                                   long to,
-                                   ModelCompletenessRequirements requirements,
-                                   boolean populateReplicaPlacementInfo,
-                                   boolean allowCapacityEstimation,
-                                   OperationProgress operationProgress)
+  public ClusterModel clusterModel(long from, long to, ModelCompletenessRequirements requirements, boolean populateReplicaPlacementInfo,
+                                   boolean allowCapacityEstimation, OperationProgress operationProgress)
       throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
     return _loadMonitor.clusterModel(from, to, requirements, populateReplicaPlacementInfo, allowCapacityEstimation, operationProgress);
   }
@@ -516,8 +505,7 @@ public class KafkaCruiseControl {
   /**
    * Dynamically set the max inter-broker partition movements per cluster.
    *
-   * @param requestedMaxInterBrokerPartitionMovements The maximum number of concurrent inter-broker partition movements
-   *                                                         per cluster.
+   * @param requestedMaxInterBrokerPartitionMovements The maximum number of concurrent inter-broker partition movements per cluster.
    */
   public void setRequestedMaxInterBrokerPartitionMovements(Integer requestedMaxInterBrokerPartitionMovements) {
     _executor.setRequestedMaxInterBrokerPartitionMovements(requestedMaxInterBrokerPartitionMovements);
@@ -570,24 +558,17 @@ public class KafkaCruiseControl {
    * @param isRebalanceDiskMode {@code true} to generate proposal to rebalance between disks within the brokers, {@code false} otherwise.
    * @return {@code true} to ignore proposal cache, {@code false} otherwise.
    */
-  public boolean ignoreProposalCache(List<String> goals,
-                                     ModelCompletenessRequirements requirements,
-                                     Pattern excludedTopics,
-                                     boolean excludeBrokers,
-                                     boolean ignoreProposalCache,
-                                     boolean isTriggeredByGoalViolation,
-                                     Set<Integer> requestedDestinationBrokerIds,
-                                     boolean isRebalanceDiskMode) {
+  public boolean ignoreProposalCache(List<String> goals, ModelCompletenessRequirements requirements, Pattern excludedTopics,
+                                     boolean excludeBrokers, boolean ignoreProposalCache, boolean isTriggeredByGoalViolation,
+                                     Set<Integer> requestedDestinationBrokerIds, boolean isRebalanceDiskMode) {
     ModelCompletenessRequirements requirementsForCache = _goalOptimizer.modelCompletenessRequirementsForPrecomputing();
-    boolean hasWeakerRequirement =
-        requirementsForCache.minMonitoredPartitionsPercentage() > requirements.minMonitoredPartitionsPercentage()
-        || requirementsForCache.minRequiredNumWindows() > requirements.minRequiredNumWindows()
-        || (requirementsForCache.includeAllTopics() && !requirements.includeAllTopics());
+    boolean hasWeakerRequirement = requirementsForCache.minMonitoredPartitionsPercentage() > requirements.minMonitoredPartitionsPercentage()
+                                   || requirementsForCache.minRequiredNumWindows() > requirements.minRequiredNumWindows() || (
+                                       requirementsForCache.includeAllTopics() && !requirements.includeAllTopics());
 
-    return hasOngoingExecution() || ignoreProposalCache || (goals != null && !goals.isEmpty())
-           || hasWeakerRequirement || excludedTopics != null || excludeBrokers || isTriggeredByGoalViolation
-           || !requestedDestinationBrokerIds.isEmpty() || isRebalanceDiskMode
-           || partitionWithOfflineReplicas(kafkaCluster()) != null;
+    return hasOngoingExecution() || ignoreProposalCache || (goals != null && !goals.isEmpty()) || hasWeakerRequirement
+           || excludedTopics != null || excludeBrokers || isTriggeredByGoalViolation || !requestedDestinationBrokerIds.isEmpty()
+           || isRebalanceDiskMode || partitionWithOfflineReplicas(kafkaCluster()) != null;
   }
 
   /**
@@ -604,12 +585,10 @@ public class KafkaCruiseControl {
    * @param optimizationOptions Optimization options.
    * @return Results of optimization containing the proposals and stats.
    */
-  public synchronized OptimizerResult optimizations(ClusterModel clusterModel,
-                                                    List<Goal> goalsByPriority,
+  public synchronized OptimizerResult optimizations(ClusterModel clusterModel, List<Goal> goalsByPriority,
                                                     OperationProgress operationProgress,
                                                     Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution,
-                                                    OptimizationOptions optimizationOptions)
-      throws KafkaCruiseControlException {
+                                                    OptimizationOptions optimizationOptions) throws KafkaCruiseControlException {
     return _goalOptimizer.optimizations(clusterModel, goalsByPriority, operationProgress, initReplicaDistribution, optimizationOptions);
   }
 
@@ -662,25 +641,17 @@ public class KafkaCruiseControl {
    * @param skipInterBrokerReplicaConcurrencyAdjustment {@code true} to skip auto adjusting concurrency of inter-broker
    * replica movements even if the concurrency adjuster is enabled, {@code false} otherwise.
    */
-  public void executeProposals(Set<ExecutionProposal> proposals,
-                               Set<Integer> unthrottledBrokers,
-                               boolean isKafkaAssignerMode,
-                               Integer concurrentInterBrokerPartitionMovements,
-                               Integer maxInterBrokerPartitionMovements,
-                               Integer concurrentIntraBrokerPartitionMovements,
-                               Integer concurrentLeaderMovements,
-                               Long executionProgressCheckIntervalMs,
-                               ReplicaMovementStrategy replicaMovementStrategy,
-                               Long replicationThrottle,
-                               boolean isTriggeredByUserRequest,
-                               String uuid,
+  public void executeProposals(Set<ExecutionProposal> proposals, Set<Integer> unthrottledBrokers, boolean isKafkaAssignerMode,
+                               Integer concurrentInterBrokerPartitionMovements, Integer maxInterBrokerPartitionMovements,
+                               Integer concurrentIntraBrokerPartitionMovements, Integer concurrentLeaderMovements,
+                               Long executionProgressCheckIntervalMs, ReplicaMovementStrategy replicaMovementStrategy,
+                               Long replicationThrottle, boolean isTriggeredByUserRequest, String uuid,
                                boolean skipInterBrokerReplicaConcurrencyAdjustment) throws OngoingExecutionException {
     if (hasProposalsToExecute(proposals, uuid)) {
-      _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor,
-                                 concurrentInterBrokerPartitionMovements, maxInterBrokerPartitionMovements, concurrentIntraBrokerPartitionMovements,
-                                 concurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy,
-                                 replicationThrottle, isTriggeredByUserRequest, uuid, isKafkaAssignerMode,
-                                 skipInterBrokerReplicaConcurrencyAdjustment);
+      _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor, concurrentInterBrokerPartitionMovements,
+                                 maxInterBrokerPartitionMovements, concurrentIntraBrokerPartitionMovements, concurrentLeaderMovements,
+                                 executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle, isTriggeredByUserRequest,
+                                 uuid, isKafkaAssignerMode, skipInterBrokerReplicaConcurrencyAdjustment);
     } else {
       failGeneratingProposalsForExecution(uuid);
     }
@@ -707,23 +678,16 @@ public class KafkaCruiseControl {
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
    */
-  public void executeRemoval(Set<ExecutionProposal> proposals,
-                             boolean throttleDecommissionedBroker,
-                             Set<Integer> removedBrokers,
-                             boolean isKafkaAssignerMode,
-                             Integer concurrentInterBrokerPartitionMovements,
-                             Integer maxInterBrokerPartitionMovements,
-                             Integer concurrentLeaderMovements,
-                             Long executionProgressCheckIntervalMs,
-                             ReplicaMovementStrategy replicaMovementStrategy,
-                             Long replicationThrottle,
-                             boolean isTriggeredByUserRequest,
-                             String uuid) throws OngoingExecutionException {
+  public void executeRemoval(Set<ExecutionProposal> proposals, boolean throttleDecommissionedBroker, Set<Integer> removedBrokers,
+                             boolean isKafkaAssignerMode, Integer concurrentInterBrokerPartitionMovements,
+                             Integer maxInterBrokerPartitionMovements, Integer concurrentLeaderMovements,
+                             Long executionProgressCheckIntervalMs, ReplicaMovementStrategy replicaMovementStrategy,
+                             Long replicationThrottle, boolean isTriggeredByUserRequest, String uuid) throws OngoingExecutionException {
     if (hasProposalsToExecute(proposals, uuid)) {
-      _executor.executeProposals(proposals, throttleDecommissionedBroker ? Collections.emptySet() : removedBrokers,
-                                 removedBrokers, _loadMonitor, concurrentInterBrokerPartitionMovements, maxInterBrokerPartitionMovements, 0,
-                                 concurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy,
-                                 replicationThrottle, isTriggeredByUserRequest, uuid, isKafkaAssignerMode, false);
+      _executor.executeProposals(proposals, throttleDecommissionedBroker ? Collections.emptySet() : removedBrokers, removedBrokers,
+                                 _loadMonitor, concurrentInterBrokerPartitionMovements, maxInterBrokerPartitionMovements, 0,
+                                 concurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle,
+                                 isTriggeredByUserRequest, uuid, isKafkaAssignerMode, false);
     } else {
       failGeneratingProposalsForExecution(uuid);
     }
@@ -745,22 +709,15 @@ public class KafkaCruiseControl {
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
    */
-  public void executeDemotion(Set<ExecutionProposal> proposals,
-                              Set<Integer> demotedBrokers,
-                              Integer concurrentLeaderMovements,
-                              int brokerCount,
-                              Long executionProgressCheckIntervalMs,
-                              ReplicaMovementStrategy replicaMovementStrategy,
-                              Long replicationThrottle,
-                              boolean isTriggeredByUserRequest,
-                              String uuid) throws OngoingExecutionException {
+  public void executeDemotion(Set<ExecutionProposal> proposals, Set<Integer> demotedBrokers, Integer concurrentLeaderMovements,
+                              int brokerCount, Long executionProgressCheckIntervalMs, ReplicaMovementStrategy replicaMovementStrategy,
+                              Long replicationThrottle, boolean isTriggeredByUserRequest, String uuid) throws OngoingExecutionException {
     if (hasProposalsToExecute(proposals, uuid)) {
       // (1) Kafka Assigner mode is irrelevant for demoting.
       // (2) Ensure that replica swaps within partitions, which are prerequisites for broker demotion and does not trigger data move,
       //     are throttled by concurrentLeaderMovements and config max.num.cluster.movements.
-      int concurrentSwaps = concurrentLeaderMovements != null
-                            ? concurrentLeaderMovements
-                            : _config.getInt(ExecutorConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
+      int concurrentSwaps = concurrentLeaderMovements != null ? concurrentLeaderMovements
+                                                              : _config.getInt(ExecutorConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
       concurrentSwaps = Math.min(_config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG) / brokerCount, concurrentSwaps);
 
       _executor.executeDemoteProposals(proposals, demotedBrokers, _loadMonitor, concurrentSwaps, concurrentLeaderMovements,
@@ -895,8 +852,9 @@ public class KafkaCruiseControl {
    */
   public boolean meetCompletenessRequirements(List<String> goals) {
     MetadataClient.ClusterAndGeneration clusterAndGeneration = _loadMonitor.refreshClusterAndGeneration();
-    return goalsByPriority(goals, _config).stream().allMatch(g -> _loadMonitor.meetCompletenessRequirements(
-        clusterAndGeneration.cluster(), g.clusterModelCompletenessRequirements()));
+    return goalsByPriority(goals, _config).stream()
+                                          .allMatch(g -> _loadMonitor.meetCompletenessRequirements(clusterAndGeneration.cluster(),
+                                                                                                   g.clusterModelCompletenessRequirements()));
   }
 
   /**

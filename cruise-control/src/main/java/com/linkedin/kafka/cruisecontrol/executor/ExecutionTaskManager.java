@@ -136,17 +136,17 @@ public class ExecutionTaskManager {
 
   /**
    * Dynamically set the max inter-broker partition movements in cluster
-   * Ensure that the requested max is smaller than the maximum number of allowed movements in cluster.
+   * Ensure that the requested max is not greater than the maximum number of allowed movements in cluster.
    *
    * @param requestedMaxInterBrokerPartitionMovements The maximum number of concurrent inter-broker partition movements per broker
-   *                                                         (if null, use {@link #_defaultInterBrokerPartitionMovementConcurrency}).
+   *                                                  (if null, use {@link #_defaultInterBrokerPartitionMovementConcurrency}).
    */
   public synchronized void setRequestedMaxInterBrokerPartitionMovements(Integer requestedMaxInterBrokerPartitionMovements) {
     if (requestedMaxInterBrokerPartitionMovements != null
-        && requestedMaxInterBrokerPartitionMovements >= _maxNumClusterMovementConcurrency) {
-      throw new IllegalArgumentException("Attempt to set max inter-broker partition movements ["
-          + requestedMaxInterBrokerPartitionMovements + "] to greater than or equal to the maximum"
-          + " number of allowed movements in cluster [" + _maxNumClusterMovementConcurrency + "].");
+        && requestedMaxInterBrokerPartitionMovements > _maxNumClusterMovementConcurrency) {
+      throw new IllegalArgumentException("Attempt to set max inter-broker partition movements [" + requestedMaxInterBrokerPartitionMovements
+                                         + "] to greater than the maximum" + " number of allowed movements in cluster ["
+                                         + _maxNumClusterMovementConcurrency + "].");
     }
     _requestedMaxInterBrokerPartitionMovements = requestedMaxInterBrokerPartitionMovements;
   }
@@ -164,7 +164,7 @@ public class ExecutionTaskManager {
    */
   public synchronized int maxInterBrokerPartitionMovements() {
     return _requestedMaxInterBrokerPartitionMovements == null ? _defaultMaxInterBrokerPartitionMovements
-        : _requestedMaxInterBrokerPartitionMovements;
+                                                              : _requestedMaxInterBrokerPartitionMovements;
   }
 
   /**

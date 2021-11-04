@@ -902,7 +902,7 @@ public final class ParameterUtils {
   }
 
   /**
-   * Get the max partiton movements requirement dynamically set from the Http request.
+   * Get the max inter broker partition movements requirement dynamically set from the Http request.
    *
    * @param request The HTTP Request
    * @return The execution upper bound requirement dynamically set from the Http request.
