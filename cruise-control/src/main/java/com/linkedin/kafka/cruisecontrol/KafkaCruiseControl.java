@@ -287,15 +287,15 @@ public class KafkaCruiseControl {
                                         + "an already ongoing partition reassignment.", e);
       }
       if (!partitionsBeingReassigned.isEmpty()) {
-        if (_config.getBoolean(ExecutorConfig.HONOR_EXTERNAL_AGENT_PARTITION_REASSIGNMENT_CONFIG)) {
-          throw new IllegalStateException(String.format("Cannot execute new proposals while there are ongoing partition reassignments "
-                                                        + "initiated by external agent: %s", partitionsBeingReassigned));
-        } else {
+        if (_config.getBoolean(ExecutorConfig.AUTO_STOP_EXTERNAL_AGENT_CONFIG)) {
           // Stop the external agent reassignment.
           if (_executor.maybeStopExternalAgent()) {
             LOG.info("External agent is reassigning partitions. "
-                                   + "The request to stop it is submitted successfully: {}", partitionsBeingReassigned);
+                     + "The request to stop it is submitted successfully: {}", partitionsBeingReassigned);
           }
+        } else {
+          throw new IllegalStateException(String.format("Cannot execute new proposals while there are ongoing partition reassignments "
+                                                        + "initiated by external agent: %s", partitionsBeingReassigned));
         }
       }
     }

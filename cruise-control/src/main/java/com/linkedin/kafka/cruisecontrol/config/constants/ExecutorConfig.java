@@ -437,13 +437,13 @@ public final class ExecutorConfig {
       + " Relevant only if concurrency adjuster is enabled based on (At/Under)MinISR status of partitions.";
 
   /**
-   * <code>honor.external.agent.partition.reassignment</code>
+   * <code>auto.stop.external.agent</code>
    */
-  public static final String HONOR_EXTERNAL_AGENT_PARTITION_REASSIGNMENT_CONFIG = "honor.external.agent.partition.reassignment";
-  public static final boolean DEFAULT_HONOR_EXTERNAL_PARTITION_REASSIGNMENT_AGENT = false;
-  public static final String HONOR_EXTERNAL_AGENT_PARTITION_REASSIGNMENT_DOC = "Honor the external agent ongoing partition reassignment (if any) "
-      + "to skip starting executing a new proposal. Set to false to stop the external agent reassignment then start executing the new proposal.";
-
+  public static final String AUTO_STOP_EXTERNAL_AGENT_CONFIG = "auto.stop.external.agent";
+  public static final boolean DEFAULT_AUTO_STOP_EXTERNAL_AGENT = true;
+  public static final String AUTO_STOP_EXTERNAL_AGENT_DOC = "When starting a new proposal execution while external agent is reassigning partitions,"
+      + " automatically stop the external agent and start the execution."
+      + " Set to false to keep the external agent reassignment and skip starting the execution.";
   private ExecutorConfig() {
   }
 
@@ -707,10 +707,10 @@ public final class ExecutorConfig {
                             atLeast(1),
                             ConfigDef.Importance.LOW,
                             CONCURRENCY_ADJUSTER_MIN_ISR_RETENTION_MS_DOC)
-                    .define(HONOR_EXTERNAL_AGENT_PARTITION_REASSIGNMENT_CONFIG,
+                    .define(AUTO_STOP_EXTERNAL_AGENT_CONFIG,
                             ConfigDef.Type.BOOLEAN,
-                            DEFAULT_HONOR_EXTERNAL_PARTITION_REASSIGNMENT_AGENT,
+                            DEFAULT_AUTO_STOP_EXTERNAL_AGENT,
                             ConfigDef.Importance.MEDIUM,
-                            HONOR_EXTERNAL_AGENT_PARTITION_REASSIGNMENT_DOC);
+                            AUTO_STOP_EXTERNAL_AGENT_DOC);
   }
 }
