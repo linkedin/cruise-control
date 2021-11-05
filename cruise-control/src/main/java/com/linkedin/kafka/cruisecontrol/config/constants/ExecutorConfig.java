@@ -436,6 +436,14 @@ public final class ExecutorConfig {
   public static final String CONCURRENCY_ADJUSTER_MIN_ISR_RETENTION_MS_DOC = "The maximum time in ms to cache min.insync.replicas of topics."
       + " Relevant only if concurrency adjuster is enabled based on (At/Under)MinISR status of partitions.";
 
+  /**
+   * <code>auto.stop.external.agent</code>
+   */
+  public static final String AUTO_STOP_EXTERNAL_AGENT_CONFIG = "auto.stop.external.agent";
+  public static final boolean DEFAULT_AUTO_STOP_EXTERNAL_AGENT = true;
+  public static final String AUTO_STOP_EXTERNAL_AGENT_DOC = "When starting a new proposal execution while external agent is reassigning partitions,"
+      + " automatically stop the external agent and start the execution."
+      + " Set to false to keep the external agent reassignment and skip starting the execution.";
   private ExecutorConfig() {
   }
 
@@ -698,6 +706,11 @@ public final class ExecutorConfig {
                             DEFAULT_CONCURRENCY_ADJUSTER_MIN_ISR_RETENTION_MS,
                             atLeast(1),
                             ConfigDef.Importance.LOW,
-                            CONCURRENCY_ADJUSTER_MIN_ISR_RETENTION_MS_DOC);
+                            CONCURRENCY_ADJUSTER_MIN_ISR_RETENTION_MS_DOC)
+                    .define(AUTO_STOP_EXTERNAL_AGENT_CONFIG,
+                            ConfigDef.Type.BOOLEAN,
+                            DEFAULT_AUTO_STOP_EXTERNAL_AGENT,
+                            ConfigDef.Importance.MEDIUM,
+                            AUTO_STOP_EXTERNAL_AGENT_DOC);
   }
 }
