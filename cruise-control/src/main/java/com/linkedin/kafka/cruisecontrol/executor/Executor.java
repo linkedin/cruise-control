@@ -1371,7 +1371,7 @@ public class Executor {
         Map<ExecutionTaskState, Integer> partitionMovementTasksByState = executionTasksSummary.taskStat().get(INTER_BROKER_REPLICA_ACTION);
         LOG.info("Inter-broker partition movements stopped. For inter-broker partition movements {} tasks cancelled, {} tasks in-progress, "
                  + "{} tasks aborting, {} tasks aborted, {} tasks dead, {} tasks completed, {} remaining data to move; for intra-broker "
-                 + "partition movement {} tasks cancelled; for leadership movements {} task cancelled.",
+                 + "partition movement {} tasks cancelled; for leadership movements {} tasks cancelled.",
                  partitionMovementTasksByState.get(ExecutionTaskState.PENDING),
                  partitionMovementTasksByState.get(ExecutionTaskState.IN_PROGRESS),
                  partitionMovementTasksByState.get(ExecutionTaskState.ABORTING),
@@ -1427,7 +1427,7 @@ public class Executor {
         Map<ExecutionTaskState, Integer> partitionMovementTasksByState = executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION);
         LOG.info("Intra-broker partition movements stopped. For intra-broker partition movements {} tasks cancelled, {} tasks in-progress, "
                  + "{} tasks aborting, {} tasks aborted, {} tasks dead, {} tasks completed, {} remaining data to move; for leadership "
-                 + "movements {} task cancelled.",
+                 + "movements {} tasks cancelled.",
                  partitionMovementTasksByState.get(ExecutionTaskState.PENDING),
                  partitionMovementTasksByState.get(ExecutionTaskState.IN_PROGRESS),
                  partitionMovementTasksByState.get(ExecutionTaskState.ABORTING),
