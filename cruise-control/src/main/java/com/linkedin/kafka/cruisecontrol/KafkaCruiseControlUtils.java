@@ -594,6 +594,7 @@ public final class KafkaCruiseControlUtils {
                                                     .replace("]", "");
     adminClientConfigs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServersString);
     adminClientConfigs.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, configs.getInt(ExecutorConfig.ADMIN_CLIENT_REQUEST_TIMEOUT_MS_CONFIG));
+    adminClientConfigs.put(AdminClientConfig.RECONNECT_BACKOFF_MS_CONFIG, configs.getLong(RECONNECT_BACKOFF_MS_CONFIG));
 
     // Add security protocol (if specified).
     try {
