@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ * Copyright 2021 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol;
@@ -87,15 +87,17 @@ public final class KafkaCruiseControlIntegrationTestUtils {
    * @param retryBackoff the milliseconds between retries
    * @param retriesExceededException the exception if we run out of retries
    */
-  public static void waitForConditionMeet(BooleanSupplier condition, Duration timeOut, Duration retryBackoff,
-                                    Error retriesExceededException) {
+  public static void waitForConditionMeet(BooleanSupplier condition, 
+                                          Duration timeOut, 
+                                          Duration retryBackoff, 
+                                          Error retriesExceededException) {
     long endTime = System.currentTimeMillis() + timeOut.toMillis();
     while (System.currentTimeMillis() < endTime) {
       boolean conditionResult = false;
       try {
         conditionResult = condition.getAsBoolean();
       } catch (Exception e) {
-        LOG.warn("Exception occured", e);
+        LOG.warn("Exception occurred", e);
       }
       if (conditionResult) {
         return;
@@ -147,9 +149,7 @@ public final class KafkaCruiseControlIntegrationTestUtils {
     try {
       HttpURLConnection stateEndpointConnection = (HttpURLConnection) new URI(serverUrl)
           .resolve(path).toURL().openConnection();
-      String responseMessage =
-          IOUtils.toString(stateEndpointConnection.getInputStream(), Charset.defaultCharset());
-      return responseMessage;
+      return IOUtils.toString(stateEndpointConnection.getInputStream(), Charset.defaultCharset());
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

@@ -1,6 +1,5 @@
 /*
- * Copyright 2020 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See
- * License in the project root for license information.
+ * Copyright 2021 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol;
@@ -9,7 +8,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
-import java.util.concurrent.ExecutionException;
 import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.TypeRef;
@@ -81,7 +79,7 @@ public class TopicAnomalyIntegrationTest extends CruiseControlIntegrationTestHar
   }
 
   @Test
-  public void testTopicAnomalyFinder() throws ExecutionException, InterruptedException {
+  public void testTopicAnomalyFinder() {
     KafkaCruiseControlIntegrationTestUtils.createTopic(broker(0).plaintextAddr(), 
         new NewTopic(TOPIC0, PARTITION_COUNT, (short) 2));
 

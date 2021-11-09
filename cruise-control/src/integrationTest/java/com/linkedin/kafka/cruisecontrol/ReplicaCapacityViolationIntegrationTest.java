@@ -1,6 +1,5 @@
 /*
- * Copyright 2020 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See
- * License in the project root for license information.
+ * Copyright 2021 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol;
@@ -8,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
-import java.util.concurrent.ExecutionException;
 import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.TypeRef;
@@ -33,7 +31,7 @@ import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.KAFKA_CLUSTER_STATE;
 
 
-public class ReplicaCapcaityViolationIntegrationTest extends CruiseControlIntegrationTestHarness {
+public class ReplicaCapacityViolationIntegrationTest extends CruiseControlIntegrationTestHarness {
 
   private static final int BROKER_ID_TO_ADD = 3;
   private static final int PARTITION_COUNT = 2;
@@ -95,7 +93,7 @@ public class ReplicaCapcaityViolationIntegrationTest extends CruiseControlIntegr
   }
 
   @Test
-  public void testReplicaCapacityViolation() throws InterruptedException, ExecutionException {
+  public void testReplicaCapacityViolation() {
     KafkaCruiseControlIntegrationTestUtils.createTopic(broker(0).plaintextAddr(), 
         new NewTopic(TOPIC0, PARTITION_COUNT, (short) 2));
 
@@ -112,7 +110,7 @@ public class ReplicaCapcaityViolationIntegrationTest extends CruiseControlIntegr
     KafkaCruiseControlIntegrationTestUtils.waitForConditionMeet(() -> {
         String responseMessage = KafkaCruiseControlIntegrationTestUtils
             .callCruiseControl(_app.serverUrl(), CRUISE_CONTROL_KAFKA_CLUSTER_STATE_ENDPOINT);
-        Integer replicaCountOnBroker = JsonPath.<Integer>read(responseMessage, "KafkaBrokerState.ReplicaCountByBrokerId."
+        Integer replicaCountOnBroker = JsonPath.read(responseMessage, "KafkaBrokerState.ReplicaCountByBrokerId."
           + BROKER_ID_TO_ADD);
         return replicaCountOnBroker > 0;
     }, 600, new AssertionError("No replica found on the new broker"));
@@ -122,10 +120,10 @@ public class ReplicaCapcaityViolationIntegrationTest extends CruiseControlIntegr
     KafkaCruiseControlIntegrationTestUtils.waitForConditionMeet(() -> {
         String responseMessage = KafkaCruiseControlIntegrationTestUtils
             .callCruiseControl(_app.serverUrl(), CRUISE_CONTROL_STATE_ENDPOINT);
-        JSONArray unfixableGoalsArray = JsonPath.<JSONArray>read(responseMessage,
+        JSONArray unfixableGoalsArray = JsonPath.read(responseMessage,
             "$.AnomalyDetectorState.recentGoalViolations[*].unfixableViolatedGoals.[*]");
         List<String> unfixableGoals = JsonPath.parse(unfixableGoalsArray, _gsonJsonConfig)
-            .read("$..*", new TypeRef<List<String>>() { });
+            .read("$..*", new TypeRef<>() { });
         return unfixableGoals.contains("ReplicaCapacityGoal");
     }, 300, new AssertionError("Replica capacity goal violation not found"));
   }

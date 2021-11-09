@@ -1,6 +1,5 @@
 /*
- * Copyright 2020 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See
- * License in the project root for license information.
+ * Copyright 2021 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol;
@@ -9,7 +8,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
-import java.util.concurrent.ExecutionException;
 import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.TypeRef;
@@ -87,11 +85,11 @@ public class BrokerFailureIntegrationTest extends CruiseControlIntegrationTestHa
   }
 
   @Test
-  public void testBrokerFailure() throws ExecutionException, InterruptedException {
+  public void testBrokerFailure() {
     KafkaCruiseControlIntegrationTestUtils.createTopic(broker(0).plaintextAddr(), 
         new NewTopic(TOPIC0, PARTITION_COUNT, (short) 2));
 
-    waitForMetadataPropogates();
+    waitForMetadataPropagates();
 
     KafkaCruiseControlIntegrationTestUtils.produceRandomDataToTopic(TOPIC0, 4000, 
         KafkaCruiseControlIntegrationTestUtils.getDefaultProducerProperties(bootstrapServers()));
@@ -128,7 +126,7 @@ public class BrokerFailureIntegrationTest extends CruiseControlIntegrationTestHa
     }, Duration.ofSeconds(800), Duration.ofSeconds(15), new AssertionError("No proposals were ready"));
   }
 
-  private void waitForMetadataPropogates() {
+  private void waitForMetadataPropagates() {
     KafkaCruiseControlIntegrationTestUtils.waitForConditionMeet(() -> {
         String responseMessage = KafkaCruiseControlIntegrationTestUtils
           .callCruiseControl(_app.serverUrl(), CRUISE_CONTROL_KAFKA_CLUSTER_STATE_ENDPOINT);
