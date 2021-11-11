@@ -88,6 +88,7 @@ Cruise Control metrics are useful to monitor the state of Cruise Control itself.
 | The time taken to generate a fix for self-healing for metric anomalies                                            | kafka.cruisecontrol:name=AnomalyDetector.metric_anomaly-self-healing-fix-generation-timer                 |
 | The time taken to generate a fix for self-healing for goal violations                                             | kafka.cruisecontrol:name=AnomalyDetector.goal_violation-self-healing-fix-generation-timer                 |
 | The time taken to generate a fix for self-healing for topic anomalies                                             | kafka.cruisecontrol:name=AnomalyDetector.topic_anomaly-self-healing-fix-generation-timer                  |
+| The rate at which automated rightsizing with actions are taken                                                    | kafka.cruisecontrol:name=AnomalyDetector.automated-rightsizing-rate                                       |
 
 ### GoalOptimizer Sensors
 
