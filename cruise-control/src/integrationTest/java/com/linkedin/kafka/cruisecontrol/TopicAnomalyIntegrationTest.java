@@ -80,7 +80,7 @@ public class TopicAnomalyIntegrationTest extends CruiseControlIntegrationTestHar
 
   @Test
   public void testTopicAnomalyFinder() {
-    KafkaCruiseControlIntegrationTestUtils.createTopic(broker(0).plaintextAddr(), 
+    KafkaCruiseControlIntegrationTestUtils.createTopic(broker(0).plaintextAddr(),
         new NewTopic(TOPIC0, PARTITION_COUNT, (short) 2));
 
     waitForMetadataPropogates();
@@ -101,7 +101,7 @@ public class TopicAnomalyIntegrationTest extends CruiseControlIntegrationTestHar
       List<List<Integer>> partitionReplicas = JsonPath.parse(replicasArray, _gsonJsonConfig)
           .read("$.*", new TypeRef<>() { });
       return partitionReplicas.stream().allMatch(i -> i.size() == EXPECTED_REPLICA_COUNT);
-    }, Duration.ofSeconds(200), Duration.ofSeconds(15), new AssertionError("Replica count not match"));
+    }, Duration.ofSeconds(800), Duration.ofSeconds(15), new AssertionError("Replica count not match"));
   }
 
   private void waitForMetadataPropogates() {
