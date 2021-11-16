@@ -279,7 +279,8 @@ public class ExecutionTaskPlannerTest {
     readyBrokers.put(2, 4);
     readyBrokers.put(3, 4);
     basePlanner.addExecutionProposals(proposals, strategyOptions, null);
-    List<ExecutionTask> partitionMovementTasks = prioritizeOneAboveMinIsrMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet());
+    List<ExecutionTask> partitionMovementTasks =
+        prioritizeOneAboveMinIsrMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet());
     assertEquals("First task should be partitionMovement1", _partitionMovement1, partitionMovementTasks.get(0).proposal());
     assertEquals("Second task should be partitionMovement3", _partitionMovement3, partitionMovementTasks.get(1).proposal());
     assertEquals("Third task should be partitionMovement4", _partitionMovement4, partitionMovementTasks.get(2).proposal());
