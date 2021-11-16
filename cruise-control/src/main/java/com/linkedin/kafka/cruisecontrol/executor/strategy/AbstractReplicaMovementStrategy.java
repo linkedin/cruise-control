@@ -14,6 +14,7 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.PartitionInfo;
 
 /**
  * An abstract class for replica movement strategy. This class will be extended to create custom strategy to determine the
@@ -83,4 +84,9 @@ public abstract class AbstractReplicaMovementStrategy implements ReplicaMovement
     StrategyOptions strategyOptions = new StrategyOptions.Builder(cluster).build();
     return applyStrategy(replicaMovementTasks, strategyOptions);
   }
+
+  protected static boolean isTaskInSet(ExecutionTask task, Set<PartitionInfo> partitionInfoSet) {
+    return partitionInfoSet.stream().anyMatch(p -> p.topic().equals(task.proposal().topic()) && p.partition() == task.proposal().partitionId());
+  }
+
 }

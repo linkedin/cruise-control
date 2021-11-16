@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStr
 import com.linkedin.kafka.cruisecontrol.executor.strategy.PostponeUrpReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.PrioritizeLargeReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.PrioritizeMinIsrWithOfflineReplicasStrategy;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.PrioritizeOneAboveMinIsrWithOfflineReplicasStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.PrioritizeSmallReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.StrategyOptions;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
@@ -42,6 +43,7 @@ import static org.easymock.EasyMock.anyObject;
 import static org.junit.Assert.assertEquals;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC2;
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC3;
 import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.ReplicaLogDirInfo;
 
 /**
@@ -70,6 +72,15 @@ public class ExecutionTaskPlannerTest {
       new ExecutionProposal(new TopicPartition(TOPIC2, 2), 2, _r2, Arrays.asList(_r2, _r1), Arrays.asList(_r1, _r3));
   private final ExecutionProposal _partitionMovement4 =
       new ExecutionProposal(new TopicPartition(TOPIC2, 3), 1, _r3, Arrays.asList(_r3, _r2), Arrays.asList(_r2, _r0));
+
+  private final ExecutionProposal _minIsrPartitionMovement1 =
+          new ExecutionProposal(new TopicPartition(TOPIC3, 0), 1, _r0, Arrays.asList(_r0, _r2), Arrays.asList(_r2, _r1));
+  private final ExecutionProposal _minIsrPartitionMovement2 =
+          new ExecutionProposal(new TopicPartition(TOPIC3, 1), 3, _r1, Arrays.asList(_r1, _r3), Arrays.asList(_r3, _r2));
+  private final ExecutionProposal _minIsrPartitionMovement3 =
+          new ExecutionProposal(new TopicPartition(TOPIC3, 2), 2, _r2, Arrays.asList(_r2, _r1), Arrays.asList(_r1, _r3));
+  private final ExecutionProposal _minIsrPartitionMovement4 =
+          new ExecutionProposal(new TopicPartition(TOPIC3, 3), 1, _r3, Arrays.asList(_r3, _r2), Arrays.asList(_r2, _r0));
 
   private final List<Node> _expectedNodes = Arrays.asList(new Node(0, "null", -1),
                                                           new Node(1, "null", -1),
@@ -225,6 +236,50 @@ public class ExecutionTaskPlannerTest {
 
     prioritizeMinIsrMovementPlanner.addExecutionProposals(proposals, strategyOptions, null);
     partitionMovementTasks = prioritizeMinIsrMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet());
+    assertEquals("First task should be partitionMovement1", _partitionMovement1, partitionMovementTasks.get(0).proposal());
+    assertEquals("Second task should be partitionMovement3", _partitionMovement3, partitionMovementTasks.get(1).proposal());
+    assertEquals("Third task should be partitionMovement4", _partitionMovement4, partitionMovementTasks.get(2).proposal());
+    assertEquals("Fourth task should be partitionMovement2", _partitionMovement2, partitionMovementTasks.get(3).proposal());
+  }
+
+  @Test
+  public void testGetInterBrokerPartitionMovementWithMinIsrTasks() {
+    List<ExecutionProposal> proposals = new ArrayList<>();
+    proposals.add(_partitionMovement1);
+    proposals.add(_partitionMovement2);
+    proposals.add(_partitionMovement3);
+    proposals.add(_partitionMovement4);
+    // Test different execution strategies.
+    ExecutionTaskPlanner basePlanner = new ExecutionTaskPlanner(
+            null,
+            new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
+
+    // Create prioritizeOneAboveMinIsrMovementPlanner TODO
+    Properties prioritizeOneAboveMinIsrMovementProps = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
+    prioritizeOneAboveMinIsrMovementProps.setProperty(ExecutorConfig.DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG,
+            PrioritizeOneAboveMinIsrWithOfflineReplicasStrategy.class.getName());
+    ExecutionTaskPlanner prioritizeOneAboveMinIsrMovementPlanner = new ExecutionTaskPlanner(null,
+            new KafkaCruiseControlConfig(prioritizeOneAboveMinIsrMovementProps));
+
+    Set<PartitionInfo> partitions = new HashSet<>();
+    partitions.add(generatePartitionInfoWithUrpHavingOfflineReplica(_partitionMovement1, true));
+    partitions.add(generatePartitionInfo(_partitionMovement2, false));
+    partitions.add(generatePartitionInfoWithUrpHavingOfflineReplica(_partitionMovement3, true));
+    partitions.add(generatePartitionInfo(_partitionMovement4, false));
+
+    Cluster expectedCluster = new Cluster(null, _expectedNodes, partitions, Collections.emptySet(), Collections.emptySet());
+    // This ensures that the _partitionMovement1 and _partitionMovement3 are AtMinISR, while the other partitions are not.
+    Map<String, MinIsrWithTime> minIsrWithTimeByTopic
+            = Collections.singletonMap(TOPIC2, new MinIsrWithTime((short) (_partitionMovement1.oldReplicas().size() - 1), 0));
+    StrategyOptions strategyOptions = new StrategyOptions.Builder(expectedCluster).minIsrWithTimeByTopic(minIsrWithTimeByTopic).build();
+
+    Map<Integer, Integer> readyBrokers = new HashMap<>();
+    readyBrokers.put(0, 4);
+    readyBrokers.put(1, 4);
+    readyBrokers.put(2, 4);
+    readyBrokers.put(3, 4);
+    basePlanner.addExecutionProposals(proposals, strategyOptions, null);
+    List<ExecutionTask> partitionMovementTasks = prioritizeOneAboveMinIsrMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet());
     assertEquals("First task should be partitionMovement1", _partitionMovement1, partitionMovementTasks.get(0).proposal());
     assertEquals("Second task should be partitionMovement3", _partitionMovement3, partitionMovementTasks.get(1).proposal());
     assertEquals("Third task should be partitionMovement4", _partitionMovement4, partitionMovementTasks.get(2).proposal());
