@@ -54,6 +54,8 @@ public class ExecutionTaskPlannerTest {
   private final ReplicaPlacementInfo _r1 = new ReplicaPlacementInfo(1);
   private final ReplicaPlacementInfo _r2 = new ReplicaPlacementInfo(2);
   private final ReplicaPlacementInfo _r3 = new ReplicaPlacementInfo(3);
+  private final ReplicaPlacementInfo _r4 = new ReplicaPlacementInfo(4);
+  private final ReplicaPlacementInfo _r5 = new ReplicaPlacementInfo(5);
 
   private final ExecutionProposal _leaderMovement1 =
       new ExecutionProposal(new TopicPartition(TOPIC1, 0), 0, _r1, Arrays.asList(_r1, _r0), Arrays.asList(_r0, _r1));
@@ -73,19 +75,25 @@ public class ExecutionTaskPlannerTest {
   private final ExecutionProposal _partitionMovement4 =
       new ExecutionProposal(new TopicPartition(TOPIC2, 3), 1, _r3, Arrays.asList(_r3, _r2), Arrays.asList(_r2, _r0));
 
-  private final ExecutionProposal _minIsrPartitionMovement1 =
-          new ExecutionProposal(new TopicPartition(TOPIC3, 0), 1, _r0, Arrays.asList(_r0, _r2), Arrays.asList(_r2, _r1));
-  private final ExecutionProposal _minIsrPartitionMovement2 =
-          new ExecutionProposal(new TopicPartition(TOPIC3, 1), 3, _r1, Arrays.asList(_r1, _r3), Arrays.asList(_r3, _r2));
-  private final ExecutionProposal _minIsrPartitionMovement3 =
-          new ExecutionProposal(new TopicPartition(TOPIC3, 2), 2, _r2, Arrays.asList(_r2, _r1), Arrays.asList(_r1, _r3));
-  private final ExecutionProposal _minIsrPartitionMovement4 =
-          new ExecutionProposal(new TopicPartition(TOPIC3, 3), 1, _r3, Arrays.asList(_r3, _r2), Arrays.asList(_r2, _r0));
+  private final ExecutionProposal _rf4PartitionMovement0 =
+      new ExecutionProposal(new TopicPartition(TOPIC3, 0), 10, _r0, List.of(_r0, _r2, _r4, _r3), List.of(_r2, _r1, _r3, _r5));
+  private final ExecutionProposal _rf4PartitionMovement1 =
+      new ExecutionProposal(new TopicPartition(TOPIC3, 1), 30, _r1, List.of(_r1, _r3, _r5, _r4), List.of(_r3, _r2, _r0, _r4));
+  private final ExecutionProposal _rf4PartitionMovement2 =
+      new ExecutionProposal(new TopicPartition(TOPIC3, 2), 20, _r2, List.of(_r2, _r1, _r4, _r5), List.of(_r1, _r3, _r4, _r0));
+  private final ExecutionProposal _rf4PartitionMovement3 =
+      new ExecutionProposal(new TopicPartition(TOPIC3, 3), 10, _r3, List.of(_r3, _r2, _r5, _r1), List.of(_r2, _r0, _r5, _r1));
 
   private final List<Node> _expectedNodes = Arrays.asList(new Node(0, "null", -1),
                                                           new Node(1, "null", -1),
                                                           new Node(2, "null", -1),
                                                           new Node(3, "null", -1));
+  private final List<Node> _rf4ExpectedNodes = List.of(new Node(0, "null", -1),
+                                                       new Node(1, "null", -1),
+                                                       new Node(2, "null", -1),
+                                                       new Node(3, "null", -1),
+                                                       new Node(4, "null", -1),
+                                                       new Node(5, "null", -1));
 
   @Test
   public void testGetLeaderMovementTasks() {
@@ -245,46 +253,45 @@ public class ExecutionTaskPlannerTest {
   @Test
   public void testGetInterBrokerPartitionMovementWithMinIsrTasks() {
     List<ExecutionProposal> proposals = new ArrayList<>();
-    proposals.add(_partitionMovement1);
-    proposals.add(_partitionMovement2);
-    proposals.add(_partitionMovement3);
-    proposals.add(_partitionMovement4);
-    // Test different execution strategies.
-    ExecutionTaskPlanner basePlanner = new ExecutionTaskPlanner(
-            null,
-            new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
-
-    // Create prioritizeOneAboveMinIsrMovementPlanner TODO
+    proposals.add(_rf4PartitionMovement0);
+    proposals.add(_rf4PartitionMovement1);
+    proposals.add(_rf4PartitionMovement2);
+    proposals.add(_rf4PartitionMovement3);
+    // Test PrioritizeOneAboveMinIsrWithOfflineReplicasStrategy execution strategies.
+    // Create prioritizeOneAboveMinIsrMovementPlanner, chain after prioritizeMinIsr strategy
     Properties prioritizeOneAboveMinIsrMovementProps = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     prioritizeOneAboveMinIsrMovementProps.setProperty(ExecutorConfig.DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG,
-            PrioritizeOneAboveMinIsrWithOfflineReplicasStrategy.class.getName());
-    ExecutionTaskPlanner prioritizeOneAboveMinIsrMovementPlanner = new ExecutionTaskPlanner(null,
-            new KafkaCruiseControlConfig(prioritizeOneAboveMinIsrMovementProps));
+                                                      String.format("%s,%s", PrioritizeMinIsrWithOfflineReplicasStrategy.class.getName(),
+                                                                    PrioritizeOneAboveMinIsrWithOfflineReplicasStrategy.class.getName()));
+    ExecutionTaskPlanner prioritizeOneAboveMinIsrMovementPlanner
+        = new ExecutionTaskPlanner(null, new KafkaCruiseControlConfig(prioritizeOneAboveMinIsrMovementProps));
 
     Set<PartitionInfo> partitions = new HashSet<>();
-    partitions.add(generatePartitionInfoWithUrpHavingOfflineReplica(_partitionMovement1, true));
-    partitions.add(generatePartitionInfo(_partitionMovement2, false));
-    partitions.add(generatePartitionInfoWithUrpHavingOfflineReplica(_partitionMovement3, true));
-    partitions.add(generatePartitionInfo(_partitionMovement4, false));
+    partitions.add(generatePartitionInfo(_rf4PartitionMovement0, false));
+    partitions.add(generatePartitionInfoWithUrpHavingOfflineReplica(_rf4PartitionMovement1, 1));
+    partitions.add(generatePartitionInfoWithUrpHavingOfflineReplica(_rf4PartitionMovement2, 3));
+    partitions.add(generatePartitionInfoWithUrpHavingOfflineReplica(_rf4PartitionMovement3, 2));
 
-    Cluster expectedCluster = new Cluster(null, _expectedNodes, partitions, Collections.emptySet(), Collections.emptySet());
-    // This ensures that the _partitionMovement1 and _partitionMovement3 are AtMinISR, while the other partitions are not.
+    Cluster expectedCluster = new Cluster(null, _rf4ExpectedNodes, partitions, Collections.emptySet(), Collections.emptySet());
+    // Setting topic min ISR to 2
     Map<String, MinIsrWithTime> minIsrWithTimeByTopic
-            = Collections.singletonMap(TOPIC2, new MinIsrWithTime((short) (_partitionMovement1.oldReplicas().size() - 1), 0));
+        = Collections.singletonMap(TOPIC3, new MinIsrWithTime((short) 2, 0));
     StrategyOptions strategyOptions = new StrategyOptions.Builder(expectedCluster).minIsrWithTimeByTopic(minIsrWithTimeByTopic).build();
 
     Map<Integer, Integer> readyBrokers = new HashMap<>();
-    readyBrokers.put(0, 4);
-    readyBrokers.put(1, 4);
-    readyBrokers.put(2, 4);
-    readyBrokers.put(3, 4);
-    basePlanner.addExecutionProposals(proposals, strategyOptions, null);
-    List<ExecutionTask> partitionMovementTasks =
-        prioritizeOneAboveMinIsrMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet());
-    assertEquals("First task should be partitionMovement1", _partitionMovement1, partitionMovementTasks.get(0).proposal());
-    assertEquals("Second task should be partitionMovement3", _partitionMovement3, partitionMovementTasks.get(1).proposal());
-    assertEquals("Third task should be partitionMovement4", _partitionMovement4, partitionMovementTasks.get(2).proposal());
-    assertEquals("Fourth task should be partitionMovement2", _partitionMovement2, partitionMovementTasks.get(3).proposal());
+    readyBrokers.put(0, 5);
+    readyBrokers.put(1, 6);
+    readyBrokers.put(2, 6);
+    readyBrokers.put(3, 6);
+    readyBrokers.put(4, 5);
+    readyBrokers.put(5, 6);
+    prioritizeOneAboveMinIsrMovementPlanner.addExecutionProposals(proposals, strategyOptions, null);
+    List<ExecutionTask> partitionMovementTasks
+        = prioritizeOneAboveMinIsrMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet());
+    assertEquals("First task", _rf4PartitionMovement2, partitionMovementTasks.get(0).proposal());
+    assertEquals("Second task", _rf4PartitionMovement3, partitionMovementTasks.get(1).proposal());
+    assertEquals("Third task", _rf4PartitionMovement1, partitionMovementTasks.get(2).proposal());
+    assertEquals("Fourth task", _rf4PartitionMovement0, partitionMovementTasks.get(3).proposal());
   }
 
   @Test
@@ -436,21 +443,25 @@ public class ExecutionTaskPlannerTest {
     return expectedProposalReplicas;
   }
 
-  private PartitionInfo generatePartitionInfoWithUrpHavingOfflineReplica(ExecutionProposal proposal, boolean isPartitionURP) {
+  private PartitionInfo generatePartitionInfoWithUrpHavingOfflineReplica(ExecutionProposal proposal, int urpCount) {
     Node[] isrArray = generateExpectedReplicas(proposal);
 
     Node[] offlineReplicas;
-    if (isPartitionURP) {
-      offlineReplicas = new Node[isrArray.length - 1];
-      System.arraycopy(isrArray, 1, offlineReplicas, 0, isrArray.length - 1);
+    if (urpCount > 0) {
+      offlineReplicas = new Node[urpCount];
+      System.arraycopy(isrArray, isrArray.length - urpCount, offlineReplicas, 0, urpCount);
     } else {
       offlineReplicas = new Node[0];
     }
 
     return new PartitionInfo(proposal.topicPartition().topic(),
                              proposal.topicPartition().partition(), isrArray[0], isrArray,
-                             isPartitionURP ? Arrays.copyOf(isrArray, 1) : isrArray,
+                             urpCount > 0 ? Arrays.copyOf(isrArray, isrArray.length - urpCount) : isrArray,
                              offlineReplicas);
+  }
+
+  private PartitionInfo generatePartitionInfoWithUrpHavingOfflineReplica(ExecutionProposal proposal, boolean isPartitionURP) {
+    return generatePartitionInfoWithUrpHavingOfflineReplica(proposal, isPartitionURP ? 1 : 0);
   }
 
   private PartitionInfo generatePartitionInfo(ExecutionProposal proposal, boolean isPartitionURP) {

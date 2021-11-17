@@ -15,19 +15,18 @@ import java.util.TreeSet;
 
 /**
  * The strategy, which tries to move replicas of OneAboveMinISR partitions with offline replicas.
- * When using this strategy, it should always chain after {@link PrioritizeMinIsrWithOfflineReplicasStrategy}.
- * When multiple brokers are offline, OneAboveMinISR partitions are at a higher risk -- i.e. further failures can make
- * them at the edge of unavailable for produce and consume. This strategy aims to help fixing such partitions faster.
- *
+ * When multiple brokers are offline, OneAboveMinISR partitions are at a higher risk than partitions with no offline replicas.
+ * This strategy aims to help fixing such partitions faster.
+ * When using this strategy, it should always chain after {@link PrioritizeMinIsrWithOfflineReplicasStrategy},
+ * which aims to help fixing higher risk (At/Under)MinISR.
  */
 public class PrioritizeOneAboveMinIsrWithOfflineReplicasStrategy extends AbstractReplicaMovementStrategy {
 
-  /** TODO
+  /**
    * <ul>
-   *   <li>If both tasks are moving either an AtMinISR or an UnderMinISR partition, then they have the same priority</li>
-   *   <li>If neither task is moving an (At/Under)MinISR partition, then they have the same priority</li>
-   *   <li>If a task is moving an UnderMinISR partition, but the other task is not, then task with UnderMinISR partition is prioritized</li>
-   *   <li>If neither task is moving an UnderMinISR partition, then the task moving an AtMinISR partition (if any) is prioritized</li>
+   *   <li>If both tasks are moving OneAboveMinISR partition, then they have the same priority</li>
+   *   <li>If neither task is moving an OneAboveMinISR partition, then they have the same priority</li>
+   *   <li>If a task is moving an OneAboveMinISR partition, but the other task is not, then task with OneAboveMinISR partition is prioritized</li>
    * </ul>
    * @param strategyOptions Strategy options to be used while comparing the tasks.
    * @return The comparator of task.
