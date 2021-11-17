@@ -1,6 +1,37 @@
-version: 2
+version: 2.1
 
 jobs:
+
+  test-multi-arch:
+    parameters:
+      platform:
+        type: string
+    environment:
+      _JAVA_OPTIONS: "-Xms512m -Xmx1g"
+      DOCKER_CLI_EXPERIMENTAL: "enabled"
+    working_directory: ~/workspace
+    machine:
+      image: ubuntu-2004:202107-02
+    steps:
+      - checkout
+      - run: |
+         # install required qemu libraries
+         docker run --rm --privileged tonistiigi/binfmt:latest --install all
+         # run docker container with qemu emulation
+         docker run --rm \
+           --platform << parameters.platform >> \
+           --name qemu-cross-<< parameters.platform >> \
+           --mount type=bind,source=${PWD},target=/github_workspace \
+           --workdir /github_workspace \
+           << parameters.platform >>/eclipse-temurin:11-jdk-focal uname -a; ./gradlew --no-daemon -PmaxParallelForks=1 build
+      - run:
+          command: mkdir ~/test-results
+      - run:
+          command: find ~/workspace -type f -regex ".*/test-results/.*xml" -exec ln {} ~/test-results/ \;
+      - store_test_results:
+          path: ~/test-results
+      - store_artifacts:
+          path: ~/test-results
 
   build:
     environment:
@@ -46,9 +77,16 @@ jobs:
           command: ./gradlew :artifactoryPublish :cruise-control:artifactoryPublish :cruise-control-core:artifactoryPublish :cruise-control-metrics-reporter:artifactoryPublish
 
 workflows:
-  version: 2
+  version: 2.1
   build-and-publish:
     jobs:
+      - test-multi-arch:
+          matrix:
+            parameters:
+              platform: ["s390x"]
+          filters:
+            tags:
+              only: /.*/
       - build:
           filters:
             tags:
@@ -56,6 +94,7 @@ workflows:
       - publish:
           requires:
             - build
+            - test-multi-arch
           filters:
             branches:
               ignore: /.*/
