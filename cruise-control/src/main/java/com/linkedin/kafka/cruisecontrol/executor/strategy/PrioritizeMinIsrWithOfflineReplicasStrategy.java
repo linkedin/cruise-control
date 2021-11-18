@@ -35,7 +35,7 @@ public class PrioritizeMinIsrWithOfflineReplicasStrategy extends AbstractReplica
     Comparator<PartitionInfo> comparator = Comparator.comparing(PartitionInfo::topic).thenComparingInt(PartitionInfo::partition);
     Set<PartitionInfo> atMinIsr = new TreeSet<>(comparator);
     Set<PartitionInfo> underMinIsr = new TreeSet<>(comparator);
-    ExecutionUtils.populateMinIsrState(strategyOptions.cluster(), strategyOptions.minIsrWithTimeByTopic(), atMinIsr, underMinIsr, true);
+    ExecutionUtils.populateMinIsrState(strategyOptions.cluster(), strategyOptions.minIsrWithTimeByTopic(), underMinIsr, atMinIsr, true);
 
     return (task1, task2) -> {
       boolean task1IsUnderMinISR = isTaskInSet(task1, underMinIsr);
@@ -57,10 +57,6 @@ public class PrioritizeMinIsrWithOfflineReplicasStrategy extends AbstractReplica
   @Override
   public Comparator<ExecutionTask> taskComparator(Cluster cluster) {
     return taskComparator(new StrategyOptions.Builder(cluster).build());
-  }
-
-  private static boolean isTaskInSet(ExecutionTask task, Set<PartitionInfo> partitionInfoSet) {
-    return partitionInfoSet.stream().anyMatch(p -> p.topic().equals(task.proposal().topic()) && p.partition() == task.proposal().partitionId());
   }
 
   @Override
