@@ -13,7 +13,6 @@ import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
-import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import java.util.ArrayList;
@@ -22,7 +21,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -164,13 +162,12 @@ public class LowResourceUtilizationTest {
     // Since all optimizations succeed, it is guaranteed that all brokers have resource utilization under low utilization threshold.
     assertEquals(ProvisionStatus.OVER_PROVISIONED, _resourceDistributionGoal.provisionResponse().status());
 
-    Set<ExecutionProposal> goalProposals =
-        AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, clusterModel);
+    boolean hasDiff = AnalyzerUtils.hasDiff(initReplicaDistribution, initLeaderDistribution, clusterModel);
 
     if (_expectRebalance) {
-      assertFalse(goalProposals.isEmpty());
+      assertTrue(hasDiff);
     } else {
-      assertTrue(goalProposals.isEmpty());
+      assertFalse(hasDiff);
     }
   }
 }
