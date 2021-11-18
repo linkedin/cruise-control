@@ -135,13 +135,12 @@ public final class AnalyzerUtils {
     Map<TopicPartition, List<ReplicaPlacementInfo>> finalReplicaDistribution = optimizedClusterModel.getReplicaDistribution();
     sanityCheckReplicaDistribution(initialReplicaDistribution, finalReplicaDistribution, false);
 
-    // Generate a set of execution proposals to represent the diff between initial and final distribution.
     boolean hasDiff = false;
     for (Map.Entry<TopicPartition, List<ReplicaPlacementInfo>> entry : initialReplicaDistribution.entrySet()) {
       TopicPartition tp = entry.getKey();
       List<ReplicaPlacementInfo> initialReplicas = entry.getValue();
       List<ReplicaPlacementInfo> finalReplicas = finalReplicaDistribution.get(tp);
-      // The partition has no change.
+
       if (!finalReplicas.equals(initialReplicas)) {
         hasDiff = true;
         break;
@@ -153,6 +152,7 @@ public final class AnalyzerUtils {
           hasDiff = true;
           break;
         }
+        // The partition has no change.
       }
     }
     return hasDiff;
