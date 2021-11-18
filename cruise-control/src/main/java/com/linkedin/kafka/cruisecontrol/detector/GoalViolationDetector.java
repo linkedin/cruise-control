@@ -22,7 +22,6 @@ import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
-import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
@@ -317,9 +316,9 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
       goalViolations.addViolation(goal.name(), false);
       return true;
     }
-    Set<ExecutionProposal> proposals = AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, clusterModel);
-    LOG.trace("{} generated {} proposals", goal.name(), proposals.size());
-    if (!proposals.isEmpty()) {
+    boolean hasDiff = AnalyzerUtils.hasDiff(initReplicaDistribution, initLeaderDistribution, clusterModel);
+    LOG.trace("{} generated {} proposals", goal.name(), hasDiff ? "some" : "no");
+    if (hasDiff) {
       // A goal violation that can be optimized by applying the generated proposals.
       goalViolations.addViolation(goal.name(), true);
       return true;
