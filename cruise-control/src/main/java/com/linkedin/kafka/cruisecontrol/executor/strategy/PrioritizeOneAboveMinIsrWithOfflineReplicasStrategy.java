@@ -17,7 +17,7 @@ import java.util.TreeSet;
  * The strategy, which tries to move replicas of OneAboveMinISR partitions with offline replicas.
  * When multiple brokers are offline, OneAboveMinISR partitions are at a higher risk than partitions with no offline replicas.
  * This strategy aims to help fixing such partitions faster.
- * When using this strategy, always chain it after {@link PrioritizeMinIsrWithOfflineReplicasStrategy},
+ * When using this strategy, it is recommended to chain this strategy after {@link PrioritizeMinIsrWithOfflineReplicasStrategy},
  * which aims to help fixing higher risk (At/Under)MinISR.
  */
 public class PrioritizeOneAboveMinIsrWithOfflineReplicasStrategy extends AbstractReplicaMovementStrategy {

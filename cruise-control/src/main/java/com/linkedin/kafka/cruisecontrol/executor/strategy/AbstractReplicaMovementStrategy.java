@@ -88,5 +88,4 @@ public abstract class AbstractReplicaMovementStrategy implements ReplicaMovement
   protected static boolean isTaskInSet(ExecutionTask task, Set<PartitionInfo> partitionInfoSet) {
     return partitionInfoSet.stream().anyMatch(p -> p.topic().equals(task.proposal().topic()) && p.partition() == task.proposal().partitionId());
   }
-
 }
