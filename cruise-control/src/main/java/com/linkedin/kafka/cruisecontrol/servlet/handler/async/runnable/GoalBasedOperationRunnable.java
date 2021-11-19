@@ -97,10 +97,10 @@ public abstract class GoalBasedOperationRunnable extends OperationRunnable {
                                     boolean allowCapacityEstimation,
                                     boolean excludeRecentlyDemotedBrokers,
                                     boolean excludeRecentlyRemovedBrokers,
-                                    boolean skipHardGoalCheck,
                                     String uuid,
                                     Supplier<String> reasonSupplier,
-                                    boolean stopOngoingExecution) {
+                                    boolean stopOngoingExecution,
+                                    boolean skipHardGoalCheck) {
     this(kafkaCruiseControl, future, SELF_HEALING_DRYRUN, goals, stopOngoingExecution,
             SELF_HEALING_MODEL_COMPLETENESS_REQUIREMENTS, skipHardGoalCheck, SELF_HEALING_EXCLUDED_TOPICS,
             allowCapacityEstimation, excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, uuid, reasonSupplier,
