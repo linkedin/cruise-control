@@ -245,27 +245,22 @@ public class AlertaSelfHealingNotifier extends SelfHealingNotifier {
 
   private void alertGoalViolation(AnomalyType anomalyType, final String localHostname,
                                   List<AlertaMessage> alertaMessages, GoalViolations goalViolations) {
-    Map<Boolean, List<String>> violations = goalViolations.violatedGoalsByFixability();
-    for (Entry<Boolean, List<String>> entry : violations.entrySet()) {
-      entry.getValue().forEach(goal -> {
-        AlertaMessage alertaMessage = new AlertaMessage(localHostname, anomalyType.toString() + " - " + goal);
-        alertaMessage.setSeverity(NotifierUtils.getAlertSeverity(anomalyType).toString());
-        alertaMessage.setGroup(AlertaAlertGroup.PERFORMANCE.toString());
-        alertaMessage.setCreateTime(CruiseControlUtils.utcDateFor(goalViolations.detectionTimeMs(), 3, ChronoUnit.SECONDS));
-        alertaMessages.add(alertaMessage);
-      });
-    }
+    alertGoalViolationLogic(anomalyType, localHostname, alertaMessages, goalViolations.violatedGoalsByFixability(), goalViolations.detectionTimeMs());
   }
 
   private void alertIntraBrokerGoalViolation(AnomalyType anomalyType, final String localHostname,
                                              List<AlertaMessage> alertaMessages, IntraBrokerGoalViolations goalViolations) {
-    Map<Boolean, List<String>> violations = goalViolations.violatedGoalsByFixability();
+    alertGoalViolationLogic(anomalyType, localHostname, alertaMessages, goalViolations.violatedGoalsByFixability(), goalViolations.detectionTimeMs());
+  }
+
+  private void alertGoalViolationLogic(AnomalyType anomalyType, final String localHostname,
+                                        List<AlertaMessage> alertaMessages, Map<Boolean, List<String>> violations, long detectionTime) {
     for (Entry<Boolean, List<String>> entry : violations.entrySet()) {
       entry.getValue().forEach(goal -> {
         AlertaMessage alertaMessage = new AlertaMessage(localHostname, anomalyType.toString() + " - " + goal);
         alertaMessage.setSeverity(NotifierUtils.getAlertSeverity(anomalyType).toString());
         alertaMessage.setGroup(AlertaAlertGroup.PERFORMANCE.toString());
-        alertaMessage.setCreateTime(CruiseControlUtils.utcDateFor(goalViolations.detectionTimeMs(), 3, ChronoUnit.SECONDS));
+        alertaMessage.setCreateTime(CruiseControlUtils.utcDateFor(detectionTime, 3, ChronoUnit.SECONDS));
         alertaMessages.add(alertaMessage);
       });
     }
