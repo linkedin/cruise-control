@@ -19,7 +19,6 @@ import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.SelfHealingNotifier;
-import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import net.minidev.json.JSONArray;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.junit.After;
@@ -27,16 +26,18 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
-
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlIntegrationTestUtils.KAFKA_CRUISE_CONTROL_BASE_PATH;
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.KAFKA_CLUSTER_STATE;
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.STATE;
 
 public class BrokerFailureIntegrationTest extends CruiseControlIntegrationTestHarness {
 
   private static final int PARTITION_COUNT = 10;
   private static final int KAFKA_CLUSTER_SIZE = 4;
   private static final String CRUISE_CONTROL_KAFKA_CLUSTER_STATE_ENDPOINT =
-      "kafkacruisecontrol/" + CruiseControlEndPoint.KAFKA_CLUSTER_STATE + "?verbose=true&json=true";
+      KAFKA_CRUISE_CONTROL_BASE_PATH + KAFKA_CLUSTER_STATE + "?verbose=true&json=true";
   private static final String CRUISE_CONTROL_STATE_ENDPOINT =
-          "kafkacruisecontrol/" + CruiseControlEndPoint.STATE + "?substates=analyzer&json=true";
+      KAFKA_CRUISE_CONTROL_BASE_PATH + STATE + "?substates=analyzer&json=true";
   private final Configuration _gsonJsonConfig = KafkaCruiseControlIntegrationTestUtils.createJsonMappingConfig();
 
   private static final int BROKER_ID_TO_REMOVE = 1;

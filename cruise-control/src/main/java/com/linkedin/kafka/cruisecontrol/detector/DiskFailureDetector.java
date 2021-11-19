@@ -42,6 +42,7 @@ public class DiskFailureDetector extends AbstractAnomalyDetector implements Runn
   public DiskFailureDetector(Queue<Anomaly> anomalies, KafkaCruiseControl kafkaCruiseControl) {
     super(anomalies, kafkaCruiseControl);
     _adminClient = kafkaCruiseControl.adminClient();
+    _lastCheckedModelGeneration = new ModelGeneration(0, -1L);
     _config = _kafkaCruiseControl.config();
   }
 

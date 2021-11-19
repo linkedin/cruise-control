@@ -1,5 +1,5 @@
 /*
-* Copyright 2020 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See
+* Copyright 2021 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See
  * License in the project root for license information.
  */
 
@@ -22,9 +22,9 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
+import com.linkedin.kafka.cruisecontrol.detector.AnomalyState;
 import com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaTestUtils;
-import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import kafka.server.KafkaConfig;
 import net.minidev.json.JSONArray;
 import org.apache.commons.io.FileUtils;
@@ -39,6 +39,8 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.KAFKA_CLUSTER_STATE;
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.STATE;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlIntegrationTestUtils.KAFKA_CRUISE_CONTROL_BASE_PATH;
 
 public class DiskFailureIntegrationTest extends CruiseControlIntegrationTestHarness {
 
@@ -47,13 +49,13 @@ public class DiskFailureIntegrationTest extends CruiseControlIntegrationTestHarn
   private static final int PARTITION_COUNT = 3;
   private static final int KAFKA_CLUSTER_SIZE = 3;
   private static final String CRUISE_CONTROL_KAFKA_CLUSTER_STATE_ENDPOINT =
-      "kafkacruisecontrol/" + KAFKA_CLUSTER_STATE + "?verbose=true&json=true";
+      KAFKA_CRUISE_CONTROL_BASE_PATH + KAFKA_CLUSTER_STATE + "?verbose=true&json=true";
   private static final String CRUISE_CONTROL_STATE_ENDPOINT =
-      "kafkacruisecontrol/" + CruiseControlEndPoint.STATE + "?substates=anomaly_detector&json=true";
+      KAFKA_CRUISE_CONTROL_BASE_PATH + STATE + "?substates=anomaly_detector&json=true";
   private static final String CRUISE_CONTROL_ANALYZER_STATE_ENDPOINT =
-      "kafkacruisecontrol/" + CruiseControlEndPoint.STATE + "?substates=analyzer&json=true";
-  private final Configuration _gsonJsonConfig = KafkaCruiseControlIntegrationTestUtils.createJsonMappingConfig();
+      KAFKA_CRUISE_CONTROL_BASE_PATH + STATE + "?substates=analyzer&json=true";
   private static final Logger LOG = LoggerFactory.getLogger(DiskFailureIntegrationTest.class);
+  private final Configuration _gsonJsonConfig = KafkaCruiseControlIntegrationTestUtils.createJsonMappingConfig();
   private List<Entry<File, File>> _brokerLogDirs = new ArrayList<>(KAFKA_CLUSTER_SIZE);
   
   @Before
@@ -103,7 +105,6 @@ public class DiskFailureIntegrationTest extends CruiseControlIntegrationTestHarn
         .singletonMap(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
     try {
       adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC0, PARTITION_COUNT, TOPIC0_REPLICATION_FACTOR)));
-
     } finally {
       KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
     }
@@ -119,11 +120,8 @@ public class DiskFailureIntegrationTest extends CruiseControlIntegrationTestHarn
     FileUtils.deleteDirectory(entry.getKey());
     LOG.info("Disk failure injected");
     waitForOfflineReplicaDetection();
-    
-    waitForDiskFailureDetection();
-    
+    waitForDiskFailureFixStarted();
     waitForOfflineReplicasFixed();
-    
   }
 
   private void waitForOfflineReplicasFixed() {
@@ -136,12 +134,12 @@ public class DiskFailureIntegrationTest extends CruiseControlIntegrationTestHarn
     }, 800, new AssertionError("There are still offline replica on broker"));
   }
 
-  private void waitForDiskFailureDetection() {
+  private void waitForDiskFailureFixStarted() {
     KafkaCruiseControlIntegrationTestUtils.waitForConditionMeet(() -> {
       String responseMessage = KafkaCruiseControlIntegrationTestUtils
           .callCruiseControl(_app.serverUrl(), CRUISE_CONTROL_STATE_ENDPOINT);
       JSONArray diskFailuresArray = JsonPath.read(responseMessage,
-            "$.AnomalyDetectorState.recentDiskFailures[*].anomalyId");
+            "$.AnomalyDetectorState.recentDiskFailures[?(@.status=='" + AnomalyState.Status.FIX_STARTED + "')].anomalyId");
       return diskFailuresArray.size() == 1;
     }, 400, new AssertionError("Disk failure anomaly not detected"));
   }

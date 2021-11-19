@@ -25,6 +25,7 @@ import com.jayway.jsonpath.spi.json.JacksonJsonProvider;
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.SelfHealingNotifier;
@@ -51,6 +52,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class KafkaCruiseControlIntegrationTestUtils {
 
+  public static final String KAFKA_CRUISE_CONTROL_BASE_PATH = WebServerConfig.DEFAULT_WEBSERVER_API_URLPREFIX.replace("*", "").substring(1);
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlIntegrationTestUtils.class);
   private static final Random RANDOM = new Random(0xDEADBEEF);
   private KafkaCruiseControlIntegrationTestUtils() {
