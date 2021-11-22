@@ -593,11 +593,8 @@ public class GoalOptimizer implements Runnable {
 
         ClusterModel clusterModel = null;
         // We check for Intra broker goals among Default goals - if we have intra broker goals, set replicaPlacementInfo to true
-        if (containsIntraBrokerGoal(_goalsByPriority)) {
-          clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), requirements, _allowCapacityEstimation, true, operationProgress);
-        } else {
-          clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), requirements, _allowCapacityEstimation, operationProgress);
-        }
+        clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), requirements, _allowCapacityEstimation,
+                containsIntraBrokerGoal(_goalsByPriority), operationProgress);
 
         if (!clusterModel.topics().isEmpty()) {
           OptimizerResult result = optimizations(clusterModel, _goalsByPriority, operationProgress);
