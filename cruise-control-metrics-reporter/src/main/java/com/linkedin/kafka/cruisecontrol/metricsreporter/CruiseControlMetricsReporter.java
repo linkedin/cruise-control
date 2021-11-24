@@ -113,7 +113,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   }
 
   static String getBootstrapServers(Map<String, ?> configs) {
-    Object port = configs.get(KafkaConfig.PortProp());
+    Object port = configs.get("port");
     String listeners = String.valueOf(configs.get(KafkaConfig.ListenersProp()));
     if (!"null".equals(listeners) && listeners.length() != 0) {
       // See https://kafka.apache.org/documentation/#listeners for possible responses. If multiple listeners are configured, this function
