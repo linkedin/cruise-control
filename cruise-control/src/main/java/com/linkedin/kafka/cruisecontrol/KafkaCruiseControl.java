@@ -670,17 +670,17 @@ public class KafkaCruiseControl {
    * @param skipInterBrokerReplicaConcurrencyAdjustment {@code true} to skip auto adjusting concurrency of inter-broker
    * replica movements even if the concurrency adjuster is enabled, {@code false} otherwise.
    */
-  public void executeProposals(Set<ExecutionProposal> proposals, 
-                               Set<Integer> unthrottledBrokers, 
+  public void executeProposals(Set<ExecutionProposal> proposals,
+                               Set<Integer> unthrottledBrokers,
                                boolean isKafkaAssignerMode,
-                               Integer concurrentInterBrokerPartitionMovements, 
+                               Integer concurrentInterBrokerPartitionMovements,
                                Integer maxInterBrokerPartitionMovements,
-                               Integer concurrentIntraBrokerPartitionMovements, 
+                               Integer concurrentIntraBrokerPartitionMovements,
                                Integer concurrentLeaderMovements,
-                               Long executionProgressCheckIntervalMs, 
+                               Long executionProgressCheckIntervalMs,
                                ReplicaMovementStrategy replicaMovementStrategy,
-                               Long replicationThrottle, 
-                               boolean isTriggeredByUserRequest, 
+                               Long replicationThrottle,
+                               boolean isTriggeredByUserRequest,
                                String uuid,
                                boolean skipInterBrokerReplicaConcurrencyAdjustment) throws OngoingExecutionException {
     if (hasProposalsToExecute(proposals, uuid)) {
@@ -714,17 +714,17 @@ public class KafkaCruiseControl {
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
    */
-  public void executeRemoval(Set<ExecutionProposal> proposals, 
-                             boolean throttleDecommissionedBroker, 
+  public void executeRemoval(Set<ExecutionProposal> proposals,
+                             boolean throttleDecommissionedBroker,
                              Set<Integer> removedBrokers,
-                             boolean isKafkaAssignerMode, 
+                             boolean isKafkaAssignerMode,
                              Integer concurrentInterBrokerPartitionMovements,
-                             Integer maxInterBrokerPartitionMovements, 
+                             Integer maxInterBrokerPartitionMovements,
                              Integer concurrentLeaderMovements,
-                             Long executionProgressCheckIntervalMs, 
+                             Long executionProgressCheckIntervalMs,
                              ReplicaMovementStrategy replicaMovementStrategy,
-                             Long replicationThrottle, 
-                             boolean isTriggeredByUserRequest, 
+                             Long replicationThrottle,
+                             boolean isTriggeredByUserRequest,
                              String uuid) throws OngoingExecutionException {
     if (hasProposalsToExecute(proposals, uuid)) {
       _executor.executeProposals(proposals, throttleDecommissionedBroker ? Collections.emptySet() : removedBrokers, removedBrokers,
