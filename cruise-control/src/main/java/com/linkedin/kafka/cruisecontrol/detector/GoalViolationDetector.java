@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
@@ -22,7 +23,6 @@ import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
-import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
@@ -65,6 +65,7 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
   private volatile boolean _hasPartitionsWithRFGreaterThanNumRacks;
   private final OptimizationOptionsGenerator _optimizationOptionsGenerator;
   private final Timer _goalViolationDetectionTimer;
+  private final Meter _automatedRightsizingMeter;
   protected static final double BALANCEDNESS_SCORE_WITH_OFFLINE_REPLICAS = -1.0;
   protected final Provisioner _provisioner;
   protected final Boolean _isProvisionerEnabled;
@@ -91,6 +92,7 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
                                                                  overrideConfigs);
     _goalViolationDetectionTimer = dropwizardMetricRegistry.timer(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR,
                                                                                       "goal-violation-detection-timer"));
+    _automatedRightsizingMeter = dropwizardMetricRegistry.meter(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "automated-rightsizing-rate"));
     _provisioner = kafkaCruiseControl.provisioner();
     _isProvisionerEnabled = config.getBoolean(AnomalyDetectorConfig.PROVISIONER_ENABLE_CONFIG);
   }
@@ -225,6 +227,7 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
         ProvisionerState provisionerState = _provisioner.rightsize(_provisionResponse.recommendationByRecommender(), new RightsizeOptions());
         if (provisionerState != null) {
           LOG.info("Provisioner state: {}.", provisionerState);
+          _automatedRightsizingMeter.mark();
         }
       }
       Map<Boolean, List<String>> violatedGoalsByFixability = goalViolations.violatedGoalsByFixability();
@@ -317,9 +320,9 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
       goalViolations.addViolation(goal.name(), false);
       return true;
     }
-    Set<ExecutionProposal> proposals = AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, clusterModel);
-    LOG.trace("{} generated {} proposals", goal.name(), proposals.size());
-    if (!proposals.isEmpty()) {
+    boolean hasDiff = AnalyzerUtils.hasDiff(initReplicaDistribution, initLeaderDistribution, clusterModel);
+    LOG.trace("{} generated {} proposals", goal.name(), hasDiff ? "some" : "no");
+    if (hasDiff) {
       // A goal violation that can be optimized by applying the generated proposals.
       goalViolations.addViolation(goal.name(), true);
       return true;

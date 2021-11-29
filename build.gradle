@@ -232,7 +232,23 @@ project(':cruise-control') {
       }
     }
 
+    integrationTest {
+      java {
+        srcDirs = ["src/integrationTest/java"]
+      }
+      resources {
+        srcDirs = ['src/integrationTest/resources']
+      }
+      compileClasspath += main.output + test.output
+      runtimeClasspath += main.output + test.output
+    }
+
   }
+
+  configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntime.extendsFrom testRuntime
+   }
 
   dependencies {
     configurations.all {
@@ -271,6 +287,7 @@ project(':cruise-control') {
     testImplementation 'org.apache.httpcomponents:httpclient:4.5.13:tests'
     testImplementation 'org.bouncycastle:bcpkix-jdk15on:1.69'
     testImplementation 'org.apache.kerby:kerb-simplekdc:2.0.1'
+    testImplementation 'com.jayway.jsonpath:json-path:2.4.0'
 
     implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'
 
@@ -349,6 +366,14 @@ project(':cruise-control') {
       receiptFile.setText(content, "ISO-8859-1")
     }
   }
+
+  task integrationTest(type: Test) {
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+  }
+
+  check.dependsOn integrationTest
+  compileIntegrationTestJava.dependsOn copyDependantLibs
 
   jar {
     dependsOn createVersionFile

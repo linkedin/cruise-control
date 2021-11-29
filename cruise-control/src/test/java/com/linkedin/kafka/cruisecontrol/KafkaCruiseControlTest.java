@@ -5,11 +5,16 @@
 package com.linkedin.kafka.cruisecontrol;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorManager;
 import com.linkedin.kafka.cruisecontrol.detector.NoopProvisioner;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
 import java.util.Collections;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -58,6 +63,7 @@ public class KafkaCruiseControlTest extends CruiseControlIntegrationTestHarness 
     // For sanityCheckDryRun(false, XXX) (see #3 below)
     EasyMock.expect(executor.hasOngoingExecution()).andReturn(false).once();
     EasyMock.expect(executor.listPartitionsBeingReassigned()).andReturn(DUMMY_ONGOING_PARTITION_REASSIGNMENTS);
+    EasyMock.expect(executor.maybeStopExternalAgent()).andReturn(true);
     // For sanityCheckDryRun(false, XXX) (see #4 below)
     EasyMock.expect(executor.hasOngoingExecution()).andReturn(false).once();
     EasyMock.expect(executor.listPartitionsBeingReassigned()).andReturn(Collections.emptySet());
@@ -76,12 +82,47 @@ public class KafkaCruiseControlTest extends CruiseControlIntegrationTestHarness 
     kafkaCruiseControl.sanityCheckDryRun(false, true);
     // 2. Expect failure (dryrun = false), if there is ongoing execution started by CC, not requested to stop.
     assertThrows(IllegalStateException.class, () -> kafkaCruiseControl.sanityCheckDryRun(false, false));
-    // 3. Expect failure (dryrun = false), there is no execution started by CC, but ongoing replica reassignment, request to stop is irrelevant.
-    assertThrows(IllegalStateException.class, () -> kafkaCruiseControl.sanityCheckDryRun(false, false));
-    // 4. Expect failure (dryrun = false), there is no execution started by CC or other tools, request to stop is irrelevant.
+    // 3. Expect no failure (dryrun = false), there is no execution started by CC, but ongoing replica reassignment, request to stop is irrelevant.
+    kafkaCruiseControl.sanityCheckDryRun(false, false);
+    // 4. Expect no failure (dryrun = false), there is no execution started by CC or other tools, request to stop is irrelevant.
     kafkaCruiseControl.sanityCheckDryRun(false, false);
     // 5. Expect failure (dryrun = false), there is no execution started by CC, but checking ongoing executions started
     // by other tools timed out, request to stop is irrelevant.
+    assertThrows(IllegalStateException.class, () -> kafkaCruiseControl.sanityCheckDryRun(false, false));
+
+    EasyMock.verify(time, anomalyDetectorManager, executor, loadMonitor, goalOptimizerExecutor, goalOptimizer);
+
+    // Verify initialization and functioning of Admin Client
+    AdminClient adminClient = kafkaCruiseControl.adminClient();
+    assertNotNull(adminClient);
+    assertEquals(clusterSize(), adminClient.describeCluster().nodes().get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS).size());
+  }
+
+  @Test
+  public void testDisableAutoStopExternalAgent() throws InterruptedException, ExecutionException, TimeoutException {
+    Time time = EasyMock.mock(Time.class);
+    AnomalyDetectorManager anomalyDetectorManager = EasyMock.mock(AnomalyDetectorManager.class);
+    Executor executor = EasyMock.strictMock(Executor.class);
+    LoadMonitor loadMonitor = EasyMock.mock(LoadMonitor.class);
+    ExecutorService goalOptimizerExecutor = EasyMock.mock(ExecutorService.class);
+    GoalOptimizer goalOptimizer = EasyMock.mock(GoalOptimizer.class);
+
+    Properties properties = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
+    properties.put(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
+    properties.put(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, zkConnect());
+    properties.put(ExecutorConfig.AUTO_STOP_EXTERNAL_AGENT_CONFIG, false);
+    properties.put(KafkaSampleStore.PARTITION_METRIC_SAMPLE_STORE_TOPIC_CONFIG, "__partition_samples");
+    properties.put(KafkaSampleStore.BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG, "__broker_samples");
+    _config = new KafkaCruiseControlConfig(properties);
+
+    EasyMock.expect(executor.hasOngoingExecution()).andReturn(false).once();
+    EasyMock.expect(executor.listPartitionsBeingReassigned()).andReturn(DUMMY_ONGOING_PARTITION_REASSIGNMENTS);
+
+    EasyMock.replay(time, anomalyDetectorManager, executor, loadMonitor, goalOptimizerExecutor, goalOptimizer);
+    KafkaCruiseControl kafkaCruiseControl = new KafkaCruiseControl(_config, time, anomalyDetectorManager, executor,
+                                                                   loadMonitor, goalOptimizerExecutor, goalOptimizer, new NoopProvisioner());
+
+    // Expect failure (dryrun = false), if there is no execution started by CC, but ongoing replica reassignment, request to stop is irrelevant.
     assertThrows(IllegalStateException.class, () -> kafkaCruiseControl.sanityCheckDryRun(false, false));
 
     EasyMock.verify(time, anomalyDetectorManager, executor, loadMonitor, goalOptimizerExecutor, goalOptimizer);
