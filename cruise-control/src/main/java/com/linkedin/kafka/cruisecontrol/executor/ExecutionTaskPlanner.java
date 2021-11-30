@@ -503,7 +503,7 @@ public class ExecutionTaskPlanner {
             return compareFirstTasks;
           }
           int compareTaskSetSize = taskSet1.size() - taskSet2.size();
-          return compareTaskSetSize == 0 ? broker1 - broker2 : compareTaskSetSize;
+          return compareTaskSetSize != 0 ? compareTaskSetSize : broker1 - broker2;
         }
       }
     };
