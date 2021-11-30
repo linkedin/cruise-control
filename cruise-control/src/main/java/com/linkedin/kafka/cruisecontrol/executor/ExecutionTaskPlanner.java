@@ -341,7 +341,7 @@ public class ExecutionTaskPlanner {
      * chances to make progress.
      */
     boolean newTaskAdded = true;
-    _interPartMoveBrokerId.addAll(readyBrokers.keySet());
+    _interPartMoveBrokerId.addAll(_interPartMoveTaskByBrokerId.keySet());
     Set<Integer> brokerInvolved = new HashSet<>();
     Set<TopicPartition> partitionsInvolved = new HashSet<>();
 
