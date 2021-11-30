@@ -470,9 +470,14 @@ public class ExecutionTaskPlanner {
 
   private void removeInterBrokerReplicaActionForExecution(ExecutionTask task) {
     int sourceBroker = task.proposal().oldLeader().brokerId();
+    _interPartMoveBrokerId.remove(sourceBroker);
     _interPartMoveTaskByBrokerId.get(sourceBroker).remove(task);
+    _interPartMoveBrokerId.add(sourceBroker);
     for (ReplicaPlacementInfo destinationBroker : task.proposal().replicasToAdd()) {
-      _interPartMoveTaskByBrokerId.get(destinationBroker.brokerId()).remove(task);
+      int destinationBrokerId = destinationBroker.brokerId();
+      _interPartMoveBrokerId.remove(destinationBrokerId);
+      _interPartMoveTaskByBrokerId.get(destinationBrokerId).remove(task);
+      _interPartMoveBrokerId.add(destinationBrokerId);
     }
     _remainingInterBrokerReplicaMovements.remove(task);
   }
