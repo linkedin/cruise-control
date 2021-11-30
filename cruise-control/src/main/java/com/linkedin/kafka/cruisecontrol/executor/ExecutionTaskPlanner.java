@@ -14,6 +14,7 @@ import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -66,12 +67,14 @@ import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.Replic
 public class ExecutionTaskPlanner {
   private static final Logger LOG = LoggerFactory.getLogger(ExecutionTaskPlanner.class);
   private Map<Integer, SortedSet<ExecutionTask>> _interPartMoveTaskByBrokerId;
+  private SortedSet<Integer> _interPartMoveBrokerId;
   private final Map<Integer, SortedSet<ExecutionTask>> _intraPartMoveTaskByBrokerId;
   private final Set<ExecutionTask> _remainingInterBrokerReplicaMovements;
   private final Set<ExecutionTask> _remainingIntraBrokerReplicaMovements;
   private final Map<Long, ExecutionTask> _remainingLeadershipMovements;
   private long _executionId;
   private ReplicaMovementStrategy _defaultReplicaMovementTaskStrategy;
+  private ReplicaMovementStrategy _replicaMovementTaskStrategy;
   private final AdminClient _adminClient;
   private final KafkaCruiseControlConfig _config;
   private final long _taskExecutionAlertingThresholdMs;
@@ -200,13 +203,15 @@ public class ExecutionTaskPlanner {
       }
     }
     if (replicaMovementStrategy == null) {
-      _interPartMoveTaskByBrokerId = _defaultReplicaMovementTaskStrategy.applyStrategy(_remainingInterBrokerReplicaMovements, strategyOptions);
+      _replicaMovementTaskStrategy = _defaultReplicaMovementTaskStrategy;
     } else {
       // Chain the generated composite strategy with BaseReplicaMovementStrategy in the end to ensure the returned
       // strategy can always determine the order of two tasks.
-      _interPartMoveTaskByBrokerId = replicaMovementStrategy.chain(new BaseReplicaMovementStrategy())
-                                                            .applyStrategy(_remainingInterBrokerReplicaMovements, strategyOptions);
+      _replicaMovementTaskStrategy = replicaMovementStrategy.chain(new BaseReplicaMovementStrategy());
     }
+    _interPartMoveTaskByBrokerId = _replicaMovementTaskStrategy.applyStrategy(_remainingInterBrokerReplicaMovements, strategyOptions);
+    _interPartMoveBrokerId = new TreeSet<>(brokerComparator(strategyOptions));
+    _interPartMoveBrokerId.addAll(_interPartMoveTaskByBrokerId.keySet());
   }
 
   /**
@@ -336,16 +341,14 @@ public class ExecutionTaskPlanner {
     boolean newTaskAdded = true;
     Set<Integer> brokerInvolved = new HashSet<>();
     Set<TopicPartition> partitionsInvolved = new HashSet<>();
-    
+
     int numInProgressPartitions = inProgressPartitions.size();
     boolean maxPartitionMovesReached = false;
 
     while (newTaskAdded && !maxPartitionMovesReached) {
       newTaskAdded = false;
       brokerInvolved.clear();
-      for (Map.Entry<Integer, Integer> brokerEntry : readyBrokers.entrySet()) {
-        int brokerId = brokerEntry.getKey();
-
+      for (int brokerId : new ArrayList<>(_interPartMoveBrokerId)) {
         // If max partition moves limit reached, no need to check other brokers
         if (maxPartitionMovesReached) {
           break;
@@ -472,5 +475,22 @@ public class ExecutionTaskPlanner {
       _interPartMoveTaskByBrokerId.get(destinationBroker.brokerId()).remove(task);
     }
     _remainingInterBrokerReplicaMovements.remove(task);
+  }
+
+  private Comparator<Integer> brokerComparator(StrategyOptions strategyOptions) {
+    Comparator<ExecutionTask> taskComparator = _replicaMovementTaskStrategy.taskComparator(strategyOptions);
+
+    return (broker1, broker2) -> {
+      SortedSet<ExecutionTask> taskSet1 = _interPartMoveTaskByBrokerId.get(broker1);
+      SortedSet<ExecutionTask> taskSet2 = _interPartMoveTaskByBrokerId.get(broker2);
+      boolean taskSet1IsEmpty = taskSet1.isEmpty();
+      boolean taskSet2IsEmpty = taskSet2.isEmpty();
+
+      if (taskSet1IsEmpty) {
+        return taskSet2IsEmpty ? 0 : 1;
+      } else {
+        return taskSet2IsEmpty ? -1 : taskComparator.compare(taskSet1.first(), taskSet2.first());
+      }
+    };
   }
 }
