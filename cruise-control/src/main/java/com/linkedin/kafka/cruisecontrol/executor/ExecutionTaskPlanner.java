@@ -495,7 +495,16 @@ public class ExecutionTaskPlanner {
       if (taskSet1IsEmpty) {
         return taskSet2IsEmpty ? PRIORITIZE_NONE : PRIORITIZE_BROKER_2;
       } else {
-        return taskSet2IsEmpty ? PRIORITIZE_BROKER_1 : taskComparator.compare(taskSet1.first(), taskSet2.first());
+        if (taskSet2IsEmpty) {
+          return PRIORITIZE_BROKER_1;
+        } else {
+          int compareFirstTasks = taskComparator.compare(taskSet1.first(), taskSet2.first());
+          if (compareFirstTasks != 0) {
+            return compareFirstTasks;
+          }
+          int compareTaskSetSize = taskSet1.size() - taskSet2.size();
+          return compareTaskSetSize == 0 ? broker1 - broker2 : compareTaskSetSize;
+        }
       }
     };
   }
