@@ -66,13 +66,13 @@ public class ExecutionTaskPlannerTest {
   private final ExecutionProposal _leaderMovement4 =
       new ExecutionProposal(new TopicPartition(TOPIC1, 3), 0, _r3, Arrays.asList(_r3, _r2), Arrays.asList(_r2, _r3));
 
-  private final ExecutionProposal _partitionMovement1 =
+  private final ExecutionProposal _partitionMovement0 =
       new ExecutionProposal(new TopicPartition(TOPIC2, 0), 1, _r0, Arrays.asList(_r0, _r2), Arrays.asList(_r2, _r1));
-  private final ExecutionProposal _partitionMovement2 =
+  private final ExecutionProposal _partitionMovement1 =
       new ExecutionProposal(new TopicPartition(TOPIC2, 1), 3, _r1, Arrays.asList(_r1, _r3), Arrays.asList(_r3, _r2));
-  private final ExecutionProposal _partitionMovement3 =
+  private final ExecutionProposal _partitionMovement2 =
       new ExecutionProposal(new TopicPartition(TOPIC2, 2), 2, _r2, Arrays.asList(_r2, _r1), Arrays.asList(_r1, _r3));
-  private final ExecutionProposal _partitionMovement4 =
+  private final ExecutionProposal _partitionMovement3 =
       new ExecutionProposal(new TopicPartition(TOPIC2, 3), 1, _r3, Arrays.asList(_r3, _r2), Arrays.asList(_r2, _r0));
 
   private final ExecutionProposal _rf4PartitionMovement0 =
@@ -137,10 +137,10 @@ public class ExecutionTaskPlannerTest {
   @Test
   public void testGetInterBrokerPartitionMovementTasks() {
     List<ExecutionProposal> proposals = new ArrayList<>();
+    proposals.add(_partitionMovement0);
     proposals.add(_partitionMovement1);
     proposals.add(_partitionMovement2);
     proposals.add(_partitionMovement3);
-    proposals.add(_partitionMovement4);
     // Test different execution strategies.
     ExecutionTaskPlanner basePlanner =
         new ExecutionTaskPlanner(null, new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
@@ -191,15 +191,15 @@ public class ExecutionTaskPlannerTest {
         new ExecutionTaskPlanner(null, new KafkaCruiseControlConfig(prioritizeMinIsrMovementProps));
 
     Set<PartitionInfo> partitions = new HashSet<>();
-    partitions.add(generatePartitionInfoWithUrpHavingOfflineReplica(_partitionMovement1, true));
-    partitions.add(generatePartitionInfo(_partitionMovement2, false));
-    partitions.add(generatePartitionInfoWithUrpHavingOfflineReplica(_partitionMovement3, true));
-    partitions.add(generatePartitionInfo(_partitionMovement4, false));
+    partitions.add(generatePartitionInfoWithUrpHavingOfflineReplica(_partitionMovement0, true));
+    partitions.add(generatePartitionInfo(_partitionMovement1, false));
+    partitions.add(generatePartitionInfoWithUrpHavingOfflineReplica(_partitionMovement2, true));
+    partitions.add(generatePartitionInfo(_partitionMovement3, false));
 
     Cluster expectedCluster = new Cluster(null, _expectedNodes, partitions, Collections.emptySet(), Collections.emptySet());
     // This ensures that the _partitionMovement1 and _partitionMovement3 are AtMinISR, while the other partitions are not.
-    Map<String, MinIsrWithTime> minIsrWithTimeByTopic =
-        Collections.singletonMap(TOPIC2, new MinIsrWithTime((short) (_partitionMovement1.oldReplicas().size() - 1), 0));
+    Map<String, MinIsrWithTime> minIsrWithTimeByTopic
+        = Collections.singletonMap(TOPIC2, new MinIsrWithTime((short) (_partitionMovement0.oldReplicas().size() - 1), 0));
     StrategyOptions strategyOptions = new StrategyOptions.Builder(expectedCluster).minIsrWithTimeByTopic(minIsrWithTimeByTopic).build();
 
     Map<Integer, Integer> readyBrokers = new HashMap<>();
@@ -209,70 +209,57 @@ public class ExecutionTaskPlannerTest {
     readyBrokers.put(3, 14);
 
     basePlanner.addExecutionProposals(proposals, strategyOptions, null);
-    List<ExecutionTask> partitionMovementTasks =
-        basePlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(), _defaultPartitionsMaxCap);
-    assertEquals("First task should be partitionMovement1", _partitionMovement1, partitionMovementTasks.get(0).proposal());
-    assertEquals("Second task should be partitionMovement3", _partitionMovement3, partitionMovementTasks.get(1).proposal());
-    assertEquals("Third task should be partitionMovement4", _partitionMovement4, partitionMovementTasks.get(2).proposal());
+    List<ExecutionTask> partitionMovementTasks = basePlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(),
+                                                                                                _defaultPartitionsMaxCap);
+    assertEquals("First task", _partitionMovement0, partitionMovementTasks.get(0).proposal());
+    assertEquals("Second task", _partitionMovement2, partitionMovementTasks.get(1).proposal());
+    assertEquals("Third task", _partitionMovement3, partitionMovementTasks.get(2).proposal());
 
     postponeUrpPlanner.addExecutionProposals(proposals, strategyOptions, null);
-    partitionMovementTasks =
-        postponeUrpPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(), _defaultPartitionsMaxCap);
-    assertEquals("First task should be partitionMovement4", _partitionMovement4, partitionMovementTasks.get(0).proposal());
-    assertEquals("Second task should be partitionMovement2", _partitionMovement2, partitionMovementTasks.get(1).proposal());
-    assertEquals("Third task should be partitionMovement1", _partitionMovement1, partitionMovementTasks.get(2).proposal());
+    partitionMovementTasks = postponeUrpPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(),
+                                                                                   _defaultPartitionsMaxCap);
+    assertEquals("First task", _partitionMovement3, partitionMovementTasks.get(0).proposal());
+    assertEquals("Second task", _partitionMovement1, partitionMovementTasks.get(1).proposal());
+    assertEquals("Third task", _partitionMovement0, partitionMovementTasks.get(2).proposal());
 
     prioritizeLargeMovementPlanner.addExecutionProposals(proposals, strategyOptions, null);
-    partitionMovementTasks =
-        prioritizeLargeMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(), _defaultPartitionsMaxCap);
-    assertEquals("First task should be partitionMovement1", _partitionMovement1, partitionMovementTasks.get(0).proposal());
-    assertEquals("Second task should be partitionMovement3", _partitionMovement3, partitionMovementTasks.get(1).proposal());
-    assertEquals("Third task should be partitionMovement4", _partitionMovement4, partitionMovementTasks.get(2).proposal());
+    partitionMovementTasks = prioritizeLargeMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(),
+                                                                                               _defaultPartitionsMaxCap);
+    assertEquals("First task", _partitionMovement0, partitionMovementTasks.get(0).proposal());
+    assertEquals("Second task", _partitionMovement2, partitionMovementTasks.get(1).proposal());
+    assertEquals("Third task", _partitionMovement3, partitionMovementTasks.get(2).proposal());
 
     prioritizeSmallMovementPlanner.addExecutionProposals(proposals, strategyOptions, null);
-    partitionMovementTasks =
-        prioritizeSmallMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(), _defaultPartitionsMaxCap);
-    assertEquals("First task should be partitionMovement1", _partitionMovement1, partitionMovementTasks.get(0).proposal());
-    assertEquals("Second task should be partitionMovement3", _partitionMovement3, partitionMovementTasks.get(1).proposal());
-    assertEquals("Third task should be partitionMovement4", _partitionMovement4, partitionMovementTasks.get(2).proposal());
-    assertEquals("Fourth task should be partitionMovement2", _partitionMovement2, partitionMovementTasks.get(3).proposal());
+    partitionMovementTasks = prioritizeSmallMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(),
+                                                                                               _defaultPartitionsMaxCap);
+    assertEquals("First task", _partitionMovement0, partitionMovementTasks.get(0).proposal());
+    assertEquals("Second task", _partitionMovement2, partitionMovementTasks.get(1).proposal());
+    assertEquals("Third task", _partitionMovement3, partitionMovementTasks.get(2).proposal());
+    assertEquals("Fourth task", _partitionMovement1, partitionMovementTasks.get(3).proposal());
 
     smallUrpMovementPlanner.addExecutionProposals(proposals, strategyOptions, null);
-    partitionMovementTasks =
-        smallUrpMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(), _defaultPartitionsMaxCap);
-    assertEquals("First task should be partitionMovement4", _partitionMovement4, partitionMovementTasks.get(0).proposal());
-    assertEquals("Second task should be partitionMovement2", _partitionMovement2, partitionMovementTasks.get(1).proposal());
-    assertEquals("Third task should be partitionMovement1", _partitionMovement1, partitionMovementTasks.get(2).proposal());
-    assertEquals("Fourth task should be partitionMovement3", _partitionMovement3, partitionMovementTasks.get(3).proposal());
+    partitionMovementTasks = smallUrpMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(),
+                                                                                        _defaultPartitionsMaxCap);
+    assertEquals("First task", _partitionMovement3, partitionMovementTasks.get(0).proposal());
+    assertEquals("Second task", _partitionMovement1, partitionMovementTasks.get(1).proposal());
+    assertEquals("Third task", _partitionMovement0, partitionMovementTasks.get(2).proposal());
+    assertEquals("Fourth task", _partitionMovement2, partitionMovementTasks.get(3).proposal());
 
     contradictingMovementPlanner.addExecutionProposals(proposals, strategyOptions, null);
-    partitionMovementTasks =
-        contradictingMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(), _defaultPartitionsMaxCap);
-    assertEquals("First task should be partitionMovement4", _partitionMovement4, partitionMovementTasks.get(0).proposal());
-    assertEquals("Second task should be partitionMovement2", _partitionMovement2, partitionMovementTasks.get(1).proposal());
-    assertEquals("Third task should be partitionMovement1", _partitionMovement1, partitionMovementTasks.get(2).proposal());
-    assertEquals("Fourth task should be partitionMovement3", _partitionMovement3, partitionMovementTasks.get(3).proposal());
+    partitionMovementTasks = contradictingMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(),
+                                                                                             _defaultPartitionsMaxCap);
+    assertEquals("First task", _partitionMovement3, partitionMovementTasks.get(0).proposal());
+    assertEquals("Second task", _partitionMovement1, partitionMovementTasks.get(1).proposal());
+    assertEquals("Third task", _partitionMovement0, partitionMovementTasks.get(2).proposal());
+    assertEquals("Fourth task", _partitionMovement2, partitionMovementTasks.get(3).proposal());
 
     prioritizeMinIsrMovementPlanner.addExecutionProposals(proposals, strategyOptions, null);
-    partitionMovementTasks =
-        prioritizeMinIsrMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(), _defaultPartitionsMaxCap);
-    assertEquals("First task should be partitionMovement1", _partitionMovement1, partitionMovementTasks.get(0).proposal());
-    assertEquals("Second task should be partitionMovement3", _partitionMovement3, partitionMovementTasks.get(1).proposal());
-    assertEquals("Third task should be partitionMovement4", _partitionMovement4, partitionMovementTasks.get(2).proposal());
-    assertEquals("Fourth task should be partitionMovement2", _partitionMovement2, partitionMovementTasks.get(3).proposal());
-
-    readyBrokers.put(0, 14);
-    readyBrokers.put(1, 14);
-    readyBrokers.put(2, 14);
-    readyBrokers.put(3, 14);
-    int partitionsMaxCap = 4;
-
-    basePlanner.addExecutionProposals(proposals, strategyOptions, null);
-    partitionMovementTasks = basePlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(), partitionsMaxCap);
-    assertEquals(partitionsMaxCap, partitionMovementTasks.size());
-    partitionMovementTasks =
-        basePlanner.getInterBrokerReplicaMovementTasks(readyBrokers, new HashSet<>(partitionsMaxCap), partitionsMaxCap);
-    assertEquals(0, partitionMovementTasks.size());
+    partitionMovementTasks = prioritizeMinIsrMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(),
+                                                                                                _defaultPartitionsMaxCap);
+    assertEquals("First task", _partitionMovement0, partitionMovementTasks.get(0).proposal());
+    assertEquals("Second task", _partitionMovement2, partitionMovementTasks.get(1).proposal());
+    assertEquals("Third task", _partitionMovement3, partitionMovementTasks.get(2).proposal());
+    assertEquals("Fourth task", _partitionMovement1, partitionMovementTasks.get(3).proposal());
   }
 
   @Test
@@ -312,8 +299,7 @@ public class ExecutionTaskPlannerTest {
     readyBrokers.put(5, 6);
     prioritizeOneAboveMinIsrMovementPlanner.addExecutionProposals(proposals, strategyOptions, null);
     List<ExecutionTask> partitionMovementTasks
-        = prioritizeOneAboveMinIsrMovementPlanner.getInterBrokerReplicaMovementTasks(
-            readyBrokers, Collections.emptySet(), _defaultPartitionsMaxCap);
+        = prioritizeOneAboveMinIsrMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(), _defaultPartitionsMaxCap);
     assertEquals("First task", _rf4PartitionMovement2, partitionMovementTasks.get(0).proposal());
     assertEquals("Second task", _rf4PartitionMovement3, partitionMovementTasks.get(1).proposal());
     assertEquals("Third task", _rf4PartitionMovement1, partitionMovementTasks.get(2).proposal());
@@ -323,18 +309,18 @@ public class ExecutionTaskPlannerTest {
   @Test
   public void testDynamicConfigReplicaMovementStrategy() {
     List<ExecutionProposal> proposals = new ArrayList<>();
+    proposals.add(_partitionMovement0);
     proposals.add(_partitionMovement1);
     proposals.add(_partitionMovement2);
     proposals.add(_partitionMovement3);
-    proposals.add(_partitionMovement4);
     ExecutionTaskPlanner planner =
         new ExecutionTaskPlanner(null, new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
 
     Set<PartitionInfo> partitions = new HashSet<>();
-    partitions.add(generatePartitionInfo(_partitionMovement1, true));
-    partitions.add(generatePartitionInfo(_partitionMovement2, false));
-    partitions.add(generatePartitionInfo(_partitionMovement3, true));
-    partitions.add(generatePartitionInfo(_partitionMovement4, false));
+    partitions.add(generatePartitionInfo(_partitionMovement0, true));
+    partitions.add(generatePartitionInfo(_partitionMovement1, false));
+    partitions.add(generatePartitionInfo(_partitionMovement2, true));
+    partitions.add(generatePartitionInfo(_partitionMovement3, false));
 
     Cluster expectedCluster = new Cluster(null, _expectedNodes, partitions, Collections.emptySet(), Collections.emptySet());
     StrategyOptions strategyOptions = new StrategyOptions.Builder(expectedCluster).build();
@@ -345,30 +331,30 @@ public class ExecutionTaskPlannerTest {
     readyBrokers.put(2, 8);
     readyBrokers.put(3, 8);
     planner.addExecutionProposals(proposals, strategyOptions, null);
-    List<ExecutionTask> partitionMovementTasks =
-        planner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(), _defaultPartitionsMaxCap);
-    assertEquals("First task should be partitionMovement1", _partitionMovement1, partitionMovementTasks.get(0).proposal());
-    assertEquals("Second task should be partitionMovement3", _partitionMovement3, partitionMovementTasks.get(1).proposal());
-    assertEquals("Third task should be partitionMovement4", _partitionMovement4, partitionMovementTasks.get(2).proposal());
+    List<ExecutionTask> partitionMovementTasks = planner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(),
+                                                                                            _defaultPartitionsMaxCap);
+    assertEquals("First task", _partitionMovement0, partitionMovementTasks.get(0).proposal());
+    assertEquals("Second task", _partitionMovement2, partitionMovementTasks.get(1).proposal());
+    assertEquals("Third task", _partitionMovement3, partitionMovementTasks.get(2).proposal());
 
     planner.addExecutionProposals(proposals, strategyOptions, new PostponeUrpReplicaMovementStrategy());
     partitionMovementTasks = planner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(), _defaultPartitionsMaxCap);
-    assertEquals("First task should be partitionMovement4", _partitionMovement4, partitionMovementTasks.get(0).proposal());
-    assertEquals("Second task should be partitionMovement2", _partitionMovement2, partitionMovementTasks.get(1).proposal());
-    assertEquals("Third task should be partitionMovement1", _partitionMovement1, partitionMovementTasks.get(2).proposal());
+    assertEquals("First task", _partitionMovement3, partitionMovementTasks.get(0).proposal());
+    assertEquals("Second task", _partitionMovement1, partitionMovementTasks.get(1).proposal());
+    assertEquals("Third task", _partitionMovement0, partitionMovementTasks.get(2).proposal());
 
     planner.addExecutionProposals(proposals, strategyOptions, new PrioritizeLargeReplicaMovementStrategy());
     partitionMovementTasks = planner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(), _defaultPartitionsMaxCap);
-    assertEquals("First task should be partitionMovement1", _partitionMovement1, partitionMovementTasks.get(0).proposal());
-    assertEquals("Second task should be partitionMovement3", _partitionMovement3, partitionMovementTasks.get(1).proposal());
-    assertEquals("Third task should be partitionMovement4", _partitionMovement4, partitionMovementTasks.get(2).proposal());
+    assertEquals("First task", _partitionMovement0, partitionMovementTasks.get(0).proposal());
+    assertEquals("Second task", _partitionMovement2, partitionMovementTasks.get(1).proposal());
+    assertEquals("Third task", _partitionMovement3, partitionMovementTasks.get(2).proposal());
 
     planner.addExecutionProposals(proposals, strategyOptions, new PrioritizeSmallReplicaMovementStrategy());
     partitionMovementTasks = planner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(), _defaultPartitionsMaxCap);
-    assertEquals("First task should be partitionMovement1", _partitionMovement1, partitionMovementTasks.get(0).proposal());
-    assertEquals("Second task should be _partitionMovement3", _partitionMovement3, partitionMovementTasks.get(1).proposal());
-    assertEquals("Third task should be partitionMovement4", _partitionMovement4, partitionMovementTasks.get(2).proposal());
-    assertEquals("Fourth task should be partitionMovement2", _partitionMovement2, partitionMovementTasks.get(3).proposal());
+    assertEquals("First task", _partitionMovement0, partitionMovementTasks.get(0).proposal());
+    assertEquals("Second task should be _partitionMovement3", _partitionMovement2, partitionMovementTasks.get(1).proposal());
+    assertEquals("Third task", _partitionMovement3, partitionMovementTasks.get(2).proposal());
+    assertEquals("Fourth task", _partitionMovement1, partitionMovementTasks.get(3).proposal());
   }
 
   @Test
@@ -436,14 +422,14 @@ public class ExecutionTaskPlannerTest {
   public void testClear() {
     List<ExecutionProposal> proposals = new ArrayList<>();
     proposals.add(_leaderMovement1);
-    proposals.add(_partitionMovement1);
+    proposals.add(_partitionMovement0);
     ExecutionTaskPlanner planner =
         new ExecutionTaskPlanner(null, new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
 
     Set<PartitionInfo> partitions = new HashSet<>();
 
     partitions.add(generatePartitionInfo(_leaderMovement1, false));
-    partitions.add(generatePartitionInfo(_partitionMovement1, false));
+    partitions.add(generatePartitionInfo(_partitionMovement0, false));
 
     Cluster expectedCluster = new Cluster(null,
                                           _expectedNodes,
