@@ -366,50 +366,46 @@ public class ExecutionTaskPlanner {
         // Check the available balancing proposals of this broker to see if we can find one ready to execute.
         SortedSet<ExecutionTask> proposalsForBroker = _interPartMoveTaskByBrokerId.get(brokerId);
         LOG.trace("Execution task for broker {} are {}", brokerId, proposalsForBroker);
-        if (proposalsForBroker != null) {
-          for (ExecutionTask task : proposalsForBroker) {
-            // Break if max cap reached
-            if (numInProgressPartitions >= maxInterBrokerPartitionMovements) {
-              LOG.trace(
-                  "In progress Partitions {} reached/exceeded Max partitions to move in cluster {}. " + "Not adding anymore tasks.",
-                  numInProgressPartitions, maxInterBrokerPartitionMovements);
-              maxPartitionMovesReached = true;
-              break;
+        for (ExecutionTask task : proposalsForBroker) {
+          // Break if max cap reached
+          if (numInProgressPartitions >= maxInterBrokerPartitionMovements) {
+            LOG.trace("In progress Partitions {} reached/exceeded Max partitions to move in cluster {}. " + "Not adding anymore tasks.",
+                      numInProgressPartitions, maxInterBrokerPartitionMovements);
+            maxPartitionMovesReached = true;
+            break;
+          }
+          // Skip this proposal if either source broker or destination broker of this proposal has already
+          // involved in this round.
+          int sourceBroker = task.proposal().oldLeader().brokerId();
+          Set<Integer> destinationBrokers = task.proposal().replicasToAdd().stream().mapToInt(ReplicaPlacementInfo::brokerId)
+                                                .boxed().collect(Collectors.toSet());
+          if (brokerInvolved.contains(sourceBroker)
+              || KafkaCruiseControlUtils.containsAny(brokerInvolved, destinationBrokers)) {
+            continue;
+          }
+          TopicPartition tp = task.proposal().topicPartition();
+          // Check if the proposal is executable.
+          if (isExecutableProposal(task.proposal(), readyBrokers)
+              && !inProgressPartitions.contains(tp)
+              && !partitionsInvolved.contains(tp)) {
+            partitionsInvolved.add(tp);
+            executableReplicaMovements.add(task);
+            // Record the two brokers as involved in this round and stop involving them again in this round.
+            brokerInvolved.add(sourceBroker);
+            brokerInvolved.addAll(destinationBrokers);
+            // Remove the proposal from the execution plan.
+            removeInterBrokerReplicaActionForExecution(task);
+            // Decrement the slots for both source and destination brokers
+            readyBrokers.put(sourceBroker, readyBrokers.get(sourceBroker) - 1);
+            for (int broker : destinationBrokers) {
+              readyBrokers.put(broker, readyBrokers.get(broker) - 1);
             }
-
-            // Skip this proposal if either source broker or destination broker of this proposal has already
-            // involved in this round.
-            int sourceBroker = task.proposal().oldLeader().brokerId();
-            Set<Integer> destinationBrokers = task.proposal().replicasToAdd().stream().mapToInt(ReplicaPlacementInfo::brokerId)
-                                                  .boxed().collect(Collectors.toSet());
-            if (brokerInvolved.contains(sourceBroker)
-                || KafkaCruiseControlUtils.containsAny(brokerInvolved, destinationBrokers)) {
-              continue;
-            }
-            TopicPartition tp = task.proposal().topicPartition();
-            // Check if the proposal is executable.
-            if (isExecutableProposal(task.proposal(), readyBrokers)
-                && !inProgressPartitions.contains(tp)
-                && !partitionsInvolved.contains(tp)) {
-              partitionsInvolved.add(tp);
-              executableReplicaMovements.add(task);
-              // Record the two brokers as involved in this round and stop involving them again in this round.
-              brokerInvolved.add(sourceBroker);
-              brokerInvolved.addAll(destinationBrokers);
-              // Remove the proposal from the execution plan.
-              removeInterBrokerReplicaActionForExecution(task);
-              // Decrement the slots for both source and destination brokers
-              readyBrokers.put(sourceBroker, readyBrokers.get(sourceBroker) - 1);
-              for (int broker : destinationBrokers) {
-                readyBrokers.put(broker, readyBrokers.get(broker) - 1);
-              }
-              // Mark proposal added to true so we will have another round of check.
-              newTaskAdded = true;
-              numInProgressPartitions++;
-              LOG.debug("Found ready task {} for broker {}. Broker concurrency state: {}", task, brokerId, readyBrokers);
-              // We can stop the check for proposals for this broker because we have found a proposal.
-              break;
-            }
+            // Mark proposal added to true so we will have another round of check.
+            newTaskAdded = true;
+            numInProgressPartitions++;
+            LOG.debug("Found ready task {} for broker {}. Broker concurrency state: {}", task, brokerId, readyBrokers);
+            // We can stop the check for proposals for this broker because we have found a proposal.
+            break;
           }
         }
       }
