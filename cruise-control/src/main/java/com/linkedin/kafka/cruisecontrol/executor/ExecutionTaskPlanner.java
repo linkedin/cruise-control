@@ -80,6 +80,9 @@ public class ExecutionTaskPlanner {
   private final long _taskExecutionAlertingThresholdMs;
   private final double _interBrokerReplicaMovementRateAlertingThreshold;
   private final double _intraBrokerReplicaMovementRateAlertingThreshold;
+  private static final int PRIORITIZE_BROKER_1 = -1;
+  private static final int PRIORITIZE_BROKER_2 = 1;
+  private static final int PRIORITIZE_NONE = 0;
 
   /**
    *
@@ -211,7 +214,6 @@ public class ExecutionTaskPlanner {
     }
     _interPartMoveTaskByBrokerId = _replicaMovementTaskStrategy.applyStrategy(_remainingInterBrokerReplicaMovements, strategyOptions);
     _interPartMoveBrokerId = new TreeSet<>(brokerComparator(strategyOptions));
-    _interPartMoveBrokerId.addAll(_interPartMoveTaskByBrokerId.keySet());
   }
 
   /**
@@ -339,6 +341,7 @@ public class ExecutionTaskPlanner {
      * chances to make progress.
      */
     boolean newTaskAdded = true;
+    _interPartMoveBrokerId.addAll(readyBrokers.keySet());
     Set<Integer> brokerInvolved = new HashSet<>();
     Set<TopicPartition> partitionsInvolved = new HashSet<>();
 
@@ -347,8 +350,11 @@ public class ExecutionTaskPlanner {
 
     while (newTaskAdded && !maxPartitionMovesReached) {
       newTaskAdded = false;
+      // The first task of each brokerInvolved must changed. Let's remove the brokers, then add them again by comparing their new first tasks.
+      _interPartMoveBrokerId.removeAll(brokerInvolved);
+      _interPartMoveBrokerId.addAll(brokerInvolved);
       brokerInvolved.clear();
-      for (int brokerId : new ArrayList<>(_interPartMoveBrokerId)) {
+      for (int brokerId : _interPartMoveBrokerId) {
         // If max partition moves limit reached, no need to check other brokers
         if (maxPartitionMovesReached) {
           break;
@@ -470,14 +476,9 @@ public class ExecutionTaskPlanner {
 
   private void removeInterBrokerReplicaActionForExecution(ExecutionTask task) {
     int sourceBroker = task.proposal().oldLeader().brokerId();
-    _interPartMoveBrokerId.remove(sourceBroker);
     _interPartMoveTaskByBrokerId.get(sourceBroker).remove(task);
-    _interPartMoveBrokerId.add(sourceBroker);
     for (ReplicaPlacementInfo destinationBroker : task.proposal().replicasToAdd()) {
-      int destinationBrokerId = destinationBroker.brokerId();
-      _interPartMoveBrokerId.remove(destinationBrokerId);
-      _interPartMoveTaskByBrokerId.get(destinationBrokerId).remove(task);
-      _interPartMoveBrokerId.add(destinationBrokerId);
+      _interPartMoveTaskByBrokerId.get(destinationBroker.brokerId()).remove(task);
     }
     _remainingInterBrokerReplicaMovements.remove(task);
   }
@@ -492,9 +493,9 @@ public class ExecutionTaskPlanner {
       boolean taskSet2IsEmpty = taskSet2.isEmpty();
 
       if (taskSet1IsEmpty) {
-        return taskSet2IsEmpty ? 0 : 1;
+        return taskSet2IsEmpty ? PRIORITIZE_NONE : PRIORITIZE_BROKER_2;
       } else {
-        return taskSet2IsEmpty ? -1 : taskComparator.compare(taskSet1.first(), taskSet2.first());
+        return taskSet2IsEmpty ? PRIORITIZE_BROKER_1 : taskComparator.compare(taskSet1.first(), taskSet2.first());
       }
     };
   }
