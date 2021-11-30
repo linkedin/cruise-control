@@ -489,20 +489,20 @@ public class ExecutionTaskPlanner {
     return (broker1, broker2) -> {
       SortedSet<ExecutionTask> taskSet1 = _interPartMoveTaskByBrokerId.get(broker1);
       SortedSet<ExecutionTask> taskSet2 = _interPartMoveTaskByBrokerId.get(broker2);
-      boolean taskSet1IsEmpty = taskSet1.isEmpty();
-      boolean taskSet2IsEmpty = taskSet2.isEmpty();
+      int taskSet1Size = taskSet1.size();
+      int taskSet2Size = taskSet2.size();
 
-      if (taskSet1IsEmpty) {
-        return taskSet2IsEmpty ? PRIORITIZE_NONE : PRIORITIZE_BROKER_2;
+      if (taskSet1Size == 0) {
+        return taskSet2Size == 0 ? PRIORITIZE_NONE : PRIORITIZE_BROKER_2;
       } else {
-        if (taskSet2IsEmpty) {
+        if (taskSet2Size == 0) {
           return PRIORITIZE_BROKER_1;
         } else {
           int compareFirstTasks = taskComparator.compare(taskSet1.first(), taskSet2.first());
           if (compareFirstTasks != 0) {
             return compareFirstTasks;
           }
-          int compareTaskSetSize = taskSet1.size() - taskSet2.size();
+          int compareTaskSetSize = taskSet1Size - taskSet2Size;
           return compareTaskSetSize != 0 ? compareTaskSetSize : broker1 - broker2;
         }
       }
