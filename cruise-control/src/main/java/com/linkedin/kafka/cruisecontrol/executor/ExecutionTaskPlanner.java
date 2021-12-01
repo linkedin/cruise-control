@@ -66,9 +66,9 @@ import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.Replic
  */
 public class ExecutionTaskPlanner {
   private static final Logger LOG = LoggerFactory.getLogger(ExecutionTaskPlanner.class);
-  private Map<Integer, SortedSet<ExecutionTask>> _interPartMoveTaskByBrokerId;
-  private SortedSet<Integer> _interPartMoveBrokerId;
-  private final Map<Integer, SortedSet<ExecutionTask>> _intraPartMoveTaskByBrokerId;
+  private Map<Integer, SortedSet<ExecutionTask>> _interPartMoveTasksByBrokerId;
+  private SortedSet<Integer> _interPartMoveBrokerIds;
+  private final Map<Integer, SortedSet<ExecutionTask>> _intraPartMoveTasksByBrokerId;
   private final Set<ExecutionTask> _remainingInterBrokerReplicaMovements;
   private final Set<ExecutionTask> _remainingIntraBrokerReplicaMovements;
   private final Map<Long, ExecutionTask> _remainingLeadershipMovements;
@@ -90,8 +90,8 @@ public class ExecutionTaskPlanner {
    */
   public ExecutionTaskPlanner(AdminClient adminClient, KafkaCruiseControlConfig config) {
     _executionId = 0L;
-    _interPartMoveTaskByBrokerId = new HashMap<>();
-    _intraPartMoveTaskByBrokerId = new HashMap<>();
+    _interPartMoveTasksByBrokerId = new HashMap<>();
+    _intraPartMoveTasksByBrokerId = new HashMap<>();
     _remainingInterBrokerReplicaMovements = new HashSet<>();
     _remainingIntraBrokerReplicaMovements = new HashSet<>();
     _remainingLeadershipMovements = new HashMap<>();
@@ -171,7 +171,7 @@ public class ExecutionTaskPlanner {
    */
   private void maybeDropReplicaSwapTasks() {
     if (_remainingIntraBrokerReplicaMovements.size() > 0) {
-      _interPartMoveTaskByBrokerId.clear();
+      _interPartMoveTasksByBrokerId.clear();
       _remainingInterBrokerReplicaMovements.clear();
     }
   }
@@ -218,8 +218,8 @@ public class ExecutionTaskPlanner {
         chosenReplicaMovementTaskStrategy = replicaMovementStrategy;
       }
     }
-    _interPartMoveTaskByBrokerId = chosenReplicaMovementTaskStrategy.applyStrategy(_remainingInterBrokerReplicaMovements, strategyOptions);
-    _interPartMoveBrokerId = new TreeSet<>(brokerComparator(strategyOptions, chosenReplicaMovementTaskStrategy));
+    _interPartMoveTasksByBrokerId = chosenReplicaMovementTaskStrategy.applyStrategy(_remainingInterBrokerReplicaMovements, strategyOptions);
+    _interPartMoveBrokerIds = new TreeSet<>(brokerComparator(strategyOptions, chosenReplicaMovementTaskStrategy));
   }
 
   /**
@@ -256,8 +256,8 @@ public class ExecutionTaskPlanner {
             ExecutionTask task = new ExecutionTask(replicaActionExecutionId, proposal, r.brokerId(), INTRA_BROKER_REPLICA_ACTION,
                                                    Math.max(Math.round(proposal.dataToMoveInMB() / _intraBrokerReplicaMovementRateAlertingThreshold),
                                                             _taskExecutionAlertingThresholdMs));
-            _intraPartMoveTaskByBrokerId.putIfAbsent(r.brokerId(), new TreeSet<>());
-            _intraPartMoveTaskByBrokerId.get(r.brokerId()).add(task);
+            _intraPartMoveTasksByBrokerId.putIfAbsent(r.brokerId(), new TreeSet<>());
+            _intraPartMoveTasksByBrokerId.get(r.brokerId()).add(task);
             _remainingIntraBrokerReplicaMovements.add(task);
           }
         });
@@ -347,7 +347,7 @@ public class ExecutionTaskPlanner {
      * chances to make progress.
      */
     boolean newTaskAdded = true;
-    _interPartMoveBrokerId.addAll(_interPartMoveTaskByBrokerId.keySet());
+    _interPartMoveBrokerIds.addAll(_interPartMoveTasksByBrokerId.keySet());
     Set<Integer> brokerInvolved = new HashSet<>();
     Set<TopicPartition> partitionsInvolved = new HashSet<>();
 
@@ -357,10 +357,10 @@ public class ExecutionTaskPlanner {
     while (newTaskAdded && !maxPartitionMovesReached) {
       newTaskAdded = false;
       // The first task of each brokerInvolved must changed. Let's remove the brokers, then add them again by comparing their new first tasks.
-      _interPartMoveBrokerId.removeAll(brokerInvolved);
-      _interPartMoveBrokerId.addAll(brokerInvolved);
+      _interPartMoveBrokerIds.removeAll(brokerInvolved);
+      _interPartMoveBrokerIds.addAll(brokerInvolved);
       brokerInvolved.clear();
-      for (int brokerId : _interPartMoveBrokerId) {
+      for (int brokerId : _interPartMoveBrokerIds) {
         // If max partition moves limit reached, no need to check other brokers
         if (maxPartitionMovesReached) {
           break;
@@ -370,7 +370,7 @@ public class ExecutionTaskPlanner {
           continue;
         }
         // Check the available balancing proposals of this broker to see if we can find one ready to execute.
-        SortedSet<ExecutionTask> proposalsForBroker = _interPartMoveTaskByBrokerId.get(brokerId);
+        SortedSet<ExecutionTask> proposalsForBroker = _interPartMoveTasksByBrokerId.get(brokerId);
         LOG.trace("Execution task for broker {} are {}", brokerId, proposalsForBroker);
         for (ExecutionTask task : proposalsForBroker) {
           // Break if max cap reached
@@ -432,8 +432,8 @@ public class ExecutionTaskPlanner {
     for (Map.Entry<Integer, Integer> brokerEntry : readyBrokers.entrySet()) {
       int brokerId = brokerEntry.getKey();
       int limit = brokerEntry.getValue();
-      if (_intraPartMoveTaskByBrokerId.containsKey(brokerId)) {
-        Iterator<ExecutionTask> tasksForBroker = _intraPartMoveTaskByBrokerId.get(brokerId).iterator();
+      if (_intraPartMoveTasksByBrokerId.containsKey(brokerId)) {
+        Iterator<ExecutionTask> tasksForBroker = _intraPartMoveTasksByBrokerId.get(brokerId).iterator();
         while (limit-- > 0 && tasksForBroker.hasNext()) {
           ExecutionTask task = tasksForBroker.next();
           executableReplicaMovements.add(task);
@@ -450,8 +450,8 @@ public class ExecutionTaskPlanner {
    * Clear all the states.
    */
   public void clear() {
-    _intraPartMoveTaskByBrokerId.clear();
-    _interPartMoveTaskByBrokerId.clear();
+    _intraPartMoveTasksByBrokerId.clear();
+    _interPartMoveTasksByBrokerId.clear();
     _remainingLeadershipMovements.clear();
     _remainingInterBrokerReplicaMovements.clear();
     _remainingIntraBrokerReplicaMovements.clear();
@@ -478,9 +478,9 @@ public class ExecutionTaskPlanner {
 
   private void removeInterBrokerReplicaActionForExecution(ExecutionTask task) {
     int sourceBroker = task.proposal().oldLeader().brokerId();
-    _interPartMoveTaskByBrokerId.get(sourceBroker).remove(task);
+    _interPartMoveTasksByBrokerId.get(sourceBroker).remove(task);
     for (ReplicaPlacementInfo destinationBroker : task.proposal().replicasToAdd()) {
-      _interPartMoveTaskByBrokerId.get(destinationBroker.brokerId()).remove(task);
+      _interPartMoveTasksByBrokerId.get(destinationBroker.brokerId()).remove(task);
     }
     _remainingInterBrokerReplicaMovements.remove(task);
   }
@@ -500,8 +500,8 @@ public class ExecutionTaskPlanner {
     Comparator<ExecutionTask> taskComparator = replicaMovementStrategy.taskComparator(strategyOptions);
 
     return (broker1, broker2) -> {
-      SortedSet<ExecutionTask> taskSet1 = _interPartMoveTaskByBrokerId.get(broker1);
-      SortedSet<ExecutionTask> taskSet2 = _interPartMoveTaskByBrokerId.get(broker2);
+      SortedSet<ExecutionTask> taskSet1 = _interPartMoveTasksByBrokerId.get(broker1);
+      SortedSet<ExecutionTask> taskSet2 = _interPartMoveTasksByBrokerId.get(broker2);
       int taskSet1Size = taskSet1.size();
       int taskSet2Size = taskSet2.size();
 
