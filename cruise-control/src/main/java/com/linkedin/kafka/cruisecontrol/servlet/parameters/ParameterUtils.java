@@ -755,9 +755,13 @@ public final class ParameterUtils {
         throw new UserRequestException("Strategy " + strategyName + " is not supported. Supported: " + supportedStrategiesByName.keySet());
       }
     }
-    // Chain the generated composite strategy with BaseReplicaMovementStrategy in the end to ensure the returned strategy can always
+    // Unless the custom strategies are already chained with BaseReplicaMovementStrategy,
+    // chain the generated composite strategy with BaseReplicaMovementStrategy in the end to ensure the returned strategy can always
     // determine the order of two tasks.
-    return strategy.chain(new BaseReplicaMovementStrategy());
+    if (!strategy.name().contains(BaseReplicaMovementStrategy.class.getSimpleName())) {
+      strategy = strategy.chain(new BaseReplicaMovementStrategy());
+    }
+    return strategy;
   }
 
   static List<String> getGoals(HttpServletRequest request) throws UnsupportedEncodingException {

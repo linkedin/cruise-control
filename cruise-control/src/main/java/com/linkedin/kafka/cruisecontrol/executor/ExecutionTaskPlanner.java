@@ -74,7 +74,6 @@ public class ExecutionTaskPlanner {
   private final Map<Long, ExecutionTask> _remainingLeadershipMovements;
   private long _executionId;
   private ReplicaMovementStrategy _defaultReplicaMovementTaskStrategy;
-  private ReplicaMovementStrategy _replicaMovementTaskStrategy;
   private final AdminClient _adminClient;
   private final KafkaCruiseControlConfig _config;
   private final long _taskExecutionAlertingThresholdMs;
@@ -205,15 +204,22 @@ public class ExecutionTaskPlanner {
         LOG.trace("Added action {} as replica proposal {}", replicaActionExecutionId, proposal);
       }
     }
+
+    ReplicaMovementStrategy chosenReplicaMovementTaskStrategy;
     if (replicaMovementStrategy == null) {
-      _replicaMovementTaskStrategy = _defaultReplicaMovementTaskStrategy;
+      chosenReplicaMovementTaskStrategy = _defaultReplicaMovementTaskStrategy;
     } else {
-      // Chain the generated composite strategy with BaseReplicaMovementStrategy in the end to ensure the returned
+      // Unless the custom strategies are already chained with BaseReplicaMovementStrategy,
+      // chain the generated composite strategy with BaseReplicaMovementStrategy in the end to ensure the returned
       // strategy can always determine the order of two tasks.
-      _replicaMovementTaskStrategy = replicaMovementStrategy.chain(new BaseReplicaMovementStrategy());
+      if (!replicaMovementStrategy.name().contains(BaseReplicaMovementStrategy.class.getSimpleName())) {
+        chosenReplicaMovementTaskStrategy = replicaMovementStrategy.chain(new BaseReplicaMovementStrategy());
+      } else {
+        chosenReplicaMovementTaskStrategy = replicaMovementStrategy;
+      }
     }
-    _interPartMoveTaskByBrokerId = _replicaMovementTaskStrategy.applyStrategy(_remainingInterBrokerReplicaMovements, strategyOptions);
-    _interPartMoveBrokerId = new TreeSet<>(brokerComparator(strategyOptions));
+    _interPartMoveTaskByBrokerId = chosenReplicaMovementTaskStrategy.applyStrategy(_remainingInterBrokerReplicaMovements, strategyOptions);
+    _interPartMoveBrokerId = new TreeSet<>(brokerComparator(strategyOptions, chosenReplicaMovementTaskStrategy));
   }
 
   /**
@@ -479,8 +485,19 @@ public class ExecutionTaskPlanner {
     _remainingInterBrokerReplicaMovements.remove(task);
   }
 
-  private Comparator<Integer> brokerComparator(StrategyOptions strategyOptions) {
-    Comparator<ExecutionTask> taskComparator = _replicaMovementTaskStrategy.taskComparator(strategyOptions);
+  /**
+   * The comparing order:
+   * <ul>
+   *   <li>Priority of the the first task of each broker</li>
+   *   <li>The task set size of each broker, prioritize broker with the larger size</li>
+   *   <li>Broker ID integer</li>
+   * </ul>
+   * @param strategyOptions Strategy options to be used during application of a replica movement strategy.
+   * @param replicaMovementStrategy The strategy used to compare the order of two given tasks.
+   * @return A broker Comparator to decide which among the two given brokers should be picked first when generated replica movement tasks.
+   */
+  private Comparator<Integer> brokerComparator(StrategyOptions strategyOptions, ReplicaMovementStrategy replicaMovementStrategy) {
+    Comparator<ExecutionTask> taskComparator = replicaMovementStrategy.taskComparator(strategyOptions);
 
     return (broker1, broker2) -> {
       SortedSet<ExecutionTask> taskSet1 = _interPartMoveTaskByBrokerId.get(broker1);
