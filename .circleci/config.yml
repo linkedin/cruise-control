@@ -18,6 +18,7 @@ jobs:
           # run static analysis tasks standalone to avoid OOME in CircleCI
           command: ./gradlew --max-workers=1 --no-daemon analyze
       - run:
+          no_output_timeout: 15m
           command: ./gradlew --no-daemon -PmaxParallelForks=1 build
       - save_cache:
           key: dependency-cache-{{ checksum "build.gradle" }}
