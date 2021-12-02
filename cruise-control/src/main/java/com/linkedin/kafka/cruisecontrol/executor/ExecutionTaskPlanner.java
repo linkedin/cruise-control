@@ -506,19 +506,16 @@ public class ExecutionTaskPlanner {
       int taskSet2Size = taskSet2.size();
 
       if (taskSet1Size == 0) {
+        // broker1 has no first task (broker1 has zero tasks). Let's check if broker2 has a first task by checking the task set size.
         return taskSet2Size == 0 ? PRIORITIZE_NONE : PRIORITIZE_BROKER_2;
-      } else {
-        if (taskSet2Size == 0) {
-          return PRIORITIZE_BROKER_1;
-        } else {
-          int compareFirstTasks = taskComparator.compare(taskSet1.first(), taskSet2.first());
-          if (compareFirstTasks != 0) {
-            return compareFirstTasks;
-          }
-          int compareTaskSetSize = taskSet1Size - taskSet2Size;
-          return compareTaskSetSize != 0 ? compareTaskSetSize : broker1 - broker2;
-        }
       }
+      if (taskSet2Size == 0) {
+        return PRIORITIZE_BROKER_1;
+      }
+      int compareFirstTasks = taskComparator.compare(taskSet1.first(), taskSet2.first());
+      return compareFirstTasks != 0 ? compareFirstTasks
+                                    : taskSet1Size != taskSet2Size ? taskSet2Size - taskSet1Size
+                                                                   : broker1 - broker2;
     };
   }
 }
