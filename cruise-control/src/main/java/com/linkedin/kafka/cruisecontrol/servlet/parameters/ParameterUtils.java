@@ -17,7 +17,6 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
 import com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType;
-import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
@@ -755,13 +754,7 @@ public final class ParameterUtils {
         throw new UserRequestException("Strategy " + strategyName + " is not supported. Supported: " + supportedStrategiesByName.keySet());
       }
     }
-    // Unless the custom strategies are already chained with BaseReplicaMovementStrategy,
-    // chain the generated composite strategy with BaseReplicaMovementStrategy in the end to ensure the returned strategy can always
-    // determine the order of two tasks.
-    if (!strategy.name().contains(BaseReplicaMovementStrategy.class.getSimpleName())) {
-      strategy = strategy.chain(new BaseReplicaMovementStrategy());
-    }
-    return strategy;
+    return strategy.chainBaseReplicaMovementStrategyIfAbsent();
   }
 
   static List<String> getGoals(HttpServletRequest request) throws UnsupportedEncodingException {

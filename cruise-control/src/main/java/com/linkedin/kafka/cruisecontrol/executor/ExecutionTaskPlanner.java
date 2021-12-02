@@ -117,12 +117,7 @@ public class ExecutionTaskPlanner {
         }
       }
 
-      if (!_defaultReplicaMovementTaskStrategy.name().contains(BaseReplicaMovementStrategy.class.getSimpleName())) {
-        // Unless the custom strategies are already chained with BaseReplicaMovementStrategy, chain it in the end to handle the scenario
-        // that provided custom strategy is unable to determine the order of two tasks.
-        // BaseReplicaMovementStrategy makes the task with smaller execution id to get executed first.
-        _defaultReplicaMovementTaskStrategy = _defaultReplicaMovementTaskStrategy.chain(new BaseReplicaMovementStrategy());
-      }
+      _defaultReplicaMovementTaskStrategy = _defaultReplicaMovementTaskStrategy.chainBaseReplicaMovementStrategyIfAbsent();
     }
   }
 
@@ -205,19 +200,9 @@ public class ExecutionTaskPlanner {
       }
     }
 
-    ReplicaMovementStrategy chosenReplicaMovementTaskStrategy;
-    if (replicaMovementStrategy == null) {
-      chosenReplicaMovementTaskStrategy = _defaultReplicaMovementTaskStrategy;
-    } else {
-      // Unless the custom strategies are already chained with BaseReplicaMovementStrategy,
-      // chain the generated composite strategy with BaseReplicaMovementStrategy in the end to ensure the returned
-      // strategy can always determine the order of two tasks.
-      if (!replicaMovementStrategy.name().contains(BaseReplicaMovementStrategy.class.getSimpleName())) {
-        chosenReplicaMovementTaskStrategy = replicaMovementStrategy.chain(new BaseReplicaMovementStrategy());
-      } else {
-        chosenReplicaMovementTaskStrategy = replicaMovementStrategy;
-      }
-    }
+    ReplicaMovementStrategy chosenReplicaMovementTaskStrategy = replicaMovementStrategy == null
+                                                                ? _defaultReplicaMovementTaskStrategy
+                                                                : replicaMovementStrategy.chainBaseReplicaMovementStrategyIfAbsent();
     _interPartMoveTasksByBrokerId = chosenReplicaMovementTaskStrategy.applyStrategy(_remainingInterBrokerReplicaMovements, strategyOptions);
     _interPartMoveBrokerIds = new TreeSet<>(brokerComparator(strategyOptions, chosenReplicaMovementTaskStrategy));
   }
