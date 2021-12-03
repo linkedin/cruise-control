@@ -197,7 +197,7 @@ public class ExecutionTaskPlannerTest {
     partitions.add(generatePartitionInfo(_partitionMovement3, false));
 
     Cluster expectedCluster = new Cluster(null, _expectedNodes, partitions, Collections.emptySet(), Collections.emptySet());
-    // This ensures that the _partitionMovement1 and _partitionMovement3 are AtMinISR, while the other partitions are not.
+    // This ensures that the _partitionMovement0 and _partitionMovement2 are AtMinISR, while the other partitions are not.
     Map<String, MinIsrWithTime> minIsrWithTimeByTopic
         = Collections.singletonMap(TOPIC2, new MinIsrWithTime((short) (_partitionMovement0.oldReplicas().size() - 1), 0));
     StrategyOptions strategyOptions = new StrategyOptions.Builder(expectedCluster).minIsrWithTimeByTopic(minIsrWithTimeByTopic).build();

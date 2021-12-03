@@ -326,7 +326,7 @@ public class ExecutionTaskPlanner {
     LOG.trace("Getting inter-broker replica movement tasks for brokers with concurrency {}", readyBrokers);
     List<ExecutionTask> executableReplicaMovements = new ArrayList<>();
 
-    /**
+    /*
      * The algorithm avoids unfair situation where the available movement slots of a broker is completely taken
      * by another broker. It checks the proposals in a round-robin manner that makes sure each ready broker gets
      * chances to make progress.
@@ -341,7 +341,8 @@ public class ExecutionTaskPlanner {
 
     while (newTaskAdded && !maxPartitionMovesReached) {
       newTaskAdded = false;
-      // The first task of each brokerInvolved must changed. Let's remove the brokers, then add them again by comparing their new first tasks.
+      // The first task of each brokerInvolved might have changed.
+      // Let's remove the brokers, then add them again by comparing their new first tasks.
       _interPartMoveBrokerIds.removeAll(brokerInvolved);
       _interPartMoveBrokerIds.addAll(brokerInvolved);
       brokerInvolved.clear();
@@ -436,6 +437,7 @@ public class ExecutionTaskPlanner {
    */
   public void clear() {
     _intraPartMoveTasksByBrokerId.clear();
+    _interPartMoveBrokerIds = null;
     _interPartMoveTasksByBrokerId.clear();
     _remainingLeadershipMovements.clear();
     _remainingInterBrokerReplicaMovements.clear();
@@ -474,8 +476,8 @@ public class ExecutionTaskPlanner {
    * The comparing order:
    * <ul>
    *   <li>Priority of the the first task of each broker</li>
-   *   <li>The task set size of each broker, prioritize broker with the larger size</li>
-   *   <li>Broker ID integer</li>
+   *   <li>The task set size of each broker. Prioritize broker with the larger size</li>
+   *   <li>Broker ID integer. Prioritize broker with the smaller ID</li>
    * </ul>
    * @param strategyOptions Strategy options to be used during application of a replica movement strategy.
    * @param replicaMovementStrategy The strategy used to compare the order of two given tasks.

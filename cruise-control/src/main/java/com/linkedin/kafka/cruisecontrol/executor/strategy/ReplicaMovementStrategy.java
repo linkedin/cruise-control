@@ -44,7 +44,7 @@ public interface ReplicaMovementStrategy {
   ReplicaMovementStrategy chain(ReplicaMovementStrategy strategy);
 
   /**
-   * Unless the custom strategies are already chained with BaseReplicaMovementStrategy,
+   * Unless the custom strategies are already chained with {@link BaseReplicaMovementStrategy},
    * chain the generated composite strategy with {@link BaseReplicaMovementStrategy} in the end to ensure the returned strategy can always
    * determine the order of two tasks.
    * @return The replica movement strategy which is guaranteed to have {@link BaseReplicaMovementStrategy}.
