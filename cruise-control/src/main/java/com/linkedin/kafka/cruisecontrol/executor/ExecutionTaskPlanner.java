@@ -437,7 +437,9 @@ public class ExecutionTaskPlanner {
    */
   public void clear() {
     _intraPartMoveTasksByBrokerId.clear();
-    _interPartMoveBrokerIds = null;
+    if (_interPartMoveBrokerIds != null) {
+      _interPartMoveBrokerIds.clear();
+    }
     _interPartMoveTasksByBrokerId.clear();
     _remainingLeadershipMovements.clear();
     _remainingInterBrokerReplicaMovements.clear();
