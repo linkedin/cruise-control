@@ -50,6 +50,13 @@ TopicConfigurationEndpoint:
           type: integer
           format: int32
           minimum: 1
+      - name: max_partition_movements_in_cluster
+        in: query
+        description: Change upper bound of ongoing inter broker partition movements in cluster.
+        schema:
+          type: integer
+          format: int32
+          minimum: 1
       - name: concurrent_leader_movements
         in: query
         description: The upper bound of ongoing leadership movements.

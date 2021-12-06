@@ -24,6 +24,8 @@ public class ConcurrencyConfigTest {
                                               .createNiceMock();
     EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
+    EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG))
+            .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG);
     EasyMock.expect(config.getInt(ExecutorConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
 
@@ -41,6 +43,8 @@ public class ConcurrencyConfigTest {
                                               .createNiceMock();
     EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
+    EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG))
+            .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG);
     EasyMock.expect(config.getInt(ExecutorConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER);
     EasyMock.expect(config.getInt(ExecutorConfig.NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG))
@@ -61,6 +65,8 @@ public class ConcurrencyConfigTest {
                                               .createNiceMock();
     EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
+    EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG))
+            .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG);
     EasyMock.expect(config.getInt(ExecutorConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER);
     EasyMock.expect(config.getInt(ExecutorConfig.NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG))
@@ -84,6 +90,8 @@ public class ConcurrencyConfigTest {
                                               .createNiceMock();
     EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
+    EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG))
+            .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG);
     EasyMock.expect(config.getInt(ExecutorConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER);
     EasyMock.expect(config.getInt(ExecutorConfig.NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG))
@@ -109,6 +117,8 @@ public class ConcurrencyConfigTest {
                                               .createNiceMock();
     EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
+    EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG))
+            .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG);
     EasyMock.expect(config.getInt(ExecutorConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER);
     EasyMock.expect(config.getInt(ExecutorConfig.NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG))
@@ -135,6 +145,8 @@ public class ConcurrencyConfigTest {
                                               .createNiceMock();
     EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
+    EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG))
+            .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG);
     EasyMock.expect(config.getInt(ExecutorConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER);
     EasyMock.expect(config.getInt(ExecutorConfig.NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG))
@@ -164,6 +176,8 @@ public class ConcurrencyConfigTest {
                                               .createNiceMock();
     EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
+    EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG))
+            .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG);
     EasyMock.expect(config.getInt(ExecutorConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER);
     EasyMock.expect(config.getInt(ExecutorConfig.NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG))
@@ -196,6 +210,8 @@ public class ConcurrencyConfigTest {
                                               .createNiceMock();
     EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
+    EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG))
+            .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG);
     EasyMock.expect(config.getInt(ExecutorConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER);
     EasyMock.expect(config.getInt(ExecutorConfig.NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG))
@@ -230,6 +246,8 @@ public class ConcurrencyConfigTest {
                                               .createNiceMock();
     EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
+    EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG))
+            .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG);
     EasyMock.expect(config.getInt(ExecutorConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER);
     EasyMock.expect(config.getInt(ExecutorConfig.NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG))
@@ -266,6 +284,8 @@ public class ConcurrencyConfigTest {
                                               .createNiceMock();
     EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
+    EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG))
+            .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG);
     EasyMock.expect(config.getInt(ExecutorConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER);
     EasyMock.expect(config.getInt(ExecutorConfig.NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG))
@@ -284,6 +304,20 @@ public class ConcurrencyConfigTest {
             .andReturn(ExecutorConfig.DEFAULT_EXECUTION_PROGRESS_CHECK_INTERVAL_MS + 1);
     EasyMock.expect(config.getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG))
             .andReturn(ExecutorConfig.DEFAULT_EXECUTION_PROGRESS_CHECK_INTERVAL_MS);
+
+    EasyMock.replay(config);
+    assertThrows(ConfigException.class, config::sanityCheckConcurrency);
+    EasyMock.verify(config);
+  }
+
+  @Test
+  public void testConcurrencyAdjusterMaxPartitionMovementsGreaterThanMaxNumClusterMovements() {
+    KafkaCruiseControlConfig config =
+        EasyMock.partialMockBuilder(KafkaCruiseControlConfig.class).addMockedMethod(GET_INT_METHOD).createNiceMock();
+    EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG))
+            .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
+    EasyMock.expect(config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG))
+            .andReturn(ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG + 1);
 
     EasyMock.replay(config);
     assertThrows(ConfigException.class, config::sanityCheckConcurrency);

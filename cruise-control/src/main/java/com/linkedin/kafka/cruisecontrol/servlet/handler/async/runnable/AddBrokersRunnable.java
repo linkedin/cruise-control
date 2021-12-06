@@ -36,6 +36,7 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
   protected final Set<Integer> _brokerIds;
   protected final boolean _throttleAddedBrokers;
   protected final Integer _concurrentInterBrokerPartitionMovements;
+  protected final Integer _maxInterBrokerPartitionMovements;
   protected final Integer _concurrentLeaderMovements;
   protected final Long _executionProgressCheckIntervalMs;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
@@ -59,6 +60,7 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
     _brokerIds = brokerIds;
     _throttleAddedBrokers = false;
     _concurrentInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
+    _maxInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _concurrentLeaderMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
@@ -74,6 +76,7 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
     _brokerIds = parameters.brokerIds();
     _throttleAddedBrokers = parameters.throttleAddedBrokers();
     _concurrentInterBrokerPartitionMovements = parameters.concurrentInterBrokerPartitionMovements();
+    _maxInterBrokerPartitionMovements = parameters.maxInterBrokerPartitionMovements();
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
     _executionProgressCheckIntervalMs = parameters.executionProgressCheckIntervalMs();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
@@ -114,6 +117,7 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
                                            _throttleAddedBrokers ? Collections.emptySet() : _brokerIds,
                                            isKafkaAssignerMode(_goals),
                                            _concurrentInterBrokerPartitionMovements,
+                                           _maxInterBrokerPartitionMovements,
                                            null,
                                            _concurrentLeaderMovements,
                                            _executionProgressCheckIntervalMs,

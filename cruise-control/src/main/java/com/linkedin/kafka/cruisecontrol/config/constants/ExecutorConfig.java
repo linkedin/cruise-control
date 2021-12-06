@@ -80,6 +80,17 @@ public final class ExecutorConfig {
       + " is smaller than the default zNode size limit.";
 
   /**
+   * <code>max.num.cluster.partition.movements</code>
+   */
+  public static final String MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG = "max.num.cluster.partition.movements";
+  // Keeping smaller than allowed cluster movements
+  public static final int DEFAULT_MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG = 1250; 
+  public static final String MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_DOC = "The maximum number of allowed partition movements in the cluster."
+      + " This global limit cannot be exceeded regardless of the per-broker replica movement "
+      + "concurrency. While max.num.cluster.movements corresponds to the default zNode size limit, "
+      + "max.num.cluster.partition.movements throttles the maximum partition movements across the cluster";
+  
+  /**
    * <code>default.replication.throttle</code>
    */
   public static final String DEFAULT_REPLICATION_THROTTLE_CONFIG = "default.replication.throttle";
@@ -489,6 +500,12 @@ public final class ExecutorConfig {
                             atLeast(5),
                             ConfigDef.Importance.MEDIUM,
                             MAX_NUM_CLUSTER_MOVEMENTS_DOC)
+                    .define(MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG,
+                            ConfigDef.Type.INT,
+                            DEFAULT_MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG,
+                            atLeast(1),
+                            ConfigDef.Importance.MEDIUM,
+                            MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_DOC)
                     .define(DEFAULT_REPLICATION_THROTTLE_CONFIG,
                             ConfigDef.Type.LONG,
                             DEFAULT_DEFAULT_REPLICATION_THROTTLE,

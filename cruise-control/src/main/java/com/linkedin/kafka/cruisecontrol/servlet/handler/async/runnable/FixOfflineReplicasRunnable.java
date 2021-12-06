@@ -27,6 +27,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
  */
 public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
   protected final Integer _concurrentInterBrokerPartitionMovements;
+  protected final Integer _maxInterBrokerPartitionMovements;
   protected final Integer _concurrentLeaderMovements;
   protected final Long _executionProgressCheckIntervalMs;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
@@ -47,6 +48,7 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
     super(kafkaCruiseControl, new OperationFuture("Fixing Offline Replicas for Self-Healing"), selfHealingGoals, allowCapacityEstimation,
           excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, anomalyId, reasonSupplier, stopOngoingExecution);
     _concurrentInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
+    _maxInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _concurrentLeaderMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
@@ -60,6 +62,7 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
     super(kafkaCruiseControl, future, parameters, parameters.dryRun(), parameters.stopOngoingExecution(), parameters.skipHardGoalCheck(),
           uuid, parameters::reason);
     _concurrentInterBrokerPartitionMovements = parameters.concurrentInterBrokerPartitionMovements();
+    _maxInterBrokerPartitionMovements = parameters.maxInterBrokerPartitionMovements();
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
     _executionProgressCheckIntervalMs = parameters.executionProgressCheckIntervalMs();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
@@ -98,6 +101,7 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
                                            Collections.emptySet(),
                                            false,
                                            _concurrentInterBrokerPartitionMovements,
+                                           _maxInterBrokerPartitionMovements,
                                            null,
                                            _concurrentLeaderMovements,
                                            _executionProgressCheckIntervalMs,

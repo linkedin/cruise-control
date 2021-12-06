@@ -37,6 +37,7 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
   protected final Set<Integer> _destinationBrokerIds;
   protected final boolean _throttleRemovedBrokers;
   protected final Integer _concurrentInterBrokerPartitionMovements;
+  protected final Integer _maxInterBrokerPartitionMovements;
   protected final Integer _concurrentLeaderMovements;
   protected final Long _executionProgressCheckIntervalMs;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
@@ -60,6 +61,7 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
     _throttleRemovedBrokers = false;
     _destinationBrokerIds = SELF_HEALING_DESTINATION_BROKER_IDS;
     _concurrentInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
+    _maxInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _concurrentLeaderMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
@@ -76,6 +78,7 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
     _throttleRemovedBrokers = parameters.throttleRemovedBrokers();
     _destinationBrokerIds = parameters.destinationBrokerIds();
     _concurrentInterBrokerPartitionMovements = parameters.concurrentInterBrokerPartitionMovements();
+    _maxInterBrokerPartitionMovements = parameters.maxInterBrokerPartitionMovements();
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
     _executionProgressCheckIntervalMs = parameters.executionProgressCheckIntervalMs();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
@@ -114,7 +117,7 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
     OptimizerResult result = _kafkaCruiseControl.optimizations(clusterModel, _goalsByPriority, _operationProgress, null, optimizationOptions);
     if (!_dryRun) {
       _kafkaCruiseControl.executeRemoval(result.goalProposals(), _throttleRemovedBrokers, _removedBrokerIds, isKafkaAssignerMode(_goals),
-                                         _concurrentInterBrokerPartitionMovements, _concurrentLeaderMovements,
+                                         _concurrentInterBrokerPartitionMovements, _maxInterBrokerPartitionMovements, _concurrentLeaderMovements,
                                          _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle,
                                          _isTriggeredByUserRequest, _uuid);
     }

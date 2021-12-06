@@ -35,7 +35,8 @@ public class AdminRequest extends AbstractSyncRequest {
   /**
    * Handle the admin requests:
    * <ul>
-   * <li>Dynamically change the partition and leadership concurrency and the interval between checking and updating
+   * <li>Dynamically change the max partition movements concurrency, 
+   * partition and leadership concurrency and the interval between checking and updating
    * (if needed) the progress of an ongoing execution. Has no effect if Executor is in
    * {@link com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State#NO_TASK_IN_PROGRESS} state.</li>
    * <li>Enable/disable self-healing for the specified anomaly types.</li>
@@ -140,6 +141,13 @@ public class AdminRequest extends AbstractSyncRequest {
       _kafkaCruiseControl.setRequestedExecutionProgressCheckIntervalMs(executionProgressCheckIntervalMs);
       sb.append(String.format("Execution progress check interval is set to %dMs%n", executionProgressCheckIntervalMs));
       LOG.info("Execution progress check interval is set to: {}Ms by user.", executionProgressCheckIntervalMs);
+    }
+    // 5. Change max inter-broker partition concurrency.
+    Integer maxInterBrokerPartitionMovements = changeExecutionConcurrencyParameters.maxInterBrokerPartitionMovements();
+    if (maxInterBrokerPartitionMovements != null) {
+      _kafkaCruiseControl.setRequestedMaxInterBrokerPartitionMovements(maxInterBrokerPartitionMovements);
+      sb.append(String.format("Max inter-broker partition movements is set to %d%n", maxInterBrokerPartitionMovements));
+      LOG.info("Max inter-broker partition movements is set to: {} by user.", maxInterBrokerPartitionMovements);
     }
 
     return sb.toString();

@@ -15,6 +15,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_LEADER_MOVEMENTS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM;
 
 
 /**
@@ -29,6 +30,7 @@ public class ChangeExecutionConcurrencyParameters extends AbstractParameters {
     validParameterNames.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
     validParameterNames.add(CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM);
     validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    validParameterNames.add(MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM);
     validParameterNames.addAll(AbstractParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
     CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
   }
@@ -36,6 +38,7 @@ public class ChangeExecutionConcurrencyParameters extends AbstractParameters {
   protected Integer _concurrentInterBrokerPartitionMovements;
   protected Integer _concurrentIntraBrokerPartitionMovements;
   protected Integer _concurrentLeaderMovements;
+  protected Integer _maxInterBrokerPartitionMovements;
 
   protected ChangeExecutionConcurrencyParameters() {
     super();
@@ -48,6 +51,7 @@ public class ChangeExecutionConcurrencyParameters extends AbstractParameters {
     _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true, false);
     _concurrentIntraBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, false, true);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false, false);
+    _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_request);
   }
 
   /**
@@ -65,7 +69,8 @@ public class ChangeExecutionConcurrencyParameters extends AbstractParameters {
     if (changeExecutionConcurrencyParameters.executionProgressCheckIntervalMs() == null
         && changeExecutionConcurrencyParameters.concurrentInterBrokerPartitionMovements() == null
         && changeExecutionConcurrencyParameters.concurrentIntraBrokerPartitionMovements() == null
-        && changeExecutionConcurrencyParameters.concurrentLeaderMovements() == null) {
+        && changeExecutionConcurrencyParameters.concurrentLeaderMovements() == null
+        && changeExecutionConcurrencyParameters.maxInterBrokerPartitionMovements() == null) {
       return null;
     }
     return changeExecutionConcurrencyParameters;
@@ -87,6 +92,10 @@ public class ChangeExecutionConcurrencyParameters extends AbstractParameters {
     return _concurrentLeaderMovements;
   }
 
+  public Integer maxInterBrokerPartitionMovements() {
+    return _maxInterBrokerPartitionMovements;
+  }
+  
   @Override
   public SortedSet<String> caseInsensitiveParameterNames() {
     return CASE_INSENSITIVE_PARAMETER_NAMES;

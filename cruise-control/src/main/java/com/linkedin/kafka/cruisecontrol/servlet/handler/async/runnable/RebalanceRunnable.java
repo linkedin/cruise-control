@@ -31,6 +31,7 @@ public class RebalanceRunnable extends GoalBasedOperationRunnable {
   public static final boolean SELF_HEALING_IGNORE_PROPOSAL_CACHE = false;
   public static final boolean SELF_HEALING_IS_REBALANCE_DISK_MODE = false;
   protected final Integer _concurrentInterBrokerPartitionMovements;
+  protected final Integer _maxInterBrokerPartitionMovements;
   protected final Integer _concurrentIntraBrokerPartitionMovements;
   protected final Integer _concurrentLeaderMovements;
   protected final Long _executionProgressCheckIntervalMs;
@@ -55,6 +56,7 @@ public class RebalanceRunnable extends GoalBasedOperationRunnable {
     super(kafkaCruiseControl, new OperationFuture("Rebalance for Self-Healing"), selfHealingGoals, allowCapacityEstimation,
           excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, anomalyId, reasonSupplier, stopOngoingExecution);
     _concurrentInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
+    _maxInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _concurrentIntraBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _concurrentLeaderMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
@@ -72,6 +74,7 @@ public class RebalanceRunnable extends GoalBasedOperationRunnable {
     super(kafkaCruiseControl, future, parameters, parameters.dryRun(), parameters.stopOngoingExecution(), parameters.skipHardGoalCheck(),
           uuid, parameters::reason);
     _concurrentInterBrokerPartitionMovements = parameters.concurrentInterBrokerPartitionMovements();
+    _maxInterBrokerPartitionMovements = parameters.maxInterBrokerPartitionMovements();
     _concurrentIntraBrokerPartitionMovements = parameters.concurrentIntraBrokerPartitionMovements();
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
     _executionProgressCheckIntervalMs = parameters.executionProgressCheckIntervalMs();
@@ -115,9 +118,10 @@ public class RebalanceRunnable extends GoalBasedOperationRunnable {
     OptimizerResult result = proposalsRunnable.computeResult();
     if (!_dryRun) {
       _kafkaCruiseControl.executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(_goals),
-                                           _concurrentInterBrokerPartitionMovements, _concurrentIntraBrokerPartitionMovements,
-                                           _concurrentLeaderMovements, _executionProgressCheckIntervalMs, _replicaMovementStrategy,
-                                           _replicationThrottle, _isTriggeredByUserRequest, _uuid, SKIP_AUTO_REFRESHING_CONCURRENCY);
+          _concurrentInterBrokerPartitionMovements, _maxInterBrokerPartitionMovements,
+          _concurrentIntraBrokerPartitionMovements,
+          _concurrentLeaderMovements, _executionProgressCheckIntervalMs, _replicaMovementStrategy,
+          _replicationThrottle, _isTriggeredByUserRequest, _uuid, SKIP_AUTO_REFRESHING_CONCURRENCY);
     }
     return result;
   }

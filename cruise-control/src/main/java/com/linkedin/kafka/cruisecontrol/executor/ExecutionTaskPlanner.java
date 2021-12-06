@@ -312,16 +312,19 @@ public class ExecutionTaskPlanner {
   }
 
   /**
-   * Get a list of executable inter-broker replica movements that comply with the concurrency constraint.
+   * Get a list of executable inter-broker replica movements that comply with the concurrency constraint
+   * and partitions in move constraint provided.
    *
    * @param readyBrokers The brokers that is ready to execute more movements.
    * @param inProgressPartitions Topic partitions of replicas that are already in progress. This is needed because the
    *                             controller does not allow updating the ongoing replica reassignment for a partition
    *                             whose replica is being reassigned.
+   * @param maxInterBrokerPartitionMovements Maximum cap for number of partitions to move at any time
    * @return A list of movements that is executable for the ready brokers.
    */
   public List<ExecutionTask> getInterBrokerReplicaMovementTasks(Map<Integer, Integer> readyBrokers,
-                                                                Set<TopicPartition> inProgressPartitions) {
+                                                                Set<TopicPartition> inProgressPartitions,
+                                                                int maxInterBrokerPartitionMovements) {
     LOG.trace("Getting inter-broker replica movement tasks for brokers with concurrency {}", readyBrokers);
     List<ExecutionTask> executableReplicaMovements = new ArrayList<>();
 
@@ -333,21 +336,38 @@ public class ExecutionTaskPlanner {
     boolean newTaskAdded = true;
     Set<Integer> brokerInvolved = new HashSet<>();
     Set<TopicPartition> partitionsInvolved = new HashSet<>();
-    while (newTaskAdded) {
+    
+    int numInProgressPartitions = inProgressPartitions.size();
+    boolean maxPartitionMovesReached = false;
+
+    while (newTaskAdded && !maxPartitionMovesReached) {
       newTaskAdded = false;
       brokerInvolved.clear();
       for (Map.Entry<Integer, Integer> brokerEntry : readyBrokers.entrySet()) {
         int brokerId = brokerEntry.getKey();
+
+        // If max partition moves limit reached, no need to check other brokers
+        if (maxPartitionMovesReached) {
+          break;
+        }
         // If this broker has already involved in this round, skip it.
         if (brokerInvolved.contains(brokerId)) {
           continue;
         }
-
         // Check the available balancing proposals of this broker to see if we can find one ready to execute.
         SortedSet<ExecutionTask> proposalsForBroker = _interPartMoveTaskByBrokerId.get(brokerId);
         LOG.trace("Execution task for broker {} are {}", brokerId, proposalsForBroker);
         if (proposalsForBroker != null) {
           for (ExecutionTask task : proposalsForBroker) {
+            // Break if max cap reached
+            if (numInProgressPartitions >= maxInterBrokerPartitionMovements) {
+              LOG.trace(
+                  "In progress Partitions {} reached/exceeded Max partitions to move in cluster {}. " + "Not adding anymore tasks.",
+                  numInProgressPartitions, maxInterBrokerPartitionMovements);
+              maxPartitionMovesReached = true;
+              break;
+            }
+
             // Skip this proposal if either source broker or destination broker of this proposal has already
             // involved in this round.
             int sourceBroker = task.proposal().oldLeader().brokerId();
@@ -376,6 +396,7 @@ public class ExecutionTaskPlanner {
               }
               // Mark proposal added to true so we will have another round of check.
               newTaskAdded = true;
+              numInProgressPartitions++;
               LOG.debug("Found ready task {} for broker {}. Broker concurrency state: {}", task, brokerId, readyBrokers);
               // We can stop the check for proposals for this broker because we have found a proposal.
               break;
