@@ -19,6 +19,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_LEADER_MOVEMENTS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_HARD_GOAL_CHECK_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICA_MOVEMENT_STRATEGIES_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICATION_THROTTLE_PARAM;
@@ -38,6 +39,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *    POST /kafkacruisecontrol/fix_offline_replicas?dryrun=[true/false]&amp;goals=[goal1,goal2...]
  *    &amp;allow_capacity_estimation=[true/false]&amp;concurrent_partition_movements_per_broker=[true/false]
  *    &amp;concurrent_leader_movements=[true/false]&amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]
+ *    &amp;max_partition_movements_in_cluster=[POSITIVE-INTEGER]
  *    &amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]&amp;data_from=[valid_windows/valid_partitions]
  *    &amp;replica_movement_strategies=[strategy1,strategy2...]
  *    &amp;replication_throttle=[bytes_per_second]
@@ -53,6 +55,7 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
     validParameterNames.add(DRY_RUN_PARAM);
     validParameterNames.add(REASON_PARAM);
     validParameterNames.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
+    validParameterNames.add(MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM);
     validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
     validParameterNames.add(EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
     validParameterNames.add(SKIP_HARD_GOAL_CHECK_PARAM);
@@ -65,6 +68,7 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
   }
   protected boolean _dryRun;
   protected Integer _concurrentInterBrokerPartitionMovements;
+  protected Integer _maxInterBrokerPartitionMovements;
   protected Integer _concurrentLeaderMovements;
   protected Long _executionProgressCheckIntervalMs;
   protected boolean _skipHardGoalCheck;
@@ -83,6 +87,7 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
     super.initParameters();
     _dryRun = ParameterUtils.getDryRun(_request);
     _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true, false);
+    _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_request);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false, false);
     _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_request);
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
@@ -113,6 +118,10 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
 
   public Integer concurrentInterBrokerPartitionMovements() {
     return _concurrentInterBrokerPartitionMovements;
+  }
+  
+  public Integer maxInterBrokerPartitionMovements() {
+    return _maxInterBrokerPartitionMovements;
   }
 
   public Long executionProgressCheckIntervalMs() {

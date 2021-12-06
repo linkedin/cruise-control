@@ -47,6 +47,8 @@ public class ExecutionTaskManager {
   private Integer _requestedIntraBrokerPartitionMovementConcurrency;
   private final int _defaultLeadershipMovementConcurrency;
   private final int _maxNumClusterMovementConcurrency;
+  private final int _defaultMaxInterBrokerPartitionMovements;
+  private Integer _requestedMaxInterBrokerPartitionMovements;
   private Integer _requestedLeadershipMovementConcurrency;
   private final Set<Integer> _brokersToSkipConcurrencyCheck;
   private boolean _isKafkaAssignerMode;
@@ -71,12 +73,14 @@ public class ExecutionTaskManager {
     _defaultInterBrokerPartitionMovementConcurrency = config.getInt(ExecutorConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG);
     _defaultIntraBrokerPartitionMovementConcurrency = config.getInt(ExecutorConfig.NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG);
     _defaultLeadershipMovementConcurrency = config.getInt(ExecutorConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
+    _defaultMaxInterBrokerPartitionMovements = config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG);
     _maxNumClusterMovementConcurrency = config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
     _brokersToSkipConcurrencyCheck = new HashSet<>();
     _isKafkaAssignerMode = false;
     _requestedInterBrokerPartitionMovementConcurrency = null;
     _requestedIntraBrokerPartitionMovementConcurrency = null;
     _requestedLeadershipMovementConcurrency = null;
+    _requestedMaxInterBrokerPartitionMovements = null;
   }
 
   /**
@@ -131,11 +135,36 @@ public class ExecutionTaskManager {
   }
 
   /**
+   * Dynamically set the max inter-broker partition movements in cluster
+   * Ensure that the requested max is not greater than the maximum number of allowed movements in cluster.
+   *
+   * @param requestedMaxInterBrokerPartitionMovements The maximum number of concurrent inter-broker partition movements per broker
+   *                                                  (if null, use {@link #_defaultInterBrokerPartitionMovementConcurrency}).
+   */
+  public synchronized void setRequestedMaxInterBrokerPartitionMovements(Integer requestedMaxInterBrokerPartitionMovements) {
+    if (requestedMaxInterBrokerPartitionMovements != null
+        && requestedMaxInterBrokerPartitionMovements > _maxNumClusterMovementConcurrency) {
+      throw new IllegalArgumentException("Attempt to set max inter-broker partition movements [" + requestedMaxInterBrokerPartitionMovements
+                                         + "] to greater than the maximum" + " number of allowed movements in cluster ["
+                                         + _maxNumClusterMovementConcurrency + "].");
+    }
+    _requestedMaxInterBrokerPartitionMovements = requestedMaxInterBrokerPartitionMovements;
+  }
+
+  /**
    * @return Allowed inter broker partition movement concurrency per broker.
    */
   public synchronized int interBrokerPartitionMovementConcurrency() {
     return _requestedInterBrokerPartitionMovementConcurrency == null ? _defaultInterBrokerPartitionMovementConcurrency
                                                                      : _requestedInterBrokerPartitionMovementConcurrency;
+  }
+
+  /**
+   * @return Allowed upper bound of inter broker partition movements in cluster
+   */
+  public synchronized int maxInterBrokerPartitionMovements() {
+    return _requestedMaxInterBrokerPartitionMovements == null ? _defaultMaxInterBrokerPartitionMovements
+                                                              : _requestedMaxInterBrokerPartitionMovements;
   }
 
   /**
@@ -179,7 +208,8 @@ public class ExecutionTaskManager {
   public synchronized List<ExecutionTask> getInterBrokerReplicaMovementTasks() {
     Map<Integer, Integer> brokersReadyForReplicaMovement = brokersReadyForReplicaMovement(_inProgressInterBrokerReplicaMovementsByBrokerId,
                                                                                           interBrokerPartitionMovementConcurrency());
-    return _executionTaskPlanner.getInterBrokerReplicaMovementTasks(brokersReadyForReplicaMovement, _inProgressPartitionsForInterBrokerMovement);
+    return _executionTaskPlanner.getInterBrokerReplicaMovementTasks(
+        brokersReadyForReplicaMovement, _inProgressPartitionsForInterBrokerMovement, maxInterBrokerPartitionMovements());
   }
 
   /**

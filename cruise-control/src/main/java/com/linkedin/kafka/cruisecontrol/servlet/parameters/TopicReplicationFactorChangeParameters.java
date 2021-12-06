@@ -13,6 +13,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.TOPIC_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICATION_FACTOR_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_RACK_AWARENESS_CHECK_PARAM;
@@ -36,6 +37,7 @@ public class TopicReplicationFactorChangeParameters extends AbstractParameters {
     validParameterNames.add(REPLICATION_FACTOR_PARAM);
     validParameterNames.add(SKIP_RACK_AWARENESS_CHECK_PARAM);
     validParameterNames.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
+    validParameterNames.add(MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM);
     validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
     validParameterNames.add(EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
     validParameterNames.add(SKIP_HARD_GOAL_CHECK_PARAM);
@@ -47,6 +49,7 @@ public class TopicReplicationFactorChangeParameters extends AbstractParameters {
   protected Map<Short, Pattern> _topicPatternByReplicationFactor;
   protected boolean _skipRackAwarenessCheck;
   protected Integer _concurrentInterBrokerPartitionMovements;
+  protected Integer _maxInterBrokerPartitionMovements;
   protected Integer _concurrentLeaderMovements;
   protected Long _executionProgressCheckIntervalMs;
   protected boolean _skipHardGoalCheck;
@@ -66,6 +69,7 @@ public class TopicReplicationFactorChangeParameters extends AbstractParameters {
     }
     _skipRackAwarenessCheck = ParameterUtils.skipRackAwarenessCheck(_request);
     _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true, false);
+    _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_request);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false, false);
     _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_request);
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
@@ -102,6 +106,10 @@ public class TopicReplicationFactorChangeParameters extends AbstractParameters {
 
   public Integer concurrentInterBrokerPartitionMovements() {
     return _concurrentInterBrokerPartitionMovements;
+  }
+
+  public Integer maxInterBrokerPartitionMovements() {
+    return _maxInterBrokerPartitionMovements;
   }
 
   public Long executionProgressCheckIntervalMs() {

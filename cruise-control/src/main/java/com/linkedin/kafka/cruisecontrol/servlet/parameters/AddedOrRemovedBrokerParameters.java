@@ -21,6 +21,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_LEADER_MOVEMENTS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DRY_RUN_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICATION_THROTTLE_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_HARD_GOAL_CHECK_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICA_MOVEMENT_STRATEGIES_PARAM;
@@ -35,6 +36,7 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
     validParameterNames.add(KAFKA_ASSIGNER_MODE_PARAM);
     validParameterNames.add(BROKER_ID_PARAM);
     validParameterNames.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
+    validParameterNames.add(MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM);
     validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
     validParameterNames.add(EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
     validParameterNames.add(DRY_RUN_PARAM);
@@ -49,6 +51,7 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
   }
   protected Set<Integer> _brokerIds;
   protected Integer _concurrentInterBrokerPartitionMovements;
+  protected Integer _maxInterBrokerPartitionMovements;
   protected Integer _concurrentLeaderMovements;
   protected Long _executionProgressCheckIntervalMs;
   protected boolean _dryRun;
@@ -69,6 +72,7 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
     _brokerIds = ParameterUtils.brokerIds(_request, false);
     _dryRun = ParameterUtils.getDryRun(_request);
     _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true, false);
+    _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_request);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false, false);
     _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_request);
     _replicationThrottle = ParameterUtils.replicationThrottle(_request, _config);
@@ -99,6 +103,10 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
 
   public Integer concurrentInterBrokerPartitionMovements() {
     return _concurrentInterBrokerPartitionMovements;
+  }
+  
+  public Integer maxInterBrokerPartitionMovements() {
+    return _maxInterBrokerPartitionMovements;
   }
 
   public Long executionProgressCheckIntervalMs() {

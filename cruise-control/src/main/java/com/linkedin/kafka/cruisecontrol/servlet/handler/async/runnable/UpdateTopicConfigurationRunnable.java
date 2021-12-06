@@ -70,6 +70,7 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
   protected final Map<Short, Pattern> _topicPatternByReplicationFactor;
   protected final boolean _skipRackAwarenessCheck;
   protected final Integer _concurrentInterBrokerPartitionMovements;
+  protected final Integer _maxInterBrokerPartitionMovements;
   protected final Integer _concurrentLeaderMovements;
   protected final Long _executionProgressCheckIntervalMs;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
@@ -95,6 +96,7 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
       _topicPatternByReplicationFactor = topicReplicationFactorChangeParameters.topicPatternByReplicationFactor();
       _skipRackAwarenessCheck = topicReplicationFactorChangeParameters.skipRackAwarenessCheck();
       _concurrentInterBrokerPartitionMovements = topicReplicationFactorChangeParameters.concurrentInterBrokerPartitionMovements();
+      _maxInterBrokerPartitionMovements = topicReplicationFactorChangeParameters.maxInterBrokerPartitionMovements();
       _concurrentLeaderMovements = topicReplicationFactorChangeParameters.concurrentLeaderMovements();
       _executionProgressCheckIntervalMs = topicReplicationFactorChangeParameters.executionProgressCheckIntervalMs();
       _replicaMovementStrategy = topicReplicationFactorChangeParameters.replicaMovementStrategy();
@@ -103,6 +105,7 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
       _topicPatternByReplicationFactor = null;
       _skipRackAwarenessCheck = false;
       _concurrentInterBrokerPartitionMovements = null;
+      _maxInterBrokerPartitionMovements = null;
       _concurrentLeaderMovements = null;
       _executionProgressCheckIntervalMs = null;
       _replicaMovementStrategy = null;
@@ -133,6 +136,7 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
     _topicPatternByReplicationFactor = topicPatternByReplicationFactor;
     _skipRackAwarenessCheck = skipRackAwarenessCheck;
     _concurrentInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
+    _maxInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _concurrentLeaderMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
@@ -195,9 +199,10 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
                                                                initReplicaDistribution, optimizationOptions);
     if (!_dryRun) {
       _kafkaCruiseControl.executeProposals(result.goalProposals(), Collections.emptySet(), false, _concurrentInterBrokerPartitionMovements,
-                                           0, _concurrentLeaderMovements, _executionProgressCheckIntervalMs,
-                                           _replicaMovementStrategy, _replicationThrottle, _isTriggeredByUserRequest, _uuid,
-                                           SKIP_AUTO_REFRESHING_CONCURRENCY);
+          _maxInterBrokerPartitionMovements,
+          0, _concurrentLeaderMovements, _executionProgressCheckIntervalMs,
+          _replicaMovementStrategy, _replicationThrottle, _isTriggeredByUserRequest, _uuid,
+          SKIP_AUTO_REFRESHING_CONCURRENCY);
     }
     return result;
   }
