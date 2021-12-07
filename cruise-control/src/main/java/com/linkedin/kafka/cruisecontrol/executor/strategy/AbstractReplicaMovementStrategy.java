@@ -54,6 +54,11 @@ public abstract class AbstractReplicaMovementStrategy implements ReplicaMovement
   }
 
   @Override
+  public ReplicaMovementStrategy chainBaseReplicaMovementStrategyIfAbsent() {
+    return this.name().contains(BaseReplicaMovementStrategy.class.getSimpleName()) ? this : this.chain(new BaseReplicaMovementStrategy());
+  }
+
+  @Override
   public Map<Integer, SortedSet<ExecutionTask>> applyStrategy(Set<ExecutionTask> replicaMovementTasks, StrategyOptions strategyOptions) {
     Map<Integer, SortedSet<ExecutionTask>> tasksByBrokerId = new HashMap<>();
 
