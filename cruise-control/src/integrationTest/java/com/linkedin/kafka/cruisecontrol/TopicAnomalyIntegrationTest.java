@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
@@ -101,7 +100,7 @@ public class TopicAnomalyIntegrationTest extends CruiseControlIntegrationTestHar
       List<List<Integer>> partitionReplicas = JsonPath.parse(replicasArray, _gsonJsonConfig)
           .read("$.*", new TypeRef<>() { });
       return partitionReplicas.stream().allMatch(i -> i.size() == EXPECTED_REPLICA_COUNT);
-    }, Duration.ofSeconds(800), Duration.ofSeconds(15), new AssertionError("Replica count not match"));
+    }, 100, new AssertionError("Replica count not match"));
   }
 
   private void waitForMetadataPropogates() {

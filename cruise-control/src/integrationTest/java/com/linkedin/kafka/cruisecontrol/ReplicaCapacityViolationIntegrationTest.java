@@ -114,7 +114,7 @@ public class ReplicaCapacityViolationIntegrationTest extends CruiseControlIntegr
         Integer replicaCountOnBroker = JsonPath.read(responseMessage, "KafkaBrokerState.ReplicaCountByBrokerId."
           + BROKER_ID_TO_ADD);
         return replicaCountOnBroker > 0;
-    }, 600, new AssertionError("No replica found on the new broker"));
+    }, 80, new AssertionError("No replica found on the new broker"));
   }
 
   private void waitForReplicaCapacityGoalViolation() {
@@ -126,7 +126,7 @@ public class ReplicaCapacityViolationIntegrationTest extends CruiseControlIntegr
         List<String> unfixableGoals = JsonPath.parse(unfixableGoalsArray, _gsonJsonConfig)
             .read("$..*", new TypeRef<>() { });
         return unfixableGoals.contains("ReplicaCapacityGoal");
-    }, 300, new AssertionError("Replica capacity goal violation not found"));
+    }, 100, new AssertionError("Replica capacity goal violation not found"));
   }
 
 }

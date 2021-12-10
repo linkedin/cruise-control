@@ -1,6 +1,5 @@
 /*
-* Copyright 2021 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See
- * License in the project root for license information.
+ * Copyright 2021 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol;
@@ -9,7 +8,6 @@ import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -56,7 +54,7 @@ public class DiskFailureIntegrationTest extends CruiseControlIntegrationTestHarn
       KAFKA_CRUISE_CONTROL_BASE_PATH + STATE + "?substates=analyzer&json=true";
   private static final Logger LOG = LoggerFactory.getLogger(DiskFailureIntegrationTest.class);
   private final Configuration _gsonJsonConfig = KafkaCruiseControlIntegrationTestUtils.createJsonMappingConfig();
-  private List<Entry<File, File>> _brokerLogDirs = new ArrayList<>(KAFKA_CLUSTER_SIZE);
+  private final List<Entry<File, File>> _brokerLogDirs = new ArrayList<>(KAFKA_CLUSTER_SIZE);
   
   @Before
   public void setup() throws Exception {
@@ -104,12 +102,12 @@ public class DiskFailureIntegrationTest extends CruiseControlIntegrationTestHarn
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections
         .singletonMap(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
     try {
-      adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC0, PARTITION_COUNT, TOPIC0_REPLICATION_FACTOR)));
+      adminClient.createTopics(Collections.singleton(new NewTopic(TOPIC0, PARTITION_COUNT, TOPIC0_REPLICATION_FACTOR)));
     } finally {
       KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
     }
 
-    waitForMetadataPropogates();
+    waitForMetadataPropagates();
 
     KafkaCruiseControlIntegrationTestUtils.produceRandomDataToTopic(TOPIC0, 5, 400, KafkaCruiseControlIntegrationTestUtils
         .getDefaultProducerProperties(bootstrapServers()));
@@ -131,7 +129,7 @@ public class DiskFailureIntegrationTest extends CruiseControlIntegrationTestHarn
       Map<String, String> offlineReplicas = JsonPath.read(responseMessage,
             "$.KafkaBrokerState.OfflineReplicaCountByBrokerId");
       return offlineReplicas.isEmpty();
-    }, 800, new AssertionError("There are still offline replica on broker"));
+    }, 100, new AssertionError("There are still offline replica on broker"));
   }
 
   private void waitForDiskFailureFixStarted() {
@@ -141,7 +139,7 @@ public class DiskFailureIntegrationTest extends CruiseControlIntegrationTestHarn
       JSONArray diskFailuresArray = JsonPath.read(responseMessage,
             "$.AnomalyDetectorState.recentDiskFailures[?(@.status=='" + AnomalyState.Status.FIX_STARTED + "')].anomalyId");
       return diskFailuresArray.size() == 1;
-    }, 400, new AssertionError("Disk failure anomaly not detected"));
+    }, 100, new AssertionError("Disk failure anomaly not detected"));
   }
 
   private void waitForOfflineReplicaDetection() {
@@ -151,7 +149,7 @@ public class DiskFailureIntegrationTest extends CruiseControlIntegrationTestHarn
       Integer offlineReplicas = JsonPath.read(responseMessage,
           "$.KafkaBrokerState.OfflineReplicaCountByBrokerId." + BROKER_ID_TO_CAUSE_DISK_FAILURE);
       return offlineReplicas > 0;
-    }, 400, new AssertionError("Offline replicas not detected"));
+    }, 100, new AssertionError("Offline replicas not detected"));
   }
 
   private void waitForProposal() {
@@ -162,7 +160,7 @@ public class DiskFailureIntegrationTest extends CruiseControlIntegrationTestHarn
     }, Duration.ofSeconds(200), Duration.ofSeconds(15), new AssertionError("No proposal available"));
   }
 
-  private void waitForMetadataPropogates() {
+  private void waitForMetadataPropagates() {
     KafkaCruiseControlIntegrationTestUtils.waitForConditionMeet(() -> {
       String responseMessage = KafkaCruiseControlIntegrationTestUtils
           .callCruiseControl(_app.serverUrl(), CRUISE_CONTROL_KAFKA_CLUSTER_STATE_ENDPOINT);

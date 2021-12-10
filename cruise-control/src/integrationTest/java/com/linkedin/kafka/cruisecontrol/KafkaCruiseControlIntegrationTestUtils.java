@@ -80,7 +80,7 @@ public final class KafkaCruiseControlIntegrationTestUtils {
   }
   
   public static void waitForConditionMeet(BooleanSupplier condition, int timeOutInSeconds, Error retriesExceededException) {
-    waitForConditionMeet(condition, Duration.ofSeconds(timeOutInSeconds), Duration.ofSeconds(7), retriesExceededException);
+    waitForConditionMeet(condition, Duration.ofSeconds(timeOutInSeconds), Duration.ofSeconds(5), retriesExceededException);
   }
   /**
    * Execute boolean condition until it returns true

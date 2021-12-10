@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
@@ -116,7 +115,7 @@ public class BrokerFailureIntegrationTest extends CruiseControlIntegrationTestHa
             "$.KafkaBrokerState.OfflineReplicaCountByBrokerId");
         return partitionLeaders.size() == PARTITION_COUNT && brokers == KAFKA_CLUSTER_SIZE - 1
             && offlineReplicas.isEmpty();
-    }, 800, new AssertionError("Topic replicas not fixed after broker removed"));
+    }, 80, new AssertionError("Topic replicas not fixed after broker removed"));
   }
 
   private void waitForProposal() {
@@ -124,7 +123,7 @@ public class BrokerFailureIntegrationTest extends CruiseControlIntegrationTestHa
       String responseMessage = KafkaCruiseControlIntegrationTestUtils
           .callCruiseControl(_app.serverUrl(), CRUISE_CONTROL_STATE_ENDPOINT);
       return JsonPath.<Boolean>read(responseMessage, "AnalyzerState.isProposalReady");
-    }, Duration.ofSeconds(800), Duration.ofSeconds(15), new AssertionError("No proposals were ready"));
+    }, 100, new AssertionError("No proposals were ready"));
   }
 
   private void waitForMetadataPropagates() {
