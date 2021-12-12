@@ -61,7 +61,7 @@ public class TrustedProxyAuthorizationServiceTest {
   public void testSuccessfulLoginWithoutIpFiltering() throws Exception {
     TrustedProxyAuthorizationService srv = new TrustedProxyAuthorizationService(Collections.singletonList(AUTH_SERVICE_NAME), null);
     HttpServletRequest mockRequest = mock(HttpServletRequest.class);
-
+    replay(mockRequest);
     srv.start();
     try {
       UserIdentity result = srv.getUserIdentity(mockRequest, AUTH_SERVICE_NAME);

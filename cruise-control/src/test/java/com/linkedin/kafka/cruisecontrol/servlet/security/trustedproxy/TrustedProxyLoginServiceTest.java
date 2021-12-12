@@ -75,7 +75,7 @@ public class TrustedProxyLoginServiceTest {
     assertNotNull(doAsIdentity.getUserPrincipal());
     assertEquals(doAsIdentity.getUserPrincipal().getName(), TEST_USER);
     assertEquals(((TrustedProxyPrincipal) doAsIdentity.getUserPrincipal()).servicePrincipal(), servicePrincipal);
-    verify(mockSpnegoLoginService,mockFallbackLoginService,mockRequest,serviceDelegate);
+    verify(mockSpnegoLoginService, mockRequest);
   }
 
   @Test
@@ -101,7 +101,7 @@ public class TrustedProxyLoginServiceTest {
     assertNotNull(doAsIdentity.getUserPrincipal());
     assertNull(doAsIdentity.getUserPrincipal().getName());
     assertFalse(((SpnegoUserIdentity) doAsIdentity).isEstablished());
-    verify(mockSpnegoLoginService,mockFallbackLoginService,mockRequest);
+    verify(mockSpnegoLoginService);
   }
 
   @Test
@@ -150,6 +150,6 @@ public class TrustedProxyLoginServiceTest {
     assertNotNull(doAsIdentity.getUserPrincipal());
     assertEquals(servicePrincipal, doAsIdentity.getUserPrincipal());
     assertTrue(((SpnegoUserIdentity) doAsIdentity).isEstablished());
-    verify(mockSpnegoLoginService,mockFallbackLoginService, serviceDelegate, mockRequest);
+    verify(mockFallbackLoginService);
   }
 }
