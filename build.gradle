@@ -161,7 +161,7 @@ project(':cruise-control-core') {
       exclude group: 'log4j', module: 'log4j'
     }
     api "org.slf4j:slf4j-api:1.7.32"
-    api "org.apache.logging.log4j:log4j-slf4j-impl:2.14.1"
+    api "org.apache.logging.log4j:log4j-slf4j-impl:2.15.0"
     api 'org.apache.commons:commons-math3:3.6.1'
     api "org.eclipse.jetty:jetty-servlet:${jettyVersion}"
 
@@ -258,7 +258,7 @@ project(':cruise-control') {
     api project(':cruise-control-metrics-reporter')
     api project(':cruise-control-core')
     api "org.slf4j:slf4j-api:1.7.32"
-    api "org.apache.logging.log4j:log4j-slf4j-impl:2.14.1"
+    api "org.apache.logging.log4j:log4j-slf4j-impl:2.15.0"
     api "org.apache.zookeeper:zookeeper:${zookeeperVersion}"
     api "io.netty:netty-handler:${nettyVersion}"
     api "io.netty:netty-transport-native-epoll:${nettyVersion}"
@@ -396,7 +396,7 @@ project(':cruise-control-metrics-reporter') {
       exclude group: 'log4j', module: 'log4j'
     }
     api "org.slf4j:slf4j-api:1.7.32"
-    api "org.apache.logging.log4j:log4j-slf4j-impl:2.14.1"
+    api "org.apache.logging.log4j:log4j-slf4j-impl:2.15.0"
     api "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion"
     api "org.apache.kafka:kafka-clients:$kafkaVersion"
 
