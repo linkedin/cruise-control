@@ -1,5 +1,6 @@
 UserTasksEndpoint:
   get:
+    operationId: userTasks
     summary: Get the recent user tasks from cruise control.
     parameters:
       - name: client_ids

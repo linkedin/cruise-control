@@ -1,5 +1,6 @@
 TopicConfigurationEndpoint:
   post:
+    operationId: topicConfiguration
     summary: Change the configuration of a topic
     parameters:
       - name: dryrun
