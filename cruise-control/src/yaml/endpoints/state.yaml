@@ -1,5 +1,6 @@
 StateEndpoint:
   get:
+    operationId: state
     summary: Get the state of cruise control.
     parameters:
       - name: substates
