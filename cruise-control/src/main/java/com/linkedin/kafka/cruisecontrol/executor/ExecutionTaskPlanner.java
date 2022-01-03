@@ -68,6 +68,7 @@ public class ExecutionTaskPlanner {
   private static final Logger LOG = LoggerFactory.getLogger(ExecutionTaskPlanner.class);
   private Map<Integer, SortedSet<ExecutionTask>> _interPartMoveTasksByBrokerId;
   private SortedSet<Integer> _interPartMoveBrokerIds;
+  private List<Integer> _interPartMoveBrokerIdsList;
   private final Map<Integer, SortedSet<ExecutionTask>> _intraPartMoveTasksByBrokerId;
   private final Set<ExecutionTask> _remainingInterBrokerReplicaMovements;
   private final Set<ExecutionTask> _remainingIntraBrokerReplicaMovements;
@@ -205,6 +206,7 @@ public class ExecutionTaskPlanner {
                                                                 : replicaMovementStrategy.chainBaseReplicaMovementStrategyIfAbsent();
     _interPartMoveTasksByBrokerId = chosenReplicaMovementTaskStrategy.applyStrategy(_remainingInterBrokerReplicaMovements, strategyOptions);
     _interPartMoveBrokerIds = new TreeSet<>(brokerComparator(strategyOptions, chosenReplicaMovementTaskStrategy));
+    _interPartMoveBrokerIdsList = new ArrayList<>(_interPartMoveTasksByBrokerId.keySet().size());
   }
 
   /**
@@ -341,12 +343,10 @@ public class ExecutionTaskPlanner {
 
     while (newTaskAdded && !maxPartitionMovesReached) {
       newTaskAdded = false;
-      // The first task of each brokerInvolved might have changed.
-      // Let's remove the brokers, then add them again by comparing their new first tasks.
-      _interPartMoveBrokerIds.removeAll(brokerInvolved);
-      _interPartMoveBrokerIds.addAll(brokerInvolved);
       brokerInvolved.clear();
-      for (int brokerId : _interPartMoveBrokerIds) {
+      _interPartMoveBrokerIdsList.clear();
+      _interPartMoveBrokerIdsList.addAll(_interPartMoveBrokerIds);
+      for (int brokerId : _interPartMoveBrokerIdsList) {
         // If max partition moves limit reached, no need to check other brokers
         if (maxPartitionMovesReached) {
           break;
@@ -382,11 +382,17 @@ public class ExecutionTaskPlanner {
               && !partitionsInvolved.contains(tp)) {
             partitionsInvolved.add(tp);
             executableReplicaMovements.add(task);
-            // Record the two brokers as involved in this round and stop involving them again in this round.
+            // Record the brokers as involved in this round and stop involving them again in this round.
             brokerInvolved.add(sourceBroker);
             brokerInvolved.addAll(destinationBrokers);
+            // The first task of each involved broker might have changed.
+            // Let's remove the brokers before the tasks change, then add them again later by comparing their new first tasks.
+            _interPartMoveBrokerIds.remove(sourceBroker);
+            _interPartMoveBrokerIds.removeAll(destinationBrokers);
             // Remove the proposal from the execution plan.
             removeInterBrokerReplicaActionForExecution(task);
+            _interPartMoveBrokerIds.add(sourceBroker);
+            _interPartMoveBrokerIds.addAll(destinationBrokers);
             // Decrement the slots for both source and destination brokers
             readyBrokers.put(sourceBroker, readyBrokers.get(sourceBroker) - 1);
             for (int broker : destinationBrokers) {
