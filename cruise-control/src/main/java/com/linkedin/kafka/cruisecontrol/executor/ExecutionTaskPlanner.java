@@ -67,8 +67,7 @@ import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.Replic
 public class ExecutionTaskPlanner {
   private static final Logger LOG = LoggerFactory.getLogger(ExecutionTaskPlanner.class);
   private Map<Integer, SortedSet<ExecutionTask>> _interPartMoveTasksByBrokerId;
-  private SortedSet<Integer> _interPartMoveBrokerIds;
-  private List<Integer> _interPartMoveBrokerIdsList;
+  private Comparator<Integer> _interPartMoveBrokerComparator;
   private final Map<Integer, SortedSet<ExecutionTask>> _intraPartMoveTasksByBrokerId;
   private final Set<ExecutionTask> _remainingInterBrokerReplicaMovements;
   private final Set<ExecutionTask> _remainingIntraBrokerReplicaMovements;
@@ -205,8 +204,7 @@ public class ExecutionTaskPlanner {
                                                                 ? _defaultReplicaMovementTaskStrategy
                                                                 : replicaMovementStrategy.chainBaseReplicaMovementStrategyIfAbsent();
     _interPartMoveTasksByBrokerId = chosenReplicaMovementTaskStrategy.applyStrategy(_remainingInterBrokerReplicaMovements, strategyOptions);
-    _interPartMoveBrokerIds = new TreeSet<>(brokerComparator(strategyOptions, chosenReplicaMovementTaskStrategy));
-    _interPartMoveBrokerIdsList = new ArrayList<>(_interPartMoveTasksByBrokerId.keySet().size());
+    _interPartMoveBrokerComparator = brokerComparator(strategyOptions, chosenReplicaMovementTaskStrategy);
   }
 
   /**
@@ -327,6 +325,8 @@ public class ExecutionTaskPlanner {
                                                                 int maxInterBrokerPartitionMovements) {
     LOG.trace("Getting inter-broker replica movement tasks for brokers with concurrency {}", readyBrokers);
     List<ExecutionTask> executableReplicaMovements = new ArrayList<>();
+    SortedSet<Integer> interPartMoveBrokerIds = new TreeSet<>(_interPartMoveBrokerComparator);
+    List<Integer> interPartMoveBrokerIdsList = new ArrayList<>(_interPartMoveTasksByBrokerId.keySet().size());
 
     /*
      * The algorithm avoids unfair situation where the available movement slots of a broker is completely taken
@@ -334,7 +334,7 @@ public class ExecutionTaskPlanner {
      * chances to make progress.
      */
     boolean newTaskAdded = true;
-    _interPartMoveBrokerIds.addAll(_interPartMoveTasksByBrokerId.keySet());
+    interPartMoveBrokerIds.addAll(_interPartMoveTasksByBrokerId.keySet());
     Set<Integer> brokerInvolved = new HashSet<>();
     Set<TopicPartition> partitionsInvolved = new HashSet<>();
 
@@ -344,9 +344,11 @@ public class ExecutionTaskPlanner {
     while (newTaskAdded && !maxPartitionMovesReached) {
       newTaskAdded = false;
       brokerInvolved.clear();
-      _interPartMoveBrokerIdsList.clear();
-      _interPartMoveBrokerIdsList.addAll(_interPartMoveBrokerIds);
-      for (int brokerId : _interPartMoveBrokerIdsList) {
+      // To avoid ConcurrentModificationException on interPartMoveBrokerId when we remove its elements,
+      // preserving the order then iterate on another list interPartMoveBrokerIdsList.
+      interPartMoveBrokerIdsList.clear();
+      interPartMoveBrokerIdsList.addAll(interPartMoveBrokerIds);
+      for (int brokerId : interPartMoveBrokerIdsList) {
         // If max partition moves limit reached, no need to check other brokers
         if (maxPartitionMovesReached) {
           break;
@@ -387,12 +389,12 @@ public class ExecutionTaskPlanner {
             brokerInvolved.addAll(destinationBrokers);
             // The first task of each involved broker might have changed.
             // Let's remove the brokers before the tasks change, then add them again later by comparing their new first tasks.
-            _interPartMoveBrokerIds.remove(sourceBroker);
-            _interPartMoveBrokerIds.removeAll(destinationBrokers);
+            interPartMoveBrokerIds.remove(sourceBroker);
+            interPartMoveBrokerIds.removeAll(destinationBrokers);
             // Remove the proposal from the execution plan.
             removeInterBrokerReplicaActionForExecution(task);
-            _interPartMoveBrokerIds.add(sourceBroker);
-            _interPartMoveBrokerIds.addAll(destinationBrokers);
+            interPartMoveBrokerIds.add(sourceBroker);
+            interPartMoveBrokerIds.addAll(destinationBrokers);
             // Decrement the slots for both source and destination brokers
             readyBrokers.put(sourceBroker, readyBrokers.get(sourceBroker) - 1);
             for (int broker : destinationBrokers) {
@@ -443,9 +445,6 @@ public class ExecutionTaskPlanner {
    */
   public void clear() {
     _intraPartMoveTasksByBrokerId.clear();
-    if (_interPartMoveBrokerIds != null) {
-      _interPartMoveBrokerIds.clear();
-    }
     _interPartMoveTasksByBrokerId.clear();
     _remainingLeadershipMovements.clear();
     _remainingInterBrokerReplicaMovements.clear();
