@@ -268,12 +268,12 @@ project(':cruise-control') {
     api 'org.apache.commons:commons-math3:3.6.1'
     api 'org.apache.httpcomponents:httpclient:4.5.13'
     api 'commons-codec:commons-codec:1.15'
-    api 'com.google.code.gson:gson:2.8.8'
+    api 'com.google.code.gson:gson:2.8.9'
     api "org.eclipse.jetty:jetty-server:${jettyVersion}"
     api 'io.dropwizard.metrics:metrics-core:3.2.6'
     api 'com.nimbusds:nimbus-jose-jwt:9.15.2'
-    api 'io.swagger.parser.v3:swagger-parser-v3:2.0.28'
-    api 'io.github.classgraph:classgraph:4.8.117'
+    api 'io.swagger.parser.v3:swagger-parser-v3:2.0.29'
+    api 'io.github.classgraph:classgraph:4.8.138'
 
     testImplementation project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
     testImplementation project(path: ':cruise-control-core', configuration: 'testOutput')
