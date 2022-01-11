@@ -42,6 +42,8 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.TopicConfig;
 import org.apache.kafka.common.errors.InterruptException;
@@ -73,6 +75,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   private AdminClient _adminClient;
   private long _metricsTopicAutoCreateTimeoutMs;
   private int _metricsTopicAutoCreateRetries;
+  private int _metricsReporterCreateRetries;
   protected static final String CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY = "delete";
   protected static final Duration PRODUCER_CLOSE_TIMEOUT = Duration.ofSeconds(5);
   private boolean _kubernetesMode;
@@ -102,6 +105,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
 
   @Override
   public void close() {
+
     LOG.info("Closing Cruise Control metrics reporter.");
     _shutdown = true;
     if (_metricsReporterRunner != null) {
@@ -163,7 +167,14 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     setIfAbsent(producerProps, ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
     setIfAbsent(producerProps, ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, MetricSerde.class.getName());
     setIfAbsent(producerProps, ProducerConfig.ACKS_CONFIG, "all");
-    _producer = new KafkaProducer<>(producerProps);
+
+    _metricsReporterCreateRetries = reporterConfig.getInt(
+        CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_CREATE_RETRIES_CONFIG);
+
+    createCruiseControlMetricsProducer(producerProps);
+    if (_producer == null) {
+      this.close();
+    }
 
     _brokerId = Integer.parseInt((String) configs.get(KafkaConfig.BrokerIdProp()));
 
@@ -222,6 +233,23 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     }
     newTopic.configs(config);
     return newTopic;
+  }
+
+  protected void createCruiseControlMetricsProducer(Properties producerProps) throws KafkaException {
+    CruiseControlMetricsUtils.retry(() -> {
+      try {
+        _producer = new KafkaProducer<>(producerProps);
+        return false;
+      } catch (KafkaException e) {
+        if (e.getCause() instanceof ConfigException
+                && e.getCause().toString().contains("No resolvable bootstrap urls given in bootstrap.servers")) {
+          // dns resolution may not be complete yet, let's retry again later
+          LOG.error("Unable to create Cruise Control metrics producer. ", e.getCause());
+          return true;
+        }
+        throw (KafkaException) e.getCause();
+      }
+    }, _metricsReporterCreateRetries);
   }
 
   protected void createCruiseControlMetricsTopic() throws TopicExistsException {
