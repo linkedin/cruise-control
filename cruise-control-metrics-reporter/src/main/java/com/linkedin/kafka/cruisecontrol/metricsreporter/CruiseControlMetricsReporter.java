@@ -244,10 +244,10 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
         if (e.getCause() instanceof ConfigException
                 && e.getCause().toString().contains("No resolvable bootstrap urls given in bootstrap.servers")) {
           // dns resolution may not be complete yet, let's retry again later
-          LOG.error("Unable to create Cruise Control metrics producer. ", e.getCause());
+          LOG.warn("Unable to create Cruise Control metrics producer. ", e.getCause());
           return true;
         }
-        throw (KafkaException) e.getCause();
+        throw e;
       }
     }, _metricsReporterCreateRetries);
   }
