@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import kafka.log.LogConfig;
 import kafka.server.KafkaConfig;
+import org.apache.kafka.clients.ClientUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AlterConfigOp;
@@ -56,8 +57,7 @@ import org.apache.kafka.common.utils.KafkaThread;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtils.maybeUpdateConfig;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtils.CLIENT_REQUEST_TIMEOUT_MS;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtils.*;
 
 public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(CruiseControlMetricsReporter.class);
@@ -241,10 +241,17 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
         _producer = new KafkaProducer<>(producerProps);
         return false;
       } catch (KafkaException e) {
-        if (e.getCause() instanceof ConfigException
-                && e.getCause().toString().contains("No resolvable bootstrap urls given in bootstrap.servers")) {
-          // dns resolution may not be complete yet, let's retry again later
-          LOG.warn("Unable to create Cruise Control metrics producer. ", e.getCause());
+        if (e.getCause() instanceof ConfigException) {
+          // Check if the config exception is caused by bootstrap.servers config
+          try {
+            ProducerConfig config = new ProducerConfig(producerProps);
+            ClientUtils.parseAndValidateAddresses(
+                    config.getList(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG),
+                    config.getString(ProducerConfig.CLIENT_DNS_LOOKUP_CONFIG));
+          } catch (ConfigException ce) {
+            // dns resolution may not be complete yet, let's retry again later
+            LOG.warn("Unable to create Cruise Control metrics producer. ", e.getCause());
+          }
           return true;
         }
         throw e;
