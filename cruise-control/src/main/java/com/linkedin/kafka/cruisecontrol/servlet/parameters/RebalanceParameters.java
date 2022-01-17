@@ -93,7 +93,7 @@ public class RebalanceParameters extends ProposalsParameters {
     super.initParameters();
     _dryRun = ParameterUtils.getDryRun(_handler);
     _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_handler, true, false);
-    _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_request);
+    _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_handler);
     _concurrentIntraBrokerPartitionMovements = ParameterUtils.concurrentMovements(_handler, false, true);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_handler, false, false);
     _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_handler);

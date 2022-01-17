@@ -69,7 +69,7 @@ public class TopicReplicationFactorChangeParameters extends AbstractParameters {
     }
     _skipRackAwarenessCheck = ParameterUtils.skipRackAwarenessCheck(_handler);
     _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_handler, true, false);
-    _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_request);
+    _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_handler);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_handler, false, false);
     _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_handler);
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_handler);

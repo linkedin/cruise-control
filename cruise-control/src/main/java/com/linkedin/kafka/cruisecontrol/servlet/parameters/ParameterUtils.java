@@ -894,15 +894,15 @@ public final class ParameterUtils {
   /**
    * Get the max inter broker partition movements requirement dynamically set from the Http request.
    *
-   * @param request The HTTP Request
+   * @param handler The HTTP Request
    * @return The execution upper bound requirement dynamically set from the Http request.
    */
-  static Integer maxPartitionMovements(HttpServletRequest request) {
-    String parameterString = caseSensitiveParameterName(request.getParameterMap(), MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM);
+  static Integer maxPartitionMovements(CruiseControlRequestContext handler) {
+    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM);
     if (parameterString == null) {
       return null;
     }
-    int maxPartitionMovements = Integer.parseInt(request.getParameter(parameterString));
+    int maxPartitionMovements = Integer.parseInt(handler.getParameter(parameterString));
     if (maxPartitionMovements <= 0) {
       throw new UserRequestException("The requested max partition movement must be positive (Requested: " + maxPartitionMovements + ").");
     }

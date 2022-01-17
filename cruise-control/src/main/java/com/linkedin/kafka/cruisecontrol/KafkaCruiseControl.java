@@ -686,7 +686,8 @@ public class KafkaCruiseControl {
     if (hasProposalsToExecute(proposals, uuid)) {
       _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor,
               concurrentInterBrokerPartitionMovements,
-              maxInterBrokerPartitionMovements, concurrentIntraBrokerPartitionMovements,concurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy,
+              maxInterBrokerPartitionMovements, concurrentIntraBrokerPartitionMovements, concurrentLeaderMovements,
+              executionProgressCheckIntervalMs, replicaMovementStrategy,
               replicationThrottle, isTriggeredByUserRequest, uuid, isKafkaAssignerMode,
               skipInterBrokerReplicaConcurrencyAdjustment);
     } else {
@@ -729,7 +730,7 @@ public class KafkaCruiseControl {
                              String uuid) throws OngoingExecutionException {
     if (hasProposalsToExecute(proposals, uuid)) {
       _executor.executeProposals(proposals, throttleDecommissionedBroker ? Collections.emptySet() : removedBrokers,
-              removedBrokers, _loadMonitor, concurrentInterBrokerPartitionMovements, maxInterBrokerPartitionMovements,0,
+              removedBrokers, _loadMonitor, concurrentInterBrokerPartitionMovements, maxInterBrokerPartitionMovements, 0,
               concurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy,
               replicationThrottle, isTriggeredByUserRequest, uuid, isKafkaAssignerMode, false);
     } else {

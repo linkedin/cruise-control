@@ -5,14 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.vertx.VertxRequestContext;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.OperationFuture;
-import io.vertx.core.MultiMap;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.impl.Http1xServerResponse;
-import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.Session;
 import kafka.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
 import org.easymock.Capture;
@@ -23,7 +16,6 @@ import org.junit.Test;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -114,7 +106,7 @@ public class UserTaskManagerTest {
 
   @Ignore
   @Test
-  public void testServletSessionsShareUserTask() throws Exception {
+  public void testSessionsShareUserTask() throws Exception {
     UUID testUserTaskId = UUID.randomUUID();
 
     UserTaskManager.UuidGenerator mockUuidGenerator = EasyMock.mock(UserTaskManager.UuidGenerator.class);
@@ -161,102 +153,9 @@ public class UserTaskManagerTest {
     Assert.assertEquals(1, userTaskManager.numActiveSessionKeys());
   }
 
-  @Test
-  public void testVertexSessionsShareUserTask() throws Exception {
-    UUID testUserTaskId = UUID.randomUUID();
-
-    UserTaskManager.UuidGenerator mockUuidGenerator = EasyMock.mock(UserTaskManager.UuidGenerator.class);
-    EasyMock.expect(mockUuidGenerator.randomUUID()).andReturn(testUserTaskId).anyTimes();
-
-    Session mockHttpSession = EasyMock.mock(Session.class);
-    EasyMock.expect(mockHttpSession.lastAccessed()).andReturn(100L).anyTimes();
-
-    Map<String, String []> requestParams1 = new HashMap<>();
-    requestParams1.put("param", new String[]{"true"});
-    Http1xServerResponse response = EasyMock.niceMock(Http1xServerResponse.class);
-    RoutingContext context = prepareVertxRequest(mockHttpSession, null, "test", requestParams1, response);
-    //    Capture<String> userTaskHeader = Capture.newInstance();
-    //    Capture<String> userTaskHeaderValue = Capture.newInstance();
-    VertxRequestContext handler1 = new VertxRequestContext(context, EasyMock.mock(KafkaCruiseControlConfig.class));
-    EasyMock.expect(response.putHeader(EasyMock.anyString(),
-            EasyMock.anyString())).andReturn(EasyMock.mock(Http1xServerResponse.class)).anyTimes();
-    //response.putHeader(EasyMock.capture(userTaskHeader), EasyMock.capture(userTaskHeaderValue));
-
-    Map<String, String []> requestParams2 = new HashMap<>();
-    requestParams2.put("param", new String[]{"true"});
-    Http1xServerResponse response2 = EasyMock.mock(Http1xServerResponse.class);
-    RoutingContext context2 = prepareVertxRequest(mockHttpSession, null, "test", requestParams2, response2);
-    VertxRequestContext handler2 = new VertxRequestContext(context2, EasyMock.mock(KafkaCruiseControlConfig.class));
-    EasyMock.expect(response2.putHeader(EasyMock.anyString(),
-            EasyMock.anyString())).andReturn(EasyMock.mock(Http1xServerResponse.class)).anyTimes();
-    //handler2.setHeader(EasyMock.capture(userTaskHeader), EasyMock.capture(userTaskHeaderValue));
-
-    Map<String, String []> requestParams3 = new HashMap<>();
-    requestParams3.put("param", new String[]{"true"});
-    Http1xServerResponse response3 = EasyMock.mock(Http1xServerResponse.class);
-    RoutingContext context3 = prepareVertxRequest(mockHttpSession, testUserTaskId.toString(), "test", requestParams3, response3);
-    VertxRequestContext handler3 = new VertxRequestContext(context3, EasyMock.mock(KafkaCruiseControlConfig.class));
-    EasyMock.expect(response3.putHeader(EasyMock.anyString(),
-            EasyMock.anyString())).andReturn(EasyMock.mock(Http1xServerResponse.class)).anyTimes();
-    //handler3.setHeader(EasyMock.capture(userTaskHeader), EasyMock.capture(userTaskHeaderValue));
-
-    EasyMock.replay(mockUuidGenerator, mockHttpSession, response, response2, response3);
-
-    OperationFuture future = new OperationFuture("future");
-    UserTaskManager userTaskManager = new UserTaskManager(1000, 5, TimeUnit.HOURS.toMillis(6),
-            100, new MockTime(), mockUuidGenerator);
-    userTaskManager.getOrCreateUserTask(handler1, uuid -> future, 0, true, null);
-    userTaskManager.getOrCreateUserTask(handler2, uuid -> future, 0, true, null);
-    // Test UserTaskManger can recognize the previous created task by taskId.
-    userTaskManager.getOrCreateUserTask(handler3, uuid -> future, 0, true, null);
-
-    // The 2nd request should reuse the UserTask created for the 1st request since they use the same session and send the same request.
-    Assert.assertEquals(1, userTaskManager.numActiveSessionKeys());
-    userTaskManager.close();
-  }
-
   @Ignore
   @Test
-  public void testSevletAddStepsFutures() throws Exception {
-    UUID testUserTaskId = UUID.randomUUID();
-
-    UserTaskManager.UuidGenerator mockUuidGenerator = EasyMock.mock(UserTaskManager.UuidGenerator.class);
-    EasyMock.expect(mockUuidGenerator.randomUUID()).andReturn(testUserTaskId).anyTimes();
-
-    HttpSession mockHttpSession = EasyMock.mock(HttpSession.class);
-    // Change mock session's last access time to always return current time to avoid unintended recycling of session.
-    EasyMock.expect(mockHttpSession.getLastAccessedTime()).andReturn(System.currentTimeMillis()).anyTimes();
-
-    HttpServletRequest mockHttpServletRequest = prepareServletRequest(mockHttpSession, null);
-
-    HttpServletResponse mockHttpServletResponse = EasyMock.mock(HttpServletResponse.class);
-    KafkaCruiseControlConfig cruiseControlConfigMock = EasyMock.niceMock(KafkaCruiseControlConfig.class);
-    ServletRequestContext handler = new ServletRequestContext(mockHttpServletRequest, mockHttpServletResponse, cruiseControlConfigMock);
-    handler.setHeader(EasyMock.anyString(), EasyMock.anyString());
-    EasyMock.replay(mockUuidGenerator, mockHttpSession, mockHttpServletResponse);
-
-    UserTaskManager userTaskManager = new UserTaskManager(1000, 1, TimeUnit.HOURS.toMillis(6),
-            100, new MockTime(), mockUuidGenerator);
-
-    OperationFuture testFuture1 = new OperationFuture("testFuture1");
-    OperationFuture testFuture2 = new OperationFuture("testFuture2");
-
-    OperationFuture insertedFuture1 =
-            userTaskManager.getOrCreateUserTask(handler, uuid -> testFuture1, 0,
-                    true, null).get(0);
-    Assert.assertEquals(testFuture1, insertedFuture1);
-    EasyMock.reset(mockHttpServletResponse);
-    OperationFuture insertedFuture2 =
-            userTaskManager.getOrCreateUserTask(handler, uuid -> testFuture2, 1,
-                    true, null).get(1);
-    Assert.assertEquals(testFuture2, insertedFuture2);
-
-    Assert.assertEquals(userTaskManager.getUserTaskByUserTaskId(testUserTaskId, handler).futures().size(), 2);
-    userTaskManager.close();
-  }
-
-  @Test
-  public void testVertxAddStepsFutures() throws Exception {
+  public void testAddStepsFutures() throws Exception {
     UUID testUserTaskId = UUID.randomUUID();
 
     UserTaskManager.UuidGenerator mockUuidGenerator = EasyMock.mock(UserTaskManager.UuidGenerator.class);
@@ -295,7 +194,6 @@ public class UserTaskManagerTest {
     userTaskManager.close();
   }
 
-  @Ignore
   @Test
   public void testCompletedTasks() throws Exception {
     HttpSession mockHttpSession = EasyMock.mock(HttpSession.class);
@@ -334,7 +232,7 @@ public class UserTaskManagerTest {
 
   @Ignore
   @Test
-  public void testServletExpireSession() throws Exception {
+  public void testExpireSession() throws Exception {
     UUID testUserTaskId = UUID.randomUUID();
 
     UserTaskManager.UuidGenerator mockUuidGenerator = EasyMock.mock(UserTaskManager.UuidGenerator.class);
@@ -367,46 +265,6 @@ public class UserTaskManagerTest {
     OperationFuture servletFuture2 = userTaskManager.getFuture(servletHandler);
     Assert.assertNull(servletFuture2);
 
-    userTaskManager.close();
-  }
-
-  @Ignore
-  @Test
-  public void testVertxExpireSession() throws Exception {
-    UUID testUserTaskId = UUID.randomUUID();
-
-    UserTaskManager.UuidGenerator mockUuidGenerator = EasyMock.mock(UserTaskManager.UuidGenerator.class);
-    EasyMock.expect(mockUuidGenerator.randomUUID()).andReturn(testUserTaskId).anyTimes();
-
-    Time mockTime = new MockTime();
-    Session vertxSession = EasyMock.mock(Session.class);
-    EasyMock.expect(vertxSession.lastAccessed()).andReturn(mockTime.milliseconds()).anyTimes();
-    vertxSession.destroy();
-    HttpServletResponse mockHttpServletResponse = EasyMock.mock(HttpServletResponse.class);
-    Http1xServerResponse mockVertxResponse = EasyMock.mock(Http1xServerResponse.class);
-    RoutingContext mockContext = prepareVertxRequest(vertxSession, null, mockVertxResponse);
-
-    OperationFuture future = new OperationFuture("future");
-    UserTaskManager userTaskManager = new UserTaskManager(1000, 1, TimeUnit.HOURS.toMillis(6),
-            100, mockTime, mockUuidGenerator);
-
-    VertxRequestContext vertxHandler = new VertxRequestContext(mockContext, EasyMock.mock(KafkaCruiseControlConfig.class));
-    EasyMock.expect(mockVertxResponse.putHeader(UserTaskManager.USER_TASK_HEADER_NAME,
-            testUserTaskId.toString())).andReturn(mockVertxResponse).anyTimes();
-
-    EasyMock.replay(mockUuidGenerator, mockHttpServletResponse, mockVertxResponse);
-    // test-case: test if the sessions are removed on expiration
-
-    OperationFuture furure1 =
-            userTaskManager.getOrCreateUserTask(vertxHandler, uuid -> future, 0, true, null).get(0);
-    Assert.assertEquals(future, furure1);
-
-    mockTime.sleep(1001);
-    Thread.sleep(TimeUnit.SECONDS.toMillis(UserTaskManager.USER_TASK_SCANNER_PERIOD_SECONDS + 1));
-
-    OperationFuture future2 = userTaskManager.getFuture(vertxHandler);
-    Assert.assertNull(future2);
-    EasyMock.verify(mockUuidGenerator, mockHttpSession, mockHttpServletResponse);
     userTaskManager.close();
   }
 
@@ -472,37 +330,5 @@ public class UserTaskManagerTest {
     }
     EasyMock.replay(request);
     return request;
-  }
-
-  private RoutingContext prepareVertxRequest(Session session, String userTaskId, Http1xServerResponse response) {
-    return prepareVertxRequest(session, userTaskId, "/test", Collections.emptyMap(), response);
-  }
-
-  private RoutingContext prepareVertxRequest(Session session, String userTaskId, String resource,
-                                             Map<String, String []> params, Http1xServerResponse response) {
-    MultiMap paramsMultiMap = MultiMap.caseInsensitiveMultiMap();
-    for (Map.Entry<String, String[]> entry : params.entrySet()) {
-      paramsMultiMap.add((CharSequence) entry.getKey(), Arrays.asList(entry.getValue()));
-    }
-
-    RoutingContext context = EasyMock.mock(RoutingContext.class);
-    HttpServerRequest mockRequest = EasyMock.mock(HttpServerRequest.class);
-
-    EasyMock.expect(context.request()).andReturn(mockRequest).anyTimes();
-    EasyMock.expect(context.session()).andReturn(session).anyTimes();
-    EasyMock.expect(context.queryParams()).andReturn(paramsMultiMap).anyTimes();
-    EasyMock.expect(context.response()).andReturn(response).anyTimes();
-
-    EasyMock.expect(mockRequest.getHeader(UserTaskManager.USER_TASK_HEADER_NAME)).andReturn(userTaskId).anyTimes();
-    EasyMock.expect(mockRequest.method()).andReturn(HttpMethod.GET).anyTimes();
-    EasyMock.expect(mockRequest.uri()).andReturn(resource).anyTimes();
-    EasyMock.expect(mockRequest.headers()).andReturn(MultiMap.caseInsensitiveMultiMap()).anyTimes();
-
-    for (String headerName : KafkaCruiseControlServletUtils.HEADERS_TO_TRY) {
-      EasyMock.expect(mockRequest.getHeader(headerName)).andReturn("localhost").anyTimes();
-    }
-    EasyMock.replay(context, mockRequest);
-
-    return context;
   }
 }

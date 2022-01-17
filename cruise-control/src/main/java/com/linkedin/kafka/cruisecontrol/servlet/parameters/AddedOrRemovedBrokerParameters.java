@@ -72,7 +72,7 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
     _brokerIds = ParameterUtils.brokerIds(_handler, false);
     _dryRun = ParameterUtils.getDryRun(_handler);
     _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_handler, true, false);
-    _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_request);
+    _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_handler);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_handler, false, false);
     _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_handler);
     _replicationThrottle = ParameterUtils.replicationThrottle(_handler, _config);

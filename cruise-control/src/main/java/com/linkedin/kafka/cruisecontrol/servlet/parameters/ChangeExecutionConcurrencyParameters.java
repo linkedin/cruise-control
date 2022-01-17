@@ -48,7 +48,7 @@ public class ChangeExecutionConcurrencyParameters extends AbstractParameters {
     _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_handler, true, false);
     _concurrentIntraBrokerPartitionMovements = ParameterUtils.concurrentMovements(_handler, false, true);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_handler, false, false);
-    _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_request);
+    _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_handler);
   }
 
   /**
