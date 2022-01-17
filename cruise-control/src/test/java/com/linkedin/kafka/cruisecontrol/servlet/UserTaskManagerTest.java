@@ -11,7 +11,6 @@ import org.apache.kafka.common.utils.Time;
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -26,7 +25,6 @@ import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet
 
 public class UserTaskManagerTest {
 
-  @Ignore
   @Test
   public void testCreateUserTask() throws Exception {
     UUID testUserTaskId = UUID.randomUUID();
@@ -104,7 +102,6 @@ public class UserTaskManagerTest {
     userTaskManager.close();
   }
 
-  @Ignore
   @Test
   public void testSessionsShareUserTask() throws Exception {
     UUID testUserTaskId = UUID.randomUUID();
@@ -153,7 +150,6 @@ public class UserTaskManagerTest {
     Assert.assertEquals(1, userTaskManager.numActiveSessionKeys());
   }
 
-  @Ignore
   @Test
   public void testAddStepsFutures() throws Exception {
     UUID testUserTaskId = UUID.randomUUID();
@@ -230,7 +226,6 @@ public class UserTaskManagerTest {
     userTaskManager.close();
   }
 
-  @Ignore
   @Test
   public void testExpireSession() throws Exception {
     UUID testUserTaskId = UUID.randomUUID();
@@ -268,7 +263,6 @@ public class UserTaskManagerTest {
     userTaskManager.close();
   }
 
-  @Ignore
   @Test
   public void testMaximumActiveTasks() throws Exception {
     HttpSession mockHttpSession1 = EasyMock.mock(HttpSession.class);
