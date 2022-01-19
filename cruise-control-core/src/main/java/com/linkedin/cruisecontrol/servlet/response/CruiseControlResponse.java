@@ -4,7 +4,7 @@
 
 package com.linkedin.cruisecontrol.servlet.response;
 
-import com.linkedin.cruisecontrol.httframeworkhandler.CruiseControlRequestContext;
+import com.linkedin.cruisecontrol.http.CruiseControlRequestContext;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import java.io.IOException;
 

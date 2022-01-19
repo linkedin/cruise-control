@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.handler.sync;
 
-import com.linkedin.kafka.cruisecontrol.CruiseControlEndPoints;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlEndPoints;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserTasksParameters;
@@ -43,7 +43,7 @@ public class UserTasksRequest extends AbstractSyncRequest {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    CruiseControlEndPoints cruiseControlEndPoints = getCruiseControlEndpoints();
+    KafkaCruiseControlEndPoints cruiseControlEndPoints = getCruiseControlEndpoints();
     _userTasks = cruiseControlEndPoints.getAllUserTasks();
     _config = cruiseControlEndPoints.asyncKafkaCruiseControl().config();
     _parameters = (UserTasksParameters) validateNotNull(configs.get(USER_TASKS_PARAMETER_OBJECT_CONFIG),

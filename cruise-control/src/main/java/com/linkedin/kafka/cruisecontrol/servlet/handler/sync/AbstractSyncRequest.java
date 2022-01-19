@@ -5,8 +5,8 @@
 package com.linkedin.kafka.cruisecontrol.servlet.handler.sync;
 
 import com.codahale.metrics.Timer;
-import com.linkedin.cruisecontrol.httframeworkhandler.CruiseControlRequestContext;
-import com.linkedin.kafka.cruisecontrol.CruiseControlEndPoints;
+import com.linkedin.cruisecontrol.http.CruiseControlRequestContext;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlEndPoints;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.OperationFuture;
 import com.linkedin.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
@@ -59,12 +59,12 @@ public abstract class AbstractSyncRequest extends AbstractRequest {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    CruiseControlEndPoints cruiseControlEndPoints = getCruiseControlEndpoints();
+    KafkaCruiseControlEndPoints cruiseControlEndPoints = getCruiseControlEndpoints();
     _userTaskManager = cruiseControlEndPoints.userTaskManager();
     _successfulRequestExecutionTimer = cruiseControlEndPoints.successfulRequestExecutionTimer();
   }
 
-  protected CruiseControlEndPoints getCruiseControlEndpoints() {
+  protected KafkaCruiseControlEndPoints getCruiseControlEndpoints() {
     return _requestHandler.cruiseControlEndPoints();
   }
 }

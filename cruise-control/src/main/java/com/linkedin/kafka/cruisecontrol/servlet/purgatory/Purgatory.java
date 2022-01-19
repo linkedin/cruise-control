@@ -5,7 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet.purgatory;
 
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
-import com.linkedin.cruisecontrol.httframeworkhandler.CruiseControlRequestContext;
+import com.linkedin.cruisecontrol.http.CruiseControlRequestContext;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;

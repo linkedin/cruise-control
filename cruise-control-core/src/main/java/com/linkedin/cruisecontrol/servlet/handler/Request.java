@@ -5,7 +5,7 @@
 package com.linkedin.cruisecontrol.servlet.handler;
 
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
-import com.linkedin.cruisecontrol.httframeworkhandler.CruiseControlRequestContext;
+import com.linkedin.cruisecontrol.http.CruiseControlRequestContext;
 
 
 /**

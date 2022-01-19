@@ -5,8 +5,8 @@
 package com.linkedin.kafka.cruisecontrol.vertx;
 
 import com.google.gson.Gson;
-import com.linkedin.cruisecontrol.httframeworkhandler.CruiseControlHttpSession;
-import com.linkedin.cruisecontrol.httframeworkhandler.CruiseControlRequestContext;
+import com.linkedin.cruisecontrol.http.CruiseControlHttpSession;
+import com.linkedin.cruisecontrol.http.CruiseControlRequestContext;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils;

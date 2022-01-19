@@ -13,7 +13,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import com.linkedin.cruisecontrol.httframeworkhandler.CruiseControlRequestContext;
+import com.linkedin.cruisecontrol.http.CruiseControlRequestContext;
 import com.linkedin.kafka.cruisecontrol.servlet.ServletRequestContext;
 import com.linkedin.kafka.cruisecontrol.vertx.VertxRequestContext;
 import io.vertx.ext.web.RoutingContext;

@@ -5,7 +5,7 @@
 package com.linkedin.cruisecontrol.servlet.parameters;
 
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
-import com.linkedin.cruisecontrol.httframeworkhandler.CruiseControlRequestContext;
+import com.linkedin.cruisecontrol.http.CruiseControlRequestContext;
 import com.linkedin.cruisecontrol.servlet.EndPoint;
 import java.util.SortedSet;
 

@@ -5,8 +5,8 @@
 package com.linkedin.kafka.cruisecontrol.servlet;
 
 import com.codahale.metrics.MetricRegistry;
-import com.linkedin.kafka.cruisecontrol.CruiseControlEndPoints;
-import com.linkedin.kafka.cruisecontrol.RequestHandler;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlEndPoints;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlRequestHandler;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -21,16 +21,16 @@ import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet
  */
 public class ServletRequestHandler extends HttpServlet {
 
-  private final RequestHandler _requestHandler;
+  private final KafkaCruiseControlRequestHandler _requestHandler;
 
   public ServletRequestHandler(AsyncKafkaCruiseControl asynckafkaCruiseControl, MetricRegistry dropwizardMetricRegistry) {
-    _requestHandler = new RequestHandler(asynckafkaCruiseControl, dropwizardMetricRegistry);
+    _requestHandler = new KafkaCruiseControlRequestHandler(asynckafkaCruiseControl, dropwizardMetricRegistry);
   }
 
   //only for tests
   public ServletRequestHandler(AsyncKafkaCruiseControl asynckafkaCruiseControl,
                                MetricRegistry dropwizardMetricRegistry, UserTaskManager userTaskManager) {
-    _requestHandler = new RequestHandler(asynckafkaCruiseControl, dropwizardMetricRegistry, userTaskManager);
+    _requestHandler = new KafkaCruiseControlRequestHandler(asynckafkaCruiseControl, dropwizardMetricRegistry, userTaskManager);
   }
 
   @Override
@@ -53,7 +53,7 @@ public class ServletRequestHandler extends HttpServlet {
     _requestHandler.doGetOrPost(new ServletRequestContext(request, response, _requestHandler.cruiseControlEndPoints().config()));
   }
 
-  public CruiseControlEndPoints cruiseControlEndPoints() {
+  public KafkaCruiseControlEndPoints cruiseControlEndPoints() {
     return _requestHandler.cruiseControlEndPoints();
   }
 }

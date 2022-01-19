@@ -4,11 +4,11 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async;
 
-import com.linkedin.kafka.cruisecontrol.CruiseControlEndPoints;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlEndPoints;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.async.progress.Pending;
-import com.linkedin.cruisecontrol.httframeworkhandler.CruiseControlRequestContext;
+import com.linkedin.cruisecontrol.http.CruiseControlRequestContext;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.AbstractRequest;
@@ -70,14 +70,14 @@ public abstract class AbstractAsyncRequest extends AbstractRequest {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    CruiseControlEndPoints cruiseControlEndPoints = getCruiseControlEndpoints();
+    KafkaCruiseControlEndPoints cruiseControlEndPoints = getCruiseControlEndpoints();
     _asyncKafkaCruiseControl = cruiseControlEndPoints.asyncKafkaCruiseControl();
     _asyncOperationStep = cruiseControlEndPoints.asyncOperationStep();
     _userTaskManager = cruiseControlEndPoints.userTaskManager();
     _maxBlockMs = cruiseControlEndPoints.config().getLong(WebServerConfig.WEBSERVER_REQUEST_MAX_BLOCK_TIME_MS_CONFIG);
   }
 
-  protected CruiseControlEndPoints getCruiseControlEndpoints() {
+  protected KafkaCruiseControlEndPoints getCruiseControlEndpoints() {
     return _requestHandler.cruiseControlEndPoints();
   }
 

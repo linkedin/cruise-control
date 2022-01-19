@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet;
 
-import com.linkedin.cruisecontrol.httframeworkhandler.CruiseControlHttpSession;
+import com.linkedin.cruisecontrol.http.CruiseControlHttpSession;
 import javax.servlet.http.HttpSession;
 import java.util.Objects;
 

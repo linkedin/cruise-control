@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.vertx;
 
-import com.linkedin.cruisecontrol.httframeworkhandler.CruiseControlHttpSession;
+import com.linkedin.cruisecontrol.http.CruiseControlHttpSession;
 import io.vertx.ext.web.Session;
 import java.util.Objects;
 

@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.cruisecontrol.common.config.ConfigException;
-import com.linkedin.cruisecontrol.httframeworkhandler.CruiseControlRequestContext;
+import com.linkedin.cruisecontrol.http.CruiseControlRequestContext;
 import com.linkedin.cruisecontrol.servlet.handler.Request;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
@@ -35,19 +35,19 @@ import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.requestParameterFor;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.hasValidParameterNames;
 
-public class RequestHandler {
+public class KafkaCruiseControlRequestHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(VertxRequestHandler.class);
-    protected final CruiseControlEndPoints _cruiseControlEndPoints;
+    protected final KafkaCruiseControlEndPoints _cruiseControlEndPoints;
 
-    public RequestHandler(AsyncKafkaCruiseControl asynckafkaCruiseControl, MetricRegistry dropwizardMetricRegistry) {
-        _cruiseControlEndPoints = new CruiseControlEndPoints(asynckafkaCruiseControl, dropwizardMetricRegistry);
+    public KafkaCruiseControlRequestHandler(AsyncKafkaCruiseControl asynckafkaCruiseControl, MetricRegistry dropwizardMetricRegistry) {
+        _cruiseControlEndPoints = new KafkaCruiseControlEndPoints(asynckafkaCruiseControl, dropwizardMetricRegistry);
     }
 
     // Visible for testing
-    public RequestHandler(AsyncKafkaCruiseControl asynckafkaCruiseControl, MetricRegistry dropwizardMetricRegistry,
-                          UserTaskManager userTaskManager) {
-        _cruiseControlEndPoints = new CruiseControlEndPoints(asynckafkaCruiseControl, dropwizardMetricRegistry, userTaskManager);
+    public KafkaCruiseControlRequestHandler(AsyncKafkaCruiseControl asynckafkaCruiseControl, MetricRegistry dropwizardMetricRegistry,
+                                            UserTaskManager userTaskManager) {
+        _cruiseControlEndPoints = new KafkaCruiseControlEndPoints(asynckafkaCruiseControl, dropwizardMetricRegistry, userTaskManager);
     }
 
     /**
@@ -165,7 +165,7 @@ public class RequestHandler {
         }
     }
 
-    public CruiseControlEndPoints cruiseControlEndPoints() {
+    public KafkaCruiseControlEndPoints cruiseControlEndPoints() {
         return _cruiseControlEndPoints;
     }
 }

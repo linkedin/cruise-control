@@ -5,18 +5,18 @@
 package com.linkedin.kafka.cruisecontrol.vertx;
 
 import com.codahale.metrics.MetricRegistry;
-import com.linkedin.kafka.cruisecontrol.CruiseControlEndPoints;
-import com.linkedin.kafka.cruisecontrol.RequestHandler;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlEndPoints;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlRequestHandler;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import io.vertx.ext.web.RoutingContext;
 import java.io.IOException;
 
 public class VertxRequestHandler {
 
-    private final RequestHandler _requestHandler;
+    private final KafkaCruiseControlRequestHandler _requestHandler;
 
     public VertxRequestHandler(AsyncKafkaCruiseControl asynckafkaCruiseControl, MetricRegistry dropwizardMetricRegistry) {
-        _requestHandler = new RequestHandler(asynckafkaCruiseControl, dropwizardMetricRegistry);
+        _requestHandler = new KafkaCruiseControlRequestHandler(asynckafkaCruiseControl, dropwizardMetricRegistry);
     }
 
     /**
@@ -38,7 +38,7 @@ public class VertxRequestHandler {
         }
     }
 
-    public CruiseControlEndPoints cruiseControlEndPoints() {
+    public KafkaCruiseControlEndPoints cruiseControlEndPoints() {
         return _requestHandler.cruiseControlEndPoints();
     }
 }

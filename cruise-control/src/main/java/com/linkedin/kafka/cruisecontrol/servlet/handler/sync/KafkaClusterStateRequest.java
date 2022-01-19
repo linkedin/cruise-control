@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.handler.sync;
 
-import com.linkedin.kafka.cruisecontrol.CruiseControlEndPoints;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlEndPoints;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaClusterStateParameters;
@@ -46,7 +46,7 @@ public class KafkaClusterStateRequest extends AbstractSyncRequest {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    CruiseControlEndPoints cruiseControlEndPoints = getCruiseControlEndpoints();
+    KafkaCruiseControlEndPoints cruiseControlEndPoints = getCruiseControlEndpoints();
     _kafkaCluster = cruiseControlEndPoints.asyncKafkaCruiseControl().kafkaCluster();
     _topicConfigProvider = cruiseControlEndPoints.asyncKafkaCruiseControl().topicConfigProvider();
     _config = cruiseControlEndPoints.asyncKafkaCruiseControl().config();

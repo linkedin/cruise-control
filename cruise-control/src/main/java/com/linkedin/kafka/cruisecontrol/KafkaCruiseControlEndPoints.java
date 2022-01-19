@@ -21,7 +21,7 @@ import java.util.Map;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.KAFKA_CRUISE_CONTROL_SERVLET_SENSOR;
 
-public class CruiseControlEndPoints {
+public class KafkaCruiseControlEndPoints {
     protected final AsyncKafkaCruiseControl _asyncKafkaCruiseControl;
     protected final KafkaCruiseControlConfig _config;
     protected final UserTaskManager _userTaskManager;
@@ -31,7 +31,7 @@ public class CruiseControlEndPoints {
     protected final boolean _twoStepVerification;
     protected final Purgatory _purgatory;
 
-    public CruiseControlEndPoints(AsyncKafkaCruiseControl asynckafkaCruiseControl, MetricRegistry dropwizardMetricRegistry) {
+    public KafkaCruiseControlEndPoints(AsyncKafkaCruiseControl asynckafkaCruiseControl, MetricRegistry dropwizardMetricRegistry) {
         _config = asynckafkaCruiseControl.config();
         _asyncKafkaCruiseControl = asynckafkaCruiseControl;
         _twoStepVerification = _config.getBoolean(WebServerConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
@@ -49,8 +49,8 @@ public class CruiseControlEndPoints {
     }
 
     //only for tests
-    public CruiseControlEndPoints(AsyncKafkaCruiseControl asynckafkaCruiseControl,
-                                  MetricRegistry dropwizardMetricRegistry, UserTaskManager userTaskManager) {
+    public KafkaCruiseControlEndPoints(AsyncKafkaCruiseControl asynckafkaCruiseControl,
+                                       MetricRegistry dropwizardMetricRegistry, UserTaskManager userTaskManager) {
         _config = asynckafkaCruiseControl.config();
         _asyncKafkaCruiseControl = asynckafkaCruiseControl;
         _twoStepVerification = _config.getBoolean(WebServerConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
