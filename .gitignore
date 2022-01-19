@@ -3,6 +3,7 @@
 .classpath
 .gradle
 .idea
+.vertx
 *.iml
 *.ipr
 *.iws
