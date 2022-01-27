@@ -53,7 +53,7 @@ public class UserTaskManagerTest {
     Assert.assertEquals(userTaskHeader.getValue(), UserTaskManager.USER_TASK_HEADER_NAME);
     Assert.assertEquals(userTaskHeaderValue.getValue(), testUserTaskId.toString());
     Assert.assertEquals(future, future1);
-    EasyMock.verify(mockHttpServletResponse, mockHttpSession);
+    EasyMock.verify(mockUuidGenerator, mockHttpServletResponse, mockHttpSession);
     EasyMock.reset(mockHttpServletResponse);
     // test-case: get same future back using sessions
     OperationFuture future2 =
@@ -139,8 +139,7 @@ public class UserTaskManagerTest {
 
     // The 2nd request should reuse the UserTask created for the 1st request since they use the same session and send the same request.
     Assert.assertEquals(1, userTaskManager.numActiveSessionKeys());
-    EasyMock.verify(mockUuidGenerator, mockHttpServletResponse1, mockHttpServletResponse2, mockHttpServletResponse3);
-    EasyMock.verify(mockHttpServletRequest1, mockHttpServletRequest2, mockHttpServletRequest3);
+    EasyMock.verify(mockUuidGenerator, mockHttpServletResponse1, mockHttpServletResponse2, mockHttpServletResponse3, mockHttpServletRequest1, mockHttpServletRequest2, mockHttpServletRequest3);
   }
 
   @Test
@@ -270,7 +269,7 @@ public class UserTaskManagerTest {
     OperationFuture future1 =
         userTaskManager.getOrCreateUserTask(mockHttpServletRequest1, mockHttpServletResponse, uuid -> future, 0, true, null).get(0);
     Assert.assertEquals(future, future1);
-    EasyMock.verify(mockHttpServletRequest1, mockHttpServletResponse);
+    EasyMock.verify(mockHttpSession1, mockHttpServletRequest1, mockHttpServletResponse);
     HttpSession mockHttpSession2 = EasyMock.mock(HttpSession.class);
     EasyMock.expect(mockHttpSession2.getLastAccessedTime()).andReturn(100L).anyTimes();
     EasyMock.replay(mockHttpSession2);
@@ -281,7 +280,7 @@ public class UserTaskManagerTest {
       OperationFuture future2 =
           userTaskManager.getOrCreateUserTask(mockHttpServletRequest2, mockHttpServletResponse, uuid -> future, 0, true, null).get(0);
       Assert.assertEquals(future, future2);
-      EasyMock.verify(mockHttpServletRequest2, mockHttpServletResponse);
+      EasyMock.verify(mockHttpSession2, mockHttpServletRequest2, mockHttpServletResponse);
     } catch (RuntimeException e) {
       userTaskManager.close();
       return;
