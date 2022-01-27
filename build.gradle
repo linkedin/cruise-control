@@ -8,7 +8,7 @@ plugins {
   id "idea"
   id "jacoco" // Java Code Coverage plugin
   id "com.github.ben-manes.versions" version "0.39.0"
-  id "com.github.spotbugs" version "4.7.6" apply false
+  id "com.github.spotbugs" version "5.0.3" apply false
   id "checkstyle"
 }
 
@@ -268,12 +268,12 @@ project(':cruise-control') {
     api 'org.apache.commons:commons-math3:3.6.1'
     api 'org.apache.httpcomponents:httpclient:4.5.13'
     api 'commons-codec:commons-codec:1.15'
-    api 'com.google.code.gson:gson:2.8.8'
+    api 'com.google.code.gson:gson:2.8.9'
     api "org.eclipse.jetty:jetty-server:${jettyVersion}"
-    api 'io.dropwizard.metrics:metrics-core:3.2.6'
+    api 'io.dropwizard.metrics:metrics-jmx:4.2.6'
     api 'com.nimbusds:nimbus-jose-jwt:9.15.2'
     api 'io.swagger.parser.v3:swagger-parser-v3:2.0.28'
-    api 'io.github.classgraph:classgraph:4.8.117'
+    api 'io.github.classgraph:classgraph:4.8.138'
 
     testImplementation project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
     testImplementation project(path: ':cruise-control-core', configuration: 'testOutput')
@@ -284,9 +284,9 @@ project(':cruise-control') {
     testImplementation "org.apache.kafka:kafka-clients:$kafkaVersion:test"
     testImplementation 'commons-io:commons-io:2.11.0'
     testImplementation 'org.apache.httpcomponents:httpclient:4.5.13:tests'
-    testImplementation 'org.bouncycastle:bcpkix-jdk15on:1.69'
+    testImplementation 'org.bouncycastle:bcpkix-jdk15on:1.70'
     testImplementation 'org.apache.kerby:kerb-simplekdc:2.0.1'
-    testImplementation 'com.jayway.jsonpath:json-path:2.4.0'
+    testImplementation 'com.jayway.jsonpath:json-path:2.6.0'
 
     implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'
 
@@ -401,7 +401,7 @@ project(':cruise-control-metrics-reporter') {
     api "org.apache.kafka:kafka-clients:$kafkaVersion"
 
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.bouncycastle:bcpkix-jdk15on:1.69'
+    testImplementation 'org.bouncycastle:bcpkix-jdk15on:1.70'
     testImplementation 'org.powermock:powermock-module-junit4:2.0.9'
     testImplementation 'org.powermock:powermock-api-easymock:2.0.9'
     testImplementation "org.apache.kafka:kafka-clients:$kafkaVersion:test"
@@ -468,6 +468,6 @@ static def getScalaBinaryVersion(versionStr) {
 
 //wrapper generation task
 wrapper {
-  gradleVersion = '7.2'
+  gradleVersion = '7.3.2'
   distributionType = Wrapper.DistributionType.ALL
 }

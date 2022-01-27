@@ -4,11 +4,12 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
-import com.codahale.metrics.JmxReporter;
+import com.codahale.metrics.jmx.JmxReporter;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
+import com.linkedin.kafka.cruisecontrol.metrics.LegacyObjectNameFactory;
 import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
 import com.linkedin.kafka.cruisecontrol.servlet.security.CruiseControlSecurityHandler;
 import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityProvider;
@@ -37,7 +38,8 @@ public class KafkaCruiseControlApp {
     this._config = config;
 
     MetricRegistry metricRegistry = new MetricRegistry();
-    _jmxReporter = JmxReporter.forRegistry(metricRegistry).inDomain(METRIC_DOMAIN).build();
+    _jmxReporter = JmxReporter.forRegistry(metricRegistry).inDomain(METRIC_DOMAIN)
+            .createsObjectNamesWith(LegacyObjectNameFactory.getInstance()).build();
     _jmxReporter.start();
 
     _kafkaCruiseControl = new AsyncKafkaCruiseControl(config, metricRegistry);
