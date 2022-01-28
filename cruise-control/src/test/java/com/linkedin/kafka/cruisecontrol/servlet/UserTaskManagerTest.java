@@ -139,8 +139,8 @@ public class UserTaskManagerTest {
 
     // The 2nd request should reuse the UserTask created for the 1st request since they use the same session and send the same request.
     Assert.assertEquals(1, userTaskManager.numActiveSessionKeys());
-    EasyMock.verify(mockUuidGenerator, mockHttpServletResponse1, mockHttpServletResponse2); 
-    EasyMock.verify(mockHttpServletResponse3, mockHttpServletRequest1, mockHttpServletRequest2, mockHttpServletRequest3);
+    EasyMock.verify(mockUuidGenerator, mockHttpServletResponse1, mockHttpServletResponse2, 
+            mockHttpServletResponse3, mockHttpServletRequest1, mockHttpServletRequest2, mockHttpServletRequest3);
   }
 
   @Test
