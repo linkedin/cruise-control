@@ -53,7 +53,7 @@ public class UserTaskManagerTest {
     Assert.assertEquals(userTaskHeader.getValue(), UserTaskManager.USER_TASK_HEADER_NAME);
     Assert.assertEquals(userTaskHeaderValue.getValue(), testUserTaskId.toString());
     Assert.assertEquals(future, future1);
-
+    EasyMock.verify(mockUuidGenerator, mockHttpServletResponse, mockHttpSession);
     EasyMock.reset(mockHttpServletResponse);
     // test-case: get same future back using sessions
     OperationFuture future2 =
@@ -139,6 +139,8 @@ public class UserTaskManagerTest {
 
     // The 2nd request should reuse the UserTask created for the 1st request since they use the same session and send the same request.
     Assert.assertEquals(1, userTaskManager.numActiveSessionKeys());
+    EasyMock.verify(mockUuidGenerator, mockHttpServletResponse1, mockHttpServletResponse2, 
+            mockHttpServletResponse3, mockHttpServletRequest1, mockHttpServletRequest2, mockHttpServletRequest3);
   }
 
   @Test
@@ -168,6 +170,7 @@ public class UserTaskManagerTest {
         userTaskManager.getOrCreateUserTask(mockHttpServletRequest, mockHttpServletResponse, uuid -> testFuture1, 0,
             true, null).get(0);
     Assert.assertEquals(testFuture1, insertedFuture1);
+    EasyMock.verify(mockUuidGenerator, mockHttpSession, mockHttpServletResponse);
     EasyMock.reset(mockHttpServletResponse);
     OperationFuture insertedFuture2 =
         userTaskManager.getOrCreateUserTask(mockHttpServletRequest, mockHttpServletResponse, uuid -> testFuture2, 1,
@@ -208,7 +211,7 @@ public class UserTaskManagerTest {
 
     Assert.assertTrue(future.isDone());
     Assert.assertTrue(future.isCancelled());
-
+    EasyMock.verify(mockHttpSession, mockUuidGenerator, mockHttpServletResponse);
     userTaskManager.close();
   }
 
@@ -244,7 +247,7 @@ public class UserTaskManagerTest {
 
     OperationFuture future2 = userTaskManager.getFuture(mockHttpServletRequest);
     Assert.assertNull(future2);
-
+    EasyMock.verify(mockUuidGenerator, mockHttpSession, mockHttpServletResponse);
     userTaskManager.close();
   }
 
@@ -267,7 +270,7 @@ public class UserTaskManagerTest {
     OperationFuture future1 =
         userTaskManager.getOrCreateUserTask(mockHttpServletRequest1, mockHttpServletResponse, uuid -> future, 0, true, null).get(0);
     Assert.assertEquals(future, future1);
-
+    EasyMock.verify(mockHttpSession1, mockHttpServletRequest1, mockHttpServletResponse);
     HttpSession mockHttpSession2 = EasyMock.mock(HttpSession.class);
     EasyMock.expect(mockHttpSession2.getLastAccessedTime()).andReturn(100L).anyTimes();
     EasyMock.replay(mockHttpSession2);
@@ -278,6 +281,7 @@ public class UserTaskManagerTest {
       OperationFuture future2 =
           userTaskManager.getOrCreateUserTask(mockHttpServletRequest2, mockHttpServletResponse, uuid -> future, 0, true, null).get(0);
       Assert.assertEquals(future, future2);
+      EasyMock.verify(mockHttpSession2, mockHttpServletRequest2, mockHttpServletResponse);
     } catch (RuntimeException e) {
       userTaskManager.close();
       return;

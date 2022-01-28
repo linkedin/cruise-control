@@ -23,6 +23,7 @@ import static org.easymock.EasyMock.anyString;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.mock;
 import static org.easymock.EasyMock.replay;
+import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -74,6 +75,7 @@ public class TrustedProxyLoginServiceTest {
     assertNotNull(doAsIdentity.getUserPrincipal());
     assertEquals(doAsIdentity.getUserPrincipal().getName(), TEST_USER);
     assertEquals(((TrustedProxyPrincipal) doAsIdentity.getUserPrincipal()).servicePrincipal(), servicePrincipal);
+    verify(mockSpnegoLoginService, mockRequest);
   }
 
   @Test
@@ -99,6 +101,7 @@ public class TrustedProxyLoginServiceTest {
     assertNotNull(doAsIdentity.getUserPrincipal());
     assertNull(doAsIdentity.getUserPrincipal().getName());
     assertFalse(((SpnegoUserIdentity) doAsIdentity).isEstablished());
+    verify(mockSpnegoLoginService);
   }
 
   @Test
@@ -147,5 +150,6 @@ public class TrustedProxyLoginServiceTest {
     assertNotNull(doAsIdentity.getUserPrincipal());
     assertEquals(servicePrincipal, doAsIdentity.getUserPrincipal());
     assertTrue(((SpnegoUserIdentity) doAsIdentity).isEstablished());
+    verify(mockFallbackLoginService);
   }
 }
