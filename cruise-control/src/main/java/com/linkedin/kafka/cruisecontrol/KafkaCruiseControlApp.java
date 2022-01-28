@@ -13,6 +13,7 @@ import com.linkedin.kafka.cruisecontrol.metrics.LegacyObjectNameFactory;
 import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
 import com.linkedin.kafka.cruisecontrol.servlet.security.CruiseControlSecurityHandler;
 import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityProvider;
+import org.apache.kafka.common.config.types.Password;
 import org.eclipse.jetty.security.ConstraintSecurityHandler;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.NCSARequestLog;
@@ -106,7 +107,10 @@ public class KafkaCruiseControlApp {
       SslContextFactory sslServerContextFactory = new SslContextFactory.Server();
       sslServerContextFactory.setKeyStorePath(_config.getString(WebServerConfig.WEBSERVER_SSL_KEYSTORE_LOCATION_CONFIG));
       sslServerContextFactory.setKeyStorePassword(_config.getPassword(WebServerConfig.WEBSERVER_SSL_KEYSTORE_PASSWORD_CONFIG).value());
-      sslServerContextFactory.setKeyManagerPassword(_config.getPassword(WebServerConfig.WEBSERVER_SSL_KEY_PASSWORD_CONFIG).value());
+      Password sslKeyPassword = _config.getPassword(WebServerConfig.WEBSERVER_SSL_KEY_PASSWORD_CONFIG);
+      if (sslKeyPassword != null) {
+        sslServerContextFactory.setKeyManagerPassword(sslKeyPassword.value());
+      }
       sslServerContextFactory.setProtocol(_config.getString(WebServerConfig.WEBSERVER_SSL_PROTOCOL_CONFIG));
       String keyStoreType = _config.getString(WebServerConfig.WEBSERVER_SSL_KEYSTORE_TYPE_CONFIG);
       if (keyStoreType != null) {
