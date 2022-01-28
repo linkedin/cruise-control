@@ -12,6 +12,7 @@ import java.util.Collections;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.mock;
 import static org.easymock.EasyMock.replay;
+import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -33,6 +34,7 @@ public class TrustedProxyAuthorizationServiceTest {
       UserIdentity result = srv.getUserIdentity(mockRequest, AUTH_SERVICE_NAME);
       assertNotNull(result);
       assertEquals(AUTH_SERVICE_NAME, result.getUserPrincipal().getName());
+      verify(mockRequest);
     } finally {
       srv.stop();
     }
@@ -49,6 +51,7 @@ public class TrustedProxyAuthorizationServiceTest {
     try {
       UserIdentity result = srv.getUserIdentity(mockRequest, AUTH_SERVICE_NAME);
       assertNull(result);
+      verify(mockRequest);
     } finally {
       srv.stop();
     }
@@ -58,12 +61,13 @@ public class TrustedProxyAuthorizationServiceTest {
   public void testSuccessfulLoginWithoutIpFiltering() throws Exception {
     TrustedProxyAuthorizationService srv = new TrustedProxyAuthorizationService(Collections.singletonList(AUTH_SERVICE_NAME), null);
     HttpServletRequest mockRequest = mock(HttpServletRequest.class);
-
+    replay(mockRequest);
     srv.start();
     try {
       UserIdentity result = srv.getUserIdentity(mockRequest, AUTH_SERVICE_NAME);
       assertNotNull(result);
       assertEquals(AUTH_SERVICE_NAME, result.getUserPrincipal().getName());
+      verify(mockRequest);
     } finally {
       srv.stop();
     }

@@ -127,6 +127,8 @@ public class SelfHealingNotifierTest {
     assertFalse(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.METRIC_ANOMALY));
     assertFalse(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.DISK_FAILURE));
     assertFalse(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.TOPIC_ANOMALY));
+
+    EasyMock.verify(mockKafkaCruiseControl);
   }
 
   @Test
@@ -215,6 +217,7 @@ public class SelfHealingNotifierTest {
     assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
     assertTrue(anomalyNotifier.isAlertCalledFor(KafkaAnomalyType.TOPIC_ANOMALY));
     assertFalse(anomalyNotifier.isAutoFixTriggeredFor(KafkaAnomalyType.TOPIC_ANOMALY));
+    EasyMock.verify(mockKafkaCruiseControl);
   }
 
   private static class TestingBrokerFailureAutoFixNotifier extends SelfHealingNotifier {
