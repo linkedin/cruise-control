@@ -26,6 +26,7 @@ import java.util.concurrent.TimeoutException;
 import kafka.log.LogConfig;
 import kafka.server.KafkaConfig;
 import kafka.metrics.KafkaYammerMetrics;
+import org.apache.kafka.clients.ClientUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AlterConfigOp;
@@ -41,6 +42,8 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.TopicConfig;
 import org.apache.kafka.common.errors.InterruptException;
@@ -56,8 +59,7 @@ import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Metric;
 import com.yammer.metrics.core.MetricsRegistry;
 
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtils.maybeUpdateConfig;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtils.CLIENT_REQUEST_TIMEOUT_MS;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtils.*;
 
 public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(CruiseControlMetricsReporter.class);
@@ -75,6 +77,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   private AdminClient _adminClient;
   private long _metricsTopicAutoCreateTimeoutMs;
   private int _metricsTopicAutoCreateRetries;
+  private int _metricsReporterCreateRetries;
   protected static final String CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY = "delete";
   protected static final Duration PRODUCER_CLOSE_TIMEOUT = Duration.ofSeconds(5);
   private boolean _kubernetesMode;
@@ -167,7 +170,14 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     setIfAbsent(producerProps, ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
     setIfAbsent(producerProps, ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, MetricSerde.class.getName());
     setIfAbsent(producerProps, ProducerConfig.ACKS_CONFIG, "all");
-    _producer = new KafkaProducer<>(producerProps);
+
+    _metricsReporterCreateRetries = reporterConfig.getInt(
+        CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_CREATE_RETRIES_CONFIG);
+
+    createCruiseControlMetricsProducer(producerProps);
+    if (_producer == null) {
+      this.close();
+    }
 
     _brokerId = Integer.parseInt((String) configs.get(KafkaConfig.BrokerIdProp()));
 
@@ -246,6 +256,30 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     }
     newTopic.configs(config);
     return newTopic;
+  }
+
+  protected void createCruiseControlMetricsProducer(Properties producerProps) throws KafkaException {
+    CruiseControlMetricsUtils.retry(() -> {
+      try {
+        _producer = new KafkaProducer<>(producerProps);
+        return false;
+      } catch (KafkaException e) {
+        if (e.getCause() instanceof ConfigException) {
+          // Check if the config exception is caused by bootstrap.servers config
+          try {
+            ProducerConfig config = new ProducerConfig(producerProps);
+            ClientUtils.parseAndValidateAddresses(
+                    config.getList(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG),
+                    config.getString(ProducerConfig.CLIENT_DNS_LOOKUP_CONFIG));
+          } catch (ConfigException ce) {
+            // dns resolution may not be complete yet, let's retry again later
+            LOG.warn("Unable to create Cruise Control metrics producer. ", ce.getCause());
+          }
+          return true;
+        }
+        throw e;
+      }
+    }, _metricsReporterCreateRetries);
   }
 
   protected void createCruiseControlMetricsTopic() throws TopicExistsException {

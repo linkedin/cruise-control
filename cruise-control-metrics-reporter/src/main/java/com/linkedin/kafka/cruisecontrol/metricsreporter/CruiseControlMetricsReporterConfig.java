@@ -39,6 +39,9 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   public static final String CRUISE_CONTROL_METRICS_TOPIC_MIN_INSYNC_REPLICAS_CONFIG = "cruise.control.metrics.topic.min.insync.replicas";
   private static final String CRUISE_CONTROL_METRICS_TOPIC_MIN_INSYNC_REPLICAS_DOC = "The minimum number of insync replicas for the Cruise "
       + "Control metrics topic";
+  public static final String CRUISE_CONTROL_METRICS_REPORTER_CREATE_RETRIES_CONFIG = "cruise.control.metrics.reporter.create.retries";
+  private static final String CRUISE_CONTROL_METRICS_REPORTER_CREATE_RETRIES_DOC = "Number of times the Cruise Control metrics reporter will "
+      + "attempt to create the producer while starting up.";
   public static final String CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG = PREFIX + "metrics.reporting.interval.ms";
   private static final String CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_DOC = "The interval in milliseconds the "
       + "metrics reporter should report the metrics.";
@@ -69,6 +72,7 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   public static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_MAX_BLOCK_MS = (int) TimeUnit.MINUTES.toMillis(1);
   public static final int DEFAULT_CRUISE_CONTROL_METRICS_BATCH_SIZE = 800 * 1000;
   public static final boolean DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_KUBERNETES_MODE = false;
+  public static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_CREATE_RETRIES = 2;
 
   public CruiseControlMetricsReporterConfig(Map<?, ?> originals, boolean doLog) {
     super(CONFIG, originals, doLog);
@@ -112,6 +116,11 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
                 DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_RETRIES,
                 ConfigDef.Importance.LOW,
                 CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_RETRIES_DOC)
+        .define(CRUISE_CONTROL_METRICS_REPORTER_CREATE_RETRIES_CONFIG,
+                ConfigDef.Type.INT,
+                DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_CREATE_RETRIES,
+                ConfigDef.Importance.LOW,
+                CRUISE_CONTROL_METRICS_REPORTER_CREATE_RETRIES_DOC)
         .define(CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS_CONFIG,
                 ConfigDef.Type.INT,
                 DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS,
