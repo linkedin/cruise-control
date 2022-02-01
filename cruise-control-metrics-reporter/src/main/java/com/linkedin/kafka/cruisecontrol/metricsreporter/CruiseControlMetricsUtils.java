@@ -186,7 +186,7 @@ public final class CruiseControlMetricsUtils {
         }
       } while (retry);
     } else {
-      throw new ConfigException("Max attempts on metrics topic creation has to be greater than zero.");
+      throw new ConfigException("Max attempts has to be greater than zero.");
     }
     return true;
   }
