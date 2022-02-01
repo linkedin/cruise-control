@@ -40,7 +40,7 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   private static final String CRUISE_CONTROL_METRICS_TOPIC_MIN_INSYNC_REPLICAS_DOC = "The minimum number of insync replicas for the Cruise "
       + "Control metrics topic";
   public static final String CRUISE_CONTROL_METRICS_REPORTER_CREATE_RETRIES_CONFIG = "cruise.control.metrics.reporter.create.retries";
-  private static final String CRUISE_CONTROL_METRICS_REPORTER_CREATE_RETRIES_DOC = "Number of times the Cruise Control metrics reporter will"
+  private static final String CRUISE_CONTROL_METRICS_REPORTER_CREATE_RETRIES_DOC = "Number of times the Cruise Control metrics reporter will "
       + "attempt to create the producer while starting up.";
   public static final String CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG = PREFIX + "metrics.reporting.interval.ms";
   private static final String CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_DOC = "The interval in milliseconds the "

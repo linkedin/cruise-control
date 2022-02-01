@@ -105,7 +105,6 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
 
   @Override
   public void close() {
-
     LOG.info("Closing Cruise Control metrics reporter.");
     _shutdown = true;
     if (_metricsReporterRunner != null) {
@@ -250,7 +249,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
                     config.getString(ProducerConfig.CLIENT_DNS_LOOKUP_CONFIG));
           } catch (ConfigException ce) {
             // dns resolution may not be complete yet, let's retry again later
-            LOG.warn("Unable to create Cruise Control metrics producer. ", e.getCause());
+            LOG.warn("Unable to create Cruise Control metrics producer. ", ce.getCause());
           }
           return true;
         }
