@@ -33,16 +33,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.waitUntilTrue;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 
 public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness {
   private static final long TASK_EXECUTION_ALERTING_THRESHOLD_MS = 100L;
   private static final Config EMPTY_CONFIG = new Config(Collections.emptyList());
+  private static final long DEADLINE_MS = TimeUnit.SECONDS.toMillis(30);
+  private static final long CHECK_MS = 10L;
 
   /**
    * The admin client
@@ -538,18 +541,26 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     }
   }
 
-  private void assertExpectedThrottledRateForBroker(int brokerId, Long expectedRate) throws ExecutionException, InterruptedException {
+  private void assertExpectedThrottledRateForBroker(int brokerId, Long expectedRate) {
     ConfigResource cf = new ConfigResource(ConfigResource.Type.BROKER, String.valueOf(brokerId));
-    Map<ConfigResource, Config> brokerConfig = _adminClient.describeConfigs(Collections.singletonList(cf)).all().get();
-    String expectedString = expectedRate == null ? null : String.valueOf(expectedRate);
-    assertNotNull(brokerConfig.get(cf));
-    if (expectedRate == null) {
-      assertNull(brokerConfig.get(cf).get(ReplicationThrottleHelper.LEADER_THROTTLED_RATE));
-      assertNull(brokerConfig.get(cf).get(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE));
-    } else {
-      assertEquals(expectedString, brokerConfig.get(cf).get(ReplicationThrottleHelper.LEADER_THROTTLED_RATE).value());
-      assertEquals(expectedString, brokerConfig.get(cf).get(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE).value());
-    }
+    waitUntilTrue(() -> {
+      Map<ConfigResource, Config> brokerConfig;
+      try {
+        brokerConfig = _adminClient.describeConfigs(Collections.singletonList(cf)).all().get();
+      } catch (Exception e) {
+        return false;
+      }
+      String expectedString = expectedRate == null ? null : String.valueOf(expectedRate);
+      assertNotNull(brokerConfig.get(cf));
+
+      if (expectedRate == null) {
+        return brokerConfig.get(cf).get(ReplicationThrottleHelper.LEADER_THROTTLED_RATE) == null
+                && brokerConfig.get(cf).get(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE) == null;
+      } else {
+        return expectedString.equals(brokerConfig.get(cf).get(ReplicationThrottleHelper.LEADER_THROTTLED_RATE).value())
+               && expectedString.equals(brokerConfig.get(cf).get(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE).value());
+      }
+    }, "Throttle rate for broker was not applied within the time limit", DEADLINE_MS, CHECK_MS);
   }
 
   private void assertExpectedThrottledReplicas(String topic, String expectedReplicas) throws ExecutionException, InterruptedException {
