@@ -25,27 +25,29 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.waitUntilTrue;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness {
   private static final long TASK_EXECUTION_ALERTING_THRESHOLD_MS = 100L;
   private static final Config EMPTY_CONFIG = new Config(Collections.emptyList());
-  private static final long DEADLINE_MS = TimeUnit.SECONDS.toMillis(30);
-  private static final long CHECK_MS = 10L;
 
   /**
    * The admin client
@@ -148,6 +150,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     // Case 1: a situation where Topic0 does not exist. Hence no property is returned upon read.
     expectDescribeBrokerConfigs(mockAdminClient, brokers);
     expectIncrementalBrokerConfigs(mockAdminClient, brokers);
+    expectDescribeBrokerConfigs(mockAdminClient, brokers, EMPTY_CONFIG);
     expectDescribeTopicConfigs(mockAdminClient, TOPIC0, EMPTY_CONFIG, false);
     expectListTopics(mockAdminClient, Collections.emptySet());
     ExecutionTask mockCompleteTask = prepareMockCompleteTask(proposal);
@@ -160,6 +163,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     EasyMock.reset(mockAdminClient);
     expectDescribeBrokerConfigs(mockAdminClient, brokers);
     expectIncrementalBrokerConfigs(mockAdminClient, brokers);
+    expectDescribeBrokerConfigs(mockAdminClient, brokers, EMPTY_CONFIG);
     String throttledReplicas = brokerId0 + "," + brokerId1;
     Config topicConfigProps = new Config(Arrays.asList(
             new ConfigEntry(ReplicationThrottleHelper.LEADER_THROTTLED_REPLICAS, throttledReplicas),
@@ -459,6 +463,53 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     assertEquals(result, "qux,qaz");
   }
 
+  @Test
+  public void testWaitForConfigs() throws Exception {
+    AdminClient mockAdminClient = EasyMock.strictMock(AdminClient.class);
+    // Case 1: queue more responses than RETRIES and expect checkConfigs to throw
+    for (int i = 0; i < ReplicationThrottleHelper.RETRIES + 1; i++) {
+      expectDescribeTopicConfigs(mockAdminClient, TOPIC0, EMPTY_CONFIG, true);
+    }
+    EasyMock.replay(mockAdminClient);
+    ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockAdminClient, 100L, 10L);
+    ConfigResource cf = new ConfigResource(ConfigResource.Type.TOPIC, TOPIC0);
+    assertThrows(IllegalStateException.class, () -> throttleHelper.waitForConfigs(cf, Collections.singletonList(
+            new AlterConfigOp(new ConfigEntry("k", "v"), AlterConfigOp.OpType.SET)
+    )));
+
+    // Case 2: queue a single result and call checkConfigs with matching configs, so it succeeds
+    EasyMock.reset(mockAdminClient);
+    expectDescribeTopicConfigs(mockAdminClient, TOPIC0, EMPTY_CONFIG, true);
+    EasyMock.replay(mockAdminClient);
+    throttleHelper.waitForConfigs(cf, Collections.emptyList());
+  }
+
+  @Test
+  public void testConfigsEqual() {
+    assertTrue(ReplicationThrottleHelper.configsEqual(EMPTY_CONFIG, Collections.emptyMap()));
+
+    List<ConfigEntry> entries = new ArrayList<>();
+    entries.add(new ConfigEntry("name1", "value1"));
+    Map<String, String> expectedConfigs = new HashMap<>();
+    expectedConfigs.put("name1", "value1");
+
+    assertTrue(ReplicationThrottleHelper.configsEqual(new Config(entries), expectedConfigs));
+    expectedConfigs.put("name2", null);
+    assertTrue(ReplicationThrottleHelper.configsEqual(new Config(entries), expectedConfigs));
+    entries.add(new ConfigEntry("name2", ""));
+    assertTrue(ReplicationThrottleHelper.configsEqual(new Config(entries), expectedConfigs));
+    expectedConfigs.put("name3", null);
+    assertTrue(ReplicationThrottleHelper.configsEqual(new Config(entries), expectedConfigs));
+    entries.add(new ConfigEntry("name3", null));
+    assertTrue(ReplicationThrottleHelper.configsEqual(new Config(entries), expectedConfigs));
+    expectedConfigs.put("name4", "value4");
+    assertFalse(ReplicationThrottleHelper.configsEqual(new Config(entries), expectedConfigs));
+    entries.add(new ConfigEntry("name4", "other-value"));
+    assertFalse(ReplicationThrottleHelper.configsEqual(new Config(entries), expectedConfigs));
+    expectedConfigs.put("name4", "other-value");
+    assertTrue(ReplicationThrottleHelper.configsEqual(new Config(entries), expectedConfigs));
+  }
+
   private ExecutionTask prepareMockCompleteTask(ExecutionProposal proposal) {
     ExecutionTask mockCompleteTask = EasyMock.mock(ExecutionTask.class);
     EasyMock.expect(mockCompleteTask.state()).andReturn(ExecutionTaskState.COMPLETED).times(2);
@@ -515,7 +566,11 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     Config brokerConfig = new Config(Arrays.asList(
       new ConfigEntry(ReplicationThrottleHelper.LEADER_THROTTLED_RATE, "100"),
       new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE, "100")));
+    expectDescribeBrokerConfigs(adminClient, brokers, brokerConfig);
+  }
 
+  private void expectDescribeBrokerConfigs(AdminClient adminClient, List<Integer> brokers, Config brokerConfig)
+  throws ExecutionException, InterruptedException {
     for (int i : brokers) {
       ConfigResource cf = new ConfigResource(ConfigResource.Type.BROKER, String.valueOf(i));
       Map<ConfigResource, Config> brokerConfigs = Collections.singletonMap(cf, brokerConfig);
@@ -541,26 +596,18 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     }
   }
 
-  private void assertExpectedThrottledRateForBroker(int brokerId, Long expectedRate) {
+  private void assertExpectedThrottledRateForBroker(int brokerId, Long expectedRate) throws ExecutionException, InterruptedException {
     ConfigResource cf = new ConfigResource(ConfigResource.Type.BROKER, String.valueOf(brokerId));
-    waitUntilTrue(() -> {
-      Map<ConfigResource, Config> brokerConfig;
-      try {
-        brokerConfig = _adminClient.describeConfigs(Collections.singletonList(cf)).all().get();
-      } catch (Exception e) {
-        return false;
-      }
-      String expectedString = expectedRate == null ? null : String.valueOf(expectedRate);
-      assertNotNull(brokerConfig.get(cf));
-
-      if (expectedRate == null) {
-        return brokerConfig.get(cf).get(ReplicationThrottleHelper.LEADER_THROTTLED_RATE) == null
-                && brokerConfig.get(cf).get(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE) == null;
-      } else {
-        return expectedString.equals(brokerConfig.get(cf).get(ReplicationThrottleHelper.LEADER_THROTTLED_RATE).value())
-               && expectedString.equals(brokerConfig.get(cf).get(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE).value());
-      }
-    }, "Throttle rate for broker was not applied within the time limit", DEADLINE_MS, CHECK_MS);
+    Map<ConfigResource, Config> brokerConfig = _adminClient.describeConfigs(Collections.singletonList(cf)).all().get();
+    String expectedString = expectedRate == null ? null : String.valueOf(expectedRate);
+    assertNotNull(brokerConfig.get(cf));
+    if (expectedRate == null) {
+      assertNull(brokerConfig.get(cf).get(ReplicationThrottleHelper.LEADER_THROTTLED_RATE));
+      assertNull(brokerConfig.get(cf).get(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE));
+    } else {
+      assertEquals(expectedString, brokerConfig.get(cf).get(ReplicationThrottleHelper.LEADER_THROTTLED_RATE).value());
+      assertEquals(expectedString, brokerConfig.get(cf).get(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE).value());
+    }
   }
 
   private void assertExpectedThrottledReplicas(String topic, String expectedReplicas) throws ExecutionException, InterruptedException {

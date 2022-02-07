@@ -20,6 +20,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
@@ -36,13 +37,21 @@ class ReplicationThrottleHelper {
   static final String FOLLOWER_THROTTLED_RATE = "follower.replication.throttled.rate";
   static final String LEADER_THROTTLED_REPLICAS = LogConfig.LeaderReplicationThrottledReplicasProp();
   static final String FOLLOWER_THROTTLED_REPLICAS = LogConfig.FollowerReplicationThrottledReplicasProp();
+  static final int RETRIES = 30;
+  static final long RETRY_INTERVAL_MS = 1000L;
 
   private final AdminClient _adminClient;
   private final Long _throttleRate;
+  private final long _retryInterval;
 
   ReplicationThrottleHelper(AdminClient adminClient, Long throttleRate) {
+    this(adminClient, throttleRate, RETRY_INTERVAL_MS);
+  }
+
+  ReplicationThrottleHelper(AdminClient adminClient, Long throttleRate, long retryInterval) {
     this._adminClient = adminClient;
     this._throttleRate = throttleRate;
+    this._retryInterval = retryInterval;
   }
 
   void setThrottles(List<ExecutionProposal> replicaMovementProposals) throws ExecutionException, InterruptedException {
@@ -212,11 +221,11 @@ class ReplicationThrottleHelper {
   }
 
   void changeTopicConfigs(String topic, Collection<AlterConfigOp> ops) throws ExecutionException, InterruptedException {
-    Map<ConfigResource, Collection<AlterConfigOp>> configs = Collections.singletonMap(
-            new ConfigResource(ConfigResource.Type.TOPIC, topic), ops
-    );
+    ConfigResource cf = new ConfigResource(ConfigResource.Type.TOPIC, topic);
+    Map<ConfigResource, Collection<AlterConfigOp>> configs = Collections.singletonMap(cf, ops);
     try {
       _adminClient.incrementalAlterConfigs(configs).all().get();
+      waitForConfigs(cf, ops);
     } catch (Exception e) {
       if (!topicExists(topic)) {
         LOG.debug("Failed to change configs for topic {} since it does not exist", topic);
@@ -227,11 +236,10 @@ class ReplicationThrottleHelper {
   }
 
   void changeBrokerConfigs(int brokerId, Collection<AlterConfigOp> ops) throws ExecutionException, InterruptedException {
-    Map<ConfigResource, Collection<AlterConfigOp>> configs = Collections.singletonMap(
-            new ConfigResource(ConfigResource.Type.BROKER, String.valueOf(brokerId)),
-            ops
-    );
+    ConfigResource cf = new ConfigResource(ConfigResource.Type.BROKER, String.valueOf(brokerId));
+    Map<ConfigResource, Collection<AlterConfigOp>> configs = Collections.singletonMap(cf, ops);
     _adminClient.incrementalAlterConfigs(configs).all().get();
+    waitForConfigs(cf, ops);
   }
 
   boolean topicExists(String topic) {
@@ -321,5 +329,35 @@ class ReplicationThrottleHelper {
     if (!ops.isEmpty()) {
       changeBrokerConfigs(brokerId, ops);
     }
+  }
+
+  // Retries until we can read the configs changes we just wrote
+  void waitForConfigs(ConfigResource cf, Collection<AlterConfigOp> ops) throws ExecutionException, InterruptedException {
+    // Use HashMap::new instead of Collectors.toMap to allow inserting null values
+    Map<String, String> expectedConfigs = ops.stream()
+            .collect(HashMap::new, (m, o) -> m.put(o.configEntry().name(), o.configEntry().value()), HashMap::putAll);
+    int retries = RETRIES;
+    while (retries >= 0) {
+      if (configsEqual(getEntityConfigs(cf), expectedConfigs)) {
+        return;
+      }
+      retries--;
+      Thread.sleep(_retryInterval);
+    }
+    throw new IllegalStateException("The following configs " + ops + " were not applied to " + cf + " within the time limit");
+  }
+
+  static boolean configsEqual(Config configs, Map<String, String> expectedValues) {
+    for (Map.Entry<String, String> entry : expectedValues.entrySet()) {
+      ConfigEntry configEntry = configs.get(entry.getKey());
+      if (configEntry == null || configEntry.value() == null || configEntry.value().isEmpty()) {
+        if (entry.getValue() != null) {
+          return false;
+        }
+      } else if (!Objects.equals(entry.getValue(), configEntry.value())) {
+        return false;
+      }
+    }
+    return true;
   }
 }
