@@ -355,6 +355,7 @@ public class AnomalyDetectorManagerTest {
               EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
               EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
               EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
+              EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
               EasyMock.eq(SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS),
               EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
               EasyMock.eq(null),
