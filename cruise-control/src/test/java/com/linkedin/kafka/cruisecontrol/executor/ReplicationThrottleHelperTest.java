@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
@@ -466,12 +467,13 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
   @Test
   public void testWaitForConfigs() throws Exception {
     AdminClient mockAdminClient = EasyMock.strictMock(AdminClient.class);
+    int retries = 3;
     // Case 1: queue more responses than RETRIES and expect checkConfigs to throw
-    for (int i = 0; i < ReplicationThrottleHelper.RETRIES + 1; i++) {
+    for (int i = 0; i < retries + 1; i++) {
       expectDescribeTopicConfigs(mockAdminClient, TOPIC0, EMPTY_CONFIG, true);
     }
     EasyMock.replay(mockAdminClient);
-    ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockAdminClient, 100L, 10L);
+    ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockAdminClient, 100L, retries);
     ConfigResource cf = new ConfigResource(ConfigResource.Type.TOPIC, TOPIC0);
     assertThrows(IllegalStateException.class, () -> throttleHelper.waitForConfigs(cf, Collections.singletonList(
             new AlterConfigOp(new ConfigEntry("k", "v"), AlterConfigOp.OpType.SET)
@@ -486,13 +488,13 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
 
   @Test
   public void testConfigsEqual() {
-    assertTrue(ReplicationThrottleHelper.configsEqual(EMPTY_CONFIG, Collections.emptyMap()));
-
-    List<ConfigEntry> entries = new ArrayList<>();
-    entries.add(new ConfigEntry("name1", "value1"));
     Map<String, String> expectedConfigs = new HashMap<>();
-    expectedConfigs.put("name1", "value1");
+    List<ConfigEntry> entries = new ArrayList<>();
 
+    assertTrue(ReplicationThrottleHelper.configsEqual(EMPTY_CONFIG, expectedConfigs));
+    expectedConfigs.put("name1", "value1");
+    assertFalse(ReplicationThrottleHelper.configsEqual(EMPTY_CONFIG, expectedConfigs));
+    entries.add(new ConfigEntry("name1", "value1"));
     assertTrue(ReplicationThrottleHelper.configsEqual(new Config(entries), expectedConfigs));
     expectedConfigs.put("name2", null);
     assertTrue(ReplicationThrottleHelper.configsEqual(new Config(entries), expectedConfigs));
@@ -520,15 +522,16 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
   }
 
   private void expectDescribeTopicConfigs(AdminClient adminClient, String topic, Config topicConfig, boolean topicExists)
-  throws ExecutionException, InterruptedException {
+  throws ExecutionException, InterruptedException, TimeoutException {
     ConfigResource cf = new ConfigResource(ConfigResource.Type.TOPIC, topic);
     Map<ConfigResource, Config> topicConfigs = Collections.singletonMap(cf, topicConfig);
     DescribeConfigsResult mockDescribeConfigsResult = EasyMock.mock(DescribeConfigsResult.class);
     KafkaFuture<Map<ConfigResource, Config>> mockFuture = EasyMock.mock(KafkaFuture.class);
     if (topicExists) {
-      EasyMock.expect(mockFuture.get()).andReturn(topicConfigs);
+      EasyMock.expect(mockFuture.get(EasyMock.anyLong(), EasyMock.anyObject())).andReturn(topicConfigs);
     } else {
-      EasyMock.expect(mockFuture.get()).andThrow(new ExecutionException(new UnknownTopicOrPartitionException()));
+      EasyMock.expect(mockFuture.get(EasyMock.anyLong(), EasyMock.anyObject()))
+              .andThrow(new ExecutionException(new UnknownTopicOrPartitionException()));
     }
     EasyMock.expect(mockDescribeConfigsResult.all()).andReturn(mockFuture);
     EasyMock.expect(adminClient.describeConfigs(Collections.singletonList(cf))).andReturn(mockDescribeConfigsResult);
@@ -536,32 +539,33 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
   }
 
   private void expectIncrementalTopicConfigs(AdminClient adminClient, String topic, boolean topicExists)
-  throws ExecutionException, InterruptedException {
+  throws ExecutionException, InterruptedException, TimeoutException {
     ConfigResource cf = new ConfigResource(ConfigResource.Type.TOPIC, topic);
     AlterConfigsResult mockAlterConfigsResult = EasyMock.mock(AlterConfigsResult.class);
     KafkaFuture<Void> mockFuture = EasyMock.mock(KafkaFuture.class);
     EasyMock.expect(mockAlterConfigsResult.all()).andReturn(mockFuture);
     if (topicExists) {
-      EasyMock.expect(mockFuture.get()).andReturn(null);
+      EasyMock.expect(mockFuture.get(EasyMock.anyLong(), EasyMock.anyObject())).andReturn(null);
     } else {
-      EasyMock.expect(mockFuture.get()).andThrow(new ExecutionException(new UnknownTopicOrPartitionException()));
+      EasyMock.expect(mockFuture.get(EasyMock.anyLong(), EasyMock.anyObject()))
+              .andThrow(new ExecutionException(new UnknownTopicOrPartitionException()));
     }
     EasyMock.expect(adminClient.incrementalAlterConfigs(Collections.singletonMap(cf, EasyMock.anyObject()))).andReturn(mockAlterConfigsResult);
     EasyMock.replay(mockAlterConfigsResult, mockFuture);
   }
 
   private void expectListTopics(AdminClient adminClient, Set<String> topics)
-  throws ExecutionException, InterruptedException {
+  throws ExecutionException, InterruptedException, TimeoutException {
     ListTopicsResult mockListTopicsResult = EasyMock.mock(ListTopicsResult.class);
     KafkaFuture<Set<String>> mockFuture = EasyMock.mock(KafkaFuture.class);
     EasyMock.expect(mockListTopicsResult.names()).andReturn(mockFuture);
-    EasyMock.expect(mockFuture.get()).andReturn(topics);
+    EasyMock.expect(mockFuture.get(EasyMock.anyLong(), EasyMock.anyObject())).andReturn(topics);
     EasyMock.expect(adminClient.listTopics()).andReturn(mockListTopicsResult);
     EasyMock.replay(mockListTopicsResult, mockFuture);
   }
 
   private void expectDescribeBrokerConfigs(AdminClient adminClient, List<Integer> brokers)
-  throws ExecutionException, InterruptedException {
+  throws ExecutionException, InterruptedException, TimeoutException {
     // All participating brokers have throttled rate set already
     Config brokerConfig = new Config(Arrays.asList(
       new ConfigEntry(ReplicationThrottleHelper.LEADER_THROTTLED_RATE, "100"),
@@ -570,13 +574,13 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
   }
 
   private void expectDescribeBrokerConfigs(AdminClient adminClient, List<Integer> brokers, Config brokerConfig)
-  throws ExecutionException, InterruptedException {
+  throws ExecutionException, InterruptedException, TimeoutException {
     for (int i : brokers) {
       ConfigResource cf = new ConfigResource(ConfigResource.Type.BROKER, String.valueOf(i));
       Map<ConfigResource, Config> brokerConfigs = Collections.singletonMap(cf, brokerConfig);
       DescribeConfigsResult mockDescribeConfigsResult = EasyMock.mock(DescribeConfigsResult.class);
       KafkaFuture<Map<ConfigResource, Config>> mockFuture = EasyMock.mock(KafkaFuture.class);
-      EasyMock.expect(mockFuture.get()).andReturn(brokerConfigs);
+      EasyMock.expect(mockFuture.get(EasyMock.anyLong(), EasyMock.anyObject())).andReturn(brokerConfigs);
       EasyMock.expect(mockDescribeConfigsResult.all()).andReturn(mockFuture);
       EasyMock.expect(adminClient.describeConfigs(Collections.singletonList(cf))).andReturn(mockDescribeConfigsResult);
       EasyMock.replay(mockDescribeConfigsResult, mockFuture);
@@ -584,13 +588,13 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
   }
 
   private void expectIncrementalBrokerConfigs(AdminClient adminClient, List<Integer> brokers)
-  throws ExecutionException, InterruptedException {
+  throws ExecutionException, InterruptedException, TimeoutException {
     for (int brokerId : brokers) {
       ConfigResource cf = new ConfigResource(ConfigResource.Type.BROKER, String.valueOf(brokerId));
       AlterConfigsResult mockAlterConfigsResult = EasyMock.mock(AlterConfigsResult.class);
       KafkaFuture<Void> mockFuture = EasyMock.mock(KafkaFuture.class);
       EasyMock.expect(mockAlterConfigsResult.all()).andReturn(mockFuture);
-      EasyMock.expect(mockFuture.get()).andReturn(null);
+      EasyMock.expect(mockFuture.get(EasyMock.anyLong(), EasyMock.anyObject())).andReturn(null);
       EasyMock.expect(adminClient.incrementalAlterConfigs(Collections.singletonMap(cf, EasyMock.anyObject()))).andReturn(mockAlterConfigsResult);
       EasyMock.replay(mockAlterConfigsResult, mockFuture);
     }

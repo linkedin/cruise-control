@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
+import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtils;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import kafka.log.LogConfig;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -24,6 +25,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -37,24 +40,26 @@ class ReplicationThrottleHelper {
   static final String FOLLOWER_THROTTLED_RATE = "follower.replication.throttled.rate";
   static final String LEADER_THROTTLED_REPLICAS = LogConfig.LeaderReplicationThrottledReplicasProp();
   static final String FOLLOWER_THROTTLED_REPLICAS = LogConfig.FollowerReplicationThrottledReplicasProp();
+  public static final long CLIENT_REQUEST_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(30);
   static final int RETRIES = 30;
-  static final long RETRY_INTERVAL_MS = 1000L;
 
   private final AdminClient _adminClient;
   private final Long _throttleRate;
-  private final long _retryInterval;
+  private final int _retries;
 
   ReplicationThrottleHelper(AdminClient adminClient, Long throttleRate) {
-    this(adminClient, throttleRate, RETRY_INTERVAL_MS);
+    this(adminClient, throttleRate, RETRIES);
   }
 
-  ReplicationThrottleHelper(AdminClient adminClient, Long throttleRate, long retryInterval) {
+  // for testing
+  ReplicationThrottleHelper(AdminClient adminClient, Long throttleRate, int retries) {
     this._adminClient = adminClient;
     this._throttleRate = throttleRate;
-    this._retryInterval = retryInterval;
+    this._retries = retries;
   }
 
-  void setThrottles(List<ExecutionProposal> replicaMovementProposals) throws ExecutionException, InterruptedException {
+  void setThrottles(List<ExecutionProposal> replicaMovementProposals)
+  throws ExecutionException, InterruptedException, TimeoutException {
     if (throttlingEnabled()) {
       LOG.info("Setting a rebalance throttle of {} bytes/sec", _throttleRate);
       Set<Integer> participatingBrokers = getParticipatingBrokers(replicaMovementProposals);
@@ -86,7 +91,8 @@ class ReplicationThrottleHelper {
   }
 
   // clear throttles for a specific list of execution tasks
-  void clearThrottles(List<ExecutionTask> completedTasks, List<ExecutionTask> inProgressTasks) throws ExecutionException, InterruptedException {
+  void clearThrottles(List<ExecutionTask> completedTasks, List<ExecutionTask> inProgressTasks)
+  throws ExecutionException, InterruptedException, TimeoutException {
     if (throttlingEnabled()) {
       List<ExecutionProposal> completedProposals =
         completedTasks
@@ -156,7 +162,7 @@ class ReplicationThrottleHelper {
     return throttledReplicasByTopic;
   }
 
-  private void setThrottledRateIfUnset(int brokerId) throws ExecutionException, InterruptedException {
+  private void setThrottledRateIfUnset(int brokerId) throws ExecutionException, InterruptedException, TimeoutException {
     if (_throttleRate == null) {
       throw new IllegalStateException("Throttle rate cannot be null");
     }
@@ -177,7 +183,7 @@ class ReplicationThrottleHelper {
     }
   }
 
-  private Config getTopicConfigs(String topic) throws ExecutionException, InterruptedException {
+  private Config getTopicConfigs(String topic) throws ExecutionException, InterruptedException, TimeoutException {
     try {
       return getEntityConfigs(new ConfigResource(ConfigResource.Type.TOPIC, topic));
     } catch (Exception e) {
@@ -188,17 +194,18 @@ class ReplicationThrottleHelper {
     }
   }
 
-  private Config getBrokerConfigs(int brokerId) throws ExecutionException, InterruptedException {
+  private Config getBrokerConfigs(int brokerId) throws ExecutionException, InterruptedException, TimeoutException {
     return getEntityConfigs(new ConfigResource(ConfigResource.Type.BROKER, String.valueOf(brokerId)));
   }
 
-  private Config getEntityConfigs(ConfigResource cf) throws ExecutionException, InterruptedException {
-    Map<ConfigResource, Config> configs = _adminClient.describeConfigs(Collections.singletonList(cf)).all().get();
+  private Config getEntityConfigs(ConfigResource cf) throws ExecutionException, InterruptedException, TimeoutException {
+    Map<ConfigResource, Config> configs = _adminClient.describeConfigs(Collections.singletonList(cf)).all()
+        .get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
     return configs.get(cf);
   }
 
   private void setThrottledReplicas(String topic, Set<String> replicas)
-  throws ExecutionException, InterruptedException {
+  throws ExecutionException, InterruptedException, TimeoutException {
     Config topicConfigs = getTopicConfigs(topic);
     List<AlterConfigOp> ops = new ArrayList<>();
     for (String replicaThrottleConfigKey : Arrays.asList(LEADER_THROTTLED_REPLICAS, FOLLOWER_THROTTLED_REPLICAS)) {
@@ -220,11 +227,13 @@ class ReplicationThrottleHelper {
     }
   }
 
-  void changeTopicConfigs(String topic, Collection<AlterConfigOp> ops) throws ExecutionException, InterruptedException {
+  void changeTopicConfigs(String topic, Collection<AlterConfigOp> ops)
+  throws ExecutionException, InterruptedException, TimeoutException {
     ConfigResource cf = new ConfigResource(ConfigResource.Type.TOPIC, topic);
     Map<ConfigResource, Collection<AlterConfigOp>> configs = Collections.singletonMap(cf, ops);
     try {
-      _adminClient.incrementalAlterConfigs(configs).all().get();
+      _adminClient.incrementalAlterConfigs(configs).all()
+          .get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
       waitForConfigs(cf, ops);
     } catch (Exception e) {
       if (!topicExists(topic)) {
@@ -235,18 +244,23 @@ class ReplicationThrottleHelper {
     }
   }
 
-  void changeBrokerConfigs(int brokerId, Collection<AlterConfigOp> ops) throws ExecutionException, InterruptedException {
+  void changeBrokerConfigs(int brokerId, Collection<AlterConfigOp> ops)
+  throws ExecutionException, InterruptedException, TimeoutException {
     ConfigResource cf = new ConfigResource(ConfigResource.Type.BROKER, String.valueOf(brokerId));
     Map<ConfigResource, Collection<AlterConfigOp>> configs = Collections.singletonMap(cf, ops);
-    _adminClient.incrementalAlterConfigs(configs).all().get();
+    _adminClient.incrementalAlterConfigs(configs).all()
+        .get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
     waitForConfigs(cf, ops);
   }
 
-  boolean topicExists(String topic) {
+  boolean topicExists(String topic) throws InterruptedException, TimeoutException {
     try {
-      return _adminClient.listTopics().names().get().contains(topic);
-    } catch (InterruptedException | ExecutionException e) {
+      return _adminClient.listTopics().names().get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS).contains(topic);
+    } catch (ExecutionException ee) {
       return false;
+    } catch (InterruptedException | TimeoutException e) {
+      LOG.error("Unable to check if topic {} exists due to {}", topic, e.getMessage());
+      throw e;
     }
   }
 
@@ -264,7 +278,8 @@ class ReplicationThrottleHelper {
    * @param topic name of topic which contains <code>replicas</code>
    * @param replicas replicas to remove from the configuration properties
    */
-  private void removeThrottledReplicasFromTopic(String topic, Set<String> replicas) throws ExecutionException, InterruptedException {
+  private void removeThrottledReplicasFromTopic(String topic, Set<String> replicas)
+  throws ExecutionException, InterruptedException, TimeoutException {
     Config topicConfigs = getTopicConfigs(topic);
     if (topicConfigs == null) {
       LOG.debug("Skip removing throttled replicas {} from topic {} since no configs can be read", String.join(",", replicas), topic);
@@ -305,7 +320,8 @@ class ReplicationThrottleHelper {
     }
   }
 
-  private void removeThrottledRateFromBroker(Integer brokerId) throws ExecutionException, InterruptedException {
+  private void removeThrottledRateFromBroker(Integer brokerId)
+  throws ExecutionException, InterruptedException, TimeoutException {
     Config brokerConfigs = getBrokerConfigs(brokerId);
     ConfigEntry currLeaderThrottle = brokerConfigs.get(LEADER_THROTTLED_RATE);
     ConfigEntry currFollowerThrottle = brokerConfigs.get(FOLLOWER_THROTTLED_RATE);
@@ -332,19 +348,20 @@ class ReplicationThrottleHelper {
   }
 
   // Retries until we can read the configs changes we just wrote
-  void waitForConfigs(ConfigResource cf, Collection<AlterConfigOp> ops) throws ExecutionException, InterruptedException {
+  void waitForConfigs(ConfigResource cf, Collection<AlterConfigOp> ops) {
     // Use HashMap::new instead of Collectors.toMap to allow inserting null values
     Map<String, String> expectedConfigs = ops.stream()
             .collect(HashMap::new, (m, o) -> m.put(o.configEntry().name(), o.configEntry().value()), HashMap::putAll);
-    int retries = RETRIES;
-    while (retries >= 0) {
-      if (configsEqual(getEntityConfigs(cf), expectedConfigs)) {
-        return;
+    boolean retryResponse = CruiseControlMetricsUtils.retry(() -> {
+      try {
+        return !configsEqual(getEntityConfigs(cf), expectedConfigs);
+      } catch (ExecutionException | InterruptedException | TimeoutException e) {
+        return false;
       }
-      retries--;
-      Thread.sleep(_retryInterval);
+    }, _retries);
+    if (!retryResponse) {
+      throw new IllegalStateException("The following configs " + ops + " were not applied to " + cf + " within the time limit");
     }
-    throw new IllegalStateException("The following configs " + ops + " were not applied to " + cf + " within the time limit");
   }
 
   static boolean configsEqual(Config configs, Map<String, String> expectedValues) {
