@@ -32,30 +32,21 @@ public class KafkaCruiseControlEndPoints {
     protected final Purgatory _purgatory;
 
     public KafkaCruiseControlEndPoints(AsyncKafkaCruiseControl asynckafkaCruiseControl, MetricRegistry dropwizardMetricRegistry) {
-        _config = asynckafkaCruiseControl.config();
-        _asyncKafkaCruiseControl = asynckafkaCruiseControl;
-        _twoStepVerification = _config.getBoolean(WebServerConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
-        _purgatory = _twoStepVerification ? new Purgatory(_config) : null;
-        _userTaskManager = new UserTaskManager(_config, dropwizardMetricRegistry, _successfulRequestExecutionTimer, _purgatory);
-        _asyncKafkaCruiseControl.setUserTaskManagerInExecutor(_userTaskManager);
-        _asyncOperationStep = new ThreadLocal<>();
-        _asyncOperationStep.set(0);
-        for (CruiseControlEndPoint endpoint : CruiseControlEndPoint.cachedValues()) {
-            _requestMeter.put(endpoint, dropwizardMetricRegistry.meter(
-                    MetricRegistry.name(KAFKA_CRUISE_CONTROL_SERVLET_SENSOR, endpoint.name() + "-request-rate")));
-            _successfulRequestExecutionTimer.put(endpoint, dropwizardMetricRegistry.timer(
-                    MetricRegistry.name(KAFKA_CRUISE_CONTROL_SERVLET_SENSOR, endpoint.name() + "-successful-request-execution-timer")));
-        }
+        this(asynckafkaCruiseControl, dropwizardMetricRegistry, null);
     }
 
-    //only for tests
+    // Visible for testing
     public KafkaCruiseControlEndPoints(AsyncKafkaCruiseControl asynckafkaCruiseControl,
                                        MetricRegistry dropwizardMetricRegistry, UserTaskManager userTaskManager) {
         _config = asynckafkaCruiseControl.config();
         _asyncKafkaCruiseControl = asynckafkaCruiseControl;
         _twoStepVerification = _config.getBoolean(WebServerConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
         _purgatory = _twoStepVerification ? new Purgatory(_config) : null;
-        _userTaskManager = userTaskManager;
+        if (userTaskManager == null) {
+            _userTaskManager = new UserTaskManager(_config, dropwizardMetricRegistry, _successfulRequestExecutionTimer, _purgatory);
+        } else {
+            _userTaskManager = userTaskManager;
+        }
         _asyncKafkaCruiseControl.setUserTaskManagerInExecutor(_userTaskManager);
         _asyncOperationStep = new ThreadLocal<>();
         _asyncOperationStep.set(0);
