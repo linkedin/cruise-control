@@ -11,7 +11,6 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCEmbeddedBroker;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
 import kafka.server.KafkaConfig;
-
 import java.net.HttpURLConnection;
 import java.net.ServerSocket;
 import java.net.URL;
@@ -27,7 +26,6 @@ public class CruiseControlVertxIntegrationTestHarness extends CCKafkaIntegration
     protected Map<String, Object> withConfigs() {
         return Collections.emptyMap();
     }
-
 
     public Integer getResponseCode(String endpoint) throws Exception {
         URL url = new URL("http://localhost:" + _vertxPort + "/kafkacruisecontrol/" + endpoint);

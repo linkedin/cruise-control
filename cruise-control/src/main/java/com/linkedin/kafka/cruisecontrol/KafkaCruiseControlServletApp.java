@@ -3,12 +3,9 @@
  */
 package com.linkedin.kafka.cruisecontrol;
 
-import com.codahale.metrics.MetricRegistry;
-import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.ServletRequestHandler;
-import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.security.CruiseControlSecurityHandler;
 import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityProvider;
 import org.eclipse.jetty.security.ConstraintSecurityHandler;
@@ -35,7 +32,6 @@ public class KafkaCruiseControlServletApp extends KafkaCruiseControlApp {
             _server.setRequestLog(requestLog);
         }
         _server.setConnectors(new Connector[]{ setupHttpConnector(hostname, port) });
-
         ServletContextHandler contextHandler = createContextHandler();
         maybeSetSecurityHandler(contextHandler);
         _server.setHandler(contextHandler);

@@ -24,16 +24,16 @@ public class VertxAvailabilityIntegrationTest extends CruiseControlVertxIntegrat
 
     @Test
     public void testVertxApiGetEndpointsAvailability() throws Exception {
-        for (CruiseControlEndPoint endpoint :  CruiseControlEndPoint.getEndpoints()){
+        for (CruiseControlEndPoint endpoint : CruiseControlEndPoint.getEndpoints()) {
             assertTrue(399 > getResponseCode(endpoint.toString().toLowerCase()) || getResponseCode(endpoint.toString().toLowerCase()) >= 500);
         }
     }
 
     @Test
     public void testVertxApiPostEndpointsAvailability() throws Exception {
-        for (CruiseControlEndPoint endpoint :  CruiseControlEndPoint.postEndpoints()){
-            assertTrue(399 > getResponseCode(endpoint.toString().toLowerCase()) ||
-                    getResponseCode(endpoint.toString().toLowerCase()) >= 500 || getResponseCode(endpoint.toString().toLowerCase()) >= 405);
+        for (CruiseControlEndPoint endpoint : CruiseControlEndPoint.postEndpoints()) {
+            assertTrue(399 > getResponseCode(endpoint.toString().toLowerCase())
+                    || getResponseCode(endpoint.toString().toLowerCase()) >= 500 || getResponseCode(endpoint.toString().toLowerCase()) >= 405);
         }
     }
 }

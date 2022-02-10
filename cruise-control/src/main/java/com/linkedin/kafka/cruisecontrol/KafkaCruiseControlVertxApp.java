@@ -3,8 +3,6 @@
  */
 package com.linkedin.kafka.cruisecontrol;
 
-import com.codahale.metrics.MetricRegistry;
-import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import com.linkedin.kafka.cruisecontrol.vertx.MainVerticle;
@@ -24,7 +22,6 @@ public class KafkaCruiseControlVertxApp extends KafkaCruiseControlApp {
         super(config, port, hostname);
         vertx = Vertx.vertx();
     }
-
 
     @Override
     public String serverUrl() {
