@@ -4,9 +4,11 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
+import com.linkedin.cruisecontrol.config.CruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
+import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.config.EnvConfigProvider;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
@@ -64,6 +66,9 @@ import org.apache.kafka.common.utils.SystemTime;
 import org.apache.zookeeper.client.ZKClientConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.Option;
+
+import javax.servlet.ServletException;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -900,6 +905,13 @@ public final class KafkaCruiseControlUtils {
     consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDeserializer.getName());
     consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, configs.get(RECONNECT_BACKOFF_MS_CONFIG).toString());
     return new KafkaConsumer<>(consumerProps);
+  }
+
+  public static KafkaCruiseControlApp getCruiseControlApp(KafkaCruiseControlConfig config, Integer port, String hostname) throws ServletException {
+    if(config.getBoolean(WebServerConfig.VERTX_ENABLED_CONFIG)){
+      return new KafkaCruiseControlVertxApp(config, port, hostname);
+    }
+    return new KafkaCruiseControlServletApp(config, port, hostname);
   }
 
   public enum CompletionType {

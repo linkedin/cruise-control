@@ -342,6 +342,13 @@ public final class WebServerConfig {
       + "request, then the service user will be used as the authenticated principal (so there will be no delegation "
       + "or impersonation but rather a simple fallback to SPNEGO).";
 
+  /**
+   * <code>vertx.enabled</code>
+   */
+  public static final String VERTX_ENABLED_CONFIG = "vertx.enabled";
+  public static final boolean VERTX_ENABLED = false;
+  private static final String VERTX_ENABLED_DOC = "If Cruise Control should start with Vertx.io based API";
+
   private WebServerConfig() {
   }
 
@@ -567,6 +574,11 @@ public final class WebServerConfig {
                             ConfigDef.Type.BOOLEAN,
                             DEFAULT_TRUSTED_PROXY_SPNEGO_FALLBACK_ENABLED,
                             ConfigDef.Importance.MEDIUM,
-                            TRUSTED_PROXY_SPNEGO_FALLBACK_ENABLED_DOC);
+                            TRUSTED_PROXY_SPNEGO_FALLBACK_ENABLED_DOC)
+                    .define(VERTX_ENABLED_CONFIG,
+                            ConfigDef.Type.BOOLEAN,
+                            VERTX_ENABLED,
+                            ConfigDef.Importance.MEDIUM,
+                            VERTX_ENABLED_DOC);
   }
 }
