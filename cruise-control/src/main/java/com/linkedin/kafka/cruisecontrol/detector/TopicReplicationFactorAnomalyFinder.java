@@ -235,21 +235,25 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
       }
     }
     try {
-      _topicReplicationFactorMargin = Short.parseShort((String) configs.get(TOPIC_REPLICATION_FACTOR_MARGIN_CONFIG));
+      String topicReplicationFactorMargin = (String) configs.get(TOPIC_REPLICATION_FACTOR_MARGIN_CONFIG);
+      _topicReplicationFactorMargin = topicReplicationFactorMargin == null ? DEFAULT_TOPIC_REPLICATION_FACTOR_MARGIN
+                                                                           : Short.parseShort(topicReplicationFactorMargin);
       if (_topicReplicationFactorMargin < 0) {
         throw new IllegalArgumentException(String.format("%s config of replication factor anomaly finder should not be set to negative,"
             + " provided %d.", TOPIC_REPLICATION_FACTOR_MARGIN_CONFIG, _topicReplicationFactorMargin));
       }
-    } catch (NumberFormatException | NullPointerException e) {
+    } catch (NumberFormatException e) {
       _topicReplicationFactorMargin = DEFAULT_TOPIC_REPLICATION_FACTOR_MARGIN;
     }
     try {
-      _topicMinISRRecordRetentionTimeMs = Long.parseLong((String) configs.get(TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS_CONFIG));
+      String topicMinISRRecordRetentionTimeMs = (String) configs.get(TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS_CONFIG);
+      _topicMinISRRecordRetentionTimeMs = topicMinISRRecordRetentionTimeMs == null ? DEFAULT_TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS
+                                                                                   : Long.parseLong(topicMinISRRecordRetentionTimeMs);
       if (_topicMinISRRecordRetentionTimeMs <= 0) {
         throw new IllegalArgumentException(String.format("%s config of replication factor anomaly finder should be set to positive,"
             + " provided %d.", TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS_CONFIG, _topicMinISRRecordRetentionTimeMs));
       }
-    } catch (NumberFormatException | NullPointerException e) {
+    } catch (NumberFormatException e) {
       _topicMinISRRecordRetentionTimeMs = DEFAULT_TOPIC_MIN_ISR_RECORD_RETENTION_TIME_MS;
     }
 
