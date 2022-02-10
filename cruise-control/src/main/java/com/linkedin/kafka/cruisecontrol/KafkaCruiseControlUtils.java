@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
-import com.linkedin.cruisecontrol.config.CruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
@@ -67,7 +66,6 @@ import org.apache.zookeeper.client.ZKClientConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Option;
-
 import javax.servlet.ServletException;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -907,8 +905,18 @@ public final class KafkaCruiseControlUtils {
     return new KafkaConsumer<>(consumerProps);
   }
 
+  /**
+   *
+   * Returns the right KafkaCruiseControl app, depending on the vertx.enabled property.
+   *
+   * @param config The configurations for Cruise Control.
+   * @param port The port for the REST API.
+   * @param hostname The hostname for the REST API.
+   * @return KafkaCruiseControlApp class depending on the vertx.enabled property.
+   * @throws ServletException
+   */
   public static KafkaCruiseControlApp getCruiseControlApp(KafkaCruiseControlConfig config, Integer port, String hostname) throws ServletException {
-    if(config.getBoolean(WebServerConfig.VERTX_ENABLED_CONFIG)){
+    if (config.getBoolean(WebServerConfig.VERTX_ENABLED_CONFIG)) {
       return new KafkaCruiseControlVertxApp(config, port, hostname);
     }
     return new KafkaCruiseControlServletApp(config, port, hostname);
