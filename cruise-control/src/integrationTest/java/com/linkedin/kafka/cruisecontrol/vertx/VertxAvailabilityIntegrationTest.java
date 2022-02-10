@@ -33,7 +33,7 @@ public class VertxAvailabilityIntegrationTest extends CruiseControlVertxIntegrat
     public void testVertxApiPostEndpointsAvailability() throws Exception {
         for (CruiseControlEndPoint endpoint : CruiseControlEndPoint.postEndpoints()) {
             assertTrue(399 > getResponseCode(endpoint.toString().toLowerCase())
-                    || getResponseCode(endpoint.toString().toLowerCase()) >= 500 || getResponseCode(endpoint.toString().toLowerCase()) >= 405);
+                    || getResponseCode(endpoint.toString().toLowerCase()) >= 500 || getResponseCode(endpoint.toString().toLowerCase()) == 405);
         }
     }
 }
