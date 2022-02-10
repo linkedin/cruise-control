@@ -4,21 +4,29 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
+import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtils;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import kafka.log.LogConfig;
-import kafka.server.ConfigType;
-import kafka.zk.AdminZkClient;
-import kafka.zk.KafkaZkClient;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AlterConfigOp;
+import org.apache.kafka.clients.admin.Config;
+import org.apache.kafka.clients.admin.ConfigEntry;
+import org.apache.kafka.common.config.ConfigResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -32,26 +40,36 @@ class ReplicationThrottleHelper {
   static final String FOLLOWER_THROTTLED_RATE = "follower.replication.throttled.rate";
   static final String LEADER_THROTTLED_REPLICAS = LogConfig.LeaderReplicationThrottledReplicasProp();
   static final String FOLLOWER_THROTTLED_REPLICAS = LogConfig.FollowerReplicationThrottledReplicasProp();
+  public static final long CLIENT_REQUEST_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(30);
+  static final int RETRIES = 30;
 
-  private final KafkaZkClient _kafkaZkClient;
-  private final AdminZkClient _adminZkClient;
+  private final AdminClient _adminClient;
   private final Long _throttleRate;
+  private final int _retries;
 
-  ReplicationThrottleHelper(KafkaZkClient kafkaZkClient, Long throttleRate) {
-    this._kafkaZkClient = kafkaZkClient;
-    this._adminZkClient = new AdminZkClient(kafkaZkClient);
-    this._throttleRate = throttleRate;
+  ReplicationThrottleHelper(AdminClient adminClient, Long throttleRate) {
+    this(adminClient, throttleRate, RETRIES);
   }
 
-  void setThrottles(List<ExecutionProposal> replicaMovementProposals) {
+  // for testing
+  ReplicationThrottleHelper(AdminClient adminClient, Long throttleRate, int retries) {
+    this._adminClient = adminClient;
+    this._throttleRate = throttleRate;
+    this._retries = retries;
+  }
+
+  void setThrottles(List<ExecutionProposal> replicaMovementProposals)
+  throws ExecutionException, InterruptedException, TimeoutException {
     if (throttlingEnabled()) {
       LOG.info("Setting a rebalance throttle of {} bytes/sec", _throttleRate);
       Set<Integer> participatingBrokers = getParticipatingBrokers(replicaMovementProposals);
       Map<String, Set<String>> throttledReplicas = getThrottledReplicasByTopic(replicaMovementProposals);
-      participatingBrokers.forEach(this::setLeaderThrottledRateIfUnset);
-      participatingBrokers.forEach(this::setFollowerThrottledRateIfUnset);
-      throttledReplicas.forEach(this::setLeaderThrottledReplicas);
-      throttledReplicas.forEach(this::setFollowerThrottledReplicas);
+      for (int broker : participatingBrokers) {
+        setThrottledRateIfUnset(broker);
+      }
+      for (Map.Entry<String, Set<String>> entry : throttledReplicas.entrySet()) {
+        setThrottledReplicas(entry.getKey(), entry.getValue());
+      }
     }
   }
 
@@ -73,7 +91,8 @@ class ReplicationThrottleHelper {
   }
 
   // clear throttles for a specific list of execution tasks
-  void clearThrottles(List<ExecutionTask> completedTasks, List<ExecutionTask> inProgressTasks) {
+  void clearThrottles(List<ExecutionTask> completedTasks, List<ExecutionTask> inProgressTasks)
+  throws ExecutionException, InterruptedException, TimeoutException {
     if (throttlingEnabled()) {
       List<ExecutionProposal> completedProposals =
         completedTasks
@@ -104,10 +123,14 @@ class ReplicationThrottleHelper {
       brokersToRemoveThrottlesFrom.removeAll(brokersWithInProgressTasks);
 
       LOG.info("Removing replica movement throttles from brokers in the cluster: {}", brokersToRemoveThrottlesFrom);
-      brokersToRemoveThrottlesFrom.forEach(this::removeThrottledRateFromBroker);
+      for (int broker : brokersToRemoveThrottlesFrom) {
+        removeThrottledRateFromBroker(broker);
+      }
 
       Map<String, Set<String>> throttledReplicas = getThrottledReplicasByTopic(completedProposals);
-      throttledReplicas.forEach(this::removeThrottledReplicasFromTopic);
+      for (Map.Entry<String, Set<String>> entry : throttledReplicas.entrySet()) {
+        removeThrottledReplicasFromTopic(entry.getKey(), entry.getValue());
+      }
     }
   }
 
@@ -139,180 +162,217 @@ class ReplicationThrottleHelper {
     return throttledReplicasByTopic;
   }
 
-  private void setLeaderThrottledRateIfUnset(int brokerId) {
-    setThrottledRateIfUnset(brokerId, true);
-  }
-
-  private void setFollowerThrottledRateIfUnset(int brokerId) {
-    setThrottledRateIfUnset(brokerId, false);
-  }
-
-  private void setThrottledRateIfUnset(int brokerId, boolean throttleLeaderReplicaRate) {
+  private void setThrottledRateIfUnset(int brokerId) throws ExecutionException, InterruptedException, TimeoutException {
     if (_throttleRate == null) {
       throw new IllegalStateException("Throttle rate cannot be null");
     }
-    String replicaThrottleRateConfigKey = throttleLeaderReplicaRate ? LEADER_THROTTLED_RATE : FOLLOWER_THROTTLED_RATE;
-    Properties brokerConfigs = _kafkaZkClient.getEntityConfigs(ConfigType.Broker(), String.valueOf(brokerId));
-    Object currThrottleRate = brokerConfigs.setProperty(replicaThrottleRateConfigKey, String.valueOf(_throttleRate));
-    if (currThrottleRate == null) {
-      LOG.debug("Setting {} to {} bytes/second for broker {}", replicaThrottleRateConfigKey, _throttleRate, brokerId);
-      ExecutorUtils.changeBrokerConfig(_adminZkClient, brokerId, brokerConfigs);
-    } else {
-      LOG.debug("Not setting {} for broker {} because pre-existing throttle of {} was already set",
-          replicaThrottleRateConfigKey, brokerId, currThrottleRate);
+    Config brokerConfigs = getBrokerConfigs(brokerId);
+    List<AlterConfigOp> ops = new ArrayList<>();
+    for (String replicaThrottleRateConfigKey : Arrays.asList(LEADER_THROTTLED_RATE, FOLLOWER_THROTTLED_RATE)) {
+      ConfigEntry currThrottleRate = brokerConfigs.get(replicaThrottleRateConfigKey);
+      if (currThrottleRate == null) {
+        LOG.debug("Setting {} to {} bytes/second for broker {}", replicaThrottleRateConfigKey, _throttleRate, brokerId);
+       ops.add(new AlterConfigOp(new ConfigEntry(replicaThrottleRateConfigKey, String.valueOf(_throttleRate)), AlterConfigOp.OpType.SET));
+      } else {
+        LOG.debug("Not setting {} for broker {} because pre-existing throttle of {} was already set",
+                replicaThrottleRateConfigKey, brokerId, currThrottleRate);
+      }
+    }
+    if (!ops.isEmpty()) {
+      changeBrokerConfigs(brokerId, ops);
     }
   }
 
-  private void setLeaderThrottledReplicas(String topic, Set<String> replicas) {
-    setThrottledReplicas(topic, replicas, true);
-  }
-
-  private void setFollowerThrottledReplicas(String topic, Set<String> replicas) {
-    setThrottledReplicas(topic, replicas, false);
-  }
-
-  private void setThrottledReplicas(String topic, Set<String> replicas, boolean throttleLeaderReplica) {
-    String replicaThrottleConfigKey = throttleLeaderReplica ? LEADER_THROTTLED_REPLICAS : FOLLOWER_THROTTLED_REPLICAS;
-    Properties topicConfigs = _kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic);
-    String currThrottledReplicas = topicConfigs.getProperty(replicaThrottleConfigKey);
-    if (currThrottledReplicas != null && currThrottledReplicas.trim().equals(WILDCARD_ASTERISK)) {
-      // The existing setup throttles all replica. So, nothing needs to be changed.
-      return;
-    }
-
-    // Merge new throttled replicas with existing configuration values.
-    Set<String> newThrottledReplicas = new TreeSet<>(replicas);
-    if (currThrottledReplicas != null) {
-      newThrottledReplicas.addAll(Arrays.asList(currThrottledReplicas.split(",")));
-    }
-    topicConfigs.setProperty(replicaThrottleConfigKey, String.join(",", newThrottledReplicas));
-    changeTopicConfigs(topic, topicConfigs);
-  }
-
-  /**
-   * Update topic configuration properties if a topic exist. No-op for non-existent topic
-   *
-   * @param topicName topic name
-   * @param topicConfigs configuration properties to update
-   */
-  private void changeTopicConfigs(String topicName, Properties topicConfigs) {
+  private Config getTopicConfigs(String topic) throws ExecutionException, InterruptedException, TimeoutException {
     try {
-      ExecutorUtils.changeTopicConfig(_adminZkClient, topicName, topicConfigs);
+      return getEntityConfigs(new ConfigResource(ConfigResource.Type.TOPIC, topic));
     } catch (Exception e) {
-      if (!_kafkaZkClient.topicExists(topicName)) {
-        LOG.debug("Failed to change configs for topic {} since it does not exist", topicName);
+      if (!topicExists(topic)) {
+        return new Config(Collections.emptyList());
+      }
+      throw e;
+    }
+  }
+
+  private Config getBrokerConfigs(int brokerId) throws ExecutionException, InterruptedException, TimeoutException {
+    return getEntityConfigs(new ConfigResource(ConfigResource.Type.BROKER, String.valueOf(brokerId)));
+  }
+
+  private Config getEntityConfigs(ConfigResource cf) throws ExecutionException, InterruptedException, TimeoutException {
+    Map<ConfigResource, Config> configs = _adminClient.describeConfigs(Collections.singletonList(cf)).all()
+        .get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    return configs.get(cf);
+  }
+
+  private void setThrottledReplicas(String topic, Set<String> replicas)
+  throws ExecutionException, InterruptedException, TimeoutException {
+    Config topicConfigs = getTopicConfigs(topic);
+    List<AlterConfigOp> ops = new ArrayList<>();
+    for (String replicaThrottleConfigKey : Arrays.asList(LEADER_THROTTLED_REPLICAS, FOLLOWER_THROTTLED_REPLICAS)) {
+      ConfigEntry currThrottledReplicas = topicConfigs.get(replicaThrottleConfigKey);
+      if (currThrottledReplicas != null && currThrottledReplicas.value().trim().equals(WILDCARD_ASTERISK)) {
+        // The existing setup throttles all replica. So, nothing needs to be changed.
+        continue;
+      }
+
+      // Merge new throttled replicas with existing configuration values.
+      Set<String> newThrottledReplicas = new TreeSet<>(replicas);
+      if (currThrottledReplicas != null && !currThrottledReplicas.value().equals("")) {
+        newThrottledReplicas.addAll(Arrays.asList(currThrottledReplicas.value().split(",")));
+      }
+      ops.add(new AlterConfigOp(new ConfigEntry(replicaThrottleConfigKey, String.join(",", newThrottledReplicas)), AlterConfigOp.OpType.SET));
+    }
+    if (!ops.isEmpty()) {
+      changeTopicConfigs(topic, ops);
+    }
+  }
+
+  void changeTopicConfigs(String topic, Collection<AlterConfigOp> ops)
+  throws ExecutionException, InterruptedException, TimeoutException {
+    ConfigResource cf = new ConfigResource(ConfigResource.Type.TOPIC, topic);
+    Map<ConfigResource, Collection<AlterConfigOp>> configs = Collections.singletonMap(cf, ops);
+    try {
+      _adminClient.incrementalAlterConfigs(configs).all()
+          .get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+      waitForConfigs(cf, ops);
+    } catch (Exception e) {
+      if (!topicExists(topic)) {
+        LOG.debug("Failed to change configs for topic {} since it does not exist", topic);
         return;
       }
       throw e;
     }
   }
 
+  void changeBrokerConfigs(int brokerId, Collection<AlterConfigOp> ops)
+  throws ExecutionException, InterruptedException, TimeoutException {
+    ConfigResource cf = new ConfigResource(ConfigResource.Type.BROKER, String.valueOf(brokerId));
+    Map<ConfigResource, Collection<AlterConfigOp>> configs = Collections.singletonMap(cf, ops);
+    _adminClient.incrementalAlterConfigs(configs).all()
+        .get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    waitForConfigs(cf, ops);
+  }
+
+  boolean topicExists(String topic) throws InterruptedException, TimeoutException, ExecutionException {
+    try {
+      return _adminClient.listTopics().names().get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS).contains(topic);
+    } catch (ExecutionException | InterruptedException | TimeoutException e) {
+      LOG.error("Unable to check if topic {} exists due to {}", topic, e.getMessage());
+      throw e;
+    }
+  }
+
   static String removeReplicasFromConfig(String throttleConfig, Set<String> replicas) {
-    ArrayList<String> throttles = new ArrayList<>(Arrays.asList(throttleConfig.split(",")));
+    List<String> throttles = new ArrayList<>(Arrays.asList(throttleConfig.split(",")));
     throttles.removeIf(replicas::contains);
     return String.join(",", throttles);
   }
 
   /**
-   * It gets whether there is any throttled leader replica specified in the configuration property. If there is and the
-   * specified throttled leader replica does not equal to "*", it modifies the configuration property by removing a
-   * given set of replicas from the a set of throttled leader replica
+   * It gets whether there is any throttled replica specified in the configuration property. If there is and the
+   * specified throttled replica does not equal to "*", it modifies the configuration property by removing a
+   * given set of replicas from the set of throttled replicas
    *
-   * @param config configuration properties
    * @param topic name of topic which contains <code>replicas</code>
    * @param replicas replicas to remove from the configuration properties
-   * @return {@code true} if the given configuration properties are modified and {@code false} otherwise
    */
-  private boolean removeLeaderThrottledReplicasFromTopic(Properties config, String topic, Set<String> replicas) {
-    String currLeaderThrottledReplicas = config.getProperty(LEADER_THROTTLED_REPLICAS);
-    if (currLeaderThrottledReplicas != null) {
-      if (currLeaderThrottledReplicas.equals(WILDCARD_ASTERISK)) {
-        LOG.debug("Existing config throttles all leader replicas. So, do not remove any leader replica throttle");
-        return false;
-      }
-
-      replicas.forEach(r -> LOG.debug("Removing leader throttles for topic {} on replica {}", topic, r));
-      String newLeaderThrottledReplicas = removeReplicasFromConfig(currLeaderThrottledReplicas, replicas);
-      if (newLeaderThrottledReplicas.isEmpty()) {
-        config.remove(LEADER_THROTTLED_REPLICAS);
-      } else {
-        config.setProperty(LEADER_THROTTLED_REPLICAS, newLeaderThrottledReplicas);
-      }
-      return true;
-    }
-    return false;
-  }
-
-  /**
-   * It gets whether there is any throttled follower replica specified in the configuration property. If there is and the
-   * specified throttled follower replica does not equal to "*", it modifies the configuration property by removing a
-   * given set of replicas from the a set of throttled follower replica
-   *
-   * @param config configuration properties
-   * @param topic name of topic which contains <code>replicas</code>
-   * @param replicas replicas to remove from the configuration properties
-   * @return {@code true} if the given configuration properties are modified and {@code false} otherwise
-   */
-  private boolean removeFollowerThrottledReplicasFromTopic(Properties config, String topic, Set<String> replicas) {
-    String currLeaderThrottledReplicas = config.getProperty(FOLLOWER_THROTTLED_REPLICAS);
-    if (currLeaderThrottledReplicas != null) {
-      if (currLeaderThrottledReplicas.equals(WILDCARD_ASTERISK)) {
-        LOG.debug("Existing config throttles all follower replicas. So, do not remove any follower replica throttle");
-        return false;
-      }
-
-      replicas.forEach(r -> LOG.debug("Removing follower throttles for topic {} and replica {}", topic, r));
-      String newLeaderThrottledReplicas = removeReplicasFromConfig(currLeaderThrottledReplicas, replicas);
-      if (newLeaderThrottledReplicas.isEmpty()) {
-        config.remove(FOLLOWER_THROTTLED_REPLICAS);
-      } else {
-        config.setProperty(FOLLOWER_THROTTLED_REPLICAS, newLeaderThrottledReplicas);
-      }
-      return true;
-    }
-    return false;
-  }
-
-  private void removeThrottledReplicasFromTopic(String topic, Set<String> replicas) {
-    Properties topicConfigs = _kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic);
-    if (topicConfigs.isEmpty()) {
+  private void removeThrottledReplicasFromTopic(String topic, Set<String> replicas)
+  throws ExecutionException, InterruptedException, TimeoutException {
+    Config topicConfigs = getTopicConfigs(topic);
+    if (topicConfigs == null) {
       LOG.debug("Skip removing throttled replicas {} from topic {} since no configs can be read", String.join(",", replicas), topic);
       return;
     }
-    boolean removedLeaderThrottle = removeLeaderThrottledReplicasFromTopic(topicConfigs, topic, replicas);
-    boolean removedFollowerThrottle = removeFollowerThrottledReplicasFromTopic(topicConfigs, topic, replicas);
+    List<AlterConfigOp> ops = new ArrayList<>();
 
-    if (removedLeaderThrottle || removedFollowerThrottle) {
-      changeTopicConfigs(topic, topicConfigs);
+    ConfigEntry currentLeaderThrottledReplicas = topicConfigs.get(LEADER_THROTTLED_REPLICAS);
+    if (currentLeaderThrottledReplicas != null) {
+      if (currentLeaderThrottledReplicas.value().equals(WILDCARD_ASTERISK)) {
+        LOG.debug("Existing config throttles all leader replicas. So, do not remove any leader replica throttle");
+      } else {
+        replicas.forEach(r -> LOG.debug("Removing leader throttles for topic {} and replica {}", topic, r));
+        String newThrottledReplicas = removeReplicasFromConfig(currentLeaderThrottledReplicas.value(), replicas);
+        if (newThrottledReplicas.isEmpty()) {
+          ops.add(new AlterConfigOp(new ConfigEntry(LEADER_THROTTLED_REPLICAS, null), AlterConfigOp.OpType.DELETE));
+        } else {
+          ops.add(new AlterConfigOp(new ConfigEntry(LEADER_THROTTLED_REPLICAS, newThrottledReplicas), AlterConfigOp.OpType.SET));
+        }
+      }
+    }
+    ConfigEntry currentFollowerThrottledReplicas = topicConfigs.get(FOLLOWER_THROTTLED_REPLICAS);
+    if (currentFollowerThrottledReplicas != null) {
+      if (currentFollowerThrottledReplicas.value().equals(WILDCARD_ASTERISK)) {
+        LOG.debug("Existing config throttles all follower replicas. So, do not remove any follower replica throttle");
+      } else {
+        replicas.forEach(r -> LOG.debug("Removing follower throttles for topic {} and replica {}", topic, r));
+        String newThrottledReplicas = removeReplicasFromConfig(currentFollowerThrottledReplicas.value(), replicas);
+        if (newThrottledReplicas.isEmpty()) {
+          ops.add(new AlterConfigOp(new ConfigEntry(FOLLOWER_THROTTLED_REPLICAS, null), AlterConfigOp.OpType.DELETE));
+        } else {
+          ops.add(new AlterConfigOp(new ConfigEntry(FOLLOWER_THROTTLED_REPLICAS, newThrottledReplicas), AlterConfigOp.OpType.SET));
+        }
+      }
+    }
+    if (!ops.isEmpty()) {
+      changeTopicConfigs(topic, ops);
     }
   }
 
-  private void removeThrottledRateFromBroker(Integer brokerId) {
-    Properties brokerConfigs = _kafkaZkClient.getEntityConfigs(ConfigType.Broker(), String.valueOf(brokerId));
-    Object currLeaderThrottle = brokerConfigs.get(LEADER_THROTTLED_RATE);
-    Object currFollowerThrottle = brokerConfigs.get(FOLLOWER_THROTTLED_RATE);
-    boolean configChange = false;
-
+  private void removeThrottledRateFromBroker(Integer brokerId)
+  throws ExecutionException, InterruptedException, TimeoutException {
+    Config brokerConfigs = getBrokerConfigs(brokerId);
+    ConfigEntry currLeaderThrottle = brokerConfigs.get(LEADER_THROTTLED_RATE);
+    ConfigEntry currFollowerThrottle = brokerConfigs.get(FOLLOWER_THROTTLED_RATE);
+    List<AlterConfigOp> ops = new ArrayList<>();
     if (currLeaderThrottle != null) {
-      if (currLeaderThrottle.equals(WILDCARD_ASTERISK)) {
+      if (currLeaderThrottle.value().equals(WILDCARD_ASTERISK)) {
         LOG.debug("Existing config throttles all leader replicas. So, do not remove any leader replica throttle on broker {}", brokerId);
       } else {
         LOG.debug("Removing leader throttle on broker {}", brokerId);
-        brokerConfigs.remove(LEADER_THROTTLED_RATE);
-        configChange = true;
+        ops.add(new AlterConfigOp(new ConfigEntry(LEADER_THROTTLED_RATE, null), AlterConfigOp.OpType.DELETE));
       }
     }
     if (currFollowerThrottle != null) {
-      if (currFollowerThrottle.equals(WILDCARD_ASTERISK)) {
+      if (currFollowerThrottle.value().equals(WILDCARD_ASTERISK)) {
         LOG.debug("Existing config throttles all follower replicas. So, do not remove any follower replica throttle on broker {}", brokerId);
       } else {
         LOG.debug("Removing follower throttle on broker {}", brokerId);
-        brokerConfigs.remove(FOLLOWER_THROTTLED_RATE);
-        configChange = true;
+        ops.add(new AlterConfigOp(new ConfigEntry(FOLLOWER_THROTTLED_RATE, null), AlterConfigOp.OpType.DELETE));
       }
     }
-    if (configChange) {
-      ExecutorUtils.changeBrokerConfig(_adminZkClient, brokerId, brokerConfigs);
+    if (!ops.isEmpty()) {
+      changeBrokerConfigs(brokerId, ops);
     }
+  }
+
+  // Retries until we can read the configs changes we just wrote
+  void waitForConfigs(ConfigResource cf, Collection<AlterConfigOp> ops) {
+    // Use HashMap::new instead of Collectors.toMap to allow inserting null values
+    Map<String, String> expectedConfigs = ops.stream()
+            .collect(HashMap::new, (m, o) -> m.put(o.configEntry().name(), o.configEntry().value()), HashMap::putAll);
+    boolean retryResponse = CruiseControlMetricsUtils.retry(() -> {
+      try {
+        return !configsEqual(getEntityConfigs(cf), expectedConfigs);
+      } catch (ExecutionException | InterruptedException | TimeoutException e) {
+        return false;
+      }
+    }, _retries);
+    if (!retryResponse) {
+      throw new IllegalStateException("The following configs " + ops + " were not applied to " + cf + " within the time limit");
+    }
+  }
+
+  static boolean configsEqual(Config configs, Map<String, String> expectedValues) {
+    for (Map.Entry<String, String> entry : expectedValues.entrySet()) {
+      ConfigEntry configEntry = configs.get(entry.getKey());
+      if (configEntry == null || configEntry.value() == null || configEntry.value().isEmpty()) {
+        if (entry.getValue() != null) {
+          return false;
+        }
+      } else if (!Objects.equals(entry.getValue(), configEntry.value())) {
+        return false;
+      }
+    }
+    return true;
   }
 }
