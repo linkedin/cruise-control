@@ -27,12 +27,6 @@ public class ServletRequestHandler extends HttpServlet {
     _requestHandler = new KafkaCruiseControlRequestHandler(asynckafkaCruiseControl, dropwizardMetricRegistry);
   }
 
-  //only for tests
-  public ServletRequestHandler(AsyncKafkaCruiseControl asynckafkaCruiseControl,
-                               MetricRegistry dropwizardMetricRegistry, UserTaskManager userTaskManager) {
-    _requestHandler = new KafkaCruiseControlRequestHandler(asynckafkaCruiseControl, dropwizardMetricRegistry, userTaskManager);
-  }
-
   @Override
   public void destroy() {
     super.destroy();

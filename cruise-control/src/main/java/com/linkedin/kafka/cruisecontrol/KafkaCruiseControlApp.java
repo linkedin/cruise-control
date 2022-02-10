@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
-import com.codahale.metrics.jmx.JmxReporter;
+import com.codahale.metrics.JmxReporter;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -29,21 +29,6 @@ abstract class KafkaCruiseControlApp {
     _hostname = hostname;
 
     _kafkaCruiseControl = new AsyncKafkaCruiseControl(config, _metricRegistry);
-
-  }
-
-  //only for tests
-  KafkaCruiseControlApp(KafkaCruiseControlConfig config, Integer port, String hostname,
-                        AsyncKafkaCruiseControl asyncKafkaCruiseControl, MetricRegistry metricRegistry) {
-    this._config = config;
-    _metricRegistry = metricRegistry;
-    _jmxReporter = JmxReporter.forRegistry(_metricRegistry).inDomain(METRIC_DOMAIN)
-            .createsObjectNamesWith(LegacyObjectNameFactory.getInstance()).build();
-    _jmxReporter.start();
-    _port = port;
-    _hostname = hostname;
-
-    _kafkaCruiseControl = asyncKafkaCruiseControl;
 
   }
 

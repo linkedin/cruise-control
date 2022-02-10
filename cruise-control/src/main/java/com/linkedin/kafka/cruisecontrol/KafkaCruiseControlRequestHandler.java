@@ -14,7 +14,6 @@ import com.linkedin.kafka.cruisecontrol.config.RequestParameterWrapper;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
-import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.vertx.VertxRequestHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,12 +41,6 @@ public class KafkaCruiseControlRequestHandler {
 
     public KafkaCruiseControlRequestHandler(AsyncKafkaCruiseControl asynckafkaCruiseControl, MetricRegistry dropwizardMetricRegistry) {
         _cruiseControlEndPoints = new KafkaCruiseControlEndPoints(asynckafkaCruiseControl, dropwizardMetricRegistry);
-    }
-
-    // Visible for testing
-    public KafkaCruiseControlRequestHandler(AsyncKafkaCruiseControl asynckafkaCruiseControl, MetricRegistry dropwizardMetricRegistry,
-                                            UserTaskManager userTaskManager) {
-        _cruiseControlEndPoints = new KafkaCruiseControlEndPoints(asynckafkaCruiseControl, dropwizardMetricRegistry, userTaskManager);
     }
 
     /**

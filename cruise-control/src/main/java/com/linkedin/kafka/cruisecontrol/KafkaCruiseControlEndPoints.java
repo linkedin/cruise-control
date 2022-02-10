@@ -31,22 +31,13 @@ public class KafkaCruiseControlEndPoints {
     protected final boolean _twoStepVerification;
     protected final Purgatory _purgatory;
 
-    public KafkaCruiseControlEndPoints(AsyncKafkaCruiseControl asynckafkaCruiseControl, MetricRegistry dropwizardMetricRegistry) {
-        this(asynckafkaCruiseControl, dropwizardMetricRegistry, null);
-    }
-
-    // Visible for testing
     public KafkaCruiseControlEndPoints(AsyncKafkaCruiseControl asynckafkaCruiseControl,
-                                       MetricRegistry dropwizardMetricRegistry, UserTaskManager userTaskManager) {
+                                       MetricRegistry dropwizardMetricRegistry) {
         _config = asynckafkaCruiseControl.config();
         _asyncKafkaCruiseControl = asynckafkaCruiseControl;
         _twoStepVerification = _config.getBoolean(WebServerConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
         _purgatory = _twoStepVerification ? new Purgatory(_config) : null;
-        if (userTaskManager == null) {
             _userTaskManager = new UserTaskManager(_config, dropwizardMetricRegistry, _successfulRequestExecutionTimer, _purgatory);
-        } else {
-            _userTaskManager = userTaskManager;
-        }
         _asyncKafkaCruiseControl.setUserTaskManagerInExecutor(_userTaskManager);
         _asyncOperationStep = new ThreadLocal<>();
         _asyncOperationStep.set(0);

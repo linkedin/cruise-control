@@ -20,18 +20,11 @@ public class KafkaCruiseControlVertxApp extends KafkaCruiseControlApp {
     protected static MainVerticle verticle;
     private static Vertx vertx;
 
-    KafkaCruiseControlVertxApp(KafkaCruiseControlConfig config, Integer port, String hostname) {
+    public KafkaCruiseControlVertxApp(KafkaCruiseControlConfig config, Integer port, String hostname) {
         super(config, port, hostname);
         vertx = Vertx.vertx();
     }
 
-    //visible for testing
-    KafkaCruiseControlVertxApp(KafkaCruiseControlConfig config, Integer port,
-                               String hostname, AsyncKafkaCruiseControl asyncKafkaCruiseControl, MetricRegistry metricRegistry) {
-        super(config, port, hostname, asyncKafkaCruiseControl, metricRegistry);
-        vertx = Vertx.vertx();
-        verticle = new MainVerticle(_kafkaCruiseControl, _metricRegistry, _port, _hostname);
-    }
 
     @Override
     public String serverUrl() {

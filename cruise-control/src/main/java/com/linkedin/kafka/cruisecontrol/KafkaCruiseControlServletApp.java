@@ -27,7 +27,7 @@ public class KafkaCruiseControlServletApp extends KafkaCruiseControlApp {
 
     private final Server _server;
 
-    KafkaCruiseControlServletApp(KafkaCruiseControlConfig config, Integer port, String hostname) throws ServletException {
+    public KafkaCruiseControlServletApp(KafkaCruiseControlConfig config, Integer port, String hostname) throws ServletException {
         super(config, port, hostname);
         _server = new Server();
         NCSARequestLog requestLog = createRequestLog();
@@ -46,33 +46,6 @@ public class KafkaCruiseControlServletApp extends KafkaCruiseControlApp {
         String apiUrlPrefix = config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG);
         ServletHolder servletHolder = new ServletHolder(servlet);
         contextHandler.addServlet(servletHolder, apiUrlPrefix);
-    }
-
-    //only for tests
-    KafkaCruiseControlServletApp(KafkaCruiseControlConfig config,
-                                 Integer port, String hostname,
-                                 AsyncKafkaCruiseControl asyncKafkaCruiseControl,
-                                 MetricRegistry metricRegistry, UserTaskManager userTaskManager) throws Exception {
-        super(config, port, hostname, asyncKafkaCruiseControl, metricRegistry);
-        _server = new Server();
-        NCSARequestLog requestLog = createRequestLog();
-        if (requestLog != null) {
-            _server.setRequestLog(requestLog);
-        }
-        _server.setConnectors(new Connector[]{ setupHttpConnector(hostname, port) });
-
-        ServletContextHandler contextHandler = createContextHandler();
-        maybeSetSecurityHandler(contextHandler);
-        _server.setHandler(contextHandler);
-
-        setupWebUi(contextHandler);
-
-        ServletRequestHandler servlet = new ServletRequestHandler(_kafkaCruiseControl, _metricRegistry, userTaskManager);
-        String apiUrlPrefix = config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG);
-        ServletHolder servletHolder = new ServletHolder(servlet);
-        contextHandler.addServlet(servletHolder, apiUrlPrefix);
-        _server.start();
-        printStartupInfo();
     }
 
     private void printStartupInfo() {
@@ -189,7 +162,7 @@ public class KafkaCruiseControlServletApp extends KafkaCruiseControlApp {
         }
     }
     @Override
-    void start() throws Exception {
+    public void start() throws Exception {
         _kafkaCruiseControl.startUp();
         _server.start();
         printStartupInfo();
