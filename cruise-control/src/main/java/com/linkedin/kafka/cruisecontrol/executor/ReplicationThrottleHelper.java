@@ -253,12 +253,10 @@ class ReplicationThrottleHelper {
     waitForConfigs(cf, ops);
   }
 
-  boolean topicExists(String topic) throws InterruptedException, TimeoutException {
+  boolean topicExists(String topic) throws InterruptedException, TimeoutException, ExecutionException {
     try {
       return _adminClient.listTopics().names().get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS).contains(topic);
-    } catch (ExecutionException ee) {
-      return false;
-    } catch (InterruptedException | TimeoutException e) {
+    } catch (ExecutionException | InterruptedException | TimeoutException e) {
       LOG.error("Unable to check if topic {} exists due to {}", topic, e.getMessage());
       throw e;
     }
