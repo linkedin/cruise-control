@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.config;
 
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 
 
@@ -25,15 +26,19 @@ public final class KafkaCruiseControlConfigUtils {
    * @return A configured instance of the class c
    */
   public static <T> T getConfiguredInstance(Class<?> c, Class<T> t, Map<String, Object> configs) {
+    if (c == null) {
+      throw new IllegalArgumentException("Attempt to get configured instance of null configuration " + t.getName());
+    }
+
     Object instance;
     try {
-      instance = c.newInstance();
-    } catch (IllegalAccessException e) {
+      instance = c.getDeclaredConstructor().newInstance();
+    } catch (IllegalAccessException | InvocationTargetException e) {
       throw new IllegalArgumentException("Could not instantiate class " + c.getName(), e);
     } catch (InstantiationException e) {
       throw new IllegalArgumentException("Could not instantiate class " + c.getName() + " Does it have a public no-argument constructor?", e);
-    } catch (NullPointerException e) {
-      throw new IllegalArgumentException("Attempt to get configured instance of null configuration " + t.getName(), e);
+    } catch (NoSuchMethodException e) {
+      throw new IllegalArgumentException("Could not find a public no-argument constructor for " + c.getName(), e);
     }
 
     if (!t.isInstance(instance)) {
