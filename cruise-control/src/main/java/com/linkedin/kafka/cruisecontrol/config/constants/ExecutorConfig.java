@@ -84,12 +84,12 @@ public final class ExecutorConfig {
    */
   public static final String MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG = "max.num.cluster.partition.movements";
   // Keeping smaller than allowed cluster movements
-  public static final int DEFAULT_MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG = 1250; 
+  public static final int DEFAULT_MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG = 1250;
   public static final String MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_DOC = "The maximum number of allowed partition movements in the cluster."
       + " This global limit cannot be exceeded regardless of the per-broker replica movement "
       + "concurrency. While max.num.cluster.movements corresponds to the default zNode size limit, "
       + "max.num.cluster.partition.movements throttles the maximum partition movements across the cluster";
-  
+
   /**
    * <code>default.replication.throttle</code>
    */
@@ -263,21 +263,6 @@ public final class ExecutorConfig {
   public static final String CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_DOC = "The minimum number of leadership movements "
       + "the concurrency auto adjustment will allow the executor to perform in one batch to avoid an unacceptable execution pace."
       + " It cannot be greater than num.concurrent.leader.movements.";
-
-  /**
-   * <code>concurrency.adjuster.enabled</code>
-   * @deprecated This config will be removed in a future release. Please enable concurrency adjusters individually using:
-   * <ul>
-   *   <li>{@link #CONCURRENCY_ADJUSTER_INTER_BROKER_REPLICA_ENABLED_CONFIG}</li>
-   *   <li>{@link #CONCURRENCY_ADJUSTER_LEADERSHIP_ENABLED_CONFIG}</li>
-   * </ul>
-   */
-  @Deprecated
-  public static final String CONCURRENCY_ADJUSTER_ENABLED_CONFIG = "concurrency.adjuster.enabled";
-  public static final boolean DEFAULT_CONCURRENCY_ADJUSTER_ENABLED = false;
-  public static final String CONCURRENCY_ADJUSTER_ENABLED_DOC = "The flag to indicate whether the concurrency of "
-      + "all supported movements will be auto-adjusted based on dynamically changing broker metrics. It enables concurrency adjuster "
-      + "for all supported concurrency types, regardless of whether the particular concurrency type is disabled.";
 
   /**
    * <code>concurrency.adjuster.inter.broker.replica.enabled</code>
@@ -610,11 +595,6 @@ public final class ExecutorConfig {
                             atLeast(1),
                             ConfigDef.Importance.LOW,
                             CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_DOC)
-                    .define(CONCURRENCY_ADJUSTER_ENABLED_CONFIG,
-                            ConfigDef.Type.BOOLEAN,
-                            DEFAULT_CONCURRENCY_ADJUSTER_ENABLED,
-                            ConfigDef.Importance.HIGH,
-                            CONCURRENCY_ADJUSTER_ENABLED_DOC)
                     .define(CONCURRENCY_ADJUSTER_INTER_BROKER_REPLICA_ENABLED_CONFIG,
                             ConfigDef.Type.BOOLEAN,
                             DEFAULT_CONCURRENCY_ADJUSTER_INTER_BROKER_REPLICA_ENABLED,
