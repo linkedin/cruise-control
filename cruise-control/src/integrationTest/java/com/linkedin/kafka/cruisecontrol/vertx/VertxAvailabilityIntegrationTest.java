@@ -36,4 +36,9 @@ public class VertxAvailabilityIntegrationTest extends CruiseControlVertxIntegrat
                     || getResponseCode(endpoint.toString().toLowerCase()) >= 500 || getResponseCode(endpoint.toString().toLowerCase()) == 405);
         }
     }
+
+    @Test
+    public void testSwaggerUiAvailability() throws Exception {
+        assertTrue(399 >= getResponseCode("") || getResponseCode("") >= 500);
+    }
 }
