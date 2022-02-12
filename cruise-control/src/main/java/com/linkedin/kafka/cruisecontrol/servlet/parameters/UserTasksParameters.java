@@ -14,9 +14,13 @@ import java.util.TreeSet;
 import java.util.Set;
 import java.util.UUID;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.*;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.USER_TASK_IDS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CLIENT_IDS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.ENTRIES_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.ENDPOINTS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.TYPES_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.FETCH_COMPLETED_TASK_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
-
 
 /**
  * Parameters for {@link CruiseControlEndPoint#USER_TASKS}

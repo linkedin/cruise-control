@@ -586,7 +586,7 @@ public class LoadMonitorTest {
     loadMonitor.startUp();
     MetadataClient.ClusterAndGeneration clusterAndGeneration = loadMonitor.refreshClusterAndGeneration();
     waitUntilTrue(() -> (loadMonitor.state(clusterAndGeneration.cluster()).state() == LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING),
-                  "load monitor state did not begin running.", WAIT_DEADLINE_MS, CHECK_MS);
+                  "Load monitor state did not begin running.", WAIT_DEADLINE_MS, CHECK_MS);
 
     return new TestContext(loadMonitor, aggregator);
   }
@@ -594,7 +594,7 @@ public class LoadMonitorTest {
   private void waitForStateUpdate(LoadMonitor loadMonitor) {
     _time.sleep(MONITOR_STATE_UPDATE_INTERVAL_MS + 1L);
     waitUntilTrue(() -> (loadMonitor.lastUpdateMs() == _time.milliseconds()),
-                  "load monitor state did not get updated within the time limit", WAIT_DEADLINE_MS, CHECK_MS);
+                  "Load monitor state did not get updated within the time limit", WAIT_DEADLINE_MS, CHECK_MS);
   }
 
   private Map<ConfigResource, KafkaFuture<Config>> getDescribeConfigsResultValues() {

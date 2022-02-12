@@ -346,8 +346,8 @@ public final class WebServerConfig {
    * <code>vertx.enabled</code>
    */
   public static final String VERTX_ENABLED_CONFIG = "vertx.enabled";
-  public static final boolean VERTX_ENABLED = false;
-  private static final String VERTX_ENABLED_DOC = "If Cruise Control should start with Vertx.io based API";
+  public static final boolean DEFAULT_VERTX_ENABLED = false;
+  private static final String VERTX_ENABLED_DOC = "Enables the Vertx.io based API and Swagger UI for Cruise Control.";
 
   private WebServerConfig() {
   }
@@ -577,7 +577,7 @@ public final class WebServerConfig {
                             TRUSTED_PROXY_SPNEGO_FALLBACK_ENABLED_DOC)
                     .define(VERTX_ENABLED_CONFIG,
                             ConfigDef.Type.BOOLEAN,
-                            VERTX_ENABLED,
+                            DEFAULT_VERTX_ENABLED,
                             ConfigDef.Importance.MEDIUM,
                             VERTX_ENABLED_DOC);
   }

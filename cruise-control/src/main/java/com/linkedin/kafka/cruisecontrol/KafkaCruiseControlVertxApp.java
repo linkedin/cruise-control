@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ * Copyright 2022 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 package com.linkedin.kafka.cruisecontrol;
 
@@ -13,14 +13,14 @@ import java.util.concurrent.TimeUnit;
 /**
  * This is the main entry point for the Vertx based API.
  */
-public class KafkaCruiseControlVertxApp extends KafkaCruiseControlApp {
+class KafkaCruiseControlVertxApp extends KafkaCruiseControlApp {
 
-    protected static MainVerticle verticle;
-    private static Vertx vertx;
+    protected MainVerticle _verticle;
+    private Vertx _vertx;
 
-    public KafkaCruiseControlVertxApp(KafkaCruiseControlConfig config, Integer port, String hostname) {
+    KafkaCruiseControlVertxApp(KafkaCruiseControlConfig config, Integer port, String hostname) {
         super(config, port, hostname);
-        vertx = Vertx.vertx();
+        _vertx = Vertx.vertx();
     }
 
     @Override
@@ -36,8 +36,8 @@ public class KafkaCruiseControlVertxApp extends KafkaCruiseControlApp {
             _kafkaCruiseControl.startUp();
         }
 
-        verticle = new MainVerticle(_kafkaCruiseControl, _metricRegistry, _port, _hostname);
-        vertx.deployVerticle(verticle, event -> {
+        _verticle = new MainVerticle(_kafkaCruiseControl, _metricRegistry, _port, _hostname);
+        _vertx.deployVerticle(_verticle, event -> {
             if (event.failed()) {
                 throw new RuntimeException("Startup failed", event.cause());
             }
@@ -53,7 +53,7 @@ public class KafkaCruiseControlVertxApp extends KafkaCruiseControlApp {
     @Override
     void stop() {
         CountDownLatch shutdownLatch = new CountDownLatch(1);
-        vertx.close(event -> {
+        _vertx.close(event -> {
             super.stop();
             if (event.failed()) {
                 throw new RuntimeException("Sutdown failed", event.cause());
@@ -65,13 +65,5 @@ public class KafkaCruiseControlVertxApp extends KafkaCruiseControlApp {
         } catch (InterruptedException e) {
             throw new RuntimeException("Startup interrupted", e);
         }
-    }
-
-    //visible for testing
-    static MainVerticle getVerticle() throws Exception {
-        if (verticle == null) {
-            throw new Exception();
-        }
-        return verticle;
     }
 }

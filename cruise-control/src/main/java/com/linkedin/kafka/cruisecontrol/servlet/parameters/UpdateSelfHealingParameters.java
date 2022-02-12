@@ -13,8 +13,8 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.*;
-
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DISABLE_SELF_HEALING_FOR_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.ENABLE_SELF_HEALING_FOR_PARAM;
 
 /**
  * Optional Parameters for {@link CruiseControlEndPoint#ADMIN}.

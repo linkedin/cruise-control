@@ -286,7 +286,6 @@ project(':cruise-control') {
     api 'io.vertx:vertx-core:4.2.2'
     api 'io.vertx:vertx-web:4.2.2'
     api 'io.vertx:vertx-junit5:4.2.2'
-    testImplementation 'org.junit.platform:junit-platform-launcher:1.2.0'
     api 'io.swagger.core.v3:swagger-annotations:2.0.2'
     api 'io.swagger.core.v3:swagger-core:2.0.2'
     api 'com.google.guava:guava:25.1-jre'

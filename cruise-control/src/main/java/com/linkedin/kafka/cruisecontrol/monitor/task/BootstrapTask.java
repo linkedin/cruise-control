@@ -222,11 +222,11 @@ class BootstrapTask implements Runnable {
     }
 
     if (_mode == BootstrapMode.RANGE) {
-      LOG.info("load monitor is bootstrapping for time range [{}, {}]", _startMs, _endMs);
+      LOG.info("Load monitor is bootstrapping for time range [{}, {}]", _startMs, _endMs);
     } else if (_mode == BootstrapMode.SINCE) {
-      LOG.info("load monitor is bootstrapping since {}", _startMs);
+      LOG.info("Load monitor is bootstrapping since {}", _startMs);
     } else {
-      LOG.info("load monitor is bootstrapping for most recent metric samples.");
+      LOG.info("Load monitor is bootstrapping for most recent metric samples.");
     }
 
     try {
@@ -253,7 +253,7 @@ class BootstrapTask implements Runnable {
       LOG.error("Received uncaught exception in bootstrap", t);
       throw t;
     } finally {
-      LOG.info("load monitor finished bootstrapping {} metric samples in {} snapshot windows for time "
+      LOG.info("Load monitor finished bootstrapping {} metric samples in {} snapshot windows for time "
                + "range [{}, {}] in {} seconds.", _metricSampleAggregator.numSamples(),
                _metricSampleAggregator.allWindows().size(), _bootstrappedRangeStartMs, _bootstrappedRangeEndMs,
                (_time.milliseconds() - bootstrapStartingMs) / 1000);

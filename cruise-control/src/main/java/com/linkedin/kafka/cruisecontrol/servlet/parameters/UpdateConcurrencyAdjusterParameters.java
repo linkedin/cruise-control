@@ -13,8 +13,9 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.*;
-
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DISABLE_CONCURRENCY_ADJUSTER_FOR_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.ENABLE_CONCURRENCY_ADJUSTER_FOR_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.MIN_ISR_BASED_CONCURRENCY_ADJUSTMENT_PARAM;
 
 /**
  * Optional Parameters for {@link CruiseControlEndPoint#ADMIN}.

@@ -71,7 +71,7 @@ class TrainingTask implements Runnable {
     } finally {
       _loadMonitorTaskRunner.compareAndSetState(LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.TRAINING,
                                                 LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING);
-      LOG.info("load monitor finished training with time range [{}, {}] in {} seconds. Coefficients: {}, {}, {}",
+      LOG.info("Load monitor finished training with time range [{}, {}] in {} seconds. Coefficients: {}, {}, {}",
                _trainingStartMs, _trainingEndMs,
                (_time.milliseconds() - trainingTaskStartingMs) / 1000,
                ModelParameters.getCoefficient(LinearRegressionModelParameters.ModelCoefficient.LEADER_BYTES_IN),

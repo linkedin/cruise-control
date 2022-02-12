@@ -4,9 +4,9 @@
 
 package com.linkedin.cruisecontrol.servlet.response;
 
-import com.linkedin.cruisecontrol.http.CruiseControlRequestContext;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import java.io.IOException;
+import com.linkedin.cruisecontrol.http.CruiseControlRequestContext;
 
 
 /**
@@ -17,26 +17,25 @@ import java.io.IOException;
 public interface CruiseControlResponse {
 
     /**
-     * Write success response with the given parameters to the provided HTTP response.
+     * Based on the given parameters, keep the relevant response to be returned to the user and discard the remaining.
+     * Calls to this method intend to alleviate the potential memory pressure of response. Noop if called multiple times.
      *
      * @param parameters Parameters of the HTTP request of user.
-     * @param handler The request handler
      */
-
-    void writeSuccessResponse(CruiseControlParameters parameters, CruiseControlRequestContext handler) throws IOException;
-
-    /**
-    * Based on the given parameters, keep the relevant response to be returned to the user and discard the remaining.
-    * Calls to this method intend to alleviate the potential memory pressure of response. Noop if called multiple times.
-    *
-    * @param parameters Parameters of the HTTP request of user.
-    */
     void discardIrrelevantResponse(CruiseControlParameters parameters);
 
     /**
-    * Return the relevant response kept in-memory after {@link #discardIrrelevantResponse(CruiseControlParameters)} is called.
-    *
-    * @return The cached response, or {@code null} if the cached response is unavailable.
-    */
+     * Write success response with the given parameters to the provided HTTP response.
+     *
+     * @param parameters Parameters of the HTTP request of user
+     * @param handler The request handler
+     */
+    void writeSuccessResponse(CruiseControlParameters parameters, CruiseControlRequestContext handler) throws IOException;
+
+    /**
+     * Return the relevant response kept in-memory after {@link #discardIrrelevantResponse(CruiseControlParameters)} is called.
+     *
+     * @return The cached response, or {@code null} if the cached response is unavailable.
+     */
     String cachedResponse();
 }

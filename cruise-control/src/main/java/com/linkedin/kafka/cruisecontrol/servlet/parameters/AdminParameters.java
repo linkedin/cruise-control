@@ -19,7 +19,6 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ChangeExecutionConcurrencyParameters.maybeBuildChangeExecutionConcurrencyParameters;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.DropRecentBrokersParameters.maybeBuildDropRecentBrokersParameters;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.*;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.UpdateConcurrencyAdjusterParameters.maybeBuildUpdateConcurrencyAdjusterParameters;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.UpdateSelfHealingParameters.maybeBuildUpdateSelfHealingParameters;
 

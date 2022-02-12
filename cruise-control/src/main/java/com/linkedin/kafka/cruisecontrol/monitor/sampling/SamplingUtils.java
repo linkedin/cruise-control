@@ -72,7 +72,7 @@ public final class SamplingUtils {
    * CPU cores.
    *
    * @param pms Metric sample of partition.
-   * @param brokerLoad load information for the broker that the leader of the partition resides.
+   * @param brokerLoad Load information for the broker that the leader of the partition resides.
    * @param commonMetricDef Definitions to look up the metric info.
    * @param numCpuCores Number of CPU cores.
    * @return The estimated CPU utilization of the leader for the partition based on the static model, or {@code null}
@@ -155,7 +155,7 @@ public final class SamplingUtils {
    * @param cluster Kafka cluster.
    * @param leaderDistribution The leader count per topic/broker
    * @param tpDotNotHandled The original topic name that may contain dots.
-   * @param brokerLoadById load information for brokers by the broker id.
+   * @param brokerLoadById Load information for brokers by the broker id.
    * @param maxMetricTimestamp Maximum timestamp of the sampled metric during the sampling process.
    * @param cachedNumCoresByBroker Cached number of cores by broker.
    * @param skippedPartitionByBroker Number of skipped partition samples by broker ids.
@@ -213,7 +213,7 @@ public final class SamplingUtils {
    * Create a {@link BrokerMetricSample}, record the relevant metrics for the given broker, and return the sample.
    *
    * @param node Node hosting the broker.
-   * @param brokerLoadById load information for brokers by the broker id.
+   * @param brokerLoadById Load information for brokers by the broker id.
    * @param maxMetricTimestamp Maximum timestamp of the sampled metric during the sampling process.
    * @return Metric sample populated with broker metrics, or {@code null} if sample generation is skipped.
    */
@@ -253,7 +253,7 @@ public final class SamplingUtils {
    * @param tpDotNotHandled The original topic name that may contain dots.
    * @param tpWithDotHandled Topic partition with dot-handled topic name (see {@link SamplingUtils#partitionHandleDotInTopicName}).
    * @param leaderId Leader Id of partition.
-   * @param brokerLoad load information for the broker that the leader of the partition resides.
+   * @param brokerLoad Load information for the broker that the leader of the partition resides.
    * @param cachedNumCoresByBroker Cached number of cores by broker.
    * @return {@code true} to skip generating partition metric sample, {@code false} otherwise.
    */

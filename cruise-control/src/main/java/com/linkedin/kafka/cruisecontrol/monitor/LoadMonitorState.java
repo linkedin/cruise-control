@@ -246,7 +246,7 @@ public final class LoadMonitorState {
    * Set the common JSON generic attribute collection.
    *
    * @param verbose {@code true} if verbose, {@code false} otherwise.
-   * @param loadMonitorState load monitor state.
+   * @param loadMonitorState Load monitor state.
    */
   private void setCommonJsonGenericAttributeCollection(boolean verbose, Map<String, Object> loadMonitorState) {
     loadMonitorState.put(STATE, _loadMonitorTaskRunnerState);

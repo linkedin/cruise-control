@@ -9,8 +9,8 @@ import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Rebalance
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RebalanceParameters;
 import java.util.Map;
 
-import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REBALANCE_PARAMETER_OBJECT_CONFIG;
+import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
 public class RebalanceRequest extends AbstractAsyncRequest {
   protected RebalanceParameters _parameters;

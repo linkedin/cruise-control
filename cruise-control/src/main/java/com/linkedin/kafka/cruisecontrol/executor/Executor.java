@@ -203,9 +203,9 @@ public class Executor {
     _slowTaskAlertingBackoffTimeMs = config.getLong(ExecutorConfig.SLOW_TASK_ALERTING_BACKOFF_TIME_MS_CONFIG);
     _concurrencyAdjusterEnabled = new ConcurrentHashMap<>(ConcurrencyType.cachedValues().size());
     _concurrencyAdjusterEnabled.put(ConcurrencyType.INTER_BROKER_REPLICA,
-                                    config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_INTER_BROKER_REPLICA_ENABLED_CONFIG));
+                                     config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_INTER_BROKER_REPLICA_ENABLED_CONFIG));
     _concurrencyAdjusterEnabled.put(ConcurrencyType.LEADERSHIP,
-                                    config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_LEADERSHIP_ENABLED_CONFIG));
+                                     config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_LEADERSHIP_ENABLED_CONFIG));
     // Support for intra-broker replica movement is pending https://github.com/linkedin/cruise-control/issues/1299.
     _concurrencyAdjusterEnabled.put(ConcurrencyType.INTRA_BROKER_REPLICA, false);
     _concurrencyAdjusterMinIsrCheckEnabled = config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_ISR_CHECK_ENABLED_CONFIG);
@@ -342,7 +342,7 @@ public class Executor {
     }
 
     /**
-     * Initialize the reassignment concurrency adjustment with the load monitor and the initially requested reassignment concurrency.
+     * Initialize the reassignment concurrency adjustment with the Load monitor and the initially requested reassignment concurrency.
      *
      * @param loadMonitor Load monitor.
      * @param requestedInterBrokerPartitionMovementConcurrency The maximum number of concurrent inter-broker partition movements
@@ -1235,10 +1235,10 @@ public class Executor {
 
       if (_executorState.state() == STOPPING_EXECUTION) {
         notifyExecutionFinished(String.format("%sstopped by %s.", prefix, _executionStoppedByUser.get() ? "user" : "Cruise Control"),
-                                true);
+                       true);
       } else if (_executionException != null) {
         notifyExecutionFinished(String.format("%sinterrupted with exception %s.", prefix, _executionException.getMessage()),
-                                true);
+                       true);
       } else {
         notifyExecutionFinished(String.format("%sfinished.", prefix), false);
       }

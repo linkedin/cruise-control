@@ -236,13 +236,13 @@ public class UserTaskManager implements Closeable {
         return Collections.unmodifiableList(insertFuturesByUserTaskId(userTaskId, function, handler, parameters).futures());
       } else {
         throw new IllegalArgumentException(
-                String.format("There are %d steps in the session. Cannot add step %d.", userTaskInfo.futures().size(), step));
+            String.format("There are %d steps in the session. Cannot add step %d.", userTaskInfo.futures().size(), step));
       }
     } else {
       ensureHeaderNotPresent(handler, USER_TASK_HEADER_NAME);
       if (step != 0) {
         throw new IllegalArgumentException(
-                String.format("There are no step in the session. Cannot add step %d.", step));
+            String.format("There are no step in the session. Cannot add step %d.", step));
       }
       userTaskId = _uuidGenerator.randomUUID();
       userTaskInfo = insertFuturesByUserTaskId(userTaskId, function, handler, parameters);
@@ -825,7 +825,7 @@ public class UserTaskManager implements Closeable {
      * @return enumerated values in the same order as values()
      */
     public static List<TaskState> cachedValues() {
-      return CACHED_VALUES;
+      return Collections.unmodifiableList(CACHED_VALUES);
     }
   }
 

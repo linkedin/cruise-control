@@ -107,12 +107,19 @@ public class JwtSecurityProviderIntegrationTest extends CruiseControlIntegration
     _tokenProviderServer.setHandler(new TestAuthenticatorHandler());
   }
 
+  /**
+   * Sets up the test environment.
+   */
   @Before
   public void setup() throws Exception {
     _tokenProviderServer.start();
     super.start();
   }
 
+  /**
+   * Tears down the test environment
+   * @throws Exception
+   */
   @After
   public void teardown() throws Exception {
     super.stop();

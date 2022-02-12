@@ -1,19 +1,8 @@
 <?xml version="1.0"?>
 <!DOCTYPE suppressions PUBLIC
-    "-//Puppy Crawl//DTD Suppressions 1.1//EN"
-    "http://www.puppycrawl.com/dtds/suppressions_1_1.dtd">
+        "-//Puppy Crawl//DTD Suppressions 1.1//EN"
+        "http://www.puppycrawl.com/dtds/suppressions_1_1.dtd">
 <suppressions>
   <suppress checks="RegexpHeader" files="com[\\/]linkedin[\\/]kafka[\\/]cruisecontrol[\\/]testutils"/>
   <suppress checks="MemberName" files="BrokerCapacityConfigFileResolver.java"/>
-  <suppress checks="HideUtilityClassConstructor" files="AnnotationMappers.java"/>
-  <suppress checks="HideUtilityClassConstructor" files="OpenApiRoutePublisher.java"/>
-  <suppress checks="ModifierOrder" files="OpenApiRoutePublisher.java"/>
-  <suppress checks="HideUtilityClassConstructor" files="OpenApiSpecGenerator.java"/>
-  <suppress checks="MissingJavadocMethod" files="OpenApiSpecGenerator.java"/>
-  <suppress checks="ModifierOrder" files="OpenApiSpecGenerator.java"/>
-  <suppress checks="MissingJavadocMethod" files="MainVerticle.java"/>
-  <suppress checks="MissingJavadocMethod" files="OpenApiRoutePublisher.java"/>
-  <suppress checks="MissingJavadocMethod" files=".*Test.*.java"/>
-  <suppress checks="MissingJavadocMethod" files="VertxPath.java"/>
-  <suppress checks="LineLength" files="SwaggerApi.java"/>
 </suppressions>

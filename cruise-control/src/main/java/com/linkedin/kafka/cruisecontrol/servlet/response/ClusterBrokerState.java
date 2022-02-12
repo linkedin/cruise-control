@@ -220,8 +220,4 @@ public class ClusterBrokerState {
                               _offlineLogDirsByBrokerId.get(brokerId).toString()));
     }
   }
-
-  public Map<Integer, Integer> getLeaderCountByBrokerId() {
-    return _leaderCountByBrokerId;
-  }
 }

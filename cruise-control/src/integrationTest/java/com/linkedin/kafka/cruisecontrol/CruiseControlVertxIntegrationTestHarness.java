@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ * Copyright 2022 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 package com.linkedin.kafka.cruisecontrol;
 
@@ -27,12 +27,21 @@ public class CruiseControlVertxIntegrationTestHarness extends CCKafkaIntegration
         return Collections.emptyMap();
     }
 
+    /**
+     *
+     * @param endpoint Endpoint that the client sends the request to
+     * @return The response code of the HTTP response
+     * @throws Exception
+     */
     public Integer getResponseCode(String endpoint) throws Exception {
         URL url = new URL("http://localhost:" + _vertxPort + "/kafkacruisecontrol/" + endpoint);
         HttpURLConnection huc = (HttpURLConnection) url.openConnection();
         return huc.getResponseCode();
     }
 
+    /**
+     * Sets up the test environment with the given config
+     */
     private void setupConfig() {
         Properties properties = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
         properties.put(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
@@ -43,6 +52,10 @@ public class CruiseControlVertxIntegrationTestHarness extends CCKafkaIntegration
         _config = new KafkaCruiseControlConfig(properties);
     }
 
+    /**
+     * Starts the test environment
+     * @throws Exception
+     */
     public void start() throws Exception {
         super.setUp();
         _brokers.values().forEach(CCEmbeddedBroker::startup);
@@ -52,6 +65,9 @@ public class CruiseControlVertxIntegrationTestHarness extends CCKafkaIntegration
         _vertxApp.start();
     }
 
+    /**
+     * Stops the test environment
+     */
     public void stop() {
         if (_vertxApp != null) {
             _vertxApp.stop();

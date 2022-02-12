@@ -23,7 +23,7 @@ import static java.lang.Math.max;
 
 
 /**
- * A class for representing load information for each resource. Each load in a cluster must have the same number of
+ * A class for representing Load information for each resource. Each load in a cluster must have the same number of
  * windows.
  */
 public class Load implements Serializable {
@@ -155,11 +155,11 @@ public class Load implements Serializable {
   /**
    * Overwrite the load using the given AggregatedMetricValues
    *
-   * @param loadToSet load to set.
+   * @param loadToSet Load to set.
    */
   void setLoad(AggregatedMetricValues loadToSet) {
     if (loadToSet.length() != _metricValues.length()) {
-      throw new IllegalArgumentException("load to set and load for the resources must have exactly "
+      throw new IllegalArgumentException("load to set and Load for the resources must have exactly "
                                          + _metricValues.length() + " entries.");
     }
     loadToSet.metricIds().forEach(id -> {
@@ -175,11 +175,11 @@ public class Load implements Serializable {
    * Overwrite the load for given metric with the given load.
    *
    * @param metricId the metric id to set.
-   * @param loadToSet load for the given metric id to overwrite the original load by snapshot time.
+   * @param loadToSet Load for the given metric id to overwrite the original load by snapshot time.
    */
   void setLoad(short metricId, MetricValues loadToSet) {
     if (loadToSet.length() != _metricValues.length()) {
-      throw new IllegalArgumentException("load to set and load for the resources must have exactly "
+      throw new IllegalArgumentException("Load to set and load for the resources must have exactly "
                                          + _metricValues.length() + " entries.");
     }
     MetricValues values = _metricValues.valuesFor(metricId);
@@ -227,7 +227,7 @@ public class Load implements Serializable {
   /**
    * Add the given load to this load.
    *
-   * @param loadToAdd load to add to this load.
+   * @param loadToAdd Load to add to this load.
    */
   void addLoad(Load loadToAdd) {
     _metricValues.add(loadToAdd.loadByWindows());
@@ -236,7 +236,7 @@ public class Load implements Serializable {
   /**
    * Add the given load for the given resource to this load.
    *
-   * @param loadToAdd load to add to this load for the given resource.
+   * @param loadToAdd Load to add to this load for the given resource.
    */
   void addLoad(AggregatedMetricValues loadToAdd) {
     if (!_metricValues.isEmpty()) {
@@ -247,7 +247,7 @@ public class Load implements Serializable {
   /**
    * Subtract the given load from this load.
    *
-   * @param loadToSubtract load to subtract from this load.
+   * @param loadToSubtract Load to subtract from this load.
    */
   void subtractLoad(Load loadToSubtract) {
     _metricValues.subtract(loadToSubtract.loadByWindows());
@@ -256,7 +256,7 @@ public class Load implements Serializable {
   /**
    * Subtract the given load for the given resource from this load.
    *
-   * @param loadToSubtract load to subtract from this load for the given resource.
+   * @param loadToSubtract Load to subtract from this load for the given resource.
    */
   void subtractLoad(AggregatedMetricValues loadToSubtract) {
     if (!_metricValues.isEmpty()) {
@@ -280,7 +280,7 @@ public class Load implements Serializable {
    *                  value is set to true, the returned result share the same value array with this object.
    *                  Otherwise, data copy will be made and a dedicated result will be returned.
    *
-   * @return load of the requested resource as a mapping from snapshot time to utilization for the given resource.
+   * @return Load of the requested resource as a mapping from snapshot time to utilization for the given resource.
    */
   AggregatedMetricValues loadFor(Resource resource, boolean shareValueArray) {
     return _metricValues.valuesFor(KafkaMetricDef.resourceToMetricIds(resource), shareValueArray);
@@ -312,9 +312,9 @@ public class Load implements Serializable {
    * @param out the output stream.
    */
   public void writeTo(OutputStream out) throws IOException {
-    out.write("<load>".getBytes(StandardCharsets.UTF_8));
+    out.write("<Load>".getBytes(StandardCharsets.UTF_8));
     _metricValues.writeTo(out);
-    out.write("</load>%n".getBytes(StandardCharsets.UTF_8));
+    out.write("</Load>%n".getBytes(StandardCharsets.UTF_8));
   }
 
   /**
@@ -322,6 +322,6 @@ public class Load implements Serializable {
    */
   @Override
   public String toString() {
-    return String.format("load[metricValues=%s]", _metricValues);
+    return String.format("Load[metricValues=%s]", _metricValues);
   }
 }

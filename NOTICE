@@ -8,11 +8,3 @@ This product includes Apache Kafka (http://kafka.apache.org)
 Copyright (c) 2017 The Apache Software Foundation
 License: Apache 2.0
 
-This project contains the following code and resources copied from project vertx-auto-swagger(github.com/anupsaund/vertx-auto-swagger):
-cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/vertx/generator/AnnotationMappers.java
-cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/vertx/generator/OpenApiRoutePublisher.java
-cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/vertx/generator/OpenApiSpecGenerator.java
-cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/vertx/generator/Required.java
-cruise-control/src/main/java/com/linkedin/kafka/cruisecontrol/vertx/generator/VertxPath.java
-cruise-control/src/main/resources/webroot
-
