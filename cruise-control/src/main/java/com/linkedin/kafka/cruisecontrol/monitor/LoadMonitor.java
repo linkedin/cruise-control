@@ -432,38 +432,30 @@ public class LoadMonitor {
                                    boolean allowCapacityEstimation,
                                    OperationProgress operationProgress)
       throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
-    ClusterModel clusterModel = clusterModel(DEFAULT_START_TIME_FOR_CLUSTER_MODEL, nowMs, requirements, allowCapacityEstimation, operationProgress);
-    // Micro optimization: put the broker stats construction out of the lock.
-    BrokerStats brokerStats = clusterModel.brokerStats(_config);
-    // update the cached brokerLoadStats
-    synchronized (this) {
-      _cachedBrokerLoadStats = brokerStats;
-      _cachedBrokerLoadGeneration = clusterModel.generation();
-    }
-    return clusterModel;
+    return clusterModel(DEFAULT_START_TIME_FOR_CLUSTER_MODEL, nowMs, requirements, allowCapacityEstimation, operationProgress);
   }
 
   /**
    * Get the most recent cluster load model before the given timestamp.
    *
-   * @param now The current time in millisecond.
+   * @param nowMs The current time in millisecond.
    * @param requirements the load requirements for getting the cluster model.
-   * @param allowCapacityEstimation whether allow capacity estimation in cluster model if the underlying live broker capacity is unavailable.
    * @param populateReplicaPlacementInfo whether populate replica placement information.
+   * @param allowCapacityEstimation whether allow capacity estimation in cluster model if the underlying live broker capacity is unavailable.
    * @param operationProgress the progress to report.
    * @return A cluster model with the configured number of windows whose timestamp is before given timestamp.
    * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
    * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity in time.
    * @throws BrokerCapacityResolutionException If broker capacity resolver fails to resolve broker capacity.
    */
-  public ClusterModel clusterModel(long now,
+  public ClusterModel clusterModel(long nowMs,
                                    ModelCompletenessRequirements requirements,
-                                   boolean allowCapacityEstimation,
                                    boolean populateReplicaPlacementInfo,
+                                   boolean allowCapacityEstimation,
                                    OperationProgress operationProgress)
           throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
-    ClusterModel clusterModel = clusterModel(DEFAULT_START_TIME_FOR_CLUSTER_MODEL, now, requirements,
-            allowCapacityEstimation, operationProgress, populateReplicaPlacementInfo);
+    ClusterModel clusterModel = clusterModel(DEFAULT_START_TIME_FOR_CLUSTER_MODEL, nowMs, requirements,
+            populateReplicaPlacementInfo, allowCapacityEstimation, operationProgress);
     // Micro optimization: put the broker stats construction out of the lock.
     BrokerStats brokerStats = clusterModel.brokerStats(_config);
     // update the cached brokerLoadStats
@@ -494,30 +486,6 @@ public class LoadMonitor {
                                    OperationProgress operationProgress)
       throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
     return clusterModel(from, to, requirements, false, allowCapacityEstimation, operationProgress);
-  }
-
-  /**
-   * Get the cluster load model for a time range.
-   *
-   * @param from start of the time window
-   * @param to end of the time window
-   * @param requirements the load completeness requirements.
-   * @param allowCapacityEstimation whether allow capacity estimation in cluster model if the underlying live broker capacity is unavailable.
-   * @param operationProgress the progress of the job to report.
-   * @param populateReplicaPlacementInfo whether populate replica placement information.
-   * @return A cluster model with the available snapshots whose timestamp is in the given window.
-   * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
-   * @throws TimeoutException If broker capacity resolver is unable to resolve broker capacity in time.
-   * @throws BrokerCapacityResolutionException If broker capacity resolver fails to resolve broker capacity.
-   */
-  public ClusterModel clusterModel(long from,
-                                   long to,
-                                   ModelCompletenessRequirements requirements,
-                                   boolean allowCapacityEstimation,
-                                   OperationProgress operationProgress,
-                                   boolean populateReplicaPlacementInfo)
-          throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
-    return clusterModel(from, to, requirements, populateReplicaPlacementInfo, allowCapacityEstimation, operationProgress);
   }
 
   /**

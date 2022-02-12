@@ -509,33 +509,17 @@ public class GoalOptimizer implements Runnable {
   }
 
   /**
-   * Log the progress of goal optimizer.
-   *
-   * @param isSelfHeal {@code true} if self-healing {@code false} otherwise.
-   * @param goalName Goal name.
-   * @param numOptimizedGoals Number of optimized goals.
-   * @param proposals Goal proposals.
-   */
-  private void logProgress(boolean isSelfHeal,
-                           String goalName,
-                           int numOptimizedGoals,
-                           Set<ExecutionProposal> proposals) {
-    LOG.debug("[{}/{}] Generated {} proposals for {}{}.", numOptimizedGoals, _goalsByPriority.size(), proposals.size(),
-              isSelfHeal ? "self-healing " : "", goalName);
-    LOG.trace("Proposals for {}{}.{}%n", isSelfHeal ? "self-healing " : "", goalName, proposals);
-  }
-
-  /**
    * Checks if the list of Goals includes {@link #_intraBrokerGoals}
    * @param goals The list of goals to look in
    * @return return true if the list of goals contains an Intra Broker Goal
    */
   protected boolean containsIntraBrokerGoal(List<Goal> goals) {
     boolean result = false;
-    List<String> goalNames = AnalyzerUtils.convertGoalsToString(goals);
 
-    for (String goal : AnalyzerUtils.convertGoalsToString(_intraBrokerGoals)) {
-      if (goalNames.contains(goal)) {
+    HashSet<Goal> intraBrokerGoals = new HashSet<>(_intraBrokerGoals);
+
+    for (Goal goal : goals) {
+      if (intraBrokerGoals.contains(goal)) {
         result = true;
         break;
       }
@@ -591,10 +575,9 @@ public class GoalOptimizer implements Runnable {
         ModelCompletenessRequirements requirements = _loadMonitor.meetCompletenessRequirements(_defaultModelCompletenessRequirements)
                                                      ? _defaultModelCompletenessRequirements : _requirementsWithAvailableValidWindows;
 
-        ClusterModel clusterModel = null;
         // We check for Intra broker goals among Default goals - if we have intra broker goals, set replicaPlacementInfo to true
-        clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), requirements, _allowCapacityEstimation,
-                containsIntraBrokerGoal(_goalsByPriority), operationProgress);
+        ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), requirements, containsIntraBrokerGoal(_goalsByPriority),
+                _allowCapacityEstimation, operationProgress);
 
         if (!clusterModel.topics().isEmpty()) {
           OptimizerResult result = optimizations(clusterModel, _goalsByPriority, operationProgress);

@@ -98,7 +98,7 @@ public final class AnomalyDetectorConfig {
       + " If empty, uses the default.goals for self healing.";
 
   /**
-   * <code>self.healing.goals</code>
+   * <code>self.healing.intra.broker.goals</code>
    */
   public static final String SELF_HEALING_INTRA_BROKER_GOALS_CONFIG = "self.healing.intra.broker.goals";
   public static final List<String> DEFAULT_SELF_HEALING_INTRA_BROKER_GOALS = Collections.emptyList();
@@ -123,7 +123,7 @@ public final class AnomalyDetectorConfig {
   public static final String ANOMALY_DETECTION_GOALS_DOC = "The goals that anomaly detector should detect if they are violated.";
 
   /**
-   * <code>anomaly.detection.goals</code>
+   * <code>anomaly.detection.intra.broker.goals</code>
    */
   public static final String ANOMALY_DETECTION_INTRA_BROKER_GOALS_CONFIG = "anomaly.detection.intra.broker.goals";
   public static final String DEFAULT_ANOMALY_DETECTION_INTRA_BROKER_GOALS = new StringJoiner(",")

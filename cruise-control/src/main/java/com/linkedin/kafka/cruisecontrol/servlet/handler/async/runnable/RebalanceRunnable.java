@@ -74,10 +74,10 @@ public class RebalanceRunnable extends GoalBasedOperationRunnable {
                            boolean excludeRecentlyRemovedBrokers,
                            String anomalyId,
                            Supplier<String> reasonSupplier,
-                           boolean isRebalanceDiskMode,
-                           boolean ignoreProposalCache,
+                           boolean stopOngoingExecution,
                            boolean skipHardGoalCheck,
-                           boolean stopOngoingExecution) {
+                           boolean ignoreProposalCache,
+                           boolean isRebalanceDiskMode) {
     super(kafkaCruiseControl, new OperationFuture("Rebalance for Self-Healing"), selfHealingGoals, allowCapacityEstimation,
             excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, anomalyId, reasonSupplier, stopOngoingExecution, skipHardGoalCheck);
     _concurrentInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
@@ -90,7 +90,6 @@ public class RebalanceRunnable extends GoalBasedOperationRunnable {
     _ignoreProposalCache = ignoreProposalCache;
     _destinationBrokerIds = SELF_HEALING_DESTINATION_BROKER_IDS;
     _isRebalanceDiskMode = isRebalanceDiskMode;
-
   }
 
   public RebalanceRunnable(KafkaCruiseControl kafkaCruiseControl,

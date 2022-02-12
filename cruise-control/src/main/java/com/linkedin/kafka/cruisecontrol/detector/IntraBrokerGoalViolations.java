@@ -30,7 +30,7 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyTyp
 
 
 /**
- * A class that holds all the goal violations.
+ * A class that holds the intra broker goal violations.
  */
 public class IntraBrokerGoalViolations extends KafkaAnomaly {
   private static final Logger LOG = LoggerFactory.getLogger(IntraBrokerGoalViolations.class);
@@ -143,9 +143,9 @@ public class IntraBrokerGoalViolations extends KafkaAnomaly {
             _excludeRecentlyRemovedBrokers,
             _anomalyId.toString(),
             reasonSupplier(),
+            stopOngoingExecution(),
             true,
             true,
-            true,
-            stopOngoingExecution());
+            true);
   }
 }

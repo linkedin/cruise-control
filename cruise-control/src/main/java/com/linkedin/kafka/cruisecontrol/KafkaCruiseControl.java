@@ -362,7 +362,7 @@ public class KafkaCruiseControl {
                                    OperationProgress operationProgress,
                                    boolean populateReplicaPlacementInfo)
           throws NotEnoughValidWindowsException, TimeoutException, BrokerCapacityResolutionException {
-    return _loadMonitor.clusterModel(timeMs(), requirements, allowCapacityEstimation, populateReplicaPlacementInfo, operationProgress);
+    return _loadMonitor.clusterModel(timeMs(), requirements, populateReplicaPlacementInfo, allowCapacityEstimation, operationProgress);
   }
 
   /**
