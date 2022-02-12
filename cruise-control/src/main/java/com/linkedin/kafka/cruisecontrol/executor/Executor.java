@@ -202,11 +202,10 @@ public class Executor {
     _minExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
     _slowTaskAlertingBackoffTimeMs = config.getLong(ExecutorConfig.SLOW_TASK_ALERTING_BACKOFF_TIME_MS_CONFIG);
     _concurrencyAdjusterEnabled = new ConcurrentHashMap<>(ConcurrencyType.cachedValues().size());
-    boolean allEnabled = config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_ENABLED_CONFIG);
     _concurrencyAdjusterEnabled.put(ConcurrencyType.INTER_BROKER_REPLICA,
-                                    allEnabled || config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_INTER_BROKER_REPLICA_ENABLED_CONFIG));
+                                    config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_INTER_BROKER_REPLICA_ENABLED_CONFIG));
     _concurrencyAdjusterEnabled.put(ConcurrencyType.LEADERSHIP,
-                                    allEnabled || config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_LEADERSHIP_ENABLED_CONFIG));
+                                    config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_LEADERSHIP_ENABLED_CONFIG));
     // Support for intra-broker replica movement is pending https://github.com/linkedin/cruise-control/issues/1299.
     _concurrencyAdjusterEnabled.put(ConcurrencyType.INTRA_BROKER_REPLICA, false);
     _concurrencyAdjusterMinIsrCheckEnabled = config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_ISR_CHECK_ENABLED_CONFIG);
