@@ -6,19 +6,12 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RebalanceRunnable;
-import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.StringJoiner;
 import java.util.function.Supplier;
 
 import static com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG;
@@ -32,71 +25,13 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyTyp
 /**
  * A class that holds the intra broker goal violations.
  */
-public class IntraBrokerGoalViolations extends KafkaAnomaly {
+public class IntraBrokerGoalViolations extends AbstractGoalViolations {
   private static final Logger LOG = LoggerFactory.getLogger(IntraBrokerGoalViolations.class);
-  public static final String UNFIXABLE_GOAL_VIOLATIONS = "Unfixable goal violations";
-  public static final String FIXABLE_GOAL_VIOLATIONS = "Fixable goal violations";
-  // The priority order of goals is maintained here.
-  protected Map<Boolean, List<String>> _violatedGoalsByFixability;
-  protected boolean _excludeRecentlyDemotedBrokers;
-  protected boolean _excludeRecentlyRemovedBrokers;
-  protected RebalanceRunnable _rebalanceRunnable;
-  protected ProvisionResponse _provisionResponse;
 
   /**
    * An anomaly to indicate goal violation(s).
    */
   public IntraBrokerGoalViolations() {
-  }
-
-  /**
-   * Add detected goal violation.
-   *
-   * @param goalName The name of the goal.
-   * @param fixable Whether the violated goal is fixable or not.
-   */
-  void addViolation(String goalName, boolean fixable) {
-    _violatedGoalsByFixability.computeIfAbsent(fixable, k -> new ArrayList<>()).add(goalName);
-  }
-
-  /**
-   * @param provisionResponse Aggregated provision response corresponding to this goal violation.
-   */
-  public void setProvisionResponse(ProvisionResponse provisionResponse) {
-    _provisionResponse = provisionResponse;
-  }
-
-  /**
-   * @return Aggregated provision response corresponding to this goal violation.
-   */
-  public ProvisionResponse provisionResponse() {
-    return _provisionResponse;
-  }
-
-  /**
-   * @return All the goal violations.
-   */
-  public Map<Boolean, List<String>> violatedGoalsByFixability() {
-    return Collections.unmodifiableMap(_violatedGoalsByFixability);
-  }
-
-  @Override
-  public boolean fix() throws KafkaCruiseControlException {
-    boolean hasProposalsToFix = false;
-    if (_violatedGoalsByFixability.get(false) == null) {
-      try {
-        // Fix the fixable goal violations with rebalance operation.
-        _optimizationResult = new OptimizationResult(_rebalanceRunnable.computeResult(), null);
-        hasProposalsToFix = hasProposalsToFix();
-        // Ensure that only the relevant response is cached to avoid memory pressure.
-        _optimizationResult.discardIrrelevantAndCacheJsonAndPlaintext();
-      } catch (IllegalStateException e) {
-        LOG.warn("Got exception when trying to fix the cluster for violated goals {}: {}", _violatedGoalsByFixability.get(true), e.getMessage());
-      }
-    } else {
-      LOG.info("Skip fixing goal violations due to unfixable goal violations {} detected.", _violatedGoalsByFixability.get(false));
-    }
-    return hasProposalsToFix;
   }
 
   @Override
@@ -107,23 +42,6 @@ public class IntraBrokerGoalViolations extends KafkaAnomaly {
   @Override
   public Supplier<String> reasonSupplier() {
     return () -> String.format("Self healing for %s: %s", INTRA_BROKER_GOAL_VIOLATION, this);
-  }
-
-  @Override
-  public String toString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append(String.format("{%s: {", UNFIXABLE_GOAL_VIOLATIONS));
-    StringJoiner joiner = new StringJoiner(",");
-    _violatedGoalsByFixability.getOrDefault(false, Collections.emptyList()).forEach(joiner::add);
-    sb.append(joiner.toString());
-    sb.append(String.format("}, %s: {", FIXABLE_GOAL_VIOLATIONS));
-    joiner = new StringJoiner(",");
-    _violatedGoalsByFixability.getOrDefault(true, Collections.emptyList()).forEach(joiner::add);
-    sb.append(joiner.toString());
-    sb.append(String.format("}, Exclude brokers recently (removed: %s demoted: %s)%s}",
-            _excludeRecentlyRemovedBrokers, _excludeRecentlyDemotedBrokers,
-            _provisionResponse == null ? "" : String.format(", Provision: %s", _provisionResponse)));
-    return sb.toString();
   }
 
   @Override
