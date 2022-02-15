@@ -133,7 +133,7 @@ public class ExecutionUtilsTest {
     ExecutionUtils.processElectLeadersResult(null, Collections.emptySet());
 
     KafkaFutureImpl<Map<TopicPartition, Optional<Throwable>>> partitions = EasyMock.mock(KafkaFutureImpl.class);
-    Constructor<ElectLeadersResult> constructor = ElectLeadersResult.class.getDeclaredConstructor(KafkaFutureImpl.class);
+    Constructor<ElectLeadersResult> constructor = ElectLeadersResult.class.getDeclaredConstructor(KafkaFuture.class);
     constructor.setAccessible(true);
     ElectLeadersResult result;
 

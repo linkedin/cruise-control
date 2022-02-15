@@ -63,7 +63,6 @@ import org.apache.kafka.common.utils.SystemTime;
 import org.apache.zookeeper.client.ZKClientConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.Option;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -537,10 +536,9 @@ public final class KafkaCruiseControlUtils {
                                                   String metricType,
                                                   boolean zkSecurityEnabled,
                                                   ZKClientConfig zkClientConfig) {
-    Option<String> zkClientName = Option.apply(String.format("%s-%s", metricGroup, metricType));
-    Option<ZKClientConfig> zkConfig = Option.apply(zkClientConfig);
+    String zkClientName = String.format("%s-%s", metricGroup, metricType);
     return KafkaZkClient.apply(connectString, zkSecurityEnabled, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
-                               new SystemTime(), metricGroup, metricType, zkClientName, zkConfig);
+                               new SystemTime(), zkClientName, zkClientConfig, metricGroup, metricType, false);
   }
 
   /**

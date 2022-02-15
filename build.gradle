@@ -400,6 +400,8 @@ project(':cruise-control-metrics-reporter') {
     api "org.apache.logging.log4j:log4j-slf4j-impl:2.17.1"
     api "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion"
     api "org.apache.kafka:kafka-clients:$kafkaVersion"
+    api "com.yammer.metrics:metrics-core:2.2.0"
+    api "org.apache.zookeeper:zookeeper:${zookeeperVersion}"
 
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.bouncycastle:bcpkix-jdk15on:1.70'
