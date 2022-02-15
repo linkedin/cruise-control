@@ -375,7 +375,6 @@ project(':cruise-control') {
     }
   }
 
-  check.dependsOn integrationTest
   compileIntegrationTestJava.dependsOn copyDependantLibs
 
   jar {
