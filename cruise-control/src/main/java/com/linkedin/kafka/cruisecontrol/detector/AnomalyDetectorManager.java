@@ -100,6 +100,9 @@ public class AnomalyDetectorManager {
     Long diskFailureDetectionIntervalMs = config.getLong(AnomalyDetectorConfig.DISK_FAILURE_DETECTION_INTERVAL_MS_CONFIG);
     _anomalyDetectionIntervalMsByType.put(DISK_FAILURE, diskFailureDetectionIntervalMs == null ? anomalyDetectionIntervalMs
                                                                                                : diskFailureDetectionIntervalMs);
+    Long brokerFailureDetectionIntervalMs = config.getLong(AnomalyDetectorConfig.BROKER_FAILURE_DETECTION_INTERVAL_MS_CONFIG);
+    _anomalyDetectionIntervalMsByType.put(BROKER_FAILURE, brokerFailureDetectionIntervalMs == null ? anomalyDetectionIntervalMs
+                                                                                                   : brokerFailureDetectionIntervalMs);
     _brokerFailureDetectionBackoffMs = config.getLong(AnomalyDetectorConfig.BROKER_FAILURE_DETECTION_BACKOFF_MS_CONFIG);
     _anomalyNotifier = config.getConfiguredInstance(AnomalyDetectorConfig.ANOMALY_NOTIFIER_CLASS_CONFIG,
                                                     AnomalyNotifier.class);
@@ -144,8 +147,7 @@ public class AnomalyDetectorManager {
                          ScheduledExecutorService detectorScheduler) {
     _anomalies = anomalies;
     _anomalyDetectionIntervalMsByType = new HashMap<>();
-    KafkaAnomalyType.cachedValues().stream().filter(type -> type != BROKER_FAILURE)
-                    .forEach(type -> _anomalyDetectionIntervalMsByType.put(type, anomalyDetectionIntervalMs));
+    KafkaAnomalyType.cachedValues().stream().forEach(type -> _anomalyDetectionIntervalMsByType.put(type, anomalyDetectionIntervalMs));
 
     _brokerFailureDetectionBackoffMs = anomalyDetectionIntervalMs;
     _anomalyNotifier = anomalyNotifier;
@@ -227,12 +229,11 @@ public class AnomalyDetectorManager {
    * Start each anomaly detector.
    */
   public void startDetection() {
-    LOG.info("Starting {} detector.", BROKER_FAILURE);
-    _brokerFailureDetector.startDetection();
     scheduleDetectorAtFixedRate(GOAL_VIOLATION, _goalViolationDetector);
     scheduleDetectorAtFixedRate(METRIC_ANOMALY, _metricAnomalyDetector);
     scheduleDetectorAtFixedRate(TOPIC_ANOMALY, _topicAnomalyDetector);
     scheduleDetectorAtFixedRate(DISK_FAILURE, _diskFailureDetector);
+    scheduleDetectorAtFixedRate(BROKER_FAILURE, _brokerFailureDetector);
     LOG.debug("Starting {} detector.", MAINTENANCE_EVENT);
     _detectorScheduler.submit(_maintenanceEventDetector);
     LOG.debug("Starting anomaly handler.");
@@ -261,7 +262,6 @@ public class AnomalyDetectorManager {
     } catch (InterruptedException e) {
       LOG.warn("Interrupted while waiting for anomaly detector to shutdown.");
     }
-    _brokerFailureDetector.shutdown();
     _anomalyLoggerExecutor.shutdownNow();
     LOG.info("Anomaly detector shutdown completed.");
   }

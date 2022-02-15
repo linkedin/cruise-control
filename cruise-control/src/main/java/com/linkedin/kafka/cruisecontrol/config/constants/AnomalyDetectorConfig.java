@@ -190,6 +190,15 @@ public final class AnomalyDetectorConfig {
       + "will run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ".";
 
   /**
+   * <code>broker.failure.detection.interval.ms</code>
+   */
+  public static final String BROKER_FAILURE_DETECTION_INTERVAL_MS_CONFIG = "broker.failure.detection.interval.ms";
+  public static final Long DEFAULT_BROKER_FAILURE_DETECTION_INTERVAL_MS = null;
+  public static final String BROKER_FAILURE_DETECTION_INTERVAL_MS_DOC = "The interval in millisecond that broker failure "
+          + "detector will run to detect broker failures. If this interval time is not specified, disk failure detector "
+          + "will run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ".";
+
+  /**
    * <code>broker.failure.detection.backoff.ms</code>
    */
   public static final String BROKER_FAILURE_DETECTION_BACKOFF_MS_CONFIG = "broker.failure.detection.backoff.ms";
@@ -399,6 +408,11 @@ public final class AnomalyDetectorConfig {
                             DEFAULT_DISK_FAILURE_DETECTION_INTERVAL_MS,
                             ConfigDef.Importance.LOW,
                             DISK_FAILURE_DETECTION_INTERVAL_MS_DOC)
+                    .define(BROKER_FAILURE_DETECTION_INTERVAL_MS_CONFIG,
+                            ConfigDef.Type.LONG,
+                            DEFAULT_BROKER_FAILURE_DETECTION_INTERVAL_MS,
+                            ConfigDef.Importance.LOW,
+                            BROKER_FAILURE_DETECTION_INTERVAL_MS_DOC)
                     .define(BROKER_FAILURE_DETECTION_BACKOFF_MS_CONFIG,
                             ConfigDef.Type.LONG,
                             DEFAULT_BROKER_FAILURE_DETECTION_BACKOFF_MS,

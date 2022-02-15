@@ -7,9 +7,9 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
-import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCEmbeddedBroker;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
@@ -18,10 +18,13 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Queue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
@@ -68,16 +71,14 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
     try {
       String failedBrokerListString = detector.loadPersistedFailedBrokerList();
       assertTrue(failedBrokerListString.isEmpty());
-      // Start detection.
-      detector.startDetection();
+      // Run a detection and ensure no anomalies
+      detector.run();
       assertTrue(anomalies.isEmpty());
+      // Kill a broker and ensure an anomaly is detected
       int brokerId = 0;
       long anomalyTime = mockTime.milliseconds();
       killBroker(brokerId);
-      long start = System.currentTimeMillis();
-      while (anomalies.isEmpty() && System.currentTimeMillis() < start + 30000) {
-        // wait for the anomalies to be drained.
-      }
+      detector.run();
       assertEquals("One broker failure should have been detected before timeout.", 1, anomalies.size());
       failedBrokerListString = detector.loadPersistedFailedBrokerList();
       assertEquals(String.format("%d=%d", brokerId, anomalyTime), failedBrokerListString);
@@ -89,22 +90,20 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
       assertFalse(brokerFailures.fixable());
 
       // Ensure that broker failure is detected as long as the broker is down.
-      detector.detectBrokerFailures(false);
+      detector.run();
       assertEquals("One broker failure should have been detected before timeout.", 1, anomalies.size());
       // Bring the broker back
       restartDeadBroker(brokerId);
-      detector.detectBrokerFailures(true);
+      detector.run();
       assertTrue(detector.failedBrokers().isEmpty());
       failedBrokerListString = detector.loadPersistedFailedBrokerList();
       assertTrue(failedBrokerListString.isEmpty());
       // Kill the 2nd broker
       killBroker(1);
-      while (anomalies.size() == 1 && System.currentTimeMillis() < start + 30000) {
-        // wait for the anomalies to be drained.
-      }
+
+      detector.run();
       assertEquals("Two broker failure should have been detected before timeout.", 2, anomalies.size());
     } finally {
-      detector.shutdown();
       Files.delete(failedBrokersFile.toPath());
     }
   }
@@ -121,12 +120,11 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
       int brokerId = 0;
       long anomalyTime = mockTime.milliseconds();
       killBroker(brokerId);
-      detector.startDetection();
+      detector.run();
       assertEquals(Collections.singletonMap(brokerId, 100L), detector.failedBrokers());
       failedBrokerListString = detector.loadPersistedFailedBrokerList();
       assertEquals(String.format("%d=%d", brokerId, anomalyTime), failedBrokerListString);
     } finally {
-      detector.shutdown();
       Files.delete(failedBrokersFile.toPath());
     }
   }
@@ -140,29 +138,23 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
     try {
       String failedBrokerListString = detector.loadPersistedFailedBrokerList();
       assertTrue(failedBrokerListString.isEmpty());
-      detector.startDetection();
       int brokerId = 0;
       long anomalyTime = mockTime.milliseconds();
+      // kill a broker and ensure the anomaly is detected
       killBroker(brokerId);
-      long start = System.currentTimeMillis();
-      while (anomalies.isEmpty() && System.currentTimeMillis() < start + 30000) {
-        // Wait for the anomalies to be drained.
-      }
+      detector.run();
       assertEquals(Collections.singletonMap(brokerId, anomalyTime), detector.failedBrokers());
-      // shutdown, advance the clock and create a new detector.
-      detector.shutdown();
-
+      // advance the clock and create a new detector.
       mockTime.sleep(100L);
       detector = createBrokerFailureDetector(anomalies, mockTime, failedBrokersFile.getPath());
       failedBrokerListString = detector.loadPersistedFailedBrokerList();
       assertEquals(String.format("%d=%d", brokerId, anomalyTime), failedBrokerListString);
       // start the newly created detector and the broker down time should remain previous time.
-      detector.startDetection();
+      detector.run();
       assertEquals(Collections.singletonMap(brokerId, anomalyTime), detector.failedBrokers());
       failedBrokerListString = detector.loadPersistedFailedBrokerList();
       assertEquals(String.format("%d=%d", brokerId, anomalyTime), failedBrokerListString);
     } finally {
-      detector.shutdown();
       Files.delete(failedBrokersFile.toPath());
     }
   }
@@ -173,10 +165,12 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
     EasyMock.expect(mockLoadMonitor.brokersWithReplicas(anyLong())).andAnswer(() -> new HashSet<>(Arrays.asList(0, 1))).anyTimes();
     EasyMock.replay(mockLoadMonitor);
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    props.setProperty(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, zookeeper().connectionString());
-    props.setProperty(ExecutorConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG, "false");
     props.setProperty(AnomalyDetectorConfig.FAILED_BROKERS_FILE_PATH_CONFIG, failedBrokersFilePath);
     KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
+    Map<String, Object> adminClientConfigs = KafkaCruiseControlUtils.parseAdminClientConfigs(kafkaCruiseControlConfig);
+    adminClientConfigs.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
+    AdminClient mockAdminClient = KafkaCruiseControlUtils.createAdminClient(adminClientConfigs);
+    EasyMock.expect(mockKafkaCruiseControl.adminClient()).andReturn(mockAdminClient);
     EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).atLeastOnce();
     EasyMock.expect(mockKafkaCruiseControl.loadMonitor()).andReturn(mockLoadMonitor).atLeastOnce();
     EasyMock.expect(mockKafkaCruiseControl.timeMs()).andReturn(time.milliseconds()).atLeastOnce();
