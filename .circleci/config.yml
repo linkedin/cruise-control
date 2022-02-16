@@ -45,7 +45,9 @@ jobs:
       - restore_cache:
           key: dependency-cache-{{ checksum "build.gradle" }}
       - run:
-          command: ./gradlew --no-daemon -PmaxParallelForks=1 clean integrationTest
+          command: ./gradlew --no-daemon clean
+      - run:
+          command: ./gradlew --no-daemon -PmaxParallelForks=1 integrationTest
       - save_cache:
           key: dependency-cache-{{ checksum "build.gradle" }}
           paths:
@@ -58,6 +60,8 @@ jobs:
           path: ~/test-results
       - store_artifacts:
           path: ~/test-results
+      - store_artifacts:
+          path: build/libs
 
   publish:
     working_directory: ~/workspace
@@ -78,10 +82,12 @@ workflows:
           filters:
             tags:
               only: /.*/
+      - integration-test:
+          requires:
+            - build
       - publish:
           requires:
             - build
-            - integration-test
           filters:
             branches:
               ignore: /.*/
