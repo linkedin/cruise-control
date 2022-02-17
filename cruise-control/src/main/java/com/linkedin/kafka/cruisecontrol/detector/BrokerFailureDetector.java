@@ -6,8 +6,12 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
+import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.ZKConfigUtils;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -20,17 +24,25 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
+import kafka.cluster.Broker;
+import kafka.zk.BrokerIdsZNode;
+import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.Node;
+import org.apache.zookeeper.client.ZKClientConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import kafka.zookeeper.ZNodeChildChangeHandler;
+import scala.jdk.javaapi.CollectionConverters;
 
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
+import static java.util.stream.Collectors.toSet;
 import static org.apache.commons.io.FileUtils.readFileToString;
 import static org.apache.commons.io.FileUtils.writeStringToFile;
 
@@ -43,18 +55,33 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector implements Ru
   public static final String FAILED_BROKERS_OBJECT_CONFIG = "failed.brokers.object";
   // Config to indicate whether detected broker failures are fixable or not.
   public static final String BROKER_FAILURES_FIXABLE_CONFIG = "broker.failures.fixable.object";
+  private static final String ZK_BROKER_FAILURE_METRIC_GROUP = "CruiseControlAnomaly";
+  private static final String ZK_BROKER_FAILURE_METRIC_TYPE = "BrokerFailure";
   public static final long CLIENT_REQUEST_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(30);
+  private final boolean _useKafkaAPI;
   private final File _failedBrokersFile;
-  private final AdminClient _adminClient;
   private final Map<Integer, Long> _failedBrokers;
   private final short _fixableFailedBrokerCountThreshold;
   private final double _fixableFailedBrokerPercentageThreshold;
+  private AdminClient _adminClient;
+  private KafkaZkClient _kafkaZkClient;
   private Set<Integer> _aliveBrokers;
+  private ExecutorService _detectionExecutor;
 
   public BrokerFailureDetector(Queue<Anomaly> anomalies, KafkaCruiseControl kafkaCruiseControl) {
     super(anomalies, kafkaCruiseControl);
     KafkaCruiseControlConfig config = _kafkaCruiseControl.config();
-    _adminClient = kafkaCruiseControl.adminClient();
+    _useKafkaAPI = config.getBoolean(AnomalyDetectorConfig.KAFKA_BROKER_FAILURE_DETECTION_ENABLE_CONFIG);
+    if (_useKafkaAPI) {
+      _adminClient = kafkaCruiseControl.adminClient();
+    } else {
+      String zkUrl = config.getString(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG);
+      boolean zkSecurityEnabled = config.getBoolean(ExecutorConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
+      ZKClientConfig zkClientConfig = ZKConfigUtils.zkClientConfigFromKafkaConfig(config);
+      _kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zkUrl, ZK_BROKER_FAILURE_METRIC_GROUP, ZK_BROKER_FAILURE_METRIC_TYPE,
+              zkSecurityEnabled, zkClientConfig);
+      _detectionExecutor = Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("BrokerFailureDetectorExecutor"));
+    }
     _failedBrokers = new HashMap<>();
     _failedBrokersFile = new File(config.getString(AnomalyDetectorConfig.FAILED_BROKERS_FILE_PATH_CONFIG));
     _fixableFailedBrokerCountThreshold = config.getShort(AnomalyDetectorConfig.FIXABLE_FAILED_BROKER_COUNT_THRESHOLD_CONFIG);
@@ -63,6 +90,18 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector implements Ru
     // Load the failed broker information.
     String failedBrokerListString = loadPersistedFailedBrokerList();
     parsePersistedFailedBrokers(failedBrokerListString);
+  }
+
+  public boolean useKafkaAPI() {
+    return _useKafkaAPI;
+  }
+
+  void startDetection() {
+    // Detect broker failures.
+    detectBrokerFailures(false);
+    // Register ZNodeChildChangeHandler to ZK.
+    _kafkaZkClient.registerZNodeChildChangeHandler(new BrokerFailureHandler());
+    _kafkaZkClient.getChildren(BrokerIdsZNode.path());
   }
 
   @Override
@@ -96,6 +135,22 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector implements Ru
 
   synchronized Map<Integer, Long> failedBrokers() {
     return new HashMap<>(_failedBrokers);
+  }
+
+  void shutdown() {
+    if (!_useKafkaAPI) {
+      _kafkaZkClient.unregisterZNodeChildChangeHandler(BrokerIdsZNode.path());
+      _detectionExecutor.shutdown();
+      try {
+        _detectionExecutor.awaitTermination(30, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        LOG.warn("Unable to shutdown BrokerFailureDetector normally, the active detection may be terminated.", e);
+        if (!_detectionExecutor.isTerminated()) {
+          _detectionExecutor.shutdownNow();
+        }
+      }
+      KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(_kafkaZkClient);
+    }
   }
 
   private void persistFailedBrokerList() {
@@ -150,8 +205,13 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector implements Ru
   }
 
   private Set<Integer> aliveBrokers() throws ExecutionException, InterruptedException, TimeoutException {
-    return _adminClient.describeCluster().nodes().get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-      .stream().map(Node::id).collect(Collectors.toSet());
+    if (_useKafkaAPI) {
+      return _adminClient.describeCluster().nodes().get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+              .stream().map(Node::id).collect(toSet());
+    } else {
+      return CollectionConverters.asJava(_kafkaZkClient.getAllBrokersInCluster())
+              .stream().map(Broker::id).collect(toSet());
+    }
   }
 
   private String failedBrokerString() {
@@ -199,6 +259,25 @@ public class BrokerFailureDetector extends AbstractAnomalyDetector implements Ru
                                                                                          BrokerFailures.class,
                                                                                          parameterConfigOverrides);
       _anomalies.add(brokerFailures);
+    }
+  }
+
+  /**
+   * The zookeeper handler for failure detection.
+   */
+  private final class BrokerFailureHandler implements ZNodeChildChangeHandler {
+
+    @Override
+    public String path() {
+      return BrokerIdsZNode.path();
+    }
+
+    @Override
+    public void handleChildChange() {
+      // Ensure that broker failures are not reported if there are no updates in already known failed brokers.
+      // Anomaly Detector guarantees that a broker failure detection will not be lost. Skipping reporting if not updated
+      // ensures that the broker failure detector will not report superfluous broker failures due to flaky zNode.
+      _detectionExecutor.submit(() -> detectBrokerFailures(true));
     }
   }
 

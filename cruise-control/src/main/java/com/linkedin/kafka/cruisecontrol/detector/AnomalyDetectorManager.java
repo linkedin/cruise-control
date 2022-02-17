@@ -233,7 +233,12 @@ public class AnomalyDetectorManager {
     scheduleDetectorAtFixedRate(METRIC_ANOMALY, _metricAnomalyDetector);
     scheduleDetectorAtFixedRate(TOPIC_ANOMALY, _topicAnomalyDetector);
     scheduleDetectorAtFixedRate(DISK_FAILURE, _diskFailureDetector);
-    scheduleDetectorAtFixedRate(BROKER_FAILURE, _brokerFailureDetector);
+    if (_brokerFailureDetector.useKafkaAPI()) {
+      scheduleDetectorAtFixedRate(BROKER_FAILURE, _brokerFailureDetector);
+    } else {
+      LOG.info("Starting {} detector.", BROKER_FAILURE);
+      _brokerFailureDetector.startDetection();
+    }
     LOG.debug("Starting {} detector.", MAINTENANCE_EVENT);
     _detectorScheduler.submit(_maintenanceEventDetector);
     LOG.debug("Starting anomaly handler.");
@@ -262,6 +267,7 @@ public class AnomalyDetectorManager {
     } catch (InterruptedException e) {
       LOG.warn("Interrupted while waiting for anomaly detector to shutdown.");
     }
+    _brokerFailureDetector.shutdown();
     _anomalyLoggerExecutor.shutdownNow();
     LOG.info("Anomaly detector shutdown completed.");
   }
