@@ -66,6 +66,31 @@ jobs:
       - store_artifacts:
           path: build/libs
 
+  integration-test:
+    environment:
+      _JAVA_OPTIONS: "-Xms512m -Xmx1g"
+    working_directory: ~/workspace
+    docker:
+      - image: cimg/openjdk:11.0
+    steps:
+      - checkout
+      - restore_cache:
+          key: dependency-cache-{{ checksum "build.gradle" }}
+      - run:
+          command: ./gradlew --no-daemon -PmaxParallelForks=1 clean integrationTest
+      - save_cache:
+          key: dependency-cache-{{ checksum "build.gradle" }}
+          paths:
+            - ~/.gradle
+      - run:
+          command: mkdir ~/test-results
+      - run:
+          command: find ~/workspace -type f -regex ".*/test-results/.*xml" -exec ln {} ~/test-results/ \;
+      - store_test_results:
+          path: ~/test-results
+      - store_artifacts:
+          path: ~/test-results
+
   publish:
     working_directory: ~/workspace
     docker:
@@ -92,10 +117,18 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - publish:
+      - integration-test:
           requires:
             - build
             - test-multi-arch
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^[0-9]+\.[0-9]+\.[0-9]+$/
+      - publish:
+          requires:
+            - integration-test
           filters:
             branches:
               ignore: /.*/

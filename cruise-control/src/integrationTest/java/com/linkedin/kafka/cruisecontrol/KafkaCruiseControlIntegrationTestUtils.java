@@ -25,6 +25,7 @@ import com.jayway.jsonpath.spi.json.JacksonJsonProvider;
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.SelfHealingNotifier;
@@ -51,6 +52,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class KafkaCruiseControlIntegrationTestUtils {
 
+  public static final String KAFKA_CRUISE_CONTROL_BASE_PATH = WebServerConfig.DEFAULT_WEBSERVER_API_URLPREFIX.replace("*", "").substring(1);
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlIntegrationTestUtils.class);
   private static final Random RANDOM = new Random(0xDEADBEEF);
   private KafkaCruiseControlIntegrationTestUtils() {
@@ -78,7 +80,7 @@ public final class KafkaCruiseControlIntegrationTestUtils {
   }
   
   public static void waitForConditionMeet(BooleanSupplier condition, int timeOutInSeconds, Error retriesExceededException) {
-    waitForConditionMeet(condition, Duration.ofSeconds(timeOutInSeconds), Duration.ofSeconds(4), retriesExceededException);
+    waitForConditionMeet(condition, Duration.ofSeconds(timeOutInSeconds), Duration.ofSeconds(5), retriesExceededException);
   }
   /**
    * Execute boolean condition until it returns true
@@ -169,6 +171,7 @@ public final class KafkaCruiseControlIntegrationTestUtils {
     props.put(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_CONFIG, "true");
     props.put(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_CONFIG, "2");
     props.put(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS_CONFIG, "1");
+    props.put(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG, "10000");
     return props;
   }
   /**
@@ -182,15 +185,21 @@ public final class KafkaCruiseControlIntegrationTestUtils {
         TopicReplicationFactorAnomalyFinder.class.getName());
     configs.put(AnomalyDetectorConfig.ANOMALY_NOTIFIER_CLASS_CONFIG, SelfHealingNotifier.class.getName());
     configs.put(AnomalyDetectorConfig.RF_SELF_HEALING_SKIP_RACK_AWARENESS_CHECK_CONFIG, "true");
-
+    configs.put(AnomalyDetectorConfig.ANOMALY_DETECTION_INTERVAL_MS_CONFIG, "40000");
+    
     configs.put(MonitorConfig.METRIC_SAMPLER_CLASS_CONFIG, CruiseControlMetricsReporterSampler.class.getName());
-    configs.put(MonitorConfig.BROKER_METRICS_WINDOW_MS_CONFIG, "36000");
-    configs.put(MonitorConfig.PARTITION_METRICS_WINDOW_MS_CONFIG, "36000");
-    configs.put(MonitorConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG, "3");
+    configs.put(MonitorConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG, "15000");
+    configs.put(MonitorConfig.METADATA_MAX_AGE_MS_CONFIG, "10000");
+    
+    configs.put(MonitorConfig.BROKER_METRICS_WINDOW_MS_CONFIG, "30000");
+    configs.put(MonitorConfig.NUM_BROKER_METRICS_WINDOWS_CONFIG, "20");
+    configs.put(MonitorConfig.PARTITION_METRICS_WINDOW_MS_CONFIG, "30000");
+    configs.put(MonitorConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG, "20");
 
     configs.put(KafkaSampleStore.PARTITION_SAMPLE_STORE_TOPIC_PARTITION_COUNT_CONFIG, "2");
     configs.put(KafkaSampleStore.BROKER_SAMPLE_STORE_TOPIC_PARTITION_COUNT_CONFIG, "2");
     configs.put(SelfHealingNotifier.SELF_HEALING_ENABLED_CONFIG, "true");
+    configs.put(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG, "10000");
     return configs;
   }
   
