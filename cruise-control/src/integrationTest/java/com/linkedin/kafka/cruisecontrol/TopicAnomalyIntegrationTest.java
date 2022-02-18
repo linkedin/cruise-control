@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
@@ -18,7 +17,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder;
-import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import net.minidev.json.JSONArray;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.junit.After;
@@ -26,7 +24,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
-
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlIntegrationTestUtils.KAFKA_CRUISE_CONTROL_BASE_PATH;
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.KAFKA_CLUSTER_STATE;
 
 public class TopicAnomalyIntegrationTest extends CruiseControlIntegrationTestHarness {
 
@@ -34,7 +33,7 @@ public class TopicAnomalyIntegrationTest extends CruiseControlIntegrationTestHar
   private static final int PARTITION_COUNT = 2;
   private static final int KAFKA_CLUSTER_SIZE = 3;
   private static final String CRUISE_CONTROL_KAFKA_CLUSTER_STATE_ENDPOINT =
-      "kafkacruisecontrol/" + CruiseControlEndPoint.KAFKA_CLUSTER_STATE + "?verbose=true&json=true";
+      KAFKA_CRUISE_CONTROL_BASE_PATH + KAFKA_CLUSTER_STATE + "?verbose=true&json=true";
   private final Configuration _gsonJsonConfig = KafkaCruiseControlIntegrationTestUtils.createJsonMappingConfig();
 
   @Before
@@ -101,7 +100,7 @@ public class TopicAnomalyIntegrationTest extends CruiseControlIntegrationTestHar
       List<List<Integer>> partitionReplicas = JsonPath.parse(replicasArray, _gsonJsonConfig)
           .read("$.*", new TypeRef<>() { });
       return partitionReplicas.stream().allMatch(i -> i.size() == EXPECTED_REPLICA_COUNT);
-    }, Duration.ofSeconds(800), Duration.ofSeconds(15), new AssertionError("Replica count not match"));
+    }, 100, new AssertionError("Replica count not match"));
   }
 
   private void waitForMetadataPropogates() {

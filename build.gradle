@@ -370,9 +370,12 @@ project(':cruise-control') {
   task integrationTest(type: Test) {
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
     classpath = sourceSets.integrationTest.runtimeClasspath
+    testLogging {
+      events "passed", "failed", "skipped"
+      exceptionFormat = 'full'
+    }
   }
 
-  check.dependsOn integrationTest
   compileIntegrationTestJava.dependsOn copyDependantLibs
 
   jar {
