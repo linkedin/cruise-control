@@ -48,8 +48,9 @@ Cruise Control for Apache Kafka
 
 ### Environment Requirements ###
 * The `migrate_to_kafka_2_5` branch of Cruise Control is compatible with Apache Kafka `2.5` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.*`),
-  `2.6` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.11+`), `2.7` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.36+`), and
-  `2.8` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.66+`).
+  `2.6` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.11+`), `2.7` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.36+`),
+  `2.8` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.66+`), `3.0` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.85+`),
+  and `3.1` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.85+`).
 * The `migrate_to_kafka_2_4` branch of Cruise Control is compatible with Apache Kafka `2.4` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.4.*`).
 * The `kafka_2_0_to_2_3` branch (deprecated) of Cruise Control is compatible with Apache Kafka `2.0`, `2.1`, `2.2`, and `2.3` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.0.*`).
 * The `kafka_0_11_and_1_0` branch (deprecated) of Cruise Control is compatible with Apache Kafka `0.11.0.0`, `1.0`, and `1.1` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `0.1.*`).
