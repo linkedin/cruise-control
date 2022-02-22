@@ -48,27 +48,31 @@ public class KafkaNetworkClientProvider implements NetworkClientProvider {
                                            ApiVersions apiVersions) {
     NetworkClient networkClient = null;
     try {
-      Constructor<?> kafka30PlusCon = NetworkClient.class.getConstructor(Selectable.class, Metadata.class, String.class,
-      int.class, long.class, long.class, int.class, int.class, int.class, long.class, long.class, Time.class, boolean.class, ApiVersions.class,
-      LogContext.class);
-      networkClient = (NetworkClient) kafka30PlusCon.newInstance(new Selector(connectionMaxIdleMs, metrics, time, metricGrpPrefix,
-      channelBuilder, new LogContext()), metadata, clientId, maxInFlightRequestsPerConnection, reconnectBackoffMs,
-      reconnectBackoffMax, socketSendBuffer, socketReceiveBuffer, defaultRequestTimeoutMs,
-      connectionSetupTimeoutMs, connectionSetupTimeoutMaxMs,
-      time, discoverBrokerVersions, apiVersions, new LogContext());
+      Constructor<?> kafka30PlusCon = NetworkClient.class.getConstructor(Selectable.class, Metadata.class, String.class, int.class, long.class,
+                                                                         long.class, int.class, int.class, int.class, long.class, long.class,
+                                                                         Time.class, boolean.class, ApiVersions.class, LogContext.class);
+      networkClient = (NetworkClient) kafka30PlusCon.newInstance(new Selector(connectionMaxIdleMs, metrics, time, metricGrpPrefix, channelBuilder,
+                                                                              new LogContext()), metadata, clientId,
+                                                                 maxInFlightRequestsPerConnection, reconnectBackoffMs, reconnectBackoffMax,
+                                                                 socketSendBuffer, socketReceiveBuffer, defaultRequestTimeoutMs,
+                                                                 connectionSetupTimeoutMs, connectionSetupTimeoutMaxMs, time, discoverBrokerVersions,
+                                                                 apiVersions, new LogContext());
     } catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
       LOG.debug("Unable to find Kafka 3.0+ constructor for KafkaSever class", e);
     }
     if (networkClient == null) {
       try {
-        Constructor<?> kafka30MinusCon = NetworkClient.class.getConstructor(Selectable.class, Metadata.class, String.class,
-        int.class, long.class, long.class, int.class, int.class, int.class, long.class, long.class, ClientDnsLookup.class, Time.class, boolean.class,
-        ApiVersions.class, LogContext.class);
-        networkClient = (NetworkClient) kafka30MinusCon.newInstance(new Selector(connectionMaxIdleMs, metrics, time, metricGrpPrefix,
-        channelBuilder, new LogContext()), metadata, clientId, maxInFlightRequestsPerConnection, reconnectBackoffMs,
-        reconnectBackoffMax, socketSendBuffer, socketReceiveBuffer, defaultRequestTimeoutMs,
-        connectionSetupTimeoutMs, connectionSetupTimeoutMaxMs, ClientDnsLookup.USE_ALL_DNS_IPS,
-        time, discoverBrokerVersions, apiVersions, new LogContext());
+        Constructor<?> kafka30MinusCon = NetworkClient.class.getConstructor(Selectable.class, Metadata.class, String.class, int.class, long.class,
+                                                                            long.class, int.class, int.class, int.class, long.class, long.class,
+                                                                            ClientDnsLookup.class, Time.class, boolean.class, ApiVersions.class,
+                                                                            LogContext.class);
+        networkClient = (NetworkClient) kafka30MinusCon.newInstance(new Selector(connectionMaxIdleMs, metrics, time, metricGrpPrefix, channelBuilder,
+                                                                                 new LogContext()), metadata, clientId,
+                                                                    maxInFlightRequestsPerConnection, reconnectBackoffMs, reconnectBackoffMax,
+                                                                    socketSendBuffer, socketReceiveBuffer, defaultRequestTimeoutMs,
+                                                                    connectionSetupTimeoutMs, connectionSetupTimeoutMaxMs,
+                                                                    ClientDnsLookup.USE_ALL_DNS_IPS, time, discoverBrokerVersions, apiVersions,
+                                                                    new LogContext());
       } catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
         LOG.debug("Unable to find Kafka 3.0- constructor for KafkaSever class", e);
       }
