@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -27,11 +28,14 @@ import org.apache.kafka.common.protocol.Errors;
 import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
 public class ExecutionUtilsTest {
+  private static final Logger LOG = LoggerFactory.getLogger(ExecutionUtilsTest.class);
   private static final String TOPIC_NAME = "topic-name";
   private static final TopicPartition P0 = new TopicPartition(TOPIC_NAME, 0);
   private static final TopicPartition P1 = new TopicPartition(TOPIC_NAME, 1);
@@ -133,7 +137,22 @@ public class ExecutionUtilsTest {
     ExecutionUtils.processElectLeadersResult(null, Collections.emptySet());
 
     KafkaFutureImpl<Map<TopicPartition, Optional<Throwable>>> partitions = EasyMock.mock(KafkaFutureImpl.class);
-    Constructor<ElectLeadersResult> constructor = ElectLeadersResult.class.getDeclaredConstructor(KafkaFutureImpl.class);
+    Constructor<ElectLeadersResult> constructor = null;
+    try {
+      constructor = ElectLeadersResult.class.getDeclaredConstructor(KafkaFuture.class);
+    } catch (NoSuchMethodException e) {
+      LOG.debug("Unable to find Kafka 3.0+ constructor for ElectLeaderResult class", e);
+    }
+    if (constructor == null) {
+      try {
+        constructor = ElectLeadersResult.class.getDeclaredConstructor(KafkaFutureImpl.class);
+      } catch (NoSuchMethodException e) {
+        LOG.debug("Unable to find Kafka 3.0- constructor for ElectLeaderResult class", e);
+      }
+    }
+    if (constructor == null) {
+      throw new NoSuchElementException("Unable to find viable constructor for the ElectionLeadersResult class");
+    }
     constructor.setAccessible(true);
     ElectLeadersResult result;
 

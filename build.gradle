@@ -400,6 +400,7 @@ project(':cruise-control-metrics-reporter') {
       exclude group: 'log4j', module: 'log4j'
     }
     implementation "org.slf4j:slf4j-api:1.7.36"
+    implementation "com.yammer.metrics:metrics-core:2.2.0"
     api "org.apache.logging.log4j:log4j-slf4j-impl:2.17.1"
     api "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion"
     api "org.apache.kafka:kafka-clients:$kafkaVersion"
@@ -411,6 +412,7 @@ project(':cruise-control-metrics-reporter') {
     testImplementation "org.apache.kafka:kafka-clients:$kafkaVersion:test"
     testImplementation "org.apache.kafka:kafka-clients:$kafkaVersion"
     testImplementation 'commons-io:commons-io:2.11.0'
+    testImplementation "org.apache.zookeeper:zookeeper:${zookeeperVersion}"
     testOutput sourceSets.test.output
 
     implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'

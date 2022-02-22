@@ -48,7 +48,7 @@ public class MetadataClient {
     _time = time;
     List<InetSocketAddress> addresses =
         ClientUtils.parseAndValidateAddresses(config.getList(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG),
-                                              ClientDnsLookup.DEFAULT);
+                                              ClientDnsLookup.USE_ALL_DNS_IPS);
     Cluster bootstrapCluster = Cluster.bootstrap(addresses);
     MetadataResponse metadataResponse = KafkaCruiseControlUtils.prepareMetadataResponse(bootstrapCluster.nodes(),
                                                                                         bootstrapCluster.clusterResource().clusterId(),

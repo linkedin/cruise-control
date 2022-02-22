@@ -17,6 +17,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.NoSuchElementException;
@@ -63,7 +64,6 @@ import org.apache.kafka.common.utils.SystemTime;
 import org.apache.zookeeper.client.ZKClientConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.Option;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -74,6 +74,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
+import scala.Option;
 
 import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.RECONNECT_BACKOFF_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_HARD_GOAL_CHECK_PARAM;
@@ -537,10 +538,36 @@ public final class KafkaCruiseControlUtils {
                                                   String metricType,
                                                   boolean zkSecurityEnabled,
                                                   ZKClientConfig zkClientConfig) {
-    Option<String> zkClientName = Option.apply(String.format("%s-%s", metricGroup, metricType));
-    Option<ZKClientConfig> zkConfig = Option.apply(zkClientConfig);
-    return KafkaZkClient.apply(connectString, zkSecurityEnabled, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
-                               new SystemTime(), metricGroup, metricType, zkClientName, zkConfig);
+    KafkaZkClient kafkaZkClient = null;
+    try {
+      String zkClientName = String.format("%s-%s", metricGroup, metricType);
+      Method kafka31PlusMet = KafkaZkClient.class.getMethod("apply", String.class, boolean.class, int.class, int.class, int.class,
+                                                            org.apache.kafka.common.utils.Time.class, String.class, ZKClientConfig.class,
+                                                            String.class, String.class, boolean.class);
+      kafkaZkClient = (KafkaZkClient) kafka31PlusMet.invoke(null, connectString, zkSecurityEnabled, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT,
+                                                            Integer.MAX_VALUE, new SystemTime(), zkClientName, zkClientConfig, metricGroup,
+                                                            metricType, false);
+    } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+      LOG.debug("Unable to find apply method in KafkaZkClient for Kafka 3.1+.", e);
+    }
+    if (kafkaZkClient == null) {
+      try {
+        Option<String> zkClientName = Option.apply(String.format("%s-%s", metricGroup, metricType));
+        Option<ZKClientConfig> zkConfig = Option.apply(zkClientConfig);
+        Method kafka31MinusMet = KafkaZkClient.class.getMethod("apply", String.class, boolean.class, int.class, int.class, int.class,
+                                                               org.apache.kafka.common.utils.Time.class, String.class, String.class, Option.class,
+                                                               Option.class);
+        kafkaZkClient = (KafkaZkClient) kafka31MinusMet.invoke(null, connectString, zkSecurityEnabled, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT,
+                                                               Integer.MAX_VALUE, new SystemTime(), metricGroup, metricType, zkClientName, zkConfig);
+      } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+        LOG.debug("Unable to find apply method in KafkaZkClient for Kafka 3.1-.", e);
+      }
+    }
+    if (kafkaZkClient != null) {
+      return kafkaZkClient;
+    } else {
+      throw new NoSuchElementException("Unable to find viable apply function version for the KafkaZkClient class ");
+    }
   }
 
   /**
