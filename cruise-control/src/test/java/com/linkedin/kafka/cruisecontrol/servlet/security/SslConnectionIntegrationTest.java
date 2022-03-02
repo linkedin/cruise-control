@@ -24,6 +24,8 @@ import java.util.Objects;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.STATE;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 public class SslConnectionIntegrationTest extends CruiseControlIntegrationTestHarness {
@@ -64,6 +66,7 @@ public class SslConnectionIntegrationTest extends CruiseControlIntegrationTestHa
     sslConfigs.put(WebServerConfig.WEBSERVER_SSL_KEYSTORE_PASSWORD_CONFIG, "jetty");
     sslConfigs.put(WebServerConfig.WEBSERVER_SSL_KEYSTORE_TYPE_CONFIG, "PKCS12");
     sslConfigs.put(WebServerConfig.WEBSERVER_SSL_KEY_PASSWORD_CONFIG, "jetty");
+    sslConfigs.put(WebServerConfig.WEBSERVER_SSL_STS_ENABLED, true);
     return sslConfigs;
   }
 
@@ -79,6 +82,10 @@ public class SslConnectionIntegrationTest extends CruiseControlIntegrationTestHa
         .resolve(CRUISE_CONTROL_STATE_ENDPOINT).toURL().openConnection();
 
       assertEquals(HttpServletResponse.SC_OK, connection.getResponseCode());
+
+      // check for existence of the Strict-Transport-Security Header
+      assertNotNull(connection.getHeaderField("Strict-Transport-Security"));
+      assertFalse(connection.getHeaderField("Strict-Transport-Security").isEmpty());
     } finally {
       HttpsURLConnection.setDefaultSSLSocketFactory(defaultSslSocketFactory);
     }

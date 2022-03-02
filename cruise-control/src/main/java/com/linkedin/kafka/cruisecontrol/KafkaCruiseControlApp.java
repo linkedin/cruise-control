@@ -16,7 +16,10 @@ import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityProvider;
 import org.apache.kafka.common.config.types.Password;
 import org.eclipse.jetty.security.ConstraintSecurityHandler;
 import org.eclipse.jetty.server.Connector;
+import org.eclipse.jetty.server.HttpConfiguration;
+import org.eclipse.jetty.server.HttpConnectionFactory;
 import org.eclipse.jetty.server.NCSARequestLog;
+import org.eclipse.jetty.server.SecureRequestCustomizer;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.DefaultServlet;
@@ -117,13 +120,34 @@ public class KafkaCruiseControlApp {
         sslServerContextFactory.setKeyStoreType(keyStoreType);
       }
       maybeConfigureTlsProtocolsAndCiphers(sslServerContextFactory);
-      serverConnector = new ServerConnector(_server, sslServerContextFactory);
+
+      Boolean stsEnabled = _config.getBoolean(WebServerConfig.WEBSERVER_SSL_STS_ENABLED);
+      if (stsEnabled != null && stsEnabled) {
+        HttpConnectionFactory httpConnectionFactory = configureConnectionFactoryForHsts();
+        serverConnector = new ServerConnector(_server, sslServerContextFactory, httpConnectionFactory);
+      } else {
+        serverConnector = new ServerConnector(_server, sslServerContextFactory);
+      }
     } else {
       serverConnector = new ServerConnector(_server);
     }
     serverConnector.setHost(hostname);
     serverConnector.setPort(port);
     return serverConnector;
+  }
+
+  private HttpConnectionFactory configureConnectionFactoryForHsts() {
+    Long stsMaxAge = _config.getLong(WebServerConfig.WEBSERVER_SSL_STS_MAX_AGE);
+    Boolean stsIncludeSubDomains = _config.getBoolean(WebServerConfig.WEBSERVER_SSL_STS_INCLUDE_SUBDOMAINS);
+
+    SecureRequestCustomizer src = new SecureRequestCustomizer();
+    src.setStsMaxAge(stsMaxAge);
+    src.setStsIncludeSubDomains(stsIncludeSubDomains);
+
+    HttpConfiguration httpsConfig = new HttpConfiguration();
+    httpsConfig.addCustomizer(src);
+
+    return new HttpConnectionFactory(httpsConfig);
   }
 
   private void maybeConfigureTlsProtocolsAndCiphers(SslContextFactory sslContextFactory) {

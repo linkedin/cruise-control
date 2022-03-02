@@ -254,6 +254,29 @@ public final class WebServerConfig {
       + "If not set, it does not change the system defaults.";
 
   /**
+   * <code>webserver.ssl.sts.enabled</code>
+   */
+  public static final String WEBSERVER_SSL_STS_ENABLED = "webserver.ssl.sts.enabled";
+  public static final boolean DEFAULT_WEBSERVER_SSL_STS_ENABLED = false;
+  public static final String WEBSERVER_SSL_STS_ENABLED_DOC = "Enables the Strict Transport Security header in the web server responses.";
+
+  /**
+   * <code>webserver.ssl.sts.include.subdomains</code>
+   */
+  public static final String WEBSERVER_SSL_STS_INCLUDE_SUBDOMAINS = "webserver.ssl.sts.include.subdomains";
+  public static final boolean DEFAULT_WEBSERVER_SSL_STS_INCLUDE_SUBDOMAINS = true;
+  public static final String WEBSERVER_SSL_STS_INCLUDE_SUBDOMAINS_DOC = "Sets the includeSubDomains directive of the STS header. "
+    + "Only effective when webserver.ssl.sts.enabled is true.";
+
+  /**
+   * <code>webserver.ssl.sts.max.age</code>
+   */
+  public static final String WEBSERVER_SSL_STS_MAX_AGE = "webserver.ssl.sts.max.age";
+  public static final long DEFAULT_WEBSERVER_SSL_STS_MAX_AGE = 31536000L;
+  public static final String WEBSERVER_SSL_STS_MAX_AGE_DOC = "Sets the value of the max-age (in seconds) directive of the STS header. "
+      + "Only effective when webserver.ssl.sts.enabled is true.";
+
+  /**
    * <code>jwt.authentication.provider.url</code>
    */
   public static final String JWT_AUTHENTICATION_PROVIDER_URL_CONFIG = "jwt.authentication.provider.url";
@@ -511,6 +534,21 @@ public final class WebServerConfig {
                             DEFAULT_WEBSERVER_SSL_EXCLUDE_PROTOCOLS,
                             ConfigDef.Importance.MEDIUM,
                             WEBSERVER_SSL_EXCLUDE_PROTOCOLS_DOC)
+                    .define(WEBSERVER_SSL_STS_ENABLED,
+                            ConfigDef.Type.BOOLEAN,
+                            DEFAULT_WEBSERVER_SSL_STS_ENABLED,
+                            ConfigDef.Importance.MEDIUM,
+                            WEBSERVER_SSL_STS_ENABLED_DOC)
+                    .define(WEBSERVER_SSL_STS_INCLUDE_SUBDOMAINS,
+                            ConfigDef.Type.BOOLEAN,
+                            DEFAULT_WEBSERVER_SSL_STS_INCLUDE_SUBDOMAINS,
+                            ConfigDef.Importance.MEDIUM,
+                            WEBSERVER_SSL_STS_INCLUDE_SUBDOMAINS_DOC)
+                    .define(WEBSERVER_SSL_STS_MAX_AGE,
+                            ConfigDef.Type.LONG,
+                            DEFAULT_WEBSERVER_SSL_STS_MAX_AGE,
+                            ConfigDef.Importance.MEDIUM,
+                            WEBSERVER_SSL_STS_MAX_AGE_DOC)
                     .define(JWT_AUTHENTICATION_PROVIDER_URL_CONFIG,
                             ConfigDef.Type.STRING,
                             DEFAULT_JWT_AUTHENTICATION_PROVIDER_URL,
