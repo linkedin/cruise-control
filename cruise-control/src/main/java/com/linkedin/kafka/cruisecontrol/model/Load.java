@@ -23,7 +23,7 @@ import static java.lang.Math.max;
 
 
 /**
- * A class for representing Load information for each resource. Each load in a cluster must have the same number of
+ * A class for representing load information for each resource. Each Load in a cluster must have the same number of
  * windows.
  */
 public class Load implements Serializable {
@@ -159,7 +159,7 @@ public class Load implements Serializable {
    */
   void setLoad(AggregatedMetricValues loadToSet) {
     if (loadToSet.length() != _metricValues.length()) {
-      throw new IllegalArgumentException("load to set and Load for the resources must have exactly "
+      throw new IllegalArgumentException("Load to set and load for the resources must have exactly "
                                          + _metricValues.length() + " entries.");
     }
     loadToSet.metricIds().forEach(id -> {

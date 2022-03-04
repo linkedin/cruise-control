@@ -16,26 +16,26 @@ import com.linkedin.cruisecontrol.http.CruiseControlRequestContext;
  */
 public interface CruiseControlResponse {
 
-    /**
-     * Based on the given parameters, keep the relevant response to be returned to the user and discard the remaining.
-     * Calls to this method intend to alleviate the potential memory pressure of response. Noop if called multiple times.
-     *
-     * @param parameters Parameters of the HTTP request of user.
-     */
-    void discardIrrelevantResponse(CruiseControlParameters parameters);
+  /**
+   * Based on the given parameters, keep the relevant response to be returned to the user and discard the remaining.
+   * Calls to this method intend to alleviate the potential memory pressure of response. Noop if called multiple times.
+   *
+   * @param parameters Parameters of the HTTP request of user.
+   */
+  void discardIrrelevantResponse(CruiseControlParameters parameters);
 
-    /**
-     * Write success response with the given parameters to the provided HTTP response.
-     *
-     * @param parameters Parameters of the HTTP request of user
-     * @param handler The request handler
-     */
-    void writeSuccessResponse(CruiseControlParameters parameters, CruiseControlRequestContext handler) throws IOException;
+  /**
+   * Write success response with the given parameters to the provided HTTP response.
+   *
+   * @param parameters Parameters of the HTTP request of user
+   * @param handler The request handler
+   */
+  void writeSuccessResponse(CruiseControlParameters parameters, CruiseControlRequestContext handler) throws IOException;
 
-    /**
-     * Return the relevant response kept in-memory after {@link #discardIrrelevantResponse(CruiseControlParameters)} is called.
-     *
-     * @return The cached response, or {@code null} if the cached response is unavailable.
-     */
-    String cachedResponse();
+  /**
+   * Return the relevant response kept in-memory after {@link #discardIrrelevantResponse(CruiseControlParameters)} is called.
+   *
+   * @return The cached response, or {@code null} if the cached response is unavailable.
+   */
+  String cachedResponse();
 }

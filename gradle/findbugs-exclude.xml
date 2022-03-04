@@ -7,6 +7,7 @@
     <!-- Findbugs tends to work a little bit better with Java than with Scala.  We suppress
          some categories of bug reports when using Scala, since findbugs generates huge
          numbers of false positives in some of these categories when examining Scala code.
+
         NP_LOAD_OF_KNOWN_NULL_VALUE: The variable referenced at this point is known to be null
         due to an earlier check against null.
         NP_NULL_PARAM_DEREF: Method call passes null for non-null parameter.

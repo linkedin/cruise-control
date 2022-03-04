@@ -686,7 +686,7 @@ public final class ExecutionUtils {
                                                 ExecutionTask task) {
     if (logdirInfoByTask.containsKey(task)) {
       return logdirInfoByTask.get(task).getCurrentReplicaLogDir()
-                                       .equals(task.proposal().replicasToMoveBetweenDisksByBroker().get(task.brokerId()).logdir());
+                             .equals(task.proposal().replicasToMoveBetweenDisksByBroker().get(task.brokerId()).logdir());
     }
     return false;
   }

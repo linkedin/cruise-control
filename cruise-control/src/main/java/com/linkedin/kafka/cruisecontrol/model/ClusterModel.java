@@ -1138,11 +1138,11 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * (1) Check whether each load in the cluster contains exactly the number of windows defined by the Load.
+   * (1) Check whether each load in the cluster contains exactly the number of windows defined by the load.
    * (2) Check whether sum of loads in the cluster / rack / broker / replica are consistent with each other.
    */
   public void sanityCheck() {
-    // SANITY CHECK #1: Each load in the cluster must contain exactly the number of windows defined by the Load.
+    // SANITY CHECK #1: Each load in the cluster must contain exactly the number of windows defined by the load.
     Map<String, Integer> errorMsgAndNumWindows = new HashMap<>();
 
     int expectedNumWindows = _load.numWindows();
@@ -1300,8 +1300,8 @@ public class ClusterModel implements Serializable {
   public BrokerStats brokerStats(KafkaCruiseControlConfig config) {
     BrokerStats brokerStats = new BrokerStats(config);
     brokers().forEach(broker -> brokerStats.addSingleBrokerStats(broker,
-                                                                 potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT),
-                                                       _capacityEstimationInfoByBrokerId.get(broker.id()) != null));
+                                     potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT),
+                                     _capacityEstimationInfoByBrokerId.get(broker.id()) != null));
     return brokerStats;
   }
 
