@@ -53,7 +53,8 @@ public class DiskFailureDetector extends AbstractAnomalyDetector implements Runn
    * Skip disk failure detection if any of the following is satisfied:
    * <ul>
    *   <li>Cluster model generation has not changed since the last disk failure check.</li>
-   *   <li>There are dead brokers in the cluster, {@link BrokerFailureDetector} should take care of the anomaly.</li>
+   *   <li>There are dead brokers in the cluster, {@link ZKBrokerFailureDetector} or
+   *   {@link KafkaBrokerFailureDetector} should take care of the anomaly.</li>
    *   <li>{@link AnomalyDetectorUtils#getAnomalyDetectionStatus(KafkaCruiseControl, boolean, boolean)} is not {@link AnomalyDetectionStatus#READY}.
    *   <li>See {@link AnomalyDetectionStatus} for details.</li>
    * </ul>

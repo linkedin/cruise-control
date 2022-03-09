@@ -63,7 +63,7 @@ public class AnomalyDetectorManager {
   private final AnomalyNotifier _anomalyNotifier;
   // Detectors
   private final GoalViolationDetector _goalViolationDetector;
-  private final BrokerFailureDetector _brokerFailureDetector;
+  private final AbstractBrokerFailureDetector _brokerFailureDetector;
   private final MetricAnomalyDetector _metricAnomalyDetector;
   private final DiskFailureDetector _diskFailureDetector;
   private final TopicAnomalyDetector _topicAnomalyDetector;
@@ -110,7 +110,11 @@ public class AnomalyDetectorManager {
     _selfHealingGoals = getSelfHealingGoalNames(config);
     sanityCheckGoals(_selfHealingGoals, false, config);
     _goalViolationDetector = new GoalViolationDetector(_anomalies, _kafkaCruiseControl, dropwizardMetricRegistry);
-    _brokerFailureDetector = new BrokerFailureDetector(_anomalies, _kafkaCruiseControl);
+    if (config.getBoolean(AnomalyDetectorConfig.KAFKA_BROKER_FAILURE_DETECTION_ENABLE_CONFIG)) {
+      _brokerFailureDetector = new ZKBrokerFailureDetector(_anomalies, _kafkaCruiseControl);
+    } else {
+      _brokerFailureDetector = new KafkaBrokerFailureDetector(_anomalies, _kafkaCruiseControl);
+    }
     _metricAnomalyDetector = new MetricAnomalyDetector(_anomalies, _kafkaCruiseControl);
     _diskFailureDetector = new DiskFailureDetector(_anomalies, _kafkaCruiseControl);
     _topicAnomalyDetector = new TopicAnomalyDetector(_anomalies, _kafkaCruiseControl);
@@ -139,7 +143,7 @@ public class AnomalyDetectorManager {
                          KafkaCruiseControl kafkaCruiseControl,
                          AnomalyNotifier anomalyNotifier,
                          GoalViolationDetector goalViolationDetector,
-                         BrokerFailureDetector brokerFailureDetector,
+                         AbstractBrokerFailureDetector brokerFailureDetector,
                          MetricAnomalyDetector metricAnomalyDetector,
                          DiskFailureDetector diskFailureDetector,
                          TopicAnomalyDetector topicAnomalyDetector,
@@ -147,7 +151,7 @@ public class AnomalyDetectorManager {
                          ScheduledExecutorService detectorScheduler) {
     _anomalies = anomalies;
     _anomalyDetectionIntervalMsByType = new HashMap<>();
-    KafkaAnomalyType.cachedValues().stream().forEach(type -> _anomalyDetectionIntervalMsByType.put(type, anomalyDetectionIntervalMs));
+    KafkaAnomalyType.cachedValues().forEach(type -> _anomalyDetectionIntervalMsByType.put(type, anomalyDetectionIntervalMs));
 
     _brokerFailureDetectionBackoffMs = anomalyDetectionIntervalMs;
     _anomalyNotifier = anomalyNotifier;
@@ -233,12 +237,7 @@ public class AnomalyDetectorManager {
     scheduleDetectorAtFixedRate(METRIC_ANOMALY, _metricAnomalyDetector);
     scheduleDetectorAtFixedRate(TOPIC_ANOMALY, _topicAnomalyDetector);
     scheduleDetectorAtFixedRate(DISK_FAILURE, _diskFailureDetector);
-    if (_brokerFailureDetector.useKafkaAPI()) {
-      scheduleDetectorAtFixedRate(BROKER_FAILURE, _brokerFailureDetector);
-    } else {
-      LOG.info("Starting {} detector.", BROKER_FAILURE);
-      _brokerFailureDetector.startDetection();
-    }
+    scheduleDetectorAtFixedRate(BROKER_FAILURE, _brokerFailureDetector);
     LOG.debug("Starting {} detector.", MAINTENANCE_EVENT);
     _detectorScheduler.submit(_maintenanceEventDetector);
     LOG.debug("Starting anomaly handler.");

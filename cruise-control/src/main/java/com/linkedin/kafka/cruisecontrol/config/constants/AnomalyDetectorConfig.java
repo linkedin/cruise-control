@@ -203,9 +203,9 @@ public final class AnomalyDetectorConfig {
   public static final String BROKER_FAILURE_DETECTION_INTERVAL_MS_CONFIG = "broker.failure.detection.interval.ms";
   public static final Long DEFAULT_BROKER_FAILURE_DETECTION_INTERVAL_MS = null;
   public static final String BROKER_FAILURE_DETECTION_INTERVAL_MS_DOC = "The interval in millisecond that broker failure "
-          + "detector will run to detect broker failures. If this interval time is not specified, disk failure detector "
-          + "will run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ". This is only used when "
-          + KAFKA_BROKER_FAILURE_DETECTION_ENABLE_CONFIG + " is set to 'true'.";
+      + "detector will run to detect broker failures. If this interval time is not specified, broker failure detector "
+      + "will run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ". This is only used when "
+      + KAFKA_BROKER_FAILURE_DETECTION_ENABLE_CONFIG + " is set to 'true'.";
 
   /**
    * <code>broker.failure.detection.backoff.ms</code>

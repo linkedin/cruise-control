@@ -83,12 +83,12 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
     Time mockTime = getMockTime();
     Queue<Anomaly> anomalies = new PriorityBlockingQueue<>(ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE, anomalyComparator());
     File failedBrokersFile = File.createTempFile("testFailureDetection", ".txt");
-    BrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime, failedBrokersFile.getPath());
+    AbstractBrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime, failedBrokersFile.getPath());
     try {
       String failedBrokerListString = detector.loadPersistedFailedBrokerList();
       assertTrue(failedBrokerListString.isEmpty());
       // Start detection.
-      start(detector);
+      detector.run();
       assertTrue(anomalies.isEmpty());
       // Kill a broker and ensure an anomaly is detected
       int brokerId = 0;
@@ -130,7 +130,7 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
     Time mockTime = getMockTime();
     Queue<Anomaly> anomalies = new PriorityBlockingQueue<>(ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE, anomalyComparator());
     File failedBrokersFile = File.createTempFile("testDetectorStartWithFailedBrokers", ".txt");
-    BrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime, failedBrokersFile.getPath());
+    AbstractBrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime, failedBrokersFile.getPath());
     try {
       String failedBrokerListString = detector.loadPersistedFailedBrokerList();
       assertTrue(failedBrokerListString.isEmpty());
@@ -138,7 +138,7 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
       long anomalyTime = mockTime.milliseconds();
       killBroker(brokerId);
       // Start detection.
-      start(detector);
+      detector.run();
       assertEquals(Collections.singletonMap(brokerId, 100L), detector.failedBrokers());
       failedBrokerListString = detector.loadPersistedFailedBrokerList();
       assertEquals(String.format("%d=%d", brokerId, anomalyTime), failedBrokerListString);
@@ -153,12 +153,12 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
     Time mockTime = getMockTime();
     Queue<Anomaly> anomalies = new PriorityBlockingQueue<>(ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE, anomalyComparator());
     File failedBrokersFile = File.createTempFile("testLoadFailedBrokersFromFile", ".txt");
-    BrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime, failedBrokersFile.getPath());
+    AbstractBrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime, failedBrokersFile.getPath());
     try {
       String failedBrokerListString = detector.loadPersistedFailedBrokerList();
       assertTrue(failedBrokerListString.isEmpty());
       // Start detection.
-      start(detector);
+      detector.run();
       int brokerId = 0;
       long anomalyTime = mockTime.milliseconds();
       // kill a broker and ensure the anomaly is detected
@@ -183,7 +183,7 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
     }
   }
 
-  private BrokerFailureDetector createBrokerFailureDetector(Queue<Anomaly> anomalies, Time time, String failedBrokersFilePath) {
+  private AbstractBrokerFailureDetector createBrokerFailureDetector(Queue<Anomaly> anomalies, Time time, String failedBrokersFilePath) {
     LoadMonitor mockLoadMonitor = EasyMock.mock(LoadMonitor.class);
     KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
     EasyMock.expect(mockLoadMonitor.brokersWithReplicas(anyLong())).andAnswer(() -> new HashSet<>(Arrays.asList(0, 1))).anyTimes();
@@ -208,7 +208,11 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
     EasyMock.expect(mockKafkaCruiseControl.loadMonitor()).andReturn(mockLoadMonitor).atLeastOnce();
     EasyMock.expect(mockKafkaCruiseControl.timeMs()).andReturn(time.milliseconds()).atLeastOnce();
     EasyMock.replay(mockKafkaCruiseControl);
-    return new BrokerFailureDetector(anomalies, mockKafkaCruiseControl);
+    if (_useKafkaApi) {
+      return new KafkaBrokerFailureDetector(anomalies, mockKafkaCruiseControl);
+    } else {
+      return new ZKBrokerFailureDetector(anomalies, mockKafkaCruiseControl);
+    }
   }
 
   private void killBroker(int index) {
@@ -225,15 +229,7 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
     return new MockTime(0, 100L, TimeUnit.NANOSECONDS.convert(100L, TimeUnit.MILLISECONDS));
   }
 
-  private void start(BrokerFailureDetector detector) {
-    if (_useKafkaApi) {
-      detector.run();
-    } else {
-      detector.startDetection();
-    }
-  }
-
-  private void detect(BrokerFailureDetector detector, Queue<Anomaly> anomalies, long start, int count) {
+  private void detect(AbstractBrokerFailureDetector detector, Queue<Anomaly> anomalies, long start, int count) {
     if (_useKafkaApi) {
       detector.run();
     } else {
