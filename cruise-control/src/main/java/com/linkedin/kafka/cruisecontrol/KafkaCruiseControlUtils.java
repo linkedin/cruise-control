@@ -107,6 +107,7 @@ public final class KafkaCruiseControlUtils {
   private static final int HOUR_TO_MS = MIN_TO_MS * 60;
   private static final int DAY_TO_MS = HOUR_TO_MS * 24;
   public static final String OPERATION_LOGGER = "operationLogger";
+  public static final String REQUESTLOG_LOGGER = "CruiseControlPublicAccessLogger";
   // This will make MetaData.update() trigger a real metadata fetch.
   public static final int REQUEST_VERSION_UPDATE = -1;
   public static final String ENV_CONFIG_PROVIDER_NAME = "env";

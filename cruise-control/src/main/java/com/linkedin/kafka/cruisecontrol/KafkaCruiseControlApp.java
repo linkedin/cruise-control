@@ -16,12 +16,13 @@ import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityProvider;
 import org.apache.kafka.common.config.types.Password;
 import org.eclipse.jetty.security.ConstraintSecurityHandler;
 import org.eclipse.jetty.server.Connector;
+import org.eclipse.jetty.server.CustomRequestLog;
 import org.eclipse.jetty.server.HttpConfiguration;
 import org.eclipse.jetty.server.HttpConnectionFactory;
-import org.eclipse.jetty.server.NCSARequestLog;
 import org.eclipse.jetty.server.SecureRequestCustomizer;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.Slf4jRequestLogWriter;
 import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
@@ -47,10 +48,12 @@ public class KafkaCruiseControlApp {
     _jmxReporter.start();
 
     _kafkaCruiseControl = new AsyncKafkaCruiseControl(config, metricRegistry);
-
     _server = new Server();
-    NCSARequestLog requestLog = createRequestLog();
-    if (requestLog != null) {
+    if (_config.getBoolean(WebServerConfig.WEBSERVER_ACCESSLOG_ENABLED_CONFIG)) {
+      // setup access logger
+      Slf4jRequestLogWriter slf4jRequestLogWriter = new Slf4jRequestLogWriter();
+      slf4jRequestLogWriter.setLoggerName(KafkaCruiseControlUtils.REQUESTLOG_LOGGER);
+      CustomRequestLog requestLog = new CustomRequestLog(slf4jRequestLogWriter, CustomRequestLog.NCSA_FORMAT);
       _server.setRequestLog(requestLog);
     }
     _server.setConnectors(new Connector[]{ setupHttpConnector(hostname, port) });
@@ -180,23 +183,6 @@ public class KafkaCruiseControlApp {
     // holderWebapp.setInitParameter("org.eclipse.jetty.servlet.Default.dirAllowed", "false");
     holderWebapp.setInitParameter("resourceBase", webuiDir);
     contextHandler.addServlet(holderWebapp, webuiPathPrefix);
-  }
-
-  private NCSARequestLog createRequestLog() {
-    boolean accessLogEnabled = _config.getBoolean(WebServerConfig.WEBSERVER_ACCESSLOG_ENABLED_CONFIG);
-    if (accessLogEnabled) {
-      String accessLogPath = _config.getString(WebServerConfig.WEBSERVER_ACCESSLOG_PATH_CONFIG);
-      int accessLogRetention = _config.getInt(WebServerConfig.WEBSERVER_ACCESSLOG_RETENTION_DAYS_CONFIG);
-      NCSARequestLog requestLog = new NCSARequestLog(accessLogPath);
-      requestLog.setRetainDays(accessLogRetention);
-      requestLog.setLogLatency(true);
-      requestLog.setAppend(true);
-      requestLog.setExtended(false);
-      requestLog.setPreferProxiedForAddress(true);
-      return requestLog;
-    } else {
-      return null;
-    }
   }
 
   private ServletContextHandler createContextHandler() {
