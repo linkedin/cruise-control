@@ -14,14 +14,11 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
@@ -34,7 +31,7 @@ import static org.apache.commons.io.FileUtils.writeStringToFile;
  */
 public abstract class AbstractBrokerFailureDetector extends AbstractAnomalyDetector implements Runnable {
   
-  public static final Logger LOG = LoggerFactory.getLogger(AbstractBrokerFailureDetector.class);
+  protected static final Logger LOG = LoggerFactory.getLogger(AbstractBrokerFailureDetector.class);
   public static final String FAILED_BROKERS_OBJECT_CONFIG = "failed.brokers.object";
   // Config to indicate whether detected broker failures are fixable or not.
   public static final String BROKER_FAILURES_FIXABLE_CONFIG = "broker.failures.fixable.object";
@@ -63,19 +60,21 @@ public abstract class AbstractBrokerFailureDetector extends AbstractAnomalyDetec
   synchronized void detectBrokerFailures(boolean skipReportingIfNotUpdated) {
     try {
       _aliveBrokers = aliveBrokers();
-    } catch (ExecutionException | InterruptedException | TimeoutException e) {
-      LOG.error("Failed retrieving alive brokers", e);
-      _aliveBrokers = Collections.emptySet();
-    }
-    // update the failed broker information based on the current state.
-    boolean updated = updateFailedBrokers(_aliveBrokers);
-    if (updated) {
-      // persist the updated failed broker list.
-      persistFailedBrokerList();
-    }
-    if (!skipReportingIfNotUpdated || updated) {
-      // Report the failures to anomaly detector to handle.
-      reportBrokerFailures();
+
+      // update the failed broker information based on the current state.
+      boolean updated = updateFailedBrokers(_aliveBrokers);
+      if (updated) {
+        // persist the updated failed broker list.
+        persistFailedBrokerList();
+      }
+      if (!skipReportingIfNotUpdated || updated) {
+        // Report the failures to anomaly detector to handle.
+        reportBrokerFailures();
+      }
+    } catch (Exception e) {
+      LOG.warn("Broker failure detector received exception: ", e);
+    } finally {
+      LOG.debug("Broker failure detection finished.");
     }
   }
 
@@ -83,11 +82,11 @@ public abstract class AbstractBrokerFailureDetector extends AbstractAnomalyDetec
     return new HashMap<>(_failedBrokers);
   }
 
-  public void shutdown() {
+  void shutdown() {
     //nop
   }
 
-  void persistFailedBrokerList() {
+  private void persistFailedBrokerList() {
     try {
       writeStringToFile(_failedBrokersFile, failedBrokerString(), StandardCharsets.UTF_8);
     } catch (IOException e) {
@@ -138,7 +137,7 @@ public abstract class AbstractBrokerFailureDetector extends AbstractAnomalyDetec
     return updated;
   }
 
-  abstract Set<Integer> aliveBrokers() throws ExecutionException, InterruptedException, TimeoutException;
+  abstract Set<Integer> aliveBrokers() throws Exception;
 
   private String failedBrokerString() {
     StringBuilder sb = new StringBuilder();
@@ -152,7 +151,7 @@ public abstract class AbstractBrokerFailureDetector extends AbstractAnomalyDetec
     return sb.toString();
   }
 
-  void parsePersistedFailedBrokers(String failedBrokerListString) {
+  protected void parsePersistedFailedBrokers(String failedBrokerListString) {
     if (failedBrokerListString != null && !failedBrokerListString.isEmpty()) {
       String[] entries = failedBrokerListString.split(",");
       for (String entry : entries) {
@@ -168,10 +167,10 @@ public abstract class AbstractBrokerFailureDetector extends AbstractAnomalyDetec
 
   private boolean tooManyFailedBrokers(int failedBrokerCount, int aliveBrokerCount) {
     return failedBrokerCount > _fixableFailedBrokerCountThreshold
-        || (double) failedBrokerCount / (failedBrokerCount + aliveBrokerCount) > _fixableFailedBrokerPercentageThreshold;
+           || (double) failedBrokerCount / (failedBrokerCount + aliveBrokerCount) > _fixableFailedBrokerPercentageThreshold;
   }
 
-  void reportBrokerFailures() {
+  private void reportBrokerFailures() {
     if (!_failedBrokers.isEmpty()) {
       Map<String, Object> parameterConfigOverrides = new HashMap<>();
       parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl);
@@ -182,8 +181,8 @@ public abstract class AbstractBrokerFailureDetector extends AbstractAnomalyDetec
           !tooManyFailedBrokers(failedBrokers.size(), _aliveBrokers.size()));
 
       BrokerFailures brokerFailures = _kafkaCruiseControl.config().getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
-          BrokerFailures.class,
-          parameterConfigOverrides);
+                                                                                         BrokerFailures.class,
+                                                                                         parameterConfigOverrides);
       _anomalies.add(brokerFailures);
     }
   }

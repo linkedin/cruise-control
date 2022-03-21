@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ * Copyright 2022 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.detector;
@@ -16,7 +16,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import kafka.cluster.Broker;
 import kafka.zk.BrokerIdsZNode;
 import kafka.zk.KafkaZkClient;
@@ -36,7 +35,7 @@ public class ZKBrokerFailureDetector extends AbstractBrokerFailureDetector {
 
   private final KafkaZkClient _kafkaZkClient;
   private final ExecutorService _detectionExecutor;
-  private final AtomicBoolean _started;
+  private boolean _started = false;
 
   public ZKBrokerFailureDetector(Queue<Anomaly> anomalies, KafkaCruiseControl kafkaCruiseControl) {
     super(anomalies, kafkaCruiseControl);
@@ -47,7 +46,6 @@ public class ZKBrokerFailureDetector extends AbstractBrokerFailureDetector {
     _kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zkUrl, ZK_BROKER_FAILURE_METRIC_GROUP, ZK_BROKER_FAILURE_METRIC_TYPE,
             zkSecurityEnabled, zkClientConfig);
     _detectionExecutor = Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("BrokerFailureDetectorExecutor"));
-    _started = new AtomicBoolean(false);
   }
 
   /**
@@ -60,7 +58,7 @@ public class ZKBrokerFailureDetector extends AbstractBrokerFailureDetector {
   @Override
   public void run() {
     synchronized (this) {
-      if (!_started.get()) {
+      if (!_started) {
         // Load the failed broker information from zookeeper.
         String failedBrokerListString = loadPersistedFailedBrokerList();
         parsePersistedFailedBrokers(failedBrokerListString);
@@ -69,7 +67,7 @@ public class ZKBrokerFailureDetector extends AbstractBrokerFailureDetector {
         // Register ZNodeChildChangeHandler to ZK.
         _kafkaZkClient.registerZNodeChildChangeHandler(new BrokerFailureHandler());
         _kafkaZkClient.getChildren(BrokerIdsZNode.path());
-        _started.set(true);
+        _started = true;
       }
     }
   }

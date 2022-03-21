@@ -42,7 +42,6 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertFalse;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE;
 
 
@@ -65,7 +64,10 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
 
   @Override
   public int clusterSize() {
-    return 2;
+    // When a broker is stopped and restarted via the harness, it changes the port it listens on because ports are set to 0.
+    // Some tests restart 2 brokers, so use a 3 broker cluster to ensure at least one broker keeps the same port so clients
+    // created with the initial bootstrap servers can still connect.
+    return 3;
   }
 
   @Before
@@ -95,7 +97,10 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
       long anomalyTime = mockTime.milliseconds();
       killBroker(brokerId);
       long start = System.currentTimeMillis();
-      detect(detector, anomalies, start, 0);
+      while (anomalies.isEmpty() && System.currentTimeMillis() < start + 30000) {
+        // wait for the anomalies to be drained.
+      }
+      detector.run();
       assertEquals("One broker failure should have been detected before timeout.", 1, anomalies.size());
       failedBrokerListString = detector.loadPersistedFailedBrokerList();
       assertEquals(String.format("%d=%d", brokerId, anomalyTime), failedBrokerListString);
@@ -104,7 +109,7 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
       BrokerFailures brokerFailures = (BrokerFailures) anomaly;
       assertEquals("The failed broker should be 0 and time should be 100L", Collections.singletonMap(brokerId, 100L),
                    brokerFailures.failedBrokers());
-      assertFalse(brokerFailures.fixable());
+      assertTrue(brokerFailures.fixable());
 
       // Ensure that broker failure is detected as long as the broker is down.
       detector.detectBrokerFailures(false);
@@ -117,7 +122,10 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
       assertTrue(failedBrokerListString.isEmpty());
       // Kill the 2nd broker
       killBroker(1);
-      detect(detector, anomalies, start, 1);
+      while (anomalies.size() == 1 && System.currentTimeMillis() < start + 30000) {
+        // wait for the anomalies to be drained.
+      }
+      detector.run();
       assertEquals("Two broker failure should have been detected before timeout.", 2, anomalies.size());
     } finally {
       detector.shutdown();
@@ -163,8 +171,7 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
       long anomalyTime = mockTime.milliseconds();
       // kill a broker and ensure the anomaly is detected
       killBroker(brokerId);
-      long start = System.currentTimeMillis();
-      detect(detector, anomalies, start, 0);
+      detector.run();
       assertEquals(Collections.singletonMap(brokerId, anomalyTime), detector.failedBrokers());
       // shutdown, advance the clock and create a new detector.
       detector.shutdown();
@@ -186,7 +193,7 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
   private AbstractBrokerFailureDetector createBrokerFailureDetector(Queue<Anomaly> anomalies, Time time, String failedBrokersFilePath) {
     LoadMonitor mockLoadMonitor = EasyMock.mock(LoadMonitor.class);
     KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
-    EasyMock.expect(mockLoadMonitor.brokersWithReplicas(anyLong())).andAnswer(() -> new HashSet<>(Arrays.asList(0, 1))).anyTimes();
+    EasyMock.expect(mockLoadMonitor.brokersWithReplicas(anyLong())).andAnswer(() -> new HashSet<>(Arrays.asList(0, 1, 2))).anyTimes();
     EasyMock.replay(mockLoadMonitor);
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     if (_useKafkaApi) {
@@ -201,8 +208,8 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
     if (_useKafkaApi) {
       Map<String, Object> adminClientConfigs = KafkaCruiseControlUtils.parseAdminClientConfigs(kafkaCruiseControlConfig);
       adminClientConfigs.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
-      AdminClient mockAdminClient = KafkaCruiseControlUtils.createAdminClient(adminClientConfigs);
-      EasyMock.expect(mockKafkaCruiseControl.adminClient()).andReturn(mockAdminClient);
+      AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(adminClientConfigs);
+      EasyMock.expect(mockKafkaCruiseControl.adminClient()).andReturn(adminClient);
     }
     EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).atLeastOnce();
     EasyMock.expect(mockKafkaCruiseControl.loadMonitor()).andReturn(mockLoadMonitor).atLeastOnce();
@@ -229,13 +236,4 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
     return new MockTime(0, 100L, TimeUnit.NANOSECONDS.convert(100L, TimeUnit.MILLISECONDS));
   }
 
-  private void detect(AbstractBrokerFailureDetector detector, Queue<Anomaly> anomalies, long start, int count) {
-    if (_useKafkaApi) {
-      detector.run();
-    } else {
-      while (anomalies.size() == count && System.currentTimeMillis() < start + 30000) {
-        // wait for the anomalies to be drained.
-      }
-    }
-  }
 }
