@@ -95,11 +95,11 @@ public class BrokerFailures extends KafkaAnomaly {
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
     KafkaCruiseControl kafkaCruiseControl = extractKafkaCruiseControlObjectFromConfig(configs, BROKER_FAILURE);
-    _failedBrokers = (Map<Integer, Long>) configs.get(BrokerFailureDetector.FAILED_BROKERS_OBJECT_CONFIG);
+    _failedBrokers = (Map<Integer, Long>) configs.get(AbstractBrokerFailureDetector.FAILED_BROKERS_OBJECT_CONFIG);
     if (_failedBrokers != null && _failedBrokers.isEmpty()) {
       throw new IllegalArgumentException("Missing broker ids for failed brokers anomaly.");
     }
-    _fixable = (Boolean) configs.get(BrokerFailureDetector.BROKER_FAILURES_FIXABLE_CONFIG);
+    _fixable = (Boolean) configs.get(AbstractBrokerFailureDetector.BROKER_FAILURES_FIXABLE_CONFIG);
     _optimizationResult = null;
     KafkaCruiseControlConfig config = kafkaCruiseControl.config();
     boolean allowCapacityEstimation = config.getBoolean(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);

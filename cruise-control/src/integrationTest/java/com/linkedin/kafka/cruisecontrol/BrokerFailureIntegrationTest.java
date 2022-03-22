@@ -4,6 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
@@ -23,12 +25,15 @@ import org.apache.kafka.clients.admin.NewTopic;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlIntegrationTestUtils.KAFKA_CRUISE_CONTROL_BASE_PATH;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.KAFKA_CLUSTER_STATE;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.STATE;
 
+@RunWith(Parameterized.class)
 public class BrokerFailureIntegrationTest extends CruiseControlIntegrationTestHarness {
 
   private static final int PARTITION_COUNT = 10;
@@ -40,6 +45,17 @@ public class BrokerFailureIntegrationTest extends CruiseControlIntegrationTestHa
   private final Configuration _gsonJsonConfig = KafkaCruiseControlIntegrationTestUtils.createJsonMappingConfig();
 
   private static final int BROKER_ID_TO_REMOVE = 1;
+
+  private final Boolean _kafkaBrokerFailureDetectorEnable;
+
+  public BrokerFailureIntegrationTest(Boolean kafkaBrokerFailureDetectorEnable) {
+    this._kafkaBrokerFailureDetectorEnable = kafkaBrokerFailureDetectorEnable;
+  }
+
+  @Parameterized.Parameters
+  public static Collection<Boolean> data() {
+    return Arrays.asList(true, false);
+  }
 
   @Before
   public void setup() throws Exception {
@@ -64,6 +80,8 @@ public class BrokerFailureIntegrationTest extends CruiseControlIntegrationTestHa
   @Override
   protected Map<String, Object> withConfigs() {
     Map<String, Object> configs = KafkaCruiseControlIntegrationTestUtils.ccConfigOverrides();
+    configs.put(AnomalyDetectorConfig.KAFKA_BROKER_FAILURE_DETECTION_ENABLE_CONFIG, String.valueOf(_kafkaBrokerFailureDetectorEnable));
+    configs.put(AnomalyDetectorConfig.BROKER_FAILURE_DETECTION_INTERVAL_MS_CONFIG, "30000");
     configs.put(SelfHealingNotifier.BROKER_FAILURE_ALERT_THRESHOLD_MS_CONFIG, "1000");
     configs.put(SelfHealingNotifier.BROKER_FAILURE_SELF_HEALING_THRESHOLD_MS_CONFIG, "1500");
     configs.put(

@@ -190,6 +190,24 @@ public final class AnomalyDetectorConfig {
       + "will run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ".";
 
   /**
+   * <code>kafka.broker.failure.detection.enable</code>
+   */
+  public static final String KAFKA_BROKER_FAILURE_DETECTION_ENABLE_CONFIG = "kafka.broker.failure.detection.enable";
+  public static final Boolean DEFAULT_KAFKA_BROKER_FAILURE_DETECTION_ENABLE = false;
+  public static final String KAFKA_BROKER_FAILURE_DETECTION_ENABLE_DOC = "Whether to use the Kafka API to detect broker failures "
+      + "instead of ZooKeeper.";
+
+  /**
+   * <code>broker.failure.detection.interval.ms</code>
+   */
+  public static final String BROKER_FAILURE_DETECTION_INTERVAL_MS_CONFIG = "broker.failure.detection.interval.ms";
+  public static final Long DEFAULT_BROKER_FAILURE_DETECTION_INTERVAL_MS = null;
+  public static final String BROKER_FAILURE_DETECTION_INTERVAL_MS_DOC = "The interval in millisecond that broker failure "
+      + "detector will run to detect broker failures. If this interval time is not specified, broker failure detector "
+      + "will run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ". This is only used when "
+      + KAFKA_BROKER_FAILURE_DETECTION_ENABLE_CONFIG + " is set to 'true'.";
+
+  /**
    * <code>broker.failure.detection.backoff.ms</code>
    */
   public static final String BROKER_FAILURE_DETECTION_BACKOFF_MS_CONFIG = "broker.failure.detection.backoff.ms";
@@ -399,6 +417,16 @@ public final class AnomalyDetectorConfig {
                             DEFAULT_DISK_FAILURE_DETECTION_INTERVAL_MS,
                             ConfigDef.Importance.LOW,
                             DISK_FAILURE_DETECTION_INTERVAL_MS_DOC)
+                    .define(KAFKA_BROKER_FAILURE_DETECTION_ENABLE_CONFIG,
+                            ConfigDef.Type.BOOLEAN,
+                            DEFAULT_KAFKA_BROKER_FAILURE_DETECTION_ENABLE,
+                            ConfigDef.Importance.LOW,
+                            KAFKA_BROKER_FAILURE_DETECTION_ENABLE_DOC)
+                    .define(BROKER_FAILURE_DETECTION_INTERVAL_MS_CONFIG,
+                            ConfigDef.Type.LONG,
+                            DEFAULT_BROKER_FAILURE_DETECTION_INTERVAL_MS,
+                            ConfigDef.Importance.LOW,
+                            BROKER_FAILURE_DETECTION_INTERVAL_MS_DOC)
                     .define(BROKER_FAILURE_DETECTION_BACKOFF_MS_CONFIG,
                             ConfigDef.Type.LONG,
                             DEFAULT_BROKER_FAILURE_DETECTION_BACKOFF_MS,

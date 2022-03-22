@@ -63,7 +63,7 @@ public class AnomalyDetectorManager {
   private final AnomalyNotifier _anomalyNotifier;
   // Detectors
   private final GoalViolationDetector _goalViolationDetector;
-  private final BrokerFailureDetector _brokerFailureDetector;
+  private final AbstractBrokerFailureDetector _brokerFailureDetector;
   private final MetricAnomalyDetector _metricAnomalyDetector;
   private final DiskFailureDetector _diskFailureDetector;
   private final TopicAnomalyDetector _topicAnomalyDetector;
@@ -100,6 +100,9 @@ public class AnomalyDetectorManager {
     Long diskFailureDetectionIntervalMs = config.getLong(AnomalyDetectorConfig.DISK_FAILURE_DETECTION_INTERVAL_MS_CONFIG);
     _anomalyDetectionIntervalMsByType.put(DISK_FAILURE, diskFailureDetectionIntervalMs == null ? anomalyDetectionIntervalMs
                                                                                                : diskFailureDetectionIntervalMs);
+    Long brokerFailureDetectionIntervalMs = config.getLong(AnomalyDetectorConfig.BROKER_FAILURE_DETECTION_INTERVAL_MS_CONFIG);
+    _anomalyDetectionIntervalMsByType.put(BROKER_FAILURE, brokerFailureDetectionIntervalMs == null ? anomalyDetectionIntervalMs
+                                                                                                   : brokerFailureDetectionIntervalMs);
     _brokerFailureDetectionBackoffMs = config.getLong(AnomalyDetectorConfig.BROKER_FAILURE_DETECTION_BACKOFF_MS_CONFIG);
     _anomalyNotifier = config.getConfiguredInstance(AnomalyDetectorConfig.ANOMALY_NOTIFIER_CLASS_CONFIG,
                                                     AnomalyNotifier.class);
@@ -107,7 +110,11 @@ public class AnomalyDetectorManager {
     _selfHealingGoals = getSelfHealingGoalNames(config);
     sanityCheckGoals(_selfHealingGoals, false, config);
     _goalViolationDetector = new GoalViolationDetector(_anomalies, _kafkaCruiseControl, dropwizardMetricRegistry);
-    _brokerFailureDetector = new BrokerFailureDetector(_anomalies, _kafkaCruiseControl);
+    if (config.getBoolean(AnomalyDetectorConfig.KAFKA_BROKER_FAILURE_DETECTION_ENABLE_CONFIG)) {
+      _brokerFailureDetector = new KafkaBrokerFailureDetector(_anomalies, _kafkaCruiseControl);
+    } else {
+      _brokerFailureDetector = new ZKBrokerFailureDetector(_anomalies, _kafkaCruiseControl);
+    }
     _metricAnomalyDetector = new MetricAnomalyDetector(_anomalies, _kafkaCruiseControl);
     _diskFailureDetector = new DiskFailureDetector(_anomalies, _kafkaCruiseControl);
     _topicAnomalyDetector = new TopicAnomalyDetector(_anomalies, _kafkaCruiseControl);
@@ -136,7 +143,7 @@ public class AnomalyDetectorManager {
                          KafkaCruiseControl kafkaCruiseControl,
                          AnomalyNotifier anomalyNotifier,
                          GoalViolationDetector goalViolationDetector,
-                         BrokerFailureDetector brokerFailureDetector,
+                         AbstractBrokerFailureDetector brokerFailureDetector,
                          MetricAnomalyDetector metricAnomalyDetector,
                          DiskFailureDetector diskFailureDetector,
                          TopicAnomalyDetector topicAnomalyDetector,
@@ -144,8 +151,7 @@ public class AnomalyDetectorManager {
                          ScheduledExecutorService detectorScheduler) {
     _anomalies = anomalies;
     _anomalyDetectionIntervalMsByType = new HashMap<>();
-    KafkaAnomalyType.cachedValues().stream().filter(type -> type != BROKER_FAILURE)
-                    .forEach(type -> _anomalyDetectionIntervalMsByType.put(type, anomalyDetectionIntervalMs));
+    KafkaAnomalyType.cachedValues().forEach(type -> _anomalyDetectionIntervalMsByType.put(type, anomalyDetectionIntervalMs));
 
     _brokerFailureDetectionBackoffMs = anomalyDetectionIntervalMs;
     _anomalyNotifier = anomalyNotifier;
@@ -227,12 +233,11 @@ public class AnomalyDetectorManager {
    * Start each anomaly detector.
    */
   public void startDetection() {
-    LOG.info("Starting {} detector.", BROKER_FAILURE);
-    _brokerFailureDetector.startDetection();
     scheduleDetectorAtFixedRate(GOAL_VIOLATION, _goalViolationDetector);
     scheduleDetectorAtFixedRate(METRIC_ANOMALY, _metricAnomalyDetector);
     scheduleDetectorAtFixedRate(TOPIC_ANOMALY, _topicAnomalyDetector);
     scheduleDetectorAtFixedRate(DISK_FAILURE, _diskFailureDetector);
+    scheduleDetectorAtFixedRate(BROKER_FAILURE, _brokerFailureDetector);
     LOG.debug("Starting {} detector.", MAINTENANCE_EVENT);
     _detectorScheduler.submit(_maintenanceEventDetector);
     LOG.debug("Starting anomaly handler.");

@@ -23,8 +23,8 @@ import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.detector.BrokerFailureDetector.BROKER_FAILURES_FIXABLE_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.detector.BrokerFailureDetector.FAILED_BROKERS_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.AbstractBrokerFailureDetector.BROKER_FAILURES_FIXABLE_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.AbstractBrokerFailureDetector.FAILED_BROKERS_OBJECT_CONFIG;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
