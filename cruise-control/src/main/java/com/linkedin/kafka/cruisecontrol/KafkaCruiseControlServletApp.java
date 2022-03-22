@@ -8,11 +8,16 @@ import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.ServletRequestHandler;
 import com.linkedin.kafka.cruisecontrol.servlet.security.CruiseControlSecurityHandler;
 import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityProvider;
+import org.apache.kafka.common.config.types.Password;
 import org.eclipse.jetty.security.ConstraintSecurityHandler;
 import org.eclipse.jetty.server.Connector;
-import org.eclipse.jetty.server.NCSARequestLog;
+import org.eclipse.jetty.server.CustomRequestLog;
+import org.eclipse.jetty.server.HttpConfiguration;
+import org.eclipse.jetty.server.HttpConnectionFactory;
+import org.eclipse.jetty.server.SecureRequestCustomizer;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.Slf4jRequestLogWriter;
 import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
@@ -27,8 +32,11 @@ public class KafkaCruiseControlServletApp extends KafkaCruiseControlApp {
     public KafkaCruiseControlServletApp(KafkaCruiseControlConfig config, Integer port, String hostname) throws ServletException {
         super(config, port, hostname);
         _server = new Server();
-        NCSARequestLog requestLog = createRequestLog();
-        if (requestLog != null) {
+        if (_config.getBoolean(WebServerConfig.WEBSERVER_ACCESSLOG_ENABLED_CONFIG)) {
+            // setup access logger
+            Slf4jRequestLogWriter slf4jRequestLogWriter = new Slf4jRequestLogWriter();
+            slf4jRequestLogWriter.setLoggerName(KafkaCruiseControlUtils.REQUESTLOG_LOGGER);
+            CustomRequestLog requestLog = new CustomRequestLog(slf4jRequestLogWriter, CustomRequestLog.NCSA_FORMAT);
             _server.setRequestLog(requestLog);
         }
         _server.setConnectors(new Connector[]{ setupHttpConnector(hostname, port) });
@@ -61,27 +69,51 @@ public class KafkaCruiseControlServletApp extends KafkaCruiseControlApp {
         System.out.println(">> ********************************************* <<");
     }
 
-    protected ServerConnector setupHttpConnector(String hostname, int port) {
+    private ServerConnector setupHttpConnector(String hostname, int port) {
         ServerConnector serverConnector;
         Boolean webserverSslEnable = _config.getBoolean(WebServerConfig.WEBSERVER_SSL_ENABLE_CONFIG);
         if (webserverSslEnable != null && webserverSslEnable) {
             SslContextFactory sslServerContextFactory = new SslContextFactory.Server();
             sslServerContextFactory.setKeyStorePath(_config.getString(WebServerConfig.WEBSERVER_SSL_KEYSTORE_LOCATION_CONFIG));
             sslServerContextFactory.setKeyStorePassword(_config.getPassword(WebServerConfig.WEBSERVER_SSL_KEYSTORE_PASSWORD_CONFIG).value());
-            sslServerContextFactory.setKeyManagerPassword(_config.getPassword(WebServerConfig.WEBSERVER_SSL_KEY_PASSWORD_CONFIG).value());
+            Password sslKeyPassword = _config.getPassword(WebServerConfig.WEBSERVER_SSL_KEY_PASSWORD_CONFIG);
+            if (sslKeyPassword != null) {
+                sslServerContextFactory.setKeyManagerPassword(sslKeyPassword.value());
+            }
             sslServerContextFactory.setProtocol(_config.getString(WebServerConfig.WEBSERVER_SSL_PROTOCOL_CONFIG));
             String keyStoreType = _config.getString(WebServerConfig.WEBSERVER_SSL_KEYSTORE_TYPE_CONFIG);
             if (keyStoreType != null) {
                 sslServerContextFactory.setKeyStoreType(keyStoreType);
             }
             maybeConfigureTlsProtocolsAndCiphers(sslServerContextFactory);
-            serverConnector = new ServerConnector(_server, sslServerContextFactory);
+
+            Boolean stsEnabled = _config.getBoolean(WebServerConfig.WEBSERVER_SSL_STS_ENABLED);
+            if (stsEnabled != null && stsEnabled) {
+                HttpConnectionFactory httpConnectionFactory = configureConnectionFactoryForHsts();
+                serverConnector = new ServerConnector(_server, sslServerContextFactory, httpConnectionFactory);
+            } else {
+                serverConnector = new ServerConnector(_server, sslServerContextFactory);
+            }
         } else {
             serverConnector = new ServerConnector(_server);
         }
         serverConnector.setHost(hostname);
         serverConnector.setPort(port);
         return serverConnector;
+    }
+
+    private HttpConnectionFactory configureConnectionFactoryForHsts() {
+        Long stsMaxAge = _config.getLong(WebServerConfig.WEBSERVER_SSL_STS_MAX_AGE);
+        Boolean stsIncludeSubDomains = _config.getBoolean(WebServerConfig.WEBSERVER_SSL_STS_INCLUDE_SUBDOMAINS);
+
+        SecureRequestCustomizer src = new SecureRequestCustomizer();
+        src.setStsMaxAge(stsMaxAge);
+        src.setStsIncludeSubDomains(stsIncludeSubDomains);
+
+        HttpConfiguration httpsConfig = new HttpConfiguration();
+        httpsConfig.addCustomizer(src);
+
+        return new HttpConnectionFactory(httpsConfig);
     }
 
     private void maybeConfigureTlsProtocolsAndCiphers(SslContextFactory sslContextFactory) {
@@ -105,7 +137,7 @@ public class KafkaCruiseControlServletApp extends KafkaCruiseControlApp {
         }
     }
 
-    protected void setupWebUi(ServletContextHandler contextHandler) {
+    private void setupWebUi(ServletContextHandler contextHandler) {
         // Placeholder for any static content
         String webuiDir = _config.getString(WebServerConfig.WEBSERVER_UI_DISKPATH_CONFIG);
         String webuiPathPrefix = _config.getString(WebServerConfig.WEBSERVER_UI_URLPREFIX_CONFIG);
@@ -116,7 +148,7 @@ public class KafkaCruiseControlServletApp extends KafkaCruiseControlApp {
         contextHandler.addServlet(holderWebapp, webuiPathPrefix);
     }
 
-    protected ServletContextHandler createContextHandler() {
+    private ServletContextHandler createContextHandler() {
         // Define context for servlet
         String sessionPath = _config.getString(WebServerConfig.WEBSERVER_SESSION_PATH_CONFIG);
 
@@ -125,7 +157,7 @@ public class KafkaCruiseControlServletApp extends KafkaCruiseControlApp {
         return context;
     }
 
-    protected void maybeSetSecurityHandler(ServletContextHandler contextHandler) throws ServletException {
+    private void maybeSetSecurityHandler(ServletContextHandler contextHandler) throws ServletException {
         SecurityProvider securityProvider = null;
         if (_config.getBoolean(WebServerConfig.WEBSERVER_SECURITY_ENABLE_CONFIG)) {
             securityProvider = _config.getConfiguredInstance(WebServerConfig.WEBSERVER_SECURITY_PROVIDER_CONFIG, SecurityProvider.class);
@@ -141,22 +173,6 @@ public class KafkaCruiseControlServletApp extends KafkaCruiseControlApp {
         }
     }
 
-    protected NCSARequestLog createRequestLog() {
-        boolean accessLogEnabled = _config.getBoolean(WebServerConfig.WEBSERVER_ACCESSLOG_ENABLED_CONFIG);
-        if (accessLogEnabled) {
-            String accessLogPath = _config.getString(WebServerConfig.WEBSERVER_ACCESSLOG_PATH_CONFIG);
-            int accessLogRetention = _config.getInt(WebServerConfig.WEBSERVER_ACCESSLOG_RETENTION_DAYS_CONFIG);
-            NCSARequestLog requestLog = new NCSARequestLog(accessLogPath);
-            requestLog.setRetainDays(accessLogRetention);
-            requestLog.setLogLatency(true);
-            requestLog.setAppend(true);
-            requestLog.setExtended(false);
-            requestLog.setPreferProxiedForAddress(true);
-            return requestLog;
-        } else {
-            return null;
-        }
-    }
     @Override
     public void start() throws Exception {
         _kafkaCruiseControl.startUp();
