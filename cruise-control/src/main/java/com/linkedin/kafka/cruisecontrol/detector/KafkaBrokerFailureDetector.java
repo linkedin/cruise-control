@@ -40,7 +40,7 @@ public class KafkaBrokerFailureDetector extends AbstractBrokerFailureDetector {
 
   Set<Integer> aliveBrokers() throws ExecutionException, InterruptedException, TimeoutException {
     return _adminClient.describeCluster().nodes().get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-              .stream().map(Node::id).collect(toSet());
+                       .stream().map(Node::id).collect(toSet());
   }
 
 }

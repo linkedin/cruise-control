@@ -178,7 +178,7 @@ public abstract class AbstractBrokerFailureDetector extends AbstractAnomalyDetec
       parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, failedBrokers);
       parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
       parameterConfigOverrides.put(BROKER_FAILURES_FIXABLE_CONFIG,
-          !tooManyFailedBrokers(failedBrokers.size(), _aliveBrokers.size()));
+                                   !tooManyFailedBrokers(failedBrokers.size(), _aliveBrokers.size()));
 
       BrokerFailures brokerFailures = _kafkaCruiseControl.config().getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
                                                                                          BrokerFailures.class,

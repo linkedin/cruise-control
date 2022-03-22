@@ -44,7 +44,7 @@ public class ZKBrokerFailureDetector extends AbstractBrokerFailureDetector {
     boolean zkSecurityEnabled = config.getBoolean(ExecutorConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
     ZKClientConfig zkClientConfig = ZKConfigUtils.zkClientConfigFromKafkaConfig(config);
     _kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zkUrl, ZK_BROKER_FAILURE_METRIC_GROUP, ZK_BROKER_FAILURE_METRIC_TYPE,
-            zkSecurityEnabled, zkClientConfig);
+                                                                 zkSecurityEnabled, zkClientConfig);
     _detectionExecutor = Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("BrokerFailureDetectorExecutor"));
   }
 
@@ -90,8 +90,7 @@ public class ZKBrokerFailureDetector extends AbstractBrokerFailureDetector {
   @Override
   Set<Integer> aliveBrokers() {
     // We get the alive brokers from ZK directly.
-    return CollectionConverters.asJava(_kafkaZkClient.getAllBrokersInCluster())
-            .stream().map(Broker::id).collect(toSet());
+    return CollectionConverters.asJava(_kafkaZkClient.getAllBrokersInCluster()).stream().map(Broker::id).collect(toSet());
   }
 
   /**
