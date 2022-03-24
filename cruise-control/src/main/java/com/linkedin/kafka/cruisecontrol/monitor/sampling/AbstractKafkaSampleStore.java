@@ -3,7 +3,6 @@
  */
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
-import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionMetricSample;
 import java.time.Duration;
@@ -58,11 +57,10 @@ public abstract class AbstractKafkaSampleStore implements SampleStore {
   /**
    * Retrieve the desired replication factor of sample store topics.
    *
-   * @param config The configurations for Cruise Control.
    * @param adminClient The adminClient to send describeCluster request.
    * @return Desired replication factor of sample store topics, or {@code null} if failed to resolve replication factor.
    */
-  protected short sampleStoreTopicReplicationFactor(Map<String, ?> config, AdminClient adminClient) {
+  protected short sampleStoreTopicReplicationFactor(AdminClient adminClient) {
     if (_sampleStoreTopicReplicationFactor == null) {
       short numberOfBrokersInCluster;
       try {
@@ -72,8 +70,8 @@ public abstract class AbstractKafkaSampleStore implements SampleStore {
         throw new IllegalStateException("Auto creation of sample store topics failed due to failure to describe cluster.", e);
       }
       if (numberOfBrokersInCluster <= 1) {
-        throw new IllegalStateException(String.format("Kafka cluster has less than 2 brokers (brokers in cluster=%d, zookeeper.connect=%s)",
-                                                      numberOfBrokersInCluster, config.get(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG)));
+        throw new IllegalStateException(String.format("Kafka cluster has less than 2 brokers (brokers in cluster=%d)",
+                                                      numberOfBrokersInCluster));
       }
 
       return (short) Math.min(DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR, numberOfBrokersInCluster);

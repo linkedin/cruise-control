@@ -30,6 +30,7 @@ public final class ExecutorConfig {
    * <code>zookeeper.connect</code>
    */
   public static final String ZOOKEEPER_CONNECT_CONFIG = KafkaConfig.ZkConnectProp();
+  public static final String DEFAULT_ZOOKEEPER_CONNECT = null;
   public static final String ZOOKEEPER_CONNECT_DOC = KafkaConfig.ZkConnectDoc();
 
   /**
@@ -552,6 +553,7 @@ public final class ExecutorConfig {
   public static ConfigDef define(ConfigDef configDef) {
     return configDef.define(ZOOKEEPER_CONNECT_CONFIG,
                             ConfigDef.Type.STRING,
+                            DEFAULT_ZOOKEEPER_CONNECT,
                             ConfigDef.Importance.HIGH,
                             ZOOKEEPER_CONNECT_DOC)
                     .define(ZOOKEEPER_SECURITY_ENABLED_CONFIG,
