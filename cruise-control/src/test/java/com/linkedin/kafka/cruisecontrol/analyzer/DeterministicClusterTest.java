@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.BrokerSetAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.IntraBrokerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.MinTopicLeadersPerBrokerGoal;
@@ -30,6 +31,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
+import com.linkedin.kafka.cruisecontrol.config.ReplicaToOriginalBrokerSetMappingPolicy;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -248,7 +250,88 @@ public class DeterministicClusterTest {
     // Try to match "topic0" and "topic1"
     properties.setProperty(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG, "topic\\d");
     p.add(params(new BalancingConstraint(new KafkaCruiseControlConfig(properties)), DeterministicCluster.minLeaderReplicaPerBrokerSatisfiable5(),
-            Collections.singletonList(MinTopicLeadersPerBrokerGoal.class.getName()), verifications, null));
+                 Collections.singletonList(MinTopicLeadersPerBrokerGoal.class.getName()), verifications, null));
+
+    // Broker Set Awareness
+    goalNameByPriority = Arrays.asList(BrokerSetAwareGoal.class.getName(),
+                                       RackAwareGoal.class.getName(),
+                                       RackAwareDistributionGoal.class.getName(),
+                                       ReplicaCapacityGoal.class.getName(),
+                                       DiskCapacityGoal.class.getName(),
+                                       NetworkInboundCapacityGoal.class.getName(),
+                                       NetworkOutboundCapacityGoal.class.getName(),
+                                       CpuCapacityGoal.class.getName());
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetSatisfiable1(),
+                 Collections.singletonList(BrokerSetAwareGoal.class.getName()), verifications, null));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetSatisfiable1(),
+                 goalNameByPriority, verifications, null));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetSatisfiable2(),
+                 Collections.singletonList(BrokerSetAwareGoal.class.getName()), verifications, null));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetSatisfiable2(),
+                 goalNameByPriority, verifications, null));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetSatisfiable3(),
+                 Collections.singletonList(BrokerSetAwareGoal.class.getName()), verifications, null));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetSatisfiable3(),
+                 goalNameByPriority, verifications, null));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetSatisfiable4(),
+                 Collections.singletonList(BrokerSetAwareGoal.class.getName()), verifications, null));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetSatisfiable4(),
+                 goalNameByPriority, verifications, null));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetSatisfiable5(),
+                 Collections.singletonList(BrokerSetAwareGoal.class.getName()), verifications, null));
+    // This test is to validate that an unbalanced brokerset aware cluster can move replicas around, if another goal like DiskCapacityGoal is violated
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetSatisfiable5(),
+                 Arrays.asList(BrokerSetAwareGoal.class.getName(),
+                               DiskCapacityGoal.class.getName()), verifications, null));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetSatisfiable5(),
+                 Arrays.asList(DiskCapacityGoal.class.getName(),
+                               BrokerSetAwareGoal.class.getName()), verifications, null));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetSatisfiable6(),
+                 Collections.singletonList(BrokerSetAwareGoal.class.getName()), verifications, null));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetSatisfiable6(),
+                 goalNameByPriority, verifications, null));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetSatisfiable8(),
+                 Collections.singletonList(BrokerSetAwareGoal.class.getName()), verifications, null));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetSatisfiable8(),
+                 goalNameByPriority, verifications, null));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetUnSatisfiable1(),
+                 Collections.singletonList(BrokerSetAwareGoal.class.getName()), verifications, OptimizationFailureException.class));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetUnSatisfiable1(),
+                 goalNameByPriority, verifications, OptimizationFailureException.class));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetUnSatisfiable1(),
+                 Arrays.asList(DiskCapacityGoal.class.getName(),
+                               BrokerSetAwareGoal.class.getName()), verifications, OptimizationFailureException.class));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetUnSatisfiable3(),
+                 Collections.singletonList(BrokerSetAwareGoal.class.getName()), verifications, OptimizationFailureException.class));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetUnSatisfiable3(),
+                 goalNameByPriority, verifications, OptimizationFailureException.class));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetUnSatisfiable4(),
+                 Arrays.asList(DiskUsageDistributionGoal.class.getName(),
+                               BrokerSetAwareGoal.class.getName()), verifications, OptimizationFailureException.class));
+    // Since DiskUsageDistribution is Soft Goal, the exception won't be thrown if the optimization suggested does not abide by BrokerSetAwareGoal
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetUnSatisfiable4(),
+                 Arrays.asList(BrokerSetAwareGoal.class.getName(),
+                               DiskUsageDistributionGoal.class.getName()), verifications, null));
     return p;
   }
 
@@ -256,6 +339,8 @@ public class DeterministicClusterTest {
     Properties properties = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     properties.setProperty(AnalyzerConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(6L));
     properties.setProperty(AnalyzerConfig.OVERPROVISIONED_MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(6L));
+    properties.setProperty(AnalyzerConfig.REPLICA_TO_BROKER_SET_MAPPING_POLICY_CLASS_CONFIG,
+                           ReplicaToOriginalBrokerSetMappingPolicy.class.getName());
     return properties;
   }
 

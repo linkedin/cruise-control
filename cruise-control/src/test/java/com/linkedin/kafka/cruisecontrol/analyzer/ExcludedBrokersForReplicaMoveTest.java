@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.BrokerSetAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
@@ -23,6 +24,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
+import com.linkedin.kafka.cruisecontrol.config.ReplicaToOriginalBrokerSetMappingPolicy;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
@@ -47,6 +49,8 @@ import org.junit.runners.Parameterized;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUnitTestUtils.goal;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.RACK_BY_BROKER;
+import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.RACK_BY_BROKER4;
+import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.brokerSetSatisfiable7;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced2;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced3;
@@ -123,6 +127,7 @@ public class ExcludedBrokersForReplicaMoveTest {
     Set<Integer> excludeB1 = Collections.singleton(1);
     Set<Integer> excludeB2 = Collections.singleton(2);
     Set<Integer> excludeAllBrokers = Collections.unmodifiableSet(RACK_BY_BROKER.keySet());
+    Set<Integer> excludeAllBrokersForBrokerSetTests = Collections.unmodifiableSet(RACK_BY_BROKER4.keySet());
     Set<Integer> excludeB1B2 = new HashSet<>(RACK_BY_BROKER.keySet());
     excludeB1B2.removeAll(excludeB0);
     Set<Integer> noDeadBroker = Collections.emptySet();
@@ -338,6 +343,28 @@ public class ExcludedBrokersForReplicaMoveTest {
     // Test: With single excluded broker, unsatisfiable cluster, one dead broker with followers (No exception, Generates proposals,
     // Not expected to look optimized)
     p.add(params(4, LeaderReplicaDistributionGoal.class, excludeB0, null, unbalanced3(), deadBroker1, false, true));
+
+    // ============BrokerSetAwareGoal============
+    configOverrides.setProperty(AnalyzerConfig.REPLICA_TO_BROKER_SET_MAPPING_POLICY_CLASS_CONFIG,
+                                ReplicaToOriginalBrokerSetMappingPolicy.class.getName());
+    // Test: With single excluded broker, satisfiable cluster, no dead broker (No exception, does not generate proposals,
+    // Expected to look optimized)
+    p.add(params(0, BrokerSetAwareGoal.class, excludeB1, null, brokerSetSatisfiable7(), noDeadBroker, true, false, configOverrides));
+    // Test: With no excluded broker, satisfiable cluster, one dead broker (No exception, Generates proposals,
+    // Expected to look optimized)
+    p.add(params(1, BrokerSetAwareGoal.class, excludeB1, null, brokerSetSatisfiable7(), deadBroker0, true, true, configOverrides));
+    // Test: With B1, B2 excluded, satisfiable cluster, B0 is dead, expected to throw exception
+    p.add(params(1, BrokerSetAwareGoal.class, excludeB1B2, OptimizationFailureException.class, brokerSetSatisfiable7(), deadBroker0, null,
+                 null, configOverrides));
+    // Test: With all brokers excluded, satisfiable cluster, no dead brokers (Exception)
+    p.add(
+        params(2, BrokerSetAwareGoal.class, excludeAllBrokersForBrokerSetTests, OptimizationFailureException.class, brokerSetSatisfiable7(),
+               noDeadBroker, null, null, configOverrides));
+    // Test: With all brokers excluded, satisfiable cluster, one dead broker (Exception)
+    p.add(
+        params(3, BrokerSetAwareGoal.class, excludeAllBrokersForBrokerSetTests, OptimizationFailureException.class, brokerSetSatisfiable7(),
+               deadBroker0, null, null, configOverrides));
+
     return p;
   }
 

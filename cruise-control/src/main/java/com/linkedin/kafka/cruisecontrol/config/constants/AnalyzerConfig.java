@@ -28,6 +28,12 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
+import com.linkedin.kafka.cruisecontrol.config.BrokerSetAssignmentPolicy;
+import com.linkedin.kafka.cruisecontrol.config.BrokerSetFileResolver;
+import com.linkedin.kafka.cruisecontrol.config.BrokerSetResolver;
+import com.linkedin.kafka.cruisecontrol.config.NoOpBrokerSetAssignmentPolicy;
+import com.linkedin.kafka.cruisecontrol.config.ReplicaToBrokerSetMappingPolicy;
+import com.linkedin.kafka.cruisecontrol.config.TopicNameHashBrokerSetMappingPolicy;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.common.config.ConfigDef;
@@ -406,6 +412,40 @@ public final class AnalyzerConfig {
       + "Users can run goal optimizations in fast mode by setting the fast_mode parameter to true in relevant endpoints. "
       + "This mode intends to provide a more predictable runtime for goal optimizations.";
 
+  /**
+   * <code>broker.set.resolver.class</code>
+   */
+  public static final String BROKER_SET_RESOLVER_CLASS_CONFIG = "broker.set.resolver.class";
+  public static final String DEFAULT_BROKER_SET_RESOLVER_CLASS = BrokerSetFileResolver.class.getName();
+  public static final String BROKER_SET_RESOLVER_CLASS_DOC = String.format(
+      "The class implements %s interface and is used to generate broker set information to be used by BrokerSet related goals.",
+      BrokerSetResolver.class.getName());
+
+  /**
+   * <code>broker.set.config.file</code>
+   */
+  public static final String BROKER_SET_CONFIG_FILE_CONFIG = "broker.set.config.file";
+  public static final String DEFAULT_BROKER_SET_CONFIG_FILE = "config/brokerSets.json";
+  public static final String BROKER_SET_CONFIG_FILE_DOC = "The file path that holds broker sets ids to broker ids mapping information.";
+
+  /**
+   * <code>broker.set.assignment.policy.class</code>
+   */
+  public static final String BROKER_SET_ASSIGNMENT_POLICY_CLASS_CONFIG = "broker.set.assignment.policy.class";
+  public static final String DEFAULT_BROKER_SET_ASSIGNMENT_POLICY_CLASS = NoOpBrokerSetAssignmentPolicy.class.getName();
+  public static final String BROKER_SET_ASSIGNMENT_POLICY_CLASS_DOC = String.format(
+      "The class implements %s interface and is used to generate broker sets to broker ids mapping for broker ids that are not provided by %s.",
+      BrokerSetAssignmentPolicy.class.getName(), BROKER_SET_RESOLVER_CLASS_CONFIG);
+
+  /**
+   * <code>replica.to.broker.set.mapping.policy.class</code>
+   */
+  public static final String REPLICA_TO_BROKER_SET_MAPPING_POLICY_CLASS_CONFIG = "replica.to.broker.set.mapping.policy.class";
+  public static final String DEFAULT_REPLICA_TO_BROKER_SET_MAPPING_POLICY_CLASS = TopicNameHashBrokerSetMappingPolicy.class.getName();
+  public static final String REPLICA_TO_BROKER_SET_MAPPING_POLICY_CLASS_DOC =
+      String.format("The class implements %s interface and is used to generate replica to broker set mapping.",
+                    ReplicaToBrokerSetMappingPolicy.class.getName());
+
   private AnalyzerConfig() {
   }
 
@@ -623,6 +663,24 @@ public final class AnalyzerConfig {
                             DEFAULT_FAST_MODE_PER_BROKER_MOVE_TIMEOUT_MS,
                             atLeast(1),
                             ConfigDef.Importance.LOW,
-                            FAST_MODE_PER_BROKER_MOVE_TIMEOUT_MS_DOC);
+                            FAST_MODE_PER_BROKER_MOVE_TIMEOUT_MS_DOC)
+                    .define(BROKER_SET_RESOLVER_CLASS_CONFIG,
+                            ConfigDef.Type.CLASS,
+                            DEFAULT_BROKER_SET_RESOLVER_CLASS,
+                            ConfigDef.Importance.LOW,
+                            BROKER_SET_RESOLVER_CLASS_DOC)
+                    .define(BROKER_SET_CONFIG_FILE_CONFIG,
+                            ConfigDef.Type.STRING,
+                            DEFAULT_BROKER_SET_CONFIG_FILE,
+                            ConfigDef.Importance.LOW,
+                            BROKER_SET_CONFIG_FILE_DOC)
+                    .define(BROKER_SET_ASSIGNMENT_POLICY_CLASS_CONFIG,
+                            ConfigDef.Type.CLASS, DEFAULT_BROKER_SET_ASSIGNMENT_POLICY_CLASS,
+                            ConfigDef.Importance.LOW,
+                            BROKER_SET_ASSIGNMENT_POLICY_CLASS_DOC)
+                    .define(REPLICA_TO_BROKER_SET_MAPPING_POLICY_CLASS_CONFIG,
+                            ConfigDef.Type.CLASS, DEFAULT_REPLICA_TO_BROKER_SET_MAPPING_POLICY_CLASS,
+                            ConfigDef.Importance.LOW,
+                            REPLICA_TO_BROKER_SET_MAPPING_POLICY_CLASS_DOC);
   }
 }

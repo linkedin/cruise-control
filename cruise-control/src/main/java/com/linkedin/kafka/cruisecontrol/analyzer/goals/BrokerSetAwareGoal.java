@@ -1,0 +1,323 @@
+/*
+ * Copyright 2022 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ *
+ */
+
+package com.linkedin.kafka.cruisecontrol.analyzer.goals;
+
+import com.linkedin.kafka.cruisecontrol.config.ReplicaToBrokerSetMappingPolicy;
+import com.linkedin.kafka.cruisecontrol.exception.BrokerSetResolutionException;
+import com.linkedin.kafka.cruisecontrol.exception.ReplicaToBrokerSetMappingException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
+import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
+import com.linkedin.kafka.cruisecontrol.config.BrokerSetResolutionHelper;
+import com.linkedin.kafka.cruisecontrol.config.BrokerSetResolver;
+import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
+import com.linkedin.kafka.cruisecontrol.model.Broker;
+import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
+import com.linkedin.kafka.cruisecontrol.model.Partition;
+import com.linkedin.kafka.cruisecontrol.model.Replica;
+import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
+import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
+import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
+
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.BROKER_REJECT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
+
+
+/**
+ * HARD GOAL: Generate proposals to provide brokerSet-aware replica distribution.
+ *
+ * <p>
+ * BrokerSets are defined as a group of Brokers within a cluster. With BrokerSets, a topic can be placed within the boundary of a BrokerSet.
+ * BrokerSets help reduce blast radius and provide a layer of isolation within a Kafka Cluster. BrokerSets can expand their boundaries or shrink.
+ * </p>
+ * <p>
+ * Assuming a case where RF is 3, the distribution of topic-partitions can look like this:
+ * </p>
+ *
+ * <pre>
+ * BrokerSet RED                | BrokerSet BLUE              | BrokerSet GREEN
+ * -------------------------------------------------------------------------------
+ * Broker1  t1p1-0,  t2p1-2     | Broker4 t3p1-1              | Broker7
+ * Broker2  t2p1-0,  t1p1-1     | Broker5 t3p1-2              | Broker8
+ * Broker3  t1p1-2,  t2p1-1     | Broker6 t3p1-0              | Broker9
+ * </pre>
+ *
+ * <p>
+ * There could also be some topics that do not follow the BrokerSet boundary.
+ * Such topics should be excluded from movements using the {topics.excluded.from.partition.movement} property
+ * </p>
+ * <p>
+ * Supported Optimization Options are:
+ * </p>
+ * <pre>
+ * {@link OptimizationOptions#excludedTopics()} -&gt; Handled by {@link BrokerSetAwareGoal}
+ * {@link OptimizationOptions#excludedBrokersForReplicaMove()} -&gt; Handled by {@link AbstractGoal}
+ * {@link OptimizationOptions#requestedDestinationBrokerIds()} -&gt; Handled by {@link AbstractGoal}
+ * {@link OptimizationOptions#onlyMoveImmigrantReplicas()} -&gt; Handled by {@link BrokerSetAwareGoal}
+ * </pre>
+ */
+public class BrokerSetAwareGoal extends AbstractGoal {
+  private static final Logger LOG = LoggerFactory.getLogger(BrokerSetAwareGoal.class);
+  private BrokerSetResolutionHelper _brokerSetResolutionHelper;
+  private Map<String, Set<Broker>> _brokersByBrokerSet;
+  private ReplicaToBrokerSetMappingPolicy _replicaToBrokerSetMappingPolicy;
+
+  /**
+   * Constructor for Broker Set Aware Goal.
+   */
+  public BrokerSetAwareGoal() {
+  }
+
+  /**
+   * Package private for unit test.
+   */
+  BrokerSetAwareGoal(BalancingConstraint constraint) {
+    this();
+    _balancingConstraint = constraint;
+  }
+
+  @Override
+  public String name() {
+    return BrokerSetAwareGoal.class.getSimpleName();
+  }
+
+  @Override
+  public boolean isHardGoal() {
+    return true;
+  }
+
+  /**
+   * Initialize states that this goal requires. e.g. -
+   * <ol>
+   * <li>Run sanity checks regarding hard goals requirements like all topics exclusion or all brokers exclusion.</li>
+   * <li>Create sorting/filtering of replicas in cluster model for this goal.</li>
+   * <li>Initialize BrokerSet data store.</li>
+   * </ol>
+   * This is a hard goal; hence, the proposals are not limited to dead broker replicas in case of self-healing.
+   *
+   * @param clusterModel        The state of the cluster.
+   * @param optimizationOptions Options to take into account during optimization.
+   */
+  @Override
+  protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) throws OptimizationFailureException {
+    // This is used to identify brokers not excluded for replica moves.
+    final HashSet<Integer> brokersAllowedReplicaMove = GoalUtils.aliveBrokersNotExcludedForReplicaMove(clusterModel, optimizationOptions);
+    if (brokersAllowedReplicaMove.isEmpty()) {
+      // Handle the case when all alive brokers are excluded from replica moves.
+      ProvisionRecommendation recommendation =
+          new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).numBrokers(clusterModel.maxReplicationFactor()).build();
+      throw new OptimizationFailureException(String.format("[%s] All alive brokers are excluded from replica moves.", name()),
+                                             recommendation);
+    }
+
+    // Whether the {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas} tracks replicas in descending order or not.
+    boolean tracksReplicasInReverseOrder = false;
+    // Whether the {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas} tracks only leader replicas or all replicas.
+    boolean tracksOnlyLeaderReplicas = false;
+
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
+    /*
+    Replicas using selection/priority/score functions can be filtered/ordered/scored to be picked for movement during balancing act.
+    If the Optimization Options requires movement of only immigrant replicas, then we pick immigrant replicas.
+    Similarly, if excluded topics are specified, then for optimizing efficiently, then we select only included topics' replicas.
+    The reason for picking the below selection functions is to abide by the Optimization Options.
+    Other functions like selecting leaders etc are not relevant for BrokerSetAwareGoal.
+    */
+    new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
+                                                     optimizationOptions.onlyMoveImmigrantReplicas())
+                              .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics),
+                                                     !excludedTopics.isEmpty())
+                              .trackSortedReplicasFor(replicaSortName(this, tracksReplicasInReverseOrder, tracksOnlyLeaderReplicas),
+                                                      clusterModel);
+
+    BrokerSetResolver brokerSetResolver = _balancingConstraint.brokerSetResolver();
+    _brokerSetResolutionHelper = new BrokerSetResolutionHelper(clusterModel, brokerSetResolver);
+    _brokersByBrokerSet = _brokerSetResolutionHelper.brokersByBrokerSetId();
+    _replicaToBrokerSetMappingPolicy = _balancingConstraint.replicaToBrokerSetMappingPolicy();
+  }
+
+  /**
+   * Update goal state.
+   * Sanity check: After completion of balancing / self-healing, confirm that replicas of each topic reside fully in a
+   * broker set.
+   *
+   * @param clusterModel        The state of the cluster.
+   * @param optimizationOptions Options to take into account during optimization.
+   */
+  @Override
+  protected void updateGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) throws OptimizationFailureException {
+    // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
+    GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
+    // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
+    GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
+    // Sanity check to confirm that the final distribution is broker set aware.
+    ensureBrokerSetAware(clusterModel, optimizationOptions);
+    if (_provisionResponse.status() != ProvisionStatus.OVER_PROVISIONED) {
+      _provisionResponse = new ProvisionResponse(ProvisionStatus.RIGHT_SIZED);
+    }
+    finish();
+  }
+
+  private void ensureBrokerSetAware(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
+      throws OptimizationFailureException {
+    // Sanity check to confirm that the final distribution is brokerSet aware.
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
+
+    for (Map.Entry<String, List<Partition>> partitionsByTopic : clusterModel.getPartitionsByTopic().entrySet()) {
+      if (!excludedTopics.contains(partitionsByTopic.getKey())) {
+        List<Partition> partitions = partitionsByTopic.getValue();
+        Set<Broker> allBrokersForTopic = partitions.stream()
+                                                   .map(partition -> partition.partitionBrokers())
+                                                   .flatMap(brokers -> brokers.stream())
+                                                   .collect(Collectors.toSet());
+        // Checks if a topic's brokers do not all live in a single brokerSet
+        if (_brokersByBrokerSet.values().stream().noneMatch(brokerSetBrokers -> brokerSetBrokers.containsAll(allBrokersForTopic))) {
+          throw new OptimizationFailureException(
+              String.format("[%s] Topic %s is not brokerSet-aware. brokers (%s).", name(), partitionsByTopic.getKey(), allBrokersForTopic));
+        }
+      }
+    }
+  }
+
+  /**
+   * brokerSet-awareness violations can be resolved with replica movements.
+   *
+   * @param broker              Broker to be balanced.
+   * @param clusterModel        The state of the cluster.
+   * @param optimizedGoals      Optimized goals.
+   * @param optimizationOptions Options to take into account during optimization.
+   */
+  @Override
+  protected void rebalanceForBroker(Broker broker, ClusterModel clusterModel, Set<Goal> optimizedGoals,
+                                    OptimizationOptions optimizationOptions) throws OptimizationFailureException {
+    LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
+
+    String currentBrokerSetId = _brokerSetResolutionHelper.brokerSetId(broker);
+
+    for (Replica replica : broker.trackedSortedReplicas(replicaSortName(this, false, false)).sortedReplicas(true)) {
+      String eligibleBrokerSetIdForReplica =
+          _replicaToBrokerSetMappingPolicy.brokerSetIdForReplica(replica, clusterModel, _brokerSetResolutionHelper);
+
+      // If the re-balancing action is performed within the broker set boundary, we are good
+      if (broker.isAlive() && eligibleBrokerSetIdForReplica.equals(currentBrokerSetId)) {
+        continue;
+      }
+      // If the brokerSet awareness condition is violated. Move replica to an eligible broker
+      Set<Broker> eligibleBrokers = _brokersByBrokerSet.get(eligibleBrokerSetIdForReplica)
+                                                       .stream()
+                                                       .filter(b -> clusterModel.aliveBrokers().contains(b))
+                                                       .collect(Collectors.toSet());
+      if (maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, ActionType.INTER_BROKER_REPLICA_MOVEMENT, optimizedGoals,
+                                    optimizationOptions) == null) {
+        // If balancing action can not be applied, provide recommendation to add new Brokers.
+        ProvisionRecommendation recommendation =
+            new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).numBrokers(clusterModel.maxReplicationFactor()).build();
+        throw new OptimizationFailureException(
+            String.format("[%s] Cannot move replica %s to %s on brokerSet %s", name(), replica, eligibleBrokers,
+                          eligibleBrokerSetIdForReplica), recommendation);
+      }
+    }
+  }
+
+  /**
+   * Check whether the given action is acceptable by this goal. The following actions are acceptable:
+   * <ul>
+   *   <li>All leadership moves</li>
+   *   <li>Replica moves that do not violate {@link #doesReplicaMoveViolateActionAcceptance(ClusterModel, Replica, Broker)}</li>
+   *   <li>Swaps that do not violate {@link #doesReplicaMoveViolateActionAcceptance(ClusterModel, Replica, Broker)}
+   *   in both direction</li>
+   * </ul>
+   *
+   * @param action       Action to be checked for acceptance.
+   * @param clusterModel The state of the cluster.
+   * @return {@link ActionAcceptance#ACCEPT} if the action is acceptable by this goal,
+   * {@link ActionAcceptance#BROKER_REJECT} if the action is rejected due to violating brokerSet awareness in the destination
+   * broker after moving source replica to destination broker, {@link ActionAcceptance#REPLICA_REJECT} otherwise.
+   */
+  @Override
+  public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
+    switch (action.balancingAction()) {
+      case LEADERSHIP_MOVEMENT:
+        return ACCEPT;
+      case INTER_BROKER_REPLICA_MOVEMENT:
+      case INTER_BROKER_REPLICA_SWAP:
+        if (doesReplicaMoveViolateActionAcceptance(clusterModel,
+                                                   clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition()),
+                                                   clusterModel.broker(action.destinationBrokerId()))) {
+          return BROKER_REJECT;
+        }
+        // SWAP Actions are performed by distribution goals to swap distinct partitions replicas to swap load in or out
+        // We would need to check both ways in swap cases that original brokerSet of both replicas matches the brokerSet of destination broker
+        if (action.balancingAction() == ActionType.INTER_BROKER_REPLICA_SWAP
+            && doesReplicaMoveViolateActionAcceptance(clusterModel,
+                                                      clusterModel.broker(action.destinationBrokerId())
+                                                                  .replica(action.destinationTopicPartition()),
+                                                      clusterModel.broker(action.sourceBrokerId()))) {
+          return REPLICA_REJECT;
+        }
+        return ACCEPT;
+      default:
+        throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
+    }
+  }
+
+  protected boolean doesReplicaMoveViolateActionAcceptance(ClusterModel clusterModel, Replica sourceReplica, Broker destinationBroker) {
+    // Destination broker cannot be in any other brokerSet.
+    // A replica's current broker set id can be different from the expected broker id defined by replica broker set mapping policy
+    try {
+      String expectedBrokerSetId =
+          _replicaToBrokerSetMappingPolicy.brokerSetIdForReplica(sourceReplica, clusterModel, _brokerSetResolutionHelper);
+      String destinationBrokerSetId = _brokerSetResolutionHelper.brokerSetId(destinationBroker);
+
+      return !expectedBrokerSetId.equals(destinationBrokerSetId);
+    } catch (BrokerSetResolutionException | ReplicaToBrokerSetMappingException e) {
+      LOG.error(String.format("[%s] Replica move violated action acceptance", name()), e);
+      return true;
+    }
+  }
+
+  @Override
+  public ClusterModelStatsComparator clusterModelStatsComparator() {
+    // Stats are irrelevant to a hard goal. The optimization would already fail if the goal requirements are not met.
+    return new GoalUtils.HardGoalStatsComparator();
+  }
+
+  @Override
+  public ModelCompletenessRequirements clusterModelCompletenessRequirements() {
+    // BrokerSet-awareness does not need load information at all
+    return new ModelCompletenessRequirements(MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING, 0.0, true);
+  }
+
+  /**
+   * While attempting to apply balancing action during re-balance,
+   * check if requirements of this goal are not violated if this action is applied to the given cluster state,
+   * {@code false} otherwise.
+   *
+   * @param clusterModel The state of the cluster.
+   * @param action       Action containing information about potential modification to the given cluster model.
+   * @return {@code true} if requirements of this goal are not violated if this action is applied to the given cluster state,
+   * {@code false} otherwise.
+   */
+  @Override
+  protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
+    return true;
+  }
+}

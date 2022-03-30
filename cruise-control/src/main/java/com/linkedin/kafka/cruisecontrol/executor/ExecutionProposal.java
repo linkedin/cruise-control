@@ -217,7 +217,7 @@ public class ExecutionProposal {
    * @return whether the proposal involves a leader action. i.e. leader movement.
    */
   public boolean hasLeaderAction() {
-    return _oldLeader != _newReplicas.get(0);
+    return !_oldLeader.equals(_newReplicas.get(0));
   }
 
   /**
