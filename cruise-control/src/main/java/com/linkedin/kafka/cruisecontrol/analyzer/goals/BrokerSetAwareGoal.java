@@ -5,14 +5,17 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.common.Utils;
 import com.linkedin.kafka.cruisecontrol.config.ReplicaToBrokerSetMappingPolicy;
 import com.linkedin.kafka.cruisecontrol.exception.BrokerSetResolutionException;
 import com.linkedin.kafka.cruisecontrol.exception.ReplicaToBrokerSetMappingException;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
@@ -79,6 +82,8 @@ public class BrokerSetAwareGoal extends AbstractGoal {
   private BrokerSetResolutionHelper _brokerSetResolutionHelper;
   private Map<String, Set<Broker>> _brokersByBrokerSet;
   private ReplicaToBrokerSetMappingPolicy _replicaToBrokerSetMappingPolicy;
+  private Set<String> _excludedTopics;
+  private Set<String> _mustHaveTopicLeadersPerBroker;
 
   /**
    * Constructor for Broker Set Aware Goal.
@@ -133,7 +138,11 @@ public class BrokerSetAwareGoal extends AbstractGoal {
     // Whether the {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas} tracks only leader replicas or all replicas.
     boolean tracksOnlyLeaderReplicas = false;
 
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
+    _mustHaveTopicLeadersPerBroker = Collections.unmodifiableSet(
+        Utils.getTopicNamesMatchedWithPattern(_balancingConstraint.topicsWithMinLeadersPerBrokerPattern(), clusterModel::topics));
+    _excludedTopics = Collections.unmodifiableSet(
+        Stream.of(_mustHaveTopicLeadersPerBroker, optimizationOptions.excludedTopics()).flatMap(Set::stream).collect(Collectors.toSet()));
+
     /*
     Replicas using selection/priority/score functions can be filtered/ordered/scored to be picked for movement during balancing act.
     If the Optimization Options requires movement of only immigrant replicas, then we pick immigrant replicas.
@@ -143,8 +152,8 @@ public class BrokerSetAwareGoal extends AbstractGoal {
     */
     new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
                                                      optimizationOptions.onlyMoveImmigrantReplicas())
-                              .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(excludedTopics),
-                                                     !excludedTopics.isEmpty())
+                              .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBasedOnExcludedTopics(_excludedTopics),
+                                                     !_excludedTopics.isEmpty())
                               .trackSortedReplicasFor(replicaSortName(this, tracksReplicasInReverseOrder, tracksOnlyLeaderReplicas),
                                                       clusterModel);
 
@@ -179,10 +188,9 @@ public class BrokerSetAwareGoal extends AbstractGoal {
   private void ensureBrokerSetAware(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
       throws OptimizationFailureException {
     // Sanity check to confirm that the final distribution is brokerSet aware.
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
-
     for (Map.Entry<String, List<Partition>> partitionsByTopic : clusterModel.getPartitionsByTopic().entrySet()) {
-      if (!excludedTopics.contains(partitionsByTopic.getKey())) {
+      String topicName = partitionsByTopic.getKey();
+      if (!_excludedTopics.contains(topicName)) {
         List<Partition> partitions = partitionsByTopic.getValue();
         Set<Broker> allBrokersForTopic = partitions.stream()
                                                    .map(partition -> partition.partitionBrokers())
@@ -191,7 +199,7 @@ public class BrokerSetAwareGoal extends AbstractGoal {
         // Checks if a topic's brokers do not all live in a single brokerSet
         if (_brokersByBrokerSet.values().stream().noneMatch(brokerSetBrokers -> brokerSetBrokers.containsAll(allBrokersForTopic))) {
           throw new OptimizationFailureException(
-              String.format("[%s] Topic %s is not brokerSet-aware. brokers (%s).", name(), partitionsByTopic.getKey(), allBrokersForTopic));
+              String.format("[%s] Topic %s is not brokerSet-aware. brokers (%s).", name(), topicName, allBrokersForTopic));
         }
       }
     }
@@ -217,7 +225,9 @@ public class BrokerSetAwareGoal extends AbstractGoal {
           _replicaToBrokerSetMappingPolicy.brokerSetIdForReplica(replica, clusterModel, _brokerSetResolutionHelper);
 
       // If the re-balancing action is performed within the broker set boundary, we are good
-      if (broker.isAlive() && eligibleBrokerSetIdForReplica.equals(currentBrokerSetId)) {
+      // Also, if the topics that are configured to have leaders on each broker within the cluster, then those topics won't be rebalanced
+      if ((broker.isAlive() && eligibleBrokerSetIdForReplica.equals(currentBrokerSetId)) || _mustHaveTopicLeadersPerBroker.contains(
+          replica.topicPartition().topic())) {
         continue;
       }
       // If the brokerSet awareness condition is violated. Move replica to an eligible broker
