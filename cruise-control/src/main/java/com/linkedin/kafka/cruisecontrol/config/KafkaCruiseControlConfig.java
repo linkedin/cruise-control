@@ -139,9 +139,9 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       }
       if (KafkaTopicConfigProvider.class.getName().equals(getClass(MonitorConfig.TOPIC_CONFIG_PROVIDER_CLASS_CONFIG).getName())) {
         throw new ConfigException(String.format("Missing required configuration, either %s must be set, or %s must be set to %s.",
-                ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG,
-                MonitorConfig.TOPIC_CONFIG_PROVIDER_CLASS_CONFIG,
-                KafkaAdminTopicConfigProvider.class.getName()));
+                                  ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG,
+                                  MonitorConfig.TOPIC_CONFIG_PROVIDER_CLASS_CONFIG,
+                                  KafkaAdminTopicConfigProvider.class.getName()));
       }
     }
   }

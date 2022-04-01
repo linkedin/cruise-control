@@ -193,7 +193,7 @@ public final class AnomalyDetectorConfig {
    * <code>kafka.broker.failure.detection.enable</code>
    */
   public static final String KAFKA_BROKER_FAILURE_DETECTION_ENABLE_CONFIG = "kafka.broker.failure.detection.enable";
-  public static final Boolean DEFAULT_KAFKA_BROKER_FAILURE_DETECTION_ENABLE = false;
+  public static final boolean DEFAULT_KAFKA_BROKER_FAILURE_DETECTION_ENABLE = false;
   public static final String KAFKA_BROKER_FAILURE_DETECTION_ENABLE_DOC = "Whether to use the Kafka API to detect broker failures "
       + "instead of ZooKeeper.";
 
