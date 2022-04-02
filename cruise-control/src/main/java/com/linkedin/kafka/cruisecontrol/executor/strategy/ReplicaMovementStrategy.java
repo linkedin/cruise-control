@@ -12,6 +12,9 @@ import java.util.SortedSet;
 import org.apache.kafka.common.Cluster;
 
 
+/**
+ * An interface to enable customization of replica movement strategies.
+ */
 public interface ReplicaMovementStrategy {
 
   /**

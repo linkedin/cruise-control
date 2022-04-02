@@ -11,6 +11,10 @@ import java.util.Collection;
 import java.util.Map;
 
 
+/**
+ * An interface to provide custom finders for metric anomalies.
+ * @param <E> The entity for which metrics will be tracked.
+ */
 public interface MetricAnomalyFinder<E extends Entity> extends CruiseControlConfigurable {
 
   /**

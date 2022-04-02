@@ -16,6 +16,9 @@ import java.util.Map;
 import org.apache.kafka.common.annotation.InterfaceStability;
 
 
+/**
+ * An interface to handle notifications corresponding to different anomalies and their self-healing status.
+ */
 @InterfaceStability.Evolving
 public interface AnomalyNotifier extends CruiseControlConfigurable {
 

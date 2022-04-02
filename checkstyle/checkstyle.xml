@@ -217,6 +217,10 @@ LinkedIn Java style.
             <property name="ignoreMethodNamesRegex" value="^test.*$"/>
         </module>
 
+        <module name="MissingJavadocType">
+            <property name="tokens" value="INTERFACE_DEF,ANNOTATION_DEF,RECORD_DEF"/>
+        </module>
+
         <module name="NonEmptyAtclauseDescription">
             <property name="javadocTokens" value="PARAM_LITERAL,RETURN_LITERAL,DEPRECATED_LITERAL"/>
         </module>
