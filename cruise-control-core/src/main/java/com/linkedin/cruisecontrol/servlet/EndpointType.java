@@ -4,5 +4,9 @@
 
 package com.linkedin.cruisecontrol.servlet;
 
+
+/**
+ * An interface to categorize endpoints by their type.
+ */
 public interface EndpointType {
 }
