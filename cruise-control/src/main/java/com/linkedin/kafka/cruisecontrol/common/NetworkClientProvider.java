@@ -13,6 +13,9 @@ import org.apache.kafka.common.network.ChannelBuilder;
 import org.apache.kafka.common.utils.Time;
 
 
+/**
+ * An interface to create network clients supporting custom Kafka client versions.
+ */
 @InterfaceStability.Evolving
 public interface NetworkClientProvider {
 

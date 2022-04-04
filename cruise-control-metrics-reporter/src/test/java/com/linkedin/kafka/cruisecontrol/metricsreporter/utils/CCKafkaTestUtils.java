@@ -185,6 +185,9 @@ public final class CCKafkaTestUtils {
     return port;
   }
 
+  /**
+   * A functional interface for a task to run.
+   */
   @FunctionalInterface
   public interface Task {
     void run() throws Exception;
