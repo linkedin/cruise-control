@@ -10,7 +10,7 @@ plugins {
   id "com.github.ben-manes.versions" version "0.42.0"
   id "com.github.spotbugs" version "5.0.6" apply false
   id "checkstyle"
-  id "org.openapi.generator" version "5.3.0"
+  id "org.openapi.generator" version "5.4.0"
 }
 
 group = 'com.linkedin.cruisecontrol'
@@ -161,14 +161,13 @@ project(':cruise-control-core') {
       exclude group: 'org.slf4j', module: 'slf4j-log4j12'
       exclude group: 'log4j', module: 'log4j'
     }
+    api "org.eclipse.jetty:jetty-servlet:${jettyVersion}"
     implementation "org.slf4j:slf4j-api:1.7.36"
     implementation "org.apache.logging.log4j:log4j-slf4j-impl:2.17.2"
     implementation 'org.apache.commons:commons-math3:3.6.1'
-    api "org.eclipse.jetty:jetty-servlet:${jettyVersion}"
     implementation 'com.google.code.findbugs:jsr305:3.0.2'
-
-    api 'io.vertx:vertx-core:4.2.2'
-    api 'io.vertx:vertx-web:4.2.2'
+    implementation 'io.vertx:vertx-core:4.2.2'
+    implementation 'io.vertx:vertx-web:4.2.2'
 
     testImplementation 'junit:junit:4.13.2'
 
@@ -262,13 +261,20 @@ project(':cruise-control') {
 
     api project(':cruise-control-metrics-reporter')
     api project(':cruise-control-core')
+    api "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion"
+    api "org.apache.kafka:kafka-clients:$kafkaVersion"
+    implementation 'io.vertx:vertx-web-openapi:4.2.6'
+    implementation 'io.vertx:vertx-core:4.2.6'
+    implementation 'io.vertx:vertx-web:4.2.6'
+    implementation 'io.swagger.core.v3:swagger-annotations:2.1.13'
+    implementation 'io.swagger.core.v3:swagger-core:2.1.13'
+    implementation 'com.google.guava:guava:31.1-jre'
+    implementation 'org.json:json:20220320'
     implementation "org.slf4j:slf4j-api:1.7.36"
     implementation "org.apache.logging.log4j:log4j-slf4j-impl:2.17.2"
     implementation "org.apache.zookeeper:zookeeper:${zookeeperVersion}"
     implementation "io.netty:netty-handler:${nettyVersion}"
     implementation "io.netty:netty-transport-native-epoll:${nettyVersion}"
-    api "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion"
-    api "org.apache.kafka:kafka-clients:$kafkaVersion"
     implementation "org.scala-lang:scala-library:$scalaVersion"
     implementation 'org.apache.commons:commons-math3:3.6.1'
     implementation 'org.apache.httpcomponents:httpclient:4.5.13'
@@ -282,14 +288,6 @@ project(':cruise-control') {
     implementation 'com.google.code.findbugs:jsr305:3.0.2'
     // Temporary pin for vulnerability
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.12.6.1'
-    api 'io.vertx:vertx-web-openapi:4.2.2'
-    api 'io.vertx:vertx-core:4.2.2'
-    api 'io.vertx:vertx-web:4.2.2'
-    api 'io.vertx:vertx-junit5:4.2.2'
-    api 'io.swagger.core.v3:swagger-annotations:2.0.2'
-    api 'io.swagger.core.v3:swagger-core:2.0.2'
-    api 'com.google.guava:guava:25.1-jre'
-    api 'org.json:json:20210307'
 
     testImplementation project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
     testImplementation project(path: ':cruise-control-core', configuration: 'testOutput')
@@ -303,6 +301,7 @@ project(':cruise-control') {
     testImplementation 'org.bouncycastle:bcpkix-jdk15on:1.70'
     testImplementation 'org.apache.kerby:kerb-simplekdc:2.0.1'
     testImplementation 'com.jayway.jsonpath:json-path:2.7.0'
+    testImplementation 'io.vertx:vertx-junit5:4.2.6'
   }
 
   publishing {

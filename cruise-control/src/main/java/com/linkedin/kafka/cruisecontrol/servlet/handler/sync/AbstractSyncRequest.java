@@ -35,12 +35,12 @@ public abstract class AbstractSyncRequest extends AbstractRequest {
   protected abstract CruiseControlResponse handle();
 
   @Override
-  public CruiseControlResponse getResponse(CruiseControlRequestContext handler)
+  public CruiseControlResponse getResponse(CruiseControlRequestContext context)
           throws Exception {
     LOG.info("Processing sync request {}.", name());
     long requestExecutionStartTime = System.nanoTime();
     int step = 0;
-    OperationFuture resultFuture = _userTaskManager.getOrCreateUserTask(handler, uuid -> {
+    OperationFuture resultFuture = _userTaskManager.getOrCreateUserTask(context, uuid -> {
       OperationFuture future = new OperationFuture(String.format("%s request", parameters().endPoint().toString()));
       future.complete(handle());
       return future;

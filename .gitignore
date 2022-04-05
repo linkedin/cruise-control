@@ -4,6 +4,7 @@
 .gradle
 .idea
 .vertx
+.DS_Store
 *.iml
 *.ipr
 *.iws

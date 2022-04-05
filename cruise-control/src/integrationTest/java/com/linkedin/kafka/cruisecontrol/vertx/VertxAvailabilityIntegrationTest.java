@@ -25,20 +25,22 @@ public class VertxAvailabilityIntegrationTest extends CruiseControlVertxIntegrat
     @Test
     public void testVertxApiGetEndpointsAvailability() throws Exception {
         for (CruiseControlEndPoint endpoint : CruiseControlEndPoint.getEndpoints()) {
-            assertTrue(399 > getResponseCode(endpoint.toString().toLowerCase()) || getResponseCode(endpoint.toString().toLowerCase()) >= 500);
+            Integer responseCode = getResponseCode(endpoint.toString().toLowerCase());
+            assertTrue(399 > responseCode || responseCode >= 500);
         }
     }
 
     @Test
     public void testVertxApiPostEndpointsAvailability() throws Exception {
         for (CruiseControlEndPoint endpoint : CruiseControlEndPoint.postEndpoints()) {
-            assertTrue(399 > getResponseCode(endpoint.toString().toLowerCase())
-                    || getResponseCode(endpoint.toString().toLowerCase()) >= 500 || getResponseCode(endpoint.toString().toLowerCase()) == 405);
+            Integer responseCode = getResponseCode(endpoint.toString().toLowerCase());
+            assertTrue(399 > responseCode || responseCode >= 500 || responseCode == 405);
         }
     }
 
     @Test
     public void testSwaggerUiAvailability() throws Exception {
-        assertTrue(399 >= getResponseCode("") || getResponseCode("") >= 500);
+        Integer responseCode = getResponseCode("");
+        assertTrue(399 >= responseCode || responseCode >= 500);
     }
 }

@@ -7,6 +7,9 @@ import io.vertx.core.MultiMap;
 import java.io.IOException;
 import java.util.Map;
 
+/**
+ * Interface for Request contexts
+ */
 public interface CruiseControlRequestContext {
 
     String[] HEADERS_TO_TRY = {

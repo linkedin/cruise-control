@@ -9,10 +9,10 @@ import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCEmbeddedBroker;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaIntegrationTestHarness;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaTestUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
 import kafka.server.KafkaConfig;
 import java.net.HttpURLConnection;
-import java.net.ServerSocket;
 import java.net.URL;
 import java.util.Collections;
 import java.util.Map;
@@ -34,7 +34,7 @@ public class CruiseControlVertxIntegrationTestHarness extends CCKafkaIntegration
      * @throws Exception
      */
     public Integer getResponseCode(String endpoint) throws Exception {
-        URL url = new URL("http://localhost:" + _vertxPort + "/kafkacruisecontrol/" + endpoint);
+        URL url = new URL("http://" + LOCALHOST + ":" + _vertxPort + "/kafkacruisecontrol/" + endpoint);
         HttpURLConnection huc = (HttpURLConnection) url.openConnection();
         return huc.getResponseCode();
     }
@@ -60,7 +60,7 @@ public class CruiseControlVertxIntegrationTestHarness extends CCKafkaIntegration
         super.setUp();
         _brokers.values().forEach(CCEmbeddedBroker::startup);
         setupConfig();
-        _vertxPort = new ServerSocket(0).getLocalPort();
+        _vertxPort = CCKafkaTestUtils.findLocalPort();
         _vertxApp = new KafkaCruiseControlVertxApp(_config, _vertxPort, LOCALHOST);
         _vertxApp.start();
     }

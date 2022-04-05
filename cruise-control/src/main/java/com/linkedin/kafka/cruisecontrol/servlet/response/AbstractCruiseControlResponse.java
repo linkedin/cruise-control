@@ -28,11 +28,11 @@ public abstract class AbstractCruiseControlResponse implements CruiseControlResp
   protected abstract void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters);
 
   @Override
-  public void writeSuccessResponse(CruiseControlParameters parameters, CruiseControlRequestContext handler) throws IOException {
+  public void writeSuccessResponse(CruiseControlParameters parameters, CruiseControlRequestContext context) throws IOException {
     boolean json = parameters.json();
     boolean wantResponseSchema = parameters.wantResponseSchema();
     discardIrrelevantResponse(parameters);
-    handler.writeResponseToOutputStream(SC_OK, json, wantResponseSchema, _cachedResponse);
+    context.writeResponseToOutputStream(SC_OK, json, wantResponseSchema, _cachedResponse);
   }
 
   @Override

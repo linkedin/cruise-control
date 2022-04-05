@@ -44,20 +44,20 @@ public abstract class AbstractAsyncRequest extends AbstractRequest {
   public abstract OperationFuture handle(String uuid);
 
   @Override
-  public CruiseControlResponse getResponse(CruiseControlRequestContext handler)
+  public CruiseControlResponse getResponse(CruiseControlRequestContext context)
           throws Exception {
     LOG.info("Processing async request {}.", name());
     int step = _asyncOperationStep.get();
     List<OperationFuture>
-        futures = _userTaskManager.getOrCreateUserTask(handler, this::handle, step, true, parameters());
+        futures = _userTaskManager.getOrCreateUserTask(context, this::handle, step, true, parameters());
     _asyncOperationStep.set(step + 1);
     CruiseControlResponse ccResponse;
     try {
       ccResponse = futures.get(step).get(_maxBlockMs, TimeUnit.MILLISECONDS);
-      LOG.info("Computation is completed for async request: {}.", handler.getPathInfo());
+      LOG.info("Computation is completed for async request: {}.", context.getPathInfo());
     } catch (TimeoutException te) {
       ccResponse = new ProgressResult(futures, _asyncKafkaCruiseControl.config());
-      LOG.info("Computation is in progress for async request: {}.", handler.getPathInfo());
+      LOG.info("Computation is in progress for async request: {}.", context.getPathInfo());
     }
     return ccResponse;
   }

@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet;
 
+import com.linkedin.cruisecontrol.http.CruiseControlRequestContext;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.OperationFuture;
 import kafka.utils.MockTime;
@@ -41,8 +42,8 @@ public class UserTaskManagerTest {
     Capture<String> userTaskHeader = Capture.newInstance();
     Capture<String> userTaskHeaderValue = Capture.newInstance();
     KafkaCruiseControlConfig cruiseControlConfigMock = EasyMock.niceMock(KafkaCruiseControlConfig.class);
-    ServletRequestContext handler1 = new ServletRequestContext(mockHttpServletRequest1, mockHttpServletResponse, cruiseControlConfigMock);
-    handler1.setHeader(EasyMock.capture(userTaskHeader), EasyMock.capture(userTaskHeaderValue));
+    ServletRequestContext context1 = new ServletRequestContext(mockHttpServletRequest1, mockHttpServletResponse, cruiseControlConfigMock);
+    context1.setHeader(EasyMock.capture(userTaskHeader), EasyMock.capture(userTaskHeaderValue));
 
     EasyMock.replay(mockUuidGenerator, mockHttpSession, mockHttpServletResponse);
 
@@ -51,7 +52,7 @@ public class UserTaskManagerTest {
             100, new MockTime(), mockUuidGenerator);
     // test-case: create user-task based on request and get future
     OperationFuture future1 =
-            userTaskManager.getOrCreateUserTask(handler1, uuid -> future, 0, true, null).get(0);
+            userTaskManager.getOrCreateUserTask(context1, uuid -> future, 0, true, null).get(0);
 
     Assert.assertEquals(userTaskHeader.getValue(), UserTaskManager.USER_TASK_HEADER_NAME);
     Assert.assertEquals(userTaskHeaderValue.getValue(), testUserTaskId.toString());
@@ -60,7 +61,7 @@ public class UserTaskManagerTest {
     EasyMock.reset(mockHttpServletResponse);
     // test-case: get same future back using sessions
     OperationFuture future2 =
-            userTaskManager.getOrCreateUserTask(handler1, uuid -> future, 0, true, null).get(0);
+            userTaskManager.getOrCreateUserTask(context1, uuid -> future, 0, true, null).get(0);
 
     Assert.assertEquals(userTaskHeader.getValue(), UserTaskManager.USER_TASK_HEADER_NAME);
     Assert.assertEquals(userTaskHeaderValue.getValue(), testUserTaskId.toString());
@@ -69,9 +70,9 @@ public class UserTaskManagerTest {
     HttpServletRequest mockHttpServletRequest2 = prepareServletRequest(mockHttpSession, testUserTaskId.toString());
     EasyMock.reset(mockHttpServletResponse);
     // test-case: get future back using user-task-id
-    ServletRequestContext handler2 = new ServletRequestContext(mockHttpServletRequest2, mockHttpServletResponse, cruiseControlConfigMock);
+    ServletRequestContext context2 = new ServletRequestContext(mockHttpServletRequest2, mockHttpServletResponse, cruiseControlConfigMock);
     OperationFuture future3 =
-            userTaskManager.getOrCreateUserTask(handler2, uuid -> future, 0, true, null).get(0);
+            userTaskManager.getOrCreateUserTask(context2, uuid -> future, 0, true, null).get(0);
 
     Assert.assertEquals(userTaskHeader.getValue(), UserTaskManager.USER_TASK_HEADER_NAME);
     Assert.assertEquals(userTaskHeaderValue.getValue(), testUserTaskId.toString());
@@ -81,21 +82,21 @@ public class UserTaskManagerTest {
 
     // test-case: for sync task, UserTaskManager does not create mapping between request URL and UUID.
     HttpServletRequest mockHttpServletRequest3 = prepareServletRequest(null, null, "test_sync_request", Collections.emptyMap());
-    ServletRequestContext handler3 = new ServletRequestContext(mockHttpServletRequest3, mockHttpServletResponse, cruiseControlConfigMock);
+    ServletRequestContext context3 = new ServletRequestContext(mockHttpServletRequest3, mockHttpServletResponse, cruiseControlConfigMock);
     OperationFuture future4 =
-            userTaskManager.getOrCreateUserTask(handler3, uuid -> future, 0, false, null).get(0);
+            userTaskManager.getOrCreateUserTask(context3, uuid -> future, 0, false, null).get(0);
 
     // New async request have session mapping where a session key is mapped to the UUID associated with the request. Such a mapping is
     // not created for sync request. So in the 2 asserts below , we expect that given a http request, we are able to find request associated UUID
     // for async request but not for sync request.
-    UUID savedUUID = userTaskManager.getUserTaskId(handler3);
+    UUID savedUUID = userTaskManager.getUserTaskId(context3);
     Assert.assertNull(savedUUID);
     Assert.assertEquals(future4, future);
 
     EasyMock.reset(mockHttpServletResponse);
     OperationFuture future5 =
-            userTaskManager.getOrCreateUserTask(handler3, uuid -> future, 0, true, null).get(0);
-    savedUUID = userTaskManager.getUserTaskId(handler3);
+            userTaskManager.getOrCreateUserTask(context3, uuid -> future, 0, true, null).get(0);
+    savedUUID = userTaskManager.getUserTaskId(context3);
     Assert.assertNotEquals(savedUUID, null);
     Assert.assertEquals(future5, future);
 
@@ -119,32 +120,32 @@ public class UserTaskManagerTest {
     Capture<String> userTaskHeader = Capture.newInstance();
     Capture<String> userTaskHeaderValue = Capture.newInstance();
     KafkaCruiseControlConfig cruiseControlConfigMock = EasyMock.niceMock(KafkaCruiseControlConfig.class);
-    ServletRequestContext handler1 = new ServletRequestContext(mockHttpServletRequest1, mockHttpServletResponse1, cruiseControlConfigMock);
-    handler1.setHeader(EasyMock.capture(userTaskHeader), EasyMock.capture(userTaskHeaderValue));
+    ServletRequestContext context1 = new ServletRequestContext(mockHttpServletRequest1, mockHttpServletResponse1, cruiseControlConfigMock);
+    context1.setHeader(EasyMock.capture(userTaskHeader), EasyMock.capture(userTaskHeaderValue));
 
     Map<String, String []> requestParams2 = new HashMap<>();
     requestParams2.put("param", new String[]{"true"});
     HttpServletRequest mockHttpServletRequest2 = prepareServletRequest(mockHttpSession, null, "test", requestParams2);
     HttpServletResponse mockHttpServletResponse2 = EasyMock.mock(HttpServletResponse.class);
-    ServletRequestContext handler2 = new ServletRequestContext(mockHttpServletRequest2, mockHttpServletResponse2, cruiseControlConfigMock);
-    handler2.setHeader(EasyMock.capture(userTaskHeader), EasyMock.capture(userTaskHeaderValue));
+    ServletRequestContext context2 = new ServletRequestContext(mockHttpServletRequest2, mockHttpServletResponse2, cruiseControlConfigMock);
+    context2.setHeader(EasyMock.capture(userTaskHeader), EasyMock.capture(userTaskHeaderValue));
 
     Map<String, String []> requestParams3 = new HashMap<>();
     requestParams3.put("param", new String[]{"true"});
     HttpServletRequest mockHttpServletRequest3 = prepareServletRequest(mockHttpSession, testUserTaskId.toString(), "test", requestParams3);
     HttpServletResponse mockHttpServletResponse3 = EasyMock.mock(HttpServletResponse.class);
-    ServletRequestContext handler3 = new ServletRequestContext(mockHttpServletRequest3, mockHttpServletResponse3, cruiseControlConfigMock);
-    handler3.setHeader(EasyMock.capture(userTaskHeader), EasyMock.capture(userTaskHeaderValue));
+    ServletRequestContext context3 = new ServletRequestContext(mockHttpServletRequest3, mockHttpServletResponse3, cruiseControlConfigMock);
+    context3.setHeader(EasyMock.capture(userTaskHeader), EasyMock.capture(userTaskHeaderValue));
 
     EasyMock.replay(mockUuidGenerator, mockHttpSession, mockHttpServletResponse1, mockHttpServletResponse2, mockHttpServletResponse3);
 
     OperationFuture future = new OperationFuture("future");
     UserTaskManager userTaskManager = new UserTaskManager(1000, 5, TimeUnit.HOURS.toMillis(6),
             100, new MockTime(), mockUuidGenerator);
-    userTaskManager.getOrCreateUserTask(handler1, uuid -> future, 0, true, null);
-    userTaskManager.getOrCreateUserTask(handler2, uuid -> future, 0, true, null);
+    userTaskManager.getOrCreateUserTask(context1, uuid -> future, 0, true, null);
+    userTaskManager.getOrCreateUserTask(context2, uuid -> future, 0, true, null);
     // Test UserTaskManger can recognize the previous created task by taskId.
-    userTaskManager.getOrCreateUserTask(handler3, uuid -> future, 0, true, null);
+    userTaskManager.getOrCreateUserTask(context3, uuid -> future, 0, true, null);
 
     // The 2nd request should reuse the UserTask created for the 1st request since they use the same session and send the same request.
     Assert.assertEquals(1, userTaskManager.numActiveSessionKeys());
@@ -165,8 +166,8 @@ public class UserTaskManagerTest {
 
     HttpServletResponse mockHttpServletResponse = EasyMock.mock(HttpServletResponse.class);
     KafkaCruiseControlConfig cruiseControlConfigMock = EasyMock.niceMock(KafkaCruiseControlConfig.class);
-    ServletRequestContext handler = new ServletRequestContext(mockHttpServletRequest, mockHttpServletResponse, cruiseControlConfigMock);
-    handler.setHeader(EasyMock.anyString(), EasyMock.anyString());
+    ServletRequestContext context = new ServletRequestContext(mockHttpServletRequest, mockHttpServletResponse, cruiseControlConfigMock);
+    context.setHeader(EasyMock.anyString(), EasyMock.anyString());
     EasyMock.replay(mockUuidGenerator, mockHttpSession, mockHttpServletResponse);
 
     UserTaskManager userTaskManager = new UserTaskManager(1000, 1, TimeUnit.HOURS.toMillis(6),
@@ -176,17 +177,17 @@ public class UserTaskManagerTest {
     OperationFuture testFuture2 = new OperationFuture("testFuture2");
 
     OperationFuture insertedFuture1 =
-            userTaskManager.getOrCreateUserTask(handler, uuid -> testFuture1, 0,
+            userTaskManager.getOrCreateUserTask(context, uuid -> testFuture1, 0,
                     true, null).get(0);
     Assert.assertEquals(testFuture1, insertedFuture1);
     EasyMock.verify(mockUuidGenerator, mockHttpSession, mockHttpServletResponse);
     EasyMock.reset(mockHttpServletResponse);
     OperationFuture insertedFuture2 =
-            userTaskManager.getOrCreateUserTask(handler, uuid -> testFuture2, 1,
+            userTaskManager.getOrCreateUserTask(context, uuid -> testFuture2, 1,
                     true, null).get(1);
     Assert.assertEquals(testFuture2, insertedFuture2);
 
-    Assert.assertEquals(userTaskManager.getUserTaskByUserTaskId(testUserTaskId, handler).futures().size(), 2);
+    Assert.assertEquals(userTaskManager.getUserTaskByUserTaskId(testUserTaskId, context).futures().size(), 2);
     userTaskManager.close();
   }
 
@@ -206,15 +207,15 @@ public class UserTaskManagerTest {
 
     HttpServletResponse mockHttpServletResponse = EasyMock.mock(HttpServletResponse.class);
     KafkaCruiseControlConfig cruiseControlConfigMock = EasyMock.niceMock(KafkaCruiseControlConfig.class);
-    ServletRequestContext handler = new ServletRequestContext(mockHttpServletRequest, mockHttpServletResponse, cruiseControlConfigMock);
+    ServletRequestContext context = new ServletRequestContext(mockHttpServletRequest, mockHttpServletResponse, cruiseControlConfigMock);
     Capture<String> userTaskHeader = Capture.newInstance();
     Capture<String> userTaskHeaderValue = Capture.newInstance();
-    handler.setHeader(EasyMock.capture(userTaskHeader), EasyMock.capture(userTaskHeaderValue));
+    context.setHeader(EasyMock.capture(userTaskHeader), EasyMock.capture(userTaskHeaderValue));
 
     EasyMock.replay(mockUuidGenerator, mockHttpSession, mockHttpServletResponse);
     // test-case: verify if the background cleaner task removes tasks that are completed
     OperationFuture future1 =
-            userTaskManager.getOrCreateUserTask(handler, uuid -> future, 0, true, null).get(0);
+            userTaskManager.getOrCreateUserTask(context, uuid -> future, 0, true, null).get(0);
     Assert.assertEquals(future, future1);
 
     future1.cancel(true);
@@ -276,13 +277,13 @@ public class UserTaskManagerTest {
 
     HttpServletResponse mockHttpServletResponse = EasyMock.mock(HttpServletResponse.class);
     KafkaCruiseControlConfig cruiseControlConfigMock = EasyMock.niceMock(KafkaCruiseControlConfig.class);
-    ServletRequestContext handler1 = new ServletRequestContext(mockHttpServletRequest1, mockHttpServletResponse, cruiseControlConfigMock);
-    handler1.setHeader(EasyMock.anyString(), EasyMock.anyString());
+    ServletRequestContext context1 = new ServletRequestContext(mockHttpServletRequest1, mockHttpServletResponse, cruiseControlConfigMock);
+    context1.setHeader(EasyMock.anyString(), EasyMock.anyString());
 
     EasyMock.replay(mockHttpSession1, mockHttpServletResponse);
     // test-case: test max limitation active tasks
     OperationFuture future1 =
-            userTaskManager.getOrCreateUserTask(handler1, uuid -> future, 0, true, null).get(0);
+            userTaskManager.getOrCreateUserTask(context1, uuid -> future, 0, true, null).get(0);
     Assert.assertEquals(future, future1);
     EasyMock.verify(mockHttpSession1, mockHttpServletRequest1, mockHttpServletResponse);
     HttpSession mockHttpSession2 = EasyMock.mock(HttpSession.class);
@@ -291,10 +292,10 @@ public class UserTaskManagerTest {
     EasyMock.reset(mockHttpServletResponse);
 
     HttpServletRequest mockHttpServletRequest2 = prepareServletRequest(mockHttpSession2, null, "/test2", Collections.emptyMap());
-    ServletRequestContext handler2 = new ServletRequestContext(mockHttpServletRequest2, mockHttpServletResponse, cruiseControlConfigMock);
+    ServletRequestContext context2 = new ServletRequestContext(mockHttpServletRequest2, mockHttpServletResponse, cruiseControlConfigMock);
     try {
       OperationFuture future2 =
-              userTaskManager.getOrCreateUserTask(handler2, uuid -> future, 0, true, null).get(0);
+              userTaskManager.getOrCreateUserTask(context2, uuid -> future, 0, true, null).get(0);
       Assert.assertEquals(future, future2);
       EasyMock.verify(mockHttpSession2, mockHttpServletRequest2, mockHttpServletResponse);
     } catch (RuntimeException e) {
@@ -319,7 +320,7 @@ public class UserTaskManagerTest {
     EasyMock.expect(request.getHeader(UserTaskManager.USER_TASK_HEADER_NAME)).andReturn(userTaskId).anyTimes();
     EasyMock.expect(request.getRemoteHost()).andReturn("test-host").anyTimes();
     EasyMock.expect(request.getHeaderNames()).andReturn(Collections.enumeration(Collections.emptyList())).anyTimes();
-    for (String headerName : KafkaCruiseControlServletUtils.HEADERS_TO_TRY) {
+    for (String headerName : CruiseControlRequestContext.HEADERS_TO_TRY) {
       EasyMock.expect(request.getHeader(headerName)).andReturn("localhost").anyTimes();
     }
     EasyMock.replay(request);

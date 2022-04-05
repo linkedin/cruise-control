@@ -4,6 +4,9 @@
 
 package com.linkedin.cruisecontrol.http;
 
+/**
+ * Interface for Http sessions
+ */
 public interface CruiseControlHttpSession {
 
     void invalidateSession();

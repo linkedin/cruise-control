@@ -80,7 +80,7 @@ public class KafkaCruiseControlServletEndpointTest {
   private static class MockResult implements CruiseControlResponse {
 
     @Override
-    public void writeSuccessResponse(CruiseControlParameters parameters, CruiseControlRequestContext handler) {
+    public void writeSuccessResponse(CruiseControlParameters parameters, CruiseControlRequestContext context) {
 
     }
 
@@ -275,7 +275,7 @@ public class KafkaCruiseControlServletEndpointTest {
     EasyMock.expect(request.getParameterMap()).andReturn(params).anyTimes();
     EasyMock.expect(request.getPathInfo()).andReturn("/" + resource).anyTimes();
     EasyMock.expect(request.getHeader(UserTaskManager.USER_TASK_HEADER_NAME)).andReturn(userTaskId).anyTimes();
-    for (String headerName : KafkaCruiseControlServletUtils.HEADERS_TO_TRY) {
+    for (String headerName : CruiseControlRequestContext.HEADERS_TO_TRY) {
       EasyMock.expect(request.getHeader(headerName)).andReturn(clientId).anyTimes();
     }
 

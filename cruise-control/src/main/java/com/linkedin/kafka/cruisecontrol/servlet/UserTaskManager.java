@@ -211,7 +211,7 @@ public class UserTaskManager implements Closeable {
    * header then that takes precedence over {@link HttpSession}. For sync task, only UUID can be used to fetch {@link OperationFuture},
    * which already contains the finished result.
    *
-   * @param handler the HttpFrameworkHandler to create the {@link UserTaskInfo} reference.
+   * @param context the HttpFrameworkHandler to create the {@link UserTaskInfo} reference.
    * @param function A function that takes a UUID and returns {@link OperationFuture}. For sync task, the function always
    *                 returns a completed Future.
    * @param step The index of the step that has to be added or fetched.
@@ -219,44 +219,44 @@ public class UserTaskManager implements Closeable {
    * @param parameters Parsed parameters from http request, or null if the parsing result is unavailable.
    * @return An unmodifiable list of {@link OperationFuture} for the linked UserTask.
    */
-  public List<OperationFuture> getOrCreateUserTask(CruiseControlRequestContext handler,
+  public List<OperationFuture> getOrCreateUserTask(CruiseControlRequestContext context,
                                                    Function<String, OperationFuture> function,
                                                    int step,
                                                    boolean isAsyncRequest,
                                                    CruiseControlParameters parameters) throws Exception {
-    UUID userTaskId = getUserTaskId(handler);
-    UserTaskInfo userTaskInfo = getUserTaskByUserTaskId(userTaskId, handler);
+    UUID userTaskId = getUserTaskId(context);
+    UserTaskInfo userTaskInfo = getUserTaskByUserTaskId(userTaskId, context);
     if (userTaskInfo != null) {
       LOG.info("Fetch an existing UserTask {}", userTaskId);
-      handler.setHeader(USER_TASK_HEADER_NAME, userTaskId.toString());
+      context.setHeader(USER_TASK_HEADER_NAME, userTaskId.toString());
       if (step < userTaskInfo.futures().size()) {
         return Collections.unmodifiableList(userTaskInfo.futures());
       } else if (step == userTaskInfo.futures().size()) {
         LOG.info("Add a new future to existing UserTask {}", userTaskId);
-        return Collections.unmodifiableList(insertFuturesByUserTaskId(userTaskId, function, handler, parameters).futures());
+        return Collections.unmodifiableList(insertFuturesByUserTaskId(userTaskId, function, context, parameters).futures());
       } else {
         throw new IllegalArgumentException(
             String.format("There are %d steps in the session. Cannot add step %d.", userTaskInfo.futures().size(), step));
       }
     } else {
-      ensureHeaderNotPresent(handler, USER_TASK_HEADER_NAME);
+      ensureHeaderNotPresent(context, USER_TASK_HEADER_NAME);
       if (step != 0) {
         throw new IllegalArgumentException(
             String.format("There are no step in the session. Cannot add step %d.", step));
       }
       userTaskId = _uuidGenerator.randomUUID();
-      userTaskInfo = insertFuturesByUserTaskId(userTaskId, function, handler, parameters);
+      userTaskInfo = insertFuturesByUserTaskId(userTaskId, function, context, parameters);
       // Only create user task id to session mapping for async request
       if (isAsyncRequest) {
-        createSessionKeyMapping(userTaskId, handler);
+        createSessionKeyMapping(userTaskId, context);
       }
-      handler.setHeader(USER_TASK_HEADER_NAME, userTaskId.toString());
+      context.setHeader(USER_TASK_HEADER_NAME, userTaskId.toString());
       return Collections.unmodifiableList(userTaskInfo.futures());
     }
   }
 
-  private void createSessionKeyMapping(UUID userTaskId, CruiseControlRequestContext handler) {
-    SessionKey sessionKey = new SessionKey(handler);
+  private void createSessionKeyMapping(UUID userTaskId, CruiseControlRequestContext context) {
+    SessionKey sessionKey = new SessionKey(context);
     LOG.info("Create a new UserTask {} with SessionKey {}", userTaskId, sessionKey);
     synchronized (_sessionKeyToUserTaskIdMap) {
       _sessionKeyToUserTaskIdMap.put(sessionKey, userTaskId);
@@ -266,14 +266,14 @@ public class UserTaskManager implements Closeable {
   /**
    * Get the future from the given request.
    *
-   * @param handler HTTP request received by Cruise Control.
+   * @param context HTTP request received by Cruise Control.
    * @param <T> The returned future type.
    * @return The future from the given request.
    */
   @SuppressWarnings("unchecked")
-  public <T> T getFuture(CruiseControlRequestContext handler) {
-    UUID userTaskId = getUserTaskId(handler);
-    UserTaskInfo userTaskInfo = getUserTaskByUserTaskId(userTaskId, handler);
+  public <T> T getFuture(CruiseControlRequestContext context) {
+    UUID userTaskId = getUserTaskId(context);
+    UserTaskInfo userTaskInfo = getUserTaskByUserTaskId(userTaskId, context);
     List<OperationFuture> operationFutures = null;
     if (userTaskInfo != null) {
       operationFutures = userTaskInfo.futures();
@@ -317,17 +317,17 @@ public class UserTaskManager implements Closeable {
    * the User-Task-ID from the request header and check if there is any UserTask with the same User-Task-ID.
    * If no User-Task-ID is passed then the {@link HttpSession} is used to fetch the User-Task-ID.
    *
-   * @param handler the HttpServletRequest to fetch the User-Task-ID and HTTPSession.
+   * @param context the HttpServletRequest to fetch the User-Task-ID and HTTPSession.
    * @return UUID of the user tasks or null if user task doesn't exist.
    */
-  public UUID getUserTaskId(CruiseControlRequestContext handler) {
-    String userTaskIdString = handler.getHeader(USER_TASK_HEADER_NAME);
+  public UUID getUserTaskId(CruiseControlRequestContext context) {
+    String userTaskIdString = context.getHeader(USER_TASK_HEADER_NAME);
     UUID userTaskId;
     if (userTaskIdString != null && !userTaskIdString.isEmpty()) {
       // valid user task id
       userTaskId = UUID.fromString(userTaskIdString);
     } else {
-      SessionKey sessionKey = new SessionKey(handler);
+      SessionKey sessionKey = new SessionKey(context);
       synchronized (_sessionKeyToUserTaskIdMap) {
         userTaskId = _sessionKeyToUserTaskIdMap.get(sessionKey);
       }
@@ -438,20 +438,20 @@ public class UserTaskManager implements Closeable {
    * Get user task by user task id.
    *
    * @param userTaskId UUID to uniquely identify task.
-   * @param handler the HttpServletRequest.
+   * @param context the HttpServletRequest.
    * @return User task by user task id.
    */
-  public synchronized UserTaskInfo getUserTaskByUserTaskId(UUID userTaskId, CruiseControlRequestContext handler) {
+  public synchronized UserTaskInfo getUserTaskByUserTaskId(UUID userTaskId, CruiseControlRequestContext context) {
     if (userTaskId == null) {
       return null;
     }
 
-    String requestUrl = httpServletRequestToString(handler);
+    String requestUrl = httpServletRequestToString(context);
     for (Map<UUID, UserTaskInfo> infoMap : _uuidToCompletedUserTaskInfoMap.values()) {
       if (infoMap.containsKey(userTaskId)) {
         UserTaskInfo userTaskInfo = infoMap.get(userTaskId);
         if (userTaskInfo.requestUrl().equals(requestUrl)
-            && hasTheSameHttpParameter(userTaskInfo.queryParams(), handler.getParameterMap())) {
+            && hasTheSameHttpParameter(userTaskInfo.queryParams(), context.getParameterMap())) {
           return userTaskInfo;
         }
       }
@@ -460,7 +460,7 @@ public class UserTaskManager implements Closeable {
     if (_uuidToActiveUserTaskInfoMap.containsKey(userTaskId)) {
       UserTaskInfo userTaskInfo = _uuidToActiveUserTaskInfoMap.get(userTaskId);
       if (userTaskInfo.requestUrl().equals(requestUrl)
-          && hasTheSameHttpParameter(userTaskInfo.queryParams(), handler.getParameterMap())) {
+          && hasTheSameHttpParameter(userTaskInfo.queryParams(), context.getParameterMap())) {
         return userTaskInfo;
       }
     }
@@ -468,7 +468,7 @@ public class UserTaskManager implements Closeable {
     if (_inExecutionUserTaskInfo != null
         && _inExecutionUserTaskInfo.userTaskId().equals(userTaskId)
         && _inExecutionUserTaskInfo.requestUrl().equals(requestUrl)
-        && hasTheSameHttpParameter(_inExecutionUserTaskInfo.queryParams(), handler.getParameterMap())) {
+        && hasTheSameHttpParameter(_inExecutionUserTaskInfo.queryParams(), context.getParameterMap())) {
       return _inExecutionUserTaskInfo;
     }
 
@@ -479,13 +479,13 @@ public class UserTaskManager implements Closeable {
    * Common function for adding sync/async tasks
    * @param userTaskId UUID to uniquely identify task.
    * @param operation lambda function to provide result to UserTaskInfo object
-   * @param handler the request handler.
+   * @param context the request handler.
    * @param parameters Parsed parameters from http request, or null if parsing result is unavailable.
    * @return {@link UserTaskInfo} containing request detail and  {@link OperationFuture}
    */
   private synchronized UserTaskInfo insertFuturesByUserTaskId(UUID userTaskId,
                                                               Function<String, OperationFuture> operation,
-                                                              CruiseControlRequestContext handler,
+                                                              CruiseControlRequestContext context,
                                                               CruiseControlParameters parameters) {
     if (_uuidToActiveUserTaskInfoMap.containsKey(userTaskId)) {
       _uuidToActiveUserTaskInfoMap.get(userTaskId).futures().add(operation.apply(userTaskId.toString()));
@@ -495,7 +495,7 @@ public class UserTaskManager implements Closeable {
                                    + " active user tasks, which has reached the servlet capacity.");
       }
       UserTaskInfo userTaskInfo =
-          new UserTaskInfo(handler, new ArrayList<>(Collections.singleton(operation.apply(userTaskId.toString()))),
+          new UserTaskInfo(context, new ArrayList<>(Collections.singleton(operation.apply(userTaskId.toString()))),
                            _time.milliseconds(), userTaskId, TaskState.ACTIVE, parameters);
       _uuidToActiveUserTaskInfoMap.put(userTaskId, userTaskInfo);
     }
@@ -565,11 +565,11 @@ public class UserTaskManager implements Closeable {
     private final String _requestUrl;
     private final Map<String, Set<String>> _queryParams;
 
-    SessionKey(CruiseControlRequestContext handler) {
-      _session = handler.getSession();
-      _requestUrl = httpServletRequestToString(handler);
+    SessionKey(CruiseControlRequestContext context) {
+      _session = context.getSession();
+      _requestUrl = httpServletRequestToString(context);
       _queryParams = new HashMap<>();
-      handler.getParameterMap().forEach((k, v) -> _queryParams.put(k, new HashSet<>(Arrays.asList(v))));
+      context.getParameterMap().forEach((k, v) -> _queryParams.put(k, new HashSet<>(Arrays.asList(v))));
     }
 
     protected void invalidateSession() {
@@ -647,7 +647,7 @@ public class UserTaskManager implements Closeable {
     private TaskState _state;
     private final CruiseControlParameters _parameters;
 
-    public UserTaskInfo(CruiseControlRequestContext handler,
+    public UserTaskInfo(CruiseControlRequestContext context,
                         List<OperationFuture> futures,
                         long startMs,
                         UUID userTaskId,
@@ -657,12 +657,12 @@ public class UserTaskManager implements Closeable {
         throw new IllegalArgumentException("Invalid OperationFuture list " + futures + " is provided for UserTaskInfo.");
       }
       _futures = futures;
-      _requestUrl = httpServletRequestToString(handler);
-      _clientIdentity = KafkaCruiseControlServletUtils.getClientIpAddress(handler);
+      _requestUrl = httpServletRequestToString(context);
+      _clientIdentity = KafkaCruiseControlServletUtils.getClientIpAddress(context);
       _startMs = startMs;
       _userTaskId = userTaskId;
-      _queryParams = handler.getParameterMap();
-      _endPoint = ParameterUtils.endPoint(handler);
+      _queryParams = context.getParameterMap();
+      _endPoint = ParameterUtils.endPoint(context);
       _state = state;
       _parameters = parameters;
     }
