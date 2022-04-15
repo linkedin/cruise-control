@@ -323,9 +323,10 @@ project(':cruise-control') {
     duplicatesStrategy 'exclude'
   }
 
-  tasks.create(name: "buildFatJar", type: Jar) {
+  tasks.create(name: "buildFatJar", type: Jar, dependsOn: ["createVersionFile", ":cruise-control-metrics-reporter:jar", ":cruise-control-core:jar"]) {
     archiveBaseName = project.name + '-all'
-    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
   }
 
