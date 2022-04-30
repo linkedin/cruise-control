@@ -495,23 +495,28 @@ public final class ExecutionUtils {
   }
 
   /**
-   * Checks whether the topicPartitions of the execution tasks in the given subset is indeed a subset of the given set.
+   * Find the tasks that need to be re-executed from all candidate inter-broker replica movement tasks.
    *
-   * @param set The original set.
-   * @param subset The subset to validate whether it is indeed a subset of the given set.
-   * @return {@code true} if the topicPartitions of the given subset constitute a subset of the given set, {@code false} otherwise.
+   * @param partitionsInMovement The partitions that are being moved in kafka cluster
+   * @param candidateTasksToReexecute The candidate inter-broker replica movement tasks to re-execute.
+   * @return the set of inter-broker replica movement tasks to re-execute
    */
-  public static boolean isSubset(Set<TopicPartition> set, Collection<ExecutionTask> subset) {
-    boolean isSubset = true;
-    for (ExecutionTask executionTask : subset) {
+  public static List<ExecutionTask> getInterBrokerReplicaTasksToReexecute(Set<TopicPartition> partitionsInMovement,
+                                                                          Collection<ExecutionTask> candidateTasksToReexecute) {
+    List<ExecutionTask> tasksToReexecute = new ArrayList<>();
+
+    for (ExecutionTask executionTask : candidateTasksToReexecute) {
       TopicPartition tp = executionTask.proposal().topicPartition();
-      if (!set.contains(tp)) {
-        isSubset = false;
-        break;
+      if (!partitionsInMovement.contains(tp)) {
+        tasksToReexecute.add(executionTask);
       }
     }
 
-    return isSubset;
+    if (!tasksToReexecute.isEmpty()) {
+      LOG.info("Found tasks to re-execute: {} while detected in-movement partitions: {}.", tasksToReexecute, partitionsInMovement);
+    }
+
+    return tasksToReexecute;
   }
 
   /**

@@ -34,7 +34,6 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -61,12 +60,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.waitUntilTrue;
-import static com.linkedin.kafka.cruisecontrol.common.TestConstants.DEFAULT_BROKER_CAPACITY_CONFIG_FILE;
-import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
-import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
-import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC2;
-import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC3;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.*;
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.*;
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutorTestUtils.*;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.SamplingMode.*;
 import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.isA;
@@ -82,20 +78,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   private static final TopicPartition TP1 = new TopicPartition(TOPIC1, PARTITION);
   private static final TopicPartition TP2 = new TopicPartition(TOPIC2, PARTITION);
   private static final TopicPartition TP3 = new TopicPartition(TOPIC3, PARTITION);
-  private static final String RANDOM_UUID = "random_uuid";
-  // A UUID to test the proposal execution to be started with UNKNOWN_UUID, but the executor received RANDOM_UUID.
-  private static final String UNKNOWN_UUID = "unknown_uuid";
-  private static final long REMOVAL_HISTORY_RETENTION_TIME_MS = TimeUnit.HOURS.toMillis(12);
-  private static final long DEMOTION_HISTORY_RETENTION_TIME_MS = TimeUnit.DAYS.toMillis(1);
-  private static final long PRODUCE_SIZE_IN_BYTES = 10000L;
-  private static final long EXECUTION_DEADLINE_MS = TimeUnit.SECONDS.toMillis(30);
-  private static final long EXECUTION_SHORT_CHECK_MS = 10L;
-  private static final long EXECUTION_REGULAR_CHECK_MS = 100L;
   private static final Random RANDOM = new Random(0xDEADBEEF);
   private static final int MOCK_BROKER_ID_TO_DROP = 1;
-  private static final long LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS = 1000L;
-  private static final int LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS = 1;
-  private static final long EXECUTION_ALERTING_THRESHOLD_MS = 100L;
   private static final long MOCK_CURRENT_TIME = 1596842708000L;
 
   @Override
