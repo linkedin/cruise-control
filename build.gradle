@@ -273,6 +273,8 @@ project(':cruise-control') {
     testImplementation 'org.apache.kerby:kerb-simplekdc:2.0.1'
 
     implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'
+    // Temporary pin for vulnerability
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.12.6.1'
 
   }
 
@@ -386,6 +388,8 @@ project(':cruise-control-metrics-reporter') {
     testOutput sourceSets.test.output
 
     implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'
+    // Temporary pin for vulnerability
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.12.6.1'
   }
 
   publishing {
