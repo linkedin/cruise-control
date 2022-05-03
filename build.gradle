@@ -259,6 +259,8 @@ project(':cruise-control') {
     api 'com.101tec:zkclient:0.11'
     api 'io.swagger.parser.v3:swagger-parser-v3:2.0.28'
     api 'io.github.classgraph:classgraph:4.8.117'
+    // Temporary pin for vulnerability
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.12.6.1'
 
     testImplementation project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
     testImplementation project(path: ':cruise-control-core', configuration: 'testOutput')
