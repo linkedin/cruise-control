@@ -1850,18 +1850,19 @@ public class Executor {
      *             corresponding inter-broker replica reassignment tasks.
      */
     private void maybeReexecuteInterBrokerReplicaTasks(Set<TopicPartition> deleted, Set<TopicPartition> dead) {
-      List<ExecutionTask> interBrokerReplicaTasksToReexecute =
+      List<ExecutionTask> candidateInterBrokerReplicaTasksToReexecute =
           new ArrayList<>(_executionTaskManager.inExecutionTasks(Collections.singleton(INTER_BROKER_REPLICA_ACTION)));
-      boolean shouldReexecute = false;
+      List<ExecutionTask> tasksToReexecute;
       try {
-        shouldReexecute = !ExecutionUtils.isSubset(ExecutionUtils.partitionsBeingReassigned(_adminClient), interBrokerReplicaTasksToReexecute);
+        tasksToReexecute = ExecutionUtils.getInterBrokerReplicaTasksToReexecute(ExecutionUtils.partitionsBeingReassigned(_adminClient),
+            candidateInterBrokerReplicaTasksToReexecute);
       } catch (TimeoutException | InterruptedException | ExecutionException e) {
         // This may indicate transient (e.g. network) issues.
         LOG.warn("Failed to retrieve partitions being reassigned. Skipping reexecution check for inter-broker replica actions.", e);
+        tasksToReexecute = Collections.emptyList();
       }
-      if (shouldReexecute) {
-        LOG.info("Reexecuting tasks {}", interBrokerReplicaTasksToReexecute);
-        AlterPartitionReassignmentsResult result = ExecutionUtils.submitReplicaReassignmentTasks(_adminClient, interBrokerReplicaTasksToReexecute);
+      if (!tasksToReexecute.isEmpty()) {
+        AlterPartitionReassignmentsResult result = ExecutionUtils.submitReplicaReassignmentTasks(_adminClient, tasksToReexecute);
         // Process the partition reassignment result.
         Set<TopicPartition> noReassignmentToCancel = new HashSet<>();
         ExecutionUtils.processAlterPartitionReassignmentsResult(result, deleted, dead, noReassignmentToCancel);

@@ -39,6 +39,7 @@ import java.util.concurrent.TimeoutException;
 
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutorTestUtils.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -47,7 +48,6 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness {
-  private static final long TASK_EXECUTION_ALERTING_THRESHOLD_MS = 100L;
   private static final Config EMPTY_CONFIG = new Config(Collections.emptyList());
 
   /**
@@ -99,7 +99,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
   }
 
   private ExecutionTask inProgressTaskForProposal(long id, ExecutionProposal proposal) {
-    ExecutionTask task = new ExecutionTask(id, proposal, ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION, TASK_EXECUTION_ALERTING_THRESHOLD_MS);
+    ExecutionTask task = new ExecutionTask(id, proposal, ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION, EXECUTION_ALERTING_THRESHOLD_MS);
     task.inProgress(0);
     return task;
   }
