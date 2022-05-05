@@ -4,10 +4,12 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
+import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import java.lang.reflect.Constructor;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -28,6 +30,7 @@ import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Test;
 
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutorTestUtils.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
@@ -35,6 +38,7 @@ public class ExecutionUtilsTest {
   private static final String TOPIC_NAME = "topic-name";
   private static final TopicPartition P0 = new TopicPartition(TOPIC_NAME, 0);
   private static final TopicPartition P1 = new TopicPartition(TOPIC_NAME, 1);
+  private static final TopicPartition P2 = new TopicPartition(TOPIC_NAME, 2);
   // Both partitions are successful
   private static final Map<TopicPartition, Optional<Throwable>> SUCCESSFUL_PARTITIONS = Map.of(P0, Optional.empty(), P1, Optional.empty());
   // One partition successful, the other has UnknownTopicOrPartitionException
@@ -125,6 +129,48 @@ public class ExecutionUtilsTest {
     ExecutionUtils.processAlterPartitionReassignmentsResult(result, Collections.emptySet(), Collections.emptySet(), Collections.emptySet());
     EasyMock.verify(result);
     EasyMock.reset(result);
+  }
+
+  @Test
+  public void testGetInterBrokerReplicaTasksToReexecute() {
+    Set<TopicPartition> partitionsInMovement = Set.of(P0, P1);
+    ReplicaPlacementInfo replicaPlacementInfoPlaceHolder = new ReplicaPlacementInfo(BROKER_ID_PLACEHOLDER);
+
+    ExecutionProposal proposalForPartition0 =
+        new ExecutionProposal(P0, PRODUCE_SIZE_IN_BYTES, replicaPlacementInfoPlaceHolder,
+                              Collections.singletonList(replicaPlacementInfoPlaceHolder),
+                              Collections.singletonList(replicaPlacementInfoPlaceHolder));
+    ExecutionProposal proposalForPartition1 =
+        new ExecutionProposal(P1, PRODUCE_SIZE_IN_BYTES, replicaPlacementInfoPlaceHolder,
+                              Collections.singletonList(replicaPlacementInfoPlaceHolder),
+                              Collections.singletonList(replicaPlacementInfoPlaceHolder));
+    ExecutionProposal proposalForPartition2 =
+        new ExecutionProposal(P2, PRODUCE_SIZE_IN_BYTES, replicaPlacementInfoPlaceHolder,
+                              Collections.singletonList(replicaPlacementInfoPlaceHolder),
+                              Collections.singletonList(replicaPlacementInfoPlaceHolder));
+
+    ExecutionTask executionTaskForPartition0 = new ExecutionTask(EXECUTION_ID_PLACEHOLDER, proposalForPartition0,
+                                                                 ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION, EXECUTION_ALERTING_THRESHOLD_MS);
+    ExecutionTask executionTaskForPartition1 = new ExecutionTask(EXECUTION_ID_PLACEHOLDER, proposalForPartition1,
+                                                                 ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION, EXECUTION_ALERTING_THRESHOLD_MS);
+    ExecutionTask executionTaskForPartition2 = new ExecutionTask(EXECUTION_ID_PLACEHOLDER, proposalForPartition2,
+                                                                 ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION, EXECUTION_ALERTING_THRESHOLD_MS);
+
+    // Case 1: all partitions in candidate tasks are already in movement. Expect nothing to re-execute
+    List<ExecutionTask> tasks1 = List.of(executionTaskForPartition0, executionTaskForPartition1);
+    List<ExecutionTask> tasksToReexecute1 = ExecutionUtils.getInterBrokerReplicaTasksToReexecute(partitionsInMovement, tasks1);
+    Assert.assertTrue(tasksToReexecute1.isEmpty());
+
+    // Case 2: some of partitions in candidate tasks are in movement and some are not. Expect some tasks to re-execute
+    List<ExecutionTask> tasks2 = List.of(executionTaskForPartition0, executionTaskForPartition1, executionTaskForPartition2);
+    List<ExecutionTask> tasksToReexecute2 = ExecutionUtils.getInterBrokerReplicaTasksToReexecute(partitionsInMovement, tasks2);
+    Assert.assertEquals(1, tasksToReexecute2.size());
+    Assert.assertEquals(P2, tasksToReexecute2.get(0).proposal().topicPartition());
+
+    // Case 3: Partitions of candidate tasks is subset of partitions in movement. Expect nothing to re-execute
+    List<ExecutionTask> tasks3 = List.of(executionTaskForPartition0);
+    List<ExecutionTask> tasksToReexecute3 = ExecutionUtils.getInterBrokerReplicaTasksToReexecute(partitionsInMovement, tasks3);
+    Assert.assertTrue(tasksToReexecute3.isEmpty());
   }
 
   @Test
