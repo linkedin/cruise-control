@@ -47,7 +47,7 @@ import static org.junit.Assert.fail;
  * Unit test for CruiseControlMetricsProcessor
  */
 public class CruiseControlMetricsProcessorTest {
-  private static final short MOCK_NUM_CPU_CORES = 32;
+  private static final double MOCK_NUM_CPU_CORES = 32;
   private static final int BYTES_IN_KB = 1024;
   private static final int BYTES_IN_MB = 1024 * 1024;
   private static final int P0 = 0;
@@ -176,7 +176,7 @@ public class CruiseControlMetricsProcessorTest {
       processor.addMetric(metric);
     }
     processor.process(cluster, TEST_PARTITIONS, MetricSampler.SamplingMode.ALL);
-    assertEquals(MOCK_NUM_CPU_CORES, (short) processor.cachedNumCoresByBroker().get(BROKER_ID_0));
+    assertEquals(MOCK_NUM_CPU_CORES, (double) processor.cachedNumCoresByBroker().get(BROKER_ID_0), DELTA);
     assertNull(processor.cachedNumCoresByBroker().get(BROKER_ID_1));
     EasyMock.verify(brokerCapacityConfigResolverTimeout, brokerCapacityConfigResolverSomeEstimated, brokerCapacityConfigResolverAllEstimated);
   }
@@ -190,7 +190,7 @@ public class CruiseControlMetricsProcessorTest {
 
     MetricSampler.Samples samples = processor.process(cluster, TEST_PARTITIONS, MetricSampler.SamplingMode.ALL);
     for (Node node : cluster.nodes()) {
-      assertEquals(MOCK_NUM_CPU_CORES, (short) processor.cachedNumCoresByBroker().get(node.id()));
+      assertEquals(MOCK_NUM_CPU_CORES, (double) processor.cachedNumCoresByBroker().get(node.id()), DELTA);
     }
 
     assertEquals(4, samples.partitionMetricSamples().size());

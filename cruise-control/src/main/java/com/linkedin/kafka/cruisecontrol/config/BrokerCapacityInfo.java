@@ -29,7 +29,7 @@ public class BrokerCapacityInfo {
   private final Map<Resource, Double> _capacity;
   private final String _estimationInfo;
   private final Map<String, Double> _diskCapacityByLogDir;
-  private final short _numCpuCores;
+  private final double _numCpuCores;
 
   /**
    * BrokerCapacityInfo with the given capacity, estimation, per absolute logDir disk capacity, and number of CPU cores.
@@ -42,7 +42,7 @@ public class BrokerCapacityInfo {
   public BrokerCapacityInfo(Map<Resource, Double> capacity,
                             String estimationInfo,
                             Map<String, Double> diskCapacityByLogDir,
-                            short numCpuCores) {
+                            double numCpuCores) {
     sanityCheckCapacity(capacity);
     _capacity = capacity;
     _estimationInfo = estimationInfo == null ? DEFAULT_ESTIMATION_INFO : estimationInfo;
@@ -57,7 +57,7 @@ public class BrokerCapacityInfo {
    * @param diskCapacityByLogDir Disk capacity by absolute logDir.
    * @param numCpuCores Number of CPU cores.
    */
-  public BrokerCapacityInfo(Map<Resource, Double> capacity, Map<String, Double> diskCapacityByLogDir, short numCpuCores) {
+  public BrokerCapacityInfo(Map<Resource, Double> capacity, Map<String, Double> diskCapacityByLogDir, double numCpuCores) {
     this(capacity, DEFAULT_ESTIMATION_INFO, diskCapacityByLogDir, numCpuCores);
   }
 
@@ -67,7 +67,7 @@ public class BrokerCapacityInfo {
    * @param capacity Capacity information for each resource.
    * @param numCpuCores Number of CPU cores.
    */
-  public BrokerCapacityInfo(Map<Resource, Double> capacity, short numCpuCores) {
+  public BrokerCapacityInfo(Map<Resource, Double> capacity, double numCpuCores) {
     this(capacity, DEFAULT_ESTIMATION_INFO, DEFAULT_DISK_CAPACITY_BY_LOGDIR, numCpuCores);
   }
 
@@ -142,7 +142,7 @@ public class BrokerCapacityInfo {
   /**
    * @return Number of CPU cores (if provided), {@link #DEFAULT_NUM_CPU_CORES} otherwise.
    */
-  public short numCpuCores() {
+  public double numCpuCores() {
     return _numCpuCores;
   }
 
