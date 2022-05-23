@@ -78,7 +78,7 @@ public final class SamplingUtils {
    * @return The estimated CPU utilization of the leader for the partition based on the static model, or {@code null}
    * if estimation is not possible.
    */
-  private static Double estimateLeaderCpuUtil(PartitionMetricSample pms, BrokerLoad brokerLoad, MetricDef commonMetricDef, short numCpuCores) {
+  private static Double estimateLeaderCpuUtil(PartitionMetricSample pms, BrokerLoad brokerLoad, MetricDef commonMetricDef, double numCpuCores) {
     double partitionBytesInRate = pms.metricValue(commonMetricDef.metricInfo(KafkaMetricDef.LEADER_BYTES_IN.name()).id());
     double partitionBytesOutRate = pms.metricValue(commonMetricDef.metricInfo(KafkaMetricDef.LEADER_BYTES_OUT.name()).id());
     double partitionReplicationBytesOutRate = pms.metricValue(commonMetricDef.metricInfo(KafkaMetricDef.REPLICATION_BYTES_OUT_RATE.name()).id());
@@ -166,7 +166,7 @@ public final class SamplingUtils {
                                                           TopicPartition tpDotNotHandled,
                                                           Map<Integer, BrokerLoad> brokerLoadById,
                                                           long maxMetricTimestamp,
-                                                          Map<Integer, Short> cachedNumCoresByBroker,
+                                                          Map<Integer, Double> cachedNumCoresByBroker,
                                                           Map<Integer, Integer> skippedPartitionByBroker) {
     Node leaderNode = cluster.leaderFor(tpDotNotHandled);
     if (leaderNode == null) {
@@ -261,7 +261,7 @@ public final class SamplingUtils {
                                                            TopicPartition tpWithDotHandled,
                                                            int leaderId,
                                                            BrokerLoad brokerLoad,
-                                                           Map<Integer, Short> cachedNumCoresByBroker) {
+                                                           Map<Integer, Double> cachedNumCoresByBroker) {
     if (brokerLoad == null || !brokerLoad.brokerMetricAvailable(BROKER_CPU_UTIL)) {
       // Broker load or its BROKER_CPU_UTIL metric is not available.
       LOG.debug("{}partition {} because {} metric for broker {} is unavailable.", SKIP_BUILDING_SAMPLE_PREFIX,

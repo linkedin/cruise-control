@@ -79,9 +79,10 @@ public class BrokerCapacityConfigFileResolverTest {
     assertEquals(BrokerCapacityConfigFileResolver.DEFAULT_CPU_CAPACITY_WITH_CORES, configResolver
         .capacityForBroker("", "", 3, BROKER_CAPACITY_FETCH_TIMEOUT_MS, true).capacity().get(Resource.CPU), 0.01);
 
-    assertEquals(8, configResolver.capacityForBroker("", "", 0, BROKER_CAPACITY_FETCH_TIMEOUT_MS, false).numCpuCores());
-    assertEquals(64, configResolver.capacityForBroker("", "", 1, BROKER_CAPACITY_FETCH_TIMEOUT_MS, false).numCpuCores());
-    assertEquals(16, configResolver.capacityForBroker("", "", 3, BROKER_CAPACITY_FETCH_TIMEOUT_MS, true).numCpuCores());
+    assertEquals(8, configResolver.capacityForBroker("", "", 0, BROKER_CAPACITY_FETCH_TIMEOUT_MS, false).numCpuCores(), 0.01);
+    assertEquals(64, configResolver.capacityForBroker("", "", 1, BROKER_CAPACITY_FETCH_TIMEOUT_MS, false).numCpuCores(), 0.01);
+    assertEquals(2.5, configResolver.capacityForBroker("", "", 2, BROKER_CAPACITY_FETCH_TIMEOUT_MS, true).numCpuCores(), 0.01);
+    assertEquals(16, configResolver.capacityForBroker("", "", 3, BROKER_CAPACITY_FETCH_TIMEOUT_MS, true).numCpuCores(), 0.01);
 
     assertFalse(configResolver.capacityForBroker("", "", 1, BROKER_CAPACITY_FETCH_TIMEOUT_MS, false).isEstimated());
     assertTrue(configResolver.capacityForBroker("", "", 3, BROKER_CAPACITY_FETCH_TIMEOUT_MS, true).isEstimated());

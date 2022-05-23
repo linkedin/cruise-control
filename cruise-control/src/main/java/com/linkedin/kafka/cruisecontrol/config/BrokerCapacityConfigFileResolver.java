@@ -200,13 +200,13 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
    * @return Number of cores if specified by user, {@code null} otherwise.
    */
   @SuppressWarnings("unchecked")
-  private static Short getUserSpecifiedNumCores(Map<Resource, Object> brokerCapacity) {
+  private static Double getUserSpecifiedNumCores(Map<Resource, Object> brokerCapacity) {
     if (brokerCapacity.get(Resource.CPU) instanceof Map) {
       String stringNumCores = ((Map<String, String>) brokerCapacity.get(Resource.CPU)).get(NUM_CORES_CONFIG);
       if (stringNumCores == null) {
         throw new IllegalArgumentException("Missing " + NUM_CORES_CONFIG + " config for brokers in capacity config file.");
       }
-      return Short.parseShort(stringNumCores);
+      return Double.parseDouble(stringNumCores);
     } else {
       return null;
     }
@@ -269,7 +269,7 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
   }
 
   private BrokerCapacityInfo getBrokerCapacityInfo(BrokerCapacity bc, Set<Boolean> numCoresConfigConsistency) {
-    Short userSpecifiedNumCores = getUserSpecifiedNumCores(bc.capacity);
+    Double userSpecifiedNumCores = getUserSpecifiedNumCores(bc.capacity);
     boolean hasNumCores = userSpecifiedNumCores != null;
     numCoresConfigConsistency.add(hasNumCores);
     numCoresConfigConsistencyChecker(numCoresConfigConsistency);
