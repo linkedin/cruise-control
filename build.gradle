@@ -144,6 +144,15 @@ subprojects {
     if (!project.hasProperty("maxParallelForks")) {
       maxParallelForks = Runtime.runtime.availableProcessors()
     }
+    finalizedBy jacocoTestReport
+  }
+
+  jacocoTestReport {
+    reports {
+      xml.required = false
+      csv.required = false
+      html.outputLocation = layout.buildDirectory.dir('jacocoHtml')
+    }
   }
 }
 
