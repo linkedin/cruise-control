@@ -94,7 +94,7 @@ SingleBrokerStats:
       format: double
     NumCore:
       type: number
-      format: int32
+      format: double
 
 DiskStats:
   type: object
@@ -187,4 +187,4 @@ SingleHostStats:
       format: double
     NumCore:
       type: number
-      format: int32
+      format: double
