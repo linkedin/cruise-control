@@ -134,6 +134,10 @@ public class BrokerStats extends AbstractCruiseControlResponse {
 
   @Override
   public String toString() {
+    if (_brokerStats.isEmpty()) {
+      return "No broker stats found.";
+    }
+
     StringBuilder sb = new StringBuilder();
     boolean hasDiskInfo = !_brokerStats.get(0).diskStatsByLogdir().isEmpty();
 
@@ -145,7 +149,8 @@ public class BrokerStats extends AbstractCruiseControlResponse {
                             "PNW_OUT(KB/s)", "LEADERS/REPLICAS"));
     for (SingleBrokerStats stats : _brokerStats) {
       sb.append(String.format("%" + _hostFieldLength + "s,%14d,%" + (_rackFieldLength - 1) + "s,%" + _logdirFieldLength
-                              + "s%19.3f,%19.3f/%05.2f,%19d,%14.3f,%24.3f,%24.3f,%24.3f,%24.3f,%19.3f,%19.3f,%14d/%d%n",
+                              + "s%19.3f,%19.3f/%05.2f," + coreNumStringFormatter(stats.numCore())
+                              + ",%14.3f,%24.3f,%24.3f,%24.3f,%24.3f,%19.3f,%19.3f,%14d/%d%n",
                               stats.host(),
                               stats.id(),
                               stats.rack(),
@@ -180,5 +185,14 @@ public class BrokerStats extends AbstractCruiseControlResponse {
       }
     }
     return sb.toString();
+  }
+
+  /**
+   * Format the double type CORE_NUM to int if it is not a fractional value, otherwise format it to double with 2 digits after decimal point
+   * @param numCores the number of cores
+   * @return StringFormatter String for the CORE_NUM
+   */
+  private static String coreNumStringFormatter(double numCores) {
+    return (numCores % 1) == 0 ? "%19.0f" : "%19.2f";
   }
 }

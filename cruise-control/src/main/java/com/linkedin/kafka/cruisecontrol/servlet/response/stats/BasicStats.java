@@ -53,7 +53,7 @@ public class BasicStats {
   protected double _diskCapacity;
   protected double _networkInCapacity;
   protected double _networkOutCapacity;
-  protected int _numCore;
+  protected double _numCore;
 
   public BasicStats() {
     _diskUtil = 0.0;
@@ -67,7 +67,7 @@ public class BasicStats {
     _diskCapacity = 0.0;
     _networkInCapacity = 0.0;
     _networkOutCapacity = 0.0;
-    _numCore = 0;
+    _numCore = 0.0;
   }
 
   BasicStats(Broker broker, double potentialBytesOutRate) {
@@ -82,7 +82,7 @@ public class BasicStats {
     _diskCapacity = Math.max(broker.capacityFor(Resource.DISK), 0.0);
     _networkInCapacity = Math.max(broker.capacityFor(Resource.NW_IN), 0.0);
     _networkOutCapacity = Math.max(broker.capacityFor(Resource.NW_OUT), 0.0);
-    _numCore = Math.max((int) broker.capacityFor(Resource.CPU) / 100, 0);
+    _numCore = Math.max(broker.capacityFor(Resource.CPU) / 100, 0.0);
   }
 
   double diskUtil() {
@@ -135,7 +135,7 @@ public class BasicStats {
     return _networkOutCapacity;
   }
 
-  int numCore() {
+  double numCore() {
     return _numCore;
   }
 
