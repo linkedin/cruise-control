@@ -192,11 +192,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
    * @param numCores the number of cores
    * @return StringFormatter String for the CORE_NUM
    */
-  private String coreNumStringFormatter(double numCores) {
-    if (numCores == (int) numCores) {
-      return "%19.0f";
-    } else {
-      return "%19.2f";
-    }
+  private static String coreNumStringFormatter(double numCores) {
+    return (numCores % 1) == 0 ? "%19.0f" : "%19.2f";
   }
 }
