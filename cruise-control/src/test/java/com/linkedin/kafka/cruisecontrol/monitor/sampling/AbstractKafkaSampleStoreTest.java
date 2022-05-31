@@ -9,9 +9,9 @@ import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DescribeClusterResult;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
+import org.easymock.EasyMock;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
@@ -27,7 +27,6 @@ import java.util.concurrent.TimeoutException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
-import static org.mockito.Mockito.when;
 
 /**
  * Unit test for {@link AbstractKafkaSampleStore}
@@ -41,51 +40,61 @@ public class AbstractKafkaSampleStoreTest {
     public void testSampleStoreTopicReplicationFactorWhenValueAlreadyExists() {
         short expected = 1;
         Map<String, ?> config = Collections.emptyMap();
-        AdminClient adminClient = PowerMockito.mock(AdminClient.class);
-        AbstractKafkaSampleStore kafkaSampleStore = getAbstractKafkaSampleStore(config, adminClient);
+        AdminClient adminClient = EasyMock.mock(AdminClient.class);
+        AbstractKafkaSampleStore kafkaSampleStore = EasyMock.partialMockBuilder(AbstractKafkaSampleStore.class).createMock();
         Whitebox.setInternalState(kafkaSampleStore, "_sampleStoreTopicReplicationFactor", expected);
+        EasyMock.replay(adminClient, kafkaSampleStore);
 
         short actual = kafkaSampleStore.sampleStoreTopicReplicationFactor(config, adminClient);
 
         assertEquals(expected, actual);
+        EasyMock.verify(adminClient, kafkaSampleStore);
     }
 
     @Test
     public void testSampleStoreTopicReplicationFactorWhenValueNotExistsAndNodeCountIsOne() throws Exception {
         Map<String, Object> config = createFilledConfigMap();
-        AdminClient adminClient = PowerMockito.mock(AdminClient.class);
+        AdminClient adminClient = EasyMock.mock(AdminClient.class);
         prepareForNumberOfBrokersCall(adminClient, false);
-        AbstractKafkaSampleStore kafkaSampleStore = getAbstractKafkaSampleStore(config, adminClient);
+        AbstractKafkaSampleStore kafkaSampleStore = EasyMock.partialMockBuilder(AbstractKafkaSampleStore.class).createMock();
+        EasyMock.replay(adminClient, kafkaSampleStore);
 
         assertThrows(IllegalStateException.class,
                 () -> kafkaSampleStore.sampleStoreTopicReplicationFactor(config, adminClient));
+        EasyMock.verify(adminClient, kafkaSampleStore);
     }
 
     @Test
     public void testSampleStoreTopicReplicationFactorWhenValueNotExistsAndNodeCountIsTwo() throws Exception {
         short expected = 2;
         Map<String, Object> config = createFilledConfigMap();
-        AdminClient adminClient = PowerMockito.mock(AdminClient.class);
+        AdminClient adminClient = EasyMock.mock(AdminClient.class);
         prepareForNumberOfBrokersCall(adminClient, true);
-        AbstractKafkaSampleStore kafkaSampleStore = getAbstractKafkaSampleStore(config, adminClient);
+        AbstractKafkaSampleStore kafkaSampleStore = EasyMock.partialMockBuilder(AbstractKafkaSampleStore.class).createMock();
+        EasyMock.replay(adminClient, kafkaSampleStore);
 
         short actual = kafkaSampleStore.sampleStoreTopicReplicationFactor(config, adminClient);
 
         assertEquals(expected, actual);
+        EasyMock.verify(adminClient, kafkaSampleStore);
     }
 
     @Test
     public void testSampleStoreTopicReplicationFactorWhenValueNotExistsAndDescribeOfClusterFails()
             throws ExecutionException, InterruptedException, TimeoutException {
         Map<String, Object> config = createFilledConfigMap();
-        AdminClient adminClient = PowerMockito.mock(AdminClient.class);
+        AdminClient adminClient = EasyMock.mock(AdminClient.class);
         KafkaFuture nodesFuture = getNodesKafkaFutureWithRequiredMocks(adminClient);
 
-        when(nodesFuture.get(TimeUnit.SECONDS.toMillis(30), TimeUnit.MILLISECONDS)).thenThrow(TimeoutException.class);
-        AbstractKafkaSampleStore kafkaSampleStore = getAbstractKafkaSampleStore(config, adminClient);
+        EasyMock.expect(nodesFuture.get(TimeUnit.SECONDS.toMillis(30), TimeUnit.MILLISECONDS))
+                .andThrow(new TimeoutException()).times(2);
+        EasyMock.replay(nodesFuture);
+        AbstractKafkaSampleStore kafkaSampleStore = EasyMock.partialMockBuilder(AbstractKafkaSampleStore.class).createMock();
+        EasyMock.replay(adminClient, kafkaSampleStore);
 
         assertThrows(IllegalStateException.class,
                 () -> kafkaSampleStore.sampleStoreTopicReplicationFactor(config, adminClient));
+        EasyMock.verify(adminClient, kafkaSampleStore, nodesFuture);
     }
 
     private Map<String, Object> createFilledConfigMap() {
@@ -96,33 +105,22 @@ public class AbstractKafkaSampleStoreTest {
 
     private void prepareForNumberOfBrokersCall(AdminClient adminClient, boolean isNodeCountEnough) throws Exception {
         KafkaFuture nodesFuture = getNodesKafkaFutureWithRequiredMocks(adminClient);
-        Node node = PowerMockito.mock(Node.class);
+        Node node = EasyMock.mock(Node.class);
         Collection<Node> nodes = isNodeCountEnough ? Arrays.asList(node, node) : Collections.singletonList(node);
 
-        try {
-            when(nodesFuture.get(TimeUnit.SECONDS.toMillis(30), TimeUnit.MILLISECONDS)).thenReturn(nodes);
-        } catch (Exception e) {
-            throw new Exception("Cannot prepare test mocks: " + e);
-        }
+        EasyMock.expect(nodesFuture.get(TimeUnit.SECONDS.toMillis(30), TimeUnit.MILLISECONDS)).andReturn(nodes).anyTimes();
+        EasyMock.replay(nodesFuture);
     }
 
     private KafkaFuture getNodesKafkaFutureWithRequiredMocks(AdminClient adminClient) {
-        DescribeClusterResult describeClusterResult = PowerMockito.mock(DescribeClusterResult.class);
-        KafkaFuture nodesFuture = PowerMockito.mock(KafkaFuture.class);
+        DescribeClusterResult describeClusterResult = EasyMock.mock(DescribeClusterResult.class);
+        KafkaFuture nodesFuture = EasyMock.mock(KafkaFuture.class);
 
-        when(adminClient.describeCluster()).thenReturn(describeClusterResult);
-        when(describeClusterResult.nodes()).thenReturn(nodesFuture);
+        EasyMock.expect(adminClient.describeCluster()).andReturn(describeClusterResult).anyTimes();
+        EasyMock.expect(describeClusterResult.nodes()).andReturn(nodesFuture).anyTimes();
+        EasyMock.replay(describeClusterResult);
 
         return nodesFuture;
-    }
-
-    private AbstractKafkaSampleStore getAbstractKafkaSampleStore(Map<String, ?> config, AdminClient adminClient) {
-        AbstractKafkaSampleStore kafkaSampleStore
-                = PowerMockito.mock(AbstractKafkaSampleStore.class);
-        PowerMockito.doCallRealMethod()
-                .when(kafkaSampleStore)
-                .sampleStoreTopicReplicationFactor(config, adminClient);
-        return kafkaSampleStore;
     }
 
 }

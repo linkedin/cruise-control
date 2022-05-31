@@ -284,7 +284,7 @@ public final class MonitorConfig {
   public static final String FETCH_METRIC_SAMPLES_RETRY_COUNT_MAX_CONFIG = "fetch.metric.samples.retry.count.max";
   public static final int DEFAULT_FETCH_METRIC_SAMPLES_RETRY_COUNT_MAX = 5;
   public static final String FETCH_METRIC_SAMPLES_RETRY_COUNT_MAX_DOC = "The maximum number of retries during the "
-       + "fetch of the desired replication factor of sample store topics.";
+       + "fetch of the desired replication factor of sample store topics. This config value should be at least 1.";
 
   /**
    * <code>sampling.allow.cpu.capacity.estimation</code>
@@ -540,6 +540,7 @@ public final class MonitorConfig {
                     .define(FETCH_METRIC_SAMPLES_RETRY_COUNT_MAX_CONFIG,
                             ConfigDef.Type.INT,
                             DEFAULT_FETCH_METRIC_SAMPLES_RETRY_COUNT_MAX,
+                            atLeast(1),
                             ConfigDef.Importance.MEDIUM,
                             FETCH_METRIC_SAMPLES_RETRY_COUNT_MAX_DOC)
                     .define(SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG,
