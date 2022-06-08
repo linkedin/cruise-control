@@ -99,7 +99,7 @@ public class AbstractKafkaSampleStoreTest {
 
     private Map<String, Object> createFilledConfigMap() {
         Map<String, Object> config = new HashMap<>();
-        config.put(MonitorConfig.FETCH_METRIC_SAMPLES_RETRY_COUNT_MAX_CONFIG, 2);
+        config.put(MonitorConfig.FETCH_METRIC_SAMPLES_MAX_RETRY_COUNT_CONFIG, 2);
         return config;
     }
 

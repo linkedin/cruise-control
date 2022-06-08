@@ -68,7 +68,7 @@ public abstract class AbstractKafkaSampleStore implements SampleStore {
       return _sampleStoreTopicReplicationFactor;
     }
 
-    int maxRetryCount = Integer.parseInt(config.get(MonitorConfig.FETCH_METRIC_SAMPLES_RETRY_COUNT_MAX_CONFIG).toString());
+    int maxRetryCount = Integer.parseInt(config.get(MonitorConfig.FETCH_METRIC_SAMPLES_MAX_RETRY_COUNT_CONFIG).toString());
     AtomicInteger numberOfBrokersInCluster = new AtomicInteger(0);
     AtomicReference<String> errorMsg = new AtomicReference<>("");
 
