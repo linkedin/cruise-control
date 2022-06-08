@@ -5,6 +5,7 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionMetricSample;
 import java.time.Duration;
 import java.util.Map;
@@ -13,6 +14,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -27,7 +29,6 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.createTop
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.maybeUpdateTopicConfig;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.maybeIncreasePartitionCount;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.bootstrapServers;
-
 
 public abstract class AbstractKafkaSampleStore implements SampleStore {
   protected static final Duration PRODUCER_CLOSE_TIMEOUT = Duration.ofMinutes(3);
@@ -63,23 +64,38 @@ public abstract class AbstractKafkaSampleStore implements SampleStore {
    * @return Desired replication factor of sample store topics, or {@code null} if failed to resolve replication factor.
    */
   protected short sampleStoreTopicReplicationFactor(Map<String, ?> config, AdminClient adminClient) {
-    if (_sampleStoreTopicReplicationFactor == null) {
-      short numberOfBrokersInCluster;
-      try {
-        numberOfBrokersInCluster = (short) adminClient.describeCluster().nodes().get(CLIENT_REQUEST_TIMEOUT_MS,
-                                                                                     TimeUnit.MILLISECONDS).size();
-      } catch (InterruptedException | ExecutionException | TimeoutException e) {
-        throw new IllegalStateException("Auto creation of sample store topics failed due to failure to describe cluster.", e);
-      }
-      if (numberOfBrokersInCluster <= 1) {
-        throw new IllegalStateException(String.format("Kafka cluster has less than 2 brokers (brokers in cluster=%d, zookeeper.connect=%s)",
-                                                      numberOfBrokersInCluster, config.get(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG)));
-      }
-
-      return (short) Math.min(DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR, numberOfBrokersInCluster);
+    if (_sampleStoreTopicReplicationFactor != null) {
+      return _sampleStoreTopicReplicationFactor;
     }
 
-    return _sampleStoreTopicReplicationFactor;
+    int maxRetryCount = Integer.parseInt(config.get(MonitorConfig.FETCH_METRIC_SAMPLES_MAX_RETRY_COUNT_CONFIG).toString());
+    AtomicInteger numberOfBrokersInCluster = new AtomicInteger(0);
+    AtomicReference<String> errorMsg = new AtomicReference<>("");
+
+    boolean success = CruiseControlMetricsUtils.retry(() -> {
+      try {
+        numberOfBrokersInCluster.set(adminClient.describeCluster().nodes().get(CLIENT_REQUEST_TIMEOUT_MS,
+                TimeUnit.MILLISECONDS).size());
+      } catch (InterruptedException | ExecutionException | TimeoutException e) {
+        errorMsg.set("Auto creation of sample store topics failed due to failure to describe cluster. " + e);
+        return true;
+      }
+
+      if (numberOfBrokersInCluster.get() <= 1) {
+        errorMsg.set(String.format("Kafka cluster has less than 2 brokers (brokers in cluster=%d, zookeeper.connect=%s)",
+                numberOfBrokersInCluster.get(), config.get(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG)));
+        return true;
+      }
+
+      numberOfBrokersInCluster.set(Math.min(DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR, numberOfBrokersInCluster.get()));
+      return false;
+    }, maxRetryCount);
+
+    if (success) {
+      return (short) numberOfBrokersInCluster.get();
+    } else {
+      throw new IllegalStateException(errorMsg.get());
+    }
   }
 
   protected void ensureTopicCreated(AdminClient adminClient, NewTopic sampleStoreTopic) {

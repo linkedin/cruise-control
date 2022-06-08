@@ -279,6 +279,14 @@ public final class MonitorConfig {
       + " utilization buckets required to generate a linear regression model.";
 
   /**
+   * <code>fetch.metric.samples.max.retry.count</code>
+   */
+  public static final String FETCH_METRIC_SAMPLES_MAX_RETRY_COUNT_CONFIG = "fetch.metric.samples.max.retry.count";
+  public static final int DEFAULT_FETCH_METRIC_SAMPLES_MAX_RETRY_COUNT = 5;
+  public static final String FETCH_METRIC_SAMPLES_MAX_RETRY_COUNT_DOC = "The maximum number of retries during the "
+       + "fetch of the desired replication factor of sample store topics. This config value should be at least 1.";
+
+  /**
    * <code>sampling.allow.cpu.capacity.estimation</code>
    */
   public static final String SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG = "sampling.allow.cpu.capacity.estimation";
@@ -529,6 +537,12 @@ public final class MonitorConfig {
                             DEFAULT_LINEAR_REGRESSION_MODEL_MIN_NUM_CPU_UTIL_BUCKETS,
                             ConfigDef.Importance.MEDIUM,
                             LINEAR_REGRESSION_MODEL_MIN_NUM_CPU_UTIL_BUCKETS_DOC)
+                    .define(FETCH_METRIC_SAMPLES_MAX_RETRY_COUNT_CONFIG,
+                            ConfigDef.Type.INT,
+                            DEFAULT_FETCH_METRIC_SAMPLES_MAX_RETRY_COUNT,
+                            atLeast(1),
+                            ConfigDef.Importance.MEDIUM,
+                            FETCH_METRIC_SAMPLES_MAX_RETRY_COUNT_DOC)
                     .define(SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG,
                             ConfigDef.Type.BOOLEAN,
                             DEFAULT_SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION,
