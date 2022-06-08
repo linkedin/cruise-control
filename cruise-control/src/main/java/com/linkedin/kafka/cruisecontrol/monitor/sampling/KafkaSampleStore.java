@@ -148,7 +148,7 @@ public class KafkaSampleStore extends AbstractKafkaSampleStore {
   protected void ensureTopicsCreated(Map<String, ?> config) {
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient((Map<String, Object>) config);
     try {
-      short replicationFactor = sampleStoreTopicReplicationFactor(adminClient);
+      short replicationFactor = sampleStoreTopicReplicationFactor(config, adminClient);
 
       // Retention
       long partitionSampleWindowMs = (Long) config.get(MonitorConfig.PARTITION_METRICS_WINDOW_MS_CONFIG);
