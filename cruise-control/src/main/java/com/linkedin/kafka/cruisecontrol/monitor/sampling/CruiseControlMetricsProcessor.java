@@ -149,7 +149,7 @@ public class CruiseControlMetricsProcessor {
       case ALL:
         LOG.info("Generated {}{} partition metric samples and {}{} broker metric samples for timestamp {}.",
                  partitionMetricSamples.size(),
-                 !skippedPartitionByBroker.isEmpty() ? String.format("(%s skipped by broker %s)",
+                 !skippedPartitionByBroker.isEmpty() ? String.format("(%d skipped by broker %s)",
                                                                      skippedPartitionByBroker.values()
                                                                                              .stream()
                                                                                              .mapToInt(v -> v)
@@ -159,7 +159,7 @@ public class CruiseControlMetricsProcessor {
         break;
       case PARTITION_METRICS_ONLY:
         LOG.info("Generated {}{} partition metric samples for timestamp {}.", partitionMetricSamples.size(),
-                 !skippedPartitionByBroker.isEmpty() ? String.format("(%s skipped by broker %s)",
+                 !skippedPartitionByBroker.isEmpty() ? String.format("(%d skipped by broker %s)",
                                                                      skippedPartitionByBroker.values()
                                                                                              .stream()
                                                                                              .mapToInt(v -> v)

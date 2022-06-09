@@ -15,4 +15,7 @@ public class InvalidPrometheusResultException extends KafkaCruiseControlExceptio
     super(message);
   }
 
+  public InvalidPrometheusResultException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }
