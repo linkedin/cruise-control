@@ -32,7 +32,9 @@ public class PartitionState {
   protected static final String OFFLINE = "offline";
   @JsonResponseField
   protected static final String MIN_ISR = "min-isr";
-  public static final String PARTITION_STATE_FORMAT_SUFFIX = "s%10s%10s%30s%30s%25s%25s%10s%n";
+  @JsonResponseField
+  protected static final String REMOTE_STORAGE_ENABLED = "remote-storage-enabled";
+  public static final String PARTITION_STATE_FORMAT_SUFFIX = "s%10s%10s%30s%30s%25s%25s%10s%25s%n";
   protected final String _topic;
   protected final int _partition;
   protected final int _leader;
@@ -41,8 +43,9 @@ public class PartitionState {
   protected final Set<Integer> _outOfSyncReplicas;
   protected final Set<Integer> _offlineReplicas;
   protected final int _minIsr;
+  protected final boolean _remoteStorageEnabled;
 
-  public PartitionState(PartitionInfo partitionInfo, int minIsr) {
+  public PartitionState(PartitionInfo partitionInfo, int minIsr, boolean remoteStorageEnabled) {
     _topic = partitionInfo.topic();
     _partition = partitionInfo.partition();
     _leader = partitionInfo.leader() == null ? -1 : partitionInfo.leader().id();
@@ -52,11 +55,13 @@ public class PartitionState {
     _outOfSyncReplicas.removeAll(_inSyncReplicas);
     _offlineReplicas = Arrays.stream(partitionInfo.offlineReplicas()).map(Node::id).collect(Collectors.toSet());
     _minIsr = minIsr;
+    _remoteStorageEnabled = remoteStorageEnabled;
   }
 
   protected Map<String, Object> getJsonStructure() {
     return Map.of(TOPIC, _topic, PARTITION, _partition, LEADER, _leader, REPLICAS, _replicas, IN_SYNC, _inSyncReplicas,
-                  OUT_OF_SYNC, _outOfSyncReplicas, OFFLINE, _offlineReplicas, MIN_ISR, _minIsr);
+                  OUT_OF_SYNC, _outOfSyncReplicas, OFFLINE, _offlineReplicas, MIN_ISR, _minIsr, REMOTE_STORAGE_ENABLED,
+        _remoteStorageEnabled);
   }
 
   protected String writeKafkaPartitionState(int topicNameLength) {
@@ -66,6 +71,6 @@ public class PartitionState {
                          _inSyncReplicas,
                          _outOfSyncReplicas,
                          _offlineReplicas,
-                         _minIsr);
+                         _minIsr, _remoteStorageEnabled);
   }
 }

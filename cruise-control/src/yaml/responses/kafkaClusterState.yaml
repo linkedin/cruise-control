@@ -153,6 +153,7 @@ PartitionState:
     - out-of-sync
     - offline
     - min-isr
+    - remote-storage-enabled
   properties:
     topic:
       type: string
@@ -185,3 +186,6 @@ PartitionState:
     min-isr:
       type: integer
       format: int32
+    remote-storage-enabled:
+      type: boolean
+      format: boolean
