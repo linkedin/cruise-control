@@ -83,7 +83,6 @@ public class BrokerSetAwareGoal extends AbstractGoal {
   private Map<String, Set<Broker>> _brokersByBrokerSet;
   private ReplicaToBrokerSetMappingPolicy _replicaToBrokerSetMappingPolicy;
   private Set<String> _excludedTopics;
-  private Set<String> _mustHaveTopicLeadersPerBroker;
 
   /**
    * Constructor for Broker Set Aware Goal.
@@ -138,10 +137,10 @@ public class BrokerSetAwareGoal extends AbstractGoal {
     // Whether the {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas} tracks only leader replicas or all replicas.
     boolean tracksOnlyLeaderReplicas = false;
 
-    _mustHaveTopicLeadersPerBroker = Collections.unmodifiableSet(
+    Set<String> mustHaveTopicLeadersPerBroker = Collections.unmodifiableSet(
         Utils.getTopicNamesMatchedWithPattern(_balancingConstraint.topicsWithMinLeadersPerBrokerPattern(), clusterModel::topics));
     _excludedTopics = Collections.unmodifiableSet(
-        Stream.of(_mustHaveTopicLeadersPerBroker, optimizationOptions.excludedTopics()).flatMap(Set::stream).collect(Collectors.toSet()));
+        Stream.of(mustHaveTopicLeadersPerBroker, optimizationOptions.excludedTopics()).flatMap(Set::stream).collect(Collectors.toSet()));
 
     /*
     Replicas using selection/priority/score functions can be filtered/ordered/scored to be picked for movement during balancing act.
@@ -226,8 +225,7 @@ public class BrokerSetAwareGoal extends AbstractGoal {
 
       // If the re-balancing action is performed within the broker set boundary, we are good
       // Also, if the topics that are configured to have leaders on each broker within the cluster, then those topics won't be rebalanced
-      if ((broker.isAlive() && eligibleBrokerSetIdForReplica.equals(currentBrokerSetId)) || _mustHaveTopicLeadersPerBroker.contains(
-          replica.topicPartition().topic())) {
+      if (broker.isAlive() && eligibleBrokerSetIdForReplica.equals(currentBrokerSetId)) {
         continue;
       }
       // If the brokerSet awareness condition is violated. Move replica to an eligible broker
