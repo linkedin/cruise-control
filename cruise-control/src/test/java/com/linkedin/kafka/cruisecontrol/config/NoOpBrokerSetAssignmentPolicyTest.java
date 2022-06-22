@@ -20,32 +20,31 @@ import static org.junit.Assert.assertThrows;
  * Unit test for {@link NoOpBrokerSetAssignmentPolicy}
  */
 public class NoOpBrokerSetAssignmentPolicyTest {
-  private static final NoOpBrokerSetAssignmentPolicy NO_OP_DEFAULT_BROKER_SET_ASSIGNMENT_POLICY =
-      new NoOpBrokerSetAssignmentPolicy();
+  private static final NoOpBrokerSetAssignmentPolicy NO_OP_BROKER_SET_ASSIGNMENT_POLICY = new NoOpBrokerSetAssignmentPolicy();
 
   /**
-   * Tests if default no op policy does not make any assignment to missing brokers
+   * Tests if no op policy does not make any assignment to missing brokers
    */
   @Test
-  public void testDefaultBrokerSetAssignment() throws BrokerSetResolutionException {
+  public void testBrokerSetAssignment() throws BrokerSetResolutionException {
     final ClusterModel clusterModel = DeterministicCluster.brokerSetSatisfiable1();
     Map<String, Set<Integer>> mappedBrokers = Map.of("bs1", Set.of(0, 1, 2, 3, 4), "bs2", Set.of(5));
-    Map<String, Set<Integer>> mappedBrokersAfterDefaultAssignment =
-        NO_OP_DEFAULT_BROKER_SET_ASSIGNMENT_POLICY.assignBrokerSetsForUnresolvedBrokers(clusterModel, mappedBrokers);
+    Map<String, Set<Integer>> mappedBrokersAfterAssignment =
+        NO_OP_BROKER_SET_ASSIGNMENT_POLICY.assignBrokerSetsForUnresolvedBrokers(clusterModel, mappedBrokers);
 
-    assertNotNull(mappedBrokersAfterDefaultAssignment);
+    assertNotNull(mappedBrokersAfterAssignment);
 
-    assertEquals(mappedBrokersAfterDefaultAssignment, mappedBrokers);
+    assertEquals(mappedBrokersAfterAssignment, mappedBrokers);
   }
 
   /**
-   * Tests if default no op policy throws resolution exception when unassigned
+   * Tests if no op policy throws resolution exception when unassigned
    */
   @Test
-  public void testDefaultBrokerSetAssignmentThrowsResolutionException() {
+  public void testBrokerSetAssignmentThrowsResolutionException() {
     final ClusterModel clusterModel = DeterministicCluster.brokerSetSatisfiable1();
     Map<String, Set<Integer>> mappedBrokers = Map.of("bs1", Set.of(0, 1, 2), "bs2", Set.of(5));
     assertThrows(BrokerSetResolutionException.class,
-                 () -> NO_OP_DEFAULT_BROKER_SET_ASSIGNMENT_POLICY.assignBrokerSetsForUnresolvedBrokers(clusterModel, mappedBrokers));
+                 () -> NO_OP_BROKER_SET_ASSIGNMENT_POLICY.assignBrokerSetsForUnresolvedBrokers(clusterModel, mappedBrokers));
   }
 }
