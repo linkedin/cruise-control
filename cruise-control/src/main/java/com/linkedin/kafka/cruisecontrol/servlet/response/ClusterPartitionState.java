@@ -17,6 +17,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.config.TopicConfig;
 
 
 @JsonResponseClass
@@ -33,6 +34,7 @@ public class ClusterPartitionState {
   public static final String OTHER = "other";
   public static final String MIN_INSYNC_REPLICAS = "min.insync.replicas";
   public static final int DEFAULT_MIN_INSYNC_REPLICAS = 1;
+  public static final boolean DEFAULT_REMOTE_STORAGE_ENABLED = false;
 
   protected final Set<PartitionInfo> _underReplicatedPartitions;
   protected final Set<PartitionInfo> _offlinePartitions;
@@ -43,6 +45,9 @@ public class ClusterPartitionState {
   protected final Map<String, Properties> _allTopicConfigs;
   protected final Properties _clusterConfigs;
   protected final Map<String, Integer> _minIsrByTopic;
+  protected final Set<String> _remoteStorageEnabledTopics;
+  // only display remote_storage_enabled if there is any topic has it enabled.
+  protected final boolean _displayRemoteStorage;
 
   public ClusterPartitionState(boolean verbose, Pattern topicPattern, Cluster kafkaCluster,
                                Map<String, Properties> allTopicConfigs, Properties clusterConfigs) {
@@ -56,9 +61,11 @@ public class ClusterPartitionState {
     _partitionsWithOfflineReplicas = new TreeSet<>(comparator);
     _underMinIsrPartitions = new TreeSet<>(comparator);
     _minIsrByTopic = new HashMap<>();
+    _remoteStorageEnabledTopics = new HashSet<>();
     // Gather the partition state.
     populateKafkaPartitionState(_underReplicatedPartitions, _offlinePartitions, _otherPartitions,
                                 _partitionsWithOfflineReplicas, _underMinIsrPartitions, verbose, topicPattern);
+    _displayRemoteStorage = !_remoteStorageEnabledTopics.isEmpty();
   }
 
   /**
@@ -100,6 +107,9 @@ public class ClusterPartitionState {
       if (topicPattern == null || topicPattern.matcher(topic).matches()) {
         int minInsyncReplicas = minInsyncReplicas(topic);
         _minIsrByTopic.put(topic, minInsyncReplicas);
+        if (isRemoteStorageEnabled(topic)) {
+          _remoteStorageEnabledTopics.add(topic);
+        }
         for (PartitionInfo partitionInfo : _kafkaCluster.partitionsForTopic(topic)) {
           int numInsyncReplicas = partitionInfo.inSyncReplicas().length;
           boolean isURP = numInsyncReplicas != partitionInfo.replicas().length;
@@ -143,10 +153,27 @@ public class ClusterPartitionState {
     }
   }
 
+  /**
+   * Get the effective config value of {@link TopicConfig#REMOTE_LOG_STORAGE_ENABLE_CONFIG} for the given topic.
+   *
+   * @param topic Topic for which the {@link TopicConfig#REMOTE_LOG_STORAGE_ENABLE_CONFIG} is queried
+   * @return the effective config value of {@link TopicConfig#REMOTE_LOG_STORAGE_ENABLE_CONFIG} for the given topic.
+   */
+  protected boolean isRemoteStorageEnabled(String topic) {
+    Properties topicLevelConfig = _allTopicConfigs.get(topic);
+    if (topicLevelConfig != null && topicLevelConfig.get(TopicConfig.REMOTE_LOG_STORAGE_ENABLE_CONFIG) != null) {
+      return Boolean.parseBoolean(topicLevelConfig.getProperty(TopicConfig.REMOTE_LOG_STORAGE_ENABLE_CONFIG));
+    } else {
+      return DEFAULT_REMOTE_STORAGE_ENABLED;
+    }
+  }
+
   protected List<Object> getJsonPartitions(Set<PartitionInfo> partitions) {
     List<Object> partitionList = new ArrayList<>();
     for (PartitionInfo partitionInfo : partitions) {
-      partitionList.add(new PartitionState(partitionInfo, _minIsrByTopic.get(partitionInfo.topic())).getJsonStructure());
+      partitionList.add(
+          new PartitionState(partitionInfo, _minIsrByTopic.get(partitionInfo.topic()), _remoteStorageEnabledTopics.contains(partitionInfo.topic()),
+              _displayRemoteStorage).getJsonStructure());
     }
 
     return partitionList;
@@ -172,8 +199,14 @@ public class ClusterPartitionState {
 
     String initMessage = verbose ? "All Partitions in the Cluster (verbose):"
                                  : "Under Replicated, Offline, and Under MinIsr Partitions:";
-    sb.append(String.format("%n%s%n%" + topicNameLength + PartitionState.PARTITION_STATE_FORMAT_SUFFIX, initMessage, "TOPIC",
-                            "PARTITION", "LEADER", "REPLICAS", "IN-SYNC", "OUT-OF-SYNC", "OFFLINE", "MIN-ISR"));
+    if (_displayRemoteStorage) {
+      sb.append(String.format("%n%s%n%" + topicNameLength + PartitionState.PARTITION_STATE_FORMAT_WITH_REMOTE_SUFFIX,
+          initMessage, "TOPIC", "PARTITION", "LEADER", "REPLICAS", "IN-SYNC", "OUT-OF-SYNC", "OFFLINE", "MIN-ISR",
+          "REMOTE-STORAGE-ENABLED"));
+    } else {
+      sb.append(String.format("%n%s%n%" + topicNameLength + PartitionState.PARTITION_STATE_FORMAT_WITHOUT_REMOTE_SUFFIX,
+          initMessage, "TOPIC", "PARTITION", "LEADER", "REPLICAS", "IN-SYNC", "OUT-OF-SYNC", "OFFLINE", "MIN-ISR"));
+    }
 
     // Write the cluster state.
     sb.append(String.format("Offline Partitions:%n"));
@@ -196,7 +229,10 @@ public class ClusterPartitionState {
 
   protected void writeKafkaPartitionState(StringBuilder sb, Set<PartitionInfo> partitions, int topicNameLength) {
     for (PartitionInfo partitionInfo : partitions) {
-      sb.append(new PartitionState(partitionInfo, _minIsrByTopic.get(partitionInfo.topic())).writeKafkaPartitionState(topicNameLength));
+      sb.append(
+          new PartitionState(partitionInfo, _minIsrByTopic.get(partitionInfo.topic()),
+              _remoteStorageEnabledTopics.contains(partitionInfo.topic()), _displayRemoteStorage)
+          .writeKafkaPartitionState(topicNameLength));
     }
   }
 }

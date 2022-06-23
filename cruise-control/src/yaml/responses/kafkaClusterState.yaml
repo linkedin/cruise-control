@@ -185,3 +185,6 @@ PartitionState:
     min-isr:
       type: integer
       format: int32
+    remote-storage-enabled:
+      type: boolean
+      format: boolean
