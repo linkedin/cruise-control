@@ -83,6 +83,7 @@ public class BrokerSetAwareGoal extends AbstractGoal {
   private Map<String, Set<Broker>> _brokersByBrokerSet;
   private ReplicaToBrokerSetMappingPolicy _replicaToBrokerSetMappingPolicy;
   private Set<String> _excludedTopics;
+  private Set<String> _mustHaveTopicLeadersPerBroker;
 
   /**
    * Constructor for Broker Set Aware Goal.
@@ -137,10 +138,10 @@ public class BrokerSetAwareGoal extends AbstractGoal {
     // Whether the {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas} tracks only leader replicas or all replicas.
     boolean tracksOnlyLeaderReplicas = false;
 
-    Set<String> mustHaveTopicLeadersPerBroker = Collections.unmodifiableSet(
+    _mustHaveTopicLeadersPerBroker = Collections.unmodifiableSet(
         Utils.getTopicNamesMatchedWithPattern(_balancingConstraint.topicsWithMinLeadersPerBrokerPattern(), clusterModel::topics));
     _excludedTopics = Collections.unmodifiableSet(
-        Stream.of(mustHaveTopicLeadersPerBroker, optimizationOptions.excludedTopics()).flatMap(Set::stream).collect(Collectors.toSet()));
+        Stream.of(_mustHaveTopicLeadersPerBroker, optimizationOptions.excludedTopics()).flatMap(Set::stream).collect(Collectors.toSet()));
 
     /*
     Replicas using selection/priority/score functions can be filtered/ordered/scored to be picked for movement during balancing act.
@@ -262,6 +263,12 @@ public class BrokerSetAwareGoal extends AbstractGoal {
    */
   @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
+    // This block is introduced to accept any offline replicas moved by MinTopicLeadersPerBrokerGoal.
+    // If MinTopicLeadersPerBrokerGoal used with BrokerSetAwareGoal, the topics that are required to have a minimum leader per broker by
+    // MinTopicLeadersPerBrokerGoal, should be excluded from BrokerSetAwareGoal.
+    if (_mustHaveTopicLeadersPerBroker.contains(action.topic())) {
+      return ACCEPT;
+    }
     switch (action.balancingAction()) {
       case LEADERSHIP_MOVEMENT:
         return ACCEPT;
