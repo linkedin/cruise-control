@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.BrokerSetAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
@@ -30,6 +31,7 @@ import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.ClusterProperty;
+import com.linkedin.kafka.cruisecontrol.config.ModuloBasedBrokerSetAssignmentPolicy;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.model.RandomCluster;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
@@ -44,6 +46,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
+import java.util.Objects;
 import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,7 +100,8 @@ public class RandomClusterTest {
     Collection<Object[]> p = new ArrayList<>();
 
     // Sorted by priority.
-    List<String> goalNameByPriority = Arrays.asList(RackAwareGoal.class.getName(),
+    List<String> goalNameByPriority = Arrays.asList(BrokerSetAwareGoal.class.getName(),
+                                                    RackAwareGoal.class.getName(),
                                                     RackAwareDistributionGoal.class.getName(),
                                                     MinTopicLeadersPerBrokerGoal.class.getName(),
                                                     ReplicaCapacityGoal.class.getName(),
@@ -125,6 +129,11 @@ public class RandomClusterTest {
 
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(AnalyzerConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(1500L));
+    String brokerSetsDataFile = Objects.requireNonNull(KafkaCruiseControlUnitTestUtils.class.getClassLoader().getResource(
+        TestConstants.BROKER_SET_RESOLVER_FILE_4)).getFile();
+    props.setProperty(AnalyzerConfig.BROKER_SET_CONFIG_FILE_CONFIG, brokerSetsDataFile);
+    props.setProperty(AnalyzerConfig.BROKER_SET_ASSIGNMENT_POLICY_CLASS_CONFIG, ModuloBasedBrokerSetAssignmentPolicy.class.getName());
+
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     balancingConstraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);

@@ -1,0 +1,14 @@
+{
+  "brokerSets":[
+    {
+      "brokerSetId": "Blue",
+      "brokerIds": [0, 1, 2],
+      "doc": "This block contains broker ids that belong to the Blue BrokerSet"
+    },
+    {
+      "brokerSetId": "Green",
+      "brokerIds": [3, 4, 5],
+      "doc": "This block contains broker ids that belong to the Green BrokerSet"
+    }
+  ]
+}

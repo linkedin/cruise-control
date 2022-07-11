@@ -20,6 +20,7 @@
     - [PercentileMetricAnomalyFinder configurations](#percentilemetricanomalyfinder-configurations)
     - [SlowBrokerFinder configurations](#slowbrokerfinder-configurations)
     - [BasicProvisioner configurations](#basicprovisioner-configurations)
+    - [BrokerSetFileResolver configurations](#brokersetfileresolver-configurations)
 - [Resolving environment variables as config values](#resolving-environment-variables-as-config-values)
 
 ## Configurations inherited from Kafka clients
@@ -408,6 +409,14 @@ Besides the above configurations, CruiseControlMetricsReporter takes all the con
 |-------------------------------|-------|-----------|-------------------------------------------------------------------|-----------------------------------------------------------------------|
 | broker.provisioner.class      | Class | N         | com.linkedin.kafka.cruisecontrol.detector.BasicBrokerProvisioner  | A provisioner that honors provision recommendations of brokers.       |
 | partition.provisioner.class   | Class | N         | com.linkedin.kafka.cruisecontrol.detector.PartitionProvisioner    | A provisioner that honors provision recommendations of partitions.    |
+
+### BrokerSetFileResolver configurations
+| Name                                      | Type  | Required? | Default Value                                                                  | Description                                                                                                                                              |
+|-------------------------------------------|-------|-----------|--------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| broker.set.config.file                    | String| N         | config/brokerSets.json                                                         | A json file containing broker set ids to broker ids mappings.                                                                                            |
+| broker.set.resolver.class                 | Class | N         | com.linkedin.kafka.cruisecontrol.config.BrokerSetFileResolver                  | The broker set resolver class name. The broker set resolver is responsible for providing mappings and reverse mappings of broker ids to broker set ids.  |
+| broker.set.assignment.policy.class        | Class | N         | com.linkedin.kafka.cruisecontrol.config.NoOpBrokerSetAssignmentPolicy          | The broker set assignment policy class name. This dictates mapping of a broker that is not mapped to any broker set.                                     |
+| replica.to.broker.set.mapping.policy.class| Class | N         | com.linkedin.kafka.cruisecontrol.config.TopicNameHashBrokerSetMappingPolicy    | The replica to broker set mapping policy class name. This class is responsible for mapping topic to a broker set.                                        |
 
 ## Resolving environment variables as config values
 It is often required to resolve an environment variable as a config value. Such case is when a password is set by the environment to avoid putting them into config files.

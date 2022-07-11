@@ -4,6 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.BrokerSetAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
@@ -42,6 +44,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import org.apache.kafka.common.Cluster;
@@ -124,7 +127,8 @@ public class ReplicationFactorChangeTest {
 
     for (short replicationFactor : Arrays.asList(SMALL_REPLICATION_FACTOR, LARGE_REPLICATION_FACTOR)) {
       for (boolean isSmallCluster: Arrays.asList(true, false)) {
-        for (Class<? extends Goal> goalClass : Arrays.asList(RackAwareGoal.class,
+        for (Class<? extends Goal> goalClass : Arrays.asList(BrokerSetAwareGoal.class,
+                                                             RackAwareGoal.class,
                                                              RackAwareDistributionGoal.class,
                                                              MinTopicLeadersPerBrokerGoal.class,
                                                              ReplicaCapacityGoal.class,
@@ -295,6 +299,11 @@ public class ReplicationFactorChangeTest {
     } else {
       fail("Cannot figure out which topic to use to test the MinTopicLeadersPerBrokerGoal with model: " + clusterModel);
     }
+
+    String brokerSetsDataFile = Objects.requireNonNull(KafkaCruiseControlUnitTestUtils.class.getClassLoader().getResource(
+        TestConstants.BROKER_SET_RESOLVER_FILE_1)).getFile();
+    configOverrides.setProperty(AnalyzerConfig.BROKER_SET_CONFIG_FILE_CONFIG, brokerSetsDataFile);
+
     return new Object[]{tid, topics, replicationFactor, goal(goalClass, configOverrides), exceptionClass, clusterModel, expectedToOptimize};
   }
 }

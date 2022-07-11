@@ -113,6 +113,11 @@ public final class TestConstants {
   public static final String JBOD_BROKER_CAPACITY_CONFIG_FILE = "testCapacityConfigJBOD.json";
   public static final String DEFAULT_BROKER_CAPACITY_CONFIG_FILE = "DefaultCapacityConfig.json";
   public static final String DEFAULT_CLUSTER_CONFIGS_FILE = "DefaultClusterConfigs.json";
+  public static final String DEFAULT_BROKER_SET_RESOLVER_FILE = "testBrokerSets.json";
+  public static final String BROKER_SET_RESOLVER_FILE_1 = "testBrokerSets1.json";
+  public static final String BROKER_SET_RESOLVER_FILE_2 = "testBrokerSets2.json";
+  public static final String BROKER_SET_RESOLVER_FILE_3 = "testBrokerSets3.json";
+  public static final String BROKER_SET_RESOLVER_FILE_4 = "testBrokerSets4.json";
 
   // Topic replication factor anomaly test.
   public static final TopicReplicationFactorAnomalyEntry TOPIC_REPLICATION_FACTOR_ANOMALY_ENTRY =

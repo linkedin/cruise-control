@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.BrokerSetAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
@@ -37,6 +38,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import org.junit.Test;
@@ -97,7 +99,8 @@ public class RandomSelfHealingTest {
     Collection<Object[]> p = new ArrayList<>();
 
     // Sorted by priority.
-    List<String> goalNameByPriority = Arrays.asList(RackAwareGoal.class.getName(),
+    List<String> goalNameByPriority = Arrays.asList(BrokerSetAwareGoal.class.getName(),
+                                                    RackAwareGoal.class.getName(),
                                                     RackAwareDistributionGoal.class.getName(),
                                                     MinTopicLeadersPerBrokerGoal.class.getName(),
                                                     ReplicaCapacityGoal.class.getName(),
@@ -119,6 +122,9 @@ public class RandomSelfHealingTest {
 
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(AnalyzerConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(2000L));
+    String brokerSetsDataFile = Objects.requireNonNull(KafkaCruiseControlUnitTestUtils.class.getClassLoader().getResource(
+        TestConstants.BROKER_SET_RESOLVER_FILE_3)).getFile();
+    props.setProperty(AnalyzerConfig.BROKER_SET_CONFIG_FILE_CONFIG, brokerSetsDataFile);
     BalancingConstraint constraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     constraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     constraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
