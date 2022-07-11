@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.config.constants;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.DefaultOptimizationOptionsGenerator;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptionsGenerator;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.BrokerSetAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
@@ -244,7 +245,8 @@ public final class AnalyzerConfig {
    * <code>goals</code>
    */
   public static final String GOALS_CONFIG = "goals";
-  public static final String DEFAULT_GOALS = new StringJoiner(",").add(RackAwareGoal.class.getName())
+  public static final String DEFAULT_GOALS = new StringJoiner(",").add(BrokerSetAwareGoal.class.getName())
+                                                                  .add(RackAwareGoal.class.getName())
                                                                   .add(RackAwareDistributionGoal.class.getName())
                                                                   .add(MinTopicLeadersPerBrokerGoal.class.getName())
                                                                   .add(ReplicaCapacityGoal.class.getName())
