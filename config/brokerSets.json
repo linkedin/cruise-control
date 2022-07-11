@@ -1,0 +1,9 @@
+{
+  "brokerSets":[
+    {
+      "brokerSetId": "brokerSet0",
+      "brokerIds": [0],
+      "doc": "This block contains broker ids that belong to BrokerSet 0"
+    }
+  ]
+}

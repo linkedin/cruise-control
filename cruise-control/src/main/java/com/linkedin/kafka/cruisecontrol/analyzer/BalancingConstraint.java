@@ -5,7 +5,9 @@
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.config.BrokerSetResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.ReplicaToBrokerSetMappingPolicy;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import java.util.HashMap;
 import java.util.Map;
@@ -34,6 +36,8 @@ public class BalancingConstraint {
   private final Pattern _topicsWithMinLeadersPerBrokerPattern;
   private final int _minTopicLeadersPerBroker;
   private final long _fastModePerBrokerMoveTimeoutMs;
+  private final BrokerSetResolver _brokerSetResolver;
+  private final ReplicaToBrokerSetMappingPolicy _replicaToBrokerSetMappingPolicy;
 
   /**
    * Constructor for Balancing Constraint.
@@ -79,6 +83,11 @@ public class BalancingConstraint {
     _minTopicLeadersPerBroker = config.getInt(AnalyzerConfig.MIN_TOPIC_LEADERS_PER_BROKER_CONFIG);
     // Set default value for the per broker move timeout in fast mode in milliseconds
     _fastModePerBrokerMoveTimeoutMs = config.getLong(AnalyzerConfig.FAST_MODE_PER_BROKER_MOVE_TIMEOUT_MS_CONFIG);
+    // BrokerSet Data resolver class
+    _brokerSetResolver = config.getConfiguredInstance(AnalyzerConfig.BROKER_SET_RESOLVER_CLASS_CONFIG, BrokerSetResolver.class);
+    // Replica to Broker Set mapping policy class
+    _replicaToBrokerSetMappingPolicy = config.getConfiguredInstance(AnalyzerConfig.REPLICA_TO_BROKER_SET_MAPPING_POLICY_CLASS_CONFIG,
+                                                                    ReplicaToBrokerSetMappingPolicy.class);
   }
 
   Properties setProps(Properties props) {
@@ -110,6 +119,8 @@ public class BalancingConstraint {
     props.put(AnalyzerConfig.TOPICS_WITH_MIN_LEADERS_PER_BROKER_CONFIG, _topicsWithMinLeadersPerBrokerPattern.pattern());
     props.put(AnalyzerConfig.MIN_TOPIC_LEADERS_PER_BROKER_CONFIG, Integer.toString(_minTopicLeadersPerBroker));
     props.put(AnalyzerConfig.FAST_MODE_PER_BROKER_MOVE_TIMEOUT_MS_CONFIG, Long.toString(_fastModePerBrokerMoveTimeoutMs));
+    props.put(AnalyzerConfig.BROKER_SET_RESOLVER_CLASS_CONFIG, _brokerSetResolver.getClass().getName());
+    props.put(AnalyzerConfig.REPLICA_TO_BROKER_SET_MAPPING_POLICY_CLASS_CONFIG, _replicaToBrokerSetMappingPolicy.getClass().getName());
     return props;
   }
 
@@ -243,6 +254,20 @@ public class BalancingConstraint {
   }
 
   /**
+   * @return The Broker Set Resolver.
+   */
+  public BrokerSetResolver brokerSetResolver() {
+    return _brokerSetResolver;
+  }
+
+  /**
+   * @return The Replica to Broker Set mapping policy.
+   */
+  public ReplicaToBrokerSetMappingPolicy replicaToBrokerSetMappingPolicy() {
+    return _replicaToBrokerSetMappingPolicy;
+  }
+
+  /**
    * Set resource balance percentage for the given resource.
    *
    * @param resource Resource for which the balance percentage will be set.
@@ -302,7 +327,9 @@ public class BalancingConstraint {
                          + "topicReplicaBalancePercentage=%.4f,topicReplicaBalanceGap=[%d,%d],"
                          + "goalViolationDistributionThresholdMultiplier=%.4f,"
                          + "topicsWithMinLeadersPerBrokerPattern=%s,"
-                         + "minTopicLeadersPerBroker=%d,fastModePerBrokerMoveTimeoutMs=%d]",
+                         + "minTopicLeadersPerBroker=%d,fastModePerBrokerMoveTimeoutMs=%d,"
+                         + "brokerSetDataStore=%s,"
+                         + "replicaToBrokerSetMappingPolicy=%s]",
                          _resourceBalancePercentage.get(Resource.CPU), _resourceBalancePercentage.get(Resource.DISK),
                          _resourceBalancePercentage.get(Resource.NW_IN), _resourceBalancePercentage.get(Resource.NW_OUT),
                          _capacityThreshold.get(Resource.CPU), _capacityThreshold.get(Resource.DISK),
@@ -310,6 +337,7 @@ public class BalancingConstraint {
                          _maxReplicasPerBroker, _replicaBalancePercentage, _leaderReplicaBalancePercentage,
                          _topicReplicaBalancePercentage, _topicReplicaBalanceMinGap, _topicReplicaBalanceMaxGap,
                          _goalViolationDistributionThresholdMultiplier, _topicsWithMinLeadersPerBrokerPattern.pattern(),
-                         _minTopicLeadersPerBroker, _fastModePerBrokerMoveTimeoutMs);
+                         _minTopicLeadersPerBroker, _fastModePerBrokerMoveTimeoutMs, _brokerSetResolver.getClass().getName(),
+                         _replicaToBrokerSetMappingPolicy.getClass().getName());
   }
 }

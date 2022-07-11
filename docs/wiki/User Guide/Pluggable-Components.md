@@ -57,6 +57,8 @@ The goals in Kafka Cruise Control are pluggable with different priorities.
 
 * **IntraBrokerDiskUsageDistributionGoal**: Attempt to make the utilization variance among all the disks within same broker are within a certain range. This goal will be pick up if `rebalance_disk` parameter is set to `true` in [rebalance request](https://github.com/linkedin/cruise-control/wiki/REST-APIs#trigger-a-workload-balance). Not available in `kafka_0_11_and_1_0` branch. 
 
+* **BrokerSetAwareGoal**: BrokerSet is defined as a subset of brokers in the cluster. This Goal will Attempt to make the replica movements constrained within the boundary of a BrokerSet.
+
 ## Anomaly Notifier
 The anomaly notifier is a communication channel between Cruise Control and users.
 It notifies users about the anomalies detected in the cluster as well as actions taken about the anomaly. Anomalies include:
@@ -108,3 +110,9 @@ Constraints include:
 * Specific resource, such as {@link Resource#DISK}.
 * Excluded racks -- i.e. racks for which brokers should not be added to or removed from
 * Total resource capacity required to add or remove
+
+## Broker Set Resolver
+The broker set resolver is the way for Cruise Control to get the broker set information for all the brokers. The default implementation is file based properties. Users can also have a customized implementation to retrieve the broker set to broker mapping from some other source.
+
+## Default Broker Set Assignment Policy
+The default broker set assignment policy handles the case where a broker id is not provided with any mapping to a broker set. There is a default NoOpDefaultBrokerSetAssignmentPolicy that can be used if there is no default mapping and any mismatch will result in fast failure. Users can have a customized implementation to provide a default treatment for unmapped brokers.

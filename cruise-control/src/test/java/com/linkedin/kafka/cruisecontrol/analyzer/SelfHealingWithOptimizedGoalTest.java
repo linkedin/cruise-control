@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.BrokerSetAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
@@ -30,6 +31,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -71,7 +73,8 @@ public class SelfHealingWithOptimizedGoalTest {
   @Parameterized.Parameters
   public static Collection<Object[]> data() {
     Collection<Object[]> p = new ArrayList<>();
-    List<String> goalNameByPriority = Arrays.asList(MinTopicLeadersPerBrokerGoal.class.getName(),
+    List<String> goalNameByPriority = Arrays.asList(BrokerSetAwareGoal.class.getName(),
+                                                    MinTopicLeadersPerBrokerGoal.class.getName(),
                                                     ReplicaCapacityGoal.class.getName(),
                                                     DiskCapacityGoal.class.getName(),
                                                     NetworkInboundCapacityGoal.class.getName(),
@@ -89,6 +92,9 @@ public class SelfHealingWithOptimizedGoalTest {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(AnalyzerConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(5L));
     props.setProperty(AnalyzerConfig.OVERPROVISIONED_MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(5L));
+    String brokerSetsDataFile = Objects.requireNonNull(KafkaCruiseControlUnitTestUtils.class.getClassLoader().getResource(
+        TestConstants.BROKER_SET_RESOLVER_FILE_2)).getFile();
+    props.setProperty(AnalyzerConfig.BROKER_SET_CONFIG_FILE_CONFIG, brokerSetsDataFile);
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     balancingConstraint.setCapacityThreshold(TestConstants.LOW_CAPACITY_THRESHOLD);
     balancingConstraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);

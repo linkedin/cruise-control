@@ -46,9 +46,11 @@ public final class KafkaCruiseControlUnitTestUtils {
   public static Properties getKafkaCruiseControlProperties() {
     Properties props = new Properties();
     String capacityConfigFile = Objects.requireNonNull(KafkaCruiseControlUnitTestUtils.class.getClassLoader().getResource(
-        TestConstants.DEFAULT_BROKER_CAPACITY_CONFIG_FILE)).getFile();
+            TestConstants.DEFAULT_BROKER_CAPACITY_CONFIG_FILE)).getFile();
     String clusterConfigsFile = Objects.requireNonNull(KafkaCruiseControlUnitTestUtils.class.getClassLoader().getResource(
-        TestConstants.DEFAULT_CLUSTER_CONFIGS_FILE)).getFile();
+            TestConstants.DEFAULT_CLUSTER_CONFIGS_FILE)).getFile();
+    String brokerSetsDataFile = Objects.requireNonNull(KafkaCruiseControlUnitTestUtils.class.getClassLoader().getResource(
+            TestConstants.DEFAULT_BROKER_SET_RESOLVER_FILE)).getFile();
     props.setProperty(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, "localhost:2121");
     props.setProperty(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
     props.setProperty(MonitorConfig.METRIC_SAMPLER_CLASS_CONFIG, NoopSampler.class.getName());
@@ -73,6 +75,7 @@ public final class KafkaCruiseControlUnitTestUtils {
     props.setProperty(AnomalyDetectorConfig.TOPIC_ANOMALY_FINDER_CLASSES_CONFIG, NoopTopicAnomalyFinder.class.getName());
     props.setProperty(AnomalyDetectorConfig.SELF_HEALING_GOALS_CONFIG, "");
     props.setProperty(AnalyzerConfig.DEFAULT_GOALS_CONFIG, TestConstants.DEFAULT_GOALS_VALUES);
+    props.setProperty(AnalyzerConfig.BROKER_SET_CONFIG_FILE_CONFIG, brokerSetsDataFile);
 
     return props;
   }

@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.BrokerSetAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
@@ -25,6 +26,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionG
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
+import com.linkedin.kafka.cruisecontrol.config.ReplicaToOriginalBrokerSetMappingPolicy;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
@@ -118,6 +120,8 @@ public class ExcludedTopicsTest {
     Set<String> noExclusion = Collections.emptySet();
     Set<String> excludeT1 = Collections.singleton(T1);
     Set<String> excludeAllTopics = Set.of(T1, T2);
+    Set<String> excludeTopic0 = Collections.singleton(TestConstants.TOPIC0);
+    Set<String> excludeTopic1 = Collections.singleton(TestConstants.TOPIC1);
     Set<Integer> noDeadBroker = Collections.emptySet();
     Set<Integer> deadBroker0 = Collections.singleton(0);
 
@@ -296,6 +300,24 @@ public class ExcludedTopicsTest {
     // Test: Without excluded topics, rack aware unsatisfiable cluster, one dead broker (Exception expected)
     p.add(params(7, KafkaAssignerEvenRackAwareGoal.class, noExclusion, OptimizationFailureException.class,
                  DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null, null));
+
+    // ===============BrokerSetRackAwareGoal===============
+    configOverrides.setProperty(AnalyzerConfig.REPLICA_TO_BROKER_SET_MAPPING_POLICY_CLASS_CONFIG,
+                                ReplicaToOriginalBrokerSetMappingPolicy.class.getName());
+
+    // With BrokerSetAwareGoal, BrokerSet satisfiable cluster, no dead brokers (No exception, No proposal, Expected to look optimized)
+    p.add(params(0, BrokerSetAwareGoal.class, excludeTopic0, null, DeterministicCluster.brokerSetSatisfiable1(), noDeadBroker, true, false,
+                 configOverrides));
+    p.add(params(1, BrokerSetAwareGoal.class, excludeTopic0, null, DeterministicCluster.brokerSetSatisfiable2(), noDeadBroker, true, false,
+                 configOverrides));
+    // Test: Without excluded topics, broker set aware unsatisfiable cluster, no dead brokers (Exception expected)
+    p.add(
+        params(2, BrokerSetAwareGoal.class, noExclusion, OptimizationFailureException.class, DeterministicCluster.brokerSetUnSatisfiable1(),
+               noDeadBroker, null, null, configOverrides));
+    // With BrokerSetAwareGoal, BrokerSet satisfiable cluster after TOPIC1 exclusion,
+    // no dead brokers (No exception, No proposal, Expected to look optimized)
+    p.add(params(1, BrokerSetAwareGoal.class, excludeTopic1, null, DeterministicCluster.brokerSetSatisfiableAfterTopicExclusion(),
+                 noDeadBroker, true, false, configOverrides));
 
     return p;
   }

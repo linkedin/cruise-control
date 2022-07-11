@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.BrokerSetAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
@@ -35,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -47,10 +49,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUnitTestUtils.goal;
-import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.RACK_BY_BROKER;
-import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced;
-import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced2;
-import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced3;
+import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.*;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -111,6 +110,9 @@ public class ExcludedBrokersForLeadershipTest {
     Set<Integer> excludeB0 = Collections.singleton(0);
     Set<Integer> excludeB0B1 = Set.of(0, 1, 2);
     Set<Integer> excludeAllBrokers = Collections.unmodifiableSet(RACK_BY_BROKER.keySet());
+    Set<Integer> excludeAllBrokersForBrokerSetTests = Collections.unmodifiableSet(RACK_BY_BROKER4.keySet());
+    Set<Integer> excludeB1B2 = new HashSet<>(RACK_BY_BROKER.keySet());
+    excludeB1B2.removeAll(excludeB0);
     Set<Integer> noDeadBroker = Collections.emptySet();
     Set<Integer> deadBroker0 = Collections.singleton(0);
 
@@ -314,6 +316,24 @@ public class ExcludedBrokersForLeadershipTest {
     // Test: With all brokers excluded, balance not satisfiable, no dead brokers (No exception, No proposal
     // for excluded brokers, Expected to look optimized)
     p.add(params(2, PreferredLeaderElectionGoal.class, excludeAllBrokers, null, unbalanced3(), noDeadBroker, false));
+
+    // ============BrokerSetAwareGoal============
+    // Test: With single excluded broker, satisfiable cluster, no dead broker (No exception, does not generate proposals,
+    // Expected to look optimized)
+    p.add(params(0, BrokerSetAwareGoal.class, excludeB1, null, brokerSetSatisfiable7(), noDeadBroker, true));
+    // Test: With no excluded broker, satisfiable cluster, one dead broker (No exception, Generates proposals,
+    // Expected to look optimized)
+    p.add(params(1, BrokerSetAwareGoal.class, excludeB1, null, brokerSetSatisfiable7(), deadBroker0, true));
+    // Test: With B1, B2 excluded, satisfiable cluster, B0 is dead, expected to throw exception
+    p.add(params(2, BrokerSetAwareGoal.class, excludeB1B2, null, brokerSetSatisfiable7(), deadBroker0, true));
+    // Test: With all brokers excluded, satisfiable cluster, no dead brokers
+    p.add(
+        params(3, BrokerSetAwareGoal.class, excludeAllBrokersForBrokerSetTests, OptimizationFailureException.class, brokerSetSatisfiable7(),
+               noDeadBroker, null));
+    // Test: With all brokers excluded, satisfiable cluster, one dead broker (Exception)
+    p.add(
+        params(4, BrokerSetAwareGoal.class, excludeAllBrokersForBrokerSetTests, OptimizationFailureException.class, brokerSetSatisfiable7(),
+               deadBroker0, null));
 
     return p;
   }
