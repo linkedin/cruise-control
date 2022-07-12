@@ -85,8 +85,9 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
             try {
                 _samplingIntervalMs = Integer.parseInt(samplingIntervalMsString);
             } catch (NumberFormatException e) {
-                throw new ConfigException("%s config should be a positive number, provided %s",
-                    samplingIntervalMsString);
+                throw new ConfigException(
+                    String.format("%s config should be a positive number, provided %s", PROMETHEUS_QUERY_RESOLUTION_STEP_MS_CONFIG,
+                                  samplingIntervalMsString), e);
             }
 
             if (_samplingIntervalMs <= 0) {
@@ -115,7 +116,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
         } catch (IllegalArgumentException ex) {
             throw new ConfigException(
                 String.format("Prometheus endpoint URI is malformed, "
-                              + "expected schema://host:port, provided %s", endpoint));
+                              + "expected schema://host:port, provided %s", endpoint), ex);
         }
     }
 
@@ -283,7 +284,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
         try {
             return Integer.parseInt(partitionString);
         } catch (NumberFormatException e) {
-            throw new InvalidPrometheusResultException("Partition returned as part of Prometheus API response was not a number.");
+            throw new InvalidPrometheusResultException("Partition returned as part of Prometheus API response was not a number.", e);
         }
     }
 }
