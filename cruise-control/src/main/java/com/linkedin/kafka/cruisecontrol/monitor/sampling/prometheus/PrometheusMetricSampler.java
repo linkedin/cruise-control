@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -133,7 +132,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
             }
         }
         PrometheusQuerySupplier prometheusQuerySupplier = KafkaCruiseControlConfigUtils.getConfiguredInstance(
-            prometheusQuerySupplierClass, PrometheusQuerySupplier.class, Collections.emptyMap());
+            prometheusQuerySupplierClass, PrometheusQuerySupplier.class, (Map<String, Object>) configs);
         _metricToPrometheusQueryMap = prometheusQuerySupplier.get();
     }
 

@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus;
 
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfigUtils;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -73,7 +74,10 @@ public class PrometheusMetricSamplerTest {
     public void setUp() {
         _prometheusAdapter = mock(PrometheusAdapter.class);
         _prometheusMetricSampler = new PrometheusMetricSampler();
-        _prometheusQueryMap = new DefaultPrometheusQuerySupplier().get();
+        PrometheusQuerySupplier prometheusQuerySupplier =
+            KafkaCruiseControlConfigUtils.getConfiguredInstance(DefaultPrometheusQuerySupplier.class, PrometheusQuerySupplier.class,
+                                                                Collections.emptyMap());
+        _prometheusQueryMap = prometheusQuerySupplier.get();
     }
 
     @Test(expected = ConfigException.class)
@@ -259,6 +263,49 @@ public class PrometheusMetricSamplerTest {
     public void testPrometheusQueryReturnsMalformedPartition() throws Exception {
         testPrometheusQueryReturnsInvalidResults(buildBrokerResults(),
             buildTopicResults(TEST_TOPIC), buildPartitionResultsWithMalformedPartition());
+    }
+
+    @Test
+    public void testConfigureWithPrometheusScrapingDefaultIntervalDoesNotFail() throws Exception {
+        Map<String, Object> config = new HashMap<>();
+        config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "kafka-cluster-1.org:9090");
+        addCapacityConfig(config);
+        _prometheusMetricSampler.configure(config);
+        String expectedQuery = "1 - avg by (instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[2m]))";
+        assertEquals(expectedQuery, _prometheusMetricSampler._metricToPrometheusQueryMap.get(RawMetricType.BROKER_CPU_UTIL));
+    }
+
+    @Test
+    public void testConfigureWithPrometheusScrapingInterval45sDoesNotFail() throws Exception {
+        Map<String, Object> config = new HashMap<>();
+        config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "kafka-cluster-1.org:9090");
+        config.put(DefaultPrometheusQuerySupplier.PROMETHEUS_BROKER_METRICS_SCRAPING_INTERVAL_SECONDS, "45");
+        addCapacityConfig(config);
+        _prometheusMetricSampler.configure(config);
+        String expectedQuery = "1 - avg by (instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[2m]))";
+        assertEquals(expectedQuery, _prometheusMetricSampler._metricToPrometheusQueryMap.get(RawMetricType.BROKER_CPU_UTIL));
+    }
+
+    @Test
+    public void testConfigureWithPrometheusScrapingInterval90sDoesNotFail() throws Exception {
+        Map<String, Object> config = new HashMap<>();
+        config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "kafka-cluster-1.org:9090");
+        config.put(DefaultPrometheusQuerySupplier.PROMETHEUS_BROKER_METRICS_SCRAPING_INTERVAL_SECONDS, "90");
+        addCapacityConfig(config);
+        _prometheusMetricSampler.configure(config);
+        String expectedQuery = "1 - avg by (instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[3m]))";
+        assertEquals(expectedQuery, _prometheusMetricSampler._metricToPrometheusQueryMap.get(RawMetricType.BROKER_CPU_UTIL));
+    }
+
+    @Test
+    public void testConfigureWithPrometheusScrapingInterval91sDoesNotFail() throws Exception {
+        Map<String, Object> config = new HashMap<>();
+        config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "kafka-cluster-1.org:9090");
+        config.put(DefaultPrometheusQuerySupplier.PROMETHEUS_BROKER_METRICS_SCRAPING_INTERVAL_SECONDS, "91");
+        addCapacityConfig(config);
+        _prometheusMetricSampler.configure(config);
+        String expectedQuery = "1 - avg by (instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[4m]))";
+        assertEquals(expectedQuery, _prometheusMetricSampler._metricToPrometheusQueryMap.get(RawMetricType.BROKER_CPU_UTIL));
     }
 
     public void testPrometheusQueryReturnsInvalidResults(
