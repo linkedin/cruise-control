@@ -60,11 +60,6 @@
     <Bug pattern="SE_BAD_FIELD"/>
   </Match>
 
-  <!-- False positive in Java 11 with spotbugs 4.4.0, see https://github.com/spotbugs/spotbugs/issues/1338 -->
-  <Match>
-    <Bug pattern="RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE"/>
-  </Match>
-
   <Match>
     <Or>
       <Bug pattern="EI_EXPOSE_REP"/>

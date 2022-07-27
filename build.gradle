@@ -8,7 +8,7 @@ plugins {
   id "idea"
   id "jacoco" // Java Code Coverage plugin
   id "com.github.ben-manes.versions" version "0.42.0"
-  id "com.github.spotbugs" version "5.0.6" apply false
+  id "com.github.spotbugs" version "5.0.9" apply false
   id "checkstyle"
 }
 
@@ -103,7 +103,7 @@ subprojects {
   }
 
   spotbugs {
-    toolVersion = '4.6.0'
+    toolVersion = '4.7.1'
     excludeFilter = file("$rootDir/gradle/findbugs-exclude.xml")
     ignoreFailures = false
     jvmArgs = [ '-Xms512m' ]
