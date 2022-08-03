@@ -21,7 +21,7 @@ import kafka.zk.BrokerIdsZNode;
 import kafka.zk.KafkaZkClient;
 import org.apache.zookeeper.client.ZKClientConfig;
 import kafka.zookeeper.ZNodeChildChangeHandler;
-import scala.jdk.javaapi.CollectionConverters;
+import scala.collection.JavaConverters;
 
 import static java.util.stream.Collectors.toSet;
 
@@ -90,7 +90,7 @@ public class ZKBrokerFailureDetector extends AbstractBrokerFailureDetector {
   @Override
   Set<Integer> aliveBrokers() {
     // We get the alive brokers from ZK directly.
-    return CollectionConverters.asJava(_kafkaZkClient.getAllBrokersInCluster()).stream().map(Broker::id).collect(toSet());
+    return JavaConverters.asJavaCollection(_kafkaZkClient.getAllBrokersInCluster()).stream().map(Broker::id).collect(toSet());
   }
 
   /**
