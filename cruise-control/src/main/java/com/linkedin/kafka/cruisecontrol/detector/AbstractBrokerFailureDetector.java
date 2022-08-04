@@ -30,7 +30,7 @@ import static org.apache.commons.io.FileUtils.writeStringToFile;
  * This class detects broker failures.
  */
 public abstract class AbstractBrokerFailureDetector extends AbstractAnomalyDetector implements Runnable {
-  
+
   protected static final Logger LOG = LoggerFactory.getLogger(AbstractBrokerFailureDetector.class);
   public static final String FAILED_BROKERS_OBJECT_CONFIG = "failed.brokers.object";
   // Config to indicate whether detected broker failures are fixable or not.
@@ -71,7 +71,7 @@ public abstract class AbstractBrokerFailureDetector extends AbstractAnomalyDetec
         // Report the failures to anomaly detector to handle.
         reportBrokerFailures();
       }
-    } catch (Exception e) {
+    } catch (Throwable e) {
       LOG.warn("Broker failure detector received exception: ", e);
     } finally {
       LOG.debug("Broker failure detection finished.");
