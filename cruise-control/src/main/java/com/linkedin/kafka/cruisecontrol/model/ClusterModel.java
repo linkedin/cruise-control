@@ -18,6 +18,7 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,6 +36,8 @@ import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.EMPTY_BROKER_CAPACITY;
 
@@ -44,6 +47,8 @@ import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.EMPTY_BROKER
  * the input of the analyzer to generate the proposals for load rebalance.
  */
 public class ClusterModel implements Serializable {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ClusterModel.class);
   private static final long serialVersionUID = -6840253566423285966L;
   // Hypothetical broker that indicates the original broker of replicas to be created in the existing cluster model.
   private static final Broker GENESIS_BROKER = new Broker(null, -1, new BrokerCapacityInfo(EMPTY_BROKER_CAPACITY), false);
@@ -982,6 +987,13 @@ public class ClusterModel implements Serializable {
         int[] cursors = new int[racks.size()];
         int rackCursor = 0;
         for (PartitionInfo partitionInfo : cluster.partitionsForTopic(topic)) {
+
+          if (!sanityCheckPartitionInfoConsistency(partitionInfo)) {
+            LOG.warn("Detected partition info {} inconsistent with clusterModel:"
+                     + " skip creating or deleting replicas for this partition.", partitionInfo);
+            continue;
+          }
+
           if (partitionInfo.replicas().length == replicationFactor) {
             continue;
           }
@@ -1396,5 +1408,17 @@ public class ClusterModel implements Serializable {
       }
       _clusterCapacity[r.id()] = capacity;
     }
+  }
+
+  private boolean sanityCheckPartitionInfoConsistency(PartitionInfo partitionInfo) {
+    Partition partition = partition(new TopicPartition(partitionInfo.topic(), partitionInfo.partition()));
+    if (partition == null) {
+      return false;
+    }
+
+    Set<Integer> replicasFromPartition = partition.replicas().stream().map(Replica::broker).map(Broker::id).collect(Collectors.toSet());
+    Set<Integer> replicasFromPartitionInfo = Arrays.stream(partitionInfo.replicas()).map(Node::id).collect(Collectors.toSet());
+    return partition.leader().broker().id() == partitionInfo.leader().id()
+           && replicasFromPartition.equals(replicasFromPartitionInfo);
   }
 }
