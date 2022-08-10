@@ -977,7 +977,6 @@ public class ClusterModel implements Serializable {
                                      Cluster cluster) {
     // After replica deletion of some topic partitions, the cluster's maximal replication factor may decrease.
     boolean needToRefreshClusterMaxReplicationFactor = false;
-    Set<Integer> brokerIds = _brokers.stream().map(Broker::id).collect(Collectors.toSet());
 
     for (Map.Entry<Short, Set<String>> entry : topicsByReplicationFactor.entrySet()) {
       short replicationFactor = entry.getKey();
@@ -1028,11 +1027,6 @@ public class ClusterModel implements Serializable {
             // Make sure the leader replica is in new replica list.
             newAssignedReplica.add(partitionInfo.leader().id());
             for (Node node : partitionInfo.replicas()) {
-              // Current clusterModel may have inconsistency with the partitionInfo. In that case, we skip the replica.
-              if (!brokerIds.contains(node.id())) {
-                continue;
-              }
-
               if (node.id() != newAssignedReplica.get(0)) {
                 if (newAssignedReplica.size() < replicationFactor) {
                   newAssignedReplica.add(node.id());
