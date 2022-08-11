@@ -11,6 +11,9 @@ import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
+import java.util.List;
+import org.apache.kafka.common.Node;
+import org.apache.kafka.common.PartitionInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -165,5 +168,31 @@ public final class ModelUtils {
       result += resource == Resource.DISK ? valuesForId.latest() : valuesForId.avg();
     }
     return max(result, 0.0);
+  }
+
+  /**
+   * Check the consistency between a Partition object and a PartitionInfo object
+   * @param partition the {@link Partition} object that contains partition info
+   * @param partitionInfo the {@link PartitionInfo} object that contains partition info
+   * @return {@code true} if both objects contains the same partition info
+   */
+  public static boolean hasSameReplicasFor(Partition partition, PartitionInfo partitionInfo) {
+    if (partition == null) {
+      return false;
+    }
+
+    List<Replica> replicasFromPartition = partition.replicas();
+    Node[] replicasFromPartitionInfo = partitionInfo.replicas();
+    if (replicasFromPartition.size() != replicasFromPartitionInfo.length) {
+      return false;
+    }
+
+    for (int i = 0; i < replicasFromPartitionInfo.length; i++) {
+      if (replicasFromPartitionInfo[i].id() != replicasFromPartition.get(i).broker().id()) {
+        return false;
+      }
+    }
+
+    return true;
   }
 }
