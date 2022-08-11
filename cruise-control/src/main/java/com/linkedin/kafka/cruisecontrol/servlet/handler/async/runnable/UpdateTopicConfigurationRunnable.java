@@ -65,6 +65,10 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
  *
  * If the current replication factor of partition is larger than target replication factor, remove one or more follower
  * replicas from the partition. Replicas are removed following the reverse order of position in replica list of partition.
+ *
+ * For a partition, the PartitionInfo can be inconsistent with clusterModel. E.g.
+ * In the PartitionInfo, a partition has replicas [A, B, C, D]. In clusterModel, the same partition only has replicas [A, B, C].
+ * In the above case, the replication factor update for that partition will be skipped.
  */
 public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable {
   protected final Map<Short, Pattern> _topicPatternByReplicationFactor;
