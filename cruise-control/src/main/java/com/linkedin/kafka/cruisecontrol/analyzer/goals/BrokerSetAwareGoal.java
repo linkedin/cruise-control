@@ -24,7 +24,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
-import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.config.BrokerSetResolutionHelper;
 import com.linkedin.kafka.cruisecontrol.config.BrokerSetResolver;
@@ -161,7 +160,6 @@ public class BrokerSetAwareGoal extends AbstractGoal {
     _brokerSetResolutionHelper = new BrokerSetResolutionHelper(clusterModel, brokerSetResolver);
     _brokersByBrokerSet = _brokerSetResolutionHelper.brokersByBrokerSetId();
     _replicaToBrokerSetMappingPolicy = _balancingConstraint.replicaToBrokerSetMappingPolicy();
-    _provisionResponse = new ProvisionResponse(ProvisionStatus.RIGHT_SIZED);
   }
 
   /**
@@ -234,7 +232,6 @@ public class BrokerSetAwareGoal extends AbstractGoal {
                                                        .collect(Collectors.toSet());
       if (maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, ActionType.INTER_BROKER_REPLICA_MOVEMENT, optimizedGoals,
                                     optimizationOptions) == null) {
-        _provisionResponse = new ProvisionResponse(ProvisionStatus.UNDER_PROVISIONED);
         // If balancing action can not be applied, provide recommendation to add new Brokers.
         ProvisionRecommendation recommendation =
             new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).numBrokers(clusterModel.maxReplicationFactor()).build();
