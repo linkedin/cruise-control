@@ -172,9 +172,9 @@ public final class ModelUtils {
 
   /**
    * Check the consistency between a Partition object and a PartitionInfo object
-   * @param partition the Partition object that contains partition info
-   * @param partitionInfo the PartitionInfo object that contains partition info
-   * @return true if both objects contains the same partition info
+   * @param partition the {@link Partition} object that contains partition info
+   * @param partitionInfo the {@link PartitionInfo} object that contains partition info
+   * @return {@code true} if both objects contains the same partition info
    */
   public static boolean hasSameReplicasFor(Partition partition, PartitionInfo partitionInfo) {
     if (partition == null) {

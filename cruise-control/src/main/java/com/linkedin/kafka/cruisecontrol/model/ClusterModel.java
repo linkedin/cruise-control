@@ -38,7 +38,6 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.model.ModelUtils.*;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.EMPTY_BROKER_CAPACITY;
 
 /**
@@ -992,7 +991,7 @@ public class ClusterModel implements Serializable {
 
           TopicPartition tp = new TopicPartition(topic, partitionInfo.partition());
           Partition partition = partition(tp);
-          if (!hasSameReplicasFor(partition, partitionInfo)) {
+          if (!ModelUtils.hasSameReplicasFor(partition, partitionInfo)) {
             LOG.warn("Detected partition info inconsistent with clusterModel: PartitionInfo: {}, Partition in ClusterModel: {}. "
                      + " Skip creating or deleting replicas for this partition.", partitionInfo, partition);
             continue;
