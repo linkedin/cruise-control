@@ -332,6 +332,25 @@ public class DeterministicClusterTest {
     p.add(params(balancingConstraint, DeterministicCluster.brokerSetUnSatisfiable4(),
                  Arrays.asList(BrokerSetAwareGoal.class.getName(),
                                DiskUsageDistributionGoal.class.getName()), verifications, null));
+
+    // Broker Set Awareness partition coloring mode
+    properties.setProperty(AnalyzerConfig.ALLOW_PARTITION_LEVEL_BROKER_SET_AWARE, Boolean.toString(true));
+    balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(properties));
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetSatisfiable1(),
+                 Collections.singletonList(BrokerSetAwareGoal.class.getName()), verifications, null));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetSatisfiable2(),
+                 Collections.singletonList(BrokerSetAwareGoal.class.getName()), verifications, null));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetSatisfiable3(),
+                 Collections.singletonList(BrokerSetAwareGoal.class.getName()), verifications, null));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetSatisfiablePartitionColoring1(),
+                 Collections.singletonList(BrokerSetAwareGoal.class.getName()), verifications, null));
+
+    p.add(params(balancingConstraint, DeterministicCluster.brokerSetUnSatisfiable1(),
+                 Collections.singletonList(BrokerSetAwareGoal.class.getName()), verifications, OptimizationFailureException.class));
+
     return p;
   }
 

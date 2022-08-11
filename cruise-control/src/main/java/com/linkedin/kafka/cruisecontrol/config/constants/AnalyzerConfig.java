@@ -448,6 +448,15 @@ public final class AnalyzerConfig {
       String.format("The class implements %s interface and is used to generate replica to broker set mapping.",
                     ReplicaToBrokerSetMappingPolicy.class.getName());
 
+  /**
+   * <code>allow.partition.level.broker.set.aware</code>
+   */
+  public static final String ALLOW_PARTITION_LEVEL_BROKER_SET_AWARE = "allow.partition.level.broker.set.aware";
+  public static final boolean DEFAULT_ALLOW_PARTITION_LEVEL_BROKER_SET_AWARE = false;
+  public static final String ALLOW_PARTITION_LEVEL_BROKER_SET_AWARE_DOC =
+      String.format("Whether %s allow topic level coloring or partition level coloring. True if it allows partition level coloring",
+                    BrokerSetAwareGoal.class.getName());
+
   private AnalyzerConfig() {
   }
 
@@ -683,6 +692,10 @@ public final class AnalyzerConfig {
                     .define(REPLICA_TO_BROKER_SET_MAPPING_POLICY_CLASS_CONFIG,
                             ConfigDef.Type.CLASS, DEFAULT_REPLICA_TO_BROKER_SET_MAPPING_POLICY_CLASS,
                             ConfigDef.Importance.LOW,
-                            REPLICA_TO_BROKER_SET_MAPPING_POLICY_CLASS_DOC);
+                            REPLICA_TO_BROKER_SET_MAPPING_POLICY_CLASS_DOC)
+                    .define(ALLOW_PARTITION_LEVEL_BROKER_SET_AWARE,
+                            ConfigDef.Type.BOOLEAN, DEFAULT_ALLOW_PARTITION_LEVEL_BROKER_SET_AWARE,
+                            ConfigDef.Importance.LOW,
+                            ALLOW_PARTITION_LEVEL_BROKER_SET_AWARE_DOC);
   }
 }

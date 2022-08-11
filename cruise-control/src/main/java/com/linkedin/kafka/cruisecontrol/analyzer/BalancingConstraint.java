@@ -38,6 +38,7 @@ public class BalancingConstraint {
   private final long _fastModePerBrokerMoveTimeoutMs;
   private final BrokerSetResolver _brokerSetResolver;
   private final ReplicaToBrokerSetMappingPolicy _replicaToBrokerSetMappingPolicy;
+  private final boolean _allowPartitionColoring;
 
   /**
    * Constructor for Balancing Constraint.
@@ -88,6 +89,8 @@ public class BalancingConstraint {
     // Replica to Broker Set mapping policy class
     _replicaToBrokerSetMappingPolicy = config.getConfiguredInstance(AnalyzerConfig.REPLICA_TO_BROKER_SET_MAPPING_POLICY_CLASS_CONFIG,
                                                                     ReplicaToBrokerSetMappingPolicy.class);
+    // For BrokerSetAwareGoal, whether run in topic coloring mode or in partition coloring mode
+    _allowPartitionColoring = config.getBoolean(AnalyzerConfig.ALLOW_PARTITION_LEVEL_BROKER_SET_AWARE);
   }
 
   Properties setProps(Properties props) {
@@ -265,6 +268,13 @@ public class BalancingConstraint {
    */
   public ReplicaToBrokerSetMappingPolicy replicaToBrokerSetMappingPolicy() {
     return _replicaToBrokerSetMappingPolicy;
+  }
+
+  /**
+   * @return true if BrokerSetAwareGoal runs on partition level
+   */
+  public boolean allowPartitionColoring() {
+    return _allowPartitionColoring;
   }
 
   /**
