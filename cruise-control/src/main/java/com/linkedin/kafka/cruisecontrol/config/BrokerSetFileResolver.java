@@ -44,7 +44,7 @@ public class BrokerSetFileResolver implements BrokerSetResolver {
 
   @Override
   public void configure(Map<String, ?> configs) {
-    KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(configs);
+    KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(configs, false);
     _configFile = config.getString(AnalyzerConfig.BROKER_SET_CONFIG_FILE_CONFIG);
     _defaultBrokerSetAssignmentPolicy =
         config.getConfiguredInstance(AnalyzerConfig.BROKER_SET_ASSIGNMENT_POLICY_CLASS_CONFIG, BrokerSetAssignmentPolicy.class);
