@@ -38,6 +38,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.model.ModelUtils.*;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.EMPTY_BROKER_CAPACITY;
 
 /**
@@ -985,16 +986,18 @@ public class ClusterModel implements Serializable {
         int rackCursor = 0;
         for (PartitionInfo partitionInfo : cluster.partitionsForTopic(topic)) {
 
-          Partition partition = partition(new TopicPartition(partitionInfo.topic(), partitionInfo.partition()));
+          if (partitionInfo.replicas().length == replicationFactor) {
+            continue;
+          }
+
+          TopicPartition tp = new TopicPartition(topic, partitionInfo.partition());
+          Partition partition = partition(tp);
           if (!hasSameReplicasFor(partition, partitionInfo)) {
             LOG.warn("Detected partition info inconsistent with clusterModel: PartitionInfo: {}, Partition in ClusterModel: {}. "
                      + " Skip creating or deleting replicas for this partition.", partitionInfo, partition);
             continue;
           }
 
-          if (partitionInfo.replicas().length == replicationFactor) {
-            continue;
-          }
           List<Integer> newAssignedReplica = new ArrayList<>();
           if (partitionInfo.replicas().length < replicationFactor) {
             Set<String> currentOccupiedRack = new HashSet<>();
@@ -1012,7 +1015,6 @@ public class ClusterModel implements Serializable {
                 if (!newAssignedReplica.contains(brokerId)) {
                   newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
                   // Create a new replica in the cluster model and populate its load from the leader replica.
-                  TopicPartition tp = new TopicPartition(topic, partitionInfo.partition());
                   Load load = partition(tp).leader().getFollowerLoadFromLeader();
                   createReplica(rack, brokerId, tp, partitionInfo.replicas().length, false, false, null, true);
                   setReplicaLoad(rack, brokerId, tp, load.loadByWindows(), load.windows());
@@ -1401,25 +1403,5 @@ public class ClusterModel implements Serializable {
       }
       _clusterCapacity[r.id()] = capacity;
     }
-  }
-
-  private boolean hasSameReplicasFor(Partition partition, PartitionInfo partitionInfo) {
-    if (partition == null) {
-      return false;
-    }
-
-    List<Replica> replicasFromPartition = partition.replicas();
-    Node[] replicasFromPartitionInfo = partitionInfo.replicas();
-    if (replicasFromPartition.size() != replicasFromPartitionInfo.length) {
-      return false;
-    }
-
-    for (int i = 0; i < replicasFromPartitionInfo.length; i++) {
-      if (replicasFromPartitionInfo[i].id() != replicasFromPartition.get(i).broker().id()) {
-        return false;
-      }
-    }
-
-    return true;
   }
 }
