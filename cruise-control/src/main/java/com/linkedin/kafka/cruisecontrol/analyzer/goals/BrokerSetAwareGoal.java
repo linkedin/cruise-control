@@ -161,6 +161,7 @@ public class BrokerSetAwareGoal extends AbstractGoal {
     _brokerSetResolutionHelper = new BrokerSetResolutionHelper(clusterModel, brokerSetResolver);
     _brokersByBrokerSet = _brokerSetResolutionHelper.brokersByBrokerSetId();
     _replicaToBrokerSetMappingPolicy = _balancingConstraint.replicaToBrokerSetMappingPolicy();
+    _provisionResponse = new ProvisionResponse(ProvisionStatus.RIGHT_SIZED);
   }
 
   /**
@@ -179,9 +180,6 @@ public class BrokerSetAwareGoal extends AbstractGoal {
     GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
     // Sanity check to confirm that the final distribution is broker set aware.
     ensureBrokerSetAware(clusterModel, optimizationOptions);
-    if (_provisionResponse.status() != ProvisionStatus.OVER_PROVISIONED) {
-      _provisionResponse = new ProvisionResponse(ProvisionStatus.RIGHT_SIZED);
-    }
     finish();
   }
 
@@ -236,6 +234,7 @@ public class BrokerSetAwareGoal extends AbstractGoal {
                                                        .collect(Collectors.toSet());
       if (maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, ActionType.INTER_BROKER_REPLICA_MOVEMENT, optimizedGoals,
                                     optimizationOptions) == null) {
+        _provisionResponse = new ProvisionResponse(ProvisionStatus.UNDER_PROVISIONED);
         // If balancing action can not be applied, provide recommendation to add new Brokers.
         ProvisionRecommendation recommendation =
             new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).numBrokers(clusterModel.maxReplicationFactor()).build();

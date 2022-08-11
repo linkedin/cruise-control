@@ -101,8 +101,7 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
       ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.OVER_PROVISIONED)
           .numBrokers(numBrokersToDrop).build();
       _provisionResponse = new ProvisionResponse(ProvisionStatus.OVER_PROVISIONED, recommendation, name());
-    } else if (_succeeded) {
-      // The cluster is not overprovisioned and all brokers are within the upper and lower balance limits.
+    } else {
       _provisionResponse = new ProvisionResponse(ProvisionStatus.RIGHT_SIZED);
     }
   }
