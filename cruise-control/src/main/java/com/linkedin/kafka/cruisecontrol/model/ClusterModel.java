@@ -18,7 +18,6 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -47,7 +46,6 @@ import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.EMPTY_BROKER
  * the input of the analyzer to generate the proposals for load rebalance.
  */
 public class ClusterModel implements Serializable {
-
   private static final Logger LOG = LoggerFactory.getLogger(ClusterModel.class);
   private static final long serialVersionUID = -6840253566423285966L;
   // Hypothetical broker that indicates the original broker of replicas to be created in the existing cluster model.
@@ -987,9 +985,10 @@ public class ClusterModel implements Serializable {
         int rackCursor = 0;
         for (PartitionInfo partitionInfo : cluster.partitionsForTopic(topic)) {
 
-          if (!sanityCheckPartitionInfoConsistency(partitionInfo)) {
-            LOG.warn("Detected partition info {} inconsistent with clusterModel:"
-                     + " skip creating or deleting replicas for this partition.", partitionInfo);
+          Partition partition = partition(new TopicPartition(partitionInfo.topic(), partitionInfo.partition()));
+          if (!hasSameReplicasFor(partition, partitionInfo)) {
+            LOG.warn("Detected partition info inconsistent with clusterModel: PartitionInfo: {}, Partition in ClusterModel: {}. "
+                     + " Skip creating or deleting replicas for this partition.", partitionInfo, partition);
             continue;
           }
 
@@ -1404,15 +1403,23 @@ public class ClusterModel implements Serializable {
     }
   }
 
-  private boolean sanityCheckPartitionInfoConsistency(PartitionInfo partitionInfo) {
-    Partition partition = partition(new TopicPartition(partitionInfo.topic(), partitionInfo.partition()));
+  private boolean hasSameReplicasFor(Partition partition, PartitionInfo partitionInfo) {
     if (partition == null) {
       return false;
     }
 
-    Set<Integer> replicasFromPartition = partition.replicas().stream().map(Replica::broker).map(Broker::id).collect(Collectors.toSet());
-    Set<Integer> replicasFromPartitionInfo = Arrays.stream(partitionInfo.replicas()).map(Node::id).collect(Collectors.toSet());
-    return partition.leader().broker().id() == partitionInfo.leader().id()
-           && replicasFromPartition.equals(replicasFromPartitionInfo);
+    List<Replica> replicasFromPartition = partition.replicas();
+    Node[] replicasFromPartitionInfo = partitionInfo.replicas();
+    if (replicasFromPartition.size() != replicasFromPartitionInfo.length) {
+      return false;
+    }
+
+    for (int i = 0; i < replicasFromPartitionInfo.length; i++) {
+      if (replicasFromPartitionInfo[i].id() != replicasFromPartition.get(i).broker().id()) {
+        return false;
+      }
+    }
+
+    return true;
   }
 }
