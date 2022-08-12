@@ -5,6 +5,8 @@
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.config.BrokerSetAssignmentPolicy;
+import com.linkedin.kafka.cruisecontrol.config.BrokerSetFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.BrokerSetResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.ReplicaToBrokerSetMappingPolicy;
@@ -84,7 +86,12 @@ public class BalancingConstraint {
     // Set default value for the per broker move timeout in fast mode in milliseconds
     _fastModePerBrokerMoveTimeoutMs = config.getLong(AnalyzerConfig.FAST_MODE_PER_BROKER_MOVE_TIMEOUT_MS_CONFIG);
     // BrokerSet Data resolver class
-    _brokerSetResolver = config.getConfiguredInstance(AnalyzerConfig.BROKER_SET_RESOLVER_CLASS_CONFIG, BrokerSetResolver.class);
+    Map<String, Object> parameterConfigOverridesForBrokerSetResolver = new HashMap<>();
+    parameterConfigOverridesForBrokerSetResolver.put(BrokerSetFileResolver.BROKER_SET_ASSIGNMENT_POLICY_OBJECT_CONFIG,
+                                                     config.getConfiguredInstance(AnalyzerConfig.BROKER_SET_ASSIGNMENT_POLICY_CLASS_CONFIG,
+                                                                                  BrokerSetAssignmentPolicy.class));
+    _brokerSetResolver = config.getConfiguredInstance(AnalyzerConfig.BROKER_SET_RESOLVER_CLASS_CONFIG, BrokerSetResolver.class,
+                                                      parameterConfigOverridesForBrokerSetResolver);
     // Replica to Broker Set mapping policy class
     _replicaToBrokerSetMappingPolicy = config.getConfiguredInstance(AnalyzerConfig.REPLICA_TO_BROKER_SET_MAPPING_POLICY_CLASS_CONFIG,
                                                                     ReplicaToBrokerSetMappingPolicy.class);

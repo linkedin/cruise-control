@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.config;
 
+import com.linkedin.cruisecontrol.common.utils.Utils;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.exception.BrokerSetResolutionException;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -39,15 +40,17 @@ import com.google.gson.Gson;
  * </pre>
  */
 public class BrokerSetFileResolver implements BrokerSetResolver {
+  public static final String BROKER_SET_ASSIGNMENT_POLICY_OBJECT_CONFIG = "broker.set.assignment.policy.object";
   private String _configFile;
-  private BrokerSetAssignmentPolicy _defaultBrokerSetAssignmentPolicy;
+  private BrokerSetAssignmentPolicy _brokerSetAssignmentPolicy;
 
   @Override
   public void configure(Map<String, ?> configs) {
-    KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(configs, false);
-    _configFile = config.getString(AnalyzerConfig.BROKER_SET_CONFIG_FILE_CONFIG);
-    _defaultBrokerSetAssignmentPolicy =
-        config.getConfiguredInstance(AnalyzerConfig.BROKER_SET_ASSIGNMENT_POLICY_CLASS_CONFIG, BrokerSetAssignmentPolicy.class);
+    _configFile = (String) configs.get(AnalyzerConfig.BROKER_SET_CONFIG_FILE_CONFIG);
+    _brokerSetAssignmentPolicy = (BrokerSetAssignmentPolicy) Utils.validateNotNull(
+        configs.get(BROKER_SET_ASSIGNMENT_POLICY_OBJECT_CONFIG),
+        () -> String.format("Missing %s when creating broker set file resolver",
+                            BROKER_SET_ASSIGNMENT_POLICY_OBJECT_CONFIG));
   }
 
   @Override
@@ -59,7 +62,7 @@ public class BrokerSetFileResolver implements BrokerSetResolver {
       throw new IllegalArgumentException(e);
     }
 
-    return _defaultBrokerSetAssignmentPolicy.assignBrokerSetsForUnresolvedBrokers(clusterModel, brokerIdsByBrokerSetId);
+    return _brokerSetAssignmentPolicy.assignBrokerSetsForUnresolvedBrokers(clusterModel, brokerIdsByBrokerSetId);
   }
 
   private Map<String, Set<Integer>> loadBrokerSetData() throws IOException {
