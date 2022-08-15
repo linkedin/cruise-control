@@ -34,9 +34,10 @@ public class BrokerSetFileResolverTest {
   private static BrokerSetResolver getBrokerSetResolver(String configFileName, Class<?> clazz) {
     BrokerSetResolver brokerSetResolver = new BrokerSetFileResolver();
     String fileName = Objects.requireNonNull(clazz.getClassLoader().getResource(configFileName)).getFile();
-    Map<String, String> configs =
+    Map<String, Object> configs =
         Map.of(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, "bootstrap.servers", ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, "connect:1234",
-               AnalyzerConfig.BROKER_SET_CONFIG_FILE_CONFIG, fileName);
+               AnalyzerConfig.BROKER_SET_CONFIG_FILE_CONFIG, fileName,
+               BrokerSetFileResolver.BROKER_SET_ASSIGNMENT_POLICY_OBJECT_CONFIG, new NoOpBrokerSetAssignmentPolicy());
     brokerSetResolver.configure(configs);
 
     return brokerSetResolver;
@@ -66,9 +67,10 @@ public class BrokerSetFileResolverTest {
   public void testNonExistentFile() {
     BrokerSetResolver brokerSetResolver = new BrokerSetFileResolver();
     String fileName = "testBrokerSetz.json";
-    Map<String, String> configs =
+    Map<String, Object> configs =
         Map.of(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, "bootstrap.servers", ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, "connect:1234",
-               AnalyzerConfig.BROKER_SET_CONFIG_FILE_CONFIG, fileName);
+               AnalyzerConfig.BROKER_SET_CONFIG_FILE_CONFIG, fileName,
+               BrokerSetFileResolver.BROKER_SET_ASSIGNMENT_POLICY_OBJECT_CONFIG, new NoOpBrokerSetAssignmentPolicy());
     brokerSetResolver.configure(configs);
     assertThrows(IllegalArgumentException.class,
                  () -> brokerSetResolver.brokerIdsByBrokerSetId(DeterministicCluster.brokerSetSatisfiable1()));
