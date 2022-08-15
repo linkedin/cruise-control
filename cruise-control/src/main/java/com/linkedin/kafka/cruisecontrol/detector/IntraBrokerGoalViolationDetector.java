@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ * Copyright 2021 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.detector;
@@ -9,14 +9,20 @@ import com.codahale.metrics.Timer;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.exception.NotEnoughValidWindowsException;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
+import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
+import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
+import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.Collections;
@@ -25,6 +31,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ANOMALY_DETECTOR_SENSOR;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 
@@ -33,11 +40,20 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAF
  * This class will be scheduled to run periodically to check if the given goals are violated or not. An alert will be
  * triggered if one of the goals is not met.
  */
-public class GoalViolationDetector extends BaseGoalViolationDetector implements Runnable {
-  private static final Logger LOG = LoggerFactory.getLogger(GoalViolationDetector.class);
+public class IntraBrokerGoalViolationDetector extends BaseGoalViolationDetector implements Runnable {
+  private static final Logger LOG = LoggerFactory.getLogger(IntraBrokerGoalViolationDetector.class);
+  private final List<Goal> _detectionGoals;
+  private final Timer _goalViolationDetectionTimer;
+  private final boolean _populateReplicaInfo = true;
 
-  public GoalViolationDetector(Queue<Anomaly> anomalies, KafkaCruiseControl kafkaCruiseControl, MetricRegistry dropwizardMetricRegistry) {
+  public IntraBrokerGoalViolationDetector(Queue<Anomaly> anomalies, KafkaCruiseControl kafkaCruiseControl, MetricRegistry dropwizardMetricRegistry) {
     super(anomalies, kafkaCruiseControl, dropwizardMetricRegistry);
+    KafkaCruiseControlConfig config = _kafkaCruiseControl.config();
+    // Notice that we use a separate set of Goal instances for anomaly detector to avoid interference.
+    _detectionGoals = config.getConfiguredInstances(AnomalyDetectorConfig.ANOMALY_DETECTION_INTRA_BROKER_GOALS_CONFIG, Goal.class);
+    _goalViolationDetectionTimer = dropwizardMetricRegistry.timer(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR,
+            "intra-broker-goal-violation-detection-timer"));
+
   }
 
   @Override
@@ -50,8 +66,9 @@ public class GoalViolationDetector extends BaseGoalViolationDetector implements 
     try {
       Map<String, Object> parameterConfigOverrides = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl,
               ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
-      GoalViolations goalViolations = _kafkaCruiseControl.config().getConfiguredInstance(AnomalyDetectorConfig.GOAL_VIOLATIONS_CLASS_CONFIG,
-              GoalViolations.class,
+      IntraBrokerGoalViolations goalViolations = _kafkaCruiseControl.config().getConfiguredInstance(
+              AnomalyDetectorConfig.INTRA_BROKER_GOAL_VIOLATIONS_CLASS_CONFIG,
+              IntraBrokerGoalViolations.class,
               parameterConfigOverrides);
 
       boolean newModelNeeded = true;
@@ -86,7 +103,8 @@ public class GoalViolationDetector extends BaseGoalViolationDetector implements 
               clusterModel = null;
               clusterModel = _kafkaCruiseControl.clusterModel(goal.clusterModelCompletenessRequirements(),
                       _allowCapacityEstimation,
-                      new OperationProgress());
+                      new OperationProgress(),
+                      true);
 
               // If the clusterModel contains dead brokers or disks, goal violation detector will ignore any goal violations.
               // Detection and fix for dead brokers/disks is the responsibility of broker/disk failure detector.
@@ -138,6 +156,49 @@ public class GoalViolationDetector extends BaseGoalViolationDetector implements 
         }
       }
       LOG.debug("Goal violation detection finished.");
+    }
+  }
+
+  protected boolean optimizeForGoal(ClusterModel clusterModel,
+                                    Goal goal,
+                                    IntraBrokerGoalViolations goalViolations,
+                                    Set<Integer> excludedBrokersForLeadership,
+                                    Set<Integer> excludedBrokersForReplicaMove,
+                                    boolean checkPartitionsWithRFGreaterThanNumRacks)
+          throws KafkaCruiseControlException {
+    if (clusterModel.topics().isEmpty()) {
+      LOG.info("Skipping goal violation detection because the cluster model does not have any topic.");
+      return false;
+    }
+
+    Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = clusterModel.getReplicaDistribution();
+    Map<TopicPartition, ReplicaPlacementInfo> initLeaderDistribution = clusterModel.getLeaderDistribution();
+    try {
+      OptimizationOptions options = _optimizationOptionsGenerator.optimizationOptionsForGoalViolationDetection(clusterModel,
+              excludedTopics(clusterModel),
+              excludedBrokersForLeadership,
+              excludedBrokersForReplicaMove);
+      if (checkPartitionsWithRFGreaterThanNumRacks) {
+        _hasPartitionsWithRFGreaterThanNumRacks = clusterModel.maxReplicationFactor() > clusterModel.numAliveRacksAllowedReplicaMoves(options);
+      }
+      goal.optimize(clusterModel, Collections.emptySet(), options);
+    } catch (OptimizationFailureException ofe) {
+      // An OptimizationFailureException indicates (1) a hard goal violation that cannot be fixed typically due to
+      // lack of physical hardware (e.g. insufficient number of racks to satisfy rack awareness, insufficient number
+      // of brokers to satisfy Replica Capacity Goal, or insufficient number of resources to satisfy resource
+      // capacity goals), or (2) a failure to move offline replicas away from dead brokers/disks.
+      goalViolations.addViolation(goal.name(), false);
+      return true;
+    }
+    boolean hasDiff = AnalyzerUtils.hasDiff(initReplicaDistribution, initLeaderDistribution, clusterModel);
+    LOG.trace("{} generated {} proposals", goal.name(), hasDiff ? "some" : "no");
+    if (hasDiff) {
+      // A goal violation that can be optimized by applying the generated proposals.
+      goalViolations.addViolation(goal.name(), true);
+      return true;
+    } else {
+      // The goal is already satisfied.
+      return false;
     }
   }
 
