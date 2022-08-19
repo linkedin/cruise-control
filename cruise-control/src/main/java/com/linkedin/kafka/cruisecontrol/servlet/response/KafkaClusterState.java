@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
+import com.linkedin.kafka.cruisecontrol.config.BrokerSetResolver;
 import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
@@ -29,17 +30,20 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
   protected final Map<String, Properties> _allTopicConfigs;
   protected final Properties _clusterConfigs;
   protected final AdminClient _adminClient;
+  protected final BrokerSetResolver _brokerSetResolver;
   protected Cluster _kafkaCluster;
 
   public KafkaClusterState(Cluster kafkaCluster,
                            TopicConfigProvider topicConfigProvider,
                            AdminClient adminClient,
-                           KafkaCruiseControlConfig config) {
+                           KafkaCruiseControlConfig config,
+                           BrokerSetResolver brokerSetResolver) {
     super(config);
     _kafkaCluster = kafkaCluster;
     _allTopicConfigs = topicConfigProvider.topicConfigs(_kafkaCluster.topics());
     _clusterConfigs = topicConfigProvider.clusterConfigs();
     _adminClient = adminClient;
+    _brokerSetResolver = brokerSetResolver;
   }
 
   protected String getJsonString(CruiseControlParameters parameters) {
