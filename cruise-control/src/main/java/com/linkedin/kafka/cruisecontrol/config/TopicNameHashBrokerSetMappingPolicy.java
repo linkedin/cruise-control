@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.config;
 
 import com.linkedin.kafka.cruisecontrol.exception.ReplicaToBrokerSetMappingException;
-import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import java.nio.charset.StandardCharsets;
@@ -53,7 +52,7 @@ public class TopicNameHashBrokerSetMappingPolicy implements ReplicaToBrokerSetMa
                                       final BrokerSetResolutionHelper brokerSetResolutionHelper) throws ReplicaToBrokerSetMappingException {
     String topicName = replica.topicPartition().topic();
 
-    Map<String, Set<Broker>> brokersByBrokerSetId = brokerSetResolutionHelper.brokersByBrokerSetId();
+    Map<String, Set<Integer>> brokersByBrokerSetId = brokerSetResolutionHelper.brokersByBrokerSetId();
     int numBrokerSets = brokersByBrokerSetId.size();
 
     if (numBrokerSets == 0) {
@@ -84,7 +83,7 @@ public class TopicNameHashBrokerSetMappingPolicy implements ReplicaToBrokerSetMa
    * @param brokersByBrokerSetId broker set id to broker ids mapping
    * @return broker set id
    */
-  private String brokerSetIdForTopic(String topicName, Map<String, Set<Broker>> brokersByBrokerSetId) {
+  private String brokerSetIdForTopic(String topicName, Map<String, Set<Integer>> brokersByBrokerSetId) {
     // If sorted broker set id list is not cached, then cache or else avoid sorting each time
     if (_sortedBrokerSetIdsCache.isEmpty()) {
       // Sorting to make the ordering work with consistent hashing

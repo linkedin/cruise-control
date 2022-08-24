@@ -39,7 +39,8 @@ public class TopicNameHashBrokerSetMappingPolicyTest {
     Map<String, Set<Integer>> testSingleBrokerSetMapping = Collections.singletonMap("BS1", Set.of(0, 1, 2, 3, 4, 5));
 
     BrokerSetResolver brokerSetResolver = EasyMock.createNiceMock(BrokerSetResolver.class);
-    EasyMock.expect(brokerSetResolver.brokerIdsByBrokerSetId(clusterModel)).andReturn(testSingleBrokerSetMapping);
+    EasyMock.expect(brokerSetResolver.brokerIdsByBrokerSetId(BrokerSetResolutionHelper.getRackIdByBrokerIdMapping(clusterModel)))
+            .andReturn(testSingleBrokerSetMapping);
     EasyMock.replay(brokerSetResolver);
 
     BrokerSetResolutionHelper brokerSetResolutionHelper = new BrokerSetResolutionHelper(clusterModel, brokerSetResolver);
@@ -60,7 +61,8 @@ public class TopicNameHashBrokerSetMappingPolicyTest {
     Map<String, Set<Integer>> testBrokerSetMapping = Map.of("BS1", Set.of(0), "BS2", Set.of(1, 2));
 
     BrokerSetResolver brokerSetResolver = EasyMock.createNiceMock(BrokerSetResolver.class);
-    EasyMock.expect(brokerSetResolver.brokerIdsByBrokerSetId(clusterModel)).andReturn(testBrokerSetMapping);
+    EasyMock.expect(brokerSetResolver.brokerIdsByBrokerSetId(BrokerSetResolutionHelper.getRackIdByBrokerIdMapping(clusterModel)))
+            .andReturn(testBrokerSetMapping);
     EasyMock.replay(brokerSetResolver);
 
     BrokerSetResolutionHelper brokerSetResolutionHelper = new BrokerSetResolutionHelper(clusterModel, brokerSetResolver);
@@ -104,7 +106,8 @@ public class TopicNameHashBrokerSetMappingPolicyTest {
     Map<String, Set<Integer>> testBrokerSetMapping = Map.of("BS1", Set.of(0), "BS2", Set.of(1), "BS3", Set.of(2));
 
     BrokerSetResolver brokerSetResolver = EasyMock.createNiceMock(BrokerSetResolver.class);
-    EasyMock.expect(brokerSetResolver.brokerIdsByBrokerSetId(clusterModel)).andReturn(testBrokerSetMapping);
+    EasyMock.expect(brokerSetResolver.brokerIdsByBrokerSetId(BrokerSetResolutionHelper.getRackIdByBrokerIdMapping(clusterModel)))
+            .andReturn(testBrokerSetMapping);
     EasyMock.replay(brokerSetResolver);
 
     BrokerSetResolutionHelper brokerSetResolutionHelper = new BrokerSetResolutionHelper(clusterModel, brokerSetResolver);

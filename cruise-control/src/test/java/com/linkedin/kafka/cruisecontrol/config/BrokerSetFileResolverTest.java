@@ -49,7 +49,8 @@ public class BrokerSetFileResolverTest {
   @Test
   public void testParseBrokerSetFile() throws BrokerSetResolutionException {
     BrokerSetResolver brokerSetResolver = getBrokerSetResolver("testBrokerSets.json", this.getClass());
-    final Map<String, Set<Integer>> brokerSets = brokerSetResolver.brokerIdsByBrokerSetId(DeterministicCluster.brokerSetSatisfiable1());
+    final Map<String, Set<Integer>> brokerSets = brokerSetResolver.brokerIdsByBrokerSetId(
+        BrokerSetResolutionHelper.getRackIdByBrokerIdMapping(DeterministicCluster.brokerSetSatisfiable1()));
 
     assertNotNull(brokerSets);
 
@@ -72,17 +73,28 @@ public class BrokerSetFileResolverTest {
                AnalyzerConfig.BROKER_SET_CONFIG_FILE_CONFIG, fileName,
                BrokerSetFileResolver.BROKER_SET_ASSIGNMENT_POLICY_OBJECT_CONFIG, new NoOpBrokerSetAssignmentPolicy());
     brokerSetResolver.configure(configs);
-    assertThrows(IllegalArgumentException.class,
-                 () -> brokerSetResolver.brokerIdsByBrokerSetId(DeterministicCluster.brokerSetSatisfiable1()));
+    assertThrows(BrokerSetResolutionException.class,
+                 () -> brokerSetResolver.brokerIdsByBrokerSetId(
+                     BrokerSetResolutionHelper.getRackIdByBrokerIdMapping(DeterministicCluster.brokerSetSatisfiable1())));
   }
 
   /**
-   * Tests if the cluster model has extra brokers that are unresolved from broker set mapping then throws broker set resoltuion exception
+   * Tests if the cluster model has extra brokers that are unresolved from broker set mapping then throws broker set resolution exception
    */
   @Test
-  public void testBrokerSetResolutionExceptionWithNoOpDefaultAssignmentPolicy() {
+  public void testBrokerSetResolutionWithNoOpDefaultAssignmentPolicy() throws BrokerSetResolutionException {
     BrokerSetResolver brokerSetResolver = getBrokerSetResolver("testBrokerSets.json", this.getClass());
-    assertThrows(BrokerSetResolutionException.class,
-                 () -> brokerSetResolver.brokerIdsByBrokerSetId(DeterministicCluster.brokerSetUnSatisfiable3()));
+    final Map<String, Set<Integer>> brokerSets = brokerSetResolver.brokerIdsByBrokerSetId(
+        BrokerSetResolutionHelper.getRackIdByBrokerIdMapping(DeterministicCluster.brokerSetUnSatisfiable3()));
+
+    assertNotNull(brokerSets);
+
+    assertTrue(brokerSets.containsKey("Blue"));
+    assertTrue(brokerSets.containsKey("Green"));
+    assertTrue(brokerSets.containsKey(NoOpBrokerSetAssignmentPolicy.UNMAPPED_BROKER_SET_ID));
+
+    assertEquals(Set.of(0, 1, 2), brokerSets.get("Blue"));
+    assertEquals(Set.of(3, 4, 5), brokerSets.get("Green"));
+    assertEquals(Set.of(6), brokerSets.get(NoOpBrokerSetAssignmentPolicy.UNMAPPED_BROKER_SET_ID));
   }
 }

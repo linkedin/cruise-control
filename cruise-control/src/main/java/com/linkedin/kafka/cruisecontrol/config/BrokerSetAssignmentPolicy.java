@@ -23,7 +23,20 @@ public interface BrokerSetAssignmentPolicy {
    * @param clusterModel cluster model object
    * @param existingBrokerSetMapping existing mapping of broker sets to broker ids
    * @return A map of broker Ids by their broker set Id
+   * @deprecated This method will be replaced by {@link #assignBrokerSetsForUnresolvedBrokers(Map, Map)}
    */
+  @Deprecated
   Map<String, Set<Integer>> assignBrokerSetsForUnresolvedBrokers(ClusterModel clusterModel, Map<String, Set<Integer>> existingBrokerSetMapping)
+      throws BrokerSetResolutionException;
+
+  /**
+   * Assigns broker sets to the brokers that do not have broker sets assigned
+   *
+   * @param rackIdToBrokerId a map of broker ids to rack ids in the cluster
+   * @param existingBrokerSetMapping existing mapping of broker sets to broker ids
+   * @return A map of broker Ids by their broker set Id
+   */
+  Map<String, Set<Integer>> assignBrokerSetsForUnresolvedBrokers(Map<Integer, String> rackIdToBrokerId,
+                                                                 Map<String, Set<Integer>> existingBrokerSetMapping)
       throws BrokerSetResolutionException;
 }

@@ -27,6 +27,6 @@ public class ReplicaToOriginalBrokerSetMappingPolicy implements ReplicaToBrokerS
   public String brokerSetIdForReplica(final Replica replica, final ClusterModel clusterModel,
                                       final BrokerSetResolutionHelper brokerSetResolutionHelper) throws BrokerSetResolutionException {
     Broker originalBroker = replica.originalBroker();
-    return brokerSetResolutionHelper.brokerSetId(originalBroker);
+    return brokerSetResolutionHelper.brokerSetId(originalBroker.id());
   }
 }

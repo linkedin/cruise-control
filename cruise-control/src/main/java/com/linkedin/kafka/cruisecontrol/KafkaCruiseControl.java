@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
+import com.linkedin.kafka.cruisecontrol.config.BrokerSetResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
@@ -866,6 +867,13 @@ public class KafkaCruiseControl {
    */
   public TopicConfigProvider topicConfigProvider() {
     return _loadMonitor.topicConfigProvider();
+  }
+
+  /**
+   * @return The broker set resolver
+   */
+  public BrokerSetResolver brokerSetResolver() {
+    return _goalOptimizer.brokerSetResolver();
   }
 
   /**
