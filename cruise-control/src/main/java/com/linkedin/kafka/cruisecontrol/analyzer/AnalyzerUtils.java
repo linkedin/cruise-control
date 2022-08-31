@@ -217,7 +217,7 @@ public final class AnalyzerUtils {
    * @param config The configurations for Cruise Control.
    * @return The list of default goals sorted by highest to lowest default priority.
    */
-  public static List<Goal> getGoalsByPriority(KafkaCruiseControlConfig config) {
+  public static List<Goal> getDefaultGoalsByPriority(KafkaCruiseControlConfig config) {
     return config.getConfiguredInstances(AnalyzerConfig.DEFAULT_GOALS_CONFIG, Goal.class);
   }
 
