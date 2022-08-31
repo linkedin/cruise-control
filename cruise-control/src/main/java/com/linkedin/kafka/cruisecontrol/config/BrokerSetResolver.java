@@ -23,7 +23,7 @@ public interface BrokerSetResolver extends CruiseControlConfigurable {
    *
    * @param clusterModel cluster model object
    * @return A map of broker Ids by their broker set Id
-   * @deprecated This method will be replaced by {@link #brokerIdsByBrokerSetId(Map)}
+   * @deprecated This method will be replaced by {@link #brokerIdsByBrokerSetId(Map)}. TODO: this method should be removed soon
    */
   @Deprecated
   Map<String, Set<Integer>> brokerIdsByBrokerSetId(ClusterModel clusterModel) throws BrokerSetResolutionException;
