@@ -193,6 +193,7 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
     Set<BrokerEntity> detectedMetricAnomalies = getMetricAnomalies(historicalLogFlushTimeMetricValues, currentLogFlushTimeMetricValues);
     detectedMetricAnomalies.retainAll(getMetricAnomalies(historicalPerByteLogFlushTimeMetricValues, currentPerByteLogFlushTimeMetricValues));
     detectedMetricAnomalies.retainAll(getLogFlushTimeMetricAnomaliesFromValue(currentLogFlushTimeMetricValues));
+    LOG.info("Suspected Slow Brokers: {}", detectedMetricAnomalies);
     return detectedMetricAnomalies;
   }
 
@@ -312,8 +313,10 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   }
 
   private SlowBrokers createSlowBrokersAnomaly(Map<BrokerEntity, Long> detectedBrokers, boolean fixable, boolean removeSlowBroker) {
+    String slowBrokerDescription = getSlowBrokerDescription(detectedBrokers);
+    LOG.info(slowBrokerDescription);
     Map<String, Object> parameterConfigOverrides = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl,
-                                                          METRIC_ANOMALY_DESCRIPTION_OBJECT_CONFIG, getSlowBrokerDescription(detectedBrokers),
+                                                          METRIC_ANOMALY_DESCRIPTION_OBJECT_CONFIG, slowBrokerDescription,
                                                           METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG, detectedBrokers,
                                                           REMOVE_SLOW_BROKER_CONFIG, removeSlowBroker,
                                                           ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs(),
