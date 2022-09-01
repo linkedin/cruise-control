@@ -468,7 +468,7 @@ public final class KafkaCruiseControlUtils {
    */
   public static List<Goal> goalsByPriority(List<String> goals, KafkaCruiseControlConfig config) {
     if (goals == null || goals.isEmpty()) {
-      return AnalyzerUtils.getGoalsByPriority(config);
+      return AnalyzerUtils.getDefaultGoalsByPriority(config);
     }
     Map<String, Goal> allGoals = AnalyzerUtils.getCaseInsensitiveGoalsByName(config);
     sanityCheckNonExistingGoal(goals, allGoals);

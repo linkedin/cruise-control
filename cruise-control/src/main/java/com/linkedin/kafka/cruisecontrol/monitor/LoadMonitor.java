@@ -168,7 +168,7 @@ public class LoadMonitor {
     _clusterModelSemaphore = new Semaphore(Math.max(1, numPrecomputingThread), true);
 
     _defaultModelCompletenessRequirements =
-        MonitorUtils.combineLoadRequirementOptions(AnalyzerUtils.getGoalsByPriority(config));
+        MonitorUtils.combineLoadRequirementOptions(AnalyzerUtils.getDefaultGoalsByPriority(config));
 
     _loadMonitorTaskRunner =
         new LoadMonitorTaskRunner(config, _partitionMetricSampleAggregator, _brokerMetricSampleAggregator, _metadataClient,
