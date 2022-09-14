@@ -4,9 +4,13 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.response;
 
+import com.linkedin.kafka.cruisecontrol.config.BrokerSetResolutionHelper;
+import com.linkedin.kafka.cruisecontrol.config.BrokerSetResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.exception.BrokerSetResolutionException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -57,8 +61,9 @@ public class ClusterBrokerState {
   protected final Cluster _kafkaCluster;
   protected final AdminClient _adminClient;
   protected final KafkaCruiseControlConfig _config;
+  protected Map<Integer, String> _brokerSetIdByBrokerId;
 
-  public ClusterBrokerState(Cluster kafkaCluster, AdminClient adminClient, KafkaCruiseControlConfig config)
+  public ClusterBrokerState(Cluster kafkaCluster, AdminClient adminClient, KafkaCruiseControlConfig config, BrokerSetResolver brokerSetResolver)
       throws ExecutionException, InterruptedException {
     _kafkaCluster = kafkaCluster;
     _adminClient = adminClient;
@@ -77,6 +82,15 @@ public class ClusterBrokerState {
 
     _onlineLogDirsByBrokerId = new TreeMap<>();
     _offlineLogDirsByBrokerId = new TreeMap<>();
+
+    _brokerSetIdByBrokerId = new HashMap<>();
+    try {
+      BrokerSetResolutionHelper brokerSetResolutionHelper = new BrokerSetResolutionHelper(kafkaCluster, brokerSetResolver);
+      _brokerSetIdByBrokerId.putAll(brokerSetResolutionHelper.brokerSetIdByBrokerId());
+    } catch (BrokerSetResolutionException e) {
+      LOG.warn("Failed to resolve broker set with exception: ", e);
+    }
+
     // Broker LogDirs Summary
     populateKafkaBrokerLogDirState(_onlineLogDirsByBrokerId, _offlineLogDirsByBrokerId, _replicaCountByBrokerId.keySet());
   }
@@ -187,17 +201,18 @@ public class ClusterBrokerState {
     new ClusterStats(_kafkaCluster.topics().size(), _replicaCountByBrokerId, _leaderCountByBrokerId).writeClusterStats(sb);
     // Broker Summary
     String initMessage = "Brokers:";
-    sb.append(String.format("%s%n%20s%20s%20s%20s%20s%20s%n", initMessage, "BROKER", "LEADER(S)", "REPLICAS", "OUT-OF-SYNC",
-                            "OFFLINE", "IS_CONTROLLER"));
+    sb.append(String.format("%s%n%20s%20s%20s%20s%20s%20s%20s%n", initMessage, "BROKER", "LEADER(S)", "REPLICAS", "OUT-OF-SYNC",
+                            "OFFLINE", "IS_CONTROLLER", "BROKER_SET"));
 
     for (Integer brokerId : _replicaCountByBrokerId.keySet()) {
-      sb.append(String.format("%20d%20d%20d%20d%20d%20s%n",
+      sb.append(String.format("%20d%20d%20d%20d%20d%20s%20s%n",
                               brokerId,
                               _leaderCountByBrokerId.getOrDefault(brokerId, 0),
                               _replicaCountByBrokerId.getOrDefault(brokerId, 0),
                               _outOfSyncCountByBrokerId.getOrDefault(brokerId, 0),
                               _offlineReplicaCountByBrokerId.getOrDefault(brokerId, 0),
-                              _isControllerByBrokerId.get(brokerId)));
+                              _isControllerByBrokerId.get(brokerId),
+                              _brokerSetIdByBrokerId.get(brokerId)));
     }
     // Broker LogDirs Summary
     writeKafkaBrokerLogDirState(sb, _replicaCountByBrokerId.keySet());

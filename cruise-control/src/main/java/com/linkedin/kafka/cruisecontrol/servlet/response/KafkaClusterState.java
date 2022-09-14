@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
+import com.linkedin.kafka.cruisecontrol.config.BrokerSetResolver;
 import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
@@ -29,17 +30,20 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
   protected final Map<String, Properties> _allTopicConfigs;
   protected final Properties _clusterConfigs;
   protected final AdminClient _adminClient;
+  protected final BrokerSetResolver _brokerSetResolver;
   protected Cluster _kafkaCluster;
 
   public KafkaClusterState(Cluster kafkaCluster,
                            TopicConfigProvider topicConfigProvider,
                            AdminClient adminClient,
-                           KafkaCruiseControlConfig config) {
+                           KafkaCruiseControlConfig config,
+                           BrokerSetResolver brokerSetResolver) {
     super(config);
     _kafkaCluster = kafkaCluster;
     _allTopicConfigs = topicConfigProvider.topicConfigs(_kafkaCluster.topics());
     _clusterConfigs = topicConfigProvider.clusterConfigs();
     _adminClient = adminClient;
+    _brokerSetResolver = brokerSetResolver;
   }
 
   protected String getJsonString(CruiseControlParameters parameters) {
@@ -68,7 +72,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
       throws ExecutionException, InterruptedException {
     Map<String, Object> cruiseControlState = new HashMap<>();
     cruiseControlState.put(KAFKA_BROKER_STATE,
-                           new ClusterBrokerState(_kafkaCluster, _adminClient, _config).getJsonStructure());
+                           new ClusterBrokerState(_kafkaCluster, _adminClient, _config, _brokerSetResolver).getJsonStructure());
     cruiseControlState.put(KAFKA_PARTITION_STATE,
                            new ClusterPartitionState(verbose, topic, _kafkaCluster, _allTopicConfigs, _clusterConfigs).getJsonStructure());
     return cruiseControlState;
@@ -81,7 +85,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     StringBuilder sb = new StringBuilder();
     try {
       // Broker summary.
-      new ClusterBrokerState(_kafkaCluster, _adminClient, _config).writeBrokerSummary(sb);
+      new ClusterBrokerState(_kafkaCluster, _adminClient, _config, _brokerSetResolver).writeBrokerSummary(sb);
       // Partition summary.
       new ClusterPartitionState(isVerbose, topic, _kafkaCluster, _allTopicConfigs, _clusterConfigs).writePartitionSummary(sb, isVerbose);
     } catch (InterruptedException | ExecutionException e) {

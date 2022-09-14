@@ -8,6 +8,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.linkedin.kafka.cruisecontrol.common.Utils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
+import com.linkedin.kafka.cruisecontrol.config.BrokerSetResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
@@ -504,6 +505,14 @@ public class GoalOptimizer implements Runnable {
   public Set<String> excludedTopics(ClusterModel clusterModel, Pattern requestedExcludedTopics) {
     Pattern topicsToExclude = requestedExcludedTopics != null ? requestedExcludedTopics : _defaultExcludedTopics;
     return Utils.getTopicNamesMatchedWithPattern(topicsToExclude, clusterModel::topics);
+  }
+
+  /**
+   * Get the broker set resolver
+   * @return the configured BrokerSetResolver instance
+   */
+  public BrokerSetResolver brokerSetResolver() {
+    return _balancingConstraint.brokerSetResolver();
   }
 
   private OptimizerResult updateCachedProposals(OptimizerResult result) {

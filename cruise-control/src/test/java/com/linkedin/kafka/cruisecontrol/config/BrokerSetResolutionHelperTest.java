@@ -6,11 +6,9 @@ package com.linkedin.kafka.cruisecontrol.config;
 
 import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
 import com.linkedin.kafka.cruisecontrol.exception.BrokerSetResolutionException;
-import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.easymock.EasyMock;
 import org.junit.Test;
 
@@ -33,29 +31,18 @@ public class BrokerSetResolutionHelperTest {
     Map<String, Set<Integer>> testBrokerSetMapping = Map.of("BS1", Set.of(0), "BS2", Set.of(1, 2), "BS3", Set.of(3, 4), "BS4", Set.of(5));
 
     BrokerSetResolver brokerSetResolver = EasyMock.createNiceMock(BrokerSetResolver.class);
-    EasyMock.expect(brokerSetResolver.brokerIdsByBrokerSetId(clusterModel)).andReturn(testBrokerSetMapping);
+    EasyMock.expect(brokerSetResolver.brokerIdsByBrokerSetId(BrokerSetResolutionHelper.getRackIdByBrokerIdMapping(clusterModel)))
+            .andReturn(testBrokerSetMapping);
     EasyMock.replay(brokerSetResolver);
 
     BrokerSetResolutionHelper brokerSetResolutionHelper = new BrokerSetResolutionHelper(clusterModel, brokerSetResolver);
 
-    assertEquals("BS1", brokerSetResolutionHelper.brokerSetId(clusterModel.broker(0)));
-    assertEquals("BS2", brokerSetResolutionHelper.brokerSetId(clusterModel.broker(1)));
-    assertEquals("BS2", brokerSetResolutionHelper.brokerSetId(clusterModel.broker(2)));
-    assertEquals("BS3", brokerSetResolutionHelper.brokerSetId(clusterModel.broker(3)));
-    assertEquals("BS3", brokerSetResolutionHelper.brokerSetId(clusterModel.broker(4)));
-    assertEquals("BS4", brokerSetResolutionHelper.brokerSetId(clusterModel.broker(5)));
-
-    Map<String, Set<Broker>> expectedMapping = testBrokerSetMapping.entrySet()
-                                                                   .stream()
-                                                                   .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue()
-                                                                                                                      .stream()
-                                                                                                                      .map(
-                                                                                                                          id -> clusterModel.broker(
-                                                                                                                              id))
-                                                                                                                      .collect(
-                                                                                                                          Collectors.toSet())));
-
-    assertEquals(expectedMapping, brokerSetResolutionHelper.brokersByBrokerSetId());
+    assertEquals("BS1", brokerSetResolutionHelper.brokerSetId(0));
+    assertEquals("BS2", brokerSetResolutionHelper.brokerSetId(1));
+    assertEquals("BS2", brokerSetResolutionHelper.brokerSetId(2));
+    assertEquals("BS3", brokerSetResolutionHelper.brokerSetId(3));
+    assertEquals("BS3", brokerSetResolutionHelper.brokerSetId(4));
+    assertEquals("BS4", brokerSetResolutionHelper.brokerSetId(5));
   }
 
   /**
@@ -68,29 +55,18 @@ public class BrokerSetResolutionHelperTest {
     Map<String, Set<Integer>> testBrokerSetMapping = Map.of("BS1", Set.of(0), "BS2", Set.of(1, 2), "BS3", Set.of(3, 4));
 
     BrokerSetResolver brokerSetResolver = EasyMock.createNiceMock(BrokerSetResolver.class);
-    EasyMock.expect(brokerSetResolver.brokerIdsByBrokerSetId(clusterModel)).andReturn(testBrokerSetMapping);
+    EasyMock.expect(brokerSetResolver.brokerIdsByBrokerSetId(BrokerSetResolutionHelper.getRackIdByBrokerIdMapping(clusterModel)))
+            .andReturn(testBrokerSetMapping);
     EasyMock.replay(brokerSetResolver);
 
     BrokerSetResolutionHelper brokerSetResolutionHelper = new BrokerSetResolutionHelper(clusterModel, brokerSetResolver);
 
-    assertEquals("BS1", brokerSetResolutionHelper.brokerSetId(clusterModel.broker(0)));
-    assertEquals("BS2", brokerSetResolutionHelper.brokerSetId(clusterModel.broker(1)));
-    assertEquals("BS2", brokerSetResolutionHelper.brokerSetId(clusterModel.broker(2)));
-    assertEquals("BS3", brokerSetResolutionHelper.brokerSetId(clusterModel.broker(3)));
-    assertEquals("BS3", brokerSetResolutionHelper.brokerSetId(clusterModel.broker(4)));
-    assertThrows(BrokerSetResolutionException.class, () -> brokerSetResolutionHelper.brokerSetId(clusterModel.broker(5)));
-
-    Map<String, Set<Broker>> expectedMapping = testBrokerSetMapping.entrySet()
-                                                                   .stream()
-                                                                   .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue()
-                                                                                                                      .stream()
-                                                                                                                      .map(
-                                                                                                                          id -> clusterModel.broker(
-                                                                                                                              id))
-                                                                                                                      .collect(
-                                                                                                                          Collectors.toSet())));
-
-    assertEquals(expectedMapping, brokerSetResolutionHelper.brokersByBrokerSetId());
+    assertEquals("BS1", brokerSetResolutionHelper.brokerSetId(0));
+    assertEquals("BS2", brokerSetResolutionHelper.brokerSetId(1));
+    assertEquals("BS2", brokerSetResolutionHelper.brokerSetId(2));
+    assertEquals("BS3", brokerSetResolutionHelper.brokerSetId(3));
+    assertEquals("BS3", brokerSetResolutionHelper.brokerSetId(4));
+    assertThrows(BrokerSetResolutionException.class, () -> brokerSetResolutionHelper.brokerSetId(5));
   }
 }
 

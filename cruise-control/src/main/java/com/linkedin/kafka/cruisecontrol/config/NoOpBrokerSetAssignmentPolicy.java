@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.config;
 import com.linkedin.kafka.cruisecontrol.exception.BrokerSetResolutionException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -15,11 +16,11 @@ import java.util.stream.Collectors;
 
 
 /**
- * For any non-mapped Brokers, this policy does not assign any broker set.
+ * For any non-mapped Brokers, this policy assign it to an "unmapped" broker set.
  * Works as a strict broker set mapping policy where only the assignments that are pre-defined are the true source of truth.
  */
 public class NoOpBrokerSetAssignmentPolicy implements BrokerSetAssignmentPolicy {
-  private static final String UNMAPPED_BROKER_SET_ID = "unmapped";
+  public static final String UNMAPPED_BROKER_SET_ID = "unmapped";
 
   /**
    * Does not assign any broker set to non-mapped brokers.
@@ -27,14 +28,13 @@ public class NoOpBrokerSetAssignmentPolicy implements BrokerSetAssignmentPolicy 
    * @return A map of broker Ids by their broker set Id
    */
   @Override
-  public Map<String, Set<Integer>> assignBrokerSetsForUnresolvedBrokers(final ClusterModel clusterModel,
-                                                                        final Map<String, Set<Integer>> existingBrokerSetMapping)
+  public Map<String, Set<Integer>> assignBrokerSetsForUnresolvedBrokers(ClusterModel clusterModel, Map<String, Set<Integer>> existingBrokerSetMapping)
       throws BrokerSetResolutionException {
     // Sanity check to check if all brokers in data store do not match all brokers in cluster model
     Set<Broker> allMappedBrokers = existingBrokerSetMapping.values()
                                                            .stream()
-                                                           .flatMap(brokerIds -> brokerIds.stream())
-                                                           .map(brokerId -> clusterModel.broker(brokerId))
+                                                           .flatMap(Collection::stream)
+                                                           .map(clusterModel::broker)
                                                            .filter(Objects::nonNull)
                                                            .collect(Collectors.toSet());
 
@@ -52,12 +52,36 @@ public class NoOpBrokerSetAssignmentPolicy implements BrokerSetAssignmentPolicy 
 
     Set<Integer> unmappedEmptyBrokerIds = extraBrokersInClusterModel.stream()
                                                                     .filter(broker -> broker.replicas().isEmpty())
-                                                                    .map(broker -> broker.id())
+                                                                    .map(Broker::id)
                                                                     .collect(Collectors.toSet());
 
     if (!unmappedEmptyBrokerIds.isEmpty()) {
       existingBrokerSetMapping.computeIfAbsent(UNMAPPED_BROKER_SET_ID, k -> new HashSet<>(unmappedEmptyBrokerIds))
                               .addAll(unmappedEmptyBrokerIds);
+    }
+
+    return existingBrokerSetMapping;
+  }
+
+  /**
+   * Does not assign any broker set to non-mapped brokers.
+   *
+   * @return A map of broker Ids by their broker set Id
+   */
+  @Override
+  public Map<String, Set<Integer>> assignBrokerSetsForUnresolvedBrokers(Map<Integer, String> rackIdToBrokerId,
+                                                                        Map<String, Set<Integer>> existingBrokerSetMapping) {
+    Set<Integer> allMappedBrokers = existingBrokerSetMapping.values()
+                                                            .stream()
+                                                            .flatMap(Collection::stream)
+                                                            .collect(Collectors.toSet());
+
+    Set<Integer> unmappedBrokers = new HashSet<>(rackIdToBrokerId.keySet());
+    unmappedBrokers.removeAll(allMappedBrokers);
+
+    if (!unmappedBrokers.isEmpty()) {
+      existingBrokerSetMapping.computeIfAbsent(UNMAPPED_BROKER_SET_ID, k -> new HashSet<>())
+                              .addAll(unmappedBrokers);
     }
 
     return existingBrokerSetMapping;

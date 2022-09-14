@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.common.Utils;
 import com.linkedin.kafka.cruisecontrol.config.ReplicaToBrokerSetMappingPolicy;
 import com.linkedin.kafka.cruisecontrol.exception.BrokerSetResolutionException;
 import com.linkedin.kafka.cruisecontrol.exception.ReplicaToBrokerSetMappingException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -79,7 +80,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaS
 public class BrokerSetAwareGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(BrokerSetAwareGoal.class);
   private BrokerSetResolutionHelper _brokerSetResolutionHelper;
-  private Map<String, Set<Broker>> _brokersByBrokerSet;
+  private Map<String, Set<Integer>> _brokersByBrokerSet;
   private ReplicaToBrokerSetMappingPolicy _replicaToBrokerSetMappingPolicy;
   private Set<String> _excludedTopics;
   private Set<String> _mustHaveTopicLeadersPerBroker;
@@ -188,10 +189,11 @@ public class BrokerSetAwareGoal extends AbstractGoal {
       String topicName = partitionsByTopic.getKey();
       if (!_excludedTopics.contains(topicName)) {
         List<Partition> partitions = partitionsByTopic.getValue();
-        Set<Broker> allBrokersForTopic = partitions.stream()
-                                                   .map(partition -> partition.partitionBrokers())
-                                                   .flatMap(brokers -> brokers.stream())
-                                                   .collect(Collectors.toSet());
+        Set<Integer> allBrokersForTopic = partitions.stream()
+                                                    .map(Partition::partitionBrokers)
+                                                    .flatMap(Collection::stream)
+                                                    .map(Broker::id)
+                                                    .collect(Collectors.toSet());
         // Checks if a topic's brokers do not all live in a single brokerSet
         if (_brokersByBrokerSet.values().stream().noneMatch(brokerSetBrokers -> brokerSetBrokers.containsAll(allBrokersForTopic))) {
           throw new OptimizationFailureException(
@@ -214,7 +216,7 @@ public class BrokerSetAwareGoal extends AbstractGoal {
                                     OptimizationOptions optimizationOptions) throws OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
 
-    String currentBrokerSetId = _brokerSetResolutionHelper.brokerSetId(broker);
+    String currentBrokerSetId = _brokerSetResolutionHelper.brokerSetId(broker.id());
 
     for (Replica replica : broker.trackedSortedReplicas(replicaSortName(this, false, false)).sortedReplicas(true)) {
       String eligibleBrokerSetIdForReplica =
@@ -226,10 +228,10 @@ public class BrokerSetAwareGoal extends AbstractGoal {
         continue;
       }
       // If the brokerSet awareness condition is violated. Move replica to an eligible broker
-      Set<Broker> eligibleBrokers = _brokersByBrokerSet.get(eligibleBrokerSetIdForReplica)
-                                                       .stream()
-                                                       .filter(b -> clusterModel.aliveBrokers().contains(b))
-                                                       .collect(Collectors.toSet());
+      Set<Broker> eligibleBrokers = clusterModel.aliveBrokers()
+                                                .stream()
+                                                .filter(b -> _brokersByBrokerSet.get(eligibleBrokerSetIdForReplica).contains(b.id()))
+                                                .collect(Collectors.toSet());
       if (maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, ActionType.INTER_BROKER_REPLICA_MOVEMENT, optimizedGoals,
                                     optimizationOptions) == null) {
         // If balancing action can not be applied, provide recommendation to add new Brokers.
@@ -296,7 +298,7 @@ public class BrokerSetAwareGoal extends AbstractGoal {
     try {
       String expectedBrokerSetId =
           _replicaToBrokerSetMappingPolicy.brokerSetIdForReplica(sourceReplica, clusterModel, _brokerSetResolutionHelper);
-      String destinationBrokerSetId = _brokerSetResolutionHelper.brokerSetId(destinationBroker);
+      String destinationBrokerSetId = _brokerSetResolutionHelper.brokerSetId(destinationBroker.id());
 
       return !expectedBrokerSetId.equals(destinationBrokerSetId);
     } catch (BrokerSetResolutionException | ReplicaToBrokerSetMappingException e) {
