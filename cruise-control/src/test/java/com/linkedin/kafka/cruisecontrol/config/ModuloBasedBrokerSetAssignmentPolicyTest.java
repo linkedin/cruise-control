@@ -4,8 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.config;
 
-import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
-import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -29,13 +27,13 @@ public class ModuloBasedBrokerSetAssignmentPolicyTest {
   @Test
   public void testBrokerSetAssignment() {
     // The cluster model has 6 brokers - 0,1,2,3,4,5
-    final ClusterModel clusterModel = DeterministicCluster.brokerSetSatisfiable1();
+    Map<Integer, String> brokers = Map.of(0, "", 1, "", 2, "", 3, "", 4, "", 5, "");
     Map<String, Set<Integer>> mappedBrokers = new HashMap<>();
     mappedBrokers.put("bs1", new HashSet<>(Arrays.asList(0)));
     mappedBrokers.put("bs2", new HashSet<>(Arrays.asList(1)));
 
     Map<String, Set<Integer>> mappedBrokersAfterAssignment =
-        MODULO_BASED_BROKER_SET_ASSIGNMENT_POLICY.assignBrokerSetsForUnresolvedBrokers(clusterModel, mappedBrokers);
+        MODULO_BASED_BROKER_SET_ASSIGNMENT_POLICY.assignBrokerSetsForUnresolvedBrokers(brokers, mappedBrokers);
 
     assertNotNull(mappedBrokersAfterAssignment);
 

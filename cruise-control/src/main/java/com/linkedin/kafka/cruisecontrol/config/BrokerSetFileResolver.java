@@ -59,10 +59,23 @@ public class BrokerSetFileResolver implements BrokerSetResolver {
     try {
       brokerIdsByBrokerSetId = loadBrokerSetData();
     } catch (IOException e) {
-      throw new IllegalArgumentException(e);
+      throw new BrokerSetResolutionException(e.getMessage());
     }
 
     return _brokerSetAssignmentPolicy.assignBrokerSetsForUnresolvedBrokers(clusterModel, brokerIdsByBrokerSetId);
+  }
+
+  @Override
+  public Map<String, Set<Integer>> brokerIdsByBrokerSetId(Map<Integer, String> rackIdByBrokerId)
+      throws BrokerSetResolutionException {
+    Map<String, Set<Integer>> brokerIdsByBrokerSetId;
+    try {
+      brokerIdsByBrokerSetId = loadBrokerSetData();
+    } catch (IOException e) {
+      throw new BrokerSetResolutionException(e.getMessage());
+    }
+
+    return _brokerSetAssignmentPolicy.assignBrokerSetsForUnresolvedBrokers(rackIdByBrokerId, brokerIdsByBrokerSetId);
   }
 
   private Map<String, Set<Integer>> loadBrokerSetData() throws IOException {
