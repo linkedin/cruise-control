@@ -287,7 +287,7 @@ project(':cruise-control') {
     implementation 'com.google.code.findbugs:jsr305:3.0.2'
     implementation 'com.google.guava:guava:31.1-jre'
     // Temporary pin for vulnerability
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.12.6.1'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.4'
 
     testImplementation project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
     testImplementation project(path: ':cruise-control-core', configuration: 'testOutput')
@@ -420,7 +420,7 @@ project(':cruise-control-metrics-reporter') {
     implementation "org.apache.kafka:kafka-clients:$kafkaVersion"
     implementation 'com.google.code.findbugs:jsr305:3.0.2'
     // Temporary pin for vulnerability
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.12.6.1'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.4'
 
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.bouncycastle:bcpkix-jdk15on:1.70'
