@@ -14,7 +14,10 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Queue;
@@ -89,6 +92,17 @@ public abstract class AbstractBrokerFailureDetector extends AbstractAnomalyDetec
   private void persistFailedBrokerList() {
     try {
       writeStringToFile(_failedBrokersFile, failedBrokerString(), StandardCharsets.UTF_8);
+
+      Set<PosixFilePermission> perms = new HashSet<>();
+      perms.add(PosixFilePermission.OWNER_READ);
+      perms.add(PosixFilePermission.OWNER_WRITE);
+      try {
+        LOG.info("Update file permissions of failed brokers file ({}).", _failedBrokersFile.toPath());
+        Files.setPosixFilePermissions(_failedBrokersFile.toPath(), perms);
+      } catch (IOException e) {
+        LOG.warn("Update file permissions of failed brokers file ({}) was unsuccessful:\n{}",
+                _failedBrokersFile.toPath(), e.toString());
+      }
     } catch (IOException e) {
       // let it go.
       LOG.error("Failed to persist the failed broker list.", e);
