@@ -510,7 +510,11 @@ public final class ExecutorState {
         interBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTER_BROKER_REPLICA_ACTION);
         long finishedInterBrokerDataMovementInMB = _executionTasksSummary.finishedInterBrokerDataMovementInMB();
         long numTotalInterBrokerDataToMove = numTotalInterBrokerDataToMove();
-        double finishedInterBrokerDataPercent = ((double) finishedInterBrokerDataMovementInMB) / numTotalInterBrokerDataToMove * 100;
+        double finishedInterBrokerDataPercent = 0.0;
+        if (numTotalInterBrokerDataToMove != 0L) {
+          finishedInterBrokerDataPercent = ((double) finishedInterBrokerDataMovementInMB) / numTotalInterBrokerDataToMove * 100;
+        }
+
         return String.format("{%s: %s, pending(%d)/in-progress(%d)/aborting(%d)/finished(%d)/total(%d) inter-broker partition movements,"
                              + " completed(%d)/total(%d) bytes in MBs: %.2f%%, maximum concurrent inter-broker partition movements per-broker:"
                              + " %d, %s: %s, %s: %s%s%s}",
@@ -530,7 +534,11 @@ public final class ExecutorState {
         intraBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION);
         long finishedIntraBrokerDataMovementInMB = _executionTasksSummary.finishedIntraBrokerDataMovementInMB();
         long numTotalIntraBrokerDataToMove = numTotalIntraBrokerDataToMove();
-        double finishedIntraBrokerDataPercent = ((double) finishedIntraBrokerDataMovementInMB) / numTotalIntraBrokerDataToMove * 100;
+        double finishedIntraBrokerDataPercent = 0.0;
+        if (numTotalIntraBrokerDataToMove != 0L) {
+          finishedIntraBrokerDataPercent = ((double) finishedIntraBrokerDataMovementInMB) / numTotalIntraBrokerDataToMove * 100;
+        }
+
         return String.format("{%s: %s, pending(%d)/in-progress(%d)/aborting(%d)/finished(%d)/total(%d) intra-broker partition movements,"
                              + "completed(%d)/total(%d) bytes in MBs: %.2f%%, maximum concurrent intra-broker partition movements per-broker:"
                              + "%d, %s: %s, %s: %s%s%s}",
