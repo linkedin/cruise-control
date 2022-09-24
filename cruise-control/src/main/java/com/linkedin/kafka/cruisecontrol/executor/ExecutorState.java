@@ -490,6 +490,7 @@ public final class ExecutorState {
                                     ? String.format(", %s: %s", RECENTLY_REMOVED_BROKERS, _recentlyRemovedBrokers) : "";
     Map<ExecutionTaskState, Integer> interBrokerPartitionMovementStats;
     Map<ExecutionTaskState, Integer> intraBrokerPartitionMovementStats;
+
     switch (_state) {
       case NO_TASK_IN_PROGRESS:
         return String.format("{%s: %s%s%s}", STATE, _state, recentlyDemotedBrokers, recentlyRemovedBrokers);
@@ -500,14 +501,22 @@ public final class ExecutorState {
                              _isTriggeredByUserRequest ? TRIGGERED_USER_TASK_ID : TRIGGERED_SELF_HEALING_TASK_ID,
                              _uuid, TRIGGERED_TASK_REASON, _reason, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case LEADER_MOVEMENT_TASK_IN_PROGRESS:
-        return String.format("{%s: %s, finished/total leadership movements: %d/%d, maximum concurrent leadership movements: %d, %s: %s, %s: %s%s%s}",
+        return String.format("{%s: %s, finished(%d)/total(%d) leadership movements, maximum concurrent leadership movements: %d, %s: %s, %s: %s%s%s}",
                              STATE, _state, numFinishedMovements(LEADER_ACTION), numTotalMovements(LEADER_ACTION),
                              _maximumConcurrentLeaderMovements, _isTriggeredByUserRequest ? TRIGGERED_USER_TASK_ID : TRIGGERED_SELF_HEALING_TASK_ID,
                              _uuid, TRIGGERED_TASK_REASON, _reason, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS:
+
         interBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTER_BROKER_REPLICA_ACTION);
-        return String.format("{%s: %s, pending/in-progress/aborting/finished/total inter-broker partition movement %d/%d/%d/%d/%d,"
-                             + " completed/total bytes(MB): %d/%d, maximum concurrent inter-broker partition movements per-broker:"
+        long finishedInterBrokerDataMovementInMB = _executionTasksSummary.finishedInterBrokerDataMovementInMB();
+        long numTotalInterBrokerDataToMove = numTotalInterBrokerDataToMove();
+        double finishedInterBrokerDataPercent = 0.0;
+        if (numTotalInterBrokerDataToMove != 0L) {
+          finishedInterBrokerDataPercent = ((double) finishedInterBrokerDataMovementInMB) / numTotalInterBrokerDataToMove * 100;
+        }
+
+        return String.format("{%s: %s, pending(%d)/in-progress(%d)/aborting(%d)/finished(%d)/total(%d) inter-broker partition movements,"
+                             + " completed(%d)/total(%d) bytes in MBs: %.2f%%, maximum concurrent inter-broker partition movements per-broker:"
                              + " %d, %s: %s, %s: %s%s%s}",
                              STATE, _state,
                              interBrokerPartitionMovementStats.get(ExecutionTaskState.PENDING),
@@ -515,30 +524,42 @@ public final class ExecutorState {
                              interBrokerPartitionMovementStats.get(ExecutionTaskState.ABORTING),
                              numFinishedMovements(INTER_BROKER_REPLICA_ACTION),
                              numTotalMovements(INTER_BROKER_REPLICA_ACTION),
-                             _executionTasksSummary.finishedInterBrokerDataMovementInMB(),
-                             numTotalInterBrokerDataToMove(), _maximumConcurrentInterBrokerPartitionMovementsPerBroker,
+                             finishedInterBrokerDataMovementInMB,
+                             numTotalInterBrokerDataToMove,
+                             finishedInterBrokerDataPercent,
+                             _maximumConcurrentInterBrokerPartitionMovementsPerBroker,
                              _isTriggeredByUserRequest ? TRIGGERED_USER_TASK_ID : TRIGGERED_SELF_HEALING_TASK_ID, _uuid,
                              TRIGGERED_TASK_REASON, _reason, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case INTRA_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS:
         intraBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION);
-        return String.format("{%s: %s, pending/in-progress/aborting/finished/total intra-broker partition movement %d/%d/%d/%d/%d, completed/total"
-                             + " bytes(MB): %d/%d, maximum concurrent intra-broker partition movements per-broker: %d, %s: %s, %s: %s%s%s}",
+        long finishedIntraBrokerDataMovementInMB = _executionTasksSummary.finishedIntraBrokerDataMovementInMB();
+        long numTotalIntraBrokerDataToMove = numTotalIntraBrokerDataToMove();
+        double finishedIntraBrokerDataPercent = 0.0;
+        if (numTotalIntraBrokerDataToMove != 0L) {
+          finishedIntraBrokerDataPercent = ((double) finishedIntraBrokerDataMovementInMB) / numTotalIntraBrokerDataToMove * 100;
+        }
+
+        return String.format("{%s: %s, pending(%d)/in-progress(%d)/aborting(%d)/finished(%d)/total(%d) intra-broker partition movements,"
+                             + "completed(%d)/total(%d) bytes in MBs: %.2f%%, maximum concurrent intra-broker partition movements per-broker:"
+                             + "%d, %s: %s, %s: %s%s%s}",
                              STATE, _state,
                              intraBrokerPartitionMovementStats.get(ExecutionTaskState.PENDING),
                              intraBrokerPartitionMovementStats.get(ExecutionTaskState.IN_PROGRESS),
                              intraBrokerPartitionMovementStats.get(ExecutionTaskState.ABORTING),
                              numFinishedMovements(INTRA_BROKER_REPLICA_ACTION),
                              numTotalMovements(INTRA_BROKER_REPLICA_ACTION),
-                             _executionTasksSummary.finishedIntraBrokerDataMovementInMB(),
-                             numTotalIntraBrokerDataToMove(), _maximumConcurrentIntraBrokerPartitionMovementsPerBroker,
+                             finishedIntraBrokerDataMovementInMB,
+                             numTotalIntraBrokerDataToMove,
+                             finishedIntraBrokerDataPercent,
+                             _maximumConcurrentIntraBrokerPartitionMovementsPerBroker,
                              _isTriggeredByUserRequest ? TRIGGERED_USER_TASK_ID : TRIGGERED_SELF_HEALING_TASK_ID, _uuid,
                              TRIGGERED_TASK_REASON, _reason, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case STOPPING_EXECUTION:
         interBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTER_BROKER_REPLICA_ACTION);
         intraBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION);
-        return String.format("{%s: %s, cancelled/in-progress/aborting/total intra-broker partition movement %d/%d/%d/%d,"
-                             + "cancelled/in-progress/aborting/total inter-broker partition movements movements: %d/%d/%d/%d,"
-                             + "cancelled/total leadership movements: %d/%d, maximum concurrent intra-broker partition movements per-broker: %d, "
+        return String.format("{%s: %s, cancelled(%d)/in-progress(%d)/aborting(%d)/total(%d) intra-broker partition movements,"
+                             + "cancelled(%d)/in-progress(%d)/aborting(%d)/total(%d) inter-broker partition movements movements,"
+                             + "cancelled(%d)/total(%d) leadership movements, maximum concurrent intra-broker partition movements per-broker: %d, "
                              + "maximum concurrent inter-broker partition movements per-broker: %d, maximum concurrent leadership movements: %d, "
                              + "%s: %s, %s: %s%s%s}",
                              STATE, _state,
