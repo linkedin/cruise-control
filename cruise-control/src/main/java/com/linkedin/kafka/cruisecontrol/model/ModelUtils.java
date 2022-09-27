@@ -101,7 +101,7 @@ public final class ModelUtils {
     if (useLinearRegressionModel) {
       return estimateLeaderCpuUtilUsingLinearRegressionModel(partitionBytesInRate, partitionBytesOutRate);
     } else {
-      if (brokerLeaderBytesInRate == 0 || brokerLeaderBytesOutRate == 0) {
+      if (brokerLeaderBytesInRate == 0 && brokerLeaderBytesOutRate == 0) {
         return 0.0;
       } else if (brokerLeaderBytesInRate * ALLOWED_METRIC_ERROR_FACTOR < partitionBytesInRate
                  && brokerLeaderBytesInRate > UNSTABLE_METRIC_THROUGHPUT_THRESHOLD) {
@@ -118,8 +118,12 @@ public final class ModelUtils {
         double brokerLeaderBytesOutContribution = ModelParameters.cpuWeightOfLeaderBytesOutRate() * brokerLeaderBytesOutRate;
         double brokerFollowerBytesInContribution = ModelParameters.cpuWeightOfFollowerBytesInRate() * brokerFollowerBytesInRate;
         double totalContribution = brokerLeaderBytesInContribution + brokerLeaderBytesOutContribution + brokerFollowerBytesInContribution;
-        double leaderReplicaContribution = (brokerLeaderBytesInContribution * Math.min(1, partitionBytesInRate / brokerLeaderBytesInRate))
-                                           + (brokerLeaderBytesOutContribution * Math.min(1, partitionBytesOutRate / brokerLeaderBytesOutRate));
+        double brokerLeaderReplicaBytesInContributionFactor =
+            Math.min(1, brokerLeaderBytesInRate == 0 ? 0 : partitionBytesInRate / brokerLeaderBytesInRate);
+        double brokerLeaderReplicaBytesOutContributionFactor =
+            Math.min(1, brokerLeaderBytesOutRate == 0 ? 0 : partitionBytesOutRate / brokerLeaderBytesOutRate);
+        double leaderReplicaContribution = (brokerLeaderBytesInContribution * brokerLeaderReplicaBytesInContributionFactor)
+                                           + (brokerLeaderBytesOutContribution * brokerLeaderReplicaBytesOutContributionFactor);
 
         return (leaderReplicaContribution / totalContribution) * brokerCpuUtil;
       }
