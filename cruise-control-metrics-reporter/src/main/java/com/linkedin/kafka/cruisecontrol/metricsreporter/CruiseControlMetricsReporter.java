@@ -223,11 +223,11 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
    */
   private static MetricsRegistry metricsRegistry() {
     Object metricsRegistry;
-    Class<?> metrics;
+    Class<?> metricsClass;
 
     try {
       // First we try to get the KafkaYammerMetrics class for Kafka 3.3+
-      metrics = Class.forName(YAMMER_METRICS_IN_KAFKA_3_3_AND_LATER);
+      metricsClass = Class.forName(YAMMER_METRICS_IN_KAFKA_3_3_AND_LATER);
       LOG.info("Found class {} for Kafka 3.3 and newer.", YAMMER_METRICS_IN_KAFKA_3_3_AND_LATER);
     } catch (ClassNotFoundException e) {
       LOG.info("Class {} not found. We are probably on Kafka 3.2 or older.", YAMMER_METRICS_IN_KAFKA_3_3_AND_LATER);
@@ -235,7 +235,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       // We did not find the KafkaYammerMetrics class from Kafka 3.3+. So we are probably on older Kafka version
       //     => we will try the older class for Kafka 2.6+.
       try {
-        metrics = Class.forName(YAMMER_METRICS_IN_KAFKA_2_6_AND_LATER);
+        metricsClass = Class.forName(YAMMER_METRICS_IN_KAFKA_2_6_AND_LATER);
         LOG.info("Found class {} for Kafka 2.6 and newer.", YAMMER_METRICS_IN_KAFKA_2_6_AND_LATER);
       } catch (ClassNotFoundException ee) {
         LOG.info("Class {} not found. We are probably on Kafka 2.5 or older.", YAMMER_METRICS_IN_KAFKA_2_6_AND_LATER);
@@ -243,7 +243,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
         // We did not find the KafkaYammerMetrics class from Kafka 2.6+. So we are probably on older Kafka version
         //     => we will try the older class for Kafka 2.5-.
         try {
-          metrics = Class.forName(YAMMER_METRICS_IN_KAFKA_2_5_AND_EARLIER);
+          metricsClass = Class.forName(YAMMER_METRICS_IN_KAFKA_2_5_AND_EARLIER);
           LOG.info("Found class {} for Kafka 2.5 and earlier.", YAMMER_METRICS_IN_KAFKA_2_5_AND_EARLIER);
         } catch (ClassNotFoundException eee) {
           // No class was found for any Kafka version => we should fail
@@ -253,7 +253,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     }
 
     try {
-      Method method = metrics.getMethod("defaultRegistry");
+      Method method = metricsClass.getMethod("defaultRegistry");
       metricsRegistry = method.invoke(null);
     } catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
       throw new RuntimeException("Failed to get metrics registry", e);
