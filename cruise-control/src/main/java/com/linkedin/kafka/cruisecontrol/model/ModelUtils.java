@@ -86,6 +86,7 @@ public final class ModelUtils {
    * @param brokerCpuUtil A double in [0.0,1.0], representing the CPU usage of the broker hosting the partition leader.
    * @param brokerLeaderBytesInRate Leader bytes in rate in the broker.
    * @param brokerLeaderBytesOutRate  Leader bytes out rate in the broker.
+   *                                  The leader bytes out rate comes from bytesOutPerSec metrics at the topic level.
    * @param brokerFollowerBytesInRate Follower bytes in rate in the broker.
    * @param partitionBytesInRate Leader bytes in rate for the partition.
    * @param partitionBytesOutRate Total bytes out rate (i.e. leader/replication bytes out) for the partition.
