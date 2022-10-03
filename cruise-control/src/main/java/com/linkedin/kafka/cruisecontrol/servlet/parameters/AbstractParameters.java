@@ -9,6 +9,8 @@ import com.linkedin.cruisecontrol.servlet.EndPoint;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.ServletRequestContext;
+import com.linkedin.kafka.cruisecontrol.vertx.VertxRequestContext;
+import io.vertx.ext.web.RoutingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import javax.servlet.http.HttpServletRequest;
@@ -108,6 +110,9 @@ public abstract class AbstractParameters implements CruiseControlParameters {
       _handler = new ServletRequestContext(
               (HttpServletRequest) validateNotNull(configs.get(KAFKA_CRUISE_CONTROL_HTTP_SERVLET_REQUEST_OBJECT_CONFIG),
                       "HttpServletRequest configuration is missing from the request."), null, _config);
+    } else {
+      _handler = new VertxRequestContext((RoutingContext) validateNotNull(configs.get(ROUTING_CONTEXT_OBJECT_CONFIG),
+              "HttpServletRequest configuration is missing from the request."), _config);
     }
     _config = (KafkaCruiseControlConfig) validateNotNull(configs.get(KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG),
                                                          "KafkaCruiseControlConfig configuration is missing from the request.");

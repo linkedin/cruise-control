@@ -70,7 +70,7 @@ This could be happening due to any of the following reasons:
 
 A sample error from the CC logs might look like the following:
 ```
-ERROR Error processing POST request '/remove_broker' due to: 'com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException: [ReplicaDistributionGoal] Self healing failed to move the replica Replica[isLeader=false,rack=sample_rack,broker=12345678,TopicPartition=sample_topic-0,origBroker=12345678] from decommissioned broker 12345677 (contains 1 replicas).'. (com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet)
+ERROR Error processing POST request '/remove_broker' due to: 'com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException: [ReplicaDistributionGoal] Self healing failed to move the replica Replica[isLeader=false,rack=sample_rack,broker=12345678,TopicPartition=sample_topic-0,origBroker=12345678] from decommissioned broker 12345677 (contains 1 replicas).'. (com.linkedin.kafka.cruisecontrol.servlet.ServletRequestHandler)
 ```
 
 #### Resolution

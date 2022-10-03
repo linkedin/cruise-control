@@ -9,7 +9,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 
-abstract class KafkaCruiseControlApp {
+public abstract class KafkaCruiseControlApp {
 
   protected static final String METRIC_DOMAIN = "kafka.cruisecontrol";
 
@@ -40,7 +40,7 @@ abstract class KafkaCruiseControlApp {
     return _port;
   }
 
-  void start() throws Exception {
+  public void start() throws Exception {
     _kafkaCruiseControl.startUp();
   }
 
@@ -48,7 +48,10 @@ abstract class KafkaCruiseControlApp {
     Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
   }
 
-  void stop() {
+  /**
+   * Stops Cruise Control
+   */
+  public void stop() {
     _kafkaCruiseControl.shutdown();
     _jmxReporter.close();
   }

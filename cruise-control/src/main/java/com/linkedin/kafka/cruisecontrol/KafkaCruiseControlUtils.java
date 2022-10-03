@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGo
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtils;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.config.EnvConfigProvider;
@@ -914,6 +915,9 @@ public final class KafkaCruiseControlUtils {
    * @throws ServletException
    */
   public static KafkaCruiseControlApp getCruiseControlApp(KafkaCruiseControlConfig config, Integer port, String hostname) throws ServletException {
+    if (config.getBoolean(WebServerConfig.VERTX_ENABLED_CONFIG)) {
+      return new KafkaCruiseControlVertxApp(config, port, hostname);
+    }
     return new KafkaCruiseControlServletApp(config, port, hostname);
   }
 
