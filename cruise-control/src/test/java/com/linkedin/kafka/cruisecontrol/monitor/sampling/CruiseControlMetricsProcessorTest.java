@@ -334,6 +334,29 @@ public class CruiseControlMetricsProcessorTest {
     processor.process(cluster, TEST_PARTITIONS, MetricSampler.SamplingMode.ALL);
   }
 
+  @Test
+  public void testEstimatedCPUUtilProduceOnly() {
+    // In a produce only case there will not be any client bytes out since there is no consumer running.
+    // Also, ReplicationBytes at Topic level are not present yet.
+    double allTopicBytesIn = 1000.0;
+    // No consumer running
+    double allTopicBytesOut = 0.0;
+    double partitionBytesIn = 1000.0;
+    // No consumer running
+    double partitionBytesOut = 0.0;
+    // Replication bytes metrics unavailable at topic-partition level
+    double partitionReplicationBytesOut = 0.0;
+    double allTopicReplicationBytesIn = 2000.0;
+    double allTopicReplicationBytesOut = 2000.0;
+    double estimatedCpuUtilPerCore = estimateLeaderCpuUtilPerCore(B0_CPU,
+                                                                  allTopicBytesIn,
+                                                                  allTopicBytesOut,
+                                                                  allTopicReplicationBytesIn,
+                                                                  partitionBytesIn,
+                                                                  partitionBytesOut + partitionReplicationBytesOut);
+    assertEquals(35.0, estimatedCpuUtilPerCore, 0.01);
+  }
+
   /**
    * <ul>
    * <li>T1P0(B0): NW_IN = {@link #B0_TOPIC1_BYTES_IN} KB, NW_OUT = {@link #B0_TOPIC1_BYTES_OUT} KB,
