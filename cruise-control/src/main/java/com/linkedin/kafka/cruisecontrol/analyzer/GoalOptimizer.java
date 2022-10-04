@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
+import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.linkedin.kafka.cruisecontrol.common.Utils;
@@ -88,6 +89,7 @@ public class GoalOptimizer implements Runnable {
   private final double _priorityWeight;
   private final double _strictnessWeight;
   private final OptimizationOptionsGenerator _optimizationOptionsGenerator;
+  private volatile ProvisionResponse _provisionResponse;
 
   /**
    * Constructor for Goal Optimizer takes the goals as input. The order of the list determines the priority of goals
@@ -124,6 +126,17 @@ public class GoalOptimizer implements Runnable {
     _proposalGenerationException = new AtomicReference<>();
     _proposalPrecomputingProgress = new OperationProgress();
     _proposalComputationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name(GOAL_OPTIMIZER_SENSOR, "proposal-computation-timer"));
+
+    // The cluster is identified as under-provisioned, over-provisioned, or right-sized (undecided not reported).
+    dropwizardMetricRegistry.register(MetricRegistry.name(GOAL_OPTIMIZER_SENSOR, "under-provisioned"),
+                                      (Gauge<Integer>) () -> (provisionStatus() == ProvisionStatus.UNDER_PROVISIONED)
+                                                             ? 1 : 0);
+    dropwizardMetricRegistry.register(MetricRegistry.name(GOAL_OPTIMIZER_SENSOR, "over-provisioned"),
+                                      (Gauge<Integer>) () -> (provisionStatus() == ProvisionStatus.OVER_PROVISIONED)
+                                                             ? 1 : 0);
+    dropwizardMetricRegistry.register(MetricRegistry.name(GOAL_OPTIMIZER_SENSOR, "right-sized"),
+                                      (Gauge<Integer>) () -> (provisionStatus() == ProvisionStatus.RIGHT_SIZED)
+                                                             ? 1 : 0);
     _executor = executor;
     _hasOngoingExplicitPrecomputation = false;
     _priorityWeight = config.getDouble(AnalyzerConfig.GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG);
@@ -133,6 +146,13 @@ public class GoalOptimizer implements Runnable {
     _optimizationOptionsGenerator = config.getConfiguredInstance(AnalyzerConfig.OPTIMIZATION_OPTIONS_GENERATOR_CLASS_CONFIG,
                                                                  OptimizationOptionsGenerator.class,
                                                                  overrideConfigs);
+  }
+
+  /**
+   * @return Provision status of the cluster based on the latest goal violation check.
+   */
+  private ProvisionStatus provisionStatus() {
+    return _provisionResponse.status();
   }
 
   @Override
@@ -448,7 +468,13 @@ public class GoalOptimizer implements Runnable {
       operationProgress.addStep(step);
       LOG.debug("Optimizing goal {}", goal.name());
       long startTimeMs = _time.milliseconds();
-      boolean succeeded = goal.optimize(clusterModel, optimizedGoals, optimizationOptions);
+      boolean succeeded;
+      try {
+        succeeded = goal.optimize(clusterModel, optimizedGoals, optimizationOptions);
+      } finally {
+        provisionResponse.aggregate(goal.provisionResponse());
+        _provisionResponse = provisionResponse;
+      }
       optimizedGoals.add(goal);
       statsByGoalPriority.put(goal, clusterModel.getClusterStats(_balancingConstraint, optimizationOptions));
       optimizationDurationByGoal.put(goal.name(), Duration.ofMillis(_time.milliseconds() - startTimeMs));
@@ -467,7 +493,6 @@ public class GoalOptimizer implements Runnable {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Broker level stats after optimization: {}", clusterModel.brokerStats(null));
       }
-      provisionResponse.aggregate(goal.provisionResponse());
     }
 
     // Broker level stats in the final cluster state.
