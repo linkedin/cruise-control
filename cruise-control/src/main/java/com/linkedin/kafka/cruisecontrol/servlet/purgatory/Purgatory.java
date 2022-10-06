@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet.purgatory;
 
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
+import com.linkedin.cruisecontrol.http.CruiseControlRequestContext;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
@@ -23,8 +24,6 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,18 +73,18 @@ public class Purgatory implements Closeable {
    * Add request to the purgatory and return the {@link ReviewResult} for the request that has been added to
    * the purgatory.
    *
-   * @param request Http Servlet Request to add to the purgatory.
+   * @param handler the request handler.
    * @param parameters Request parameters.
    * @param <P> Type corresponding to the request parameters.
    * @return The result showing the {@link ReviewResult} for the request that has been added to the purgatory.
    */
-  private synchronized <P extends CruiseControlParameters> ReviewResult addRequest(HttpServletRequest request,
+  private synchronized <P extends CruiseControlParameters> ReviewResult addRequest(CruiseControlRequestContext handler,
                                                                                    P parameters) {
-    if (!request.getMethod().equals(POST_METHOD)) {
+    if (!handler.getMethod().equals(POST_METHOD)) {
       throw new IllegalArgumentException(String.format("Purgatory can only contain POST request (Attempted to add: %s).",
-                                                       httpServletRequestToString(request)));
+              httpServletRequestToString(handler)));
     }
-    RequestInfo requestInfo = new RequestInfo(request, parameters);
+    RequestInfo requestInfo = new RequestInfo(handler, parameters);
     _requestInfoById.put(_requestId, requestInfo);
 
     Map<Integer, RequestInfo> requestInfoById = new HashMap<>();
@@ -106,46 +105,44 @@ public class Purgatory implements Closeable {
    *   <li>Parameters specified in the request cannot be parsed.</li>
    * </ul>
    *
-   * @param request HTTP request received by Cruise Control.
-   * @param response HTTP response of Cruise Control. Populated in case the request is not already in the purgatory.
    * @param classConfig Config indicating the class of the pluggable parameter.
+   * @param handler the request handler.
    * @param parameterConfigOverrides Configs to override upon creating the pluggable parameter.
    * @param userTaskManager a reference to {@link UserTaskManager}
    * @return Parameters of the request if it is in the purgatory, and requested with the corresponding reviewId,
    * {@code null} otherwise.
    */
-  public CruiseControlParameters maybeAddToPurgatory(HttpServletRequest request,
-                                                     HttpServletResponse response,
+  public CruiseControlParameters maybeAddToPurgatory(CruiseControlRequestContext handler,
                                                      String classConfig,
                                                      Map<String, Object> parameterConfigOverrides,
                                                      UserTaskManager userTaskManager) throws IOException {
-    Integer reviewId = ParameterUtils.reviewId(request, true);
+    Integer reviewId = ParameterUtils.reviewId(handler, true);
     if (reviewId != null) {
       // Submit the request with reviewId that should already be in the purgatory associated with the request endpoint.
-      RequestInfo requestInfo = submit(reviewId, request);
+      RequestInfo requestInfo = submit(reviewId, handler);
       // Ensure that if the request has already been submitted, the user is not attempting to create another user task
       // with the same parameters and endpoint.
-      sanityCheckSubmittedRequest(request, requestInfo, userTaskManager);
+      sanityCheckSubmittedRequest(handler, requestInfo, userTaskManager);
 
       return requestInfo.parameters();
     } else {
       CruiseControlParameters parameters = _config.getConfiguredInstance(classConfig,
                                                                          CruiseControlParameters.class,
                                                                          parameterConfigOverrides);
-      if (hasValidParameterNames(request, response, _config, parameters) && !parameters.parseParameters(response)) {
+      if (hasValidParameterNames(handler, parameters) && !parameters.parseParameters(handler)) {
         // Add request to purgatory and return ReviewResult.
-        ReviewResult reviewResult = addRequest(request, parameters);
-        reviewResult.writeSuccessResponse(parameters, response);
-        LOG.info("Added request {} (parameters: {}) to purgatory.", request.getPathInfo(), request.getParameterMap());
+        ReviewResult reviewResult = addRequest(handler, parameters);
+        reviewResult.writeSuccessResponse(parameters, handler);
+        LOG.info("Added request {} (parameters: {}) to purgatory.", handler.getPathInfo(), handler.getParameterMap());
       }
 
       return null;
     }
   }
 
-  private static void sanityCheckSubmittedRequest(HttpServletRequest request, RequestInfo requestInfo, UserTaskManager userTaskManager) {
+  private static void sanityCheckSubmittedRequest(CruiseControlRequestContext handler, RequestInfo requestInfo, UserTaskManager userTaskManager) {
     if (requestInfo.accessToAlreadySubmittedRequest()
-        && userTaskManager.getUserTaskByUserTaskId(userTaskManager.getUserTaskId(request), request) == null) {
+            && userTaskManager.getUserTaskByUserTaskId(userTaskManager.getUserTaskId(handler), handler) == null) {
       throw new UserRequestException(
           String.format("Attempt to start a new user task with an already submitted review. If you are trying to retrieve"
                         + " the result of a submitted execution, please use its UUID in your request header via %s flag."
@@ -165,10 +162,10 @@ public class Purgatory implements Closeable {
    * Then mark the review status as submitted.
    *
    * @param reviewId The review id for which the corresponding request is requested to be submitted.
-   * @param request The request to submit.
+   * @param handler the request handler.
    * @return Submitted request info.
    */
-  public synchronized RequestInfo submit(int reviewId, HttpServletRequest request) {
+  public synchronized RequestInfo submit(int reviewId, CruiseControlRequestContext handler) {
     RequestInfo requestInfo = _requestInfoById.get(reviewId);
     // 1. Ensure that a request with the given review id exists in the purgatory.
     if (requestInfo == null) {
@@ -178,7 +175,7 @@ public class Purgatory implements Closeable {
     }
 
     // 2. Ensure that the request with the given review id matches the given request.
-    CruiseControlEndPoint endpoint = ParameterUtils.endPoint(request);
+    CruiseControlEndPoint endpoint = ParameterUtils.endPoint(handler);
     if (requestInfo.endPoint() != endpoint) {
       throw new UserRequestException(
           String.format("Request with review id %d is associated with %s endpoint, but the given request has %s endpoint."

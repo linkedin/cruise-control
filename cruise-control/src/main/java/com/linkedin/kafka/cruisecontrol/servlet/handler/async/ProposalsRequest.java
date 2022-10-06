@@ -21,7 +21,7 @@ public class ProposalsRequest extends AbstractAsyncRequest {
   }
 
   @Override
-  protected OperationFuture handle(String uuid) {
+  public OperationFuture handle(String uuid) {
     OperationFuture future = new OperationFuture("Get customized proposals");
     pending(future.operationProgress());
     _asyncKafkaCruiseControl.sessionExecutor().submit(new ProposalsRunnable(_asyncKafkaCruiseControl, future, _parameters));

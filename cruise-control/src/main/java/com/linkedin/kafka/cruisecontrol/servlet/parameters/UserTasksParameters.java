@@ -61,12 +61,12 @@ public class UserTasksParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _userTaskIds = ParameterUtils.userTaskIds(_request);
-    _clientIds = ParameterUtils.clientIds(_request);
-    _endPoints = ParameterUtils.endPoints(_request);
-    _types = ParameterUtils.types(_request);
-    _entries = ParameterUtils.entries(_request);
-    _fetchCompletedTask = ParameterUtils.fetchCompletedTask(_request);
+    _userTaskIds = ParameterUtils.userTaskIds(_handler);
+    _clientIds = ParameterUtils.clientIds(_handler);
+    _endPoints = ParameterUtils.endPoints(_handler);
+    _types = ParameterUtils.types(_handler);
+    _entries = ParameterUtils.entries(_handler);
+    _fetchCompletedTask = ParameterUtils.fetchCompletedTask(_handler);
   }
 
   public Set<UUID> userTaskIds() {

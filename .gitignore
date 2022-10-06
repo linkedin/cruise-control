@@ -17,3 +17,6 @@ target/
 access.log
 *.egg
 /bin/
+.vertx
+**openapi.json
+fileStore/failedBrokers.txt

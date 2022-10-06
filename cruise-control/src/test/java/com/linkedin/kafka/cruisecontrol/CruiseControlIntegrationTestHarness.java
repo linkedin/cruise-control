@@ -17,7 +17,7 @@ import java.util.Properties;
 public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegrationTestHarness {
 
   protected KafkaCruiseControlConfig _config;
-  protected KafkaCruiseControlApp _app;
+  protected KafkaCruiseControlServletApp _app;
 
   protected static final String LOCALHOST = "localhost";
   private static final int ANY_PORT = 0;
@@ -43,7 +43,7 @@ public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegra
     super.setUp();
     _brokers.values().forEach(CCEmbeddedBroker::startup);
     setupConfig();
-    _app = new KafkaCruiseControlApp(_config, ANY_PORT, LOCALHOST);
+    _app = new KafkaCruiseControlServletApp(_config, ANY_PORT, LOCALHOST);
     _app.start();
   }
 
@@ -59,3 +59,4 @@ public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegra
     super.tearDown();
   }
 }
+

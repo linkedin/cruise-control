@@ -21,7 +21,7 @@ public class ClusterLoadRequest extends AbstractAsyncRequest {
   }
 
   @Override
-  protected OperationFuture handle(String uuid) {
+  public OperationFuture handle(String uuid) {
     OperationFuture future = new OperationFuture("Get broker stats");
     pending(future.operationProgress());
     _asyncKafkaCruiseControl.sessionExecutor().submit(new LoadRunnable(_asyncKafkaCruiseControl, future, _parameters));

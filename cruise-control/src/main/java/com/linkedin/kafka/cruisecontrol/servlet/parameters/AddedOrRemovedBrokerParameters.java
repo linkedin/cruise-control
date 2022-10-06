@@ -10,8 +10,8 @@ import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrateg
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
 import java.util.Collections;
-import java.util.Map;
 import java.util.Set;
+import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
@@ -69,20 +69,20 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _brokerIds = ParameterUtils.brokerIds(_request, false);
-    _dryRun = ParameterUtils.getDryRun(_request);
-    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true, false);
-    _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_request);
-    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false, false);
-    _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_request);
-    _replicationThrottle = ParameterUtils.replicationThrottle(_request, _config);
-    _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
-    _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
+    _brokerIds = ParameterUtils.brokerIds(_handler, false);
+    _dryRun = ParameterUtils.getDryRun(_handler);
+    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_handler, true, false);
+    _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_handler);
+    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_handler, false, false);
+    _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_handler);
+    _replicationThrottle = ParameterUtils.replicationThrottle(_handler, _config);
+    _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_handler);
+    _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_handler, _config);
     boolean twoStepVerificationEnabled = _config.getBoolean(WebServerConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
-    _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
+    _reviewId = ParameterUtils.reviewId(_handler, twoStepVerificationEnabled);
     boolean requestReasonRequired = _config.getBoolean(ExecutorConfig.REQUEST_REASON_REQUIRED_CONFIG);
-    _reason = ParameterUtils.reason(_request, requestReasonRequired && !_dryRun);
-    _stopOngoingExecution = ParameterUtils.stopOngoingExecution(_request);
+    _reason = ParameterUtils.reason(_handler, requestReasonRequired && !_dryRun);
+    _stopOngoingExecution = ParameterUtils.stopOngoingExecution(_handler);
     if (_stopOngoingExecution && _dryRun) {
       throw new UserRequestException(String.format("%s and %s cannot both be set to true.", STOP_ONGOING_EXECUTION_PARAM, DRY_RUN_PARAM));
     }
