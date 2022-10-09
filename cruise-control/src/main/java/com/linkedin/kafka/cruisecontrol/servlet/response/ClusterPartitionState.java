@@ -112,7 +112,7 @@ public class ClusterPartitionState {
         }
         for (PartitionInfo partitionInfo : _kafkaCluster.partitionsForTopic(topic)) {
           int numInsyncReplicas = partitionInfo.inSyncReplicas().length;
-          boolean isURP = numInsyncReplicas != partitionInfo.replicas().length;
+          boolean isURP = !(partitionInfo.inSyncReplicas() == partitionInfo.replicas());
           if (numInsyncReplicas < minInsyncReplicas) {
             underMinIsrPartitions.add(partitionInfo);
           }
