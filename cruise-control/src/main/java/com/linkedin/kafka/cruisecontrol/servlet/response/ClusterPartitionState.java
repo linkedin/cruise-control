@@ -15,10 +15,12 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import java.util.Arrays;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.config.TopicConfig;
 import org.apache.kafka.common.Node;
+
 
 
 @JsonResponseClass
@@ -118,7 +120,7 @@ public class ClusterPartitionState {
           int numReplicas = partitionInfo.replicas().length;
           Node[] replicas = Arrays.copyOf(partitionInfo.replicas(), numReplicas);
           Arrays.sort(replicas);
-          boolean isURP = !(replicas == inSyncReplicas);
+          boolean isURP = !(Arrays.equals(replicas, inSyncReplicas));
           if (numInsyncReplicas < minInsyncReplicas) {
             underMinIsrPartitions.add(partitionInfo);
           }
