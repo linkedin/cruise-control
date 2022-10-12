@@ -18,6 +18,7 @@ import java.util.stream.Stream;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.config.TopicConfig;
+import org.apache.kafka.common.Node;
 
 
 @JsonResponseClass
@@ -112,7 +113,12 @@ public class ClusterPartitionState {
         }
         for (PartitionInfo partitionInfo : _kafkaCluster.partitionsForTopic(topic)) {
           int numInsyncReplicas = partitionInfo.inSyncReplicas().length;
-          boolean isURP = !(partitionInfo.inSyncReplicas() == partitionInfo.replicas());
+          Node[] inSyncReplicas = Arrays.copyOf(partitionInfo.inSyncReplicas(), numInsyncReplicas);
+          Arrays.sort(inSyncReplicas);
+          int numReplicas = partitionInfo.replicas().length;
+          Node[] replicas = Arrays.copyOf(partitionInfo.replicas(), numReplicas);
+          Arrays.sort(replicas);
+          boolean isURP = !(replicas == inSyncReplicas);
           if (numInsyncReplicas < minInsyncReplicas) {
             underMinIsrPartitions.add(partitionInfo);
           }
