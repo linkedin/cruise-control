@@ -93,8 +93,7 @@ public class ClusterPartitionState {
    * @param partitionInfo the {@link PartitionInfo} object that contains partition info.
    * @return the effective boolean under replicated status of a partition.
    */
-  protected boolean isURP(PartitionInfo partitionInfo)
-  {
+  protected boolean isURP(PartitionInfo partitionInfo) {
     int numInsyncReplicas = partitionInfo.inSyncReplicas().length;
     Node[] inSyncReplicas = Arrays.copyOf(partitionInfo.inSyncReplicas(), numInsyncReplicas);
     Arrays.sort(inSyncReplicas);
