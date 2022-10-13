@@ -86,6 +86,24 @@ public class ClusterPartitionState {
     }
     return jsonMap;
   }
+  
+  /**
+   * Check the Kafka Partition State if it is Under Replicated or not.
+   * 
+   * @param partitionInfo the {@link PartitionInfo} object that contains partition info.
+   * @return the effective boolean under replicated status of a partition.
+   */
+  protected boolean isURP(PartitionInfo partitionInfo)
+  {
+    int numInsyncReplicas = partitionInfo.inSyncReplicas().length;
+    Node[] inSyncReplicas = Arrays.copyOf(partitionInfo.inSyncReplicas(), numInsyncReplicas);
+    Arrays.sort(inSyncReplicas);
+    int numReplicas = partitionInfo.replicas().length;
+    Node[] replicas = Arrays.copyOf(partitionInfo.replicas(), numReplicas);
+    Arrays.sort(replicas);
+    boolean isURP = !(Arrays.equals(replicas, inSyncReplicas));
+    return isURP;
+  }
 
   /**
    * Gather the Kafka partition state within the given under replicated, offline, under minIsr,
@@ -115,12 +133,7 @@ public class ClusterPartitionState {
         }
         for (PartitionInfo partitionInfo : _kafkaCluster.partitionsForTopic(topic)) {
           int numInsyncReplicas = partitionInfo.inSyncReplicas().length;
-          Node[] inSyncReplicas = Arrays.copyOf(partitionInfo.inSyncReplicas(), numInsyncReplicas);
-          Arrays.sort(inSyncReplicas);
-          int numReplicas = partitionInfo.replicas().length;
-          Node[] replicas = Arrays.copyOf(partitionInfo.replicas(), numReplicas);
-          Arrays.sort(replicas);
-          boolean isURP = !(Arrays.equals(replicas, inSyncReplicas));
+          boolean isURP = isURP(partitionInfo);
           if (numInsyncReplicas < minInsyncReplicas) {
             underMinIsrPartitions.add(partitionInfo);
           }
