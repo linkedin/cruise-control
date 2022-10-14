@@ -100,7 +100,7 @@ public class ClusterPartitionState {
     int numReplicas = partitionInfo.replicas().length;
     Node[] replicas = Arrays.copyOf(partitionInfo.replicas(), numReplicas);
     Arrays.sort(replicas);
-    boolean isURP = !(Arrays.equals(replicas, inSyncReplicas));
+    boolean isURP = !Arrays.equals(replicas, inSyncReplicas);
     return isURP;
   }
 
