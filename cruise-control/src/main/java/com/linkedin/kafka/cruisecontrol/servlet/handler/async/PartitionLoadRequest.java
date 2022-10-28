@@ -21,7 +21,7 @@ public class PartitionLoadRequest extends AbstractAsyncRequest {
   }
 
   @Override
-  public OperationFuture handle(String uuid) {
+  protected OperationFuture handle(String uuid) {
     OperationFuture future = new OperationFuture(String.format("Get partition load from %d to %d", _parameters.startMs(), _parameters.endMs()));
     pending(future.operationProgress());
     _asyncKafkaCruiseControl.sessionExecutor().submit(new PartitionLoadRunnable(_asyncKafkaCruiseControl, future, _parameters));

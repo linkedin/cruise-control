@@ -90,7 +90,7 @@ public class KafkaCruiseControlRequestHandler {
         }
     }
 
-    private void handleGet(CruiseControlRequestContext handler,
+    private void handleGet(CruiseControlRequestContext requestContext,
                            CruiseControlEndPoint endPoint,
                            Map<String, Object> requestConfigOverrides,
                            Map<String, Object> parameterConfigOverrides)
@@ -104,16 +104,16 @@ public class KafkaCruiseControlRequestHandler {
         CruiseControlParameters parameters = _cruiseControlEndPoints.config().getConfiguredInstance(requestParameter.parametersClass(),
                 CruiseControlParameters.class,
                 parameterConfigOverrides);
-        if (hasValidParameterNames(handler, parameters)) {
+        if (hasValidParameterNames(requestContext, parameters)) {
             requestConfigOverrides.put(requestParameter.parameterObject(), parameters);
             Request ccRequest = _cruiseControlEndPoints.config().getConfiguredInstance(requestParameter.requestClass(),
                     Request.class, requestConfigOverrides);
 
-            ccRequest.handle(handler);
+            ccRequest.handle(requestContext);
         }
     }
 
-    private void handlePost(CruiseControlRequestContext handler,
+    private void handlePost(CruiseControlRequestContext requestContext,
                             CruiseControlEndPoint endPoint,
                             Map<String, Object> requestConfigOverrides,
                             Map<String, Object> parameterConfigOverrides)
@@ -129,19 +129,19 @@ public class KafkaCruiseControlRequestHandler {
 
             parameters = _cruiseControlEndPoints.config().getConfiguredInstance(requestParameter.parametersClass(),
                     CruiseControlParameters.class, parameterConfigOverrides);
-            if (!hasValidParameterNames(handler, parameters)) {
+            if (!hasValidParameterNames(requestContext, parameters)) {
                 return;
             }
         } else if (!_cruiseControlEndPoints.twoStepVerification()) {
             // Do not add to the purgatory if the two-step verification is disabled.
             parameters = _cruiseControlEndPoints.config().getConfiguredInstance(requestParameter.parametersClass(),
                     CruiseControlParameters.class, parameterConfigOverrides);
-            if (!hasValidParameterNames(handler, parameters)) {
+            if (!hasValidParameterNames(requestContext, parameters)) {
                 return;
             }
         } else {
             // Add to the purgatory if the two-step verification is enabled.
-            parameters = _cruiseControlEndPoints.purgatory().maybeAddToPurgatory(handler, requestParameter.parametersClass(),
+            parameters = _cruiseControlEndPoints.purgatory().maybeAddToPurgatory(requestContext, requestParameter.parametersClass(),
                     parameterConfigOverrides, _cruiseControlEndPoints.userTaskManager());
         }
 
@@ -154,7 +154,7 @@ public class KafkaCruiseControlRequestHandler {
 
         if (ccRequest != null) {
             // ccRequest would be null if request is added to Purgatory.
-            ccRequest.handle(handler);
+            ccRequest.handle(requestContext);
         }
     }
 

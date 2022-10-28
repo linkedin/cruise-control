@@ -165,12 +165,12 @@ public final class ParameterUtils {
   }
 
   /**
-   * @param handler The Http request.
+   * @param requestContext The Http request.
    * @return The endpoint specified in the given request.
    */
-  public static CruiseControlEndPoint endPoint(CruiseControlRequestContext handler) {
+  public static CruiseControlEndPoint endPoint(CruiseControlRequestContext requestContext) {
     List<CruiseControlEndPoint> supportedEndpoints;
-    switch (handler.getMethod()) {
+    switch (requestContext.getMethod()) {
       case GET_METHOD:
         supportedEndpoints = CruiseControlEndPoint.getEndpoints();
         break;
@@ -178,9 +178,9 @@ public final class ParameterUtils {
         supportedEndpoints = CruiseControlEndPoint.postEndpoints();
         break;
       default:
-        throw new UserRequestException("Unsupported request method: " + handler.getMethod() + ".");
+        throw new UserRequestException("Unsupported request method: " + requestContext.getMethod() + ".");
     }
-    String pathInfo = handler.getPathInfo();
+    String pathInfo = requestContext.getPathInfo();
     if (pathInfo == null) {
       // URL does not have any extra path information
       return null;
@@ -196,27 +196,27 @@ public final class ParameterUtils {
   }
 
   static void handleParameterParseException(Exception e,
-                                            CruiseControlRequestContext handler,
+                                            CruiseControlRequestContext requestContext,
                                             String errorMessage,
                                             boolean json,
                                             boolean wantJsonSchema) throws IOException {
-    writeErrorResponse(handler, e, errorMessage, SC_BAD_REQUEST, json, wantJsonSchema);
+    writeErrorResponse(requestContext, e, errorMessage, SC_BAD_REQUEST, json, wantJsonSchema);
   }
 
   /**
    * Check whether the request has valid parameter names. If not, populate the HTTP response with the corresponding
    * error message and return {@code false}, return {@code true} otherwise.
    *
-   * @param handler the request handler.
+   * @param requestContext the request context.
    * @param parameters Request parameters
    * @return {@code true} if the request has valid parameter names, {@code false} otherwise (and response is populated).
    */
-  public static boolean hasValidParameterNames(CruiseControlRequestContext handler,
+  public static boolean hasValidParameterNames(CruiseControlRequestContext requestContext,
                                                CruiseControlParameters parameters) throws IOException {
-    CruiseControlEndPoint endPoint = endPoint(handler);
+    CruiseControlEndPoint endPoint = endPoint(requestContext);
     Set<String> validParamNames = parameters.caseInsensitiveParameterNames();
     Set<String> userParams = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    userParams.addAll(handler.getParameterMap().keySet());
+    userParams.addAll(requestContext.getParameterMap().keySet());
     if (validParamNames != null) {
       userParams.removeAll(validParamNames);
     }
@@ -224,8 +224,8 @@ public final class ParameterUtils {
     if (!userParams.isEmpty()) {
       // User request specifies parameters that are not a subset of the valid parameters.
       String errorMessage = String.format("Unrecognized endpoint parameters in %s %s request: %s.",
-              endPoint, handler.getMethod(), userParams);
-      writeErrorResponse(handler, null, errorMessage, SC_BAD_REQUEST, wantJSON(handler), wantResponseSchema(handler));
+              endPoint, requestContext.getMethod(), userParams);
+      writeErrorResponse(requestContext, null, errorMessage, SC_BAD_REQUEST, wantJSON(requestContext), wantResponseSchema(requestContext));
       return false;
     }
     return true;
@@ -243,73 +243,73 @@ public final class ParameterUtils {
   /**
    * Get the boolean parameter.
    *
-   * @param handler the request handler.
+   * @param requestContext the request context.
    * @param parameter Parameter to parse from the request.
    * @param defaultIfMissing Default value to set if the request does not contain the parameter.
    * @return The specified value for the parameter, or defaultIfMissing if the parameter is missing.
    */
-  public static boolean getBooleanParam(CruiseControlRequestContext handler, String parameter, boolean defaultIfMissing) {
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), parameter);
-    return parameterString == null ? defaultIfMissing : Boolean.parseBoolean(handler.getParameter(parameterString));
+  public static boolean getBooleanParam(CruiseControlRequestContext requestContext, String parameter, boolean defaultIfMissing) {
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), parameter);
+    return parameterString == null ? defaultIfMissing : Boolean.parseBoolean(requestContext.getParameter(parameterString));
   }
 
   /**
    * Get the long parameter parameter.
    *
-   * @param handler HTTP request received by Cruise Control.
+   * @param requestContext HTTP request received by Cruise Control.
    * @param parameter Parameter to parse from the request.
    * @param defaultIfMissing Default value to set if the request does not contain the parameter.
    * @return The specified value for the parameter, or defaultIfMissing if the parameter is missing.
    */
-  public static Long getLongParam(CruiseControlRequestContext handler, String parameter, @Nullable Long defaultIfMissing) {
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), parameter);
-    return parameterString == null ? defaultIfMissing : Long.valueOf(handler.getParameter(parameterString));
+  public static Long getLongParam(CruiseControlRequestContext requestContext, String parameter, @Nullable Long defaultIfMissing) {
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), parameter);
+    return parameterString == null ? defaultIfMissing : Long.valueOf(requestContext.getParameter(parameterString));
   }
 
   /**
    * Get the {@link List} parameter.
    *
-   * @param handler the request handler.
+   * @param requestContext the request context.
    * @param parameter Parameter to parse from the request.
    * @return The specified value for the parameter, or empty List if the parameter is missing.
    */
-  public static List<String> getListParam(CruiseControlRequestContext handler, String parameter) throws UnsupportedEncodingException {
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), parameter);
+  public static List<String> getListParam(CruiseControlRequestContext requestContext, String parameter) throws UnsupportedEncodingException {
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), parameter);
     List<String> retList = parameterString == null ? new ArrayList<>()
-            : Arrays.asList(urlDecode(handler.getParameter(parameterString)).split(","));
+            : Arrays.asList(urlDecode(requestContext.getParameter(parameterString)).split(","));
     retList.removeIf(String::isEmpty);
     return Collections.unmodifiableList(retList);
   }
 
   /**
    * Get the {@link List} parameter.
-   * @param handler the request handler.
+   * @param requestContext the request context.
    * @return The specified value for the parameter, or empty List if the parameter is missing.
    */
 
-  public static boolean wantJSON(CruiseControlRequestContext handler) {
-    return getBooleanParam(handler, JSON_PARAM, false);
+  public static boolean wantJSON(CruiseControlRequestContext requestContext) {
+    return getBooleanParam(requestContext, JSON_PARAM, false);
   }
 
-  public static boolean wantResponseSchema(CruiseControlRequestContext handler) {
-    return getBooleanParam(handler, GET_RESPONSE_SCHEMA, false);
+  public static boolean wantResponseSchema(CruiseControlRequestContext requestContext) {
+    return getBooleanParam(requestContext, GET_RESPONSE_SCHEMA, false);
   }
 
-  static boolean allowCapacityEstimation(CruiseControlRequestContext handler) {
-    return getBooleanParam(handler, ALLOW_CAPACITY_ESTIMATION_PARAM, true);
+  static boolean allowCapacityEstimation(CruiseControlRequestContext requestContext) {
+    return getBooleanParam(requestContext, ALLOW_CAPACITY_ESTIMATION_PARAM, true);
   }
 
-  static boolean skipRackAwarenessCheck(CruiseControlRequestContext handler) {
-    return getBooleanParam(handler, SKIP_RACK_AWARENESS_CHECK_PARAM, false);
+  static boolean skipRackAwarenessCheck(CruiseControlRequestContext requestContext) {
+    return getBooleanParam(requestContext, SKIP_RACK_AWARENESS_CHECK_PARAM, false);
   }
 
-  static boolean stopOngoingExecution(CruiseControlRequestContext handler) {
-    return getBooleanParam(handler, STOP_ONGOING_EXECUTION_PARAM, false);
+  static boolean stopOngoingExecution(CruiseControlRequestContext requestContext) {
+    return getBooleanParam(requestContext, STOP_ONGOING_EXECUTION_PARAM, false);
   }
 
-  private static boolean excludeBrokers(CruiseControlRequestContext handler, String parameter, boolean defaultIfMissing) {
-    boolean isKafkaAssignerMode = isKafkaAssignerMode(handler);
-    boolean excludeBrokers = getBooleanParam(handler, parameter, defaultIfMissing);
+  private static boolean excludeBrokers(CruiseControlRequestContext requestContext, String parameter, boolean defaultIfMissing) {
+    boolean isKafkaAssignerMode = isKafkaAssignerMode(requestContext);
+    boolean excludeBrokers = getBooleanParam(requestContext, parameter, defaultIfMissing);
     if (isKafkaAssignerMode && excludeBrokers) {
       throw new UserRequestException("Kafka assigner mode does not support excluding brokers.");
     }
@@ -317,11 +317,11 @@ public final class ParameterUtils {
     return excludeBrokers;
   }
 
-  private static boolean getBooleanExcludeGiven(CruiseControlRequestContext handler, String getParameter, Set<String> excludeParameters) {
-    boolean booleanParam = getBooleanParam(handler, getParameter, false);
+  private static boolean getBooleanExcludeGiven(CruiseControlRequestContext requestContext, String getParameter, Set<String> excludeParameters) {
+    boolean booleanParam = getBooleanParam(requestContext, getParameter, false);
     if (booleanParam) {
       for (String excludeParameter : excludeParameters) {
-        if (caseSensitiveParameterName(handler.getParameterMap(), excludeParameter) != null) {
+        if (caseSensitiveParameterName(requestContext.getParameterMap(), excludeParameter) != null) {
           throw new UserRequestException("Cannot set " + getParameter + " parameter to true when explicitly specifying "
                                          + excludeParameter + " in the request.");
         }
@@ -333,123 +333,123 @@ public final class ParameterUtils {
   /**
    * Default: {@code false} -- i.e. recently demoted brokers may receive leadership from the other brokers as long as
    * {@link ExecutorConfig#DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG}
-   * @param handler the request handler.
+   * @param requestContext the request context.
    * @return The value of {@link #EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM} parameter.
    */
-  static boolean excludeRecentlyDemotedBrokers(CruiseControlRequestContext handler) {
-    return excludeBrokers(handler, EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM, false);
+  static boolean excludeRecentlyDemotedBrokers(CruiseControlRequestContext requestContext) {
+    return excludeBrokers(requestContext, EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM, false);
   }
 
   /**
    * Default: {@code true} -- i.e. recently removed brokers may not receive replicas from the other brokers as long as
    * {@link ExecutorConfig#REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG}.
-   * @param handler the request handler.
+   * @param requestContext the request context.
    * @return The value of {@link #EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM} parameter.
    */
-  static boolean excludeRecentlyRemovedBrokers(CruiseControlRequestContext handler) {
-    return excludeBrokers(handler, EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM, true);
+  static boolean excludeRecentlyRemovedBrokers(CruiseControlRequestContext requestContext) {
+    return excludeBrokers(requestContext, EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM, true);
   }
 
-  static boolean wantMaxLoad(CruiseControlRequestContext handler) {
-    return getBooleanParam(handler, MAX_LOAD_PARAM, false);
+  static boolean wantMaxLoad(CruiseControlRequestContext requestContext) {
+    return getBooleanParam(requestContext, MAX_LOAD_PARAM, false);
   }
 
-  static boolean wantAvgLoad(CruiseControlRequestContext handler) {
-    return getBooleanParam(handler, AVG_LOAD_PARAM, false);
+  static boolean wantAvgLoad(CruiseControlRequestContext requestContext) {
+    return getBooleanParam(requestContext, AVG_LOAD_PARAM, false);
   }
 
-  static boolean isVerbose(CruiseControlRequestContext handler) {
-    return getBooleanParam(handler, VERBOSE_PARAM, false);
+  static boolean isVerbose(CruiseControlRequestContext requestContext) {
+    return getBooleanParam(requestContext, VERBOSE_PARAM, false);
   }
 
-  static boolean isSuperVerbose(CruiseControlRequestContext handler) {
-    return getBooleanParam(handler, SUPER_VERBOSE_PARAM, false);
+  static boolean isSuperVerbose(CruiseControlRequestContext requestContext) {
+    return getBooleanParam(requestContext, SUPER_VERBOSE_PARAM, false);
   }
 
-  static boolean clearMetrics(CruiseControlRequestContext handler) {
-    return getBooleanParam(handler, CLEAR_METRICS_PARAM, true);
+  static boolean clearMetrics(CruiseControlRequestContext requestContext) {
+    return getBooleanParam(requestContext, CLEAR_METRICS_PARAM, true);
   }
 
-  private static boolean isKafkaAssignerMode(CruiseControlRequestContext handler) {
-    return getBooleanParam(handler, KAFKA_ASSIGNER_MODE_PARAM, false);
+  private static boolean isKafkaAssignerMode(CruiseControlRequestContext requestContext) {
+    return getBooleanParam(requestContext, KAFKA_ASSIGNER_MODE_PARAM, false);
   }
 
-  static boolean isRebalanceDiskMode(CruiseControlRequestContext handler) {
-    return getBooleanParam(handler, REBALANCE_DISK_MODE_PARAM, false);
+  static boolean isRebalanceDiskMode(CruiseControlRequestContext requestContext) {
+    return getBooleanParam(requestContext, REBALANCE_DISK_MODE_PARAM, false);
   }
 
-  static boolean populateDiskInfo(CruiseControlRequestContext handler) {
-    return getBooleanParam(handler, POPULATE_DISK_INFO_PARAM, false);
+  static boolean populateDiskInfo(CruiseControlRequestContext requestContext) {
+    return getBooleanParam(requestContext, POPULATE_DISK_INFO_PARAM, false);
   }
 
-  static boolean capacityOnly(CruiseControlRequestContext handler) {
+  static boolean capacityOnly(CruiseControlRequestContext requestContext) {
     Set<String> excludeParameters =
         Set.of(TIME_PARAM, END_MS_PARAM, START_MS_PARAM, ALLOW_CAPACITY_ESTIMATION_PARAM, POPULATE_DISK_INFO_PARAM);
-    return getBooleanExcludeGiven(handler, CAPACITY_ONLY_PARAM, excludeParameters);
+    return getBooleanExcludeGiven(requestContext, CAPACITY_ONLY_PARAM, excludeParameters);
   }
 
-  static boolean ignoreProposalCache(CruiseControlRequestContext handler) {
-    return getBooleanExcludeGiven(handler, IGNORE_PROPOSAL_CACHE_PARAM, Collections.singleton(GOALS_PARAM));
+  static boolean ignoreProposalCache(CruiseControlRequestContext requestContext) {
+    return getBooleanExcludeGiven(requestContext, IGNORE_PROPOSAL_CACHE_PARAM, Collections.singleton(GOALS_PARAM));
   }
 
-  static boolean useReadyDefaultGoals(CruiseControlRequestContext handler) {
-    return getBooleanExcludeGiven(handler, USE_READY_DEFAULT_GOALS_PARAM, Collections.singleton(GOALS_PARAM));
+  static boolean useReadyDefaultGoals(CruiseControlRequestContext requestContext) {
+    return getBooleanExcludeGiven(requestContext, USE_READY_DEFAULT_GOALS_PARAM, Collections.singleton(GOALS_PARAM));
   }
 
-  static boolean fastMode(CruiseControlRequestContext handler) {
-    return getBooleanParam(handler, FAST_MODE_PARAM, true);
+  static boolean fastMode(CruiseControlRequestContext requestContext) {
+    return getBooleanParam(requestContext, FAST_MODE_PARAM, true);
   }
 
-  static boolean getDryRun(CruiseControlRequestContext handler) {
-    return getBooleanParam(handler, DRY_RUN_PARAM, true);
+  static boolean getDryRun(CruiseControlRequestContext requestContext) {
+    return getBooleanParam(requestContext, DRY_RUN_PARAM, true);
   }
 
-  static boolean forceExecutionStop(CruiseControlRequestContext handler) {
-    return getBooleanParam(handler, FORCE_STOP_PARAM, false);
+  static boolean forceExecutionStop(CruiseControlRequestContext requestContext) {
+    return getBooleanParam(requestContext, FORCE_STOP_PARAM, false);
   }
 
-  static boolean stopExternalAgent(CruiseControlRequestContext handler) {
-    return getBooleanParam(handler, STOP_EXTERNAL_AGENT_PARAM, true);
+  static boolean stopExternalAgent(CruiseControlRequestContext requestContext) {
+    return getBooleanParam(requestContext, STOP_EXTERNAL_AGENT_PARAM, true);
   }
 
-  static boolean developerMode(CruiseControlRequestContext handler) {
-    return getBooleanParam(handler, DEVELOPER_MODE_PARAM, false);
+  static boolean developerMode(CruiseControlRequestContext requestContext) {
+    return getBooleanParam(requestContext, DEVELOPER_MODE_PARAM, false);
   }
 
-  static boolean throttleAddedOrRemovedBrokers(CruiseControlRequestContext handler, EndPoint endPoint) {
-    return endPoint == ADD_BROKER ? getBooleanParam(handler, THROTTLE_ADDED_BROKER_PARAM, true)
-            : getBooleanParam(handler, THROTTLE_REMOVED_BROKER_PARAM, true);
+  static boolean throttleAddedOrRemovedBrokers(CruiseControlRequestContext requestContext, EndPoint endPoint) {
+    return endPoint == ADD_BROKER ? getBooleanParam(requestContext, THROTTLE_ADDED_BROKER_PARAM, true)
+            : getBooleanParam(requestContext, THROTTLE_REMOVED_BROKER_PARAM, true);
   }
 
-  static Long replicationThrottle(CruiseControlRequestContext handler, KafkaCruiseControlConfig config) {
-    Long value = getLongParam(handler, REPLICATION_THROTTLE_PARAM, config.getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG));
+  static Long replicationThrottle(CruiseControlRequestContext requestContext, KafkaCruiseControlConfig config) {
+    Long value = getLongParam(requestContext, REPLICATION_THROTTLE_PARAM, config.getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG));
     if (value != null && value < 0) {
       throw new UserRequestException(String.format("Requested rebalance throttle must be non-negative (Requested: %s).", value));
     }
     return value;
   }
 
-  static Long time(CruiseControlRequestContext handler) {
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), TIME_PARAM);
+  static Long time(CruiseControlRequestContext requestContext) {
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), TIME_PARAM);
     if (parameterString == null) {
       return null;
     }
 
-    if (caseSensitiveParameterName(handler.getParameterMap(), END_MS_PARAM) != null) {
+    if (caseSensitiveParameterName(requestContext.getParameterMap(), END_MS_PARAM) != null) {
       throw new UserRequestException(String.format("Parameter %s and parameter %s are mutually exclusive and should "
                                                    + "not be specified in the same request.", TIME_PARAM, END_MS_PARAM));
     }
 
-    String timeString = handler.getParameter(parameterString);
+    String timeString = requestContext.getParameter(parameterString);
     return "NOW".equalsIgnoreCase(timeString) ? System.currentTimeMillis() : Long.parseLong(timeString);
   }
 
-  static Long startMsOrDefault(CruiseControlRequestContext handler, @Nullable Long defaultIfMissing) {
-    return getLongParam(handler, START_MS_PARAM, defaultIfMissing);
+  static Long startMsOrDefault(CruiseControlRequestContext controlRequestContext, @Nullable Long defaultIfMissing) {
+    return getLongParam(controlRequestContext, START_MS_PARAM, defaultIfMissing);
   }
 
-  static Long endMsOrDefault(CruiseControlRequestContext handler, @Nullable Long defaultIfMissing) {
-    return getLongParam(handler, END_MS_PARAM, defaultIfMissing);
+  static Long endMsOrDefault(CruiseControlRequestContext requestContext, @Nullable Long defaultIfMissing) {
+    return getLongParam(requestContext, END_MS_PARAM, defaultIfMissing);
   }
 
   static void validateTimeRange(long startMs, long endMs) {
@@ -459,16 +459,16 @@ public final class ParameterUtils {
     }
   }
 
-  static Pattern topic(CruiseControlRequestContext handler) {
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), TOPIC_PARAM);
-    return parameterString == null ? null : Pattern.compile(handler.getParameter(parameterString));
+  static Pattern topic(CruiseControlRequestContext requestContext) {
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), TOPIC_PARAM);
+    return parameterString == null ? null : Pattern.compile(requestContext.getParameter(parameterString));
   }
 
   @SuppressWarnings("unchecked")
-  private static Map<Short, Pattern> topicPatternByReplicationFactorFromBody(CruiseControlRequestContext handler) {
+  private static Map<Short, Pattern> topicPatternByReplicationFactorFromBody(CruiseControlRequestContext requestContext) {
     Map<Short, Pattern> topicPatternByReplicationFactor;
     try {
-      Map<String, Object> json = handler.getJson();
+      Map<String, Object> json = requestContext.getJson();
       if (json == null) {
         return null;
       }
@@ -493,10 +493,10 @@ public final class ParameterUtils {
     return topicPatternByReplicationFactor;
   }
 
-  static Map<Short, Pattern> topicPatternByReplicationFactor(CruiseControlRequestContext handler) {
-    Pattern topic = topic(handler);
-    Short replicationFactor = replicationFactor(handler);
-    Map<Short, Pattern> topicPatternByReplicationFactorFromBody = topicPatternByReplicationFactorFromBody(handler);
+  static Map<Short, Pattern> topicPatternByReplicationFactor(CruiseControlRequestContext requestContext) {
+    Pattern topic = topic(requestContext);
+    Short replicationFactor = replicationFactor(requestContext);
+    Map<Short, Pattern> topicPatternByReplicationFactorFromBody = topicPatternByReplicationFactorFromBody(requestContext);
     if (topicPatternByReplicationFactorFromBody != null) {
       if (topic != null || replicationFactor != null) {
         throw new UserRequestException("Requesting topic replication factor change from both HTTP request parameter and body"
@@ -517,12 +517,12 @@ public final class ParameterUtils {
     return Collections.emptyMap();
   }
 
-  static Double minValidPartitionRatio(CruiseControlRequestContext handler) {
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), MIN_VALID_PARTITION_RATIO_PARAM);
+  static Double minValidPartitionRatio(CruiseControlRequestContext requestContext) {
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), MIN_VALID_PARTITION_RATIO_PARAM);
     if (parameterString == null) {
       return null;
     } else {
-      double minValidPartitionRatio = Double.parseDouble(handler.getParameter(parameterString));
+      double minValidPartitionRatio = Double.parseDouble(requestContext.getParameter(parameterString));
       if (minValidPartitionRatio > 1.0 || minValidPartitionRatio < 0.0) {
         throw new UserRequestException("The requested minimum partition ratio must be in range [0.0, 1.0] (Requested: "
                                        + minValidPartitionRatio + ").");
@@ -534,49 +534,49 @@ public final class ParameterUtils {
   /**
    * Get the {@link #RESOURCE_PARAM} from the request.
    *
-   * @param handler HTTP request received by Cruise Control.
+   * @param requestContext HTTP request received by Cruise Control.
    * @return The resource String from the request, or {@link #DEFAULT_PARTITION_LOAD_RESOURCE} if {@link #RESOURCE_PARAM}
    * does not exist in the request.
    */
-  public static String resourceString(CruiseControlRequestContext handler) {
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), RESOURCE_PARAM);
-    return parameterString == null ? DEFAULT_PARTITION_LOAD_RESOURCE : handler.getParameter(parameterString);
+  public static String resourceString(CruiseControlRequestContext requestContext) {
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), RESOURCE_PARAM);
+    return parameterString == null ? DEFAULT_PARTITION_LOAD_RESOURCE : requestContext.getParameter(parameterString);
   }
 
   /**
    * Get the {@link #REASON_PARAM} from the request.
    *
-   * @param handler HTTP request received by Cruise Control.
+   * @param requestContext HTTP request received by Cruise Control.
    * @param reasonRequired {@code true} if the {@link #REASON_PARAM} parameter is required, {@code false} otherwise.
    * @return The specified value for the {@link #REASON_PARAM} parameter, or {@link #NO_REASON_PROVIDED} if parameter
    * does not exist in the request.
    */
-  public static String reason(CruiseControlRequestContext handler, boolean reasonRequired) {
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), REASON_PARAM);
+  public static String reason(CruiseControlRequestContext requestContext, boolean reasonRequired) {
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), REASON_PARAM);
     if (parameterString != null && parameterString.length() > MAX_REASON_LENGTH) {
       throw new UserRequestException(String.format("Reason cannot be longer than %d characters (attempted: %d).",
                                                    MAX_REASON_LENGTH, parameterString.length()));
     }
-    String ip = getClientIpAddress(handler);
+    String ip = getClientIpAddress(requestContext);
     if (parameterString == null && reasonRequired) {
       throw new UserRequestException("Reason is missing in request.");
     }
     return String.format("%s (Client: %s, Date: %s)", parameterString == null ? NO_REASON_PROVIDED
-            : handler.getParameter(parameterString), ip, currentUtcDate());
+            : requestContext.getParameter(parameterString), ip, currentUtcDate());
   }
 
   /**
    * Parse the given parameter to a Set of String.
    *
-   * @param handler HTTP request received by Cruise Control.
+   * @param requestContext HTTP request received by Cruise Control.
    * @param param The name of parameter.
    * @return Parsed parameter as a Set of String.
    */
-  public static Set<String> parseParamToStringSet(CruiseControlRequestContext handler, String param) throws UnsupportedEncodingException {
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), param);
+  public static Set<String> parseParamToStringSet(CruiseControlRequestContext requestContext, String param) throws UnsupportedEncodingException {
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), param);
     Set<String> paramsString = parameterString == null
                                ? new HashSet<>(0)
-            : new HashSet<>(Arrays.asList(urlDecode(handler.getParameter(parameterString)).split(",")));
+            : new HashSet<>(Arrays.asList(urlDecode(requestContext.getParameter(parameterString)).split(",")));
     paramsString.removeIf(String::isEmpty);
     return paramsString;
   }
@@ -584,25 +584,25 @@ public final class ParameterUtils {
   /**
    * Parse the given parameter to a Set of Integer.
    *
-   * @param handler the request handler.
+   * @param requestContext the request context.
    * @param param The name of parameter.
    * @return Parsed parameter as a Set of Integer.
    */
-  public static Set<Integer> parseParamToIntegerSet(CruiseControlRequestContext handler, String param) throws UnsupportedEncodingException {
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), param);
+  public static Set<Integer> parseParamToIntegerSet(CruiseControlRequestContext requestContext, String param) throws UnsupportedEncodingException {
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), param);
 
     return parameterString == null ? new HashSet<>(0)
-            : Arrays.stream(urlDecode(handler.getParameter(parameterString)).split(","))
+            : Arrays.stream(urlDecode(requestContext.getParameter(parameterString)).split(","))
                                            .map(Integer::parseInt).collect(Collectors.toSet());
   }
 
   /**
    * Empty parameter means all substates are requested.
-   * @param handler Http request.
+   * @param requestContext Http request.
    * @return The value of {@link #SUBSTATES_PARAM} parameter.
    */
-  static Set<CruiseControlState.SubState> substates(CruiseControlRequestContext handler) throws UnsupportedEncodingException {
-    Set<String> substatesString = parseParamToStringSet(handler, SUBSTATES_PARAM);
+  static Set<CruiseControlState.SubState> substates(CruiseControlRequestContext requestContext) throws UnsupportedEncodingException {
+    Set<String> substatesString = parseParamToStringSet(requestContext, SUBSTATES_PARAM);
 
     Set<CruiseControlState.SubState> substates = new HashSet<>();
     try {
@@ -617,8 +617,8 @@ public final class ParameterUtils {
     return Collections.unmodifiableSet(substates);
   }
 
-  private static Set<AnomalyType> anomalyTypes(CruiseControlRequestContext handler, boolean isEnable) throws UnsupportedEncodingException {
-    Set<String> selfHealingForString = parseParamToStringSet(handler, isEnable ? ENABLE_SELF_HEALING_FOR_PARAM
+  private static Set<AnomalyType> anomalyTypes(CruiseControlRequestContext requestContext, boolean isEnable) throws UnsupportedEncodingException {
+    Set<String> selfHealingForString = parseParamToStringSet(requestContext, isEnable ? ENABLE_SELF_HEALING_FOR_PARAM
                                                                                : DISABLE_SELF_HEALING_FOR_PARAM);
 
     Set<AnomalyType> anomalyTypes = new HashSet<>();
@@ -634,8 +634,9 @@ public final class ParameterUtils {
     return Collections.unmodifiableSet(anomalyTypes);
   }
 
-  private static Set<ConcurrencyType> concurrencyTypes(CruiseControlRequestContext handler, boolean isEnable) throws UnsupportedEncodingException {
-    Set<String> concurrencyForStringSet = parseParamToStringSet(handler, isEnable ? ENABLE_CONCURRENCY_ADJUSTER_FOR_PARAM
+  private static Set<ConcurrencyType> concurrencyTypes(CruiseControlRequestContext requestContext,
+                                                       boolean isEnable) throws UnsupportedEncodingException {
+    Set<String> concurrencyForStringSet = parseParamToStringSet(requestContext, isEnable ? ENABLE_CONCURRENCY_ADJUSTER_FOR_PARAM
                                                                                   : DISABLE_CONCURRENCY_ADJUSTER_FOR_PARAM);
 
     Set<ConcurrencyType> concurrencyTypes = new HashSet<>();
@@ -655,12 +656,12 @@ public final class ParameterUtils {
    * Get self healing types for {@link #ENABLE_SELF_HEALING_FOR_PARAM} and {@link #DISABLE_SELF_HEALING_FOR_PARAM}.
    *
    * Sanity check ensures that the same anomaly is not specified in both configs at the same request.
-   * @param handler Http servlet request.
+   * @param requestContext Http servlet request.
    * @return The self healing types for {@link #ENABLE_SELF_HEALING_FOR_PARAM} and {@link #DISABLE_SELF_HEALING_FOR_PARAM}.
    */
-  static Map<Boolean, Set<AnomalyType>> selfHealingFor(CruiseControlRequestContext handler) throws UnsupportedEncodingException {
-    Set<AnomalyType> enableSelfHealingFor = anomalyTypes(handler, true);
-    Set<AnomalyType> disableSelfHealingFor = anomalyTypes(handler, false);
+  static Map<Boolean, Set<AnomalyType>> selfHealingFor(CruiseControlRequestContext requestContext) throws UnsupportedEncodingException {
+    Set<AnomalyType> enableSelfHealingFor = anomalyTypes(requestContext, true);
+    Set<AnomalyType> disableSelfHealingFor = anomalyTypes(requestContext, false);
 
     // Sanity check: Ensure that the same anomaly is not specified in both configs at the same request.
     ensureDisjoint(enableSelfHealingFor, disableSelfHealingFor,
@@ -674,12 +675,12 @@ public final class ParameterUtils {
    * Get concurrency adjuster types for {@link #ENABLE_CONCURRENCY_ADJUSTER_FOR_PARAM} and {@link #DISABLE_CONCURRENCY_ADJUSTER_FOR_PARAM}.
    *
    * Sanity check ensures that the same concurrency type is not specified in both configs at the same request.
-   * @param handler Http request.
+   * @param requestContext Http request.
    * @return The concurrency adjuster types for {@link #ENABLE_CONCURRENCY_ADJUSTER_FOR_PARAM} and {@link #DISABLE_CONCURRENCY_ADJUSTER_FOR_PARAM}.
    */
-  static Map<Boolean, Set<ConcurrencyType>> concurrencyAdjusterFor(CruiseControlRequestContext handler) throws UnsupportedEncodingException {
-    Set<ConcurrencyType> enableConcurrencyAdjusterFor = concurrencyTypes(handler, true);
-    Set<ConcurrencyType> disableConcurrencyAdjusterFor = concurrencyTypes(handler, false);
+  static Map<Boolean, Set<ConcurrencyType>> concurrencyAdjusterFor(CruiseControlRequestContext requestContext) throws UnsupportedEncodingException {
+    Set<ConcurrencyType> enableConcurrencyAdjusterFor = concurrencyTypes(requestContext, true);
+    Set<ConcurrencyType> disableConcurrencyAdjusterFor = concurrencyTypes(requestContext, false);
 
     // Sanity check: Ensure that the same concurrency type is not specified in both configs at the same request.
     ensureDisjoint(enableConcurrencyAdjusterFor, disableConcurrencyAdjusterFor,
@@ -691,16 +692,16 @@ public final class ParameterUtils {
   }
 
   /**
-   * @param handler The http request.
+   * @param requestContext The http request.
    * @return {@code true}: enable or {@code false}: disable MinISR-based concurrency adjustment, {@code null} if the request parameter is unset.
    */
   @Nullable
-  static Boolean minIsrBasedConcurrencyAdjustment(CruiseControlRequestContext handler) {
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), MIN_ISR_BASED_CONCURRENCY_ADJUSTMENT_PARAM);
+  static Boolean minIsrBasedConcurrencyAdjustment(CruiseControlRequestContext requestContext) {
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), MIN_ISR_BASED_CONCURRENCY_ADJUSTMENT_PARAM);
     if (parameterString == null) {
       return null;
     }
-    return Boolean.parseBoolean(handler.getParameter(parameterString));
+    return Boolean.parseBoolean(requestContext.getParameter(parameterString));
   }
 
   /**
@@ -722,12 +723,12 @@ public final class ParameterUtils {
     return s == null ? null : URLDecoder.decode(s, StandardCharsets.UTF_8.name());
   }
 
-  static ReplicaMovementStrategy getReplicaMovementStrategy(CruiseControlRequestContext handler, KafkaCruiseControlConfig config)
+  static ReplicaMovementStrategy getReplicaMovementStrategy(CruiseControlRequestContext requestContext, KafkaCruiseControlConfig config)
       throws UnsupportedEncodingException {
-    if (getDryRun(handler)) {
+    if (getDryRun(requestContext)) {
       return null;
     }
-    List<String> strategies = getListParam(handler, REPLICA_MOVEMENT_STRATEGIES_PARAM);
+    List<String> strategies = getListParam(requestContext, REPLICA_MOVEMENT_STRATEGIES_PARAM);
     if (strategies.isEmpty()) {
       return null;
     }
@@ -748,14 +749,14 @@ public final class ParameterUtils {
     return strategy.chainBaseReplicaMovementStrategyIfAbsent();
   }
 
-  static List<String> getGoals(CruiseControlRequestContext handler) throws UnsupportedEncodingException {
-    boolean isKafkaAssignerMode = isKafkaAssignerMode(handler);
-    boolean isRebalanceDiskMode = isRebalanceDiskMode(handler);
+  static List<String> getGoals(CruiseControlRequestContext requestContext) throws UnsupportedEncodingException {
+    boolean isKafkaAssignerMode = isKafkaAssignerMode(requestContext);
+    boolean isRebalanceDiskMode = isRebalanceDiskMode(requestContext);
     // Sanity check isKafkaAssignerMode and isRebalanceDiskMode are not both true at the same time.
     if (isKafkaAssignerMode && isRebalanceDiskMode) {
       throw new UserRequestException("Kafka assigner mode and rebalance disk mode cannot be set the at the same time.");
     }
-    List<String> goals = getListParam(handler, GOALS_PARAM);
+    List<String> goals = getListParam(requestContext, GOALS_PARAM);
 
     // KafkaAssigner mode is assumed to use two KafkaAssigner goals, if client specifies goals in request, throw exception.
     if (isKafkaAssignerMode) {
@@ -778,13 +779,13 @@ public final class ParameterUtils {
   /**
    * Get the specified value for the {@link #ENTRIES_PARAM} parameter.
    *
-   * @param handler HTTP request received by Cruise Control.
+   * @param requestContext HTTP request received by Cruise Control.
    * @return The specified value for the {@link #ENTRIES_PARAM} parameter, or {@link Integer#MAX_VALUE} if the
    * parameter is missing.
    */
-  public static int entries(CruiseControlRequestContext handler) {
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), ENTRIES_PARAM);
-    int entries = parameterString == null ? Integer.MAX_VALUE : Integer.parseInt(handler.getParameter(parameterString));
+  public static int entries(CruiseControlRequestContext requestContext) {
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), ENTRIES_PARAM);
+    int entries = parameterString == null ? Integer.MAX_VALUE : Integer.parseInt(requestContext.getParameter(parameterString));
     if (entries <= 0) {
       throw new UserRequestException("The requested entries must be positive (Requested: " + entries + ").");
     }
@@ -801,11 +802,11 @@ public final class ParameterUtils {
 
   /**
    * Default: An empty set.
-   * @param handler the request handler.
+   * @param requestContext the request context.
    * @return Review Ids.
    */
-  public static Set<Integer> reviewIds(CruiseControlRequestContext handler) throws UnsupportedEncodingException {
-    Set<Integer> reviewIds = parseParamToIntegerSet(handler, REVIEW_IDS_PARAM);
+  public static Set<Integer> reviewIds(CruiseControlRequestContext requestContext) throws UnsupportedEncodingException {
+    Set<Integer> reviewIds = parseParamToIntegerSet(requestContext, REVIEW_IDS_PARAM);
     Set<Integer> negativeReviewIds = getNegatives(reviewIds);
     if (!negativeReviewIds.isEmpty()) {
       throw new UserRequestException(String.format("%s cannot contain negative values (requested: %s).",
@@ -817,12 +818,12 @@ public final class ParameterUtils {
 
   /**
    * Mutually exclusive with the other parameters and can only be used if two step verification is enabled.
-   * @param handler the request handler.
+   * @param requestContext the request context.
    * @param twoStepVerificationEnabled {@code true} if two-step verification is enabled, {@code false} otherwise.
    * @return Review Id.
    */
-  public static Integer reviewId(CruiseControlRequestContext handler, boolean twoStepVerificationEnabled) {
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), REVIEW_ID_PARAM);
+  public static Integer reviewId(CruiseControlRequestContext requestContext, boolean twoStepVerificationEnabled) {
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), REVIEW_ID_PARAM);
     if (parameterString == null) {
       return null;
     } else if (!twoStepVerificationEnabled) {
@@ -830,12 +831,12 @@ public final class ParameterUtils {
           String.format("%s parameter is not relevant when two-step verification is disabled.", REVIEW_ID_PARAM));
     }
 
-    Integer reviewId = Integer.parseInt(handler.getParameter(parameterString));
+    Integer reviewId = Integer.parseInt(requestContext.getParameter(parameterString));
     // Sanity check: Ensure that if a review id is provided, no other parameter is in the request.
-    if (handler.getParameterMap().size() != 1) {
+    if (requestContext.getParameterMap().size() != 1) {
       throw new UserRequestException(
           String.format("%s parameter must be mutually exclusive with other parameters (Request parameters: %s).",
-                      REVIEW_ID_PARAM, handler.getParameterMap()));
+                      REVIEW_ID_PARAM, requestContext.getParameterMap()));
     } else if (reviewId < 0) {
       throw new UserRequestException(String.format("%s cannot be negative (requested: %d).", REVIEW_ID_PARAM, reviewId));
     }
@@ -850,11 +851,11 @@ public final class ParameterUtils {
    * progress check interval is not smaller than the configured minimum limit
    * (see {@link com.linkedin.kafka.cruisecontrol.executor.Executor#setRequestedExecutionProgressCheckIntervalMs}).
    *
-   * @param handler The Http request.
+   * @param requestContext The Http request.
    * @return Execution progress check interval in milliseconds.
    */
-  static Long executionProgressCheckIntervalMs(CruiseControlRequestContext handler) {
-    return getLongParam(handler, EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM, null);
+  static Long executionProgressCheckIntervalMs(CruiseControlRequestContext requestContext) {
+    return getLongParam(requestContext, EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM, null);
   }
 
   /**
@@ -868,22 +869,22 @@ public final class ParameterUtils {
    *   <li>{true , true}  -> not defined</li>
    * </ul>
    *
-   * @param handler                        The Http request.
+   * @param requestContext                        The Http request.
    * @param isInterBrokerPartitionMovement {@code true} if inter-broker partition movement per broker.
    * @param isIntraBrokerPartitionMovement {@code true} if intra-broker partition movement.
    * @return The execution concurrency requirement dynamically set from the Http request.
    */
-  static Integer concurrentMovements(CruiseControlRequestContext handler,
+  static Integer concurrentMovements(CruiseControlRequestContext requestContext,
                                      boolean isInterBrokerPartitionMovement,
                                      boolean isIntraBrokerPartitionMovement) {
     String parameter = isInterBrokerPartitionMovement
                        ? CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM
                        : isIntraBrokerPartitionMovement ? CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM : CONCURRENT_LEADER_MOVEMENTS_PARAM;
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), parameter);
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), parameter);
     if (parameterString == null) {
       return null;
     }
-    int concurrentMovementsPerBroker = Integer.parseInt(handler.getParameter(parameterString));
+    int concurrentMovementsPerBroker = Integer.parseInt(requestContext.getParameter(parameterString));
     if (concurrentMovementsPerBroker <= 0) {
       throw new UserRequestException("The requested movement concurrency must be positive (Requested: " + concurrentMovementsPerBroker + ").");
     }
@@ -894,38 +895,38 @@ public final class ParameterUtils {
   /**
    * Get the max inter broker partition movements requirement dynamically set from the Http request.
    *
-   * @param handler The HTTP Request
+   * @param requestContext The HTTP Request
    * @return The execution upper bound requirement dynamically set from the Http request.
    */
-  static Integer maxPartitionMovements(CruiseControlRequestContext handler) {
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM);
+  static Integer maxPartitionMovements(CruiseControlRequestContext requestContext) {
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM);
     if (parameterString == null) {
       return null;
     }
-    int maxPartitionMovements = Integer.parseInt(handler.getParameter(parameterString));
+    int maxPartitionMovements = Integer.parseInt(requestContext.getParameter(parameterString));
     if (maxPartitionMovements <= 0) {
       throw new UserRequestException("The requested max partition movement must be positive (Requested: " + maxPartitionMovements + ").");
     }
     return maxPartitionMovements;
   }
 
-  static Pattern excludedTopics(CruiseControlRequestContext handler) {
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), EXCLUDED_TOPICS_PARAM);
-    return parameterString == null ? null : Pattern.compile(handler.getParameter(parameterString));
+  static Pattern excludedTopics(CruiseControlRequestContext requestContext) {
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), EXCLUDED_TOPICS_PARAM);
+    return parameterString == null ? null : Pattern.compile(requestContext.getParameter(parameterString));
   }
 
   /**
    * Default: {@link Integer#MAX_VALUE} for upper bound parameter, or {@link Integer#MIN_VALUE} otherwise.
-   * @param handler Http servlet request.
+   * @param requestContext Http servlet request.
    * @param isUpperBound {@code true} if upper bound, {@code false} if lower bound.
    * @return The value of {@link #PARTITION_PARAM} parameter.
    */
-  static int partitionBoundary(CruiseControlRequestContext handler, boolean isUpperBound) {
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), PARTITION_PARAM);
+  static int partitionBoundary(CruiseControlRequestContext requestContext, boolean isUpperBound) {
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), PARTITION_PARAM);
     if (parameterString == null) {
       return isUpperBound ? Integer.MAX_VALUE : Integer.MIN_VALUE;
     }
-    String partitionString = handler.getParameter(parameterString);
+    String partitionString = requestContext.getParameter(parameterString);
     if (!partitionString.contains("-")) {
       return Integer.parseInt(partitionString);
     }
@@ -941,16 +942,16 @@ public final class ParameterUtils {
    * Get the {@link #NUM_BROKERS_TO_ADD} from the request.
    *
    * Default: {@link ProvisionRecommendation#DEFAULT_OPTIONAL_INT}
-   * @param handler Http servlet request.
+   * @param requestContext Http servlet request.
    * @return The value of {@link #NUM_BROKERS_TO_ADD} parameter.
    * @throws UserRequestException if the number of brokers to add is not a positive integer.
    */
-  static int numBrokersToAdd(CruiseControlRequestContext handler) {
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), NUM_BROKERS_TO_ADD);
+  static int numBrokersToAdd(CruiseControlRequestContext requestContext) {
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), NUM_BROKERS_TO_ADD);
     if (parameterString == null) {
       return ProvisionRecommendation.DEFAULT_OPTIONAL_INT;
     }
-    int numBrokersToAdd = Integer.parseInt(handler.getParameter(parameterString));
+    int numBrokersToAdd = Integer.parseInt(requestContext.getParameter(parameterString));
     if (numBrokersToAdd <= 0) {
       throw new UserRequestException("The requested number of brokers to add must be positive (Requested: " + numBrokersToAdd + ").");
     }
@@ -961,29 +962,29 @@ public final class ParameterUtils {
    * Get the {@link #PARTITION_COUNT} from the request.
    *
    * Default: {@link ProvisionRecommendation#DEFAULT_OPTIONAL_INT}
-   * @param handler Http servlet request.
+   * @param requestContext Http servlet request.
    * @return The value of {@link #PARTITION_COUNT} parameter.
    * @throws UserRequestException if the targeted partition count is not a positive integer.
    */
-  static int partitionCount(CruiseControlRequestContext handler) {
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), PARTITION_COUNT);
+  static int partitionCount(CruiseControlRequestContext requestContext) {
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), PARTITION_COUNT);
     if (parameterString == null) {
       return ProvisionRecommendation.DEFAULT_OPTIONAL_INT;
     }
-    int targetPartitionCount = Integer.parseInt(handler.getParameter(parameterString));
+    int targetPartitionCount = Integer.parseInt(requestContext.getParameter(parameterString));
     if (targetPartitionCount <= 0) {
       throw new UserRequestException("The requested targeted partition count must be positive (Requested: " + targetPartitionCount + ").");
     }
     return targetPartitionCount;
   }
 
-  static Set<Integer> brokerIds(CruiseControlRequestContext handler, boolean isOptional) throws UnsupportedEncodingException {
-    Set<Integer> brokerIds = parseParamToIntegerSet(handler, BROKER_ID_PARAM);
+  static Set<Integer> brokerIds(CruiseControlRequestContext requestContext, boolean isOptional) throws UnsupportedEncodingException {
+    Set<Integer> brokerIds = parseParamToIntegerSet(requestContext, BROKER_ID_PARAM);
     if (!isOptional && brokerIds.isEmpty()) {
-      EndPoint endpoint = endPoint(handler);
+      EndPoint endpoint = endPoint(requestContext);
       if (endpoint == DEMOTE_BROKER) {
         // If it is a demote_broker request, either target broker or target disk should be specified in request.
-        if (brokerIdAndLogdirs(handler).isEmpty()) {
+        if (brokerIdAndLogdirs(requestContext).isEmpty()) {
           throw new UserRequestException("No target broker ID or target disk logdir is specified to demote.");
         }
       } else if (endpoint != FIX_OFFLINE_REPLICAS) {
@@ -993,28 +994,28 @@ public final class ParameterUtils {
     return Collections.unmodifiableSet(brokerIds);
   }
 
-  static Set<Integer> dropRecentlyRemovedBrokers(CruiseControlRequestContext handler) throws UnsupportedEncodingException {
-    return Collections.unmodifiableSet(parseParamToIntegerSet(handler, DROP_RECENTLY_REMOVED_BROKERS_PARAM));
+  static Set<Integer> dropRecentlyRemovedBrokers(CruiseControlRequestContext requestContext) throws UnsupportedEncodingException {
+    return Collections.unmodifiableSet(parseParamToIntegerSet(requestContext, DROP_RECENTLY_REMOVED_BROKERS_PARAM));
   }
 
-  static Set<Integer> dropRecentlyDemotedBrokers(CruiseControlRequestContext handler) throws UnsupportedEncodingException {
-    return Collections.unmodifiableSet(parseParamToIntegerSet(handler, DROP_RECENTLY_DEMOTED_BROKERS_PARAM));
+  static Set<Integer> dropRecentlyDemotedBrokers(CruiseControlRequestContext requestContext) throws UnsupportedEncodingException {
+    return Collections.unmodifiableSet(parseParamToIntegerSet(requestContext, DROP_RECENTLY_DEMOTED_BROKERS_PARAM));
   }
 
   /**
    * Default: An empty set.
-   * @param handler the request handler.
+   * @param requestContext the request handler.
    * @return The value of {@link #DESTINATION_BROKER_IDS_PARAM} parameter.
    */
-  static Set<Integer> destinationBrokerIds(CruiseControlRequestContext handler) throws UnsupportedEncodingException {
-    Set<Integer> brokerIds = Collections.unmodifiableSet(parseParamToIntegerSet(handler, DESTINATION_BROKER_IDS_PARAM));
+  static Set<Integer> destinationBrokerIds(CruiseControlRequestContext requestContext) throws UnsupportedEncodingException {
+    Set<Integer> brokerIds = Collections.unmodifiableSet(parseParamToIntegerSet(requestContext, DESTINATION_BROKER_IDS_PARAM));
     if (!brokerIds.isEmpty()) {
-      if (isKafkaAssignerMode(handler)) {
+      if (isKafkaAssignerMode(requestContext)) {
         throw new UserRequestException("Kafka assigner mode does not support explicitly specifying destination broker ids.");
       }
 
       // Sanity check: Ensure that BROKER_ID_PARAM and DESTINATION_BROKER_IDS_PARAM configs share nothing.
-      ensureDisjoint(parseParamToIntegerSet(handler, BROKER_ID_PARAM), brokerIds,
+      ensureDisjoint(parseParamToIntegerSet(requestContext, BROKER_ID_PARAM), brokerIds,
                      "No overlap is allowed between the specified destination broker ids and broker ids");
     }
 
@@ -1023,12 +1024,12 @@ public final class ParameterUtils {
 
   /**
    * Default: An empty set.
-   * @param handler the request handler.
+   * @param requestContext the request context.
    * @param isApprove {@code true} for {@link #APPROVE_PARAM}, {@code false} for {@link #DISCARD_PARAM}
    * @return The value of {@link #APPROVE_PARAM} parameter for approve or {@link #DISCARD_PARAM} parameter for discard.
    */
-  private static Set<Integer> review(CruiseControlRequestContext handler, boolean isApprove) throws UnsupportedEncodingException {
-    Set<Integer> parsedReview = parseParamToIntegerSet(handler, isApprove ? APPROVE_PARAM : DISCARD_PARAM);
+  private static Set<Integer> review(CruiseControlRequestContext requestContext, boolean isApprove) throws UnsupportedEncodingException {
+    Set<Integer> parsedReview = parseParamToIntegerSet(requestContext, isApprove ? APPROVE_PARAM : DISCARD_PARAM);
     return Collections.unmodifiableSet(parsedReview);
   }
 
@@ -1037,12 +1038,12 @@ public final class ParameterUtils {
    * {@link #DISCARD_PARAM}.
    *
    * Sanity check ensures that the same request cannot be specified in both configs.
-   * @param handler the request handler.
+   * @param requestContext the request context.
    * @return {@link ReviewStatus#APPROVED} and {@link ReviewStatus#DISCARDED} requests via {@link #APPROVE_PARAM} and {@link #DISCARD_PARAM}.
    */
-  static Map<ReviewStatus, Set<Integer>> reviewRequests(CruiseControlRequestContext handler) throws UnsupportedEncodingException {
-    Set<Integer> approve = review(handler, true);
-    Set<Integer> discard = review(handler, false);
+  static Map<ReviewStatus, Set<Integer>> reviewRequests(CruiseControlRequestContext requestContext) throws UnsupportedEncodingException {
+    Set<Integer> approve = review(requestContext, true);
+    Set<Integer> discard = review(requestContext, false);
 
     // Sanity check: Ensure that the same request is not specified in both configs at the same request.
     ensureDisjoint(approve, discard, "The same request cannot be specified in both approve and discard parameters");
@@ -1058,14 +1059,14 @@ public final class ParameterUtils {
 
   /**
    * Default: An empty map.
-   * @param handler the request handler.
+   * @param requestContext the request context.
    * @return The value for {@link #BROKER_ID_AND_LOGDIRS_PARAM} parameter.
    */
-  static Map<Integer, Set<String>> brokerIdAndLogdirs(CruiseControlRequestContext handler) throws UnsupportedEncodingException {
+  static Map<Integer, Set<String>> brokerIdAndLogdirs(CruiseControlRequestContext requestContext) throws UnsupportedEncodingException {
     final Map<Integer, Set<String>> brokerIdAndLogdirs = new HashMap<>();
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), BROKER_ID_AND_LOGDIRS_PARAM);
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), BROKER_ID_AND_LOGDIRS_PARAM);
     if (parameterString != null) {
-      Arrays.stream(urlDecode(handler.getParameter(parameterString)).split(",")).forEach(e -> {
+      Arrays.stream(urlDecode(requestContext.getParameter(parameterString)).split(",")).forEach(e -> {
         int index = e.indexOf(DELIMITER_BETWEEN_BROKER_ID_AND_LOGDIR);
         int brokerId = Integer.parseInt(e.substring(0, index));
         brokerIdAndLogdirs.putIfAbsent(brokerId, new HashSet<>());
@@ -1077,34 +1078,34 @@ public final class ParameterUtils {
 
   /**
    * Default: An empty set.
-   * @param handler Http request.
+   * @param requestContext Http request.
    * @return User task ids.
    */
-  public static Set<UUID> userTaskIds(CruiseControlRequestContext handler) throws UnsupportedEncodingException {
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), USER_TASK_IDS_PARAM);
+  public static Set<UUID> userTaskIds(CruiseControlRequestContext requestContext) throws UnsupportedEncodingException {
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), USER_TASK_IDS_PARAM);
     return parameterString == null
            ? Collections.emptySet()
-            : Arrays.stream(urlDecode(handler.getParameter(parameterString)).split(",")).map(UUID::fromString).collect(Collectors.toSet());
+            : Arrays.stream(urlDecode(requestContext.getParameter(parameterString)).split(",")).map(UUID::fromString).collect(Collectors.toSet());
   }
 
   /**
    * Default: An empty set.
-   * @param handler Http request.
+   * @param requestContext Http request.
    * @return Client ids.
    */
-  public static Set<String> clientIds(CruiseControlRequestContext handler) throws UnsupportedEncodingException {
-    Set<String> parsedClientIds = parseParamToStringSet(handler, CLIENT_IDS_PARAM);
+  public static Set<String> clientIds(CruiseControlRequestContext requestContext) throws UnsupportedEncodingException {
+    Set<String> parsedClientIds = parseParamToStringSet(requestContext, CLIENT_IDS_PARAM);
     // May need to validate clientIds
     return Collections.unmodifiableSet(parsedClientIds);
   }
 
   /**
    * Default: An empty set.
-   * @param handler Http request.
+   * @param requestContext Http request.
    * @return Endpoints.
    */
-  public static Set<CruiseControlEndPoint> endPoints(CruiseControlRequestContext handler) throws UnsupportedEncodingException {
-    Set<String> parsedEndPoints = parseParamToStringSet(handler, ENDPOINTS_PARAM).stream()
+  public static Set<CruiseControlEndPoint> endPoints(CruiseControlRequestContext requestContext) throws UnsupportedEncodingException {
+    Set<String> parsedEndPoints = parseParamToStringSet(requestContext, ENDPOINTS_PARAM).stream()
                                                                                  .map(String::toUpperCase)
                                                                                  .collect(Collectors.toSet());
 
@@ -1119,11 +1120,11 @@ public final class ParameterUtils {
 
   /**
    * Default: An empty set.
-   * @param handler Http request.
+   * @param requestContext Http request.
    * @return Types.
    */
-  public static Set<UserTaskManager.TaskState> types(CruiseControlRequestContext handler) throws UnsupportedEncodingException {
-    Set<String> parsedTaskStates = parseParamToStringSet(handler, TYPES_PARAM);
+  public static Set<UserTaskManager.TaskState> types(CruiseControlRequestContext requestContext) throws UnsupportedEncodingException {
+    Set<String> parsedTaskStates = parseParamToStringSet(requestContext, TYPES_PARAM);
 
     Set<UserTaskManager.TaskState> taskStates = new HashSet<>();
     for (UserTaskManager.TaskState state : UserTaskManager.TaskState.cachedValues()) {
@@ -1136,45 +1137,46 @@ public final class ParameterUtils {
 
   /**
    * Default: {@link DataFrom#VALID_WINDOWS}
-   * @param handler Http servlet request.
+   * @param requestContext Http request.
    * @return The value for {@link #DATA_FROM_PARAM} parameter.
    */
-  static DataFrom getDataFrom(CruiseControlRequestContext handler) {
+  static DataFrom getDataFrom(CruiseControlRequestContext requestContext) {
     DataFrom dataFrom = DataFrom.VALID_WINDOWS;
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), DATA_FROM_PARAM);
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), DATA_FROM_PARAM);
     if (parameterString != null) {
-      dataFrom = DataFrom.valueOf(handler.getParameter(parameterString).toUpperCase());
+      dataFrom = DataFrom.valueOf(requestContext.getParameter(parameterString).toUpperCase());
     }
     return dataFrom;
   }
 
   /**
    * Check whether to skip the hard goal check.
-   * @param handler the request handler.
+   * @param requestContext the request context.
    * @return {@code true} if hard goal check should be skipped, {@code false} otherwise.
    */
-  static boolean skipHardGoalCheck(CruiseControlRequestContext handler) {
-    return isKafkaAssignerMode(handler) || isRebalanceDiskMode(handler) || getBooleanParam(handler, SKIP_HARD_GOAL_CHECK_PARAM, false);
+  static boolean skipHardGoalCheck(CruiseControlRequestContext requestContext) {
+    return isKafkaAssignerMode(requestContext) || isRebalanceDiskMode(requestContext)
+            || getBooleanParam(requestContext, SKIP_HARD_GOAL_CHECK_PARAM, false);
   }
 
-  static boolean skipUrpDemotion(CruiseControlRequestContext handler) {
-    return getBooleanParam(handler, SKIP_URP_DEMOTION_PARAM, true);
+  static boolean skipUrpDemotion(CruiseControlRequestContext requestContext) {
+    return getBooleanParam(requestContext, SKIP_URP_DEMOTION_PARAM, true);
   }
 
-  static boolean excludeFollowerDemotion(CruiseControlRequestContext handler) {
-    return getBooleanParam(handler, EXCLUDE_FOLLOWER_DEMOTION_PARAM, true);
+  static boolean excludeFollowerDemotion(CruiseControlRequestContext requestContext) {
+    return getBooleanParam(requestContext, EXCLUDE_FOLLOWER_DEMOTION_PARAM, true);
   }
 
-  static Short replicationFactor(CruiseControlRequestContext handler) {
-    String parameterString = caseSensitiveParameterName(handler.getParameterMap(), REPLICATION_FACTOR_PARAM);
+  static Short replicationFactor(CruiseControlRequestContext requestContext) {
+    String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), REPLICATION_FACTOR_PARAM);
     if (parameterString == null) {
       return null;
     }
-    return Short.parseShort(handler.getParameter(parameterString));
+    return Short.parseShort(requestContext.getParameter(parameterString));
   }
 
-  static boolean fetchCompletedTask(CruiseControlRequestContext handler) {
-    return getBooleanParam(handler, FETCH_COMPLETED_TASK_PARAM, false);
+  static boolean fetchCompletedTask(CruiseControlRequestContext requestContext) {
+    return getBooleanParam(requestContext, FETCH_COMPLETED_TASK_PARAM, false);
   }
 
   /**

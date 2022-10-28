@@ -26,21 +26,21 @@ public abstract class AbstractRequest implements Request {
    *
    */
   @Override
-  public void handle(CruiseControlRequestContext handler)
+  public void handle(CruiseControlRequestContext requestContext)
           throws Exception {
 
-    if (parameters().parseParameters(handler)) {
-      LOG.warn("Failed to parse parameters: {} for request: {}.", handler.getParameterMap(), handler.getPathInfo());
+    if (parameters().parseParameters(requestContext)) {
+      LOG.warn("Failed to parse parameters: {} for request: {}.", requestContext.getParameterMap(), requestContext.getPathInfo());
       return;
     }
 
-    CruiseControlResponse ccResponse = getResponse(handler);
-    ccResponse.writeSuccessResponse(parameters(), handler);
+    CruiseControlResponse ccResponse = getResponse(requestContext);
+    ccResponse.writeSuccessResponse(parameters(), requestContext);
   }
 
   /**
    * Get the response of the request
-   * @param handler the request handler.
+   * @param requestContext the request context.
    * <ul>
    *   <li>Asynchronous requests return either the final response or the progress of the async request.</li>
    *   <li>Synchronous requests return the final response of the sync request.</li>
@@ -48,7 +48,7 @@ public abstract class AbstractRequest implements Request {
    *
    * @return Response of the requests.
    */
-  protected abstract CruiseControlResponse getResponse(CruiseControlRequestContext handler)
+  protected abstract CruiseControlResponse getResponse(CruiseControlRequestContext requestContext)
           throws Exception;
 
   public abstract CruiseControlParameters parameters();

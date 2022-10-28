@@ -21,7 +21,7 @@ public class FixOfflineReplicasRequest extends AbstractAsyncRequest {
   }
 
   @Override
-  public OperationFuture handle(String uuid) {
+  protected OperationFuture handle(String uuid) {
     OperationFuture future = new OperationFuture("Fix offline replicas");
     pending(future.operationProgress());
     _asyncKafkaCruiseControl.sessionExecutor().submit(new FixOfflineReplicasRunnable(_asyncKafkaCruiseControl, future, _parameters, uuid));

@@ -28,9 +28,9 @@ public interface CruiseControlResponse {
    * Write success response with the given parameters to the provided HTTP response.
    *
    * @param parameters Parameters of the HTTP request of user.
-   * @param handler The request handler.
+   * @param requestContext The request context.
    */
-  void writeSuccessResponse(CruiseControlParameters parameters, CruiseControlRequestContext handler) throws IOException;
+  void writeSuccessResponse(CruiseControlParameters parameters, CruiseControlRequestContext requestContext) throws IOException;
 
   /**
    * Return the relevant response kept in-memory after {@link #discardIrrelevantResponse(CruiseControlParameters)} is called.

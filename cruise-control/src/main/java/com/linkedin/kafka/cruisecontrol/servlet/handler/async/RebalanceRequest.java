@@ -25,7 +25,7 @@ public class RebalanceRequest extends AbstractAsyncRequest {
   }
 
   @Override
-  public OperationFuture handle(String uuid) {
+  protected OperationFuture handle(String uuid) {
     OperationFuture future = new OperationFuture("Rebalance");
     pending(future.operationProgress());
     _runnable = new RebalanceRunnable(_asyncKafkaCruiseControl, future, _parameters, uuid);

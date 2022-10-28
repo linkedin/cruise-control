@@ -16,9 +16,9 @@ import com.linkedin.cruisecontrol.http.CruiseControlRequestContext;
 public interface Request extends CruiseControlConfigurable {
 
   /**
-   * @param handler The request handler
+   * @param requestContext The request context
    * Handle the request and populate the response.
    */
-  void handle(CruiseControlRequestContext handler)
+  void handle(CruiseControlRequestContext requestContext)
        throws Exception;
 }

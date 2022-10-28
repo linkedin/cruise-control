@@ -80,7 +80,7 @@ public class KafkaCruiseControlServletEndpointTest {
   private static class MockResult implements CruiseControlResponse {
 
     @Override
-    public void writeSuccessResponse(CruiseControlParameters parameters, CruiseControlRequestContext handler) {
+    public void writeSuccessResponse(CruiseControlParameters parameters, CruiseControlRequestContext requestContext) {
 
     }
 

@@ -53,16 +53,16 @@ public class RequestInfo {
   private volatile String _reason;
   private volatile boolean _accessToAlreadySubmittedRequest;
 
-  public <P extends CruiseControlParameters> RequestInfo(CruiseControlRequestContext handler, P parameters) {
-    if (handler == null) {
+  public <P extends CruiseControlParameters> RequestInfo(CruiseControlRequestContext requestContext, P parameters) {
+    if (requestContext == null) {
       throw new IllegalArgumentException("Request is missing from the request info.");
     } else if (parameters == null) {
       throw new IllegalArgumentException("Parameter is missing from the request info.");
     }
-    _submitterAddress = handler.getClientIdentity();
+    _submitterAddress = requestContext.getClientIdentity();
     _submissionTimeMs = System.currentTimeMillis();
-    _parameterMap = handler.getParameterMap();
-    _endPoint = ParameterUtils.endPoint(handler);
+    _parameterMap = requestContext.getParameterMap();
+    _endPoint = ParameterUtils.endPoint(requestContext);
     _parameters = parameters;
     _status = PENDING_REVIEW;
     _reason = INIT_REASON;

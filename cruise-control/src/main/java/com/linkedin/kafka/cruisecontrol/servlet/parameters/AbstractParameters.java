@@ -66,7 +66,7 @@ public abstract class AbstractParameters implements CruiseControlParameters {
   }
 
   @Override
-  public boolean parseParameters(CruiseControlRequestContext handler) {
+  public boolean parseParameters(CruiseControlRequestContext requestContext) {
     if (_initialized) {
       LOG.trace("Attempt to parse an already parsed request {}.", _handler);
       return false;
@@ -76,7 +76,7 @@ public abstract class AbstractParameters implements CruiseControlParameters {
       return false;
     } catch (Exception e) {
       try {
-        handleParameterParseException(e, handler, e.getMessage(), _json, _wantResponseSchema);
+        handleParameterParseException(e, requestContext, e.getMessage(), _json, _wantResponseSchema);
       } catch (IOException ioe) {
         LOG.error(String.format("Failed to write parse parameter exception to output stream. Endpoint: %s.", _endPoint), ioe);
       }

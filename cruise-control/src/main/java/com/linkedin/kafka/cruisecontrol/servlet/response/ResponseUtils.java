@@ -115,14 +115,14 @@ public final class ResponseUtils {
   /**
    * Write error response to the output stream.
    *
-   * @param handler The request handler
+   * @param requestContext The request context
    * @param e Exception (if any) corresponding to the error, {@code null} otherwise.
    * @param errorMessage Error message to return in the response message.
    * @param responseCode HTTP Status code to indicate the error.
    * @param json {@code true} if json, {@code false} otherwise.
    * @param wantJsonSchema {@code true} for json error response, {@code false} otherwise.
    */
-  public static void writeErrorResponse(CruiseControlRequestContext handler,
+  public static void writeErrorResponse(CruiseControlRequestContext requestContext,
                                         Exception e,
                                         String errorMessage,
                                         int responseCode,
@@ -138,7 +138,7 @@ public final class ResponseUtils {
       responseMessage = errorResponse.toString();
     }
     // Send the CORS Task ID header as part of this error response if 2-step verification is enabled.
-    handler.writeResponseToOutputStream(responseCode, json, wantJsonSchema, responseMessage);
+    requestContext.writeResponseToOutputStream(responseCode, json, wantJsonSchema, responseMessage);
   }
 
   /**

@@ -19,12 +19,12 @@ public interface CruiseControlParameters extends CruiseControlConfigurable {
 
   /**
    * Parse the parameters set in HTTP request to initialize object.
-   * @param handler The request handler
+   * @param requestContext The request context
    *
    * @return {@code true} if there has been a failure to parse parameters, {@code false} otherwise. If the object is already initialized,
    *         directly return false.
    */
-  boolean parseParameters(CruiseControlRequestContext handler);
+  boolean parseParameters(CruiseControlRequestContext requestContext);
   /**
    * @return Endpoint for which the parameters are parsed.
    */
