@@ -22,14 +22,14 @@ import java.util.Map;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.KAFKA_CRUISE_CONTROL_SERVLET_SENSOR;
 
 public class KafkaCruiseControlEndPoints {
-    protected final AsyncKafkaCruiseControl _asyncKafkaCruiseControl;
-    protected final KafkaCruiseControlConfig _config;
-    protected final UserTaskManager _userTaskManager;
-    protected final ThreadLocal<Integer> _asyncOperationStep;
-    protected final Map<EndPoint, Meter> _requestMeter = new HashMap<>();
-    protected final Map<EndPoint, Timer> _successfulRequestExecutionTimer = new HashMap<>();
-    protected final boolean _twoStepVerification;
-    protected final Purgatory _purgatory;
+    private final AsyncKafkaCruiseControl _asyncKafkaCruiseControl;
+    private final KafkaCruiseControlConfig _config;
+    private final UserTaskManager _userTaskManager;
+    private final ThreadLocal<Integer> _asyncOperationStep;
+    private final Map<EndPoint, Meter> _requestMeter = new HashMap<>();
+    private final Map<EndPoint, Timer> _successfulRequestExecutionTimer = new HashMap<>();
+    private final boolean _twoStepVerification;
+    private final Purgatory _purgatory;
 
     public KafkaCruiseControlEndPoints(AsyncKafkaCruiseControl asynckafkaCruiseControl,
                                        MetricRegistry dropwizardMetricRegistry) {

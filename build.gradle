@@ -413,16 +413,10 @@ project(':cruise-control') {
   task generateOpenApiJson(type: org.openapitools.generator.gradle.plugin.tasks.GenerateTask) {
     inputSpec = "$rootDir/cruise-control/src/main/resources/yaml/base.yaml"
     generatorName = "openapi"
-    outputDir = "$buildDir/resources/main/webroot/"
+    outputDir = "$rootDir/cruise-control/src/main/resources/webroot"
   }
 
-  task copyOpenApiToResources(dependsOn: [generateOpenApiJson, processResources], type: Copy) {
-    from "$buildDir/resources/main/webroot/"
-    include "openapi.json"
-    into "$rootDir/cruise-control/src/main/resources/webroot"
-  }
-
-  compileJava.dependsOn copyOpenApiToResources
+  compileJava.dependsOn generateOpenApiJson
 }
 
 project(':cruise-control-metrics-reporter') {

@@ -8,6 +8,7 @@ import com.codahale.metrics.jmx.JmxReporter;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.metrics.LegacyObjectNameFactory;
 
 public abstract class KafkaCruiseControlApp {
 
@@ -23,7 +24,8 @@ public abstract class KafkaCruiseControlApp {
   KafkaCruiseControlApp(KafkaCruiseControlConfig config, Integer port, String hostname) {
     this._config = config;
     _metricRegistry = new MetricRegistry();
-    _jmxReporter = JmxReporter.forRegistry(_metricRegistry).inDomain(METRIC_DOMAIN).build();
+    _jmxReporter = JmxReporter.forRegistry(_metricRegistry).inDomain(METRIC_DOMAIN)
+            .createsObjectNamesWith(LegacyObjectNameFactory.getInstance()).build();
     _jmxReporter.start();
     _port = port;
     _hostname = hostname;

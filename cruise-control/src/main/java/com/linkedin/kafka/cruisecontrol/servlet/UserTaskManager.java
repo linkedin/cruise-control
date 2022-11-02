@@ -601,7 +601,7 @@ public class UserTaskManager implements Closeable {
 
     @Override
     public String toString() {
-      return String.format("SessionKey{_handler=%s,_requestUrl=%s,_queryParams=%s}", _session, _requestUrl,
+      return String.format("SessionKey{_session=%s,_requestUrl=%s,_queryParams=%s}", _session, _requestUrl,
                            _queryParams);
     }
 
@@ -828,5 +828,4 @@ public class UserTaskManager implements Closeable {
       return Collections.unmodifiableList(CACHED_VALUES);
     }
   }
-
 }
