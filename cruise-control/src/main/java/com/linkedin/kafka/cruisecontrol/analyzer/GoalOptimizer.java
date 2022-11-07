@@ -89,7 +89,7 @@ public class GoalOptimizer implements Runnable {
   private final double _priorityWeight;
   private final double _strictnessWeight;
   private final OptimizationOptionsGenerator _optimizationOptionsGenerator;
-  private volatile ProvisionResponse _provisionResponse;
+  private volatile boolean _hasUnfixableProposalOptimization;
 
   /**
    * Constructor for Goal Optimizer takes the goals as input. The order of the list determines the priority of goals
@@ -127,16 +127,10 @@ public class GoalOptimizer implements Runnable {
     _proposalPrecomputingProgress = new OperationProgress();
     _proposalComputationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name(GOAL_OPTIMIZER_SENSOR, "proposal-computation-timer"));
 
-    // The cluster is identified as under-provisioned, over-provisioned, or right-sized (undecided not reported).
-    dropwizardMetricRegistry.register(MetricRegistry.name(GOAL_OPTIMIZER_SENSOR, "under-provisioned"),
-                                      (Gauge<Integer>) () -> (provisionStatus() == ProvisionStatus.UNDER_PROVISIONED)
-                                                             ? 1 : 0);
-    dropwizardMetricRegistry.register(MetricRegistry.name(GOAL_OPTIMIZER_SENSOR, "over-provisioned"),
-                                      (Gauge<Integer>) () -> (provisionStatus() == ProvisionStatus.OVER_PROVISIONED)
-                                                             ? 1 : 0);
-    dropwizardMetricRegistry.register(MetricRegistry.name(GOAL_OPTIMIZER_SENSOR, "right-sized"),
-                                      (Gauge<Integer>) () -> (provisionStatus() == ProvisionStatus.RIGHT_SIZED)
-                                                             ? 1 : 0);
+    // The cluster is identified as unfixable if combined goals can not be fixed
+    dropwizardMetricRegistry.register(MetricRegistry.name(GOAL_OPTIMIZER_SENSOR, "has-unfixable-proposal-optimization"),
+                                      (Gauge<Integer>) () -> hasUnfixableProposalOptimization() ? 1 : 0);
+    _hasUnfixableProposalOptimization = false;
     _executor = executor;
     _hasOngoingExplicitPrecomputation = false;
     _priorityWeight = config.getDouble(AnalyzerConfig.GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG);
@@ -149,10 +143,10 @@ public class GoalOptimizer implements Runnable {
   }
 
   /**
-   * @return Provision status of the cluster based on the latest goal violation check.
+   * @return if we have unfixable proposal optimization
    */
-  private ProvisionStatus provisionStatus() {
-    return _provisionResponse.status();
+  private boolean hasUnfixableProposalOptimization() {
+    return _hasUnfixableProposalOptimization;
   }
 
   @Override
@@ -471,9 +465,9 @@ public class GoalOptimizer implements Runnable {
       boolean succeeded;
       try {
         succeeded = goal.optimize(clusterModel, optimizedGoals, optimizationOptions);
-      } finally {
-        provisionResponse.aggregate(goal.provisionResponse());
-        _provisionResponse = provisionResponse;
+      } catch (OptimizationFailureException e) {
+        setHasUnfixableProposalOptimization(true, goalsByPriority);
+        throw e;
       }
       optimizedGoals.add(goal);
       statsByGoalPriority.put(goal, clusterModel.getClusterStats(_balancingConstraint, optimizationOptions));
@@ -493,7 +487,10 @@ public class GoalOptimizer implements Runnable {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Broker level stats after optimization: {}", clusterModel.brokerStats(null));
       }
+      provisionResponse.aggregate(goal.provisionResponse());
     }
+
+    setHasUnfixableProposalOptimization(false, goalsByPriority);
 
     // Broker level stats in the final cluster state.
     if (LOG.isTraceEnabled()) {
@@ -518,6 +515,16 @@ public class GoalOptimizer implements Runnable {
                                balancednessCostByGoal(goalsByPriority, _priorityWeight, _strictnessWeight),
                                optimizationDurationByGoal,
                                provisionResponse);
+  }
+
+  private void setHasUnfixableProposalOptimization(boolean hasUnfixableProposalOptimization, List<Goal> goalsByPriority) {
+    // Optimize function can be called for any of the actions like GoalViolation, Add Broker, Demote Broker, Broker Failure,
+    // Manual rebalance etc
+    // List of goals supplied should be a super set of goals defined by default. Then only we can conclusively say that we have or don't
+    // have any unfixable proposal optimization.
+    if (goalsByPriority.containsAll(_goalsByPriority)) {
+      _hasUnfixableProposalOptimization = hasUnfixableProposalOptimization;
+    }
   }
 
   /**
