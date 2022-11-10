@@ -143,7 +143,7 @@ public class GoalOptimizer implements Runnable {
   }
 
   /**
-   * @return if we have unfixable proposal optimization
+   * @return true if we have unfixable proposal optimization
    */
   private boolean hasUnfixableProposalOptimization() {
     return _hasUnfixableProposalOptimization;
