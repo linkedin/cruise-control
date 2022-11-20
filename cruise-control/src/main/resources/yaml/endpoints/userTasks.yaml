@@ -8,13 +8,11 @@ UserTasksEndpoint:
         description: Comma separated IP addresses to filter the task results Cruise Control report.
         schema:
           type: string
-          example: ["0.0.0.1"]
       - name: endpoints
         in: query
         description: Comma separated endpoints to filter the task results Cruise Control report.
         schema:
           type: string
-          example: ["PROPOSALS,REBALANCE"]
       - name: entries
         in: query
         description: The number of entries to show in the response.
@@ -28,7 +26,6 @@ UserTasksEndpoint:
         description: Comma separated HTTP request types to filter the task results Cruise Control report.
         schema:
           type: string
-          example: ["COMPLETED","ACTIVE"]
       - name: user_task_ids
         in: query
         description: Comma separated UUIDs to filter the task results Cruise Control report.

@@ -48,6 +48,7 @@ public class KafkaCruiseControlVertxApp extends KafkaCruiseControlApp {
         } catch (InterruptedException e) {
             throw new RuntimeException("Startup interrupted", e);
         }
+        printStartupInfo(true);
     }
 
     @Override

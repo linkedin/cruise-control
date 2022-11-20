@@ -44,7 +44,6 @@ PartitionLoadEndpoint:
         schema:
           type: string
           default: null
-          example: "myTopic.*"
       - name: partition
         in: query
         description: The partition or partition range to filter partition load returned.
@@ -52,14 +51,8 @@ PartitionLoadEndpoint:
           oneOf:
             - type: integer
               format: int32
-              example:
-                - value: 0
-                - summary: returns 0th partition
             - type: string
               pattern: '^[0-9]+-[0-9]+$'
-              example:
-              - value: '0-9'
-              - summary: 0 is the start index and 9 is the end index of the partition boundaries.
       - name: min_valid_partition_ratio
         in: query
         description: The minimum required ratio of partition load data completeness.
@@ -95,7 +88,6 @@ PartitionLoadEndpoint:
           items:
             type: integer
             format: int32
-          example: [1, 2, 3]
       - name: json
         in: query
         description: Whether to return in JSON format or not.

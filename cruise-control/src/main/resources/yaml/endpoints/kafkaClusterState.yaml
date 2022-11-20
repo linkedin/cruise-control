@@ -9,7 +9,6 @@ KafkaClusterStateEndpoint:
         schema:
           type: string # topics regex
           default: null
-          example: "myTopic.*"
       - name: verbose
         in: query
         description: Return detailed state information.

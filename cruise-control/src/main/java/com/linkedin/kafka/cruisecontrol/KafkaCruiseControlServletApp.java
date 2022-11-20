@@ -51,23 +51,6 @@ public class KafkaCruiseControlServletApp extends KafkaCruiseControlApp {
         contextHandler.addServlet(servletHolder, apiUrlPrefix);
     }
 
-    private void printStartupInfo() {
-        boolean corsEnabled = _config.getBoolean(WebServerConfig.WEBSERVER_HTTP_CORS_ENABLED_CONFIG);
-        String webApiUrlPrefix = _config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG);
-        String uiUrlPrefix = _config.getString(WebServerConfig.WEBSERVER_UI_URLPREFIX_CONFIG);
-        String webDir = _config.getString(WebServerConfig.WEBSERVER_UI_DISKPATH_CONFIG);
-        String sessionPath = _config.getString(WebServerConfig.WEBSERVER_SESSION_PATH_CONFIG);
-        System.out.println(">> ********************************************* <<");
-        System.out.println(">> Application directory            : " + System.getProperty("user.dir"));
-        System.out.println(">> REST API available on            : " + webApiUrlPrefix);
-        System.out.println(">> Web UI available on              : " + uiUrlPrefix);
-        System.out.println(">> Web UI Directory                 : " + webDir);
-        System.out.println(">> Cookie prefix path               : " + sessionPath);
-        System.out.println(">> Kafka Cruise Control started on  : " + serverUrl());
-        System.out.println(">> CORS Enabled ?                   : " + corsEnabled);
-        System.out.println(">> ********************************************* <<");
-    }
-
     protected ServerConnector setupHttpConnector(String hostname, int port) {
         ServerConnector serverConnector;
         Boolean webserverSslEnable = _config.getBoolean(WebServerConfig.WEBSERVER_SSL_ENABLE_CONFIG);
@@ -173,7 +156,7 @@ public class KafkaCruiseControlServletApp extends KafkaCruiseControlApp {
     public void start() throws Exception {
         _kafkaCruiseControl.startUp();
         _server.start();
-        printStartupInfo();
+        printStartupInfo(false);
     }
 
     @Override

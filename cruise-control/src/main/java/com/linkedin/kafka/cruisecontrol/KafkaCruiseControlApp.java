@@ -8,6 +8,7 @@ import com.codahale.metrics.jmx.JmxReporter;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.metrics.LegacyObjectNameFactory;
 
 public abstract class KafkaCruiseControlApp {
@@ -59,4 +60,23 @@ public abstract class KafkaCruiseControlApp {
   }
 
   public abstract String serverUrl();
+
+  protected void printStartupInfo(boolean vertxEnabled) {
+    boolean corsEnabled = _config.getBoolean(WebServerConfig.WEBSERVER_HTTP_CORS_ENABLED_CONFIG);
+    String webApiUrlPrefix = _config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG);
+    String uiUrlPrefix = _config.getString(WebServerConfig.WEBSERVER_UI_URLPREFIX_CONFIG);
+    String webDir = _config.getString(WebServerConfig.WEBSERVER_UI_DISKPATH_CONFIG);
+    String sessionPath = _config.getString(WebServerConfig.WEBSERVER_SESSION_PATH_CONFIG);
+    System.out.println(">> ********************************************* <<");
+    System.out.println(">> Application directory            : " + System.getProperty("user.dir"));
+    System.out.println(">> REST API available on            : " + webApiUrlPrefix);
+    System.out.println(">> Web UI available on              : " + uiUrlPrefix);
+    System.out.println(">> Web UI Directory                 : " + webDir);
+    System.out.println(">> Cookie prefix path               : " + sessionPath);
+    System.out.println(">> Kafka Cruise Control started on  : " + serverUrl());
+    System.out.println(">> CORS Enabled ?                   : " + corsEnabled);
+    System.out.println(">> Vertx Enabled ?                  : " + vertxEnabled);
+    System.out.println(">> ********************************************* <<");
+  }
+
 }

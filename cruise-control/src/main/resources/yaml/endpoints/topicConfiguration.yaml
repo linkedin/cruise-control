@@ -15,7 +15,6 @@ TopicConfigurationEndpoint:
         schema:
           type: string # topics regex
           default: null
-          example: topic_%5B0-9%5D.%2A
       - name: replication_factor
         in: query
         description: Target replication factor.
@@ -36,8 +35,6 @@ TopicConfigurationEndpoint:
           type: array
           items:
             type: string
-            # default is every goal
-          example: ["RackAwareGoal", "ReplicaCapacityGoal", "ReplicaDistributionGoal"]
       - name: allow_capacity_estimation
         in: query
         description: Whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information.
@@ -89,7 +86,6 @@ TopicConfigurationEndpoint:
         schema:
           type: string # topics regex
           default: null
-          example: "__CruiseControl.%2A"
       - name: execution_progress_check_interval_ms
         in: query
         description: Execution progress check interval in milliseconds.
@@ -109,7 +105,6 @@ TopicConfigurationEndpoint:
           type: array
           items:
             type: string
-          example: ["PrioritizeLargeReplicaMovementStrategy", "PostponeUrpReplicaMovementStrategy"]
       - name: replication_throttle
         in: query
         description: Upper bound on the bandwidth in bytes per second used to move replicas.

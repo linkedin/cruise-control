@@ -11,7 +11,6 @@ ReviewEndpoint:
           items:
             type: integer
             format: int32
-          example: [1, 2, 3]
       - name: discard
         in: query
         description: Reject one or more pending Cruise Control requests.
@@ -20,7 +19,6 @@ ReviewEndpoint:
           items:
             type: integer
             format: int32
-          example: [4, 5, 6]
       - name: reason
         in: query
         description: Reason of approval or rejection.
