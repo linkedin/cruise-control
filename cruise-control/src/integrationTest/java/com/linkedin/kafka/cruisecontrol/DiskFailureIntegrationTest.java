@@ -73,7 +73,7 @@ public class DiskFailureIntegrationTest extends CruiseControlIntegrationTestHarn
    */
   @Parameterized.Parameters
   public static Collection<Boolean> data() {
-    Boolean[] data = {false, false};
+    Boolean[] data = {true, false};
     return Arrays.asList(data);
   }
   

@@ -59,7 +59,7 @@ public class ReplicaCapacityViolationIntegrationTest extends CruiseControlIntegr
    */
   @Parameterized.Parameters
   public static Collection<Boolean> data() {
-    Boolean[] data = {false, false};
+    Boolean[] data = {true, false};
     return Arrays.asList(data);
   }
 
