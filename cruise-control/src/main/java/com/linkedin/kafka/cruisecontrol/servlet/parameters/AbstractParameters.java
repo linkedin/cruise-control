@@ -46,7 +46,7 @@ public abstract class AbstractParameters implements CruiseControlParameters {
     CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
 
   }
-  protected CruiseControlRequestContext _handler;
+  protected CruiseControlRequestContext _requestContext;
   protected boolean _initialized = false;
   protected KafkaCruiseControlConfig _config;
   // Common to all parameters, expected to be populated via initParameters.
@@ -60,15 +60,15 @@ public abstract class AbstractParameters implements CruiseControlParameters {
 
   protected void initParameters() throws UnsupportedEncodingException {
     _initialized = true;
-    _endPoint = ParameterUtils.endPoint(_handler);
-    _json = ParameterUtils.wantJSON(_handler);
-    _wantResponseSchema = ParameterUtils.wantResponseSchema(_handler);
+    _endPoint = ParameterUtils.endPoint(_requestContext);
+    _json = ParameterUtils.wantJSON(_requestContext);
+    _wantResponseSchema = ParameterUtils.wantResponseSchema(_requestContext);
   }
 
   @Override
   public boolean parseParameters(CruiseControlRequestContext requestContext) {
     if (_initialized) {
-      LOG.trace("Attempt to parse an already parsed request {}.", _handler);
+      LOG.trace("Attempt to parse an already parsed request {}.", _requestContext);
       return false;
     }
     try {
@@ -107,11 +107,11 @@ public abstract class AbstractParameters implements CruiseControlParameters {
   @Override
   public void configure(Map<String, ?> configs) {
     if (configs.get(ROUTING_CONTEXT_OBJECT_CONFIG) == null) {
-      _handler = new ServletRequestContext(
+      _requestContext = new ServletRequestContext(
               (HttpServletRequest) validateNotNull(configs.get(KAFKA_CRUISE_CONTROL_HTTP_SERVLET_REQUEST_OBJECT_CONFIG),
                       "HttpServletRequest configuration is missing from the request."), null, _config);
     } else {
-      _handler = new VertxRequestContext((RoutingContext) validateNotNull(configs.get(ROUTING_CONTEXT_OBJECT_CONFIG),
+      _requestContext = new VertxRequestContext((RoutingContext) validateNotNull(configs.get(ROUTING_CONTEXT_OBJECT_CONFIG),
               "HttpServletRequest configuration is missing from the request."), _config);
     }
     _config = (KafkaCruiseControlConfig) validateNotNull(configs.get(KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG),

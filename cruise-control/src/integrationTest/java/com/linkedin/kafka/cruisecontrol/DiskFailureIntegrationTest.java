@@ -8,6 +8,8 @@ import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +22,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyState;
 import com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaTestUtils;
@@ -32,6 +35,8 @@ import org.apache.kafka.clients.admin.NewTopic;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,6 +45,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.KAF
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.STATE;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlIntegrationTestUtils.KAFKA_CRUISE_CONTROL_BASE_PATH;
 
+@RunWith(Parameterized.class)
 public class DiskFailureIntegrationTest extends CruiseControlIntegrationTestHarness {
 
   private static final short TOPIC0_REPLICATION_FACTOR = (short) 2;
@@ -55,6 +61,21 @@ public class DiskFailureIntegrationTest extends CruiseControlIntegrationTestHarn
   private static final Logger LOG = LoggerFactory.getLogger(DiskFailureIntegrationTest.class);
   private final Configuration _gsonJsonConfig = KafkaCruiseControlIntegrationTestUtils.createJsonMappingConfig();
   private final List<Entry<File, File>> _brokerLogDirs = new ArrayList<>(KAFKA_CLUSTER_SIZE);
+  private final Boolean _vertxEnabled;
+
+  public DiskFailureIntegrationTest(Boolean vertxEnabled) {
+    this._vertxEnabled = vertxEnabled;
+  }
+
+  /**
+   * Sets different parameters for test runs.
+   * @return Parameters for the test runs.
+   */
+  @Parameterized.Parameters
+  public static Collection<Boolean> data() {
+    Boolean[] data = {false, false};
+    return Arrays.asList(data);
+  }
   
   @Before
   public void setup() throws Exception {
@@ -93,6 +114,7 @@ public class DiskFailureIntegrationTest extends CruiseControlIntegrationTestHarn
     configs.put(AnalyzerConfig.HARD_GOALS_CONFIG, new StringJoiner(",")
         .add(ReplicaCapacityGoal.class.getName())
         .add(DiskCapacityGoal.class.getName()).toString());
+    configs.put(WebServerConfig.VERTX_ENABLED_CONFIG, String.valueOf(_vertxEnabled));
     
     return configs;
   }

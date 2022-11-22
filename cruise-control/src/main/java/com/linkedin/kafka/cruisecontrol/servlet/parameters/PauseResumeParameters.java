@@ -52,9 +52,9 @@ public class PauseResumeParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _reason = ParameterUtils.reason(_handler, false);
+    _reason = ParameterUtils.reason(_requestContext, false);
     boolean twoStepVerificationEnabled = _config.getBoolean(WebServerConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
-    _reviewId = ParameterUtils.reviewId(_handler, twoStepVerificationEnabled);
+    _reviewId = ParameterUtils.reviewId(_requestContext, twoStepVerificationEnabled);
   }
 
   public String reason() {

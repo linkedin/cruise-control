@@ -63,18 +63,18 @@ public class TopicReplicationFactorChangeParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _topicPatternByReplicationFactor = ParameterUtils.topicPatternByReplicationFactor(_handler);
+    _topicPatternByReplicationFactor = ParameterUtils.topicPatternByReplicationFactor(_requestContext);
     if (_topicPatternByReplicationFactor.keySet().stream().anyMatch(rf -> rf < 1)) {
       throw new UserRequestException("Target replication factor cannot be set to smaller than 1.");
     }
-    _skipRackAwarenessCheck = ParameterUtils.skipRackAwarenessCheck(_handler);
-    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_handler, true, false);
-    _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_handler);
-    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_handler, false, false);
-    _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_handler);
-    _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_handler);
-    _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_handler, _config);
-    _replicationThrottle = ParameterUtils.replicationThrottle(_handler, _config);
+    _skipRackAwarenessCheck = ParameterUtils.skipRackAwarenessCheck(_requestContext);
+    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_requestContext, true, false);
+    _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_requestContext);
+    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_requestContext, false, false);
+    _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_requestContext);
+    _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_requestContext);
+    _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_requestContext, _config);
+    _replicationThrottle = ParameterUtils.replicationThrottle(_requestContext, _config);
   }
 
   /**

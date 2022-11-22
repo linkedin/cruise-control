@@ -54,9 +54,9 @@ public class ProposalsParameters extends GoalBasedOptimizationParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _destinationBrokerIds = ParameterUtils.destinationBrokerIds(_handler);
-    _ignoreProposalCache = ParameterUtils.ignoreProposalCache(_handler);
-    _isRebalanceDiskMode = ParameterUtils.isRebalanceDiskMode(_handler);
+    _destinationBrokerIds = ParameterUtils.destinationBrokerIds(_requestContext);
+    _ignoreProposalCache = ParameterUtils.ignoreProposalCache(_requestContext);
+    _isRebalanceDiskMode = ParameterUtils.isRebalanceDiskMode(_requestContext);
   }
 
   public Set<Integer> destinationBrokerIds() {

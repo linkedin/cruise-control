@@ -54,9 +54,9 @@ public class StopProposalParameters extends AbstractParameters {
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
     boolean twoStepVerificationEnabled = _config.getBoolean(WebServerConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
-    _reviewId = ParameterUtils.reviewId(_handler, twoStepVerificationEnabled);
-    _forceExecutionStop = ParameterUtils.forceExecutionStop(_handler);
-    _stopExternalAgent = ParameterUtils.stopExternalAgent(_handler);
+    _reviewId = ParameterUtils.reviewId(_requestContext, twoStepVerificationEnabled);
+    _forceExecutionStop = ParameterUtils.forceExecutionStop(_requestContext);
+    _stopExternalAgent = ParameterUtils.stopExternalAgent(_requestContext);
   }
 
   @Override

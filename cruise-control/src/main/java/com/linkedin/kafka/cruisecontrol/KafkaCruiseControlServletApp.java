@@ -156,7 +156,7 @@ public class KafkaCruiseControlServletApp extends KafkaCruiseControlApp {
     public void start() throws Exception {
         _kafkaCruiseControl.startUp();
         _server.start();
-        printStartupInfo(false);
+        printStartupInfo();
     }
 
     @Override

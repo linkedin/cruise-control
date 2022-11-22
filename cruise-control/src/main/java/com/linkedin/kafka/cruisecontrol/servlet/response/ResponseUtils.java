@@ -9,17 +9,17 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.linkedin.cruisecontrol.http.CruiseControlRequestContext;
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import io.vertx.ext.web.RoutingContext;
 import org.apache.kafka.common.config.AbstractConfig;
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.Map;
-import javax.servlet.http.HttpServletResponse;
 
 
 /**
@@ -41,7 +41,7 @@ public final class ResponseUtils {
    * @param json Write the response in JSON or not
    * @param config CruiseControlConfig
    */
-  public static void setResponseCode(HttpServletResponse response, int code, boolean json, AbstractConfig config) {
+  public static void setResponseCode(HttpServletResponse response, int code, boolean json, KafkaCruiseControlConfig config) {
     response.setStatus(code);
     response.setContentType(json ? "application/json" : "text/plain");
     response.setCharacterEncoding(StandardCharsets.UTF_8.name());
@@ -78,22 +78,6 @@ public final class ResponseUtils {
   static String getBaseJsonString(String message) {
     Map<String, Object> jsonResponse = Map.of(VERSION, JSON_VERSION, MESSAGE, message);
     return new Gson().toJson(jsonResponse);
-  }
-
-  static void writeResponseToOutputStream(RoutingContext context,
-                                          int responseCode,
-                                          boolean json,
-                                          boolean wantJsonSchema,
-                                          String responseMessage,
-                                          AbstractConfig config) {
-    setResponseCode(context, responseCode, config);
-    context.response().putHeader("Cruise-Control-Version", KafkaCruiseControl.cruiseControlVersion());
-    context.response().putHeader("Cruise-Control-Commit_Id", KafkaCruiseControl.cruiseControlCommitId());
-    if (json && wantJsonSchema) {
-      context.response().putHeader("Cruise-Control-JSON-Schema", getJsonSchema(responseMessage));
-    }
-    context.response()
-            .end(responseMessage);
   }
 
   /**

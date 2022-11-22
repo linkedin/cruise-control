@@ -52,9 +52,9 @@ public class RightsizeParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _numBrokersToAdd = ParameterUtils.numBrokersToAdd(_handler);
-    _partitionCount = ParameterUtils.partitionCount(_handler);
-    _topic = ParameterUtils.topic(_handler);
+    _numBrokersToAdd = ParameterUtils.numBrokersToAdd(_requestContext);
+    _partitionCount = ParameterUtils.partitionCount(_requestContext);
+    _topic = ParameterUtils.topic(_requestContext);
   }
 
   public int numBrokersToAdd() {

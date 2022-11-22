@@ -69,20 +69,20 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _brokerIds = ParameterUtils.brokerIds(_handler, false);
-    _dryRun = ParameterUtils.getDryRun(_handler);
-    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_handler, true, false);
-    _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_handler);
-    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_handler, false, false);
-    _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_handler);
-    _replicationThrottle = ParameterUtils.replicationThrottle(_handler, _config);
-    _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_handler);
-    _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_handler, _config);
+    _brokerIds = ParameterUtils.brokerIds(_requestContext, false);
+    _dryRun = ParameterUtils.getDryRun(_requestContext);
+    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_requestContext, true, false);
+    _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_requestContext);
+    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_requestContext, false, false);
+    _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_requestContext);
+    _replicationThrottle = ParameterUtils.replicationThrottle(_requestContext, _config);
+    _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_requestContext);
+    _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_requestContext, _config);
     boolean twoStepVerificationEnabled = _config.getBoolean(WebServerConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
-    _reviewId = ParameterUtils.reviewId(_handler, twoStepVerificationEnabled);
+    _reviewId = ParameterUtils.reviewId(_requestContext, twoStepVerificationEnabled);
     boolean requestReasonRequired = _config.getBoolean(ExecutorConfig.REQUEST_REASON_REQUIRED_CONFIG);
-    _reason = ParameterUtils.reason(_handler, requestReasonRequired && !_dryRun);
-    _stopOngoingExecution = ParameterUtils.stopOngoingExecution(_handler);
+    _reason = ParameterUtils.reason(_requestContext, requestReasonRequired && !_dryRun);
+    _stopOngoingExecution = ParameterUtils.stopOngoingExecution(_requestContext);
     if (_stopOngoingExecution && _dryRun) {
       throw new UserRequestException(String.format("%s and %s cannot both be set to true.", STOP_ONGOING_EXECUTION_PARAM, DRY_RUN_PARAM));
     }

@@ -40,7 +40,7 @@ public class UpdateSelfHealingParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    Map<Boolean, Set<AnomalyType>> selfHealingFor = ParameterUtils.selfHealingFor(_handler);
+    Map<Boolean, Set<AnomalyType>> selfHealingFor = ParameterUtils.selfHealingFor(_requestContext);
     _enableSelfHealingFor = selfHealingFor.get(true);
     _disableSelfHealingFor = selfHealingFor.get(false);
   }

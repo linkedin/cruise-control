@@ -53,13 +53,13 @@ public abstract class GoalBasedOptimizationParameters extends KafkaOptimizationP
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _dataFrom = ParameterUtils.getDataFrom(_handler);
-    _useReadyDefaultGoals = ParameterUtils.useReadyDefaultGoals(_handler);
-    _excludedTopics = ParameterUtils.excludedTopics(_handler);
-    _excludeRecentlyRemovedBrokers = ParameterUtils.excludeRecentlyRemovedBrokers(_handler);
-    List<String> goals = ParameterUtils.getGoals(_handler);
+    _dataFrom = ParameterUtils.getDataFrom(_requestContext);
+    _useReadyDefaultGoals = ParameterUtils.useReadyDefaultGoals(_requestContext);
+    _excludedTopics = ParameterUtils.excludedTopics(_requestContext);
+    _excludeRecentlyRemovedBrokers = ParameterUtils.excludeRecentlyRemovedBrokers(_requestContext);
+    List<String> goals = ParameterUtils.getGoals(_requestContext);
     _goalsAndRequirements = new GoalsAndRequirements(goals, getRequirements(_dataFrom));
-    _fastMode = ParameterUtils.fastMode(_handler);
+    _fastMode = ParameterUtils.fastMode(_requestContext);
   }
 
   public ParameterUtils.DataFrom dataFrom() {

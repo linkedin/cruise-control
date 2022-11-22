@@ -46,8 +46,8 @@ public class TrainParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _startMs = ParameterUtils.startMsOrDefault(_handler, null);
-    _endMs = ParameterUtils.endMsOrDefault(_handler, null);
+    _startMs = ParameterUtils.startMsOrDefault(_requestContext, null);
+    _endMs = ParameterUtils.endMsOrDefault(_requestContext, null);
     if (_startMs == null || _endMs == null) {
       throw new UserRequestException("Missing start or end parameter.");
     }

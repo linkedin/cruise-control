@@ -4,6 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
@@ -17,6 +19,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCEmbeddedBroker;
@@ -25,13 +28,15 @@ import org.apache.kafka.clients.admin.NewTopic;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.KAFKA_CLUSTER_STATE;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.STATE;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlIntegrationTestUtils.KAFKA_CRUISE_CONTROL_BASE_PATH;
 
-
+@RunWith(Parameterized.class)
 public class ReplicaCapacityViolationIntegrationTest extends CruiseControlIntegrationTestHarness {
 
   private static final int BROKER_ID_TO_ADD = 3;
@@ -42,6 +47,21 @@ public class ReplicaCapacityViolationIntegrationTest extends CruiseControlIntegr
   private static final String CRUISE_CONTROL_STATE_ENDPOINT =
       KAFKA_CRUISE_CONTROL_BASE_PATH + STATE + "?substates=anomaly_detector&json=true";
   private final Configuration _gsonJsonConfig = KafkaCruiseControlIntegrationTestUtils.createJsonMappingConfig();
+  private final Boolean _vertxEnabled;
+
+  public ReplicaCapacityViolationIntegrationTest(Boolean vertxEnabled) {
+    this._vertxEnabled = vertxEnabled;
+  }
+
+  /**
+   * Sets different parameters for test runs.
+   * @return Parameters for the test runs.
+   */
+  @Parameterized.Parameters
+  public static Collection<Boolean> data() {
+    Boolean[] data = {false, false};
+    return Arrays.asList(data);
+  }
 
   @Before
   public void setup() throws Exception {
@@ -90,6 +110,7 @@ public class ReplicaCapacityViolationIntegrationTest extends CruiseControlIntegr
     
     configs.put(AnalyzerConfig.MAX_REPLICAS_PER_BROKER_CONFIG, "4");
     configs.put(AnalyzerConfig.OVERPROVISIONED_MAX_REPLICAS_PER_BROKER_CONFIG, "4");
+    configs.put(WebServerConfig.VERTX_ENABLED_CONFIG, String.valueOf(_vertxEnabled));
     return configs;
   }
 

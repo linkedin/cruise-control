@@ -18,6 +18,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.SelfHealingNotifier;
 import net.minidev.json.JSONArray;
@@ -47,14 +48,21 @@ public class BrokerFailureIntegrationTest extends CruiseControlIntegrationTestHa
   private static final int BROKER_ID_TO_REMOVE = 1;
 
   private final Boolean _kafkaBrokerFailureDetectorEnable;
+  private final Boolean _vertxEnabled;
 
-  public BrokerFailureIntegrationTest(Boolean kafkaBrokerFailureDetectorEnable) {
+  public BrokerFailureIntegrationTest(Boolean kafkaBrokerFailureDetectorEnable, Boolean vertxEnabled) {
     this._kafkaBrokerFailureDetectorEnable = kafkaBrokerFailureDetectorEnable;
+    this._vertxEnabled = vertxEnabled;
   }
 
+  /**
+   * Sets different parameters for test runs.
+   * @return Parameters for the test runs.
+   */
   @Parameterized.Parameters
-  public static Collection<Boolean> data() {
-    return Arrays.asList(true, false);
+  public static Collection<Boolean[]> data() {
+    Boolean[][] data = {{true, true}, {false, false}};
+    return Arrays.asList(data);
   }
 
   @Before
@@ -98,6 +106,7 @@ public class BrokerFailureIntegrationTest extends CruiseControlIntegrationTestHa
     configs.put(AnalyzerConfig.HARD_GOALS_CONFIG, new StringJoiner(",")
         .add(ReplicaCapacityGoal.class.getName())
         .add(MinTopicLeadersPerBrokerGoal.class.getName()).toString());
+    configs.put(WebServerConfig.VERTX_ENABLED_CONFIG, String.valueOf(_vertxEnabled));
     
     return configs;
   }

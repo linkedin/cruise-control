@@ -40,7 +40,7 @@ public class ReviewBoardParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _reviewIds = ParameterUtils.reviewIds(_handler);
+    _reviewIds = ParameterUtils.reviewIds(_requestContext);
   }
 
   public Set<Integer> reviewIds() {

@@ -80,7 +80,7 @@ public class PartitionLoadParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    String resourceString = ParameterUtils.resourceString(_handler);
+    String resourceString = ParameterUtils.resourceString(_requestContext);
     try {
       _resource = Resource.valueOf(resourceString.toUpperCase());
     } catch (IllegalArgumentException iae) {
@@ -88,20 +88,20 @@ public class PartitionLoadParameters extends AbstractParameters {
                                                    + "following: CPU, DISK, NW_IN, NW_OUT", resourceString));
     }
 
-    _wantMaxLoad = ParameterUtils.wantMaxLoad(_handler);
-    _wantAvgLoad = ParameterUtils.wantAvgLoad(_handler);
+    _wantMaxLoad = ParameterUtils.wantMaxLoad(_requestContext);
+    _wantAvgLoad = ParameterUtils.wantAvgLoad(_requestContext);
     if (_wantMaxLoad && _wantAvgLoad) {
       throw new UserRequestException("Parameters to ask for max and avg load are mutually exclusive to each other.");
     }
-    _topic = ParameterUtils.topic(_handler);
-    _partitionLowerBoundary = ParameterUtils.partitionBoundary(_handler, false);
-    _partitionUpperBoundary = ParameterUtils.partitionBoundary(_handler, true);
-    _entries = ParameterUtils.entries(_handler);
-    _minValidPartitionRatio = ParameterUtils.minValidPartitionRatio(_handler);
-    _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_handler);
-    _brokerIds = ParameterUtils.brokerIds(_handler, true);
-    _startMs = ParameterUtils.startMsOrDefault(_handler, ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL);
-    _endMs = ParameterUtils.endMsOrDefault(_handler, System.currentTimeMillis());
+    _topic = ParameterUtils.topic(_requestContext);
+    _partitionLowerBoundary = ParameterUtils.partitionBoundary(_requestContext, false);
+    _partitionUpperBoundary = ParameterUtils.partitionBoundary(_requestContext, true);
+    _entries = ParameterUtils.entries(_requestContext);
+    _minValidPartitionRatio = ParameterUtils.minValidPartitionRatio(_requestContext);
+    _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_requestContext);
+    _brokerIds = ParameterUtils.brokerIds(_requestContext, true);
+    _startMs = ParameterUtils.startMsOrDefault(_requestContext, ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL);
+    _endMs = ParameterUtils.endMsOrDefault(_requestContext, System.currentTimeMillis());
     ParameterUtils.validateTimeRange(_startMs, _endMs);
   }
 

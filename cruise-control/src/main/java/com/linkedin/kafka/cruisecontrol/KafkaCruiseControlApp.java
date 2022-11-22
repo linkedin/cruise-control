@@ -61,8 +61,9 @@ public abstract class KafkaCruiseControlApp {
 
   public abstract String serverUrl();
 
-  protected void printStartupInfo(boolean vertxEnabled) {
+  protected void printStartupInfo() {
     boolean corsEnabled = _config.getBoolean(WebServerConfig.WEBSERVER_HTTP_CORS_ENABLED_CONFIG);
+    boolean vertxEnabled = _config.getBoolean(WebServerConfig.VERTX_ENABLED_CONFIG);
     String webApiUrlPrefix = _config.getString(WebServerConfig.WEBSERVER_API_URLPREFIX_CONFIG);
     String uiUrlPrefix = _config.getString(WebServerConfig.WEBSERVER_UI_URLPREFIX_CONFIG);
     String webDir = _config.getString(WebServerConfig.WEBSERVER_UI_DISKPATH_CONFIG);
