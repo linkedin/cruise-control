@@ -16,6 +16,7 @@ FixOfflineReplicasEndpoint:
           type: array
           items:
             type: string
+          example: ["RackAwareGoal", "ReplicaCapacityGoal", "ReplicaDistributionGoal"]
       - name: allow_capacity_estimation
         in: query
         description: Whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information.
@@ -61,6 +62,7 @@ FixOfflineReplicasEndpoint:
         schema:
           type: string # topics regex
           default: null
+        example: "__CruiseControl.%2A"
       - name: use_ready_default_goals
         in: query
         description: Whether to only use ready goals to generate proposal.
@@ -98,6 +100,7 @@ FixOfflineReplicasEndpoint:
           type: array
           items:
             type: string
+          example: ["PrioritizeLargeReplicaMovementStrategy", "PostponeUrpReplicaMovementStrategy"]
       - name: review_id
         in: query
         description: Review id for 2-step verification.
@@ -124,6 +127,7 @@ FixOfflineReplicasEndpoint:
         description: Reason for request.
         schema:
           type: string
+        example: "Move offline replicas away from broken brokers."
       - name: stop_ongoing_execution
         in: query
         description: Whether to stop the ongoing execution (if any) and start executing the given request.

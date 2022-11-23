@@ -70,6 +70,7 @@ DemoteBrokerEndpoint:
           items:
             type: string
           default: null
+          example: ["PrioritizeLargeReplicaMovementStrategy", "PostponeUrpReplicaMovementStrategy"]
       - name: brokerid_and_logdirs
         in: query
         description: List of broker id and logdir pair to be demoted in the cluster.
@@ -79,7 +80,7 @@ DemoteBrokerEndpoint:
             type: array
             items:
               type: string
-            default: []
+        # default is an empty map
       - name: replication_throttle
         in: query
         description: Upper bound on the bandwidth in bytes per second used to move replicas.

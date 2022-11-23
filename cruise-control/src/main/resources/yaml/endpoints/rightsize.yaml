@@ -23,6 +23,7 @@ RightsizeEndpoint:
         schema:
           type: string # topics regex
           default: null
+          example: topic_%5B0-9%5D.%2A
       - name: doAs
         in: query
         description: The user specified by a trusted proxy in that authentication model.

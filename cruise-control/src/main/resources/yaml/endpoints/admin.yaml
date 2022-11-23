@@ -16,6 +16,7 @@ AdminEndpoint:
               - METRIC_ANOMALY
               - DISK_FAILURE
               - TOPIC_ANOMALY
+          example: ["METRIC_ANOMALY"]
       - name: enable_self_healing_for
         in: query
         description: Enable self-healing for certain anomaly types.
@@ -29,6 +30,7 @@ AdminEndpoint:
               - METRIC_ANOMALY
               - DISK_FAILURE
               - TOPIC_ANOMALY
+          example: ["GOAL_VIOLATION", "BROKER_FAILURE"]
       - name: concurrent_partition_movements_per_broker
         in: query
         description: Change upper bound of ongoing replica movements going into/out of each broker.
@@ -65,6 +67,7 @@ AdminEndpoint:
           items:
             type: integer
             format: int32
+          example: [1,2,3]
       - name: drop_recently_demoted_brokers
         in: query
         description: Drop broker ids from recently demoted broker list so that Cruise Control can move leader replicas or
@@ -74,6 +77,7 @@ AdminEndpoint:
           items:
             type: integer
             format: int32
+          example: [7,8,9]
       - name: execution_progress_check_interval_ms
         in: query
         description: Change execution progress check interval in milliseconds.
@@ -116,6 +120,7 @@ AdminEndpoint:
               - INTER_BROKER_REPLICA
               - LEADERSHIP
               - INTRA_BROKER_REPLICA
+          example: ["INTER_BROKER_REPLICA"]
       - name: enable_concurrency_adjuster_for
         in: query
         description: Enable concurrency adjuster for given concurrency types.
@@ -127,6 +132,7 @@ AdminEndpoint:
               - INTER_BROKER_REPLICA
               - LEADERSHIP
               - INTRA_BROKER_REPLICA
+          example: ["INTER_BROKER_REPLICA"]
       - name: min_isr_based_concurrency_adjustment
         in: query
         description: Whether to enable (true) or disable (false) MinISR-based concurrency adjustment

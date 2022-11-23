@@ -36,6 +36,8 @@ AddBrokerEndpoint:
           type: array
           items:
             type: string
+            # default is every goal
+          example: ["RackAwareGoal", "ReplicaCapacityGoal", "ReplicaDistributionGoal"]
       - name: concurrent_partition_movements_per_broker
         in: query
         description: The upper bound of ongoing replica movements going into/out of each broker.
@@ -77,6 +79,7 @@ AddBrokerEndpoint:
         schema:
           type: string
           default: null
+          example: "__CruiseControl.%2A"
       - name: kafka_assigner
         in: query
         description: Whether to use Kafka assigner mode to generate proposals.
@@ -115,6 +118,7 @@ AddBrokerEndpoint:
           items:
             type: string
           default: null
+          example: ["PrioritizeLargeReplicaMovementStrategy", "PostponeUrpReplicaMovementStrategy"]
       - name: execution_progress_check_interval_ms
         in: query
         description: Execution progress check interval in milliseconds.

@@ -30,6 +30,8 @@ RemoveBrokerEndpoint:
           type: array
           items:
             type: string
+            # default is every goal
+          example: ["RackAwareGoal", "ReplicaCapacityGoal", "ReplicaDistributionGoal"]
       - name: allow_capacity_estimation
         in: query
         description: Whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information.
@@ -77,6 +79,7 @@ RemoveBrokerEndpoint:
         schema:
           type: string
           default: null
+          example: "__CruiseControl.%2A"
       - name: kafka_assigner
         in: query
         description: Whether to use Kafka assigner mode to generate proposals.
@@ -115,6 +118,7 @@ RemoveBrokerEndpoint:
           items:
             type: string
           default: null
+          example: ["PrioritizeLargeReplicaMovementStrategy", "PostponeUrpReplicaMovementStrategy"]
       - name: destination_broker_ids
         in: query
         description: Comma-separated and/or space-separated list of broker IDs.

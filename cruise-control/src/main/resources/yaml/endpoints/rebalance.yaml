@@ -16,6 +16,7 @@ RebalanceEndpoint:
           type: array
           items:
             type: string
+          example: ["RackAwareGoal", "ReplicaCapacityGoal", "ReplicaDistributionGoal"]
       - name: allow_capacity_estimation
         in: query
         description: Whether to allow capacity estimation when cruise-control is unable to obtain all per-broker capacity information.
@@ -74,6 +75,7 @@ RebalanceEndpoint:
         schema:
           type: string # topics regex
           default: null
+          example: "__CruiseControl.%2A"
       - name: use_ready_default_goals
         in: query
         description: Whether to only use ready goals to generate proposal.
@@ -111,6 +113,7 @@ RebalanceEndpoint:
           type: array
           items:
             type: string
+          example: ["PrioritizeLargeReplicaMovementStrategy", "PostponeUrpReplicaMovementStrategy"]
       - name: ignore_proposal_cache
         in: query
         description: Whether to ignore the cached proposal or not.
@@ -124,6 +127,7 @@ RebalanceEndpoint:
           type: array
           items:
             type: string
+          example: [1,2,3]
       - name: kafka_assigner
         in: query
         description: Whether to use Kafka assigner mode to generate proposals.
@@ -162,6 +166,7 @@ RebalanceEndpoint:
         description: Reason for request.
         schema:
           type: string
+        example: "Balance disk utilization across all brokers in the cluster."
       - name: get_response_schema
         in: query
         description: Whether to return JSON schema in response header or not.

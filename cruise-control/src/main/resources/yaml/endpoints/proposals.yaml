@@ -18,6 +18,7 @@ ProposalsEndpoint:
             type: integer
             format: int32
           default: null
+          example: [1,2,3]
       - name: ignore_proposal_cache
         in: query
         description: Whether to ignore the cached proposal or not.
@@ -51,6 +52,7 @@ ProposalsEndpoint:
         schema:
           type: string # topics regex
           default: null
+        example: "__CruiseControl.%2A"
       - name: exclude_recently_removed_brokers
         in: query
         description: Whether allow replicas to be moved to recently removed broker.
@@ -64,6 +66,7 @@ ProposalsEndpoint:
           type: array
           items:
             type: string
+          example: ["RackAwareGoal", "ReplicaCapacityGoal", "ReplicaDistributionGoal"]
       - name: allow_capacity_estimation
         in: query
         description: Whether to allow broker capacity to be estimated.
