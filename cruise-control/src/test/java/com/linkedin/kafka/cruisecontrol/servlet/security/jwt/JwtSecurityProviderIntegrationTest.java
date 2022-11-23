@@ -108,8 +108,7 @@ public class JwtSecurityProviderIntegrationTest extends CruiseControlIntegration
   }
 
   /**
-   * Starts the token provider and the Kafka environment before test
-   * @throws Exception
+   * Sets up the test environment.
    */
   @Before
   public void setup() throws Exception {
@@ -118,7 +117,7 @@ public class JwtSecurityProviderIntegrationTest extends CruiseControlIntegration
   }
 
   /**
-   * Stops the token provider and the Kafka environment after test
+   * Tears down the test environment
    * @throws Exception
    */
   @After

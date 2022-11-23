@@ -83,11 +83,11 @@ public class TopicConfigurationParameters extends GoalBasedOptimizationParameter
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
     boolean twoStepVerificationEnabled = _config.getBoolean(WebServerConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
-    _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
-    _dryRun = ParameterUtils.getDryRun(_request);
+    _reviewId = ParameterUtils.reviewId(_requestContext, twoStepVerificationEnabled);
+    _dryRun = ParameterUtils.getDryRun(_requestContext);
     boolean requestReasonRequired = _config.getBoolean(ExecutorConfig.REQUEST_REASON_REQUIRED_CONFIG);
-    _reason = ParameterUtils.reason(_request, requestReasonRequired && !_dryRun);
-    _stopOngoingExecution = ParameterUtils.stopOngoingExecution(_request);
+    _reason = ParameterUtils.reason(_requestContext, requestReasonRequired && !_dryRun);
+    _stopOngoingExecution = ParameterUtils.stopOngoingExecution(_requestContext);
     if (_stopOngoingExecution && _dryRun) {
       throw new UserRequestException(String.format("%s and %s cannot both be set to true.", STOP_ONGOING_EXECUTION_PARAM, DRY_RUN_PARAM));
     }

@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.handler.sync;
 
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlEndPoints;
 import com.linkedin.kafka.cruisecontrol.config.BrokerSetResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
@@ -47,11 +48,12 @@ public class KafkaClusterStateRequest extends AbstractSyncRequest {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    _kafkaCluster = _servlet.asyncKafkaCruiseControl().kafkaCluster();
-    _topicConfigProvider = _servlet.asyncKafkaCruiseControl().topicConfigProvider();
-    _config = _servlet.asyncKafkaCruiseControl().config();
-    _adminClient = _servlet.asyncKafkaCruiseControl().adminClient();
-    _brokerSetResolver = _servlet.asyncKafkaCruiseControl().brokerSetResolver();
+    KafkaCruiseControlEndPoints cruiseControlEndPoints = getCruiseControlEndpoints();
+    _kafkaCluster = cruiseControlEndPoints.asyncKafkaCruiseControl().kafkaCluster();
+    _topicConfigProvider = cruiseControlEndPoints.asyncKafkaCruiseControl().topicConfigProvider();
+    _config = cruiseControlEndPoints.asyncKafkaCruiseControl().config();
+    _adminClient = cruiseControlEndPoints.asyncKafkaCruiseControl().adminClient();
+    _brokerSetResolver = cruiseControlEndPoints.asyncKafkaCruiseControl().brokerSetResolver();
     _parameters = (KafkaClusterStateParameters) validateNotNull(configs.get(KAFKA_CLUSTER_STATE_PARAMETER_OBJECT_CONFIG),
             "Parameter configuration is missing from the request.");
   }

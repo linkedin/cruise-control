@@ -4,20 +4,15 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.cruisecontrol.http.CruiseControlRequestContext;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
-import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import javax.servlet.http.HttpServletRequest;
 import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Test;
-
-import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.GET_METHOD;
-import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
-
 
 public class ParameterUtilsTest {
 
@@ -31,7 +26,7 @@ public class ParameterUtilsTest {
 
   @Test
   public void testParseTimeRangeSet() {
-    HttpServletRequest mockRequest = EasyMock.mock(HttpServletRequest.class);
+    CruiseControlRequestContext mockRequest = EasyMock.mock(CruiseControlRequestContext.class);
     Map<String, String[]> paramMap = new HashMap<>();
     paramMap.put(ParameterUtils.START_MS_PARAM, new String[]{ParameterUtils.START_MS_PARAM});
     paramMap.put(ParameterUtils.END_MS_PARAM, new String[]{ParameterUtils.END_MS_PARAM});
@@ -63,7 +58,7 @@ public class ParameterUtilsTest {
     String secondResponse = Boolean.FALSE.toString();
 
     // Mock for (1) default response (2) response for valid input with true/false.
-    HttpServletRequest mockRequest = EasyMock.mock(HttpServletRequest.class);
+    CruiseControlRequestContext mockRequest = EasyMock.mock(CruiseControlRequestContext.class);
     EasyMock.expect(mockRequest.getParameterMap()).andReturn(Collections.emptyMap())
             .andReturn(Collections.singletonMap(ParameterUtils.MIN_ISR_BASED_CONCURRENCY_ADJUSTMENT_PARAM, new String[]{firstResponse}))
             .andReturn(Collections.singletonMap(ParameterUtils.MIN_ISR_BASED_CONCURRENCY_ADJUSTMENT_PARAM, new String[]{secondResponse}));
@@ -88,7 +83,7 @@ public class ParameterUtilsTest {
 
   @Test
   public void testParseTimeRangeNotSet() {
-    HttpServletRequest mockRequest = EasyMock.mock(HttpServletRequest.class);
+    CruiseControlRequestContext mockRequest = EasyMock.mock(CruiseControlRequestContext.class);
     // Mock the request so that it does not contain start/end time
     EasyMock.expect(mockRequest.getParameterMap()).andReturn(Collections.emptyMap()).times(4);
     EasyMock.replay(mockRequest);
@@ -108,7 +103,7 @@ public class ParameterUtilsTest {
 
   @Test
   public void testParseReplicationThrottleWithNoDefault() {
-    HttpServletRequest mockRequest = EasyMock.mock(HttpServletRequest.class);
+    CruiseControlRequestContext mockRequest = EasyMock.mock(CruiseControlRequestContext.class);
     KafkaCruiseControlConfig controlConfig = EasyMock.mock(KafkaCruiseControlConfig.class);
 
     Map<String, String[]> paramMap = Collections.singletonMap(
@@ -129,7 +124,7 @@ public class ParameterUtilsTest {
 
   @Test
   public void testParseReplicationThrottleWithDefault() {
-    HttpServletRequest mockRequest = EasyMock.mock(HttpServletRequest.class);
+    CruiseControlRequestContext mockRequest = EasyMock.mock(CruiseControlRequestContext.class);
     KafkaCruiseControlConfig controlConfig = EasyMock.mock(KafkaCruiseControlConfig.class);
     // No parameter string value in the parameter map
     EasyMock.expect(mockRequest.getParameterMap()).andReturn(Collections.emptyMap()).once();
@@ -145,7 +140,7 @@ public class ParameterUtilsTest {
 
   @Test
   public void testParseExecutionProgressCheckIntervalMsNoValue() {
-    HttpServletRequest mockRequest = EasyMock.mock(HttpServletRequest.class);
+    CruiseControlRequestContext mockRequest = EasyMock.mock(CruiseControlRequestContext.class);
     EasyMock.expect(mockRequest.getParameterMap()).andReturn(Collections.emptyMap()).once();
     EasyMock.replay(mockRequest);
     Assert.assertNull(ParameterUtils.executionProgressCheckIntervalMs(mockRequest));
@@ -154,7 +149,7 @@ public class ParameterUtilsTest {
 
   @Test
   public void testParseExecutionProgressCheckIntervalMsWithValue() {
-    HttpServletRequest mockRequest = EasyMock.mock(HttpServletRequest.class);
+    CruiseControlRequestContext mockRequest = EasyMock.mock(CruiseControlRequestContext.class);
 
     Map<String, String[]> paramMap = Collections.singletonMap(
         ParameterUtils.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM,
@@ -170,29 +165,5 @@ public class ParameterUtilsTest {
 
     EasyMock.verify(mockRequest);
     Assert.assertEquals(Long.valueOf(EXECUTION_PROGRESS_CHECK_INTERVAL_STRING), executionProgressCheckIntervalMs);
-  }
-
-  @Test
-  public void testGetEndpoint() {
-    HttpServletRequest mockRequest = EasyMock.mock(HttpServletRequest.class);
-    for (CruiseControlEndPoint getEndPoint : CruiseControlEndPoint.getEndpoints()) {
-      EasyMock.expect(mockRequest.getMethod()).andReturn(GET_METHOD).once();
-      EasyMock.expect(mockRequest.getPathInfo()).andReturn("/" + getEndPoint).once();
-      EasyMock.replay(mockRequest);
-      CruiseControlEndPoint endPoint = ParameterUtils.endPoint(mockRequest);
-      Assert.assertEquals(getEndPoint, endPoint);
-      EasyMock.verify(mockRequest);
-      EasyMock.reset(mockRequest);
-    }
-
-    for (CruiseControlEndPoint postEndPoint : CruiseControlEndPoint.postEndpoints()) {
-      EasyMock.expect(mockRequest.getMethod()).andReturn(POST_METHOD).once();
-      EasyMock.expect(mockRequest.getPathInfo()).andReturn("/" + postEndPoint).once();
-      EasyMock.replay(mockRequest);
-      CruiseControlEndPoint endPoint = ParameterUtils.endPoint(mockRequest);
-      Assert.assertEquals(postEndPoint, endPoint);
-      EasyMock.verify(mockRequest);
-      EasyMock.reset(mockRequest);
-    }
   }
 }

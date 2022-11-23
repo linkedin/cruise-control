@@ -4,6 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
@@ -16,17 +18,21 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder;
 import net.minidev.json.JSONArray;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlIntegrationTestUtils.KAFKA_CRUISE_CONTROL_BASE_PATH;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.KAFKA_CLUSTER_STATE;
 
+@RunWith(Parameterized.class)
 public class TopicAnomalyIntegrationTest extends CruiseControlIntegrationTestHarness {
 
   private static final int EXPECTED_REPLICA_COUNT = 3;
@@ -35,6 +41,21 @@ public class TopicAnomalyIntegrationTest extends CruiseControlIntegrationTestHar
   private static final String CRUISE_CONTROL_KAFKA_CLUSTER_STATE_ENDPOINT =
       KAFKA_CRUISE_CONTROL_BASE_PATH + KAFKA_CLUSTER_STATE + "?verbose=true&json=true";
   private final Configuration _gsonJsonConfig = KafkaCruiseControlIntegrationTestUtils.createJsonMappingConfig();
+  private final Boolean _vertxEnabled;
+
+  public TopicAnomalyIntegrationTest(Boolean vertxEnabled) {
+    this._vertxEnabled = vertxEnabled;
+  }
+
+  /**
+   * Sets different parameters for test runs.
+   * @return Parameters for the test runs.
+   */
+  @Parameterized.Parameters
+  public static Collection<Boolean> data() {
+    Boolean[] data = {true, false};
+    return Arrays.asList(data);
+  }
 
   @Before
   public void setup() throws Exception {
@@ -73,6 +94,7 @@ public class TopicAnomalyIntegrationTest extends CruiseControlIntegrationTestHar
     configs.put(AnalyzerConfig.HARD_GOALS_CONFIG, new StringJoiner(",")
         .add(ReplicaCapacityGoal.class.getName())
         .add(MinTopicLeadersPerBrokerGoal.class.getName()).toString());
+    configs.put(WebServerConfig.VERTX_ENABLED_CONFIG, String.valueOf(_vertxEnabled));
 
     return configs;
   }

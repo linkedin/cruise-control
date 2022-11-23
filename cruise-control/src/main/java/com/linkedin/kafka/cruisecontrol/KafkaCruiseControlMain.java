@@ -31,11 +31,10 @@ public final class KafkaCruiseControlMain {
     }
 
     Thread.setDefaultUncaughtExceptionHandler((t, e) -> LOG.error("Uncaught exception on thread {}", t, e));
-
     KafkaCruiseControlConfig config = readConfig(args[0]);
     Integer port = parsePort(args, config);
     String hostname = parseHostname(args, config);
-    KafkaCruiseControlApp app = new KafkaCruiseControlApp(config, port, hostname);
+    KafkaCruiseControlApp app = KafkaCruiseControlUtils.getCruiseControlApp(config, port, hostname);
     app.registerShutdownHook();
     app.start();
   }

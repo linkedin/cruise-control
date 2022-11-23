@@ -46,8 +46,8 @@ public class KafkaClusterStateParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _isVerbose = ParameterUtils.isVerbose(_request);
-    _topic = ParameterUtils.topic(_request);
+    _isVerbose = ParameterUtils.isVerbose(_requestContext);
+    _topic = ParameterUtils.topic(_requestContext);
   }
 
   public boolean isVerbose() {

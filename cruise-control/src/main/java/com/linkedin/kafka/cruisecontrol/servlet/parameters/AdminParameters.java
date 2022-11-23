@@ -70,7 +70,7 @@ public class AdminParameters extends AbstractParameters {
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
     boolean twoStepVerificationEnabled = _config.getBoolean(WebServerConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
-    _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
+    _reviewId = ParameterUtils.reviewId(_requestContext, twoStepVerificationEnabled);
     _dropBrokersParameters = maybeBuildDropRecentBrokersParameters(_configs);
     _updateSelfHealingParameters = maybeBuildUpdateSelfHealingParameters(_configs);
     _changeExecutionConcurrencyParameters = maybeBuildChangeExecutionConcurrencyParameters(_configs);
