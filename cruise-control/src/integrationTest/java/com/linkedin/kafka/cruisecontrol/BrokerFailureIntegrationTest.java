@@ -47,11 +47,9 @@ public class BrokerFailureIntegrationTest extends CruiseControlIntegrationTestHa
 
   private static final int BROKER_ID_TO_REMOVE = 1;
 
-  private final Boolean _kafkaBrokerFailureDetectorEnable;
   private final Boolean _vertxEnabled;
 
-  public BrokerFailureIntegrationTest(Boolean kafkaBrokerFailureDetectorEnable, Boolean vertxEnabled) {
-    this._kafkaBrokerFailureDetectorEnable = kafkaBrokerFailureDetectorEnable;
+  public BrokerFailureIntegrationTest(Boolean vertxEnabled) {
     this._vertxEnabled = vertxEnabled;
   }
 
@@ -60,8 +58,8 @@ public class BrokerFailureIntegrationTest extends CruiseControlIntegrationTestHa
    * @return Parameters for the test runs.
    */
   @Parameterized.Parameters
-  public static Collection<Boolean[]> data() {
-    Boolean[][] data = {{true, true}, {false, false}};
+  public static Collection<Boolean> data() {
+    Boolean[] data = {true, false};
     return Arrays.asList(data);
   }
 
@@ -88,7 +86,6 @@ public class BrokerFailureIntegrationTest extends CruiseControlIntegrationTestHa
   @Override
   protected Map<String, Object> withConfigs() {
     Map<String, Object> configs = KafkaCruiseControlIntegrationTestUtils.ccConfigOverrides();
-    configs.put(AnomalyDetectorConfig.KAFKA_BROKER_FAILURE_DETECTION_ENABLE_CONFIG, String.valueOf(_kafkaBrokerFailureDetectorEnable));
     configs.put(AnomalyDetectorConfig.BROKER_FAILURE_DETECTION_INTERVAL_MS_CONFIG, "30000");
     configs.put(SelfHealingNotifier.BROKER_FAILURE_ALERT_THRESHOLD_MS_CONFIG, "1000");
     configs.put(SelfHealingNotifier.BROKER_FAILURE_SELF_HEALING_THRESHOLD_MS_CONFIG, "1500");
