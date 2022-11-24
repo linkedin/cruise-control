@@ -25,7 +25,7 @@ public class KafkaCruiseControlVertxApp extends KafkaCruiseControlApp {
 
     @Override
     public String serverUrl() {
-        return null;
+        return "http://" + _hostname + ":" + _port + "/";
     }
 
     @Override

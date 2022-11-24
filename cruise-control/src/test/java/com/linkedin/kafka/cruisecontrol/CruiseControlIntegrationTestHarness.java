@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCEmbeddedBroker;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
+import java.net.ServerSocket;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
@@ -17,10 +18,9 @@ import java.util.Properties;
 public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegrationTestHarness {
 
   protected KafkaCruiseControlConfig _config;
-  protected KafkaCruiseControlServletApp _app;
+  protected KafkaCruiseControlApp _app;
 
   protected static final String LOCALHOST = "localhost";
-  private static final int ANY_PORT = 0;
 
   protected Map<String, Object> withConfigs() {
     return Collections.emptyMap();
@@ -43,7 +43,7 @@ public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegra
     super.setUp();
     _brokers.values().forEach(CCEmbeddedBroker::startup);
     setupConfig();
-    _app = new KafkaCruiseControlServletApp(_config, ANY_PORT, LOCALHOST);
+    _app = KafkaCruiseControlUtils.getCruiseControlApp(_config, new ServerSocket(0).getLocalPort(), LOCALHOST);
     _app.start();
   }
 
