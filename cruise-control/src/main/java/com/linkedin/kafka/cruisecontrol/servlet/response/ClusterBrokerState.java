@@ -4,14 +4,17 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.response;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.BrokerSetAwareGoal;
 import com.linkedin.kafka.cruisecontrol.config.BrokerSetResolutionHelper;
 import com.linkedin.kafka.cruisecontrol.config.BrokerSetResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.exception.BrokerSetResolutionException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -84,11 +87,16 @@ public class ClusterBrokerState {
     _offlineLogDirsByBrokerId = new TreeMap<>();
 
     _brokerSetIdByBrokerId = new HashMap<>();
-    try {
-      BrokerSetResolutionHelper brokerSetResolutionHelper = new BrokerSetResolutionHelper(kafkaCluster, brokerSetResolver);
-      _brokerSetIdByBrokerId.putAll(brokerSetResolutionHelper.brokerSetIdByBrokerId());
-    } catch (BrokerSetResolutionException e) {
-      LOG.warn("Failed to resolve broker set with exception: ", e);
+
+    // Only resolve broker-set if the default goals contain the BrokerSetAwareGoal
+    List<String> defaultGoals = config.getList(AnalyzerConfig.DEFAULT_GOALS_CONFIG);
+    if (defaultGoals.contains(BrokerSetAwareGoal.class.getName())) {
+      try {
+        BrokerSetResolutionHelper brokerSetResolutionHelper = new BrokerSetResolutionHelper(kafkaCluster, brokerSetResolver);
+        _brokerSetIdByBrokerId.putAll(brokerSetResolutionHelper.brokerSetIdByBrokerId());
+      } catch (BrokerSetResolutionException e) {
+        LOG.error("Failed to resolve broker set with exception: ", e);
+      }
     }
 
     // Broker LogDirs Summary
