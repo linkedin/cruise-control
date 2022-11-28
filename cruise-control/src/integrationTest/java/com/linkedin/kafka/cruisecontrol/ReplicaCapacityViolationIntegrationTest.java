@@ -89,12 +89,12 @@ public class ReplicaCapacityViolationIntegrationTest extends CruiseControlIntegr
   protected Map<String, Object> withConfigs() {
     Map<String, Object> configs = KafkaCruiseControlIntegrationTestUtils.ccConfigOverrides();
     configs.put(TopicReplicationFactorAnomalyFinder.SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG, "2");
-    
+
     configs.put(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG, "15000");
     configs.put(MonitorConfig.METADATA_MAX_AGE_MS_CONFIG, "15000");
     configs.put(MonitorConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG, "20000");
     configs.put(AnomalyDetectorConfig.ANOMALY_DETECTION_INTERVAL_MS_CONFIG, "20000");
-    
+
     configs.put(AnomalyDetectorConfig.ANOMALY_DETECTION_GOALS_CONFIG, new StringJoiner(",")
         .add(ReplicaCapacityGoal.class.getName())
         .add(DiskCapacityGoal.class.getName()).toString());
@@ -103,11 +103,11 @@ public class ReplicaCapacityViolationIntegrationTest extends CruiseControlIntegr
         .add(MinTopicLeadersPerBrokerGoal.class.getName())
         .add(ReplicaCapacityGoal.class.getName())
         .add(ReplicaDistributionGoal.class.getName()).toString());
-    
+
     configs.put(AnalyzerConfig.HARD_GOALS_CONFIG, new StringJoiner(",")
         .add(ReplicaCapacityGoal.class.getName())
         .add(MinTopicLeadersPerBrokerGoal.class.getName()).toString());
-    
+
     configs.put(AnalyzerConfig.MAX_REPLICAS_PER_BROKER_CONFIG, "4");
     configs.put(AnalyzerConfig.OVERPROVISIONED_MAX_REPLICAS_PER_BROKER_CONFIG, "4");
     configs.put(WebServerConfig.VERTX_ENABLED_CONFIG, String.valueOf(_vertxEnabled));
@@ -116,7 +116,7 @@ public class ReplicaCapacityViolationIntegrationTest extends CruiseControlIntegr
 
   @Test
   public void testReplicaCapacityViolation() {
-    KafkaCruiseControlIntegrationTestUtils.createTopic(broker(0).plaintextAddr(), 
+    KafkaCruiseControlIntegrationTestUtils.createTopic(broker(0).plaintextAddr(),
         new NewTopic(TOPIC0, PARTITION_COUNT, (short) 2));
 
     waitForReplicaCapacityGoalViolation();
@@ -124,7 +124,7 @@ public class ReplicaCapacityViolationIntegrationTest extends CruiseControlIntegr
     Map<Object, Object> createBrokerConfig = createBrokerConfig(BROKER_ID_TO_ADD);
     CCEmbeddedBroker broker = new CCEmbeddedBroker(createBrokerConfig);
     broker.startup();
-    
+
     waitForReplicasCreatedOnNewBroker();
   }
 
@@ -147,7 +147,7 @@ public class ReplicaCapacityViolationIntegrationTest extends CruiseControlIntegr
         List<String> unfixableGoals = JsonPath.parse(unfixableGoalsArray, _gsonJsonConfig)
             .read("$..*", new TypeRef<>() { });
         return unfixableGoals.contains("ReplicaCapacityGoal");
-    }, 100, new AssertionError("Replica capacity goal violation not found"));
+    }, 180, new AssertionError("Replica capacity goal violation not found"));
   }
 
 }

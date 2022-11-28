@@ -104,7 +104,7 @@ public class TopicAnomalyIntegrationTest extends CruiseControlIntegrationTestHar
     KafkaCruiseControlIntegrationTestUtils.createTopic(broker(0).plaintextAddr(),
         new NewTopic(TOPIC0, PARTITION_COUNT, (short) 2));
 
-    waitForMetadataPropogates();
+    waitForMetadataPropagates();
 
     KafkaCruiseControlIntegrationTestUtils.produceRandomDataToTopic(TOPIC0, 4000,
         KafkaCruiseControlIntegrationTestUtils.getDefaultProducerProperties(bootstrapServers()));
@@ -125,7 +125,7 @@ public class TopicAnomalyIntegrationTest extends CruiseControlIntegrationTestHar
     }, 100, new AssertionError("Replica count not match"));
   }
 
-  private void waitForMetadataPropogates() {
+  private void waitForMetadataPropagates() {
     KafkaCruiseControlIntegrationTestUtils.waitForConditionMeet(() -> {
         String responseMessage = KafkaCruiseControlIntegrationTestUtils
             .callCruiseControl(_app.serverUrl(), CRUISE_CONTROL_KAFKA_CLUSTER_STATE_ENDPOINT);
@@ -134,7 +134,7 @@ public class TopicAnomalyIntegrationTest extends CruiseControlIntegrationTestHar
         List<Integer> partitionLeaders = JsonPath.parse(partitionLeadersArray, _gsonJsonConfig)
             .read("$.*", new TypeRef<>() { });
         return partitionLeaders.size() == PARTITION_COUNT;
-    }, 80, new AssertionError("Topic partitions not found for " + TOPIC0));
+    }, 180, new AssertionError("Topic partitions not found for " + TOPIC0));
   }
 
 }
