@@ -20,3 +20,6 @@ access.log
 .vertx
 **openapi.json
 fileStore/failedBrokers.txt
+cruise-control/src/main/resources/webroot/.openapi-generator-ignore
+cruise-control/src/main/resources/webroot/.openapi-generator/
+cruise-control/src/main/resources/webroot/README.md
