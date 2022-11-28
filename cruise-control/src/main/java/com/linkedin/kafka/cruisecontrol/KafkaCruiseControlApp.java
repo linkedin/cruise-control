@@ -4,15 +4,17 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
-import com.codahale.metrics.jmx.JmxReporter;
 import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.jmx.JmxReporter;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.metrics.LegacyObjectNameFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class KafkaCruiseControlApp {
-
+  protected static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlApp.class);
   protected static final String METRIC_DOMAIN = "kafka.cruisecontrol";
 
   protected final KafkaCruiseControlConfig _config;
