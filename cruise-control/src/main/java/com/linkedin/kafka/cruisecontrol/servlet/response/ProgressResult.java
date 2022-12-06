@@ -6,9 +6,11 @@ package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.linkedin.cruisecontrol.http.CruiseControlRequestContext;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.OperationFuture;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,6 +18,7 @@ import java.util.Map;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
+import static javax.servlet.http.HttpServletResponse.SC_ACCEPTED;
 
 @JsonResponseClass
 public class ProgressResult extends AbstractCruiseControlResponse {
@@ -39,6 +42,14 @@ public class ProgressResult extends AbstractCruiseControlResponse {
     Gson gson = new GsonBuilder().serializeNulls().serializeSpecialFloatingPointValues().create();
 
     return gson.toJson(jsonResponse);
+  }
+
+  @Override
+  public void writeSuccessResponse(CruiseControlParameters parameters, CruiseControlRequestContext requestContext) throws IOException {
+    boolean json = parameters.json();
+    boolean wantResponseSchema = parameters.wantResponseSchema();
+    discardIrrelevantResponse(parameters);
+    requestContext.writeResponseToOutputStream(SC_ACCEPTED, json, wantResponseSchema, _cachedResponse);
   }
 
   protected String getPlaintext() {
