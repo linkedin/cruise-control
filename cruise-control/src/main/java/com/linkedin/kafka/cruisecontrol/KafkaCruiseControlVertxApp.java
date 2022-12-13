@@ -28,7 +28,7 @@ public class KafkaCruiseControlVertxApp extends KafkaCruiseControlApp {
     @Override
     public String serverUrl() {
         try {
-            return new URL("http", _hostname, _port, "/").toString();
+            return new URL("http", _hostname, _verticle.getServer().actualPort(), "/").toString();
         } catch (MalformedURLException e) {
             LOG.error("Could not create URL from the given port and host.", e);
         }
