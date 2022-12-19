@@ -53,8 +53,6 @@ public class TopicAnomalyIntegrationTest extends CruiseControlIntegrationTestHar
    */
   @Parameterized.Parameters
   public static Collection<Boolean> data() {
-    // Skip the vertx enabled test for now, as it fails the integration test.
-    // Boolean[] data = {true, false};
     Boolean[] data = {true, false};
     return Arrays.asList(data);
   }
