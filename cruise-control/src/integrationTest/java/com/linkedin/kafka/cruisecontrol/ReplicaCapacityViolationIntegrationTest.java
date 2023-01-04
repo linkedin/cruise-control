@@ -59,9 +59,7 @@ public class ReplicaCapacityViolationIntegrationTest extends CruiseControlIntegr
    */
   @Parameterized.Parameters
   public static Collection<Boolean> data() {
-    // Skip the vertx enabled test for now, as it fails the integration test.
-    // Boolean[] data = {true, false};
-    Boolean[] data = {false};
+    Boolean[] data = {true, false};
     return Arrays.asList(data);
   }
 
@@ -149,7 +147,7 @@ public class ReplicaCapacityViolationIntegrationTest extends CruiseControlIntegr
         List<String> unfixableGoals = JsonPath.parse(unfixableGoalsArray, _gsonJsonConfig)
             .read("$..*", new TypeRef<>() { });
         return unfixableGoals.contains("ReplicaCapacityGoal");
-    }, 180, new AssertionError("Replica capacity goal violation not found"));
+    }, 100, new AssertionError("Replica capacity goal violation not found"));
   }
 
 }

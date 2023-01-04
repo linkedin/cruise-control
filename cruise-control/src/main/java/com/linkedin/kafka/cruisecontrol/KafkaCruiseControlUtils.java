@@ -62,7 +62,6 @@ import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.ServerSocket;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
@@ -917,7 +916,7 @@ public final class KafkaCruiseControlUtils {
    */
   public static KafkaCruiseControlApp getCruiseControlApp(KafkaCruiseControlConfig config, Integer port, String hostname) throws ServletException {
     if (config.getBoolean(WebServerConfig.VERTX_ENABLED_CONFIG)) {
-      return new KafkaCruiseControlVertxApp(config, port == 0 ? getNewPort() : port, hostname);
+      return new KafkaCruiseControlVertxApp(config, port, hostname);
     }
     return new KafkaCruiseControlServletApp(config, port, hostname);
   }
@@ -934,14 +933,5 @@ public final class KafkaCruiseControlUtils {
     public static List<CompletionType> cachedValues() {
       return Collections.unmodifiableList(CACHED_VALUES);
     }
-  }
-
-  private static Integer getNewPort() {
-    try {
-      return new ServerSocket(0).getLocalPort();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-    return 0;
   }
 }
