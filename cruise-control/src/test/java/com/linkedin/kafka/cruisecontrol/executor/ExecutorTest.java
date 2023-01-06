@@ -34,6 +34,7 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
+import java.util.HashSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
@@ -69,6 +70,7 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutorTestUtils.*;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.SamplingMode.*;
 import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.isA;
+import static org.easymock.EasyMock.anyLong;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
@@ -654,6 +656,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
             .andReturn(LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING)
             .anyTimes();
     EasyMock.expect(mockLoadMonitor.samplingMode()).andReturn(ALL).anyTimes();
+    EasyMock.expect(mockLoadMonitor.deadBrokersWithReplicas(anyLong())).andReturn(new HashSet<>()).anyTimes();
     mockLoadMonitor.pauseMetricSampling(isA(String.class), EasyMock.anyBoolean());
     expectLastCall().anyTimes();
     mockLoadMonitor.setSamplingMode(ONGOING_EXECUTION);
