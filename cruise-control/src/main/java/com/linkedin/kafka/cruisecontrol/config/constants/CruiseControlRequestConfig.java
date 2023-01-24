@@ -13,6 +13,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.handler.async.PartitionLoadReque
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.ProposalsRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.RebalanceRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.RemoveBrokerRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.UserPermissionRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.RightsizeRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.TopicConfigurationRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.AdminRequest;
@@ -181,6 +182,13 @@ public final class CruiseControlRequestConfig {
   public static final String DEFAULT_RIGHTSIZE_REQUEST_CLASS = RightsizeRequest.class.getName();
   public static final String RIGHTSIZE_REQUEST_CLASS_DOC = "The class to handle a provision rightsize request.";
 
+  /**
+   * <code>permissions.request.class</code>
+   */
+  public static final String PERMISSIONS_REQUEST_CLASS_CONFIG = "permissions.request.class";
+  public static final String DEFAULT_PERMISSIONS_REQUEST_CLASS = UserPermissionRequest.class.getName();
+  public static final String PERMISSIONS_REQUEST_CLASS_DOC = "The class to handle a user permission request.";
+
   private CruiseControlRequestConfig() {
   }
 
@@ -295,6 +303,11 @@ public final class CruiseControlRequestConfig {
                             ConfigDef.Type.CLASS,
                             DEFAULT_RIGHTSIZE_REQUEST_CLASS,
                             ConfigDef.Importance.MEDIUM,
-                            RIGHTSIZE_REQUEST_CLASS_DOC);
+                            RIGHTSIZE_REQUEST_CLASS_DOC)
+                    .define(PERMISSIONS_REQUEST_CLASS_CONFIG,
+                            ConfigDef.Type.CLASS,
+                            DEFAULT_PERMISSIONS_REQUEST_CLASS,
+                            ConfigDef.Importance.MEDIUM,
+                            PERMISSIONS_REQUEST_CLASS_DOC);
   }
 }

@@ -24,6 +24,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.StopProposalParameter
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TrainParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserTasksParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserPermissionsParameters;
 import org.apache.kafka.common.config.ConfigDef;
 
 
@@ -179,6 +180,13 @@ public final class CruiseControlParametersConfig {
   public static final String DEFAULT_RIGHTSIZE_PARAMETERS_CLASS = RightsizeParameters.class.getName();
   public static final String RIGHTSIZE_PARAMETERS_CLASS_DOC = "The class for parameters of a provision rightsize request.";
 
+  /**
+   * <code>permissions.parameters.class</code>
+   */
+  public static final String PERMISSIONS_PARAMETERS_CLASS_CONFIG = "permissions.parameters.class";
+  public static final String DEFAULT_PERMISSIONS_PARAMETERS_CLASS = UserPermissionsParameters.class.getName();
+  public static final String PERMISSIONS_PARAMETERS_CLASS_DOC = "The class for parameters of user permissons request.";
+
   private CruiseControlParametersConfig() {
   }
 
@@ -293,6 +301,11 @@ public final class CruiseControlParametersConfig {
                             ConfigDef.Type.CLASS,
                             DEFAULT_RIGHTSIZE_PARAMETERS_CLASS,
                             ConfigDef.Importance.MEDIUM,
-                            RIGHTSIZE_PARAMETERS_CLASS_DOC);
+                            RIGHTSIZE_PARAMETERS_CLASS_DOC)
+                    .define(PERMISSIONS_PARAMETERS_CLASS_CONFIG,
+                            ConfigDef.Type.CLASS,
+                            DEFAULT_PERMISSIONS_PARAMETERS_CLASS,
+                            ConfigDef.Importance.MEDIUM,
+                            PERMISSIONS_PARAMETERS_CLASS_DOC);
   }
 }
