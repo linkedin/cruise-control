@@ -50,7 +50,7 @@ public class ExecutionTaskTracker {
   public static final String GAUGE_ONGOING_EXECUTION_IN_KAFKA_ASSIGNER_MODE = "ongoing-execution-kafka_assigner";
   public static final String GAUGE_ONGOING_EXECUTION_IN_NON_KAFKA_ASSIGNER_MODE = "ongoing-execution-non_kafka_assigner";
   public static final String METER_TASK_EXECUTION_RATE = "task-execution-rate";
-  public static final String METER_PARTITION_DATA_MOVEMENT_RATE = "partition-data-movement-rate";
+  public static final String METER_PARTITION_DATA_MOVEMENT_RATE = "partition-data-movement-rate-MB";
 
   ExecutionTaskTracker(MetricRegistry dropwizardMetricRegistry, Time time) {
     List<ExecutionTaskState> states = ExecutionTaskState.cachedValues();

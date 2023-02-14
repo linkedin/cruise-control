@@ -71,6 +71,8 @@ public final class ExecutionUtils {
   public static final String GAUGE_EXECUTION_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER_CAP = "inter-broker-partition-movements-per-broker-cap";
   public static final String GAUGE_EXECUTION_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER_CAP = "intra-broker-partition-movements-per-broker-cap";
   public static final String GAUGE_EXECUTION_LEADERSHIP_MOVEMENTS_GLOBAL_CAP = "leadership-movements-global-cap";
+  public static final String PARTITION_MOVEMENT_PER_SEC = "partition-movement-count-per-second";
+  public static final String PARTITION_MOVEMENT_MB_PER_SEC = "partition-movement-MB-per-second";
   public static final long EXECUTION_HISTORY_SCANNER_PERIOD_SECONDS = 5;
   public static final long EXECUTION_HISTORY_SCANNER_INITIAL_DELAY_SECONDS = 0;
   static final Map<ConcurrencyType, Integer> ADDITIVE_INCREASE = new HashMap<>();

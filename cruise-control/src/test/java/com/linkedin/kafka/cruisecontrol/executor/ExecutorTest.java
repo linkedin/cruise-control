@@ -760,7 +760,9 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     }
 
     assertNotNull(metricRegistry.meter("Executor.task-execution-rate"));
-    assertNotNull(metricRegistry.meter("Executor.partition-data-movement-rate"));
+    assertNotNull(metricRegistry.meter("Executor.partition-data-movement-rate-MB"));
+    assertNotNull(metricRegistry.gauge("Executor.partition-movement-count-per-second"));
+    assertNotNull(metricRegistry.gauge("Executor.partition-movement-MB-per-second"));
   }
 
   private Properties getExecutorProperties() {
