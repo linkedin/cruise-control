@@ -69,10 +69,7 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutorTestUtils.*;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.SamplingMode.*;
 import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.isA;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 
 public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
@@ -713,7 +710,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     } else {
       EasyMock.replay(mockUserTaskInfo, mockExecutorNotifier, mockLoadMonitor, mockAnomalyDetectorManager);
     }
-    Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), null, mockExecutorNotifier,
+    MetricRegistry metricRegistry = new MetricRegistry();
+    Executor executor = new Executor(configs, new SystemTime(), metricRegistry, null, mockExecutorNotifier,
                                      mockAnomalyDetectorManager);
     executor.setUserTaskManager(mockUserTaskManager);
     Map<TopicPartition, Integer> replicationFactors = new HashMap<>();
@@ -760,6 +758,9 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     } else {
       EasyMock.verify(mockUserTaskInfo, mockExecutorNotifier, mockLoadMonitor, mockAnomalyDetectorManager);
     }
+
+    assertNotNull(metricRegistry.meter("Executor.task-execution-rate"));
+    assertNotNull(metricRegistry.meter("Executor.partition-data-movement-rate"));
   }
 
   private Properties getExecutorProperties() {

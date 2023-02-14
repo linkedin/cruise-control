@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.codahale.metrics.Gauge;
+import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import java.util.Collection;
 import java.util.Collections;
@@ -34,6 +35,8 @@ public class ExecutionTaskTracker {
   private boolean _isKafkaAssignerMode;
   private final Time _time;
   private volatile boolean _stopRequested;
+  private final Meter _taskExecutionRateMeter;
+  private final Meter _partitionDataMovementRateMeter;
 
   public static final String INTER_BROKER_REPLICA_ACTION = "replica-action";
   public static final String INTRA_BROKER_REPLICA_ACTION = "intra-broker-replica-action";
@@ -46,6 +49,8 @@ public class ExecutionTaskTracker {
   public static final String COMPLETED = "completed";
   public static final String GAUGE_ONGOING_EXECUTION_IN_KAFKA_ASSIGNER_MODE = "ongoing-execution-kafka_assigner";
   public static final String GAUGE_ONGOING_EXECUTION_IN_NON_KAFKA_ASSIGNER_MODE = "ongoing-execution-non_kafka_assigner";
+  public static final String METER_TASK_EXECUTION_RATE = "task-execution-rate";
+  public static final String METER_PARTITION_DATA_MOVEMENT_RATE = "partition-data-movement-rate";
 
   ExecutionTaskTracker(MetricRegistry dropwizardMetricRegistry, Time time) {
     List<ExecutionTaskState> states = ExecutionTaskState.cachedValues();
@@ -67,9 +72,14 @@ public class ExecutionTaskTracker {
     _isKafkaAssignerMode = false;
     _time = time;
     _stopRequested = false;
+    _taskExecutionRateMeter = new Meter();
+    _partitionDataMovementRateMeter = new Meter();
 
     // Register gauge sensors.
     registerGaugeSensors(dropwizardMetricRegistry);
+
+    // Register meter sensors.
+    registerMeterSensors(dropwizardMetricRegistry);
   }
 
   private void registerGaugeSensors(MetricRegistry dropwizardMetricRegistry) {
@@ -97,6 +107,10 @@ public class ExecutionTaskTracker {
                                                              && !inExecutionTasks(TaskType.cachedValues()).isEmpty() ? 1 : 0);
   }
 
+  private void registerMeterSensors(MetricRegistry dropwizardMetricRegistry) {
+    dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR, METER_TASK_EXECUTION_RATE), _taskExecutionRateMeter);
+    dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR, METER_PARTITION_DATA_MOVEMENT_RATE), _partitionDataMovementRateMeter);
+  }
   /**
    * Update the execution state of the task.
    *
@@ -121,6 +135,7 @@ public class ExecutionTaskTracker {
         updateDataMovement(task);
         break;
       case COMPLETED:
+        _taskExecutionRateMeter.mark();
         task.completed(_time.milliseconds());
         updateDataMovement(task);
         break;
@@ -149,6 +164,7 @@ public class ExecutionTaskTracker {
     } else if (task.state() == ExecutionTaskState.ABORTED
                || task.state() == ExecutionTaskState.DEAD
                || task.state() == ExecutionTaskState.COMPLETED) {
+      _partitionDataMovementRateMeter.mark(dataToMove);
       if (task.type() == TaskType.INTRA_BROKER_REPLICA_ACTION) {
         _inExecutionIntraBrokerDataMovementInMB -= dataToMove;
         _finishedIntraBrokerDataMovementInMB += dataToMove;
