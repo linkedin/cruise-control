@@ -759,7 +759,9 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
       EasyMock.verify(mockUserTaskInfo, mockExecutorNotifier, mockLoadMonitor, mockAnomalyDetectorManager);
     }
 
-    assertNotNull(metricRegistry.meter("Executor.task-execution-rate"));
+    assertNotNull(metricRegistry.meter("Executor.inter-broker-partition-movement-rate"));
+    assertNotNull(metricRegistry.meter("Executor.intra-broker-partition-movement-rate"));
+    assertNotNull(metricRegistry.meter("Executor.leadership-movement-rate"));
     assertNotNull(metricRegistry.meter("Executor.partition-data-movement-rate-MB"));
     assertNotNull(metricRegistry.gauge("Executor.partition-movement-count-per-second"));
     assertNotNull(metricRegistry.gauge("Executor.partition-movement-MB-per-second"));

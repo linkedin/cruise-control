@@ -35,7 +35,9 @@ public class ExecutionTaskTracker {
   private boolean _isKafkaAssignerMode;
   private final Time _time;
   private volatile boolean _stopRequested;
-  private final Meter _taskExecutionRateMeter;
+  private final Meter _interBrokerPartitionMovementRateMeter;
+  private final Meter _intraBrokerPartitionMovementRateMeter;
+  private final Meter _leadershipMovementRateMeter;
   private final Meter _partitionDataMovementRateMeter;
 
   public static final String INTER_BROKER_REPLICA_ACTION = "replica-action";
@@ -49,7 +51,9 @@ public class ExecutionTaskTracker {
   public static final String COMPLETED = "completed";
   public static final String GAUGE_ONGOING_EXECUTION_IN_KAFKA_ASSIGNER_MODE = "ongoing-execution-kafka_assigner";
   public static final String GAUGE_ONGOING_EXECUTION_IN_NON_KAFKA_ASSIGNER_MODE = "ongoing-execution-non_kafka_assigner";
-  public static final String METER_TASK_EXECUTION_RATE = "task-execution-rate";
+  public static final String METER_INTER_BROKER_PARTITION_MOVEMENT_RATE = "inter-broker-partition-movement-rate";
+  public static final String METER_INTRA_BROKER_PARTITION_MOVEMENT_RATE = "intra-broker-partition-movement-rate";
+  public static final String METER_LEADERSHIP_MOVEMENT_RATE = "leadership-movement-rate";
   public static final String METER_PARTITION_DATA_MOVEMENT_RATE = "partition-data-movement-rate-MB";
 
   ExecutionTaskTracker(MetricRegistry dropwizardMetricRegistry, Time time) {
@@ -72,7 +76,9 @@ public class ExecutionTaskTracker {
     _isKafkaAssignerMode = false;
     _time = time;
     _stopRequested = false;
-    _taskExecutionRateMeter = new Meter();
+    _interBrokerPartitionMovementRateMeter = new Meter();
+    _intraBrokerPartitionMovementRateMeter = new Meter();
+    _leadershipMovementRateMeter = new Meter();
     _partitionDataMovementRateMeter = new Meter();
 
     // Register gauge sensors.
@@ -108,7 +114,11 @@ public class ExecutionTaskTracker {
   }
 
   private void registerMeterSensors(MetricRegistry dropwizardMetricRegistry) {
-    dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR, METER_TASK_EXECUTION_RATE), _taskExecutionRateMeter);
+    dropwizardMetricRegistry.register(
+        MetricRegistry.name(EXECUTOR_SENSOR, METER_INTER_BROKER_PARTITION_MOVEMENT_RATE), _interBrokerPartitionMovementRateMeter);
+    dropwizardMetricRegistry.register(
+        MetricRegistry.name(EXECUTOR_SENSOR, METER_INTRA_BROKER_PARTITION_MOVEMENT_RATE), _intraBrokerPartitionMovementRateMeter);
+    dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR, METER_LEADERSHIP_MOVEMENT_RATE), _leadershipMovementRateMeter);
     dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR, METER_PARTITION_DATA_MOVEMENT_RATE), _partitionDataMovementRateMeter);
   }
   /**
@@ -135,7 +145,7 @@ public class ExecutionTaskTracker {
         updateDataMovement(task);
         break;
       case COMPLETED:
-        _taskExecutionRateMeter.mark();
+        markTaskExecutionRateMeter(task);
         task.completed(_time.milliseconds());
         updateDataMovement(task);
         break;
@@ -147,6 +157,22 @@ public class ExecutionTaskTracker {
         break;
     }
     _tasksByType.get(task.type()).get(newState).add(task);
+  }
+
+  private void markTaskExecutionRateMeter(ExecutionTask task) {
+    switch (task.type()) {
+      case INTER_BROKER_REPLICA_ACTION:
+        _interBrokerPartitionMovementRateMeter.mark();
+        break;
+      case INTRA_BROKER_REPLICA_ACTION:
+        _intraBrokerPartitionMovementRateMeter.mark();
+        break;
+      case LEADER_ACTION:
+        _leadershipMovementRateMeter.mark();
+        break;
+      default:
+        break;
+    }
   }
 
   private void updateDataMovement(ExecutionTask task) {
