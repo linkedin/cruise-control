@@ -67,8 +67,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.*
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorTestUtils.*;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.SamplingMode.*;
-import static org.easymock.EasyMock.expectLastCall;
-import static org.easymock.EasyMock.isA;
+import static org.easymock.EasyMock.*;
 import static org.junit.Assert.*;
 
 
@@ -659,6 +658,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     expectLastCall().anyTimes();
     mockLoadMonitor.setSamplingMode(ALL);
     expectLastCall().anyTimes();
+    EasyMock.expect(mockLoadMonitor.brokersWithReplicas(anyLong())).andReturn(Collections.emptySet()).anyTimes();
     return mockLoadMonitor;
   }
 
