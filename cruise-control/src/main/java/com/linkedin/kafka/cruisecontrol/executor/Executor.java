@@ -788,7 +788,8 @@ public class Executor {
    *                                                         per cluster.
    */
   public void setRequestedMaxInterBrokerPartitionMovements(Integer requestedMaxInterBrokerPartitionMovements) {
-    _executionTaskManager.getExecutionConcurrencyManager().setRequestedMaxInterBrokerPartitionMovements(requestedMaxInterBrokerPartitionMovements);
+    _executionTaskManager.getExecutionConcurrencyManager().
+        setClusterInterBrokerPartitionMovementConcurrency(requestedMaxInterBrokerPartitionMovements);
   }
 
   /**

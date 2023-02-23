@@ -106,7 +106,11 @@ public class ExecutionTaskManagerTest {
     // Verify that the movement concurrency matches the default configuration
     for (ConcurrencyType concurrencyType : ConcurrencyType.cachedValues()) {
       assertEquals(MOCK_DEFAULT_CONCURRENCY.get(concurrencyType).intValue(),
-                   taskManager.getExecutionConcurrencyManager().getGlobalExecutionConcurrency(concurrencyType));
+                   taskManager.getExecutionConcurrencyManager().getExecutionConcurrency(0, concurrencyType));
+      assertEquals(MOCK_DEFAULT_CONCURRENCY.get(concurrencyType).intValue(),
+                   taskManager.getExecutionConcurrencyManager().getExecutionConcurrency(1, concurrencyType));
+      assertEquals(MOCK_DEFAULT_CONCURRENCY.get(concurrencyType).intValue(),
+                   taskManager.getExecutionConcurrencyManager().getExecutionConcurrency(2, concurrencyType));
     }
   }
 
