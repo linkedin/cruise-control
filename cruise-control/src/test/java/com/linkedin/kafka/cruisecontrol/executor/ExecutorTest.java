@@ -77,6 +77,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   private static final TopicPartition TP1 = new TopicPartition(TOPIC1, PARTITION);
   private static final TopicPartition TP2 = new TopicPartition(TOPIC2, PARTITION);
   private static final TopicPartition TP3 = new TopicPartition(TOPIC3, PARTITION);
+  private static final int BROKER_ID_0 = 0;
+  private static final int BROKER_ID_1 = 1;
   private static final Random RANDOM = new Random(0xDEADBEEF);
   private static final int MOCK_BROKER_ID_TO_DROP = 1;
   private static final long MOCK_CURRENT_TIME = 1596842708000L;
@@ -404,8 +406,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     Time time = new MockTime();
     MetadataClient mockMetadataClient = EasyMock.mock(MetadataClient.class);
     // Fake the metadata to never change so the leader movement will timeout.
-    Node node0 = new Node(0, "host0", 100);
-    Node node1 = new Node(1, "host1", 100);
+    Node node0 = new Node(BROKER_ID_0, "host0", 100);
+    Node node1 = new Node(BROKER_ID_1, "host1", 100);
     Node[] replicas = new Node[2];
     replicas[0] = node0;
     replicas[1] = node1;
@@ -558,7 +560,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
    */
   private Map<String, TopicDescription> createTopics(int produceSizeInBytes) throws InterruptedException {
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
+        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(BROKER_ID_0).plaintextAddr()));
     try {
       adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC0, Collections.singletonMap(0, Collections.singletonList(0))),
                                              new NewTopic(TOPIC1, Collections.singletonMap(0, List.of(0, 1)))));
@@ -573,9 +575,9 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     Map<String, TopicDescription> topicDescriptions1 = null;
     do {
       AdminClient adminClient0 = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-          AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
+          AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(BROKER_ID_0).plaintextAddr()));
       AdminClient adminClient1 = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-          AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(1).plaintextAddr()));
+          AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(BROKER_ID_1).plaintextAddr()));
       try {
         topicDescriptions0 = adminClient0.describeTopics(Arrays.asList(TOPIC0, TOPIC1)).all().get();
         topicDescriptions1 = adminClient1.describeTopics(Arrays.asList(TOPIC0, TOPIC1)).all().get();
@@ -599,7 +601,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
 
   private void verifyOngoingPartitionReassignments(Set<TopicPartition> partitions) {
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
+        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(BROKER_ID_0).plaintextAddr()));
     try {
       waitUntilTrue(() -> {
                       try {
@@ -658,7 +660,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     expectLastCall().anyTimes();
     mockLoadMonitor.setSamplingMode(ALL);
     expectLastCall().anyTimes();
-    EasyMock.expect(mockLoadMonitor.brokersWithReplicas(anyLong())).andReturn(Collections.emptySet()).anyTimes();
+    EasyMock.expect(mockLoadMonitor.brokersWithReplicas(anyLong())).andReturn(Set.of(BROKER_ID_0, BROKER_ID_1)).anyTimes();
     return mockLoadMonitor;
   }
 
