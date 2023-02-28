@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.executor.concurrency;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
-import com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -15,11 +14,18 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * ExecutionConcurrencyManager: manages the allowed concurrency for all execution types: inter-broker/intra-broker/leadership movement.
- * For each execution type, the default allowed concurrency is defined by configuration, and the requested concurrency is an optional
- *  parameter announced on triggering the rebalance. At the beginning of the execution, each broker starts with the same requested
- *  concurrency (or the default concurrency if requested concurrency not provided). During the execution, each broker adjust its
- *  allowed concurrency based on its own metric.
+ * Manages the allowed concurrency for all execution types: inter-broker/intra-broker/leadership movement.
+ * <p>
+ *   For each execution type, the default allowed concurrency is defined by configuration, and the requested concurrency is an optional
+ *   parameter announced on triggering the rebalance.
+ * </p>
+ * <p>
+ *   At the beginning of the execution, each broker starts with the same requested concurrency (or the default concurrency if
+ *   requested concurrency not provided). During the execution, each broker adjust its allowed concurrency based on its own metric.
+ * </p>
+ * <p>
+ *   The total execution concurrency for all types is capped at the config value of max.num.cluster.movements.
+ * </p>
  *
  */
 public class ExecutionConcurrencyManager {
@@ -127,14 +133,14 @@ public class ExecutionConcurrencyManager {
    * @param concurrencyType The type of concurrency for which the allowed movement concurrency is requested.
    * @return The movement concurrency of the given concurrency type.
    */
-  public HashMap<Integer, Integer> getExecutionConcurrencyPerBroker(ConcurrencyType concurrencyType) {
+  public Map<Integer, Integer> getExecutionConcurrencyPerBroker(ConcurrencyType concurrencyType) {
     switch (concurrencyType) {
       case INTER_BROKER_REPLICA:
-        return new HashMap<>(_interBrokerPartitionMovementConcurrency);
+        return _interBrokerPartitionMovementConcurrency;
       case INTRA_BROKER_REPLICA:
-        return new HashMap<>(_intraBrokerPartitionMovementConcurrency);
+        return _intraBrokerPartitionMovementConcurrency;
       case LEADERSHIP:
-        return new HashMap<>(_leadershipMovementConcurrency);
+        return _leadershipMovementConcurrency;
       default:
         throw new IllegalArgumentException("Unsupported concurrency type " + concurrencyType + " is provided.");
     }

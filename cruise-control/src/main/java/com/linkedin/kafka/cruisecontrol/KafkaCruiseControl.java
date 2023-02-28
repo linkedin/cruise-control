@@ -26,7 +26,7 @@ import com.linkedin.kafka.cruisecontrol.detector.Provisioner;
 import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolutionException;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.exception.OngoingExecutionException;
-import com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType;
+import com.linkedin.kafka.cruisecontrol.executor.concurrency.ConcurrencyType;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
@@ -497,9 +497,10 @@ public class KafkaCruiseControl {
 
   /**
    * Dynamically set the execution concurrency per broker.
+   * Notice that if concurrency type is LEADERSHIP, this value will also be used as max allowed concurrency at cluster level.
    *
-   * @param requestedExecutionConcurrency The maximum number of concurrent execution per broker.
-   * @param concurrencyType The type of the execution concurrency to change
+   * @param requestedExecutionConcurrency The maximum number of allowed concurrent execution per broker.
+   * @param concurrencyType The type of the execution concurrency to set value for.
    */
   public void setExecutionConcurrencyForAllBrokers(Integer requestedExecutionConcurrency, ConcurrencyType concurrencyType) {
     _executor.setExecutionConcurrencyForAllBrokers(requestedExecutionConcurrency, concurrencyType);

@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.executor.concurrency;
 
-import com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,27 +23,6 @@ public class ExecutionConcurrencySummary {
     _interBrokerPartitionMovementConcurrency = new HashMap<>(interBrokerPartitionMovementConcurrency);
     _intraBrokerPartitionMovementConcurrency = new HashMap<>(intraBrokerPartitionMovementConcurrency);
     _leadershipMovementConcurrency = new HashMap<>(leadershipMovementConcurrency);
-  }
-
-  /**
-   * @return Allowed inter broker partition movement concurrency per broker.
-   */
-  public synchronized Map<Integer, Integer> interBrokerPartitionMovementConcurrency() {
-    return _interBrokerPartitionMovementConcurrency;
-  }
-
-  /**
-   * @return Allowed intra broker partition movement concurrency per broker.
-   */
-  public synchronized Map<Integer, Integer> intraBrokerPartitionMovementConcurrency() {
-    return _intraBrokerPartitionMovementConcurrency;
-  }
-
-  /**
-   * @return Allowed leadership movement concurrency per broker.
-   */
-  public synchronized Map<Integer, Integer> leadershipMovementConcurrency() {
-    return _leadershipMovementConcurrency;
   }
 
   /**

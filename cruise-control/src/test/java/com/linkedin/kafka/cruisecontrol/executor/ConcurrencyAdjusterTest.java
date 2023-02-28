@@ -13,6 +13,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
+import com.linkedin.kafka.cruisecontrol.executor.concurrency.ConcurrencyAdjustingRecommendation;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
@@ -171,7 +172,7 @@ public class ConcurrencyAdjusterTest {
     Map<String, MinIsrWithTime> minIsrWithTimeByTopic = Collections.singletonMap(TOPIC1, new MinIsrWithTime((short) 1, MOCK_TIME_MS));
 
     ConcurrencyAdjustingRecommendation concurrencyAdjustingRecommendation = ExecutionUtils.recommendedConcurrency(cluster,
-                                                                           minIsrWithTimeByTopic);
+                                                                                                                  minIsrWithTimeByTopic);
     assertFalse(concurrencyAdjustingRecommendation.shouldStopExecution());
     assertFalse(concurrencyAdjustingRecommendation.noChangeRecommended());
     assertEquals(2, concurrencyAdjustingRecommendation.getBrokersToDecreaseConcurrency().size());

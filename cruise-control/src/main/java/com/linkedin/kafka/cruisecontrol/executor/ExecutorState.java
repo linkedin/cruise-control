@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
+import com.linkedin.kafka.cruisecontrol.executor.concurrency.ConcurrencyType;
 import com.linkedin.kafka.cruisecontrol.executor.concurrency.ExecutionConcurrencySummary;
 import java.util.ArrayList;
 import java.util.List;
@@ -392,7 +393,8 @@ public final class ExecutorState {
       case LEADER_MOVEMENT_TASK_IN_PROGRESS:
         populateUuidFieldInJsonStructure(execState, _uuid);
         execState.put(TRIGGERED_TASK_REASON, _reason);
-        execState.put(MAXIMUM_CONCURRENT_LEADER_MOVEMENTS, _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.LEADERSHIP));
+        execState.put(MAXIMUM_CONCURRENT_LEADER_MOVEMENTS, _executionConcurrencySummary.getMaxExecutionConcurrency(
+            ConcurrencyType.LEADERSHIP));
         execState.put(MINIMUM_CONCURRENT_LEADER_MOVEMENTS, _executionConcurrencySummary.getMinExecutionConcurrency(ConcurrencyType.LEADERSHIP));
         execState.put(AVERAGE_CONCURRENT_LEADER_MOVEMENTS, _executionConcurrencySummary.getAvgExecutionConcurrency(ConcurrencyType.LEADERSHIP));
         execState.put(NUM_PENDING_LEADERSHIP_MOVEMENTS, _executionTasksSummary.taskStat().get(LEADER_ACTION).get(ExecutionTaskState.PENDING));

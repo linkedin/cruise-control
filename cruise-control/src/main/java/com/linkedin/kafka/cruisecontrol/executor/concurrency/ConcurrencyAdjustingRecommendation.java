@@ -2,7 +2,7 @@
  * Copyright 2023 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
-package com.linkedin.kafka.cruisecontrol.executor;
+package com.linkedin.kafka.cruisecontrol.executor.concurrency;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -10,10 +10,10 @@ import java.util.Set;
 
 /**
  * This class encapsulates the concurrency adjusting recommendation. There are 3 types of recommendation
- *  1. Recommend changes on concurrency. It will also include one set of brokers to increase concurrency and the other set of brokers to
- *   decrease concurrency.
- *  2. Recommend to stop the execution.
- *  3. Recommend no changes on concurrency.
+ *  1. Recommend changes on concurrency. It also includes one set of brokers to increase concurrency {@link #_brokersToIncreaseConcurrency}
+ *  and the other set of brokers to decrease concurrency {@link #_brokersToDecreaseConcurrency}.
+ *  2. {@link #STOP_EXECUTION} Recommend to stop the execution.
+ *  3. {@link #NO_CHANGE_RECOMMENDED} Recommend no changes on concurrency.
  *
  */
 public class ConcurrencyAdjustingRecommendation {
