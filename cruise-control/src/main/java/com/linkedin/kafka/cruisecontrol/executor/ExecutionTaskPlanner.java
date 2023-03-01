@@ -295,16 +295,36 @@ public class ExecutionTaskPlanner {
   /**
    * Get the leadership movement tasks, and remove them from _remainingLeadershipMovements.
    *
-   * @param numTasks Number of tasks to remove from the _remainingLeadershipMovements. If _remainingLeadershipMovements
-   *                 has less than numTasks, all tasks are removed.
+   * @param leadershipConcurrencyByBrokerId the leadership movement concurrency of each broker
+   * @param clusterLeadershipMovementConcurrency the allowed movement concurrency of the whole cluster
    * @return The leadership movement tasks.
    */
-  public List<ExecutionTask> getLeadershipMovementTasks(int numTasks) {
+  public List<ExecutionTask> getLeadershipMovementTasks(Map<Integer, Integer> leadershipConcurrencyByBrokerId,
+                                                        int clusterLeadershipMovementConcurrency) {
+    Map<Integer, Integer> leadershipConcurrency = new HashMap<>(leadershipConcurrencyByBrokerId);
     List<ExecutionTask> leadershipMovementsList = new ArrayList<>();
     Iterator<ExecutionTask> leadershipMovementIter = _remainingLeadershipMovements.values().iterator();
-    for (int i = 0; i < numTasks && leadershipMovementIter.hasNext(); i++) {
-      leadershipMovementsList.add(leadershipMovementIter.next());
-      leadershipMovementIter.remove();
+    int taskQuota = clusterLeadershipMovementConcurrency;
+    while (leadershipMovementIter.hasNext() && taskQuota > 0) {
+      ExecutionTask leadershipMovementTask = leadershipMovementIter.next();
+      Set<Integer> replicas = leadershipMovementTask.proposal().newReplicas().stream().map(ReplicaPlacementInfo::brokerId).collect(
+          Collectors.toSet());
+      boolean canSchedule = true;
+      for (int broker: replicas) {
+        if (leadershipConcurrency.containsKey(broker) && leadershipConcurrency.get(broker) <= 0) {
+          canSchedule = false;
+          break;
+        }
+      }
+
+      if (canSchedule) {
+        for (int broker: replicas) {
+          leadershipConcurrency.put(broker, leadershipConcurrency.get(broker) - 1);
+        }
+        leadershipMovementsList.add(leadershipMovementTask);
+        leadershipMovementIter.remove();
+        taskQuota--;
+      }
     }
     return leadershipMovementsList;
   }
