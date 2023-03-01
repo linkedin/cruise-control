@@ -26,7 +26,7 @@ import com.linkedin.kafka.cruisecontrol.detector.Provisioner;
 import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolutionException;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.exception.OngoingExecutionException;
-import com.linkedin.kafka.cruisecontrol.executor.concurrency.ConcurrencyType;
+import com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;

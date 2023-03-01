@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.executor.concurrency;
 
+import com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;

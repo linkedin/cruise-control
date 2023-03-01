@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
-import com.linkedin.kafka.cruisecontrol.executor.concurrency.ConcurrencyType;
 import com.linkedin.kafka.cruisecontrol.executor.concurrency.ExecutionConcurrencySummary;
 import java.util.ArrayList;
 import java.util.List;

@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.executor.concurrency;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
+import com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -229,7 +230,7 @@ public class ExecutionConcurrencyManager {
   /**
    * @return Allowed upper bound of leadership movements in cluster
    */
-  public int maxClusterPartitionPartitionMovements() {
+  public int maxClusterLeadershipMovements() {
     return _requestedClusterLeadershipMovementConcurrency == null ? _defaultClusterLeadershipMovementConcurrency
                                                                             : _requestedClusterLeadershipMovementConcurrency;
   }

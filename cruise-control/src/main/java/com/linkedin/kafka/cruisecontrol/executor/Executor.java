@@ -16,7 +16,6 @@ import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorManager;
 import com.linkedin.kafka.cruisecontrol.exception.OngoingExecutionException;
 import com.linkedin.kafka.cruisecontrol.executor.concurrency.ConcurrencyAdjustingRecommendation;
-import com.linkedin.kafka.cruisecontrol.executor.concurrency.ConcurrencyType;
 import com.linkedin.kafka.cruisecontrol.executor.concurrency.ExecutionConcurrencyManager;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.StrategyOptions;
@@ -292,6 +291,22 @@ public class Executor {
     dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR,
                                                           ExecutionUtils.GAUGE_EXECUTION_STARTED_IN_NON_KAFKA_ASSIGNER_MODE),
                                       (Gauge<Integer>) this::numExecutionStartedInNonKafkaAssignerMode);
+    dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR,
+                                                          ExecutionUtils.GAUGE_EXECUTION_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER_CAP),
+                                      (Gauge<Integer>) () -> _executionTaskManager
+                                          .getExecutionConcurrencyManager()
+                                          .getExecutionConcurrencySummary()
+                                          .getMaxExecutionConcurrency(ConcurrencyType.INTER_BROKER_REPLICA));
+    dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR,
+                                                          GAUGE_EXECUTION_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER_CAP),
+                                      (Gauge<Integer>) () -> _executionTaskManager
+                                          .getExecutionConcurrencyManager()
+                                          .getExecutionConcurrencySummary()
+                                          .getMaxExecutionConcurrency(ConcurrencyType.INTRA_BROKER_REPLICA));
+    dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR,
+                                                          ExecutionUtils.GAUGE_EXECUTION_LEADERSHIP_MOVEMENTS_GLOBAL_CAP),
+                                      (Gauge<Integer>) () -> _executionTaskManager
+                                          .getExecutionConcurrencyManager().maxClusterLeadershipMovements());
     dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR, GAUGE_EXECUTION_INTER_BROKER_PARTITION_MOVEMENTS_MAX_CONCURRENCY),
                                       (Gauge<Integer>) () -> _executionTaskManager
                                           .getExecutionConcurrencyManager()
