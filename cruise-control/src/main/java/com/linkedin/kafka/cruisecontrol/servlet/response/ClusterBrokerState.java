@@ -53,6 +53,8 @@ public class ClusterBrokerState {
   public static final String OFFLINE_LOGDIRS = "OfflineLogDirsByBrokerId";
   @JsonResponseField
   public static final String SUMMARY = "Summary";
+  @JsonResponseField
+  public static final String BROKER_SET = "BrokerSetByBrokerId";
   public static final String TIMED_OUT_LOGDIR_FLAG = "timed_out";
   protected final Map<Integer, Integer> _leaderCountByBrokerId;
   protected final Map<Integer, Integer> _outOfSyncCountByBrokerId;
@@ -110,7 +112,8 @@ public class ClusterBrokerState {
     return Map.of(LEADER_COUNT, _leaderCountByBrokerId, OUT_OF_SYNC_COUNT, _outOfSyncCountByBrokerId,
                   REPLICA_COUNT, _replicaCountByBrokerId, OFFLINE_REPLICA_COUNT, _offlineReplicaCountByBrokerId,
                   IS_CONTROLLER, _isControllerByBrokerId, ONLINE_LOGDIRS, _onlineLogDirsByBrokerId, OFFLINE_LOGDIRS, _offlineLogDirsByBrokerId,
-                  SUMMARY, new ClusterStats(_kafkaCluster.topics().size(), _replicaCountByBrokerId, _leaderCountByBrokerId).getJsonStructure());
+                  SUMMARY, new ClusterStats(_kafkaCluster.topics().size(), _replicaCountByBrokerId, _leaderCountByBrokerId).getJsonStructure(),
+                  BROKER_SET, _brokerSetIdByBrokerId);
   }
 
   /**

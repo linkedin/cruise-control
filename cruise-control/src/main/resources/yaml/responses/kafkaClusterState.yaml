@@ -24,6 +24,7 @@ ClusterBrokerState:
     - OnlineLogDirsByBrokerId
     - OfflineLogDirsByBrokerId
     - Summary
+    - BrokerSetByBrokerId
   properties:
     LeaderCountByBrokerId:
       type: object
@@ -61,6 +62,10 @@ ClusterBrokerState:
         type: array
         items:
           type: string
+    BrokerSetByBrokerId:
+      type: object
+      additionalProperties:
+        type: string
     Summary:
       $ref: '#/ClusterStats'
 
