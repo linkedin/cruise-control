@@ -82,9 +82,11 @@ import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 public class Executor {
   private static final Logger LOG = LoggerFactory.getLogger(Executor.class);
   private static final Logger OPERATION_LOG = LoggerFactory.getLogger(OPERATION_LOGGER);
+  private static final long EXECUTION_PROGRESS_CHECK_INTERVAL_ADJUSTING_MS = 1000;
   // The execution progress is controlled by the ExecutionTaskManager.
   private final ExecutionTaskManager _executionTaskManager;
   private final MetadataClient _metadataClient;
+  private volatile long _executionProgressCheckIntervalMs;
   private final long _defaultExecutionProgressCheckIntervalMs;
   private Long _requestedExecutionProgressCheckIntervalMs;
   private final ExecutorService _proposalExecutor;
@@ -183,6 +185,7 @@ public class Executor {
                                                                   -1L,
                                                                   time);
     _defaultExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
+    _executionProgressCheckIntervalMs = _defaultExecutionProgressCheckIntervalMs;
     _leaderMovementTimeoutMs = config.getLong(ExecutorConfig.LEADER_MOVEMENT_TIMEOUT_MS_CONFIG);
     _requestedExecutionProgressCheckIntervalMs = null;
     _proposalExecutor =
@@ -264,14 +267,41 @@ public class Executor {
                                          + _minExecutionProgressCheckIntervalMs + "ms].");
     }
     _requestedExecutionProgressCheckIntervalMs = requestedExecutionProgressCheckIntervalMs;
+    setExecutionProgressCheckIntervalMs(requestedExecutionProgressCheckIntervalMs);
+  }
+
+  /**
+   * Dynamically set the interval between checking and updating (if needed) the progress of an initiated execution.
+   * The value is rectified to _minExecutionProgressCheckIntervalMs if it is too small, and rectified to user's requested value if it is too big.
+   *
+   * @param executionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
+   *    *                                                  execution
+   */
+  public synchronized void setExecutionProgressCheckIntervalMs(Long executionProgressCheckIntervalMs) {
+    if (executionProgressCheckIntervalMs == null) {
+      return;
+    }
+
+    final long prevExecutionProgressCheckIntervalMs = _executionProgressCheckIntervalMs;
+
+    // Cap the check interval to requestedExecutionProgressCheckIntervalMs, or _defaultExecutionProgressCheckIntervalMs if no requested value
+    _executionProgressCheckIntervalMs = Math.min(
+        _requestedExecutionProgressCheckIntervalMs != null ? _requestedExecutionProgressCheckIntervalMs : _defaultExecutionProgressCheckIntervalMs,
+        executionProgressCheckIntervalMs);
+
+    // Make sure the check interval is not smaller than _minExecutionProgressCheckIntervalMs.
+    _executionProgressCheckIntervalMs = Math.max(_minExecutionProgressCheckIntervalMs, _executionProgressCheckIntervalMs);
+
+    if (prevExecutionProgressCheckIntervalMs != _executionProgressCheckIntervalMs) {
+      LOG.info("ExecutionProgressCheckInterval changed from {} to {}", prevExecutionProgressCheckIntervalMs, _executionProgressCheckIntervalMs);
+    }
   }
 
   /**
    * @return The interval between checking and updating (if needed) the progress of an initiated execution.
    */
   public long executionProgressCheckIntervalMs() {
-    return _requestedExecutionProgressCheckIntervalMs == null ? _defaultExecutionProgressCheckIntervalMs
-                                                              : _requestedExecutionProgressCheckIntervalMs;
+    return _executionProgressCheckIntervalMs;
   }
 
   /**
@@ -1609,6 +1639,8 @@ public class Executor {
         List<ExecutionTask> deadInterBrokerReplicaTasks = new ArrayList<>();
         List<ExecutionTask> stoppedInterBrokerReplicaTasks = new ArrayList<>();
         List<ExecutionTask> slowTasksToReport = new ArrayList<>();
+        final int numInExecutionTasks = inExecutionTasks().size();
+        int numSuccessfullyCompletedTasks = 0;
         boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > _slowTaskAlertingBackoffTimeMs;
         for (ExecutionTask task : inExecutionTasks()) {
           TopicPartition tp = task.proposal().topicPartition();
@@ -1624,6 +1656,7 @@ public class Executor {
           } else if (cluster.partition(tp) == null || deletedUponSubmission.contains(tp)) {
             handleProgressWithTopicDeletion(task, finishedTasks, deletedTaskIds);
           } else if (ExecutionUtils.isInterBrokerReplicaActionDone(cluster, task)) {
+            numSuccessfullyCompletedTasks++;
             handleProgressWithCompletion(task, finishedTasks);
           } else {
             if (shouldReportSlowTasks) {
@@ -1637,6 +1670,16 @@ public class Executor {
             }
           }
         }
+
+        // Dynamically adjust the _executionProgressCheckIntervalMs based on execution result
+        // 1. If all inExecutionTasks are completed check interval, then we should reduce the interval to avoid unnecessary wait time.
+        // 2. Else, we should increase the interval, to give the tasks more time to complete.
+        if (numSuccessfullyCompletedTasks == numInExecutionTasks) {
+          setExecutionProgressCheckIntervalMs(_executionProgressCheckIntervalMs - EXECUTION_PROGRESS_CHECK_INTERVAL_ADJUSTING_MS);
+        } else {
+          setExecutionProgressCheckIntervalMs(_executionProgressCheckIntervalMs + EXECUTION_PROGRESS_CHECK_INTERVAL_ADJUSTING_MS);
+        }
+
         sendSlowExecutionAlert(slowTasksToReport);
         handleDeadInterBrokerReplicaTasks(deadInterBrokerReplicaTasks, stoppedInterBrokerReplicaTasks);
         updateOngoingExecutionState();

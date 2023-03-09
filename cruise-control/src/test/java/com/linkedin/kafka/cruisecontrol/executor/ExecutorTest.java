@@ -367,21 +367,54 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   }
 
   @Test
+  public void testSetExecutionProgressCheckIntervalMs() {
+    KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
+    Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class),
+                                     null, EasyMock.mock(AnomalyDetectorManager.class));
+    long defaultExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
+    long minExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
+
+    // RequestedExecutionProgressCheckIntervalMs has to be larger than minExecutionProgressCheckIntervalMs
+    executor.setRequestedExecutionProgressCheckIntervalMs(minExecutionProgressCheckIntervalMs);
+    assertEquals(minExecutionProgressCheckIntervalMs, executor.executionProgressCheckIntervalMs());
+    assertThrows(IllegalArgumentException.class,
+                 () -> executor.setRequestedExecutionProgressCheckIntervalMs(minExecutionProgressCheckIntervalMs - 1));
+
+    // With requested ≈, the value should be capped at requestedExecutionProgressCheckIntervalMs, and
+    //  set to at least minExecutionProgressCheckIntervalMs
+    long requestedExecutionProgressCheckIntervalMs = 2 * defaultExecutionProgressCheckIntervalMs;
+    executor.setRequestedExecutionProgressCheckIntervalMs(requestedExecutionProgressCheckIntervalMs);
+    executor.setExecutionProgressCheckIntervalMs(Long.MAX_VALUE);
+    assertEquals(requestedExecutionProgressCheckIntervalMs, executor.executionProgressCheckIntervalMs());
+
+    executor.setExecutionProgressCheckIntervalMs((long) 0);
+    assertEquals(minExecutionProgressCheckIntervalMs, executor.executionProgressCheckIntervalMs());
+
+    long validValue = minExecutionProgressCheckIntervalMs + (requestedExecutionProgressCheckIntervalMs - minExecutionProgressCheckIntervalMs) / 2;
+    executor.setExecutionProgressCheckIntervalMs(validValue);
+    assertEquals(validValue, executor.executionProgressCheckIntervalMs());
+
+    // With no requested executionProgressCheckIntervalMs, the value should be capped at defaultExecutionProgressCheckIntervalMs, and
+    //  set to at least minExecutionProgressCheckIntervalMs
+    executor.setRequestedExecutionProgressCheckIntervalMs(null);
+    executor.setExecutionProgressCheckIntervalMs(Long.MAX_VALUE);
+    assertEquals(defaultExecutionProgressCheckIntervalMs, executor.executionProgressCheckIntervalMs());
+
+    executor.setExecutionProgressCheckIntervalMs((long) 0);
+    assertEquals(minExecutionProgressCheckIntervalMs, executor.executionProgressCheckIntervalMs());
+
+    validValue = minExecutionProgressCheckIntervalMs + (defaultExecutionProgressCheckIntervalMs - minExecutionProgressCheckIntervalMs) / 2;
+    executor.setExecutionProgressCheckIntervalMs(validValue);
+    assertEquals(validValue, executor.executionProgressCheckIntervalMs());
+  }
+
+  @Test
   public void testExecutionKnobs() {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
     assertThrows(IllegalStateException.class,
                  () -> new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class), null, null));
     Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class),
                                      null, EasyMock.mock(AnomalyDetectorManager.class));
-
-    // Verify correctness of set/get requested execution progress check interval.
-    long defaultExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
-    assertEquals(defaultExecutionProgressCheckIntervalMs, executor.executionProgressCheckIntervalMs());
-    long minExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
-    executor.setRequestedExecutionProgressCheckIntervalMs(minExecutionProgressCheckIntervalMs);
-    assertEquals(minExecutionProgressCheckIntervalMs, executor.executionProgressCheckIntervalMs());
-    assertThrows(IllegalArgumentException.class,
-                 () -> executor.setRequestedExecutionProgressCheckIntervalMs(minExecutionProgressCheckIntervalMs - 1));
 
     // Verify correctness of add/drop recently removed/demoted brokers.
     assertFalse(executor.dropRecentlyRemovedBrokers(Collections.emptySet()));
