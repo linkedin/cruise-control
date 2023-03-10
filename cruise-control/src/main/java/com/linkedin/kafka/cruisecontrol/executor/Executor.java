@@ -438,8 +438,8 @@ public class Executor {
      * Concurrency should be reset after each execution is done.
      */
     public synchronized void clearAdjustment() {
-      _executionConcurrencyManager.reset();
       _started = false;
+      _executionConcurrencyManager.reset();
     }
 
     /**
