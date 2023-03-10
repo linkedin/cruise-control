@@ -402,6 +402,7 @@ public class Executor {
     private LoadMonitor _loadMonitor;
     private int _numChecks;
     private final ExecutionConcurrencyManager _executionConcurrencyManager;
+    private volatile boolean _started;
 
     public ConcurrencyAdjuster(int numMinIsrCheck) {
       _numMinIsrCheck = numMinIsrCheck;
@@ -430,6 +431,23 @@ public class Executor {
                                               requestedInterBrokerPartitionMovementConcurrency,
                                               requestedIntraBrokerPartitionMovementConcurrency,
                                               requestedLeadershipMovementConcurrency);
+      _started = true;
+    }
+
+    /**
+     * Concurrency should be reset after each execution is done.
+     */
+    public synchronized void clearAdjustment() {
+      _executionConcurrencyManager.reset();
+      _started = false;
+    }
+
+    /**
+     * Check if concurrency adjuster is started
+     * @return true if concurrency adjuster is started.
+     */
+    public boolean isStarted() {
+      return _started;
     }
 
     private boolean canRefreshConcurrency(ConcurrencyType concurrencyType) {
@@ -528,9 +546,11 @@ public class Executor {
     @Override
     public void run() {
       try {
-        boolean canRunMetricsBasedCheck = (_numChecks++ % _numMinIsrCheck) == 0;
-        refreshConcurrency(canRunMetricsBasedCheck, ConcurrencyType.INTER_BROKER_REPLICA);
-        refreshConcurrency(canRunMetricsBasedCheck, ConcurrencyType.LEADERSHIP);
+        if (_started) {
+          boolean canRunMetricsBasedCheck = (_numChecks++ % _numMinIsrCheck) == 0;
+          refreshConcurrency(canRunMetricsBasedCheck, ConcurrencyType.INTER_BROKER_REPLICA);
+          refreshConcurrency(canRunMetricsBasedCheck, ConcurrencyType.LEADERSHIP);
+        }
       } catch (Throwable t) {
         LOG.warn("Received exception when trying to adjust reassignment concurrency.", t);
       }
@@ -1117,6 +1137,22 @@ public class Executor {
   }
 
   /**
+   * Check if the concurrency manager is initialized
+   * @return true if concurrency manager is initialized
+   */
+  public boolean isConcurrencyManagerInitialized() {
+    return _executionTaskManager.getExecutionConcurrencyManager().isInitialized();
+  }
+
+  /**
+   * Check if concurrency adjuster is started
+   * @return true if concurrency adjuster is started.
+   */
+  public boolean isConcurrencyAdjusterStarted() {
+    return _concurrencyAdjuster.isStarted();
+  }
+
+  /**
    * This class is thread safe.
    *
    * Note that once the thread for {@link ProposalExecutionRunnable} is submitted for running, the variable
@@ -1338,6 +1374,7 @@ public class Executor {
       _executionStoppedByUser.set(false);
       // Ensure that sampling mode is adjusted properly to continue collecting partition metrics after execution.
       _loadMonitor.setSamplingMode(ALL);
+      _concurrencyAdjuster.clearAdjustment();
     }
 
     private void updateOngoingExecutionState() {

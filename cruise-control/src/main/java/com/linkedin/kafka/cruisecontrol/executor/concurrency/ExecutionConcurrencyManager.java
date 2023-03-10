@@ -71,9 +71,7 @@ public class ExecutionConcurrencyManager {
     _intraBrokerPartitionMovementConcurrency = new HashMap<>();
     _leadershipMovementConcurrency = new HashMap<>();
     _requestedClusterInterBrokerPartitionMovementConcurrency = null;
-    _executionConcurrencySummary = new ExecutionConcurrencySummary(_interBrokerPartitionMovementConcurrency,
-                                                                   _intraBrokerPartitionMovementConcurrency,
-                                                                   _leadershipMovementConcurrency);
+    refreshExecutionConcurrencySummary();
   }
 
   /**
@@ -104,8 +102,32 @@ public class ExecutionConcurrencyManager {
       _intraBrokerPartitionMovementConcurrency.put(brokerId, intraBrokerPartitionMovementConcurrency());
       _leadershipMovementConcurrency.put(brokerId, clusterLeadershipMovementConcurrency());
     }
-    refreshExecutionConcurrencySummary();
     _initialized = true;
+    refreshExecutionConcurrencySummary();
+  }
+
+  /**
+   * Reset the execution concurrency manager. This method has to be called after any execution. It clears up the broker concurrency and
+   * requested concurrency.
+   */
+  public synchronized void reset() {
+    _requestedInterBrokerPartitionMovementConcurrency = null;
+    _requestedIntraBrokerPartitionMovementConcurrency = null;
+    _requestedClusterLeadershipMovementConcurrency = null;
+    _requestedClusterInterBrokerPartitionMovementConcurrency = null;
+    _interBrokerPartitionMovementConcurrency.clear();
+    _intraBrokerPartitionMovementConcurrency.clear();
+    _leadershipMovementConcurrency.clear();
+    _initialized = false;
+    refreshExecutionConcurrencySummary();
+  }
+
+  /**
+   * Returns whether the concurrency manager is initialized
+   * @return true if the concurrency manager is initialzed
+   */
+  public boolean isInitialized() {
+    return _initialized;
   }
 
   /**
@@ -222,7 +244,7 @@ public class ExecutionConcurrencyManager {
   /**
    * @return Allowed upper bound of inter broker partition movements in cluster
    */
-  public int maxClusterInterBrokerPartitionMovements() {
+  public synchronized int maxClusterInterBrokerPartitionMovements() {
     return _requestedClusterInterBrokerPartitionMovementConcurrency == null ? _defaultClusterInterBrokerPartitionMovementConcurrency
                                                                             : _requestedClusterInterBrokerPartitionMovementConcurrency;
   }
@@ -230,7 +252,7 @@ public class ExecutionConcurrencyManager {
   /**
    * @return Allowed upper bound of leadership movements in cluster
    */
-  public int maxClusterLeadershipMovements() {
+  public synchronized int maxClusterLeadershipMovements() {
     return _requestedClusterLeadershipMovementConcurrency == null ? _defaultClusterLeadershipMovementConcurrency
                                                                             : _requestedClusterLeadershipMovementConcurrency;
   }
@@ -273,30 +295,31 @@ public class ExecutionConcurrencyManager {
   }
 
   private synchronized void refreshExecutionConcurrencySummary() {
-    _executionConcurrencySummary = new ExecutionConcurrencySummary(_interBrokerPartitionMovementConcurrency,
-                                    _intraBrokerPartitionMovementConcurrency,
-                                    _leadershipMovementConcurrency);
+    _executionConcurrencySummary = new ExecutionConcurrencySummary(isInitialized(),
+                                                                   _interBrokerPartitionMovementConcurrency,
+                                                                   _intraBrokerPartitionMovementConcurrency,
+                                                                   _leadershipMovementConcurrency);
   }
 
-  private int interBrokerPartitionMovementConcurrency(int brokerId) {
+  private synchronized int interBrokerPartitionMovementConcurrency(int brokerId) {
     return _interBrokerPartitionMovementConcurrency.getOrDefault(brokerId, interBrokerPartitionMovementConcurrency());
   }
 
-  private int interBrokerPartitionMovementConcurrency() {
+  private synchronized int interBrokerPartitionMovementConcurrency() {
     return _requestedInterBrokerPartitionMovementConcurrency != null
            ? _requestedInterBrokerPartitionMovementConcurrency : _defaultInterBrokerPartitionMovementConcurrency;
   }
 
-  private int intraBrokerPartitionMovementConcurrency(int brokerId) {
+  private synchronized int intraBrokerPartitionMovementConcurrency(int brokerId) {
     return _intraBrokerPartitionMovementConcurrency.getOrDefault(brokerId, intraBrokerPartitionMovementConcurrency());
   }
 
-  private int intraBrokerPartitionMovementConcurrency() {
+  private synchronized int intraBrokerPartitionMovementConcurrency() {
     return _requestedIntraBrokerPartitionMovementConcurrency != null
            ? _requestedIntraBrokerPartitionMovementConcurrency : _defaultIntraBrokerPartitionMovementConcurrency;
   }
 
-  private int leadershipMovementConcurrency(int brokerId) {
+  private synchronized int leadershipMovementConcurrency(int brokerId) {
     // Here we use cluster level leadership movement concurrency for each broker. The reason is that today users can only specify cluster
     //  level leadership movement concurrency. Use the cluster level concurrency for each broker doesn't harm, as the total movements are
     //  still capped by cluster level concurrency. We don't use average value (cluster concurrency/ broker count) for each broker, because
@@ -308,7 +331,7 @@ public class ExecutionConcurrencyManager {
     return _leadershipMovementConcurrency.getOrDefault(brokerId, clusterLeadershipMovementConcurrency());
   }
 
-  private int clusterLeadershipMovementConcurrency() {
+  private synchronized int clusterLeadershipMovementConcurrency() {
     return _requestedClusterLeadershipMovementConcurrency != null
            ? _requestedClusterLeadershipMovementConcurrency : _defaultClusterLeadershipMovementConcurrency;
   }
