@@ -17,10 +17,13 @@ public class ExecutionConcurrencySummary {
   private final Map<Integer, Integer> _interBrokerPartitionMovementConcurrency;
   private final Map<Integer, Integer> _intraBrokerPartitionMovementConcurrency;
   private final Map<Integer, Integer> _leadershipMovementConcurrency;
+  private final boolean _initialized;
 
-  public ExecutionConcurrencySummary(Map<Integer, Integer> interBrokerPartitionMovementConcurrency,
+  public ExecutionConcurrencySummary(boolean initialized,
+                                     Map<Integer, Integer> interBrokerPartitionMovementConcurrency,
                                      Map<Integer, Integer> intraBrokerPartitionMovementConcurrency,
                                      Map<Integer, Integer> leadershipMovementConcurrency) {
+    _initialized = initialized;
     _interBrokerPartitionMovementConcurrency = new HashMap<>(interBrokerPartitionMovementConcurrency);
     _intraBrokerPartitionMovementConcurrency = new HashMap<>(intraBrokerPartitionMovementConcurrency);
     _leadershipMovementConcurrency = new HashMap<>(leadershipMovementConcurrency);
@@ -29,9 +32,13 @@ public class ExecutionConcurrencySummary {
   /**
    * Get the min broker execution concurrency of the cluster
    * @param concurrencyType the concurrency type of the min execution concurrency
-   * @return the min broker execution concurrency of the cluster
+   * @return the min broker execution concurrency of the cluster. If not initialized, return 0.
    */
   public synchronized int getMinExecutionConcurrency(ConcurrencyType concurrencyType) {
+    if (!_initialized) {
+      return 0;
+    }
+
     sanityCheckValidity();
     switch (concurrencyType) {
       case INTER_BROKER_REPLICA:
@@ -48,9 +55,13 @@ public class ExecutionConcurrencySummary {
   /**
    * Get the max broker execution concurrency of the cluster
    * @param concurrencyType the concurrency type of the max execution concurrency
-   * @return the max broker execution concurrency of the cluster
+   * @return the max broker execution concurrency of the cluster. If not initialized, return 0.
    */
   public synchronized int getMaxExecutionConcurrency(ConcurrencyType concurrencyType) {
+    if (!_initialized) {
+      return 0;
+    }
+
     sanityCheckValidity();
     switch (concurrencyType) {
       case INTER_BROKER_REPLICA:
@@ -67,9 +78,13 @@ public class ExecutionConcurrencySummary {
   /**
    * Get the avg broker execution concurrency of the cluster
    * @param concurrencyType the concurrency type of the avg execution concurrency
-   * @return the avg broker execution concurrency of the cluster
+   * @return the avg broker execution concurrency of the cluster. If not initialized, return 0.
    */
   public synchronized double getAvgExecutionConcurrency(ConcurrencyType concurrencyType) {
+    if (!_initialized) {
+      return 0;
+    }
+
     sanityCheckValidity();
     switch (concurrencyType) {
       case INTER_BROKER_REPLICA:

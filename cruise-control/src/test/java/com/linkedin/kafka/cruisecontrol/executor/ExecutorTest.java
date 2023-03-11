@@ -729,6 +729,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
 
     if (verifyProgress) {
       verifyOngoingPartitionReassignments(Collections.singleton(TP0));
+      assertTrue("Concurrency adjuster is not started during execution", executor.isConcurrencyAdjusterStarted());
+      assertTrue("Concurrency manager is not initialized during execution", executor.isConcurrencyManagerInitialized());
     }
 
     waitUntilTrue(() -> (!executor.hasOngoingExecution() && executor.state().state() == ExecutorState.State.NO_TASK_IN_PROGRESS),
@@ -767,6 +769,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     assertNotNull(metricRegistry.meter("Executor.partition-data-movement-rate-MB"));
     assertNotNull(metricRegistry.gauge("Executor.partition-movement-count-per-second"));
     assertNotNull(metricRegistry.gauge("Executor.partition-movement-MB-per-second"));
+    assertFalse("Concurrency adjuster is not shutdown after execution", executor.isConcurrencyAdjusterStarted());
+    assertFalse("Concurrency manager is not reset after execution", executor.isConcurrencyManagerInitialized());
   }
 
   private Properties getExecutorProperties() {
