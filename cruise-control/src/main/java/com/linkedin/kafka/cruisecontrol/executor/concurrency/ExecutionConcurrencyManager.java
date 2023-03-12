@@ -280,9 +280,6 @@ public class ExecutionConcurrencyManager {
    * @return the execution concurrency summary
    */
   public synchronized ExecutionConcurrencySummary getExecutionConcurrencySummary() {
-    if (!_initialized) {
-      throw new IllegalArgumentException("The execution manager has not been initialized.");
-    }
     return _executionConcurrencySummary;
   }
 
