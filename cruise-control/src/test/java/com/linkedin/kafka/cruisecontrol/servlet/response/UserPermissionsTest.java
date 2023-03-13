@@ -9,7 +9,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.UserPermissionsManager;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
-import org.jetbrains.annotations.NotNull;
+import javax.validation.constraints.NotNull;
 import org.junit.Test;
 import java.util.HashMap;
 import java.util.HashSet;

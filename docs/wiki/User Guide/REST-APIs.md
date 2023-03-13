@@ -78,6 +78,7 @@ The GET requests in Kafka Cruise Control REST API are for read only operations, 
 * [Query partition and replica state](#query-partition-and-replica-state)
 * [Get optimization proposals](#get-optimization-proposals)
 * [Query the user request result](#query-the-user-request-result)
+* [Query user permissions](#query-user-permissions)
 
 ### Query the state of Cruise Control
 
@@ -286,6 +287,23 @@ Supported parameters are:
 User can use `user_task_ids`/`client_ids`/`endpoints`/`types` make Cruise Control only return requests they are interested. By default all the requests get returned.
 
 If `fetch_completed_task` is set to `true`, the original response of each request will be returned. In the case where a task completed with errors the response will be `CompletedWithError`.
+
+### Query user permissions
+
+The following get request will return the currently authenticated user's permissions as a list of the assigned user roles. The role list can include any of the following: `"ADMIN"`, `"USER"` and `"VIEWER"`. 
+
+    GET /kafkacruisecontrol/permissions
+
+Supported parameters are:
+
+| PARAMETER           | TYPE    | DESCRIPTION                                      | DEFAULT              | OPTIONAL |
+|---------------------|---------|--------------------------------------------------|----------------------|----------|
+| doAs                | string  | propagated user by the trusted proxy service     | null                 | yes      |
+| json                | boolean | return in JSON format or not                     | false                | yes      | 
+| get_response_schema | boolean | return JSON schema in the response header or not | false                | yes      |
+| reason              | string  | reason for the request                           | "No reason provided" | yes      |
+
+In case there is no security enabled in the Kafka Cluster, the request will return with `400` HTTP error code and the following message: `"Unable to retrieve privilege information for an unsecure connection". 
 
 ## POST Requests
 The post requests of Kafka Cruise Control REST API are operations that will have impact on the Kafka cluster. The post operations include:

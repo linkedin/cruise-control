@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
+import com.linkedin.kafka.cruisecontrol.servlet.UserPermissionsManager;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.Purgatory;
 import java.util.Collections;
@@ -30,6 +31,7 @@ public class KafkaCruiseControlEndPoints {
     private final Map<EndPoint, Timer> _successfulRequestExecutionTimer = new HashMap<>();
     private final boolean _twoStepVerification;
     private final Purgatory _purgatory;
+    private final UserPermissionsManager _userPermissionsManager;
 
     public KafkaCruiseControlEndPoints(AsyncKafkaCruiseControl asynckafkaCruiseControl,
                                        MetricRegistry dropwizardMetricRegistry) {
@@ -41,6 +43,8 @@ public class KafkaCruiseControlEndPoints {
         _asyncKafkaCruiseControl.setUserTaskManagerInExecutor(_userTaskManager);
         _asyncOperationStep = new ThreadLocal<>();
         _asyncOperationStep.set(0);
+        _userPermissionsManager = new UserPermissionsManager(_config);
+
         for (CruiseControlEndPoint endpoint : CruiseControlEndPoint.cachedValues()) {
             _requestMeter.put(endpoint, dropwizardMetricRegistry.meter(
                     MetricRegistry.name(KAFKA_CRUISE_CONTROL_SERVLET_SENSOR, endpoint.name() + "-request-rate")));
@@ -97,5 +101,11 @@ public class KafkaCruiseControlEndPoints {
 
     public List<UserTaskManager.UserTaskInfo> getAllUserTasks() {
         return _userTaskManager.getAllUserTasks();
+    }
+    /**
+     * @return the user permissions manager object
+     */
+    public UserPermissionsManager getUserPermissionsManager() {
+        return _userPermissionsManager;
     }
 }

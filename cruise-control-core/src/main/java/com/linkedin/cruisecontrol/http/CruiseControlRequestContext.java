@@ -4,7 +4,10 @@
 package com.linkedin.cruisecontrol.http;
 
 import io.vertx.core.MultiMap;
+import io.vertx.core.json.JsonObject;
+
 import java.io.IOException;
+import java.security.Principal;
 import java.util.Map;
 
 /**
@@ -41,6 +44,8 @@ public interface CruiseControlRequestContext {
     String getHeader(String header);
 
     String getRemoteAddr();
+
+    String getUserPrincipal();
 
     Map<String, String[]> getParameterMap();
 

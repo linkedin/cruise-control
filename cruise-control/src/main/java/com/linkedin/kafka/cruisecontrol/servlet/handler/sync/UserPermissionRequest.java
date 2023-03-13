@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.handler.sync;
 
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlEndPoints;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.UserPermissionsManager;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserPermissionsParameters;
@@ -40,8 +41,9 @@ public class UserPermissionRequest extends AbstractSyncRequest {
     @Override
     public void configure(Map<String, ?> configs) {
         super.configure(configs);
-        _config = _servlet.asyncKafkaCruiseControl().config();
-        _userPermissionsManager = _servlet.getUserPermissionsManager();
+        KafkaCruiseControlEndPoints cruiseControlEndPoints = getCruiseControlEndpoints();
+        _config = cruiseControlEndPoints.asyncKafkaCruiseControl().config();
+        _userPermissionsManager = cruiseControlEndPoints.getUserPermissionsManager();
         _parameters = (UserPermissionsParameters) validateNotNull(configs.get(PERMISSIONS_PARAMETER_OBJECT_CONFIG),
                 "Parameter configuration is missing from the request.");
     }

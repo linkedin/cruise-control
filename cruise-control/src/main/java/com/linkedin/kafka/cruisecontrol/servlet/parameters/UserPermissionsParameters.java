@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
-import java.security.Principal;
 import java.util.Collections;
 import java.util.Map;
 import java.util.SortedSet;
@@ -48,10 +47,10 @@ public class UserPermissionsParameters extends AbstractParameters {
      * @return the username of the user making the request
      */
     public String user() {
-        Principal userPrincipal = _request.getUserPrincipal();
-        return userPrincipal == null
+        String user = _requestContext.getUserPrincipal();
+        return user.isEmpty()
                 ? ANONYMOUS
-                : userPrincipal.getName();
+                : user;
     }
 
     @Override
