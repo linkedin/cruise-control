@@ -82,8 +82,8 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
 
   @Override
   protected boolean doesReplicaMoveViolateActionAcceptance(ClusterModel clusterModel, Replica sourceReplica, Broker destinationBroker) {
-    String destinationRackId = destinationBroker.rack().id();
-    String sourceRackId = sourceReplica.broker().rack().id();
+    String destinationRackId = mappedRackIdOf(destinationBroker);
+    String sourceRackId = mappedRackIdOf(sourceReplica.broker());
 
     if (sourceRackId.equals(destinationRackId)) {
       // A replica move within the same rack cannot violate rack aware distribution.
@@ -106,10 +106,10 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
    * @param partitionBrokers Brokers that host replicas of some partition
    * @return A map containing the number of replicas by rack id that these replicas reside in.
    */
-  private static Map<String, Integer> numPartitionReplicasByRackId(Set<Broker> partitionBrokers) {
+  private Map<String, Integer> numPartitionReplicasByRackId(Set<Broker> partitionBrokers) {
     Map<String, Integer> numPartitionReplicasByRackId = new HashMap<>();
     for (Broker broker : partitionBrokers) {
-      numPartitionReplicasByRackId.merge(broker.rack().id(), 1, Integer::sum);
+      numPartitionReplicasByRackId.merge(mappedRackIdOf(broker), 1, Integer::sum);
     }
     return numPartitionReplicasByRackId;
   }
@@ -231,7 +231,7 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
     Map<String, Integer> numReplicasByRack = numPartitionReplicasByRackId(partitionBrokers);
 
     // Decrement the number of replicas in this rack.
-    numReplicasByRack.merge(replica.broker().rack().id(), -1, Integer::sum);
+    numReplicasByRack.merge(mappedRackIdOf(replica.broker()), -1, Integer::sum);
 
     int baseLimit = _balanceLimit.baseLimitByRF(partitionBrokers.size());
 
@@ -251,11 +251,11 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
 
     // Prefer brokers whose rack has fewer replicas from the partition
     SortedSet<Broker> rackAwareDistributionEligibleBrokers = new TreeSet<>(
-        Comparator.comparingInt((Broker b) -> numReplicasByRack.getOrDefault(b.rack().id(), 0))
+        Comparator.comparingInt((Broker b) -> numReplicasByRack.getOrDefault(mappedRackIdOf(b), 0))
                   .thenComparingInt(Broker::id));
 
     for (Broker destinationBroker : clusterModel.aliveBrokers()) {
-      int numReplicasInThisRack = numReplicasByRack.getOrDefault(destinationBroker.rack().id(), 0);
+      int numReplicasInThisRack = numReplicasByRack.getOrDefault(mappedRackIdOf(destinationBroker), 0);
       if (numReplicasInThisRack < baseLimit || (canMoveToRacksAtBaseLimit && numReplicasInThisRack == baseLimit)) {
         // Either the (1) destination rack needs more replicas or (2) the replica is allowed to be moved to a rack at
         // the base limit and the destination broker is in a rack at the base limit
@@ -285,7 +285,7 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
     int numRacksWithOneMoreReplicaLimit = _balanceLimit.numRacksWithOneMoreReplicaByRF(replicationFactor);
     int upperLimit = baseLimit + (numRacksWithOneMoreReplicaLimit == 0 ? 0 : 1);
 
-    int numReplicasInThisRack = numReplicasByRack.get(replica.broker().rack().id());
+    int numReplicasInThisRack = numReplicasByRack.get(mappedRackIdOf(replica.broker()));
     if (numReplicasInThisRack <= baseLimit) {
       // Rack does not have extra replicas to give away
       return true;
