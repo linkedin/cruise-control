@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
-
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.convertMSKPrivateLinkHostToBrokerHost;
 
 /**
  * Get broker level stats in human readable format.
@@ -61,7 +61,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
    * @param isEstimated {@code true} if the broker capacity is estimated, {@code false} otherwise.
    */
   public void addSingleBrokerStats(Broker broker, double potentialBytesOutRate, boolean isEstimated) {
-    String host = broker.host().name();
+    String host = convertMSKPrivateLinkHostToBrokerHost(broker);
     String rack = broker.rack().id();
     SingleBrokerStats singleBrokerStats = new SingleBrokerStats(broker, potentialBytesOutRate, isEstimated);
     _brokerStats.add(singleBrokerStats);
