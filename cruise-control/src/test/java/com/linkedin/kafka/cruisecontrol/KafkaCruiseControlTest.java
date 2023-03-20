@@ -13,6 +13,7 @@ import com.linkedin.kafka.cruisecontrol.detector.NoopProvisioner;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
+import com.linkedin.kafka.cruisecontrol.persisteddata.PersistedMapFactory;
 import java.util.Collections;
 import java.util.Properties;
 import java.util.Set;
@@ -54,6 +55,7 @@ public class KafkaCruiseControlTest extends CruiseControlIntegrationTestHarness 
     Time time = EasyMock.mock(Time.class);
     AnomalyDetectorManager anomalyDetectorManager = EasyMock.mock(AnomalyDetectorManager.class);
     Executor executor = EasyMock.strictMock(Executor.class);
+    PersistedMapFactory persistedMapFactory = EasyMock.mock(PersistedMapFactory.class);
     LoadMonitor loadMonitor = EasyMock.mock(LoadMonitor.class);
     ExecutorService goalOptimizerExecutor = EasyMock.mock(ExecutorService.class);
     GoalOptimizer goalOptimizer = EasyMock.mock(GoalOptimizer.class);
@@ -73,7 +75,8 @@ public class KafkaCruiseControlTest extends CruiseControlIntegrationTestHarness 
 
     EasyMock.replay(time, anomalyDetectorManager, executor, loadMonitor, goalOptimizerExecutor, goalOptimizer);
     KafkaCruiseControl kafkaCruiseControl = new KafkaCruiseControl(_config, time, anomalyDetectorManager, executor,
-                                                                   loadMonitor, goalOptimizerExecutor, goalOptimizer, new NoopProvisioner());
+                                                                   loadMonitor, goalOptimizerExecutor, goalOptimizer,
+                                                                   persistedMapFactory, new NoopProvisioner());
 
     // Expect no failure (dryrun = true) regardless of ongoing executions.
     kafkaCruiseControl.sanityCheckDryRun(true, false);
@@ -103,6 +106,7 @@ public class KafkaCruiseControlTest extends CruiseControlIntegrationTestHarness 
     Time time = EasyMock.mock(Time.class);
     AnomalyDetectorManager anomalyDetectorManager = EasyMock.mock(AnomalyDetectorManager.class);
     Executor executor = EasyMock.strictMock(Executor.class);
+    PersistedMapFactory persistedMapFactory = EasyMock.mock(PersistedMapFactory.class);
     LoadMonitor loadMonitor = EasyMock.mock(LoadMonitor.class);
     ExecutorService goalOptimizerExecutor = EasyMock.mock(ExecutorService.class);
     GoalOptimizer goalOptimizer = EasyMock.mock(GoalOptimizer.class);
@@ -120,7 +124,8 @@ public class KafkaCruiseControlTest extends CruiseControlIntegrationTestHarness 
 
     EasyMock.replay(time, anomalyDetectorManager, executor, loadMonitor, goalOptimizerExecutor, goalOptimizer);
     KafkaCruiseControl kafkaCruiseControl = new KafkaCruiseControl(_config, time, anomalyDetectorManager, executor,
-                                                                   loadMonitor, goalOptimizerExecutor, goalOptimizer, new NoopProvisioner());
+                                                                   loadMonitor, goalOptimizerExecutor, goalOptimizer,
+                                                                   persistedMapFactory, new NoopProvisioner());
 
     // Expect failure (dryrun = false), if there is no execution started by CC, but ongoing replica reassignment, request to stop is irrelevant.
     assertThrows(IllegalStateException.class, () -> kafkaCruiseControl.sanityCheckDryRun(false, false));

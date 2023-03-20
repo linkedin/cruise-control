@@ -22,6 +22,8 @@ import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
+import com.linkedin.kafka.cruisecontrol.persisteddata.namespace.ExecutorPersistedData;
+import com.linkedin.kafka.cruisecontrol.persisteddata.namespace.ExecutorPersistedData.BrokerMapKey;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -81,7 +83,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   private static final int BROKER_ID_0 = 0;
   private static final int BROKER_ID_1 = 1;
   private static final Random RANDOM = new Random(0xDEADBEEF);
-  private static final int MOCK_BROKER_ID_TO_DROP = 1;
+  private static final int MOCK_BROKER_ID1 = 1;
+  private static final int MOCK_BROKER_ID2 = 2;
   private static final long MOCK_CURRENT_TIME = 1596842708000L;
   private final ZKClientConfig _zkClientConfig = ZKConfigUtils.zkClientConfigFromKafkaConfig(
           new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
@@ -371,7 +374,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   public void testSetRequestedExecutionProgressCheckIntervalMs() {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
     Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class),
-                                     null, EasyMock.mock(AnomalyDetectorManager.class));
+                                     null, EasyMock.mock(AnomalyDetectorManager.class), new ExecutorPersistedData(new HashMap<>()));
     long minExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
 
     // RequestedExecutionProgressCheckIntervalMs has to be larger than minExecutionProgressCheckIntervalMs
@@ -385,7 +388,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   public void testSetExecutionProgressCheckIntervalMsWithRequestedValue() {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
     Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class),
-                                     null, EasyMock.mock(AnomalyDetectorManager.class));
+                                     null, EasyMock.mock(AnomalyDetectorManager.class), new ExecutorPersistedData(new HashMap<>()));
     long defaultExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
     long minExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
 
@@ -406,7 +409,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   public void testSetExecutionProgressCheckIntervalMsWithNoRequestedValue() {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
     Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class),
-                                     null, EasyMock.mock(AnomalyDetectorManager.class));
+                                     null, EasyMock.mock(AnomalyDetectorManager.class), new ExecutorPersistedData(new HashMap<>()));
     long defaultExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
     long minExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
 
@@ -427,7 +430,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   public void testResetExecutionProgressCheckIntervalMs() {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
     Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class),
-        null, EasyMock.mock(AnomalyDetectorManager.class));
+        null, EasyMock.mock(AnomalyDetectorManager.class), new ExecutorPersistedData(new HashMap<>()));
     long defaultExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
     executor.resetExecutionProgressCheckIntervalMs();
     assertEquals(defaultExecutionProgressCheckIntervalMs, executor.executionProgressCheckIntervalMs());
@@ -442,17 +445,35 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   public void testExecutionKnobs() {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
     assertThrows(IllegalStateException.class,
-                 () -> new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class), null, null));
-    Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class),
-                                     null, EasyMock.mock(AnomalyDetectorManager.class));
+                 () -> new Executor(config, Time.SYSTEM, new MetricRegistry(), EasyMock.mock(MetadataClient.class), null, null,
+                         new ExecutorPersistedData(new HashMap<>())));
+    Executor executor = new Executor(config, Time.SYSTEM, new MetricRegistry(), EasyMock.mock(MetadataClient.class),
+                                     null, EasyMock.mock(AnomalyDetectorManager.class),
+                                     new ExecutorPersistedData(new HashMap<>()));
 
     // Verify correctness of add/drop recently removed/demoted brokers.
     assertFalse(executor.dropRecentlyRemovedBrokers(Collections.emptySet()));
     assertFalse(executor.dropRecentlyDemotedBrokers(Collections.emptySet()));
-    executor.addRecentlyRemovedBrokers(Collections.singleton(MOCK_BROKER_ID_TO_DROP));
-    executor.addRecentlyDemotedBrokers(Collections.singleton(MOCK_BROKER_ID_TO_DROP));
-    assertTrue(executor.dropRecentlyRemovedBrokers(Collections.singleton(MOCK_BROKER_ID_TO_DROP)));
-    assertTrue(executor.dropRecentlyDemotedBrokers(Collections.singleton(MOCK_BROKER_ID_TO_DROP)));
+    executor.addRecentlyRemovedBrokersPermanently(Collections.singleton(MOCK_BROKER_ID1));
+    executor.addRecentlyDemotedBrokersPermanently(Collections.singleton(MOCK_BROKER_ID1));
+    assertTrue(executor.dropRecentlyRemovedBrokers(Collections.singleton(MOCK_BROKER_ID1)));
+    assertTrue(executor.dropRecentlyDemotedBrokers(Collections.singleton(MOCK_BROKER_ID1)));
+  }
+
+  @Test
+  public void testExpiredBrokerRemoval() {
+    KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
+    final Time time = Time.SYSTEM;
+    final long startTime = time.milliseconds();
+    Executor executor = new Executor(config, time, new MetricRegistry(), null, null,
+            EasyMock.mock(AnomalyDetectorManager.class),
+            new ExecutorPersistedData(new HashMap<>()));
+
+    executor.addRecentBrokers(BrokerMapKey.DEMOTE, Collections.singleton(MOCK_BROKER_ID1),
+            startTime);
+    executor.addRecentlyDemotedBrokersPermanently(Collections.singleton(MOCK_BROKER_ID2));
+    executor.removeExpiredBrokerHistory(BrokerMapKey.DEMOTE, -1);
+    assertEquals(executor.recentlyDemotedBrokers(), Collections.singleton(MOCK_BROKER_ID2));
   }
 
   @Test
@@ -489,7 +510,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
 
     Collection<ExecutionProposal> proposalsToExecute = Collections.singletonList(proposal);
     Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient, null,
-                                     mockAnomalyDetectorManager);
+                                     mockAnomalyDetectorManager, new ExecutorPersistedData(new HashMap<>()));
     executor.setUserTaskManager(mockUserTaskManager);
 
     executor.setGeneratingProposalsForExecution(RANDOM_UUID, ExecutorTest.class::getSimpleName, true);
@@ -781,7 +802,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     }
     MetricRegistry metricRegistry = new MetricRegistry();
     Executor executor = new Executor(configs, new SystemTime(), metricRegistry, null, mockExecutorNotifier,
-                                     mockAnomalyDetectorManager);
+                                     mockAnomalyDetectorManager, new ExecutorPersistedData(new HashMap<>()));
     executor.setUserTaskManager(mockUserTaskManager);
     Map<TopicPartition, Integer> replicationFactors = new HashMap<>();
     for (ExecutionProposal proposal : proposalsToCheck) {
