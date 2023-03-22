@@ -249,7 +249,8 @@ public final class AnalyzerConfig {
   public static final String RACK_AWARE_GOAL_RACK_ID_MAPPER_CLASS_CONFIG = "rack.aware.goal.rack.id.mapper.class";
   public static final String DEFAULT_RACK_AWARE_GOAL_RACK_ID_MAPPER_CLASS = NoOpRackAwareGoalRackIdMapper.class.getName();
   public static final String RACK_AWARE_GOAL_RACK_ID_MAPPER_CLASS_DOC =
-      String.format("The class implementing %s interface to use to transform rack IDs for RackAwareGoals.",
+      String.format("The class implementing %s interface to use to transform rack IDs for RackAwareGoals."
+                    + " Rack-aware replica placement will be performed upon the transformed rack ID.",
                     RackAwareGoalRackIdMapper.class.getName());
 
   /**
