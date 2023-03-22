@@ -319,7 +319,8 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
   private void ensureRackAwareSatisfiable(ClusterModel clusterModel, Set<String> excludedTopics)
       throws OptimizationFailureException {
     // Sanity Check: not enough racks to satisfy rack awareness.
-    int numAliveRacks = clusterModel.aliveRacks().stream().map(this::mappedRackIdOf).collect(Collectors.toSet()).size();
+    // Assumes number of racks doesn't exceed Integer.MAX_VALUE
+    int numAliveRacks = (int) clusterModel.aliveRacks().stream().map(this::mappedRackIdOf).distinct().count();
     if (!excludedTopics.isEmpty()) {
       int maxReplicationFactorOfIncludedTopics = 1;
       Map<String, Integer> replicationFactorByTopic = clusterModel.replicationFactorByTopic();

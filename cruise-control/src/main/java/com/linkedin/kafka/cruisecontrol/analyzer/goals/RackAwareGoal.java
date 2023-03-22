@@ -76,7 +76,8 @@ public class RackAwareGoal extends AbstractRackAwareGoal {
   protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
       throws OptimizationFailureException {
     // Sanity Check: not enough racks to satisfy rack awareness.
-    int numAliveRacks = clusterModel.aliveRacks().stream().map(this::mappedRackIdOf).collect(Collectors.toSet()).size();
+    // Assumes number of racks doesn't exceed Integer.MAX_VALUE
+    int numAliveRacks = (int) clusterModel.aliveRacks().stream().map(this::mappedRackIdOf).distinct().count();
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     if (!excludedTopics.isEmpty()) {
       int maxReplicationFactorOfIncludedTopics = 1;
