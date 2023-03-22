@@ -4,11 +4,11 @@ Cruise Control for Apache Kafka
 [![CircleCI](https://circleci.com/gh/linkedin/cruise-control.svg?style=svg)](https://circleci.com/gh/linkedin/cruise-control)
 
 ### Introduction ###
-  Cruise Control is a product that helps run Apache Kafka clusters at large scale. Due to the popularity of 
-  Apache Kafka, many companies have bigger and bigger Kafka clusters. At LinkedIn, we have ~7K+ Kafka brokers, 
-  which means broker deaths are an almost daily occurrence and balancing the workload of Kafka also becomes a big overhead. 
+  Cruise Control is a product that helps  to run Apache Kafka clusters at large scale. As  the popularity of 
+  Apache Kafka is very high , many companies have bigger and bigger Kafka clusters. At LinkedIn, we  have ~7K+ Kafka brokers, 
+  that  means broker deaths are an almost daily occurrence and managing  the workload of Kafka  also becomes a big overhead. 
   
-  Kafka Cruise Control is designed to address this operation scalability issue.
+  tThere comes Kafka Cruise Control, it  is designed to address this operation scalability issue.
   
 ### Features ###
   Kafka Cruise Control provides the following features out of the box:
@@ -161,7 +161,7 @@ Sample Store helps solving this problem by storing the derived data directly to 
 The default Sample Store implementation produces metric samples back to Kafka.
 
 #### Goals ####
-The goals in Cruise Control are pluggable with different priorities. The default goals in order of decreasing priority are:
+The goals in Cruise Control are pluggable with different priorities. The default goals in order of decreasing priorities  are:
  * **RackAwareGoal** - Ensures that all replicas of each partition are assigned in a rack aware manner -- i.e. no more than one replica of 
  each partition resides in the same rack.
  * **RackAwareDistributionGoal** - A relaxed version of `RackAwareGoal`. Contrary to `RackAwareGoal`, as long as replicas of each partition
@@ -188,7 +188,7 @@ The goals in Cruise Control are pluggable with different priorities. The default
  * **IntraBrokerDiskUsageDistributionGoal** - (Rebalance-disk mode, not available in `kafka_0_11_and_1_0` branch) Attempts to keep the Disk space usage variance among disks within a certain range relative to the average broker Disk utilization.
 
 #### Anomaly Notifier ####
-The anomaly notifier allows users to be notified when an anomaly is detected. Anomalies include:
+The anomaly notifier allows users to be notified when an anomaly is detected. These  Anomalies include:
  * Broker failure
  * Goal violation
  * Metric anomaly
