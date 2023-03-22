@@ -77,17 +77,6 @@ public final class GoalUtils {
   }
 
   /**
-   * Extract {@link KafkaCruiseControl} instance from configs.
-   *
-   * @param configs The configs used to configure {@link Goal} instance.
-   * @param errMsgSupplier supplier of the message to be used in the event that a IllegalArgumentException is thrown
-   * @return The extracted {@link KafkaCruiseControl} instance.
-   */
-  private static KafkaCruiseControl extractKafkaCruiseControlObjectFromConfig(Map<String, ?> configs, Supplier<String> errMsgSupplier) {
-    return (KafkaCruiseControl) validateNotNull(configs.get(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG), errMsgSupplier);
-  }
-
-  /**
    * Get the remaining time in milliseconds based on the given timout and start time.
    *
    * @param timeoutMs Timeout in milliseconds.
