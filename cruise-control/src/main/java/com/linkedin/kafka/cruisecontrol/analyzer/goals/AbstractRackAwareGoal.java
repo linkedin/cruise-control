@@ -53,6 +53,7 @@ public abstract class AbstractRackAwareGoal extends AbstractGoal {
 
   @Override
   public void configure(Map<String, ?> configs) {
+    super.configure(configs);
     _rackIdMapper = GoalUtils.getRackAwareGoalRackIdMapper(configs);
   }
 
