@@ -4,19 +4,24 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
-import com.linkedin.kafka.cruisecontrol.analyzer.goals.internals.BrokerAndSortedReplicas;
-import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.internals.BrokerAndSortedReplicas;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.rackaware.NoOpRackAwareGoalRackIdMapper;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.rackaware.RackAwareGoalRackIdMapper;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
+import com.linkedin.kafka.cruisecontrol.model.Rack;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.ArrayList;
@@ -38,8 +43,8 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.common.Resource.DISK;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
+import static com.linkedin.kafka.cruisecontrol.common.Resource.DISK;
 
 
 /**
@@ -52,9 +57,13 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
   private static final double USAGE_EQUALITY_DELTA = 0.0001;
   // Ensure that each convergence step due to replica swap is over REPLICA_CONVERGENCE_DELTA.
   private static final double REPLICA_CONVERGENCE_DELTA = 0.4;
+  private static final RackAwareGoalRackIdMapper DEFAULT_RACK_ID_MAPPER = new NoOpRackAwareGoalRackIdMapper();
   private final ProvisionResponse _provisionResponse;
   private BalancingConstraint _balancingConstraint;
   private double _minMonitoredPartitionPercentage = 0.995;
+
+  @VisibleForTesting
+  RackAwareGoalRackIdMapper _rackIdMapper = DEFAULT_RACK_ID_MAPPER;
 
   public KafkaAssignerDiskUsageDistributionGoal() {
     _provisionResponse = new ProvisionResponse(ProvisionStatus.UNDECIDED);
@@ -69,6 +78,14 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
     _balancingConstraint = constraint;
   }
 
+  private String mappedRackIdOf(Broker broker) {
+    return mappedRackIdOf(broker.rack());
+  }
+
+  private String mappedRackIdOf(Rack rack) {
+    return _rackIdMapper.apply(rack.id());
+  }
+
   @Override
   public ClusterModelStatsComparator clusterModelStatsComparator() {
     return new DiskDistributionGoalStatsComparator();
@@ -79,6 +96,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
     KafkaCruiseControlConfig parsedConfig = new KafkaCruiseControlConfig(configs, false);
     _balancingConstraint = new BalancingConstraint(parsedConfig);
     _minMonitoredPartitionPercentage = parsedConfig.getDouble(MonitorConfig.MIN_VALID_PARTITION_RATIO_CONFIG);
+    _rackIdMapper = GoalUtils.getRackAwareGoalRackIdMapper(configs);
   }
 
   @Override
@@ -463,8 +481,11 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
   private boolean possibleToMove(Replica replica, Broker destinationBroker, ClusterModel clusterModel) {
     TopicPartition tp = replica.topicPartition();
 
-    boolean case1 = !clusterModel.partition(tp).partitionRacks().contains(destinationBroker.rack());
-    boolean case2 = replica.broker().rack() == destinationBroker.rack() && destinationBroker.replica(tp) == null;
+    boolean case1 = clusterModel.partition(tp).partitionRacks().stream()
+                                .map(this::mappedRackIdOf)
+                                .noneMatch(mappedRackIdOf(destinationBroker)::equals);
+    boolean case2 = Objects.equals(mappedRackIdOf(replica.broker()), mappedRackIdOf(destinationBroker))
+                    && destinationBroker.replica(tp) == null;
 
     return case1 || case2;
   }
@@ -481,9 +502,17 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
    * @return {@code true} if the two replicas can be swapped, {@code false} otherwise.
    */
   boolean canSwap(Replica r1, Replica r2, ClusterModel clusterModel) {
-    boolean inSameRack = r1.broker().rack() == r2.broker().rack() && r1.broker() != r2.broker();
-    boolean rackAware = !clusterModel.partition(r1.topicPartition()).partitionRacks().contains(r2.broker().rack())
-        && !clusterModel.partition(r2.topicPartition()).partitionRacks().contains(r1.broker().rack());
+    String mappedRackIdOfR1 = mappedRackIdOf(r1.broker());
+    String mappedRackIdOfR2 = mappedRackIdOf(r2.broker());
+    boolean inSameRack = r1.broker() != r2.broker() && mappedRackIdOfR1.equals(mappedRackIdOfR2);
+    boolean rackAware =
+        clusterModel.partition(r1.topicPartition()).partitionRacks().stream()
+                    .map(this::mappedRackIdOf)
+                    .noneMatch(mappedRackIdOfR2::equals)
+        && clusterModel.partition(r2.topicPartition()).partitionRacks().stream()
+                       .map(this::mappedRackIdOf)
+                       .noneMatch(mappedRackIdOfR1::equals);
+
     boolean sameRole = r1.isLeader() == r2.isLeader();
     return (inSameRack || rackAware) && sameRole;
   }

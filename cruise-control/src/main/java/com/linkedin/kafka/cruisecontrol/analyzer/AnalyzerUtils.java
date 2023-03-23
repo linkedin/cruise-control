@@ -4,8 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
-import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
+import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
@@ -31,7 +31,6 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
  */
 public final class AnalyzerUtils {
   public static final double EPSILON = 1E-5;
-
   private AnalyzerUtils() {
 
   }

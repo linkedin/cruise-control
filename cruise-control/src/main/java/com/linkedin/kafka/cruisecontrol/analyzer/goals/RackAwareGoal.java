@@ -5,8 +5,9 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
-import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
+import com.google.common.annotations.VisibleForTesting;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
@@ -42,6 +43,7 @@ public class RackAwareGoal extends AbstractRackAwareGoal {
   /**
    * Package private for unit test.
    */
+  @VisibleForTesting
   RackAwareGoal(BalancingConstraint constraint) {
     _balancingConstraint = constraint;
   }
@@ -52,14 +54,10 @@ public class RackAwareGoal extends AbstractRackAwareGoal {
     Set<Broker> partitionBrokers = clusterModel.partition(sourceReplica.topicPartition()).partitionBrokers();
     partitionBrokers.remove(sourceReplica.broker());
 
-    // Remove brokers in partition broker racks except the brokers in replica broker rack.
-    for (Broker broker : partitionBrokers) {
-      if (broker.rack().brokers().contains(destinationBroker)) {
-        return true;
-      }
-    }
-
-    return false;
+    // If destination broker exists on any of the rack of other replicas, it violates the rack-awareness
+    return partitionBrokers.stream()
+                           .map(this::mappedRackIdOf)
+                           .anyMatch(mappedRackIdOf(destinationBroker)::equals);
   }
 
   @Override
@@ -78,7 +76,8 @@ public class RackAwareGoal extends AbstractRackAwareGoal {
   protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
       throws OptimizationFailureException {
     // Sanity Check: not enough racks to satisfy rack awareness.
-    int numAliveRacks = clusterModel.numAliveRacks();
+    // Assumes number of racks doesn't exceed Integer.MAX_VALUE
+    int numAliveRacks = (int) clusterModel.aliveRacks().stream().map(this::mappedRackIdOf).distinct().count();
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     if (!excludedTopics.isEmpty()) {
       int maxReplicationFactorOfIncludedTopics = 1;
@@ -176,10 +175,10 @@ public class RackAwareGoal extends AbstractRackAwareGoal {
 
       // Add rack Id of replicas.
       for (Broker followerBroker : followerBrokers) {
-        String followerRackId = followerBroker.rack().id();
+        String followerRackId = mappedRackIdOf(followerBroker);
         replicaBrokersRackIds.add(followerRackId);
       }
-      replicaBrokersRackIds.add(leader.broker().rack().id());
+      replicaBrokersRackIds.add(mappedRackIdOf(leader.broker()));
       if (replicaBrokersRackIds.size() != (followerBrokers.size() + 1)) {
         int missingRacks = (followerBrokers.size() + 1) - replicaBrokersRackIds.size();
         ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
@@ -204,15 +203,15 @@ public class RackAwareGoal extends AbstractRackAwareGoal {
   protected SortedSet<Broker> rackAwareEligibleBrokers(Replica replica, ClusterModel clusterModel) {
     // Populate partition rack ids.
     List<String> partitionRackIds = clusterModel.partition(replica.topicPartition()).partitionBrokers()
-        .stream().map(partitionBroker -> partitionBroker.rack().id()).collect(Collectors.toList());
+                                                .stream().map(this::mappedRackIdOf).collect(Collectors.toList());
 
     // Remove rack id of the given replica, but if there is any other replica from the partition residing in the
     // same cluster, keep its rack id in the list.
-    partitionRackIds.remove(replica.broker().rack().id());
+    partitionRackIds.remove(mappedRackIdOf(replica.broker()));
 
     SortedSet<Broker> rackAwareEligibleBrokers = new TreeSet<>(Comparator.comparingInt(Broker::id));
     for (Broker broker : clusterModel.aliveBrokers()) {
-      if (!partitionRackIds.contains(broker.rack().id())) {
+      if (!partitionRackIds.contains(mappedRackIdOf(broker))) {
         rackAwareEligibleBrokers.add(broker);
       }
     }
@@ -223,10 +222,10 @@ public class RackAwareGoal extends AbstractRackAwareGoal {
   @Override
   protected boolean shouldKeepInTheCurrentBroker(Replica replica, ClusterModel clusterModel) {
     // Rack awareness requires no more than one replica from a given partition residing in any rack in the cluster
-    String myRackId = replica.broker().rack().id();
+    String myRackId = mappedRackIdOf(replica.broker());
     int myBrokerId = replica.broker().id();
     for (Broker partitionBroker : clusterModel.partition(replica.topicPartition()).partitionBrokers()) {
-      if (myRackId.equals(partitionBroker.rack().id()) && myBrokerId != partitionBroker.id()) {
+      if (myRackId.equals(mappedRackIdOf(partitionBroker)) && myBrokerId != partitionBroker.id()) {
         return false;
       }
     }
