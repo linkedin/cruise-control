@@ -18,6 +18,8 @@
 User name to display in the slack notification message. (default: Cruise Control)
 `slack.self.healing.notifier.icon` (Optional)
 Icon to display in the slack notification message. (default: `information_source` )
+`slack.self.healing.notifier.preamble` (Optional)
+Preamble string that will be added (verbatim) to the front of **all** slack notification messages. (default: empty string)
 To enable Slack notification, set `anomaly.notifier.class=com.linkedin.kafka.cruisecontrol.detector.notifier.SlackSelfHealingNotifier`
 
 ## MS Teams
