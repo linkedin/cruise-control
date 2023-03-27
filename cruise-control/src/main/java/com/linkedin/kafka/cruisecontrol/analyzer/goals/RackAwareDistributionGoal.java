@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.stream.Stream;
+import org.apache.kafka.common.annotation.InterfaceStability;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 import static java.util.Collections.max;
@@ -403,7 +404,8 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
    *   1 replica from the partition with the given RF.
    * </p>
    */
-  public static class BalanceLimit {
+  @InterfaceStability.Evolving
+  protected static class BalanceLimit {
     private final int _numAliveRacksAllowedReplicaMoves;
     private final Map<Integer, Integer> _baseLimitByRF;
     private final Map<Integer, Integer> _numRacksWithOneMoreReplicaByRF;
