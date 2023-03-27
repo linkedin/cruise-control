@@ -283,7 +283,9 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
                       extraSoftBrokerPriorityComparators.stream()
                   )
                   // Combine the comparators into one
-                  .reduce(Comparator::thenComparing).orElse(leastReplicasInRack)
+                  .reduce(Comparator::thenComparing)
+                  // While the stream won't be null, code check warns for direct `.get()` provide a default
+                  .orElse(leastReplicasInRack)
                   // Compare broker ID at the last
                   .thenComparingInt(Broker::id)
         );
