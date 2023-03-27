@@ -15,13 +15,16 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
 import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.stream.Stream;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 import static java.util.Collections.max;
@@ -227,6 +230,26 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
    */
   @Override
   protected SortedSet<Broker> rackAwareEligibleBrokers(Replica replica, ClusterModel clusterModel) {
+    return rackAwareEligibleBrokers(replica, clusterModel, Collections.emptyList());
+  }
+
+  /**
+   * The same as {@link #rackAwareEligibleBrokers(Replica replica, ClusterModel clusterModel)},
+   * except that this accepts an extra comparator to sort after the original rack-aware sort is performed.
+   * The method is intended to be used as a tool for extension/customization.
+   * <p>
+   * For example, after the method sorts by number of replicas in the rack, if a customization that
+   * "if possible, place it in zone-of-racks that has the least replica", one can try to provide
+   * {@code Collections.singletonList(Comparator.comparingInt((Broker b) -> SomeZoneUtils.zoneOfRack(b.rack()).totalReplicas()))}
+   *
+   * @param replica Replica for which a set of rack aware eligible brokers are requested.
+   * @param clusterModel The state of the cluster.
+   * @param extraSoftBrokerPriorityComparators List of comparators to sort eligible brokers, after comparing the number of replicas in rack
+   * @return A list of rack aware eligible brokers for the given replica in the given cluster.
+   */
+  protected SortedSet<Broker> rackAwareEligibleBrokers(Replica replica,
+                                                       ClusterModel clusterModel,
+                                                       List<Comparator<Broker>> extraSoftBrokerPriorityComparators) {
     Set<Broker> partitionBrokers = clusterModel.partition(replica.topicPartition()).partitionBrokers();
     Map<String, Integer> numReplicasByRack = numPartitionReplicasByRackId(partitionBrokers);
 
@@ -249,10 +272,21 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
       canMoveToRacksAtBaseLimit = true;
     }
 
-    // Prefer brokers whose rack has fewer replicas from the partition
-    SortedSet<Broker> rackAwareDistributionEligibleBrokers = new TreeSet<>(
-        Comparator.comparingInt((Broker b) -> numReplicasByRack.getOrDefault(mappedRackIdOf(b), 0))
-                  .thenComparingInt(Broker::id));
+    final Comparator<Broker> leastReplicasInRack =
+        Comparator.comparingInt((Broker b) -> numReplicasByRack.getOrDefault(mappedRackIdOf(b), 0));
+    final SortedSet<Broker> rackAwareDistributionEligibleBrokers =
+        new TreeSet<>(
+            Stream.concat(
+                      // Prefer brokers whose rack has fewer replicas from the partition first
+                      Stream.of(leastReplicasInRack),
+                      // Use the extra comparators as the sub-criteria for sorting
+                      extraSoftBrokerPriorityComparators.stream()
+                  )
+                  // Combine the comparators into one
+                  .reduce(Comparator::thenComparing).orElse(leastReplicasInRack)
+                  // Compare broker ID at the last
+                  .thenComparingInt(Broker::id)
+        );
 
     for (Broker destinationBroker : clusterModel.aliveBrokers()) {
       int numReplicasInThisRack = numReplicasByRack.getOrDefault(mappedRackIdOf(destinationBroker), 0);
