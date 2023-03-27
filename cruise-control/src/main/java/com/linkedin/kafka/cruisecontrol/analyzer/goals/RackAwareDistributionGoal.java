@@ -407,7 +407,7 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
     private final Map<Integer, Integer> _numRacksWithOneMoreReplicaByRF;
 
     BalanceLimit(ClusterModel clusterModel, OptimizationOptions optimizationOptions) throws OptimizationFailureException {
-      _numAliveRacksAllowedReplicaMoves = clusterModel.numAliveRacksAllowedReplicaMoves(optimizationOptions);
+      _numAliveRacksAllowedReplicaMoves = clusterModel.aliveRacksAllowedReplicaMoves(optimizationOptions).size();
       if (_numAliveRacksAllowedReplicaMoves == 0) {
         // Handle the case when all alive racks are excluded from replica moves.
         ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
