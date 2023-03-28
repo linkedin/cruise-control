@@ -134,8 +134,14 @@ public abstract class AbstractGoal implements Goal {
     }
   }
 
+  /**
+   * A default implementation
+   * @return Dynamically obtained simple name of the class.  Works even with sub-classing
+   */
   @Override
-  public abstract String name();
+  public String name() {
+    return this.getClass().getSimpleName();
+  }
 
   @Override
   public void finish() {

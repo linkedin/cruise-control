@@ -142,11 +142,6 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
     return new ReplicaDistributionGoalStatsComparator();
   }
 
-  @Override
-  public String name() {
-    return ReplicaDistributionGoal.class.getSimpleName();
-  }
-
   /**
    * Initiates replica distribution goal.
    *

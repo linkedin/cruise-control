@@ -235,11 +235,6 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
   }
 
   @Override
-  public String name() {
-    return TopicReplicaDistributionGoal.class.getSimpleName();
-  }
-
-  @Override
   public boolean isHardGoal() {
     return false;
   }

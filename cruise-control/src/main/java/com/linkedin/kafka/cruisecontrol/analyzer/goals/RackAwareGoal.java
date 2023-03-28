@@ -60,11 +60,6 @@ public class RackAwareGoal extends AbstractRackAwareGoal {
                            .anyMatch(mappedRackIdOf(destinationBroker)::equals);
   }
 
-  @Override
-  public String name() {
-    return RackAwareGoal.class.getSimpleName();
-  }
-
   /**
    * This is a hard goal; hence, the proposals are not limited to dead broker replicas in case of self-healing.
    * Sanity Check: There exists sufficient number of racks for achieving rack-awareness.

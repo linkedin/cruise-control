@@ -80,11 +80,6 @@ public class MinTopicLeadersPerBrokerGoal extends AbstractGoal {
   }
 
   @Override
-  public String name() {
-    return MinTopicLeadersPerBrokerGoal.class.getSimpleName();
-  }
-
-  @Override
   public boolean isHardGoal() {
     return true;
   }
