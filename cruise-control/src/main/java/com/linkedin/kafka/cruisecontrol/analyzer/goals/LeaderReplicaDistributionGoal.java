@@ -125,11 +125,6 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
     return new LeaderReplicaDistributionGoalStatsComparator();
   }
 
-  @Override
-  public String name() {
-    return LeaderReplicaDistributionGoal.class.getSimpleName();
-  }
-
   /**
    * Rebalance the given broker without violating the constraints of the current goal and optimized goals.
    *

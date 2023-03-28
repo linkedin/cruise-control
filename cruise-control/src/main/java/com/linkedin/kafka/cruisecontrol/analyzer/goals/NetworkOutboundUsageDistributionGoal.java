@@ -30,8 +30,4 @@ public class NetworkOutboundUsageDistributionGoal extends ResourceDistributionGo
     return Resource.NW_OUT;
   }
 
-  @Override
-  public String name() {
-    return NetworkOutboundUsageDistributionGoal.class.getSimpleName();
-  }
 }

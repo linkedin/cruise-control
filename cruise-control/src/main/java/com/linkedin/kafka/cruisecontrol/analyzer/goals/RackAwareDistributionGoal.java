@@ -118,11 +118,6 @@ public class RackAwareDistributionGoal extends AbstractRackAwareGoal {
     return numPartitionReplicasByRackId;
   }
 
-  @Override
-  public String name() {
-    return RackAwareDistributionGoal.class.getSimpleName();
-  }
-
   /**
    * Check whether the given broker is excluded for replica moves.
    * Such a broker cannot receive replicas, but can give them away.

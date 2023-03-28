@@ -42,9 +42,4 @@ public class NetworkInboundUsageDistributionGoal extends ResourceDistributionGoa
     return action.balancingAction() == ActionType.LEADERSHIP_MOVEMENT ? ACCEPT : super.actionAcceptance(action, clusterModel);
   }
 
-  @Override
-  public String name() {
-    return NetworkInboundUsageDistributionGoal.class.getSimpleName();
-  }
-
 }

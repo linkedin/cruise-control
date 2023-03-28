@@ -237,11 +237,6 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
     return new ModelCompletenessRequirements(MIN_NUM_VALID_WINDOWS, _minMonitoredPartitionPercentage, true);
   }
 
-  @Override
-  public String name() {
-    return this.getClass().getSimpleName();
-  }
-
   /**
    * Check whether the combined replica utilization is above the given disk capacity limits.
    *

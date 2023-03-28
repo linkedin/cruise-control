@@ -168,9 +168,6 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   }
 
   @Override
-  public abstract String name();
-
-  @Override
   public boolean isHardGoal() {
     return false;
   }
