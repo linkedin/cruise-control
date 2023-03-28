@@ -122,6 +122,7 @@ public class ClusterPartitionState {
               partitionsWithOfflineReplicas.add(partitionInfo);
             }
             boolean isOffline = partitionInfo.inSyncReplicas().length == 0;
+            // boolean isOffline = partitionInfo.leader() == null;
             if (isOffline) {
               offlinePartitions.add(partitionInfo);
             } else if (isURP) {
