@@ -18,6 +18,8 @@ import java.util.stream.Stream;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.config.TopicConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 @JsonResponseClass
@@ -35,6 +37,7 @@ public class ClusterPartitionState {
   public static final String MIN_INSYNC_REPLICAS = "min.insync.replicas";
   public static final int DEFAULT_MIN_INSYNC_REPLICAS = 1;
   public static final boolean DEFAULT_REMOTE_STORAGE_ENABLED = false;
+  private static final Logger LOG = LoggerFactory.getLogger(ClusterPartitionState.class);
 
   protected final Set<PartitionInfo> _underReplicatedPartitions;
   protected final Set<PartitionInfo> _offlinePartitions;
@@ -112,25 +115,25 @@ public class ClusterPartitionState {
         }
         for (PartitionInfo partitionInfo : _kafkaCluster.partitionsForTopic(topic)) {
           int numInsyncReplicas = partitionInfo.inSyncReplicas().length;
+          boolean hasOfflineReplicas = partitionInfo.offlineReplicas().length != 0;
           boolean isURP = numInsyncReplicas != partitionInfo.replicas().length;
+          boolean isOffline = partitionInfo.leader() == null;
+
           if (numInsyncReplicas < minInsyncReplicas) {
             underMinIsrPartitions.add(partitionInfo);
           }
-          if (isURP || verbose) {
-            boolean hasOfflineReplica = partitionInfo.offlineReplicas().length != 0;
-            if (hasOfflineReplica) {
-              partitionsWithOfflineReplicas.add(partitionInfo);
-            }
-            boolean isOffline = partitionInfo.inSyncReplicas().length == 0;
-            if (isOffline) {
-              offlinePartitions.add(partitionInfo);
-            } else if (isURP) {
-              underReplicatedPartitions.add(partitionInfo);
-            } else {
-              // verbose -- other
-              otherPartitions.add(partitionInfo);
-            }
+          if (hasOfflineReplicas) {
+            partitionsWithOfflineReplicas.add(partitionInfo);
           }
+
+          if (isOffline) {
+            offlinePartitions.add(partitionInfo);
+          } else if (isURP) {
+            underReplicatedPartitions.add(partitionInfo);
+          } else if (verbose) {
+            otherPartitions.add(partitionInfo);
+          }
+          LOG.trace("partitionInfo: {}", partitionInfo);
         }
       }
     }
