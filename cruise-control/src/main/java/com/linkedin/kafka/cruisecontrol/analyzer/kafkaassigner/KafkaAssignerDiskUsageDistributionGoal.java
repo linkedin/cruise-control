@@ -93,7 +93,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
 
   @Override
   public void configure(Map<String, ?> configs) {
-    KafkaCruiseControlConfig parsedConfig = new KafkaCruiseControlConfig(configs, false);
+    KafkaCruiseControlConfig parsedConfig = new KafkaCruiseControlConfig(configs);
     _balancingConstraint = new BalancingConstraint(parsedConfig);
     _minMonitoredPartitionPercentage = parsedConfig.getDouble(MonitorConfig.MIN_VALID_PARTITION_RATIO_CONFIG);
     _rackIdMapper = GoalUtils.getRackAwareGoalRackIdMapper(configs);
