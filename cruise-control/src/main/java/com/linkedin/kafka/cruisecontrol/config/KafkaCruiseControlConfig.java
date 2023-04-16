@@ -44,7 +44,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   }
 
   public KafkaCruiseControlConfig(Map<?, ?> originals) {
-    this(originals, true);
+    this(originals, false);
   }
 
   public KafkaCruiseControlConfig(Map<?, ?> originals, boolean doLog) {
@@ -250,7 +250,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    */
   void sanityCheckConcurrency() {
     int maxClusterMovementConcurrency = getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG);
-    
+
     int maxPartitionMovementsInCluster = getInt(ExecutorConfig.MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG);
     if (maxPartitionMovementsInCluster > maxClusterMovementConcurrency) {
       throw new ConfigException(String.format("Maximum Inter-broker partition movement [%d] cannot be greater than the "
