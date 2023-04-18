@@ -160,6 +160,7 @@ public final class ParameterUtils {
   public static final String REVIEW_PARAMETER_OBJECT_CONFIG = "review.parameter.object";
   public static final String TOPIC_CONFIGURATION_PARAMETER_OBJECT_CONFIG = "topic.configuration.parameter.object";
   public static final String RIGHTSIZE_PARAMETER_OBJECT_CONFIG = "rightsize.parameter.object";
+  public static final String REMOVE_DISKS_PARAMETER_OBJECT_CONFIG = "remove.disks.parameter.object";
 
   private ParameterUtils() {
   }
