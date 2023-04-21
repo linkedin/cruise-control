@@ -43,7 +43,7 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(IntraBrokerDiskCapacityGoal.class);
   private static final int MIN_NUM_VALID_WINDOWS = 1;
   private static final Resource RESOURCE = Resource.DISK;
-  private boolean _shouldMoveEmptyReplicas = false;
+  private boolean _shouldEmptyZeroCapacityDisks = false;
 
   /**
    * Constructor for Capacity Goal.
@@ -55,10 +55,10 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
   /**
    * Constructor for Intra Broker Disk Capacity Goal.
    *
-   * @param shouldMoveEmptyReplicas specifies if the goal should move replicas with 0 expected disk utilization
+   * @param shouldEmptyZeroCapacityDisks specifies if the goal should move all replicas from disks with 0 capacity
    */
-  public IntraBrokerDiskCapacityGoal(boolean shouldMoveEmptyReplicas) {
-      _shouldMoveEmptyReplicas = shouldMoveEmptyReplicas;
+  public IntraBrokerDiskCapacityGoal(boolean shouldEmptyZeroCapacityDisks) {
+      _shouldEmptyZeroCapacityDisks = shouldEmptyZeroCapacityDisks;
   }
 
   /**
@@ -160,7 +160,8 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
     Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
     Disk destinationDisk = clusterModel.broker(action.destinationBrokerId()).disk(action.destinationBrokerLogdir());
     boolean shouldMoveReplica = sourceReplica.load().expectedUtilizationFor(RESOURCE) > 0;
-    if (_shouldMoveEmptyReplicas) {
+    if (_shouldEmptyZeroCapacityDisks) {
+      // should also move replicas with 0 expected disk utilization
       shouldMoveReplica = sourceReplica.load().expectedUtilizationFor(RESOURCE) >= 0;
     }
     return shouldMoveReplica && isMovementAcceptableForCapacity(sourceReplica, destinationDisk);
@@ -207,7 +208,7 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
         if (d == null) {
           LOG.debug("Failed to move replica {} to any disk {} in broker {}", replica, candidateDisks, replica.broker());
         }
-        if (!isUtilizationOverLimit(disk) && !_shouldMoveEmptyReplicas) {
+        if (!isUtilizationOverLimit(disk) && !_shouldEmptyZeroCapacityDisks) {
           break;
         }
       }
@@ -234,6 +235,10 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
           throw new OptimizationFailureException(String.format("[%s] Utilization (%.2f) for disk %s on broker %d is above capacity limit.",
                                                                name(), disk.utilization(), disk, broker.id()), recommendation);
         }
+        if (_shouldEmptyZeroCapacityDisks && disk.capacity() == 0 && disk.replicas().size() > 0) {
+          throw new OptimizationFailureException(String.format("[%s] Could not move all replicas from disk %s on broker %d",
+                                                               name(), disk.logDir(), broker.id()));
+        }
       }
     }
     finish();
@@ -252,14 +257,14 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
 
   /**
    * Check whether the combined replica utilization is above the given disk capacity limits.
-   * If _shouldMoveEmptyReplicas is true, the disk utilization is over limit only if it greater than 0.
+   * If _shouldEmptyZeroCapacityDisks is true, the disk utilization is over limit only if it greater than 0.
    *
    * @param disk Disk to be checked for capacity limit violation.
    * @return {@code true} if utilization is over the limit, {@code false} otherwise.
    */
   private boolean isUtilizationOverLimit(Disk disk) {
     boolean diskUtilizationValid = true;
-    if (_shouldMoveEmptyReplicas) {
+    if (_shouldEmptyZeroCapacityDisks) {
       diskUtilizationValid = disk.utilization() > 0;
     }
     return diskUtilizationValid && disk.utilization() > disk.capacity() * _balancingConstraint.capacityThreshold(RESOURCE);
