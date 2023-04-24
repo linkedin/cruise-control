@@ -13,6 +13,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
+import com.linkedin.kafka.cruisecontrol.executor.concurrency.ConcurrencyAdjustingRecommendation;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
@@ -33,7 +34,6 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 
@@ -77,30 +77,43 @@ public class ConcurrencyAdjusterTest {
     return metricValueById;
   }
 
+  private static Map<String, StringBuilder> initOverLimitDetailsByMetricNameMap() {
+    Map<String, StringBuilder> overLimitDetailsByMetricNameMap = new HashMap<>();
+    for (String name : ExecutionUtils.CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.keySet()) {
+      overLimitDetailsByMetricNameMap.put(name, new StringBuilder());
+    }
+    return overLimitDetailsByMetricNameMap;
+  }
+
   /**
    * Create current load snapshot for brokers.
    * @param metricValueByIdPerBroker A set of metrics with corresponding load value per broker.
    * @return The load for the brokers.
    */
-  public static Map<BrokerEntity, ValuesAndExtrapolations> createCurrentMetrics(List<Map<Short, Double>> metricValueByIdPerBroker) {
+  private static Map<BrokerEntity, ValuesAndExtrapolations> createCurrentMetrics(List<Map<Short, Double>> metricValueByIdPerBroker) {
     Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = new HashMap<>();
     for (int i = 0; i < metricValueByIdPerBroker.size(); i++) {
-      Map<Short, MetricValues> valuesByMetricId = new HashMap<>();
-      for (Map.Entry<Short, Double> entry : metricValueByIdPerBroker.get(i).entrySet()) {
-        MetricValues currentMetricValues = new MetricValues(1);
-        double[] values = new double[] {entry.getValue()};
-        currentMetricValues.add(values);
-        valuesByMetricId.put(entry.getKey(), currentMetricValues);
-      }
-      AggregatedMetricValues aggregatedMetricValues = new AggregatedMetricValues(valuesByMetricId);
-      ValuesAndExtrapolations currentValuesAndExtrapolations = new ValuesAndExtrapolations(aggregatedMetricValues, null);
-      List<Long> windows = new ArrayList<>(1);
-      windows.add(1L);
-      currentValuesAndExtrapolations.setWindows(windows);
+      ValuesAndExtrapolations currentValuesAndExtrapolations = buildValuesAndExtrapolations(metricValueByIdPerBroker.get(i));
       currentMetrics.put(new BrokerEntity(ExecutorTest.class.getSimpleName(), i), currentValuesAndExtrapolations);
     }
 
     return currentMetrics;
+  }
+
+  private static ValuesAndExtrapolations buildValuesAndExtrapolations(Map<Short, Double> metricValueById) {
+    Map<Short, MetricValues> valuesByMetricId = new HashMap<>();
+    for (Map.Entry<Short, Double> entry : metricValueById.entrySet()) {
+      MetricValues currentMetricValues = new MetricValues(1);
+      double[] values = new double[] {entry.getValue()};
+      currentMetricValues.add(values);
+      valuesByMetricId.put(entry.getKey(), currentMetricValues);
+    }
+    AggregatedMetricValues aggregatedMetricValues = new AggregatedMetricValues(valuesByMetricId);
+    ValuesAndExtrapolations currentValuesAndExtrapolations = new ValuesAndExtrapolations(aggregatedMetricValues, null);
+    List<Long> windows = new ArrayList<>(1);
+    windows.add(1L);
+    currentValuesAndExtrapolations.setWindows(windows);
+    return currentValuesAndExtrapolations;
   }
 
   /**
@@ -154,56 +167,28 @@ public class ConcurrencyAdjusterTest {
     Cluster cluster = getClusterWithOutOfSyncPartition(1, false);
 
     // 1. Verify a recommended decrease in concurrency for different concurrency types due to AtMinISR partitions without offline replicas.
-    // Cache with a single entry that makes the TP1 in cluster AtMinISR.
+    // Cache with a single entry that makes the TP1 in cluster AtMinISR. Since there are 2 replicas of the minISR partition, both brokers
+    // should decrease the concurrency.
     Map<String, MinIsrWithTime> minIsrWithTimeByTopic = Collections.singletonMap(TOPIC1, new MinIsrWithTime((short) 1, MOCK_TIME_MS));
 
-    // 1.1. Inter-broker replica reassignment (non-capped)
-    Integer recommendedConcurrency = ExecutionUtils.recommendedConcurrency(cluster,
-                                                                           minIsrWithTimeByTopic,
-                                                                           MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER,
-                                                                           ConcurrencyType.INTER_BROKER_REPLICA);
-    assertEquals(MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER / MOCK_MD_INTER_BROKER_REPLICA, recommendedConcurrency.intValue());
-
-    // 1.2. Leadership reassignment (non-capped)
-    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(cluster,
-                                                                   minIsrWithTimeByTopic,
-                                                                   MOCK_MAX_LEADERSHIP_MOVEMENTS,
-                                                                   ConcurrencyType.LEADERSHIP);
-    assertEquals(MOCK_MAX_LEADERSHIP_MOVEMENTS / MOCK_MD_LEADERSHIP, recommendedConcurrency.intValue());
-
-    // 1.3. Inter-broker replica reassignment (capped)
-    int currentMovementConcurrency = MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER * MOCK_MD_INTER_BROKER_REPLICA;
-    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(cluster,
-                                                                   minIsrWithTimeByTopic,
-                                                                   currentMovementConcurrency,
-                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
-    assertEquals(MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER, recommendedConcurrency.intValue());
-
-    // 1.4. Leadership reassignment (capped)
-    currentMovementConcurrency = (MOCK_MIN_LEADERSHIP_MOVEMENTS_CONFIG * MOCK_MD_LEADERSHIP) - 1;
-    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(cluster,
-                                                                   minIsrWithTimeByTopic,
-                                                                   currentMovementConcurrency,
-                                                                   ConcurrencyType.LEADERSHIP);
-    assertEquals(MOCK_MIN_LEADERSHIP_MOVEMENTS_CONFIG, recommendedConcurrency.intValue());
+    ConcurrencyAdjustingRecommendation concurrencyAdjustingRecommendation = ExecutionUtils.recommendedConcurrency(cluster,
+                                                                                                                  minIsrWithTimeByTopic);
+    assertFalse(concurrencyAdjustingRecommendation.shouldStopExecution());
+    assertFalse(concurrencyAdjustingRecommendation.noChangeRecommended());
+    assertEquals(2, concurrencyAdjustingRecommendation.getBrokersToDecreaseConcurrency().size());
 
     // 2. Verify a recommended cancellation of the execution (i.e. concurrency types is irrelevant) due to UnderMinISR partitions without
     // offline replicas.
     // Cache with a single entry that makes the TP1 in cluster UnderMinISR.
     minIsrWithTimeByTopic = Collections.singletonMap(TOPIC1, new MinIsrWithTime((short) 2, MOCK_TIME_MS));
-    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(cluster,
-                                                                   minIsrWithTimeByTopic,
-                                                                   MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER,
-                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
-    assertEquals(ExecutionUtils.CANCEL_THE_EXECUTION, recommendedConcurrency.intValue());
+    concurrencyAdjustingRecommendation = ExecutionUtils.recommendedConcurrency(cluster, minIsrWithTimeByTopic);
+    assertTrue(concurrencyAdjustingRecommendation.shouldStopExecution());
 
     // 3. Verify that if the minISR value for topics containing (At/Under)MinISR partitions in the given Kafka cluster is missing from the
     // given cache, then no change in concurrency is recommended.
-    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(cluster,
-                                                                   Collections.emptyMap(),
-                                                                   MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER,
-                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
-    assertNull(recommendedConcurrency);
+    concurrencyAdjustingRecommendation = ExecutionUtils.recommendedConcurrency(cluster, Collections.emptyMap());
+    assertFalse(concurrencyAdjustingRecommendation.shouldStopExecution());
+    assertTrue(concurrencyAdjustingRecommendation.noChangeRecommended());
 
     // 4. Verify no change in concurrency due to lack of (At/Under)MinISR partitions (i.e. concurrency types is irrelevant)
     // Cluster with an all in-sync partition.
@@ -211,145 +196,55 @@ public class ConcurrencyAdjusterTest {
     // Cache with a single entry that makes the TP1 in cluster not (At/Under)MinISR.
     minIsrWithTimeByTopic = Collections.singletonMap(TOPIC1, new MinIsrWithTime((short) 1, MOCK_TIME_MS));
 
-    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(cluster,
-                                                                   minIsrWithTimeByTopic,
-                                                                   MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER,
-                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
-    assertNull(recommendedConcurrency);
+    concurrencyAdjustingRecommendation = ExecutionUtils.recommendedConcurrency(cluster, minIsrWithTimeByTopic);
+    assertFalse(concurrencyAdjustingRecommendation.shouldStopExecution());
+    assertTrue(concurrencyAdjustingRecommendation.noChangeRecommended());
 
     // 5. Verify no change in concurrency due to (At/Under)MinISR partitions with an offline replica (i.e. concurrency types is irrelevant)
     // Cluster with an offline out of sync partition.
     cluster = getClusterWithOutOfSyncPartition(1, true);
-    // 5.1. Recommendation with AtMinISR partition containing an offline replica.
-    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(cluster,
-                                                                   minIsrWithTimeByTopic,
-                                                                   MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER,
-                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
-    assertNull(recommendedConcurrency);
-
-    // 5.2. Recommendation with UnderMinISR partition containing an offline replica.
-    // Cache with a single entry that makes the TP1 in cluster UnderMinISR.
-    minIsrWithTimeByTopic = Collections.singletonMap(TOPIC1, new MinIsrWithTime((short) 2, MOCK_TIME_MS));
-    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(cluster,
-                                                                   minIsrWithTimeByTopic,
-                                                                   MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER,
-                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
-    assertNull(recommendedConcurrency);
+    concurrencyAdjustingRecommendation = ExecutionUtils.recommendedConcurrency(cluster,
+                                                                   minIsrWithTimeByTopic);
+    assertFalse(concurrencyAdjustingRecommendation.shouldStopExecution());
+    assertTrue(concurrencyAdjustingRecommendation.noChangeRecommended());
   }
 
   @Test
   public void testRecommendedConcurrency() {
-    // 1. Verify a recommended increase in concurrency for different concurrency types.
     List<Map<Short, Double>> metricValueByIdPerBroker = new ArrayList<>(NUM_BROKERS);
-    for (int i = 0; i < NUM_BROKERS; i++) {
-      metricValueByIdPerBroker.add(populateMetricValues(0));
-    }
-    Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = createCurrentMetrics(metricValueByIdPerBroker);
+    // Add 1 broker that is within the concurrency limit
+    metricValueByIdPerBroker.add(populateMetricValues(0));
 
-    // 1.1. Inter-broker replica reassignment (non-capped)
-    int currentMovementConcurrency = MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER - MOCK_ADDITIVE_INCREASE_INTER_BROKER_REPLICA - 1;
-    Integer recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
-                                                                           currentMovementConcurrency,
-                                                                           ConcurrencyType.INTER_BROKER_REPLICA);
-    assertEquals(currentMovementConcurrency + MOCK_ADDITIVE_INCREASE_INTER_BROKER_REPLICA, recommendedConcurrency.intValue());
-
-    // 1.2. Leadership reassignment (non-capped)
-    currentMovementConcurrency = MOCK_MAX_LEADERSHIP_MOVEMENTS - MOCK_ADDITIVE_INCREASE_LEADERSHIP - 1;
-    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
-                                                                   currentMovementConcurrency,
-                                                                   ConcurrencyType.LEADERSHIP);
-    assertEquals(currentMovementConcurrency + MOCK_ADDITIVE_INCREASE_LEADERSHIP, recommendedConcurrency.intValue());
-
-    // 1.3. Inter-broker replica reassignment (capped)
-    currentMovementConcurrency = MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER - MOCK_ADDITIVE_INCREASE_INTER_BROKER_REPLICA + 1;
-    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
-                                                                   currentMovementConcurrency,
-                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
-    assertEquals(MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER, recommendedConcurrency.intValue());
-
-    // 1.4. Leadership reassignment (capped)
-    currentMovementConcurrency = MOCK_MAX_LEADERSHIP_MOVEMENTS - MOCK_ADDITIVE_INCREASE_LEADERSHIP + 1;
-    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
-                                                                   currentMovementConcurrency,
-                                                                   ConcurrencyType.LEADERSHIP);
-    assertEquals(MOCK_MAX_LEADERSHIP_MOVEMENTS, recommendedConcurrency.intValue());
-
-    // 2. Verify no change in concurrency due to hitting max limit for different concurrency types.
-    // 2.1. Inter-broker replica reassignment
-    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
-                                                                   MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER,
-                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
-    assertNull(recommendedConcurrency);
-
-    // 2.2. Leadership reassignment
-    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
-                                                                   MOCK_MAX_LEADERSHIP_MOVEMENTS,
-                                                                   ConcurrencyType.LEADERSHIP);
-    assertNull(recommendedConcurrency);
-
-    // 3. Verify a recommended decrease in concurrency for different concurrency types.
+    // Add 2 brokers that exceeds the concurrency limit
     metricValueByIdPerBroker.add(populateMetricValues(1));
-    currentMetrics = createCurrentMetrics(metricValueByIdPerBroker);
-    // 3.1. Inter-broker replica reassignment (non-capped)
-    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
-                                                                   MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER,
-                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
-    assertEquals(MOCK_MAX_PARTITION_MOVEMENTS_PER_BROKER / MOCK_MD_INTER_BROKER_REPLICA, recommendedConcurrency.intValue());
+    metricValueByIdPerBroker.add(populateMetricValues(5));
 
-    // 3.2. Leadership reassignment (non-capped)
-    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
-                                                                   MOCK_MAX_LEADERSHIP_MOVEMENTS,
-                                                                   ConcurrencyType.LEADERSHIP);
-    assertEquals(MOCK_MAX_LEADERSHIP_MOVEMENTS / MOCK_MD_LEADERSHIP, recommendedConcurrency.intValue());
+    Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = createCurrentMetrics(metricValueByIdPerBroker);
+    // Add 1 broker that doesn't have metric value, expecting it is treated as exceeds the concurrency limit
+    currentMetrics.put(new BrokerEntity("", -1), null);
 
-    // 3.3. Inter-broker replica reassignment (capped)
-    currentMovementConcurrency = MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER * MOCK_MD_INTER_BROKER_REPLICA;
-    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
-                                                                   currentMovementConcurrency,
-                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
-    assertEquals(MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER, recommendedConcurrency.intValue());
+    ConcurrencyAdjustingRecommendation concurrencyAdjustingRecommendation = ExecutionUtils.recommendedConcurrency(currentMetrics);
 
-    // 3.4. Leadership reassignment (capped)
-    currentMovementConcurrency = (MOCK_MIN_LEADERSHIP_MOVEMENTS_CONFIG * MOCK_MD_LEADERSHIP) - 1;
-    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
-                                                                   currentMovementConcurrency,
-                                                                   ConcurrencyType.LEADERSHIP);
-    assertEquals(MOCK_MIN_LEADERSHIP_MOVEMENTS_CONFIG, recommendedConcurrency.intValue());
-
-    // 4. Verify no change in concurrency due to hitting lower limit.
-    // 4.1. Inter-broker replica reassignment
-    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
-                                                                   MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER,
-                                                                   ConcurrencyType.INTER_BROKER_REPLICA);
-    assertNull(recommendedConcurrency);
-
-    // 4.2. Leadership reassignment
-    recommendedConcurrency = ExecutionUtils.recommendedConcurrency(currentMetrics,
-                                                                   MOCK_MIN_LEADERSHIP_MOVEMENTS_CONFIG,
-                                                                   ConcurrencyType.LEADERSHIP);
-    assertNull(recommendedConcurrency);
+    assertFalse(concurrencyAdjustingRecommendation.shouldStopExecution());
+    assertFalse(concurrencyAdjustingRecommendation.noChangeRecommended());
+    assertEquals(1, concurrencyAdjustingRecommendation.getBrokersToIncreaseConcurrency().size());
+    assertEquals(3, concurrencyAdjustingRecommendation.getBrokersToDecreaseConcurrency().size());
   }
 
   @Test
   public void testWithinConcurrencyAdjusterLimit() {
-    // Verify within the limit by adding brokers under the limit.
-    List<Map<Short, Double>> metricValueByIdPerBroker = new ArrayList<>(NUM_BROKERS);
-    for (int i = 0; i < NUM_BROKERS; i++) {
-      metricValueByIdPerBroker.add(populateMetricValues(0));
-    }
-    Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = createCurrentMetrics(metricValueByIdPerBroker);
-    assertTrue(ExecutionUtils.withinConcurrencyAdjusterLimit(currentMetrics));
+    Map<String, StringBuilder> overLimitDetailsByMetricNameMap = initOverLimitDetailsByMetricNameMap();
 
-    // Verify over the limit by adding a broker with just one metric over the limit.
-    metricValueByIdPerBroker.add(populateMetricValues(1));
-    currentMetrics = createCurrentMetrics(metricValueByIdPerBroker);
-    assertFalse(ExecutionUtils.withinConcurrencyAdjusterLimit(currentMetrics));
+    // Test within concurrency adjuster limit
+    ValuesAndExtrapolations valuesAndExtrapolations0 = buildValuesAndExtrapolations(populateMetricValues(0));
+    assertTrue(ExecutionUtils.withinConcurrencyAdjusterLimit(0, valuesAndExtrapolations0, overLimitDetailsByMetricNameMap));
 
-    // Verify over the limit by having a broker with no metrics.
-    metricValueByIdPerBroker.remove(NUM_BROKERS);
-    currentMetrics = createCurrentMetrics(metricValueByIdPerBroker);
-    currentMetrics.put(new BrokerEntity(ExecutorTest.class.getSimpleName(), 42), null);
-    assertFalse(ExecutionUtils.withinConcurrencyAdjusterLimit(currentMetrics));
+    // Test above concurrency adjuster limit
+    ValuesAndExtrapolations valuesAndExtrapolations1 = buildValuesAndExtrapolations(populateMetricValues(1));
+    assertFalse(ExecutionUtils.withinConcurrencyAdjusterLimit(0, valuesAndExtrapolations1, overLimitDetailsByMetricNameMap));
+
+    // Test null metrics, expecting to return NOT within concurrency adjuster limit
+    assertFalse(ExecutionUtils.withinConcurrencyAdjusterLimit(0, null, overLimitDetailsByMetricNameMap));
   }
 
   private static Properties getExecutorProperties() {

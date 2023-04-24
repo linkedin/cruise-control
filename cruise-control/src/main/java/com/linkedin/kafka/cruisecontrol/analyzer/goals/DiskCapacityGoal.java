@@ -42,8 +42,4 @@ public class DiskCapacityGoal extends CapacityGoal {
     return action.balancingAction() == ActionType.LEADERSHIP_MOVEMENT ? ACCEPT : super.actionAcceptance(action, clusterModel);
   }
 
-  @Override
-  public String name() {
-    return DiskCapacityGoal.class.getSimpleName();
-  }
 }

@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
+import com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
@@ -37,8 +38,8 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.UpdateSelfHeal
  *    &amp;max_partition_movements_in_cluster=[POSITIVE-INTEGER]
  *    &amp;review_id=[id]&amp;drop_recently_demoted_brokers=[id1,id2...]&amp;drop_recently_removed_brokers=[id1,id2...]
  *    &amp;execution_progress_check_interval_ms=[interval_in_ms]&amp;get_response_schema=[true/false]
- *    &amp;disable_concurrency_adjuster_for=[Set-of-{@link com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType}]
- *    &amp;enable_concurrency_adjuster_for=[Set-of-{@link com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType}]
+ *    &amp;disable_concurrency_adjuster_for=[Set-of-{@link ConcurrencyType}]
+ *    &amp;enable_concurrency_adjuster_for=[Set-of-{@link ConcurrencyType}]
  *    &amp;min_isr_based_concurrency_adjustment=[true/false]&amp;doAs=[user]&amp;reason=[reason-for-request]
  * </pre>
  */

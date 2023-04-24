@@ -5,10 +5,10 @@
 package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
+import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
-import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
@@ -24,10 +24,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
 import java.util.SortedMap;
+import java.util.SortedSet;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
@@ -151,10 +151,10 @@ public class ClusterModel implements Serializable {
   /**
    * Get the rack with the rack id if it is found in the cluster; null otherwise.
    *
-   * @param rackId Id of the requested rack.
+   * @param rackId ID of the requested rack.
    * @return The rack with the rack id if it is found in the cluster; null otherwise.
    */
-  public Rack rack(String rackId) {
+  private Rack rack(String rackId) {
     return _racksById.get(rackId);
   }
 
@@ -645,30 +645,20 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * @return The number of alive racks in the cluster.
+   * @return Alive racks in the cluster.
    */
-  public int numAliveRacks() {
-    int numAliveRacks = 0;
-    for (Rack rack : _racksById.values()) {
-      if (rack.isRackAlive()) {
-        numAliveRacks++;
-      }
-    }
-    return numAliveRacks;
+  public Set<Rack> aliveRacks() {
+    return _racksById.values().stream().filter(Rack::isRackAlive).collect(Collectors.toUnmodifiableSet());
   }
 
   /**
    * @param optimizationOptions Options to use in checking the number of racks that are alive and allowed replica moves.
    * @return The number of alive racks in the cluster that are allowed replica moves.
    */
-  public int numAliveRacksAllowedReplicaMoves(OptimizationOptions optimizationOptions) {
-    int numAliveRacksAllowedReplicaMoves = 0;
-    for (Rack rack : _racksById.values()) {
-      if (rack.isAliveAndAllowedReplicaMoves(optimizationOptions)) {
-        numAliveRacksAllowedReplicaMoves++;
-      }
-    }
-    return numAliveRacksAllowedReplicaMoves;
+  public Set<Rack> aliveRacksAllowedReplicaMoves(OptimizationOptions optimizationOptions) {
+    return _racksById.values().stream()
+                     .filter(r -> r.isAliveAndAllowedReplicaMoves(optimizationOptions))
+                     .collect(Collectors.toUnmodifiableSet());
   }
 
   /**

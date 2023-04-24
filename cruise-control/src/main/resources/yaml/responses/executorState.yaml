@@ -54,6 +54,12 @@ ExecutorState:
     maximumConcurrentLeaderMovements:
       type: integer
       format: int32
+    minimumConcurrentLeaderMovements:
+      type: integer
+      format: int32
+    averageConcurrentLeaderMovements:
+      type: integer
+      format: int32
     # inter broker partition information
     numTotalPartitionMovements:
       type: integer
@@ -110,6 +116,12 @@ ExecutorState:
     maximumConcurrentPartitionMovementsPerBroker:
       type: integer
       format: int32
+    minimumConcurrentPartitionMovementsPerBroker:
+      type: integer
+      format: int32
+    averageConcurrentPartitionMovementsPerBroker:
+      type: integer
+      format: int32
     # intra broker partition information
     numTotalIntraBrokerPartitionMovements:
       type: integer
@@ -164,6 +176,12 @@ ExecutorState:
       type: integer
       format: int64
     maximumConcurrentIntraBrokerPartitionMovementsPerBroker:
+      type: integer
+      format: int32
+    minimumConcurrentIntraBrokerPartitionMovementsPerBroker:
+      type: integer
+      format: int32
+    averageConcurrentIntraBrokerPartitionMovementsPerBroker:
       type: integer
       format: int32
     error:

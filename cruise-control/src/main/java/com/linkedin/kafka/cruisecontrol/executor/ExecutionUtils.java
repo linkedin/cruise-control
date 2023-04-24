@@ -4,35 +4,37 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
-import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.AlterPartitionReassignmentsResult;
-import org.apache.kafka.clients.admin.ElectLeadersResult;
-import org.apache.kafka.clients.admin.ListPartitionReassignmentsResult;
-import org.apache.kafka.clients.admin.NewPartitionReassignment;
-import org.apache.kafka.clients.admin.PartitionReassignment;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
 import com.linkedin.kafka.cruisecontrol.common.TopicMinIsrCache.MinIsrWithTime;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
+import com.linkedin.kafka.cruisecontrol.executor.concurrency.ConcurrencyAdjustingRecommendation;
+import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import javax.annotation.Nullable;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AlterPartitionReassignmentsResult;
 import org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult;
+import org.apache.kafka.clients.admin.ElectLeadersResult;
+import org.apache.kafka.clients.admin.ListPartitionReassignmentsResult;
+import org.apache.kafka.clients.admin.NewPartitionReassignment;
+import org.apache.kafka.clients.admin.PartitionReassignment;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.ElectionType;
 import org.apache.kafka.common.KafkaFuture;
@@ -43,12 +45,8 @@ import org.apache.kafka.common.protocol.Errors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_LOG_FLUSH_TIME_MS_999TH;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_999TH;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_PRODUCE_LOCAL_TIME_MS_999TH;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_REQUEST_QUEUE_SIZE;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_999TH;
+import static com.linkedin.cruisecontrol.common.utils.Utils.*;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.*;
 
 
 public final class ExecutionUtils {
@@ -58,7 +56,6 @@ public final class ExecutionUtils {
   public static final long METADATA_EXPIRY_MS = Long.MAX_VALUE;
   public static final Duration MIN_ISR_CACHE_CLEANER_PERIOD = Duration.ofMinutes(10);
   public static final Duration MIN_ISR_CACHE_CLEANER_INITIAL_DELAY = Duration.ofMinutes(0);
-  public static final int CANCEL_THE_EXECUTION = 0;
   // A special timestamp to indicate that a broker is a permanent part of recently removed or demoted broker set.
   public static final long PERMANENT_TIMESTAMP = 0L;
   public static final String EXECUTION_STARTED = "execution-started";
@@ -68,9 +65,22 @@ public final class ExecutionUtils {
   public static final String GAUGE_EXECUTION_STOPPED_BY_USER = EXECUTION_STOPPED + "-by-user";
   public static final String GAUGE_EXECUTION_STARTED_IN_KAFKA_ASSIGNER_MODE = EXECUTION_STARTED + "-" + KAFKA_ASSIGNER_MODE;
   public static final String GAUGE_EXECUTION_STARTED_IN_NON_KAFKA_ASSIGNER_MODE = EXECUTION_STARTED + "-non-" + KAFKA_ASSIGNER_MODE;
+  // The following 2 per-broker-cap gauges are deprecated since individual broker concurrency is applied.
   public static final String GAUGE_EXECUTION_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER_CAP = "inter-broker-partition-movements-per-broker-cap";
   public static final String GAUGE_EXECUTION_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER_CAP = "intra-broker-partition-movements-per-broker-cap";
   public static final String GAUGE_EXECUTION_LEADERSHIP_MOVEMENTS_GLOBAL_CAP = "leadership-movements-global-cap";
+  public static final String GAUGE_EXECUTION_INTER_BROKER_PARTITION_MOVEMENTS_MAX_CONCURRENCY = "inter-broker-partition-movements-max-concurrency";
+  public static final String GAUGE_EXECUTION_INTER_BROKER_PARTITION_MOVEMENTS_MIN_CONCURRENCY = "inter-broker-partition-movements-min-concurrency";
+  public static final String GAUGE_EXECUTION_INTER_BROKER_PARTITION_MOVEMENTS_AVG_CONCURRENCY = "inter-broker-partition-movements-avg-concurrency";
+  public static final String GAUGE_EXECUTION_INTRA_BROKER_PARTITION_MOVEMENTS_MAX_CONCURRENCY = "intra-broker-partition-movements-max-concurrency";
+  public static final String GAUGE_EXECUTION_INTRA_BROKER_PARTITION_MOVEMENTS_MIN_CONCURRENCY = "intra-broker-partition-movements-min-concurrency";
+  public static final String GAUGE_EXECUTION_INTRA_BROKER_PARTITION_MOVEMENTS_AVG_CONCURRENCY = "intra-broker-partition-movements-avg-concurrency";
+  public static final String GAUGE_EXECUTION_LEADERSHIP_MOVEMENTS_MAX_CONCURRENCY = "leadership-movements-max-concurrency";
+  public static final String GAUGE_EXECUTION_LEADERSHIP_MOVEMENTS_MIN_CONCURRENCY = "leadership-movements-min-concurrency";
+  public static final String GAUGE_EXECUTION_LEADERSHIP_MOVEMENTS_AVG_CONCURRENCY = "leadership-movements-avg-concurrency";
+
+  public static final String PARTITION_MOVEMENT_PER_SEC = "partition-movement-count-per-second";
+  public static final String PARTITION_MOVEMENT_MB_PER_SEC = "partition-movement-MB-per-second";
   public static final long EXECUTION_HISTORY_SCANNER_PERIOD_SECONDS = 5;
   public static final long EXECUTION_HISTORY_SCANNER_INITIAL_DELAY_SECONDS = 0;
   static final Map<ConcurrencyType, Integer> ADDITIVE_INCREASE = new HashMap<>();
@@ -119,7 +129,7 @@ public final class ExecutionUtils {
     listPartitionReassignmentsMaxAttempts = config.getInt(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS_CONFIG);
   }
 
-  private static String toMetricName(Short metricId) {
+  public static String toMetricName(Short metricId) {
     return KafkaMetricDef.brokerMetricDef().metricInfo(metricId).name();
   }
 
@@ -127,52 +137,33 @@ public final class ExecutionUtils {
    * Check whether the current metrics are within the limit specified by {@link #CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME}.
    * Package private for unit tests.
    *
-   * @param currentMetricsByBroker Current metrics by broker.
+   * @param brokerId the broker id to check if its metrics is in limit value
+   * @param currentMetrics Current metrics of the broker.
+   * @param overLimitDetailsByMetricName the string builder to build over limit report
    * @return {@code true} if all brokers are within the limit specified by {@link #CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME},
    * {@code false} otherwise.
    */
-  static boolean withinConcurrencyAdjusterLimit(Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker) {
-    boolean withinLimit = true;
-    Set<BrokerEntity> brokersWithNoMetrics = new HashSet<>();
-    Map<String, StringBuilder> overLimitDetailsByMetricName = new HashMap<>();
-    for (String metricName : CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.keySet()) {
-      overLimitDetailsByMetricName.put(metricName, new StringBuilder());
+  static boolean withinConcurrencyAdjusterLimit(int brokerId, @Nullable ValuesAndExtrapolations currentMetrics,
+                                                Map<String, StringBuilder> overLimitDetailsByMetricName) {
+    if (currentMetrics == null) {
+      LOG.warn("Concurrency adjuster recommended decreasing concurrency for broker {} as no broker metrics exist to verify.", brokerId);
+      return false;
     }
 
-    for (Map.Entry<BrokerEntity, ValuesAndExtrapolations> entry : currentMetricsByBroker.entrySet()) {
-      BrokerEntity broker = entry.getKey();
-      ValuesAndExtrapolations current = entry.getValue();
-      if (current == null) {
-        brokersWithNoMetrics.add(broker);
-        continue;
-      }
-
-      // Check whether the broker is within the acceptable limit for the relevant metrics. If not, collect details.
-      for (Short metricId : current.metricValues().metricIds()) {
-        String metricName = toMetricName(metricId);
-        Double limit = CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.get(metricName);
-        if (limit != null) {
-          double metricValue = current.metricValues().valuesFor(metricId).latest();
-          if (metricValue > limit) {
-            overLimitDetailsByMetricName.get(metricName).append(String.format("%d(%.2f) ", broker.brokerId(), metricValue));
-          }
+    boolean withinAdjusterLimit = true;
+    // Check whether the broker is within the acceptable limit for the relevant metrics. If not, collect details.
+    for (Short metricId : currentMetrics.metricValues().metricIds()) {
+      String metricName = toMetricName(metricId);
+      Double limit = CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.get(metricName);
+      if (limit != null) {
+        double metricValue = currentMetrics.metricValues().valuesFor(metricId).latest();
+        if (metricValue > limit) {
+          overLimitDetailsByMetricName.get(metricName).append(String.format("%d(%.2f) ", brokerId, metricValue));
+          withinAdjusterLimit = false;
         }
       }
     }
-
-    for (Map.Entry<String, StringBuilder> entry : overLimitDetailsByMetricName.entrySet()) {
-      StringBuilder brokersWithValues = entry.getValue();
-      if (brokersWithValues.length() > 0) {
-        LOG.info("{} is over the acceptable limit for brokers with values: {}.", entry.getKey(), brokersWithValues);
-        withinLimit = false;
-      }
-    }
-    if (!brokersWithNoMetrics.isEmpty()) {
-      LOG.warn("Assuming {} are over the acceptable limit as no broker metrics exist to verify.", brokersWithNoMetrics);
-      withinLimit = false;
-    }
-
-    return withinLimit;
+    return withinAdjusterLimit;
   }
 
   /**
@@ -180,73 +171,71 @@ public final class ExecutionUtils {
    * If the cluster has partitions that are
    * <ul>
    *   <li>UnderMinISR without offline replicas, recommend cancelling the execution</li>
-   *   <li>AtMinISR without offline replicas, apply multiplicative-decrease to concurrency</li>
+   *   <li>AtMinISR without offline replicas, recommend to decrease the concurrency</li>
    * </ul>
    *
    * @param cluster Kafka cluster.
    * @param minIsrWithTimeByTopic Value and capture time of {@link org.apache.kafka.common.config.TopicConfig#MIN_IN_SYNC_REPLICAS_CONFIG} by topic.
-   * @param currentMovementConcurrency The effective allowed movement concurrency.
-   * @param concurrencyType The type of concurrency for which the recommendation is requested.
-   * @return {@code null} to indicate recommendation for no change in allowed movement concurrency, {@code 0} to indicate recommendation to
-   * cancel the execution, or a positive integer to indicate the recommended movement concurrency.
+   * @return the concurrency recommendation.
    */
-  static Integer recommendedConcurrency(Cluster cluster,
-                                        Map<String, MinIsrWithTime> minIsrWithTimeByTopic,
-                                        int currentMovementConcurrency,
-                                        ConcurrencyType concurrencyType) {
+  static ConcurrencyAdjustingRecommendation recommendedConcurrency(Cluster cluster, Map<String, MinIsrWithTime> minIsrWithTimeByTopic) {
     Comparator<PartitionInfo> comparator = Comparator.comparing(PartitionInfo::topic).thenComparingInt(PartitionInfo::partition);
     Set<PartitionInfo> underMinIsr = new TreeSet<>(comparator);
     Set<PartitionInfo> atMinIsr = new TreeSet<>(comparator);
-    populateMinIsrState(cluster, minIsrWithTimeByTopic, underMinIsr, atMinIsr, false);
+    populateMinIsrState(cluster, minIsrWithTimeByTopic, underMinIsr, atMinIsr, null, false);
 
-    Integer recommendedConcurrency = null;
     if (!underMinIsr.isEmpty()) {
       LOG.info("Concurrency adjuster recommended cancelling the execution due to UnderMinISR without offline replicas in {}.", underMinIsr);
-      recommendedConcurrency = CANCEL_THE_EXECUTION;
+      return ConcurrencyAdjustingRecommendation.STOP_EXECUTION;
     } else if (!atMinIsr.isEmpty()) {
-      int minMovementsConcurrency = MIN_CONCURRENCY.get(concurrencyType);
-      // Multiplicative-decrease reassignment concurrency (MIN: minMovementsConcurrency).
-      if (currentMovementConcurrency > minMovementsConcurrency) {
-        recommendedConcurrency = Math.max(minMovementsConcurrency, currentMovementConcurrency / MULTIPLICATIVE_DECREASE.get(concurrencyType));
-        LOG.info("Concurrency adjuster recommended a decrease in {} movement concurrency to {} due to AtMinISR without offline replicas in {}.",
-                 concurrencyType, recommendedConcurrency, atMinIsr);
+      ConcurrencyAdjustingRecommendation concurrencyAdjustingRecommendation = new ConcurrencyAdjustingRecommendation();
+      for (PartitionInfo partitionInfo: atMinIsr) {
+        for (Node replica: partitionInfo.replicas()) {
+          concurrencyAdjustingRecommendation.recommendConcurrencyDecrease(replica.id());
+        }
       }
+      return concurrencyAdjustingRecommendation;
     }
-
-    return recommendedConcurrency;
+    return ConcurrencyAdjustingRecommendation.NO_CHANGE_RECOMMENDED;
   }
 
   /**
-   * Provide a recommended concurrency for the ongoing movements of the given concurrency type using selected current broker
-   * metrics and based on additive-increase/multiplicative-decrease (AIMD) feedback control algorithm.
+   * Provide concurrency recommendations for the ongoing movements based on broker metrics. For each broker, it recommends to increase
+   * the concurrency if the all metrics values are within the limit, and recommends to decrease the concurrency otherwise.
    *
    * @param currentMetricsByBroker Current metrics by broker.
-   * @param currentMovementConcurrency The effective allowed movement concurrency.
-   * @param concurrencyType The type of concurrency for which the recommendation is requested.
-   * @return {@code null} to indicate recommendation for no change in allowed movement concurrency.
-   * Otherwise an integer to indicate the recommended movement concurrency.
+   * @return the concurrency recommendation.
    */
-  static Integer recommendedConcurrency(Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker,
-                                        int currentMovementConcurrency,
-                                        ConcurrencyType concurrencyType) {
-    boolean withinAdjusterLimit = withinConcurrencyAdjusterLimit(currentMetricsByBroker);
-    Integer recommendedConcurrency = null;
-    if (withinAdjusterLimit) {
-      int maxMovementsConcurrency = MAX_CONCURRENCY.get(concurrencyType);
-      // Additive-increase reassignment concurrency (MAX: maxMovementsConcurrency).
-      if (currentMovementConcurrency < maxMovementsConcurrency) {
-        recommendedConcurrency = Math.min(maxMovementsConcurrency, currentMovementConcurrency + ADDITIVE_INCREASE.get(concurrencyType));
-        LOG.info("Concurrency adjuster recommended an increase in {} movement concurrency to {}", concurrencyType, recommendedConcurrency);
-      }
-    } else {
-      int minMovementsConcurrency = MIN_CONCURRENCY.get(concurrencyType);
-      // Multiplicative-decrease reassignment concurrency (MIN: minMovementsConcurrency).
-      if (currentMovementConcurrency > minMovementsConcurrency) {
-        recommendedConcurrency = Math.max(minMovementsConcurrency, currentMovementConcurrency / MULTIPLICATIVE_DECREASE.get(concurrencyType));
-        LOG.info("Concurrency adjuster recommended a decrease in {} movement concurrency to {}", concurrencyType, recommendedConcurrency);
+  static ConcurrencyAdjustingRecommendation recommendedConcurrency(Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker) {
+
+    ConcurrencyAdjustingRecommendation concurrencyAdjustingRecommendation = new ConcurrencyAdjustingRecommendation();
+    // Stores the brokers whose metrics value are above the threshold. This is only for logging purpose.
+    Map<String, StringBuilder> overLimitDetailsByMetricName = new HashMap<>();
+    for (String metricName : CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME.keySet()) {
+      overLimitDetailsByMetricName.put(metricName, new StringBuilder());
+    }
+
+    // Iterate through brokers and adjust concurrency based on the current broker metric
+    for (Map.Entry<BrokerEntity, ValuesAndExtrapolations> entry : currentMetricsByBroker.entrySet()) {
+      BrokerEntity broker = entry.getKey();
+      ValuesAndExtrapolations current = entry.getValue();
+
+      boolean withinAdjusterLimit = withinConcurrencyAdjusterLimit(broker.brokerId(), current, overLimitDetailsByMetricName);
+      if (withinAdjusterLimit) {
+        concurrencyAdjustingRecommendation.recommendConcurrencyIncrease(broker.brokerId());
+      } else {
+        concurrencyAdjustingRecommendation.recommendConcurrencyDecrease(broker.brokerId());
       }
     }
-    return recommendedConcurrency;
+
+    for (Map.Entry<String, StringBuilder> entry : overLimitDetailsByMetricName.entrySet()) {
+      StringBuilder brokersWithValues = entry.getValue();
+      if (brokersWithValues.length() > 0) {
+        LOG.info("{} was over the acceptable limit for brokers with values: {}.", entry.getKey(), brokersWithValues);
+      }
+    }
+
+    return concurrencyAdjustingRecommendation;
   }
 
   /**

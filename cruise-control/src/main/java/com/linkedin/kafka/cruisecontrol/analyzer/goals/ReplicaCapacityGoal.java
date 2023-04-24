@@ -92,11 +92,6 @@ public class ReplicaCapacityGoal extends AbstractGoal {
   }
 
   @Override
-  public String name() {
-    return ReplicaCapacityGoal.class.getSimpleName();
-  }
-
-  @Override
   public boolean isHardGoal() {
     return true;
   }
