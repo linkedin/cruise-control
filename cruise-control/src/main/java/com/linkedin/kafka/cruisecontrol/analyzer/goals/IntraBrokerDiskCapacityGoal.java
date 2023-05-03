@@ -43,13 +43,13 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(IntraBrokerDiskCapacityGoal.class);
   private static final int MIN_NUM_VALID_WINDOWS = 1;
   private static final Resource RESOURCE = Resource.DISK;
-  private boolean _shouldEmptyZeroCapacityDisks = false;
+  private final boolean _shouldEmptyZeroCapacityDisks;
 
   /**
    * Constructor for Capacity Goal.
    */
   public IntraBrokerDiskCapacityGoal() {
-
+    _shouldEmptyZeroCapacityDisks = false;
   }
 
   /**
@@ -66,6 +66,7 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
    */
   IntraBrokerDiskCapacityGoal(BalancingConstraint constraint) {
     _balancingConstraint = constraint;
+    _shouldEmptyZeroCapacityDisks = false;
   }
 
   @Override
@@ -257,7 +258,7 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
 
   /**
    * Check whether the combined replica utilization is above the given disk capacity limits.
-   * If _shouldEmptyZeroCapacityDisks is true, the disk utilization is over limit only if it greater than 0.
+   * If _shouldEmptyZeroCapacityDisks is true, the disk utilization is over limit only if it is greater than 0.
    *
    * @param disk Disk to be checked for capacity limit violation.
    * @return {@code true} if utilization is over the limit, {@code false} otherwise.
