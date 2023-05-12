@@ -457,7 +457,7 @@ public class Executor {
                                             Integer requestedIntraBrokerPartitionMovementConcurrency,
                                             Integer requestedLeadershipMovementConcurrency) {
       _loadMonitor = loadMonitor;
-      _executionConcurrencyManager.initialize(loadMonitor.brokersWithReplicas(MAX_METADATA_WAIT_MS),
+      _executionConcurrencyManager.initialize(loadMonitor.brokers(MAX_METADATA_WAIT_MS),
                                               requestedInterBrokerPartitionMovementConcurrency,
                                               requestedIntraBrokerPartitionMovementConcurrency,
                                               requestedLeadershipMovementConcurrency);
