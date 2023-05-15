@@ -709,7 +709,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     expectLastCall().anyTimes();
     mockLoadMonitor.setSamplingMode(ALL);
     expectLastCall().anyTimes();
-    EasyMock.expect(mockLoadMonitor.brokersWithReplicas(anyLong())).andReturn(Set.of(BROKER_ID_0, BROKER_ID_1)).anyTimes();
+    EasyMock.expect(mockLoadMonitor.brokers(anyLong())).andReturn(Set.of(BROKER_ID_0, BROKER_ID_1)).anyTimes();
     return mockLoadMonitor;
   }
 
