@@ -312,18 +312,6 @@ public final class MonitorUtils {
 
   /**
    * @param cluster Kafka cluster.
-   * @return All the brokers.
-   */
-  static Set<Integer> brokers(Cluster cluster) {
-    Set<Integer> brokers = new HashSet<>();
-    for (Node node : cluster.nodes()) {
-      brokers.add(node.id());
-    }
-    return brokers;
-  }
-
-  /**
-   * @param cluster Kafka cluster.
    * @return All the dead brokers in the cluster that host at least one replica.
    */
   static Set<Integer> deadBrokersWithReplicas(Cluster cluster) {

@@ -629,17 +629,6 @@ public class LoadMonitor {
   }
 
   /**
-   * Get all the brokers in the cluster. If a metadata refresh failed due to
-   * timeout, the current metadata information will be used.
-   * @param timeout the timeout in milliseconds.
-   * @return All the brokers in the cluster.
-   */
-  public Set<Integer> brokers(long timeout) {
-    Cluster kafkaCluster = _metadataClient.refreshMetadata(timeout).cluster();
-    return MonitorUtils.brokers(kafkaCluster);
-  }
-
-  /**
    * Refresh the cluster metadata and get the corresponding cluster and generation information.
    *
    * @return Cluster and generation information after refreshing the cluster metadata.

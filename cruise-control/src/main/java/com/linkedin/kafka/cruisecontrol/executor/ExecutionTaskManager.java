@@ -119,7 +119,7 @@ public class ExecutionTaskManager {
   public synchronized List<ExecutionTask> getLeadershipMovementTasks() {
     return _executionTaskPlanner.getLeadershipMovementTasks(
         _executionConcurrencyManager.getExecutionConcurrencyPerBroker(ConcurrencyType.LEADERSHIP),
-        _executionConcurrencyManager.maxClusterLeadershipMovements());
+        _executionConcurrencyManager.maxClusterLeadershipMovements(), _executionConcurrencyManager);
   }
 
   /**

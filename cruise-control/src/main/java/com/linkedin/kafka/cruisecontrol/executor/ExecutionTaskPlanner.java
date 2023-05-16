@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.executor;
 import com.linkedin.cruisecontrol.common.utils.Utils;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.executor.concurrency.ExecutionConcurrencyManager;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.StrategyOptions;
@@ -297,10 +298,12 @@ public class ExecutionTaskPlanner {
    *
    * @param leadershipConcurrencyByBrokerId the leadership movement concurrency of each broker
    * @param clusterLeadershipMovementConcurrency the allowed movement concurrency of the whole cluster
+   * @param executionConcurrencyManager the execution concurrency manager
    * @return The leadership movement tasks.
    */
   public List<ExecutionTask> getLeadershipMovementTasks(Map<Integer, Integer> leadershipConcurrencyByBrokerId,
-                                                        int clusterLeadershipMovementConcurrency) {
+                                                        int clusterLeadershipMovementConcurrency,
+                                                        ExecutionConcurrencyManager executionConcurrencyManager) {
     Map<Integer, Integer> leadershipConcurrency = new HashMap<>(leadershipConcurrencyByBrokerId);
     List<ExecutionTask> leadershipMovementsList = new ArrayList<>();
     Iterator<ExecutionTask> leadershipMovementIter = _remainingLeadershipMovements.values().iterator();
@@ -311,9 +314,13 @@ public class ExecutionTaskPlanner {
           Collectors.toSet());
       boolean canSchedule = true;
       for (int broker: replicas) {
-        if (leadershipConcurrency.containsKey(broker) && leadershipConcurrency.get(broker) <= 0) {
-          canSchedule = false;
-          break;
+        if (leadershipConcurrency.containsKey(broker)) {
+          if (leadershipConcurrency.get(broker) <= 0) {
+            canSchedule = false;
+            break;
+          }
+        } else {
+          leadershipConcurrency.put(broker, executionConcurrencyManager.getExecutionConcurrency(broker, ConcurrencyType.LEADERSHIP));
         }
       }
 
