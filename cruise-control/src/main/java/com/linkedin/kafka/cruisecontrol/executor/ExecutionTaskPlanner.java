@@ -296,18 +296,15 @@ public class ExecutionTaskPlanner {
   /**
    * Get the leadership movement tasks, and remove them from _remainingLeadershipMovements.
    *
-   * @param leadershipConcurrencyByBrokerId the leadership movement concurrency of each broker
-   * @param clusterLeadershipMovementConcurrency the allowed movement concurrency of the whole cluster
    * @param executionConcurrencyManager the execution concurrency manager
    * @return The leadership movement tasks.
    */
-  public List<ExecutionTask> getLeadershipMovementTasks(Map<Integer, Integer> leadershipConcurrencyByBrokerId,
-                                                        int clusterLeadershipMovementConcurrency,
-                                                        ExecutionConcurrencyManager executionConcurrencyManager) {
-    Map<Integer, Integer> leadershipConcurrency = new HashMap<>(leadershipConcurrencyByBrokerId);
+  public List<ExecutionTask> getLeadershipMovementTasks(ExecutionConcurrencyManager executionConcurrencyManager) {
+    Map<Integer, Integer> leadershipConcurrency =
+            new HashMap<>(executionConcurrencyManager.getExecutionConcurrencyPerBroker(ConcurrencyType.LEADERSHIP));
     List<ExecutionTask> leadershipMovementsList = new ArrayList<>();
     Iterator<ExecutionTask> leadershipMovementIter = _remainingLeadershipMovements.values().iterator();
-    int taskQuota = clusterLeadershipMovementConcurrency;
+    int taskQuota = executionConcurrencyManager.maxClusterLeadershipMovements();
     while (leadershipMovementIter.hasNext() && taskQuota > 0) {
       ExecutionTask leadershipMovementTask = leadershipMovementIter.next();
       Set<Integer> replicas = leadershipMovementTask.proposal().newReplicas().stream().map(ReplicaPlacementInfo::brokerId).collect(

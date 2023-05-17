@@ -135,7 +135,7 @@ public class ExecutionTaskPlannerTest {
     ExecutionTaskPlanner planner = new ExecutionTaskPlanner(null, new KafkaCruiseControlConfig(props));
     ExecutionConcurrencyManager manager = new ExecutionConcurrencyManager(new KafkaCruiseControlConfig(props));
     planner.addExecutionProposals(proposals, strategyOptions, null);
-    List<ExecutionTask> leaderMovementTasks = planner.getLeadershipMovementTasks(leadershipMovementConcurrencyPerBroker, 4, manager);
+    List<ExecutionTask> leaderMovementTasks = planner.getLeadershipMovementTasks(manager);
     assertEquals("4 of the leader movements should return in one batch", 4, leaderMovementTasks.size());
     assertEquals(leaderMovementTasks.get(0).proposal(), _leaderMovement1);
     assertEquals(leaderMovementTasks.get(1).proposal(), _leaderMovement2);
@@ -156,7 +156,7 @@ public class ExecutionTaskPlannerTest {
     proposals.add(_leaderMovement4);
     planner = new ExecutionTaskPlanner(null, new KafkaCruiseControlConfig(props));
     planner.addExecutionProposals(proposals, strategyOptions, null);
-    leaderMovementTasks = planner.getLeadershipMovementTasks(leadershipMovementConcurrencyPerBroker, 3, manager);
+    leaderMovementTasks = planner.getLeadershipMovementTasks(manager);
     assertEquals("3 of the leader movements should return in one batch", 3, leaderMovementTasks.size());
     assertEquals(leaderMovementTasks.get(0).proposal(), _leaderMovement1);
     assertEquals(leaderMovementTasks.get(1).proposal(), _leaderMovement2);
@@ -177,14 +177,14 @@ public class ExecutionTaskPlannerTest {
 
     planner = new ExecutionTaskPlanner(null, new KafkaCruiseControlConfig(props));
     planner.addExecutionProposals(proposals, strategyOptions, null);
-    leaderMovementTasks = planner.getLeadershipMovementTasks(leadershipMovementConcurrencyPerBroker, 3, manager);
+    leaderMovementTasks = planner.getLeadershipMovementTasks(manager);
     assertEquals("2 of the leader movements should return in one batch", 2, leaderMovementTasks.size());
     assertEquals(leaderMovementTasks.get(0).proposal(), _leaderMovement1);
     assertEquals(leaderMovementTasks.get(1).proposal(), _leaderMovement4);
-    leaderMovementTasks = planner.getLeadershipMovementTasks(leadershipMovementConcurrencyPerBroker, 3, manager);
+    leaderMovementTasks = planner.getLeadershipMovementTasks(manager);
     assertEquals("1 of the leader movements should return in one batch", 1, leaderMovementTasks.size());
     assertEquals(leaderMovementTasks.get(0).proposal(), _leaderMovement2);
-    leaderMovementTasks = planner.getLeadershipMovementTasks(leadershipMovementConcurrencyPerBroker, 3, manager);
+    leaderMovementTasks = planner.getLeadershipMovementTasks(manager);
     assertEquals("1 of the leader movements should return in one batch", 1, leaderMovementTasks.size());
     assertEquals(leaderMovementTasks.get(0).proposal(), _leaderMovement3);
   }

@@ -117,9 +117,7 @@ public class ExecutionTaskManager {
    * @return A list of execution tasks that move the leadership.
    */
   public synchronized List<ExecutionTask> getLeadershipMovementTasks() {
-    return _executionTaskPlanner.getLeadershipMovementTasks(
-        _executionConcurrencyManager.getExecutionConcurrencyPerBroker(ConcurrencyType.LEADERSHIP),
-        _executionConcurrencyManager.maxClusterLeadershipMovements(), _executionConcurrencyManager);
+    return _executionTaskPlanner.getLeadershipMovementTasks(_executionConcurrencyManager);
   }
 
   /**
