@@ -5,6 +5,8 @@
 
 # To be able to easily parse command-line arguments
 import argparse
+from argparse import Namespace
+from typing import Any, Dict, Type
 
 # To be able to easily pass around the available endpoints and parameters
 from cruisecontrolclient.client.ExecutionContext import ExecutionContext
@@ -204,6 +206,18 @@ def build_argument_parser(execution_context: ExecutionContext) -> argparse.Argum
         add_remove_parameter_argument(endpoint_parser)
 
     return parser
+
+def extract_parameters(args: Namespace) -> Dict[str, Any]:
+    pass
+
+def validate_values(args: Namespace) -> Namespace:
+    pass
+
+def handle_modifications(args: Namespace) -> Namespace:
+    pass
+
+def construct_executable_endpoint(target_endpoint: str, **kwargs) -> Type[Endpoint.AbstractEndpoint]:
+    pass
 
 
 def main():
