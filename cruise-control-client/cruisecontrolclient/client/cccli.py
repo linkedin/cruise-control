@@ -6,7 +6,7 @@
 # To be able to easily parse command-line arguments
 import argparse
 from argparse import Namespace
-from typing import Any, Dict, Type
+from typing import Any, Dict, List, Optional, Type
 
 # To be able to easily pass around the available endpoints and parameters
 from cruisecontrolclient.client.ExecutionContext import ExecutionContext
@@ -30,18 +30,8 @@ def get_endpoint(args: argparse.Namespace,
     # removing properties, not mutating the objects which those properties reference.
     arg_dict = vars(args).copy()
 
-    # If we have a broker list, we need to make it into a comma-separated list
-    # and pass it to the Endpoint at instantiation.
-    if 'brokers' in arg_dict:
-        comma_broker_id_list = ",".join(args.brokers)
-        endpoint: Endpoint.AbstractEndpoint = execution_context.dest_to_Endpoint[args.endpoint_subparser](
-            comma_broker_id_list)
-        # Prevent trying to add this parameter a second time.
-        del arg_dict['brokers']
-
-    # Otherwise we can directly instantiate the Endpoint
-    else:
-        endpoint: Endpoint.AbstractEndpoint = execution_context.dest_to_Endpoint[args.endpoint_subparser]()
+    endpoint_type = ExecutionContext.dest_to_Endpoint[args.endpoint_subparser]
+    endpoint_instance = instantiate_endpoint(endpoint_type, arg_dict)
 
     # Iterate only over the parameter flags; warn user if conflicts exist
     for flag in arg_dict:
@@ -57,8 +47,9 @@ def get_endpoint(args: argparse.Namespace,
                 #
                 # For the StateEndpoint only, we don't care if we overwrite it.
                 # This is because we presume 'substates:executor' at instantiation.
-                if endpoint.has_param(param_name) and not isinstance(endpoint, Endpoint.StateEndpoint):
-                    existing_value = endpoint.get_value(param_name)
+                if endpoint_instance.has_param(param_name) and not isinstance(endpoint_instance,
+                                                                              Endpoint.StateEndpoint):
+                    existing_value = endpoint_instance.get_value(param_name)
                     raise ValueError(
                         f"Parameter {param_name}={existing_value} already exists in this endpoint.\n"
                         f"Unclear whether it's safe to remap to {param_name}={arg_dict[flag]}")
@@ -66,9 +57,9 @@ def get_endpoint(args: argparse.Namespace,
                     # If we have a destination broker list, we need to make it into a comma-separated list
                     if flag == 'destination_broker':
                         comma_broker_id_list = ",".join(arg_dict[flag])
-                        endpoint.add_param(param_name, comma_broker_id_list)
+                        endpoint_instance.add_param(param_name, comma_broker_id_list)
                     else:
-                        endpoint.add_param(param_name, arg_dict[flag])
+                        endpoint_instance.add_param(param_name, arg_dict[flag])
 
     # We added this parameter already; don't attempt to add it again
     if 'destination_broker' in arg_dict:
@@ -76,7 +67,7 @@ def get_endpoint(args: argparse.Namespace,
 
     # Handle add-parameter and remove-parameter flags
     #
-    # Handle deconflicting adding and removing parameters, but don't
+    # Handle de-conflicting adding and removing parameters, but don't
     # warn the user if they're overwriting an existing flag, since
     # these flags are meant as an admin-mode workaround to well-meaning defaults
     adding_parameter = 'add_parameter' in arg_dict and arg_dict['add_parameter']
@@ -126,12 +117,12 @@ def get_endpoint(args: argparse.Namespace,
     # to override existing parameter=value mappings
     if adding_parameter:
         for parameter, value in parameters_to_add.items():
-            endpoint.add_param(parameter, value)
+            endpoint_instance.add_param(parameter, value)
     if removing_parameter:
         for parameter in parameters_to_remove:
-            endpoint.remove_param(parameter)
+            endpoint_instance.remove_param(parameter)
 
-    return endpoint
+    return endpoint_instance
 
 
 def build_argument_parser(execution_context: ExecutionContext) -> argparse.ArgumentParser:
@@ -207,14 +198,31 @@ def build_argument_parser(execution_context: ExecutionContext) -> argparse.Argum
 
     return parser
 
+
+def instantiate_endpoint(target_endpoint: Type[Endpoint.AbstractEndpoint],
+                         args: Dict[str, Any]) -> Endpoint.AbstractEndpoint:
+    if 'brokers' not in args:
+        return target_endpoint()
+
+    # If we have a broker list, we need to make it into a comma-separated list
+    # and pass it to the Endpoint at instantiation.
+    comma_broker_id_list = ",".join(args['brokers'])
+    del args['brokers']
+
+    return target_endpoint(comma_broker_id_list)
+
+
 def extract_parameters(args: Namespace) -> Dict[str, Any]:
     pass
+
 
 def validate_values(args: Namespace) -> Namespace:
     pass
 
+
 def handle_modifications(args: Namespace) -> Namespace:
     pass
+
 
 def construct_executable_endpoint(target_endpoint: str, **kwargs) -> Type[Endpoint.AbstractEndpoint]:
     pass
