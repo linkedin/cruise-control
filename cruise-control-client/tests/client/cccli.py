@@ -8,21 +8,6 @@ from cruisecontrolclient.client.Endpoint import AbstractEndpoint
 from cruisecontrolclient.client import CCParameter
 
 
-@pytest.fixture
-def context() -> ExecutionContext:
-    return ExecutionContext()
-
-
-@pytest.fixture
-def namespace_builder(context: ExecutionContext) -> argparse.Namespace:
-    parser = build_argument_parser(context)
-
-    def build(*additional_args):
-        return parser.parse_args(["-a", "localhost", *additional_args])
-
-    return build
-
-
 def test__get_endpoint__add_broker(namespace_builder: Callable[[Any, Any], argparse.Namespace],
                                    context: ExecutionContext):
     # TODO: set up parameterized fixture that passes add'l params into namespace
