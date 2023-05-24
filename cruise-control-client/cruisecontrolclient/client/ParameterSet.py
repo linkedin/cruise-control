@@ -48,8 +48,14 @@ class ParameterSet(MutableSet):
         return {**self.adhoc_parameters,
                 **{parameter.name: parameter.value for parameter in self.instantiated_parameters.values()}}
 
-    def get(self, parameter: Union[Type[AbstractParameter], str]) -> Optional[AbstractParameter]:
+    def get(self, parameter: Union[Type[AbstractParameter], str]) -> Optional[Union[AbstractParameter, primitive]]:
         try:
-            return self.instantiated_parameters.get(parameter.name)
+            lookup = parameter.name
         except AttributeError:
-            return self.adhoc_parameters.get(parameter)
+            lookup = parameter
+
+        try:
+            return self.instantiated_parameters[lookup]
+        except KeyError:
+            return self.adhoc_parameters[lookup]
+

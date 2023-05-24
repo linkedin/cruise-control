@@ -5,7 +5,6 @@
 
 # To be able to easily parse command-line arguments
 import argparse
-from argparse import Namespace
 from typing import Any, Dict, Optional, Set, Tuple, Type
 
 # To be able to easily pass around the available endpoints and parameters
@@ -13,16 +12,21 @@ from cruisecontrolclient.client.ExecutionContext import (AVAILABLE_ENDPOINTS,
                                                          NAME_TO_ENDPOINT,
                                                          NON_PARAMETER_FLAGS,
                                                          FLAG_TO_PARAMETER_NAME)
-from cruisecontrolclient.client.ParameterSet import ParameterSet
-
 # To be able to instantiate Endpoint objects
 import cruisecontrolclient.client.Endpoint as Endpoint
+
+# To be able to bundle the parameters sent to an endpoint
+from cruisecontrolclient.client.ParameterSet import ParameterSet
 
 # To be able to make long-running requests to cruise-control
 from cruisecontrolclient.client.Responder import CruiseControlResponder
 
 
-def get_endpoint(args: argparse.Namespace) -> Endpoint.AbstractEndpoint:
+def get_endpoint_from_args(args: argparse.Namespace) -> Endpoint.AbstractEndpoint:
+    return NAME_TO_ENDPOINT[args.endpoint_subparser]()
+
+
+def get_parameters(endpoint: Endpoint.AbstractEndpoint, args: argparse.Namespace) -> ParameterSet:
     # Use a __dict__ view of args for a more pythonic processing idiom.
     #
     # Also, shallow copy this dict, since otherwise deletions of keys from
@@ -33,9 +37,7 @@ def get_endpoint(args: argparse.Namespace) -> Endpoint.AbstractEndpoint:
     # removing properties, not mutating the objects which those properties reference.
     arg_dict = vars(args).copy()
 
-    endpoint_instance = NAME_TO_ENDPOINT[args.endpoint_subparser]()
-
-    parameters = extract_parameters_for(endpoint_instance, arg_dict)
+    parameters = extract_parameters_for(endpoint, arg_dict)
     parameters_to_add, parameters_to_remove = handle_modifications(arg_dict)
 
     # Having validated parameters, now actually add or remove them.
@@ -44,14 +46,12 @@ def get_endpoint(args: argparse.Namespace) -> Endpoint.AbstractEndpoint:
     # since we presume that if the user supplied these, they really want them
     # to override existing parameter=value mappings
     for parameter, value in parameters_to_add.items():
-        endpoint_instance.add_param(parameter, value)
         parameters.add((parameter, value))
 
     for parameter in parameters_to_remove:
-        endpoint_instance.remove_param(parameter)
         parameters.discard(parameter)
 
-    return endpoint_instance
+    return parameters
 
 
 def build_argument_parser() -> argparse.ArgumentParser:
@@ -149,11 +149,7 @@ def extract_parameters_for(endpoint: Endpoint, arguments: Dict[str, Any]) -> Par
                         f"Parameter {param_name}={existing_value} already exists in this endpoint.\n"
                         f"Unclear whether it's safe to remap to {param_name}={arguments[flag]}")
                 else:
-                    # If we have a destination broker list, we need to make it into a comma-separated list
-                    if flag == 'destination_broker':
-                        parameters.add(endpoint.construct_param(param_name, ",".join(value)))
-                    else:
-                        parameters.add(endpoint.construct_param(param_name, value))
+                    parameters.add(endpoint.construct_param(param_name, value))
 
     # We added this parameter already; don't attempt to add it again
     if 'destination_broker' in arguments:
@@ -213,24 +209,21 @@ def handle_modifications(arg_dict: Dict[str, Any]) -> Tuple[Optional[Dict[str, A
     return parameters_to_add, parameters_to_remove
 
 
-def construct_executable_endpoint(target_endpoint: str, **kwargs) -> Type[Endpoint.AbstractEndpoint]:
-    pass
-
-
 def main():
     # Display and parse command-line arguments for interacting with cruise-control
     parser = build_argument_parser()
     args = parser.parse_args()
 
     # Get the endpoint that the parsed args specify
-    endpoint = get_endpoint(args=args)
+    endpoint = get_endpoint_from_args(args=args)
 
-    # Get the socket address for the cruise-control we're communicating with
-    cc_socket_address = args.socket_address
+    # Get the parameter set to submit to the endpoint
+    parameters = get_parameters(endpoint, args=args)
 
     # Retrieve the response and display it
-    json_responder = CruiseControlResponder()
-    response = json_responder.retrieve_response_from_Endpoint(cc_socket_address, endpoint)
+    response = CruiseControlResponder().retrieve_response_from_Endpoint(args.socket_address,
+                                                                        endpoint=endpoint,
+                                                                        parameters=parameters)
     print(response.text)
 
 

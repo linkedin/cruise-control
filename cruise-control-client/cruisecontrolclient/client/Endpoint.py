@@ -8,7 +8,7 @@ from abc import ABCMeta
 import cruisecontrolclient.client.CCParameter as CCParameter
 
 # To allow us to make more-precise type hints
-from typing import Callable, ClassVar, Dict, List, Optional, Tuple, Union
+from typing import Callable, ClassVar, Dict, Tuple, Union
 
 primitive = Union[str, float, int, bool]
 
@@ -68,79 +68,13 @@ class AbstractEndpoint(metaclass=ABCMeta):
         # parameters before this client has a chance to implement them.
         self.parameter_name_to_value: Dict[str, str] = {}
 
-    def add_param(self, parameter_name: str, value: Union[str, int, bool]) -> None:
-        """
-        Adds this parameter to this Endpoint, overriding any previous value-definition
-        for this parameter.
-
-        If the supplied 'parameter' matches one of the known Parameters for this
-        Endpoint, that Parameter will be instantiated and its value validated.
-        If the supplied value is not valid, Parameter will raise a ValueError.
-
-        If the supplied 'parameter' does not match one of the known Parameters
-        for this Endpoint, that 'parameter': 'value' mapping will be added to
-        self.parameter_name_to_value without validation.
-
-        :param parameter_name:
-        :param value:
-        :return:
-        """
-        if parameter_name in self.parameter_name_to_available_Parameters:
-            Parameter_to_instantiate = self.parameter_name_to_available_Parameters[parameter_name]
-            self.parameter_name_to_instantiated_Parameters[parameter_name] = Parameter_to_instantiate(value)
-        else:
-            self.parameter_name_to_value[parameter_name] = value
-
     def construct_param(self, parameter_name: str, value: primitive) -> CCParameter.AbstractParameter:
         if not self.accepts(parameter_name):
             raise ValueError("Unsupported parameter for endpoint.")
         return self.parameter_name_to_available_Parameters[parameter_name](value)
 
-    def remove_param(self, parameter_name: str) -> None:
-        """
-        Remove this parameter from this Endpoint.
-
-        If the supplied 'parameter' matches one of the known Parameters for this
-        Endpoint, that Parameter will be removed from self.parameter_name_to_instantiated_Parameters.
-
-        If the supplied 'parameter' does not match one of the known Parameters
-        for this Endpoint, that 'parameter': 'value' mapping will be removed from
-        self.parameter_name_to_value, if present.
-
-        :param parameter_name:
-        :return:
-        """
-        if parameter_name in self.parameter_name_to_instantiated_Parameters:
-            self.parameter_name_to_instantiated_Parameters.pop(parameter_name)
-        elif parameter_name in self.parameter_name_to_value:
-            self.parameter_name_to_value.pop(parameter_name)
-
-    def get_composed_params(self) -> Dict[str, Union[bool, int, str]]:
-        """
-        Returns a requests-compatible dictionary of this Endpoint's current parameters.
-
-        :return: A dict like:
-            {'json': True,
-             'allow_capacity_estimation': False}
-        """
-        # All parameter:value mappings that have been specified for this endpoint.
-        #
-        # First, add the parameter=value pairs from the Parameters we could instantiate.
-        # Next, add (or override) with the parameter=value pairs that were explicitly defined.
-        combined_parameter_to_value = {}
-
-        # Update our mapping with parameter: value pairs from Parameter objects
-        if self.parameter_name_to_instantiated_Parameters:
-            combined_parameter_to_value.update(
-                {name: ip.value for name, ip in self.parameter_name_to_instantiated_Parameters.items()})
-        # Update our mapping with parameter: value pairs that lack Parameter objects
-        if self.parameter_name_to_value:
-            combined_parameter_to_value.update(self.parameter_name_to_value)
-
-        return combined_parameter_to_value
-
     def accepts(self, parameter_name: str):
-        return parameter_name in self.parameter_name_to_value
+        return parameter_name in self.parameter_name_to_available_Parameters
 
 
 class AddBrokerEndpoint(AbstractEndpoint):
