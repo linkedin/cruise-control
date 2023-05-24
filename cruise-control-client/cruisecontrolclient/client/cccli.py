@@ -6,7 +6,7 @@
 # To be able to easily parse command-line arguments
 import argparse
 from argparse import Namespace
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Set, Tuple, Type
 
 # To be able to easily pass around the available endpoints and parameters
 from cruisecontrolclient.client.ExecutionContext import ExecutionContext
@@ -39,8 +39,9 @@ def get_endpoint(args: argparse.Namespace,
             pass
         else:
             # Presume None is ternary for ignore
-            if arg_dict[flag] is not None:
-                param_name = execution_context.flag_to_parameter_name[flag]
+            value = arg_dict[flag]
+            if value is not None:
+                param_name = ExecutionContext.flag_to_parameter_name[flag]
                 # Check for conflicts in this endpoint's parameter-space,
                 # which here probably means that the user is specifying more
                 # than one irresolvable flag.
@@ -56,10 +57,9 @@ def get_endpoint(args: argparse.Namespace,
                 else:
                     # If we have a destination broker list, we need to make it into a comma-separated list
                     if flag == 'destination_broker':
-                        comma_broker_id_list = ",".join(arg_dict[flag])
-                        endpoint_instance.add_param(param_name, comma_broker_id_list)
+                        endpoint_instance.add_param(param_name, ",".join(value))
                     else:
-                        endpoint_instance.add_param(param_name, arg_dict[flag])
+                        endpoint_instance.add_param(param_name, value)
 
     # We added this parameter already; don't attempt to add it again
     if 'destination_broker' in arg_dict:
@@ -70,57 +70,18 @@ def get_endpoint(args: argparse.Namespace,
     # Handle de-conflicting adding and removing parameters, but don't
     # warn the user if they're overwriting an existing flag, since
     # these flags are meant as an admin-mode workaround to well-meaning defaults
-    adding_parameter = 'add_parameter' in arg_dict and arg_dict['add_parameter']
-    if adding_parameter:
-        # Build a dictionary of parameters to add
-        parameters_to_add = {}
-
-        for item in arg_dict['add_parameter']:
-            # Check that parameter contains an =
-            if '=' not in item:
-                raise ValueError("Expected \"=\" in the given parameter")
-
-            # Check that the parameter=value string is correctly formatted
-            split_item = item.split("=")
-            if len(split_item) != 2:
-                raise ValueError("Expected only one \"=\" in the given parameter")
-            if not split_item[0]:
-                raise ValueError("Expected parameter preceding \"=\"")
-            if not split_item[1]:
-                raise ValueError("Expected value after \"=\" in the given parameter")
-
-            # If we are here, split_item is a correctly-formatted list of 2 items
-            parameter, value = split_item
-            # Add it to our running dictionary
-            parameters_to_add[parameter] = value
-
-    # The 'remove_parameter' string may not be in our namespace, and even if it
-    # is, there may be no parameters supplied to it.
-    #
-    # Accordingly, check both conditions and store as a simpler boolean.
-    removing_parameter = 'remove_parameter' in arg_dict and arg_dict['remove_parameter']
-    if removing_parameter:
-        # Build a set of parameters to remove
-        parameters_to_remove = set()
-        for item in arg_dict['remove_parameter']:
-            parameters_to_remove.add(item)
-
-    # Validate that we didn't receive ambiguous input
-    if adding_parameter and removing_parameter:
-        if set(parameters_to_add) & parameters_to_remove:
-            raise ValueError("Parameter present in --add-parameter and in --remove-parameter; unclear how to proceed")
+    parameters_to_add, parameters_to_remove = handle_modifications(arg_dict)
 
     # Having validated parameters, now actually add or remove them.
     #
     # Do this without checking for conflicts from existing parameter=value mappings,
     # since we presume that if the user supplied these, they really want them
     # to override existing parameter=value mappings
-    if adding_parameter:
-        for parameter, value in parameters_to_add.items():
-            endpoint_instance.add_param(parameter, value)
-    if removing_parameter:
-        for parameter in parameters_to_remove:
-            endpoint_instance.remove_param(parameter)
+    for parameter, value in parameters_to_add.items():
+        endpoint_instance.add_param(parameter, value)
+
+    for parameter in parameters_to_remove:
+        endpoint_instance.remove_param(parameter)
 
     return endpoint_instance
 
@@ -216,12 +177,52 @@ def extract_parameters(args: Namespace) -> Dict[str, Any]:
     pass
 
 
-def validate_values(args: Namespace) -> Namespace:
-    pass
+def handle_modifications(arg_dict: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], Optional[Set]]:
+    """
+    Handles the add-parameter and remove-parameter flags that allow newer API versions to be
+    supported with an earlier client.
 
+    """
+    parameters_to_add = {}
 
-def handle_modifications(args: Namespace) -> Namespace:
-    pass
+    # Handle de-conflicting adding and removing parameters, but don't
+    # warn the user if they're overwriting an existing flag, since
+    # these flags are meant as an admin-mode workaround to well-meaning defaults
+    if 'add_parameter' in arg_dict and arg_dict['add_parameter']:
+        # Build a dictionary of parameters to add
+        for item in arg_dict['add_parameter']:
+            # Check that parameter contains an =
+            if '=' not in item:
+                raise ValueError("Expected \"=\" in the given parameter")
+
+            # Check that the parameter=value string is correctly formatted
+            split_item = item.split("=")
+            if len(split_item) != 2:
+                raise ValueError("Expected only one \"=\" in the given parameter")
+            if not split_item[0]:
+                raise ValueError("Expected parameter preceding \"=\"")
+            if not split_item[1]:
+                raise ValueError("Expected value after \"=\" in the given parameter")
+
+            # If we are here, split_item is a correctly-formatted list of 2 items
+            parameter, value = split_item
+            # Add it to our running dictionary
+            parameters_to_add[parameter] = value
+
+    parameters_to_remove = set()
+
+    # The 'remove_parameter' string may not be in our namespace, and even if it
+    # is, there may be no parameters supplied to it, so check both conditions
+    if 'remove_parameter' in arg_dict and arg_dict['remove_parameter']:
+        # Build a set of parameters to remove
+        for item in arg_dict['remove_parameter']:
+            parameters_to_remove.add(item)
+
+    if set(parameters_to_add) & parameters_to_remove:
+        raise ValueError("Parameter present in --add-parameter and in --remove-parameter; "
+                         "unclear how to proceed")
+
+    return parameters_to_add, parameters_to_remove
 
 
 def construct_executable_endpoint(target_endpoint: str, **kwargs) -> Type[Endpoint.AbstractEndpoint]:
