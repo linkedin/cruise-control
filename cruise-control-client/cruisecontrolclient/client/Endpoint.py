@@ -8,7 +8,9 @@ from abc import ABCMeta
 import cruisecontrolclient.client.CCParameter as CCParameter
 
 # To allow us to make more-precise type hints
-from typing import Callable, ClassVar, Dict, List, Tuple, Union
+from typing import Callable, ClassVar, Dict, List, Optional, Tuple, Union
+
+primitive = Union[str, float, int, bool]
 
 
 class AbstractEndpoint(metaclass=ABCMeta):
@@ -89,30 +91,10 @@ class AbstractEndpoint(metaclass=ABCMeta):
         else:
             self.parameter_name_to_value[parameter_name] = value
 
-    def get_value(self, parameter_name: str) -> Union[str, None]:
-        """
-        Returns value if this parameter exists in this endpoint.
-
-        Returns None otherwise
-
-        :param parameter_name:
-        :return:
-        """
-        if parameter_name in self.parameter_name_to_instantiated_Parameters:
-            return self.parameter_name_to_instantiated_Parameters[parameter_name].value
-        elif parameter_name in self.parameter_name_to_value:
-            return self.parameter_name_to_value[parameter_name]
-        else:
-            return None
-
-    def has_param(self, parameter_name: str) -> bool:
-        """
-        Returns True if this endpoint already has this parameter, False otherwise.
-
-        :param parameter_name:
-        :return:
-        """
-        return parameter_name in self.parameter_name_to_instantiated_Parameters or parameter_name in self.parameter_name_to_value
+    def construct_param(self, parameter_name: str, value: primitive) -> CCParameter.AbstractParameter:
+        if not self.accepts(parameter_name):
+            raise ValueError("Unsupported parameter for endpoint.")
+        return self.parameter_name_to_available_Parameters[parameter_name](value)
 
     def remove_param(self, parameter_name: str) -> None:
         """
@@ -156,6 +138,9 @@ class AbstractEndpoint(metaclass=ABCMeta):
             combined_parameter_to_value.update(self.parameter_name_to_value)
 
         return combined_parameter_to_value
+
+    def accepts(self, parameter_name: str):
+        return parameter_name in self.parameter_name_to_value
 
 
 class AddBrokerEndpoint(AbstractEndpoint):
@@ -450,10 +435,6 @@ class RemoveBrokerEndpoint(AbstractEndpoint):
         'args': (name,),
         'kwargs': dict(aliases=['remove_brokers', 'remove-broker', 'remove-brokers'], help=description)
     }
-
-    def __init__(self, broker_ids: Union[str, List[str]]):
-        AbstractEndpoint.__init__(self)
-        self.add_param("brokerid", broker_ids)
 
 
 class ResumeSamplingEndpoint(AbstractEndpoint):

@@ -13,6 +13,7 @@ from cruisecontrolclient.client.ExecutionContext import (AVAILABLE_ENDPOINTS,
                                                          NAME_TO_ENDPOINT,
                                                          NON_PARAMETER_FLAGS,
                                                          FLAG_TO_PARAMETER_NAME)
+from cruisecontrolclient.client.ParameterSet import ParameterSet
 
 # To be able to instantiate Endpoint objects
 import cruisecontrolclient.client.Endpoint as Endpoint
@@ -34,39 +35,7 @@ def get_endpoint(args: argparse.Namespace) -> Endpoint.AbstractEndpoint:
 
     endpoint_instance = NAME_TO_ENDPOINT[args.endpoint_subparser]()
 
-    # Iterate only over the parameter flags; warn user if conflicts exist
-    for flag in arg_dict:
-        if flag in NON_PARAMETER_FLAGS:
-            pass
-        else:
-            # Presume None is ternary for ignore
-            value = arg_dict[flag]
-            if value is not None:
-                param_name = FLAG_TO_PARAMETER_NAME[flag]
-                # Check for conflicts in this endpoint's parameter-space,
-                # which here probably means that the user is specifying more
-                # than one irresolvable flag.
-                #
-                # For the StateEndpoint only, we don't care if we overwrite it.
-                # This is because we presume 'substates:executor' at instantiation.
-
-                if endpoint_instance.has_param(param_name) and not isinstance(endpoint_instance,
-                                                                              Endpoint.StateEndpoint):
-                    existing_value = endpoint_instance.get_value(param_name)
-                    raise ValueError(
-                        f"Parameter {param_name}={existing_value} already exists in this endpoint.\n"
-                        f"Unclear whether it's safe to remap to {param_name}={arg_dict[flag]}")
-                else:
-                    # If we have a destination broker list, we need to make it into a comma-separated list
-                    if flag == 'destination_broker':
-                        endpoint_instance.add_param(param_name, ",".join(value))
-                    else:
-                        endpoint_instance.add_param(param_name, value)
-
-    # We added this parameter already; don't attempt to add it again
-    if 'destination_broker' in arg_dict:
-        del arg_dict['destination_broker']
-
+    parameters = extract_parameters_for(endpoint_instance, arg_dict)
     parameters_to_add, parameters_to_remove = handle_modifications(arg_dict)
 
     # Having validated parameters, now actually add or remove them.
@@ -76,9 +45,11 @@ def get_endpoint(args: argparse.Namespace) -> Endpoint.AbstractEndpoint:
     # to override existing parameter=value mappings
     for parameter, value in parameters_to_add.items():
         endpoint_instance.add_param(parameter, value)
+        parameters.add((parameter, value))
 
     for parameter in parameters_to_remove:
         endpoint_instance.remove_param(parameter)
+        parameters.discard(parameter)
 
     return endpoint_instance
 
@@ -157,8 +128,38 @@ def instantiate_endpoint(target_endpoint: Type[Endpoint.AbstractEndpoint]) -> En
     return target_endpoint()
 
 
-def extract_parameters(args: Namespace) -> Dict[str, Any]:
-    pass
+def extract_parameters_for(endpoint: Endpoint, arguments: Dict[str, Any]) -> ParameterSet:
+    # Iterate only over the parameter flags; warn user if conflicts exist
+    parameters = ParameterSet()
+    for flag in arguments:
+        if flag in NON_PARAMETER_FLAGS or not endpoint.accepts(flag):
+            pass
+        else:
+            # Presume None is ternary for ignore
+            value = arguments[flag]
+            if value is not None:
+                param_name = FLAG_TO_PARAMETER_NAME[flag]
+                # Check for conflicts in this endpoint's parameter-space.
+                if param_name in parameters:
+                    existing_value = parameters.get(param_name)
+                    # An error here means that a user has defined a parameter within the __init__
+                    # but provided a value that conflicts with that override.
+
+                    raise ValueError(
+                        f"Parameter {param_name}={existing_value} already exists in this endpoint.\n"
+                        f"Unclear whether it's safe to remap to {param_name}={arguments[flag]}")
+                else:
+                    # If we have a destination broker list, we need to make it into a comma-separated list
+                    if flag == 'destination_broker':
+                        parameters.add(endpoint.construct_param(param_name, ",".join(value)))
+                    else:
+                        parameters.add(endpoint.construct_param(param_name, value))
+
+    # We added this parameter already; don't attempt to add it again
+    if 'destination_broker' in arguments:
+        del arguments['destination_broker']
+
+    return parameters
 
 
 def handle_modifications(arg_dict: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], Optional[Set]]:
@@ -217,15 +218,12 @@ def construct_executable_endpoint(target_endpoint: str, **kwargs) -> Type[Endpoi
 
 
 def main():
-    # Instantiate a convenience class to pass around information about available endpoints and parameters.
-    e = ExecutionContext()
-
     # Display and parse command-line arguments for interacting with cruise-control
-    parser = build_argument_parser(e)
+    parser = build_argument_parser()
     args = parser.parse_args()
 
     # Get the endpoint that the parsed args specify
-    endpoint = get_endpoint(args=args, execution_context=e)
+    endpoint = get_endpoint(args=args)
 
     # Get the socket address for the cruise-control we're communicating with
     cc_socket_address = args.socket_address
