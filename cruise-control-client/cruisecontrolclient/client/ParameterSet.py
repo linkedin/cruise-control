@@ -1,6 +1,6 @@
 from collections import MutableSet
 from itertools import chain
-from typing import Dict, Iterator, Tuple, Union
+from typing import Dict, Iterator, Optional, Tuple, Type, Union
 
 from cruisecontrolclient.client.CCParameter.Parameter import AbstractParameter
 
@@ -35,12 +35,21 @@ class ParameterSet(MutableSet):
         except ValueError:
             raise ValueError("Must provide two item tuple with key, value")
 
-    def discard(self, parameter: Union[AbstractParameter, str]) -> None:
+    def discard(self, parameter: Union[Type[AbstractParameter], str]) -> None:
         try:
             del self.instantiated_parameters[parameter.name]
         except AttributeError:
-            del self.adhoc_parameters[parameter]
+            if parameter in self.adhoc_parameters:
+                del self.adhoc_parameters[parameter]
+        except KeyError:
+            pass
 
     def compose(self) -> Dict[str, primitive]:
         return {**self.adhoc_parameters,
                 **{parameter.name: parameter.value for parameter in self.instantiated_parameters.values()}}
+
+    def get(self, parameter: Union[Type[AbstractParameter], str]) -> Optional[AbstractParameter]:
+        try:
+            return self.instantiated_parameters.get(parameter.name)
+        except AttributeError:
+            return self.adhoc_parameters.get(parameter)
