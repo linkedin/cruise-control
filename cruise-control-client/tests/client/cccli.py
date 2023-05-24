@@ -4,6 +4,8 @@ import pytest
 
 from cruisecontrolclient.client.cccli import build_argument_parser, get_endpoint
 from cruisecontrolclient.client.ExecutionContext import ExecutionContext
+from cruisecontrolclient.client.Endpoint import AbstractEndpoint
+from cruisecontrolclient.client import CCParameter
 
 
 @pytest.fixture
@@ -15,8 +17,8 @@ def context() -> ExecutionContext:
 def namespace_builder(context: ExecutionContext) -> argparse.Namespace:
     parser = build_argument_parser(context)
 
-    def build(*addl_args):
-        return parser.parse_args(["-a", "localhost", *addl_args])
+    def build(*additional_args):
+        return parser.parse_args(["-a", "localhost", *additional_args])
 
     return build
 
@@ -50,12 +52,40 @@ def test__get_endpoint__admin__correct(namespace_builder: Callable[[Any], argpar
 
 
 def test__get_endpoint__more_than_one_flag(
-        namespace_builder: Callable[[Any, Any, Any], argparse.Namespace],
-        context: ExecutionContext):
-    namespace = namespace_builder("add_broker", "123,456", "--dry-run")
+        namespace_builder: Callable[[Any, Any, Any, Any], argparse.Namespace],
+        mocker):
+    class NewEndpoint(AbstractEndpoint):
+        name = "new"
+        description = "Just new endpoint"
+        available_Parameters = (
+            CCParameter.ReasonParameter)
+
+        argparse_properties = {
+            'args': (name,),
+            'kwargs': dict(aliases=['new'], help=description)
+        }
+
+        def __init__(self):
+            AbstractEndpoint.__init__(self)
+            self.add_param("reason", "because I can")  # By providing param in __init__
+
+    mock_context = mocker.MagicMock()
+    mock_context.available_endpoints = (NewEndpoint,)
+    mock_context.dest_to_Endpoint['new'] = NewEndpoint
+    mock_context.flag_to_parameter_name = {'socket_address': None,
+                                           'add_parameter': None,
+                                           'endpoint_subparser': None,
+                                           'remove_parameter': None
+                                           }
+
+    parser = build_argument_parser(mock_context)
+
+    # then overriding with command-line arg, conflict arises:
+    namespace = parser.parse_args(["-a", "localhost", NewEndpoint.name,
+                                   "--reason", "because i want to"])
 
     with pytest.raises(ValueError) as e:
-        get_endpoint(namespace, context)
+        get_endpoint(namespace, mock_context)
 
     assert "already exists in this endpoint" in e.value.args[0]
 
@@ -90,10 +120,10 @@ def test__get_endpoint__add_parameter__too_many_equals(
     assert "Expected only one \"=\" in the given parameter" in e.value.args[0]
 
 
-def test__get_endpoint__remove_and_add_parameter(namespace_builder: Callable[[Any], argparse.Namespace],
-                                                 context: ExecutionContext):
-    namespace = namespace_builder("add_broker", "123", "--add-parameter", "eggs=true", "--remove-parameter",
-                                  "eggs")
+def test__get_endpoint__remove_and_add_parameter(
+        namespace_builder: Callable[[Any, Any, Any, Any, Any, Any], argparse.Namespace],
+        context: ExecutionContext):
+    namespace = namespace_builder("add_broker", "123", "--add-parameter", "eggs=true", "--remove-parameter", "eggs")
     with pytest.raises(ValueError) as e:
         get_endpoint(namespace, context)
 

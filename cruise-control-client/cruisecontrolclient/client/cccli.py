@@ -30,7 +30,7 @@ def get_endpoint(args: argparse.Namespace,
     # removing properties, not mutating the objects which those properties reference.
     arg_dict = vars(args).copy()
 
-    endpoint_type = ExecutionContext.dest_to_Endpoint[args.endpoint_subparser]
+    endpoint_type = execution_context.dest_to_Endpoint[args.endpoint_subparser]
     endpoint_instance = instantiate_endpoint(endpoint_type, arg_dict)
 
     # Iterate only over the parameter flags; warn user if conflicts exist
@@ -41,13 +41,14 @@ def get_endpoint(args: argparse.Namespace,
             # Presume None is ternary for ignore
             value = arg_dict[flag]
             if value is not None:
-                param_name = ExecutionContext.flag_to_parameter_name[flag]
+                param_name = execution_context.flag_to_parameter_name[flag]
                 # Check for conflicts in this endpoint's parameter-space,
                 # which here probably means that the user is specifying more
                 # than one irresolvable flag.
                 #
                 # For the StateEndpoint only, we don't care if we overwrite it.
                 # This is because we presume 'substates:executor' at instantiation.
+
                 if endpoint_instance.has_param(param_name) and not isinstance(endpoint_instance,
                                                                               Endpoint.StateEndpoint):
                     existing_value = endpoint_instance.get_value(param_name)
