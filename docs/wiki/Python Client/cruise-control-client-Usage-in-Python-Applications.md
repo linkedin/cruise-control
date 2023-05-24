@@ -17,20 +17,22 @@ This will generate a `POST` request to `http://someCruiseControlAddress:9090/kaf
 ```python
 from cruisecontrolclient.client.Endpoint import RebalanceEndpoint
 from cruisecontrolclient.client.Responder import CruiseControlResponder
+from cruisecontrolclient.client.ParameterSet import ParameterSet
 
 # 1) Generate or define the socket address for the desired cruise-control instance
 cc_socket_address = 'someCruiseControlAddress:9090'
 
 # 2) Select which endpoint and parameters to use
 endpoint = RebalanceEndpoint()
-endpoint.add_param(parameter_name="allow_capacity_estimation", value=False)
-endpoint.add_param(parameter_name="json", value=True)
+parameters = ParameterSet()
+parameters.add(endpoint.construct_param(parameter_name="allow_capacity_estimation", value=False))
+parameters.add(endpoint.construct_param(parameter_name="json", value=True))
 
 # 3) Instantiate a Responder
 json_responder = CruiseControlResponder()
 
 # 4) Start a long-running poll to retrieve a Requests.Response object
-response = json_responder.retrieve_response_from_Endpoint(cc_socket_address, endpoint)
+response = json_responder.retrieve_response_from_Endpoint(cc_socket_address, endpoint, parameters=parameters)
 
 # 5) Process the response, likely by JSONifying it
 json_response = response.json()
@@ -52,20 +54,24 @@ This will generate a `POST` request to `http://someCruiseControlAddress:9090/kaf
 ```python
 from cruisecontrolclient.client.Endpoint import RemoveBrokerEndpoint
 from cruisecontrolclient.client.Responder import CruiseControlResponder
+from cruisecontrolclient.client.ParameterSet import ParameterSet
 
 # 1) Generate or define the socket address for the desired cruise-control instance
 cc_socket_address = 'someCruiseControlAddress:9090'
 
 # 2) Select which endpoint and parameters to use
-endpoint = RemoveBrokerEndpoint(['broker', 'ids', 'to', 'remove'])
-endpoint.add_param(parameter_name="allow_capacity_estimation", value=False)
-endpoint.add_param(parameter_name="json", value=True)
+endpoint = RemoveBrokerEndpoint()
+parameters = ParameterSet()
+
+parameters.add(endpoint.construct_param(parameter_name="brokers", value="123,456"))
+parameters.add(endpoint.construct_param(parameter_name="allow_capacity_estimation", value=False))
+parameters.add(endpoint.construct_param(parameter_name="json", value=True))
 
 # 3) Instantiate a Responder
 json_responder = CruiseControlResponder()
 
 # 4) Start a long-running poll to retrieve a Requests.Response object
-response = json_responder.retrieve_response_from_Endpoint(cc_socket_address, endpoint)
+response = json_responder.retrieve_response_from_Endpoint(cc_socket_address, endpoint, parameters)
 
 # 5) Process the response, likely by JSONifying it
 json_response = response.json()
@@ -85,20 +91,23 @@ This will generate a `POST` request to `http://someCruiseControlAddress:9090/kaf
 ```python
 from cruisecontrolclient.client.Endpoint import AddBrokerEndpoint
 from cruisecontrolclient.client.Responder import CruiseControlResponder
+from cruisecontrolclient.client.ParameterSet import ParameterSet
 
 # 1) Generate or define the socket address for the desired cruise-control instance
 cc_socket_address = 'someCruiseControlAddress:9090'
 
 # 2) Select which endpoint and parameters to use
-endpoint = AddBrokerEndpoint(['broker', 'ids', 'to', 'add'])
-endpoint.add_param(parameter_name="allow_capacity_estimation", value=False)
-endpoint.add_param(parameter_name="json", value=True)
+endpoint = AddBrokerEndpoint()
+parameters = ParameterSet()
+parameters.add(endpoint.construct_param(parameter_name="brokers", value="ids,to,add"))
+parameters.add(endpoint.construct_param(parameter_name="allow_capacity_estimation", value=False))
+parameters.add(endpoint.construct_param(parameter_name="json", value=True))
 
 # 3) Instantiate a Responder
 json_responder = CruiseControlResponder()
 
 # 4) Start a long-running poll to retrieve a Requests.Response object
-response = json_responder.retrieve_response_from_Endpoint(cc_socket_address, endpoint)
+response = json_responder.retrieve_response_from_Endpoint(cc_socket_address, endpoint, parameters)
 
 # 5) Process the response, likely by JSONifying it
 json_response = response.json()

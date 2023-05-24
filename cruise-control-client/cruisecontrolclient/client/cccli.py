@@ -31,7 +31,7 @@ def extract_parameters(endpoint: Endpoint.AbstractEndpoint, args: argparse.Names
     #
     # Also, shallow copy this dict, since otherwise deletions of keys from
     # this dict would have the unintended consequence of mutating `args` outside
-    # of the scope of this function.
+    # the scope of this function.
     #
     # A deep copy is not needed here since in this method we're only ever
     # removing properties, not mutating the objects which those properties reference.
