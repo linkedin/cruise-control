@@ -53,14 +53,14 @@ class AbstractEndpoint(metaclass=ABCMeta):
 
     def __init__(self):
         # A mapping of 'parameter' strings
-        self.parameter_name_to_available_Parameters: Dict[
+        self.parameter_name_to_available_parameters: Dict[
             str, Callable[[Union[str, int, bool]], CCParameter.AbstractParameter]] = \
             {ap.name: ap for ap in self.available_Parameters}
 
         # Stores the instantiated Parameters for this Endpoint.
         #
         # As parameters are added via add_param, if their 'parameter'
-        self.parameter_name_to_instantiated_Parameters: Dict[str, CCParameter.AbstractParameter] = {}
+        self.parameter_name_to_instantiated_parameters: Dict[str, CCParameter.AbstractParameter] = {}
 
         # Stores the URL parameters for which there is no Parameter class defined.
         #
@@ -71,10 +71,10 @@ class AbstractEndpoint(metaclass=ABCMeta):
     def construct_param(self, parameter_name: str, value: primitive) -> CCParameter.AbstractParameter:
         if not self.accepts(parameter_name):
             raise ValueError("Unsupported parameter for endpoint.")
-        return self.parameter_name_to_available_Parameters[parameter_name](value)
+        return self.parameter_name_to_available_parameters[parameter_name](value)
 
     def accepts(self, parameter_name: str):
-        return parameter_name in self.parameter_name_to_available_Parameters
+        return parameter_name in self.parameter_name_to_available_parameters
 
 
 class AddBrokerEndpoint(AbstractEndpoint):

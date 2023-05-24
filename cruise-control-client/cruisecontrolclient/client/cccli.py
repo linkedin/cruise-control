@@ -26,7 +26,7 @@ def get_endpoint_from_args(args: argparse.Namespace) -> Endpoint.AbstractEndpoin
     return NAME_TO_ENDPOINT[args.endpoint_subparser]()
 
 
-def get_parameters(endpoint: Endpoint.AbstractEndpoint, args: argparse.Namespace) -> ParameterSet:
+def extract_parameters(endpoint: Endpoint.AbstractEndpoint, args: argparse.Namespace) -> ParameterSet:
     # Use a __dict__ view of args for a more pythonic processing idiom.
     #
     # Also, shallow copy this dict, since otherwise deletions of keys from
@@ -132,29 +132,13 @@ def extract_parameters_for(endpoint: Endpoint, arguments: Dict[str, Any]) -> Par
     # Iterate only over the parameter flags; warn user if conflicts exist
     parameters = ParameterSet()
     for flag in arguments:
-        if flag in NON_PARAMETER_FLAGS or not endpoint.accepts(flag):
+        if flag in NON_PARAMETER_FLAGS:
             pass
         else:
             # Presume None is ternary for ignore
             value = arguments[flag]
             if value is not None:
-                param_name = FLAG_TO_PARAMETER_NAME[flag]
-                # Check for conflicts in this endpoint's parameter-space.
-                if param_name in parameters:
-                    existing_value = parameters.get(param_name)
-                    # An error here means that a user has defined a parameter within the __init__
-                    # but provided a value that conflicts with that override.
-
-                    raise ValueError(
-                        f"Parameter {param_name}={existing_value} already exists in this endpoint.\n"
-                        f"Unclear whether it's safe to remap to {param_name}={arguments[flag]}")
-                else:
-                    parameters.add(endpoint.construct_param(param_name, value))
-
-    # We added this parameter already; don't attempt to add it again
-    if 'destination_broker' in arguments:
-        del arguments['destination_broker']
-
+                parameters.add(endpoint.construct_param(FLAG_TO_PARAMETER_NAME[flag], value))
     return parameters
 
 
@@ -218,7 +202,7 @@ def main():
     endpoint = get_endpoint_from_args(args=args)
 
     # Get the parameter set to submit to the endpoint
-    parameters = get_parameters(endpoint, args=args)
+    parameters = extract_parameters(endpoint, args=args)
 
     # Retrieve the response and display it
     response = CruiseControlResponder().retrieve_response_from_Endpoint(args.socket_address,
