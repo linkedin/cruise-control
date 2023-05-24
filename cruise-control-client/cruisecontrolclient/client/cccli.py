@@ -65,11 +65,6 @@ def get_endpoint(args: argparse.Namespace,
     if 'destination_broker' in arg_dict:
         del arg_dict['destination_broker']
 
-    # Handle add-parameter and remove-parameter flags
-    #
-    # Handle de-conflicting adding and removing parameters, but don't
-    # warn the user if they're overwriting an existing flag, since
-    # these flags are meant as an admin-mode workaround to well-meaning defaults
     parameters_to_add, parameters_to_remove = handle_modifications(arg_dict)
 
     # Having validated parameters, now actually add or remove them.
@@ -182,6 +177,9 @@ def handle_modifications(arg_dict: Dict[str, Any]) -> Tuple[Optional[Dict[str, A
     Handles the add-parameter and remove-parameter flags that allow newer API versions to be
     supported with an earlier client.
 
+    Handle de-conflicting adding and removing parameters, but doesn't warn the user if they're
+    overwriting an existing flag, since they are meant as an admin-mode workaround to well-meaning
+    defaults.
     """
     parameters_to_add = {}
 
