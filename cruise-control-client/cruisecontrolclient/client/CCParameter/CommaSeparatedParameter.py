@@ -31,7 +31,7 @@ class BrokerIdParameter(AbstractCommaSeparatedParameter):
     name = 'brokerid'
     description = 'Comma-separated and/or space-separated list of broker IDs'
     argparse_properties = {
-        'args': ('brokers',),
+        'args': ('brokerid',),
         'kwargs': dict(help=description,
                        nargs='+')
     }
