@@ -65,5 +65,5 @@ class SubstatesParameter(AbstractSetOfChoicesParameter):
         'args': ('--substate', '--substates'),
         # nargs='+' allows for multiple of the set to be specified
         'kwargs': dict(help=description, metavar='SUBSTATE', choices=lowercase_set_of_choices, nargs='+',
-                       type=str.lower)
+                       type=str.lower, default='executor')
     }

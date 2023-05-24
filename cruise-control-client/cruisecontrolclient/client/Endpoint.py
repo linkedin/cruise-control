@@ -542,12 +542,6 @@ class StateEndpoint(AbstractEndpoint):
         'kwargs': dict(help=description)
     }
 
-    def __init__(self):
-        AbstractEndpoint.__init__(self)
-        # Note that we most often want the executor substate, so set that
-        # as a default parameter
-        self.add_param("substates", "executor")
-
 
 class StopProposalExecutionEndpoint(AbstractEndpoint):
     name = "stop_proposal_execution"
