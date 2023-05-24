@@ -68,13 +68,13 @@ class AbstractEndpoint(metaclass=ABCMeta):
         # parameters before this client has a chance to implement them.
         self.parameter_name_to_value: Dict[str, str] = {}
 
+    def accepts(self, parameter_name: str):
+        return parameter_name in self.parameter_name_to_available_parameters
+
     def construct_param(self, parameter_name: str, value: primitive) -> CCParameter.AbstractParameter:
         if not self.accepts(parameter_name):
             raise ValueError("Unsupported parameter for endpoint.")
         return self.parameter_name_to_available_parameters[parameter_name](value)
-
-    def accepts(self, parameter_name: str):
-        return parameter_name in self.parameter_name_to_available_parameters
 
 
 class AddBrokerEndpoint(AbstractEndpoint):
