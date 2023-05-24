@@ -6,10 +6,13 @@
 # To be able to easily parse command-line arguments
 import argparse
 from argparse import Namespace
-from typing import Any, Dict, List, Optional, Set, Tuple, Type
+from typing import Any, Dict, Optional, Set, Tuple, Type
 
 # To be able to easily pass around the available endpoints and parameters
-from cruisecontrolclient.client.ExecutionContext import ExecutionContext
+from cruisecontrolclient.client.ExecutionContext import (AVAILABLE_ENDPOINTS,
+                                                         NAME_TO_ENDPOINT,
+                                                         NON_PARAMETER_FLAGS,
+                                                         FLAG_TO_PARAMETER_NAME)
 
 # To be able to instantiate Endpoint objects
 import cruisecontrolclient.client.Endpoint as Endpoint
@@ -18,8 +21,7 @@ import cruisecontrolclient.client.Endpoint as Endpoint
 from cruisecontrolclient.client.Responder import CruiseControlResponder
 
 
-def get_endpoint(args: argparse.Namespace,
-                 execution_context: ExecutionContext) -> Endpoint.AbstractEndpoint:
+def get_endpoint(args: argparse.Namespace) -> Endpoint.AbstractEndpoint:
     # Use a __dict__ view of args for a more pythonic processing idiom.
     #
     # Also, shallow copy this dict, since otherwise deletions of keys from
@@ -30,18 +32,17 @@ def get_endpoint(args: argparse.Namespace,
     # removing properties, not mutating the objects which those properties reference.
     arg_dict = vars(args).copy()
 
-    endpoint_type = execution_context.dest_to_Endpoint[args.endpoint_subparser]
-    endpoint_instance = instantiate_endpoint(endpoint_type, arg_dict)
+    endpoint_instance = NAME_TO_ENDPOINT[args.endpoint_subparser]()
 
     # Iterate only over the parameter flags; warn user if conflicts exist
     for flag in arg_dict:
-        if flag in execution_context.non_parameter_flags:
+        if flag in NON_PARAMETER_FLAGS:
             pass
         else:
             # Presume None is ternary for ignore
             value = arg_dict[flag]
             if value is not None:
-                param_name = execution_context.flag_to_parameter_name[flag]
+                param_name = FLAG_TO_PARAMETER_NAME[flag]
                 # Check for conflicts in this endpoint's parameter-space,
                 # which here probably means that the user is specifying more
                 # than one irresolvable flag.
@@ -82,7 +83,7 @@ def get_endpoint(args: argparse.Namespace,
     return endpoint_instance
 
 
-def build_argument_parser(execution_context: ExecutionContext) -> argparse.ArgumentParser:
+def build_argument_parser() -> argparse.ArgumentParser:
     """
     Builds and returns an argument parser for interacting with cruise-control via CLI.
 
@@ -104,7 +105,6 @@ def build_argument_parser(execution_context: ExecutionContext) -> argparse.Argum
                        help="Manually specify one or more parameter and its value in the cruise-control endpoint, "
                             "like 'param=value'",
                        nargs='+')
-        execution_context.non_parameter_flags.add('add_parameter')
 
     def add_remove_parameter_argument(p: argparse.ArgumentParser):
         """
@@ -120,13 +120,11 @@ def build_argument_parser(execution_context: ExecutionContext) -> argparse.Argum
         p.add_argument('--remove-parameter', '--remove-parameters', metavar='PARAM',
                        help="Manually remove one or more parameter from the cruise-control endpoint, like 'param'",
                        nargs='+')
-        execution_context.non_parameter_flags.add('remove_parameter')
 
     # Display command-line arguments for interacting with cruise-control
     parser = argparse.ArgumentParser()
     parser.add_argument('-a', '--socket-address', help="The hostname[:port] of the cruise-control to interact with",
                         required=True)
-    execution_context.non_parameter_flags.add('socket_address')
 
     # Define subparser for the different cruise-control endpoints
     #
@@ -136,13 +134,12 @@ def build_argument_parser(execution_context: ExecutionContext) -> argparse.Argum
                                                description='Which cruise-control endpoint to interact with',
                                                # 'endpoint' would collide with an existing cc parameter
                                                dest='endpoint_subparser')
-    execution_context.non_parameter_flags.add('endpoint_subparser')
 
     # A map from endpoint names to that endpoint's argparse parser
     endpoint_to_parser_instance = {}
 
     # Dynamically build an argparse CLI from the Endpoint and Parameter properties
-    for endpoint in execution_context.available_endpoints:
+    for endpoint in AVAILABLE_ENDPOINTS:
         endpoint_parser = endpoint_subparser.add_parser(*endpoint.argparse_properties['args'],
                                                         **endpoint.argparse_properties['kwargs'])
         endpoint_to_parser_instance[endpoint.name] = endpoint_parser
@@ -156,17 +153,8 @@ def build_argument_parser(execution_context: ExecutionContext) -> argparse.Argum
     return parser
 
 
-def instantiate_endpoint(target_endpoint: Type[Endpoint.AbstractEndpoint],
-                         args: Dict[str, Any]) -> Endpoint.AbstractEndpoint:
-    if 'brokers' not in args:
-        return target_endpoint()
-
-    # If we have a broker list, we need to make it into a comma-separated list
-    # and pass it to the Endpoint at instantiation.
-    comma_broker_id_list = ",".join(args['brokers'])
-    del args['brokers']
-
-    return target_endpoint(comma_broker_id_list)
+def instantiate_endpoint(target_endpoint: Type[Endpoint.AbstractEndpoint]) -> Endpoint.AbstractEndpoint:
+    return target_endpoint()
 
 
 def extract_parameters(args: Namespace) -> Dict[str, Any]:

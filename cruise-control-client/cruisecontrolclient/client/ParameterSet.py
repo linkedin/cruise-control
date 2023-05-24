@@ -1,5 +1,5 @@
-from itertools import chain
 from collections import MutableSet
+from itertools import chain
 from typing import Dict, Iterator, Tuple, Union
 
 from cruisecontrolclient.client.CCParameter.Parameter import AbstractParameter
