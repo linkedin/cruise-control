@@ -1,6 +1,6 @@
 from collections import MutableSet
 from itertools import chain
-from typing import Callable, Dict, Iterator, Optional, Set, Tuple, Type, Union
+from typing import Callable, Dict, Iterator, Optional, Tuple, Type, Union
 
 from cruisecontrolclient.client.CCParameter import AbstractParameter
 
@@ -34,7 +34,7 @@ class ParameterSet(MutableSet):
         except AttributeError:
             return parameter in self._parameter_name_to_allowed_parameters
 
-    def add(self, parameter: Union[AbstractParameter, Tuple[str, primitive]]) -> None:
+    def add(self, parameter: Optional[Union[AbstractParameter, Tuple[str, primitive]]]) -> None:
         try:
             key, value = parameter
         except ValueError:

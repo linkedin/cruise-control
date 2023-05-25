@@ -108,7 +108,7 @@ def extract_parameters_for(endpoint: Endpoint.AbstractEndpoint, args: argparse.N
     arg_dict = vars(args).copy()
 
     parameters = set_known_parameters_for(endpoint, arg_dict)
-    parameters_to_add, parameters_to_remove = handle_modifications(arg_dict)
+    parameters_to_add, parameters_to_remove = handle_adhoc_parameters(arg_dict)
 
     # Having validated parameters, now actually add or remove them.
     #
@@ -125,7 +125,7 @@ def extract_parameters_for(endpoint: Endpoint.AbstractEndpoint, args: argparse.N
 
 
 def set_known_parameters_for(endpoint: Endpoint, arguments: Dict[str, Any]) -> ParameterSet:
-    # Iterate only over the parameter flags; warn user if conflicts exist
+    # Iterate only over the known parameter flags
     parameters = endpoint.init_parameter_set()
     for flag in arguments:
         if flag in NON_PARAMETER_FLAGS:
@@ -138,7 +138,7 @@ def set_known_parameters_for(endpoint: Endpoint, arguments: Dict[str, Any]) -> P
     return parameters
 
 
-def handle_modifications(arg_dict: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], Optional[Set]]:
+def handle_adhoc_parameters(arg_dict: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], Optional[Set]]:
     """
     Handles the add-parameter and remove-parameter flags that allow newer API versions to be
     supported with an earlier client.
