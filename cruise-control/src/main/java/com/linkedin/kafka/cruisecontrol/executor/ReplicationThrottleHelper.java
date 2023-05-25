@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtils;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
-import kafka.log.LogConfig;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AlterConfigOp;
 import org.apache.kafka.clients.admin.Config;
@@ -39,8 +38,10 @@ class ReplicationThrottleHelper {
   static final String WILDCARD_ASTERISK = "*";
   static final String LEADER_THROTTLED_RATE = "leader.replication.throttled.rate";
   static final String FOLLOWER_THROTTLED_RATE = "follower.replication.throttled.rate";
-  static final String LEADER_THROTTLED_REPLICAS = LogConfig.LeaderReplicationThrottledReplicasProp();
-  static final String FOLLOWER_THROTTLED_REPLICAS = LogConfig.FollowerReplicationThrottledReplicasProp();
+  // TODO: Update to LogConfig.LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG for upgrade to Kafka 3.5
+  static final String LEADER_THROTTLED_REPLICAS = "leader.replication.throttled.replicas";
+  // TODO: Update to LogConfig.FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG for upgrade to Kafka 3.5
+  static final String FOLLOWER_THROTTLED_REPLICAS = "follower.replication.throttled.replicas";
   public static final long CLIENT_REQUEST_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(30);
   static final int RETRIES = 30;
 

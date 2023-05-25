@@ -25,7 +25,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import kafka.log.LogConfig;
 import kafka.server.KafkaConfig;
 import org.apache.kafka.clients.ClientUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -284,9 +283,9 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     NewTopic newTopic = new NewTopic(cruiseControlMetricsTopic, cruiseControlMetricsTopicNumPartition, cruiseControlMetricsTopicReplicaFactor);
 
     Map<String, String> config = new HashMap<>();
-    config.put(LogConfig.RetentionMsProp(),
+    config.put(TopicConfig.RETENTION_MS_CONFIG,
                Long.toString(reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_RETENTION_MS_CONFIG)));
-    config.put(LogConfig.CleanupPolicyProp(), CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY);
+    config.put(TopicConfig.CLEANUP_POLICY_CONFIG, CRUISE_CONTROL_METRICS_TOPIC_CLEAN_UP_POLICY);
     if (cruiseControlMetricsTopicMinInsyncReplicas > 0) {
       // If the user has set the minISR for the metrics topic we need to check that the replication factor is set to a level that allows the
       // minISR to be met.
@@ -358,8 +357,8 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       Config topicConfig = describeConfigsResult.values().get(topicResource).get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
       Set<AlterConfigOp> alterConfigOps = new HashSet<>();
       Map<String, String> configsToSet = new HashMap<>();
-      configsToSet.put(LogConfig.RetentionMsProp(), _metricsTopic.configs().get(LogConfig.RetentionMsProp()));
-      configsToSet.put(LogConfig.CleanupPolicyProp(), _metricsTopic.configs().get(LogConfig.CleanupPolicyProp()));
+      configsToSet.put(TopicConfig.RETENTION_MS_CONFIG, _metricsTopic.configs().get(TopicConfig.RETENTION_MS_CONFIG));
+      configsToSet.put(TopicConfig.CLEANUP_POLICY_CONFIG, _metricsTopic.configs().get(TopicConfig.CLEANUP_POLICY_CONFIG));
       maybeUpdateConfig(alterConfigOps, configsToSet, topicConfig);
       if (!alterConfigOps.isEmpty()) {
         AlterConfigsResult alterConfigsResult = _adminClient.incrementalAlterConfigs(Collections.singletonMap(topicResource, alterConfigOps));
