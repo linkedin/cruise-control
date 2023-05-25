@@ -11,7 +11,7 @@ from cruisecontrolclient.client.CCParameter.CommaSeparatedParameter import Broke
 def test_check(endpoint: str,
                namespace_builder: Union[Callable[[Any], argparse.Namespace], Callable[[Any, Any], argparse.Namespace]],
                capsys):
-    if BrokerIdParameter not in ExecutionContext.NAME_TO_ENDPOINT[endpoint].available_Parameters:
+    if BrokerIdParameter not in ExecutionContext.NAME_TO_ENDPOINT[endpoint].available_parameters:
         with pytest.raises(SystemExit):
             namespace_builder(endpoint, '123')
         captured = capsys.readouterr()

@@ -22,38 +22,6 @@ from cruisecontrolclient.client.ParameterSet import ParameterSet
 from cruisecontrolclient.client.Responder import CruiseControlResponder
 
 
-def get_endpoint_from_args(args: argparse.Namespace) -> Endpoint.AbstractEndpoint:
-    return NAME_TO_ENDPOINT[args.endpoint_subparser]()
-
-
-def extract_parameters(endpoint: Endpoint.AbstractEndpoint, args: argparse.Namespace) -> ParameterSet:
-    # Use a __dict__ view of args for a more pythonic processing idiom.
-    #
-    # Also, shallow copy this dict, since otherwise deletions of keys from
-    # this dict would have the unintended consequence of mutating `args` outside
-    # the scope of this function.
-    #
-    # A deep copy is not needed here since in this method we're only ever
-    # removing properties, not mutating the objects which those properties reference.
-    arg_dict = vars(args).copy()
-
-    parameters = extract_parameters_for(endpoint, arg_dict)
-    parameters_to_add, parameters_to_remove = handle_modifications(arg_dict)
-
-    # Having validated parameters, now actually add or remove them.
-    #
-    # Do this without checking for conflicts from existing parameter=value mappings,
-    # since we presume that if the user supplied these, they really want them
-    # to override existing parameter=value mappings
-    for parameter, value in parameters_to_add.items():
-        parameters.add((parameter, value))
-
-    for parameter in parameters_to_remove:
-        parameters.discard(parameter)
-
-    return parameters
-
-
 def build_argument_parser() -> argparse.ArgumentParser:
     """
     Builds and returns an argument parser for interacting with cruise-control via CLI.
@@ -114,7 +82,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
         endpoint_parser = endpoint_subparser.add_parser(*endpoint.argparse_properties['args'],
                                                         **endpoint.argparse_properties['kwargs'])
         endpoint_to_parser_instance[endpoint.name] = endpoint_parser
-        for parameter in endpoint.available_Parameters:
+        for parameter in endpoint.available_parameters:
             endpoint_parser.add_argument(*parameter.argparse_properties['args'],
                                          **parameter.argparse_properties['kwargs'])
         # Hack in some future-proofing by allowing users to add and remove parameter=value mappings
@@ -124,13 +92,41 @@ def build_argument_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def instantiate_endpoint(target_endpoint: Type[Endpoint.AbstractEndpoint]) -> Endpoint.AbstractEndpoint:
-    return target_endpoint()
+def get_endpoint_from_args(args: argparse.Namespace) -> Endpoint.AbstractEndpoint:
+    return NAME_TO_ENDPOINT[args.endpoint_subparser]()
 
 
-def extract_parameters_for(endpoint: Endpoint, arguments: Dict[str, Any]) -> ParameterSet:
+def extract_parameters_for(endpoint: Endpoint.AbstractEndpoint, args: argparse.Namespace) -> ParameterSet:
+    # Use a __dict__ view of args for a more pythonic processing idiom.
+    #
+    # Also, shallow copy this dict, since otherwise deletions of keys from
+    # this dict would have the unintended consequence of mutating `args` outside
+    # the scope of this function.
+    #
+    # A deep copy is not needed here since in this method we're only ever
+    # removing properties, not mutating the objects which those properties reference.
+    arg_dict = vars(args).copy()
+
+    parameters = set_known_parameters_for(endpoint, arg_dict)
+    parameters_to_add, parameters_to_remove = handle_modifications(arg_dict)
+
+    # Having validated parameters, now actually add or remove them.
+    #
+    # Do this without checking for conflicts from existing parameter=value mappings,
+    # since we presume that if the user supplied these, they really want them
+    # to override existing parameter=value mappings
+    for parameter, value in parameters_to_add.items():
+        parameters.add((parameter, value))
+
+    for parameter in parameters_to_remove:
+        parameters.discard(parameter)
+
+    return parameters
+
+
+def set_known_parameters_for(endpoint: Endpoint, arguments: Dict[str, Any]) -> ParameterSet:
     # Iterate only over the parameter flags; warn user if conflicts exist
-    parameters = ParameterSet()
+    parameters = endpoint.init_parameter_set()
     for flag in arguments:
         if flag in NON_PARAMETER_FLAGS:
             pass
@@ -138,7 +134,7 @@ def extract_parameters_for(endpoint: Endpoint, arguments: Dict[str, Any]) -> Par
             # Presume None is ternary for ignore
             value = arguments[flag]
             if value is not None:
-                parameters.add(endpoint.construct_param(FLAG_TO_PARAMETER_NAME[flag], value))
+                parameters.add(FLAG_TO_PARAMETER_NAME[flag], value)
     return parameters
 
 
@@ -202,7 +198,7 @@ def main():
     endpoint = get_endpoint_from_args(args=args)
 
     # Get the parameter set to submit to the endpoint
-    parameters = extract_parameters(endpoint, args=args)
+    parameters = extract_parameters_for(endpoint, args=args)
 
     # Retrieve the response and display it
     response = CruiseControlResponder().retrieve_response_from_Endpoint(args.socket_address,

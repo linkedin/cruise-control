@@ -3,7 +3,9 @@ from cruisecontrolclient.client.CCParameter.BooleanParameter import VerboseParam
 
 
 def test__parameter_set__discard__present():
-    parameters = ParameterSet()
+    allowed_parameters = (VerboseParameter,)
+
+    parameters = ParameterSet(allowed_parameters)
     parameters.add(VerboseParameter(True))
 
     parameters.discard(VerboseParameter)
@@ -12,7 +14,9 @@ def test__parameter_set__discard__present():
 
 
 def test__parameter_set__discard__inst__not_present():
-    parameters = ParameterSet()
+    allowed_parameters = (VerboseParameter, DryRunParameter,)
+
+    parameters = ParameterSet(allowed_parameters)
     parameters.add(VerboseParameter(True))
 
     parameters.discard(DryRunParameter)

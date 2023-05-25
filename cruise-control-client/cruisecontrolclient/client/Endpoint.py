@@ -6,9 +6,10 @@ from abc import ABCMeta
 
 # To allow us to make use of the Parameter convenience class
 import cruisecontrolclient.client.CCParameter as CCParameter
+from cruisecontrolclient.client.ParameterSet import ParameterSet
 
 # To allow us to make more-precise type hints
-from typing import Callable, ClassVar, Dict, Tuple, Union
+from typing import ClassVar, Dict, Tuple, Type, Union
 
 primitive = Union[str, float, int, bool]
 
@@ -39,7 +40,7 @@ class AbstractEndpoint(metaclass=ABCMeta):
     can_execute_proposal: ClassVar[bool]
 
     # An ordered collection of the known Parameter classes that can be instantiated for this Endpoint.
-    available_Parameters: ClassVar[Tuple[CCParameter.AbstractParameter]]
+    available_parameters: ClassVar[Tuple[Type[CCParameter.AbstractParameter]]]
 
     # Define a convenience data structure to help in programmatically building CLIs
     argparse_properties: ClassVar[Dict[str, Union[Tuple[str], Dict[str, str]]]] = \
@@ -48,30 +49,8 @@ class AbstractEndpoint(metaclass=ABCMeta):
             'kwargs': {}
         }
 
-    def __init__(self):
-        # A mapping of 'parameter' strings
-        self.parameter_name_to_available_parameters: Dict[
-            str, Callable[[Union[str, int, bool]], CCParameter.AbstractParameter]] = \
-            {ap.name: ap for ap in self.available_Parameters}
-
-        # Stores the instantiated Parameters for this Endpoint.
-        #
-        # As parameters are added via add_param, if their 'parameter'
-        self.parameter_name_to_instantiated_parameters: Dict[str, CCParameter.AbstractParameter] = {}
-
-        # Stores the URL parameters for which there is no Parameter class defined.
-        #
-        # This is intended to future-proof against cruise-control adding new
-        # parameters before this client has a chance to implement them.
-        self.parameter_name_to_value: Dict[str, str] = {}
-
-    def accepts(self, parameter_name: str):
-        return parameter_name in self.parameter_name_to_available_parameters
-
-    def construct_param(self, parameter_name: str, value: primitive) -> CCParameter.AbstractParameter:
-        if not self.accepts(parameter_name):
-            raise ValueError("Unsupported parameter for endpoint.")
-        return self.parameter_name_to_available_parameters[parameter_name](value)
+    def init_parameter_set(self) -> ParameterSet:
+        return ParameterSet(self.available_parameters)
 
 
 class AddBrokerEndpoint(AbstractEndpoint):
@@ -79,7 +58,7 @@ class AddBrokerEndpoint(AbstractEndpoint):
     description = "Move partitions to the specified brokers, according to the specified goals"
     http_method = "POST"
     can_execute_proposal = True
-    available_Parameters = (
+    available_parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.BrokerIdParameter,
         CCParameter.ConcurrentLeaderMovementsParameter,
@@ -110,7 +89,7 @@ class AdminEndpoint(AbstractEndpoint):
     description = "Used to change runtime configurations on the cruise-control server itself"
     http_method = "POST"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.ConcurrentLeaderMovementsParameter,
         CCParameter.ConcurrentPartitionMovementsPerBrokerParameter,
         CCParameter.DisableSelfHealingForParameter,
@@ -131,7 +110,7 @@ class BootstrapEndpoint(AbstractEndpoint):
     description = "Bootstrap the load monitor"
     http_method = "GET"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.ClearMetricsParameter,
         CCParameter.EndParameter,
         CCParameter.JSONParameter,
@@ -148,7 +127,7 @@ class DemoteBrokerEndpoint(AbstractEndpoint):
     description = "Remove leadership and preferred leadership from the specified brokers"
     http_method = "POST"
     can_execute_proposal = True
-    available_Parameters = (
+    available_parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.BrokerIdParameter,
         CCParameter.ConcurrentLeaderMovementsParameter,
@@ -175,7 +154,7 @@ class FixOfflineReplicasEndpoint(AbstractEndpoint):
     description = "Fixes the offline replicas in the cluster (kafka 1.1+ only)"
     http_method = "POST"
     can_execute_proposal = True
-    available_Parameters = (
+    available_parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.ConcurrentLeaderMovementsParameter,
         CCParameter.ConcurrentPartitionMovementsPerBrokerParameter,
@@ -204,7 +183,7 @@ class KafkaClusterStateEndpoint(AbstractEndpoint):
     description = "Get under-replicated and offline partitions (and under MinISR partitions in kafka 2.0+)"
     http_method = "GET"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.TopicParameter,
         CCParameter.JSONParameter,
         CCParameter.VerboseParameter
@@ -220,7 +199,7 @@ class LoadEndpoint(AbstractEndpoint):
     description = "Get the load on each kafka broker"
     http_method = "GET"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.JSONParameter,
         CCParameter.TimeParameter
@@ -236,7 +215,7 @@ class PartitionLoadEndpoint(AbstractEndpoint):
     description = "Get the resource load for each partition"
     http_method = "GET"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.EndParameter,
         CCParameter.EntriesParameter,
@@ -259,7 +238,7 @@ class PauseSamplingEndpoint(AbstractEndpoint):
     description = "Pause metrics load sampling"
     http_method = "POST"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.JSONParameter,
         CCParameter.ReasonParameter,
         CCParameter.ReviewIDParameter,
@@ -275,7 +254,7 @@ class ProposalsEndpoint(AbstractEndpoint):
     description = "Get current proposals"
     http_method = "GET"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.DataFromParameter,
         CCParameter.ExcludeRecentlyDemotedBrokersParameter,
@@ -298,7 +277,7 @@ class RebalanceEndpoint(AbstractEndpoint):
     description = "Rebalance the partition distribution in the kafka cluster, according to the specified goals"
     http_method = "POST"
     can_execute_proposal = True
-    available_Parameters = (
+    available_parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.ConcurrentLeaderMovementsParameter,
         CCParameter.ConcurrentPartitionMovementsPerBrokerParameter,
@@ -329,7 +308,7 @@ class RemoveBrokerEndpoint(AbstractEndpoint):
     description = "Remove all partitions from the specified brokers, according to the specified goals"
     http_method = "POST"
     can_execute_proposal = True
-    available_Parameters = (
+    available_parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.BrokerIdParameter,
         CCParameter.ConcurrentLeaderMovementsParameter,
@@ -361,7 +340,7 @@ class ResumeSamplingEndpoint(AbstractEndpoint):
     description = "Resume metrics load sampling"
     http_method = "POST"
     can_execute_proposal = False
-    available_Parameters = {
+    available_parameters = {
         CCParameter.JSONParameter,
         CCParameter.ReasonParameter,
         CCParameter.ReviewIDParameter,
@@ -377,7 +356,7 @@ class ReviewEndpoint(AbstractEndpoint):
     description = "Create, approve, or discard reviews"
     http_method = "POST"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.ApproveParameter,
         CCParameter.DiscardParameter,
         CCParameter.JSONParameter,
@@ -394,7 +373,7 @@ class ReviewBoardEndpoint(AbstractEndpoint):
     description = "View already-created reviews"
     http_method = "GET"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.JSONParameter,
         CCParameter.ReviewIDsParameter
     )
@@ -409,7 +388,7 @@ class RightsizeEndpoint(AbstractEndpoint):
     description = "Rightsize the broker or partition count"
     http_method = "POST"
     can_execute_proposal = True
-    available_Parameters = (
+    available_parameters = (
         CCParameter.JSONParameter,
         CCParameter.TopicParameter,
         CCParameter.PartitionCountParameter,
@@ -426,7 +405,7 @@ class StateEndpoint(AbstractEndpoint):
     description = "Get the state of cruise control"
     http_method = "GET"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.JSONParameter,
         CCParameter.SubstatesParameter,
         CCParameter.SuperVerboseParameter,
@@ -443,7 +422,7 @@ class StopProposalExecutionEndpoint(AbstractEndpoint):
     description = "Stop the currently-executing proposal"
     http_method = "POST"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.ForceStopParameter,
         CCParameter.JSONParameter,
         CCParameter.ReviewIDParameter,
@@ -459,7 +438,7 @@ class TopicConfigurationEndpoint(AbstractEndpoint):
     description = "Update the configuration of the specified topics"
     http_method = "POST"
     can_execute_proposal = True
-    available_Parameters = (
+    available_parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.ConcurrentLeaderMovementsParameter,
         CCParameter.ConcurrentPartitionMovementsPerBrokerParameter,
@@ -489,7 +468,7 @@ class TrainEndpoint(AbstractEndpoint):
     description = "Train the linear regression model"
     http_method = "GET"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.EndParameter,
         CCParameter.JSONParameter,
         CCParameter.StartParameter
@@ -505,7 +484,7 @@ class UserTasksEndpoint(AbstractEndpoint):
     description = "Get the recent user tasks from cruise control"
     http_method = "GET"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.ClientIdsParameter,
         CCParameter.EndpointsParameter,
         CCParameter.EntriesParameter,

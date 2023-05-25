@@ -3,7 +3,7 @@ from typing import Any, Callable
 
 import pytest
 
-from cruisecontrolclient.client.cccli import get_endpoint_from_args, extract_parameters
+from cruisecontrolclient.client.cccli import get_endpoint_from_args, extract_parameters_for
 
 
 def test__get_endpoint__add_broker(namespace_builder: Callable[[Any, Any], argparse.Namespace]):
@@ -11,7 +11,7 @@ def test__get_endpoint__add_broker(namespace_builder: Callable[[Any, Any], argpa
     namespace = namespace_builder("remove_broker", "123,456", "--destination-broker", "789,012", "--concurrency", "40")
 
     endpoint = get_endpoint_from_args(namespace)
-    parameters = extract_parameters(endpoint, namespace)
+    parameters = extract_parameters_for(endpoint, namespace)
     assert parameters.get('brokerid').value == '123,456'
     assert parameters.get('destination_broker_ids').value == '789,012'
     assert parameters.get('concurrent_partition_movements_per_broker').value == 40
@@ -39,7 +39,7 @@ def test__get_endpoint__add_parameter__no_equals(
     namespace = namespace_builder("add_broker", "123", "--add-parameter", "eggs")
     endpoint = get_endpoint_from_args(namespace)
     with pytest.raises(ValueError) as e:
-        extract_parameters(endpoint, namespace)
+        extract_parameters_for(endpoint, namespace)
 
     assert "Expected \"=\" in the given parameter" in e.value.args[0]
 
@@ -49,7 +49,7 @@ def test__get_endpoint__add_parameter__missing_param(
     namespace = namespace_builder("add_broker", "123", "--add-parameter", "eggs=")
     endpoint = get_endpoint_from_args(namespace)
     with pytest.raises(ValueError) as e:
-        extract_parameters(endpoint, namespace)
+        extract_parameters_for(endpoint, namespace)
 
     assert "Expected value after \"=\" in the given parameter" in e.value.args[0]
 
@@ -59,7 +59,7 @@ def test__get_endpoint__add_parameter__too_many_equals(
     namespace = namespace_builder("add_broker", "123", "--add-parameter", "eggs=bacon=good")
     endpoint = get_endpoint_from_args(namespace)
     with pytest.raises(ValueError) as e:
-        extract_parameters(endpoint, namespace)
+        extract_parameters_for(endpoint, namespace)
 
     assert "Expected only one \"=\" in the given parameter" in e.value.args[0]
 
@@ -69,6 +69,6 @@ def test__get_endpoint__remove_and_add_parameter(
     namespace = namespace_builder("add_broker", "123", "--add-parameter", "eggs=true", "--remove-parameter", "eggs")
     endpoint = get_endpoint_from_args(namespace)
     with pytest.raises(ValueError) as e:
-        extract_parameters(endpoint, namespace)
+        extract_parameters_for(endpoint, namespace)
 
     assert "Parameter present in --add-parameter and in --remove-parameter; unclear how to proceed" in e.value.args[0]

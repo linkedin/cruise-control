@@ -59,7 +59,7 @@ for endpoint in AVAILABLE_ENDPOINTS:
         endpoint_aliases = endpoint.argparse_properties['kwargs']['aliases']
         for alias in endpoint_aliases:
             NAME_TO_ENDPOINT[alias] = endpoint
-    for parameter in endpoint.available_Parameters:
+    for parameter in endpoint.available_parameters:
         AVAILABLE_PARAMETER_SET.add(parameter)
 
 # A mapping from the names of the argparse parameters to their cruise-control parameter name
