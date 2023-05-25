@@ -28,10 +28,10 @@ class ApproveParameter(AbstractCommaSeparatedParameter):
 
 class BrokerIdParameter(AbstractCommaSeparatedParameter):
     """brokerid=[id1,id2...]"""
-    name = 'brokers'
+    name = 'brokerid'
     description = 'Comma-separated and/or space-separated list of broker IDs'
     argparse_properties = {
-        'args': ('brokerid',),
+        'args': ('brokers',),
         'kwargs': dict(help=description,
                        nargs='+')
     }
