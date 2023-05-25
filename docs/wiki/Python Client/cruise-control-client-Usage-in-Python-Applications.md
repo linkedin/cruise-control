@@ -17,16 +17,15 @@ This will generate a `POST` request to `http://someCruiseControlAddress:9090/kaf
 ```python
 from cruisecontrolclient.client.Endpoint import RebalanceEndpoint
 from cruisecontrolclient.client.Responder import CruiseControlResponder
-from cruisecontrolclient.client.ParameterSet import ParameterSet
 
 # 1) Generate or define the socket address for the desired cruise-control instance
 cc_socket_address = 'someCruiseControlAddress:9090'
 
 # 2) Select which endpoint and parameters to use
 endpoint = RebalanceEndpoint()
-parameters = ParameterSet()
-parameters.add(endpoint.construct_param(parameter_name="allow_capacity_estimation", value=False))
-parameters.add(endpoint.construct_param(parameter_name="json", value=True))
+parameters = endpoint.init_parameter_set()
+parameters.add(parameter_name="allow_capacity_estimation", value=False)
+parameters.add(parameter_name="json", value=True)
 
 # 3) Instantiate a Responder
 json_responder = CruiseControlResponder()
@@ -54,18 +53,17 @@ This will generate a `POST` request to `http://someCruiseControlAddress:9090/kaf
 ```python
 from cruisecontrolclient.client.Endpoint import RemoveBrokerEndpoint
 from cruisecontrolclient.client.Responder import CruiseControlResponder
-from cruisecontrolclient.client.ParameterSet import ParameterSet
 
 # 1) Generate or define the socket address for the desired cruise-control instance
 cc_socket_address = 'someCruiseControlAddress:9090'
 
 # 2) Select which endpoint and parameters to use
 endpoint = RemoveBrokerEndpoint()
-parameters = ParameterSet()
+parameters = endpoint.init_parameter_set()
 
-parameters.add(endpoint.construct_param(parameter_name="brokers", value="123,456"))
-parameters.add(endpoint.construct_param(parameter_name="allow_capacity_estimation", value=False))
-parameters.add(endpoint.construct_param(parameter_name="json", value=True))
+parameters.add(parameter_name="brokers", value="123,456")
+parameters.add(parameter_name="allow_capacity_estimation", value=False)
+parameters.add(parameter_name="json", value=True)
 
 # 3) Instantiate a Responder
 json_responder = CruiseControlResponder()
@@ -91,17 +89,16 @@ This will generate a `POST` request to `http://someCruiseControlAddress:9090/kaf
 ```python
 from cruisecontrolclient.client.Endpoint import AddBrokerEndpoint
 from cruisecontrolclient.client.Responder import CruiseControlResponder
-from cruisecontrolclient.client.ParameterSet import ParameterSet
 
 # 1) Generate or define the socket address for the desired cruise-control instance
 cc_socket_address = 'someCruiseControlAddress:9090'
 
 # 2) Select which endpoint and parameters to use
 endpoint = AddBrokerEndpoint()
-parameters = ParameterSet()
-parameters.add(endpoint.construct_param(parameter_name="brokers", value="ids,to,add"))
-parameters.add(endpoint.construct_param(parameter_name="allow_capacity_estimation", value=False))
-parameters.add(endpoint.construct_param(parameter_name="json", value=True))
+parameters = endpoint.init_parameter_set()
+parameters.add(parameter_name="brokers", value="ids,to,add")
+parameters.add(parameter_name="allow_capacity_estimation", value=False)
+parameters.add(parameter_name="json", value=True)
 
 # 3) Instantiate a Responder
 json_responder = CruiseControlResponder()
