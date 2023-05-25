@@ -38,9 +38,6 @@ class AbstractEndpoint(metaclass=ABCMeta):
     # when they may need to perform de-conflict checks on the targeted kafka cluster.
     can_execute_proposal: ClassVar[bool]
 
-    # Whether this endpoint requires the broker ids to be provided.
-    requires_broker_ids: ClassVar[bool]
-
     # An ordered collection of the known Parameter classes that can be instantiated for this Endpoint.
     available_Parameters: ClassVar[Tuple[CCParameter.AbstractParameter]]
 
@@ -82,7 +79,6 @@ class AddBrokerEndpoint(AbstractEndpoint):
     description = "Move partitions to the specified brokers, according to the specified goals"
     http_method = "POST"
     can_execute_proposal = True
-    requires_broker_ids = True
     available_Parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.BrokerIdParameter,
@@ -114,7 +110,6 @@ class AdminEndpoint(AbstractEndpoint):
     description = "Used to change runtime configurations on the cruise-control server itself"
     http_method = "POST"
     can_execute_proposal = False
-    requires_broker_ids = False
     available_Parameters = (
         CCParameter.ConcurrentLeaderMovementsParameter,
         CCParameter.ConcurrentPartitionMovementsPerBrokerParameter,
@@ -136,7 +131,6 @@ class BootstrapEndpoint(AbstractEndpoint):
     description = "Bootstrap the load monitor"
     http_method = "GET"
     can_execute_proposal = False
-    requires_broker_ids = False
     available_Parameters = (
         CCParameter.ClearMetricsParameter,
         CCParameter.EndParameter,
@@ -154,7 +148,6 @@ class DemoteBrokerEndpoint(AbstractEndpoint):
     description = "Remove leadership and preferred leadership from the specified brokers"
     http_method = "POST"
     can_execute_proposal = True
-    requires_broker_ids = True
     available_Parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.BrokerIdParameter,
@@ -182,7 +175,6 @@ class FixOfflineReplicasEndpoint(AbstractEndpoint):
     description = "Fixes the offline replicas in the cluster (kafka 1.1+ only)"
     http_method = "POST"
     can_execute_proposal = True
-    requires_broker_ids = False
     available_Parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.ConcurrentLeaderMovementsParameter,
@@ -212,7 +204,6 @@ class KafkaClusterStateEndpoint(AbstractEndpoint):
     description = "Get under-replicated and offline partitions (and under MinISR partitions in kafka 2.0+)"
     http_method = "GET"
     can_execute_proposal = False
-    requires_broker_ids = False
     available_Parameters = (
         CCParameter.TopicParameter,
         CCParameter.JSONParameter,
@@ -229,7 +220,6 @@ class LoadEndpoint(AbstractEndpoint):
     description = "Get the load on each kafka broker"
     http_method = "GET"
     can_execute_proposal = False
-    requires_broker_ids = False
     available_Parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.JSONParameter,
@@ -246,7 +236,6 @@ class PartitionLoadEndpoint(AbstractEndpoint):
     description = "Get the resource load for each partition"
     http_method = "GET"
     can_execute_proposal = False
-    requires_broker_ids = False
     available_Parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.EndParameter,
@@ -270,7 +259,6 @@ class PauseSamplingEndpoint(AbstractEndpoint):
     description = "Pause metrics load sampling"
     http_method = "POST"
     can_execute_proposal = False
-    requires_broker_ids = False
     available_Parameters = (
         CCParameter.JSONParameter,
         CCParameter.ReasonParameter,
@@ -287,7 +275,6 @@ class ProposalsEndpoint(AbstractEndpoint):
     description = "Get current proposals"
     http_method = "GET"
     can_execute_proposal = False
-    requires_broker_ids = False
     available_Parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.DataFromParameter,
@@ -311,7 +298,6 @@ class RebalanceEndpoint(AbstractEndpoint):
     description = "Rebalance the partition distribution in the kafka cluster, according to the specified goals"
     http_method = "POST"
     can_execute_proposal = True
-    requires_broker_ids = False
     available_Parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.ConcurrentLeaderMovementsParameter,
@@ -343,7 +329,6 @@ class RemoveBrokerEndpoint(AbstractEndpoint):
     description = "Remove all partitions from the specified brokers, according to the specified goals"
     http_method = "POST"
     can_execute_proposal = True
-    requires_broker_ids = True
     available_Parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.BrokerIdParameter,
@@ -376,7 +361,6 @@ class ResumeSamplingEndpoint(AbstractEndpoint):
     description = "Resume metrics load sampling"
     http_method = "POST"
     can_execute_proposal = False
-    requires_broker_ids = False
     available_Parameters = {
         CCParameter.JSONParameter,
         CCParameter.ReasonParameter,
@@ -393,7 +377,6 @@ class ReviewEndpoint(AbstractEndpoint):
     description = "Create, approve, or discard reviews"
     http_method = "POST"
     can_execute_proposal = False
-    requires_broker_ids = False
     available_Parameters = (
         CCParameter.ApproveParameter,
         CCParameter.DiscardParameter,
@@ -411,7 +394,6 @@ class ReviewBoardEndpoint(AbstractEndpoint):
     description = "View already-created reviews"
     http_method = "GET"
     can_execute_proposal = False
-    requires_broker_ids = False
     available_Parameters = (
         CCParameter.JSONParameter,
         CCParameter.ReviewIDsParameter
@@ -427,7 +409,6 @@ class RightsizeEndpoint(AbstractEndpoint):
     description = "Rightsize the broker or partition count"
     http_method = "POST"
     can_execute_proposal = True
-    requires_broker_ids = False
     available_Parameters = (
         CCParameter.JSONParameter,
         CCParameter.TopicParameter,
@@ -445,7 +426,6 @@ class StateEndpoint(AbstractEndpoint):
     description = "Get the state of cruise control"
     http_method = "GET"
     can_execute_proposal = False
-    requires_broker_ids = False
     available_Parameters = (
         CCParameter.JSONParameter,
         CCParameter.SubstatesParameter,
@@ -463,7 +443,6 @@ class StopProposalExecutionEndpoint(AbstractEndpoint):
     description = "Stop the currently-executing proposal"
     http_method = "POST"
     can_execute_proposal = False
-    requires_broker_ids = False
     available_Parameters = (
         CCParameter.ForceStopParameter,
         CCParameter.JSONParameter,
@@ -480,7 +459,6 @@ class TopicConfigurationEndpoint(AbstractEndpoint):
     description = "Update the configuration of the specified topics"
     http_method = "POST"
     can_execute_proposal = True
-    requires_broker_ids = False
     available_Parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.ConcurrentLeaderMovementsParameter,
@@ -511,7 +489,6 @@ class TrainEndpoint(AbstractEndpoint):
     description = "Train the linear regression model"
     http_method = "GET"
     can_execute_proposal = False
-    requires_broker_ids = False
     available_Parameters = (
         CCParameter.EndParameter,
         CCParameter.JSONParameter,
@@ -528,7 +505,6 @@ class UserTasksEndpoint(AbstractEndpoint):
     description = "Get the recent user tasks from cruise control"
     http_method = "GET"
     can_execute_proposal = False
-    requires_broker_ids = False
     available_Parameters = (
         CCParameter.ClientIdsParameter,
         CCParameter.EndpointsParameter,
