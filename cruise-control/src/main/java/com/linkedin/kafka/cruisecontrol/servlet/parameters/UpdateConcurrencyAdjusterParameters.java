@@ -43,10 +43,10 @@ public class UpdateConcurrencyAdjusterParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    Map<Boolean, Set<ConcurrencyType>> concurrencyAdjusterFor = ParameterUtils.concurrencyAdjusterFor(_request);
+    Map<Boolean, Set<ConcurrencyType>> concurrencyAdjusterFor = ParameterUtils.concurrencyAdjusterFor(_requestContext);
     _enableConcurrencyAdjusterFor = concurrencyAdjusterFor.get(true);
     _disableConcurrencyAdjusterFor = concurrencyAdjusterFor.get(false);
-    _minIsrBasedConcurrencyAdjustment = ParameterUtils.minIsrBasedConcurrencyAdjustment(_request);
+    _minIsrBasedConcurrencyAdjustment = ParameterUtils.minIsrBasedConcurrencyAdjustment(_requestContext);
   }
 
   /**

@@ -4,14 +4,17 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.response;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.BrokerSetAwareGoal;
 import com.linkedin.kafka.cruisecontrol.config.BrokerSetResolutionHelper;
 import com.linkedin.kafka.cruisecontrol.config.BrokerSetResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.exception.BrokerSetResolutionException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -50,6 +53,8 @@ public class ClusterBrokerState {
   public static final String OFFLINE_LOGDIRS = "OfflineLogDirsByBrokerId";
   @JsonResponseField
   public static final String SUMMARY = "Summary";
+  @JsonResponseField
+  public static final String BROKER_SET = "BrokerSetByBrokerId";
   public static final String TIMED_OUT_LOGDIR_FLAG = "timed_out";
   protected final Map<Integer, Integer> _leaderCountByBrokerId;
   protected final Map<Integer, Integer> _outOfSyncCountByBrokerId;
@@ -84,11 +89,16 @@ public class ClusterBrokerState {
     _offlineLogDirsByBrokerId = new TreeMap<>();
 
     _brokerSetIdByBrokerId = new HashMap<>();
-    try {
-      BrokerSetResolutionHelper brokerSetResolutionHelper = new BrokerSetResolutionHelper(kafkaCluster, brokerSetResolver);
-      _brokerSetIdByBrokerId.putAll(brokerSetResolutionHelper.brokerSetIdByBrokerId());
-    } catch (BrokerSetResolutionException e) {
-      LOG.warn("Failed to resolve broker set with exception: ", e);
+
+    // Only resolve broker-set if the default goals contain the BrokerSetAwareGoal
+    List<String> defaultGoals = config.getList(AnalyzerConfig.DEFAULT_GOALS_CONFIG);
+    if (defaultGoals.contains(BrokerSetAwareGoal.class.getName())) {
+      try {
+        BrokerSetResolutionHelper brokerSetResolutionHelper = new BrokerSetResolutionHelper(kafkaCluster, brokerSetResolver);
+        _brokerSetIdByBrokerId.putAll(brokerSetResolutionHelper.brokerSetIdByBrokerId());
+      } catch (BrokerSetResolutionException e) {
+        LOG.error("Failed to resolve broker set with exception: ", e);
+      }
     }
 
     // Broker LogDirs Summary
@@ -102,7 +112,8 @@ public class ClusterBrokerState {
     return Map.of(LEADER_COUNT, _leaderCountByBrokerId, OUT_OF_SYNC_COUNT, _outOfSyncCountByBrokerId,
                   REPLICA_COUNT, _replicaCountByBrokerId, OFFLINE_REPLICA_COUNT, _offlineReplicaCountByBrokerId,
                   IS_CONTROLLER, _isControllerByBrokerId, ONLINE_LOGDIRS, _onlineLogDirsByBrokerId, OFFLINE_LOGDIRS, _offlineLogDirsByBrokerId,
-                  SUMMARY, new ClusterStats(_kafkaCluster.topics().size(), _replicaCountByBrokerId, _leaderCountByBrokerId).getJsonStructure());
+                  SUMMARY, new ClusterStats(_kafkaCluster.topics().size(), _replicaCountByBrokerId, _leaderCountByBrokerId).getJsonStructure(),
+                  BROKER_SET, _brokerSetIdByBrokerId);
   }
 
   /**

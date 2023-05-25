@@ -63,14 +63,14 @@ public class ClusterLoadParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    Long time = ParameterUtils.time(_request);
-    _endMs = time == null ? ParameterUtils.endMsOrDefault(_request, System.currentTimeMillis()) : time;
-    _startMs = ParameterUtils.startMsOrDefault(_request, ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL);
+    Long time = ParameterUtils.time(_requestContext);
+    _endMs = time == null ? ParameterUtils.endMsOrDefault(_requestContext, System.currentTimeMillis()) : time;
+    _startMs = ParameterUtils.startMsOrDefault(_requestContext, ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL);
     ParameterUtils.validateTimeRange(_startMs, _endMs);
     _requirements = new ModelCompletenessRequirements(1, 0.0, true);
-    _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_request);
-    _populateDiskInfo = ParameterUtils.populateDiskInfo(_request);
-    _capacityOnly = ParameterUtils.capacityOnly(_request);
+    _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_requestContext);
+    _populateDiskInfo = ParameterUtils.populateDiskInfo(_requestContext);
+    _capacityOnly = ParameterUtils.capacityOnly(_requestContext);
   }
 
   public long startMs() {

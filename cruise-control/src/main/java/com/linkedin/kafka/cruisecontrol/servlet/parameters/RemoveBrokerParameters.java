@@ -54,8 +54,8 @@ public class RemoveBrokerParameters extends AddedOrRemovedBrokerParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _throttleRemovedBrokers = ParameterUtils.throttleAddedOrRemovedBrokers(_request, _endPoint);
-    _destinationBrokerIds = ParameterUtils.destinationBrokerIds(_request);
+    _throttleRemovedBrokers = ParameterUtils.throttleAddedOrRemovedBrokers(_requestContext, _endPoint);
+    _destinationBrokerIds = ParameterUtils.destinationBrokerIds(_requestContext);
   }
 
   public boolean throttleRemovedBrokers() {

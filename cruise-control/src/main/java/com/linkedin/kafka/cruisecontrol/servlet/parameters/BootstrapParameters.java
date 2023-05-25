@@ -56,10 +56,10 @@ public class BootstrapParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _startMs = ParameterUtils.startMsOrDefault(_request, null);
-    _endMs = ParameterUtils.endMsOrDefault(_request, null);
-    _clearMetrics = ParameterUtils.clearMetrics(_request);
-    _developerMode = ParameterUtils.developerMode(_request);
+    _startMs = ParameterUtils.startMsOrDefault(_requestContext, null);
+    _endMs = ParameterUtils.endMsOrDefault(_requestContext, null);
+    _clearMetrics = ParameterUtils.clearMetrics(_requestContext);
+    _developerMode = ParameterUtils.developerMode(_requestContext);
     if (_startMs == null && _endMs != null) {
       throw new UserRequestException("The start time cannot be empty when end time is specified.");
     }

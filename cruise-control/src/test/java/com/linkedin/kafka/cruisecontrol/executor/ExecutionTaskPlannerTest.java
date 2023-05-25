@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.common.TopicMinIsrCache.MinIsrWithTime;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
+import com.linkedin.kafka.cruisecontrol.executor.concurrency.ExecutionConcurrencyManager;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.PostponeUrpReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.PrioritizeLargeReplicaMovementStrategy;
@@ -50,6 +51,8 @@ import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.Replic
  * Unit test class for execution task planner
  */
 public class ExecutionTaskPlannerTest {
+  private static final int MAX_BROKER_CONCURRENCY = ExecutorConfig.DEFAULT_MAX_NUM_CLUSTER_MOVEMENTS_CONFIG - 1;
+  private static final int MIN_BROKER_CONCURRENCY = 1;
   private final ReplicaPlacementInfo _r0 = new ReplicaPlacementInfo(0);
   private final ReplicaPlacementInfo _r1 = new ReplicaPlacementInfo(1);
   private final ReplicaPlacementInfo _r2 = new ReplicaPlacementInfo(2);
@@ -105,7 +108,6 @@ public class ExecutionTaskPlannerTest {
     proposals.add(_leaderMovement4);
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(ExecutorConfig.DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG, "");
-    ExecutionTaskPlanner planner = new ExecutionTaskPlanner(null, new KafkaCruiseControlConfig(props));
 
     Set<PartitionInfo> partitions = new HashSet<>();
     for (ExecutionProposal proposal : proposals) {
@@ -118,20 +120,73 @@ public class ExecutionTaskPlannerTest {
                                           Collections.emptySet(),
                                           Collections.emptySet());
     StrategyOptions strategyOptions = new StrategyOptions.Builder(expectedCluster).build();
+    ExecutionConcurrencyManager manager = new ExecutionConcurrencyManager(new KafkaCruiseControlConfig(props));
 
+    // 1: there should be no throttle if there is enough concurrency at both cluster level and broker level.
+    manager.setExecutionConcurrencyForAllBrokers(4, ConcurrencyType.LEADERSHIP);
+    manager.setExecutionConcurrencyForBroker(0, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP);
+    manager.setExecutionConcurrencyForBroker(1, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP);
+    manager.setExecutionConcurrencyForBroker(2, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP);
+    manager.setExecutionConcurrencyForBroker(3, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP);
+    proposals = new ArrayList<>();
+    proposals.add(_leaderMovement1);
+    proposals.add(_leaderMovement2);
+    proposals.add(_leaderMovement3);
+    proposals.add(_leaderMovement4);
+    ExecutionTaskPlanner planner = new ExecutionTaskPlanner(null, new KafkaCruiseControlConfig(props));
     planner.addExecutionProposals(proposals, strategyOptions, null);
-    List<ExecutionTask> leaderMovementTasks = planner.getLeadershipMovementTasks(2);
-    assertEquals("2 of the leader movements should return in one batch", 2, leaderMovementTasks.size());
-    assertEquals(4, leaderMovementTasks.get(0).executionId());
+    List<ExecutionTask> leaderMovementTasks = planner.getLeadershipMovementTasks(manager);
+    assertEquals("4 of the leader movements should return in one batch", 4, leaderMovementTasks.size());
     assertEquals(leaderMovementTasks.get(0).proposal(), _leaderMovement1);
-    assertEquals(5, leaderMovementTasks.get(1).executionId());
     assertEquals(leaderMovementTasks.get(1).proposal(), _leaderMovement2);
-    leaderMovementTasks = planner.getLeadershipMovementTasks(2);
+    assertEquals(leaderMovementTasks.get(2).proposal(), _leaderMovement3);
+    assertEquals(leaderMovementTasks.get(3).proposal(), _leaderMovement4);
+
+    // 2: task is throttled by cluster concurrency:
+    // Cluster concurrency is 3 and there are 4 tasks. Only 3 tasks can be executed at once, and 1 task should be throttled.
+    manager.setExecutionConcurrencyForAllBrokers(3, ConcurrencyType.LEADERSHIP);
+    manager.setExecutionConcurrencyForBroker(0, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP);
+    manager.setExecutionConcurrencyForBroker(1, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP);
+    manager.setExecutionConcurrencyForBroker(2, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP);
+    manager.setExecutionConcurrencyForBroker(3, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP);
+    proposals = new ArrayList<>();
+    proposals.add(_leaderMovement1);
+    proposals.add(_leaderMovement2);
+    proposals.add(_leaderMovement3);
+    proposals.add(_leaderMovement4);
+    planner = new ExecutionTaskPlanner(null, new KafkaCruiseControlConfig(props));
+    planner.addExecutionProposals(proposals, strategyOptions, null);
+    leaderMovementTasks = planner.getLeadershipMovementTasks(manager);
+    assertEquals("3 of the leader movements should return in one batch", 3, leaderMovementTasks.size());
+    assertEquals(leaderMovementTasks.get(0).proposal(), _leaderMovement1);
+    assertEquals(leaderMovementTasks.get(1).proposal(), _leaderMovement2);
+    assertEquals(leaderMovementTasks.get(2).proposal(), _leaderMovement3);
+
+    // 3: task is throttled by broker concurrency
+    // The broker 1 have concurrency 1, but 3 of the tasks involves this broker. In this case, 2 tasks should be throttled.
+    manager.setExecutionConcurrencyForAllBrokers(3, ConcurrencyType.LEADERSHIP);
+    manager.setExecutionConcurrencyForBroker(0, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP);
+    manager.setExecutionConcurrencyForBroker(1, MIN_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP);
+    manager.setExecutionConcurrencyForBroker(2, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP);
+    manager.setExecutionConcurrencyForBroker(3, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP);
+    proposals = new ArrayList<>();
+    proposals.add(_leaderMovement1);
+    proposals.add(_leaderMovement2);
+    proposals.add(_leaderMovement3);
+    proposals.add(_leaderMovement4);
+
+    planner = new ExecutionTaskPlanner(null, new KafkaCruiseControlConfig(props));
+    planner.addExecutionProposals(proposals, strategyOptions, null);
+    leaderMovementTasks = planner.getLeadershipMovementTasks(manager);
     assertEquals("2 of the leader movements should return in one batch", 2, leaderMovementTasks.size());
-    assertEquals(6, leaderMovementTasks.get(0).executionId());
-    assertEquals(leaderMovementTasks.get(0).proposal(), _leaderMovement3);
-    assertEquals(7, leaderMovementTasks.get(1).executionId());
+    assertEquals(leaderMovementTasks.get(0).proposal(), _leaderMovement1);
     assertEquals(leaderMovementTasks.get(1).proposal(), _leaderMovement4);
+    leaderMovementTasks = planner.getLeadershipMovementTasks(manager);
+    assertEquals("1 of the leader movements should return in one batch", 1, leaderMovementTasks.size());
+    assertEquals(leaderMovementTasks.get(0).proposal(), _leaderMovement2);
+    leaderMovementTasks = planner.getLeadershipMovementTasks(manager);
+    assertEquals("1 of the leader movements should return in one batch", 1, leaderMovementTasks.size());
+    assertEquals(leaderMovementTasks.get(0).proposal(), _leaderMovement3);
   }
 
   @Test

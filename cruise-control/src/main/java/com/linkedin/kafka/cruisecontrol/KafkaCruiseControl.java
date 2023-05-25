@@ -496,31 +496,14 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Dynamically set the inter-broker partition movement concurrency per broker.
+   * Dynamically set the execution concurrency per broker.
+   * Notice that if concurrency type is LEADERSHIP, this value will also be used as max allowed concurrency at cluster level.
    *
-   * @param requestedInterBrokerPartitionMovementConcurrency The maximum number of concurrent inter-broker partition movements
-   *                                                         per broker.
+   * @param requestedExecutionConcurrency The maximum number of allowed concurrent execution per broker.
+   * @param concurrencyType The type of the execution concurrency to set value for.
    */
-  public void setRequestedInterBrokerPartitionMovementConcurrency(Integer requestedInterBrokerPartitionMovementConcurrency) {
-    _executor.setRequestedInterBrokerPartitionMovementConcurrency(requestedInterBrokerPartitionMovementConcurrency);
-  }
-
-  /**
-   * Dynamically set the intra-broker partition movement concurrency.
-   *
-   * @param requestedIntraBrokerPartitionMovementConcurrency The maximum number of concurrent intra-broker partition movements.
-   */
-  public void setRequestedIntraBrokerPartitionMovementConcurrency(Integer requestedIntraBrokerPartitionMovementConcurrency) {
-    _executor.setRequestedIntraBrokerPartitionMovementConcurrency(requestedIntraBrokerPartitionMovementConcurrency);
-  }
-
-  /**
-   * Dynamically set the leadership movement concurrency.
-   *
-   * @param requestedLeadershipMovementConcurrency The maximum number of concurrent leader movements.
-   */
-  public void setRequestedLeadershipMovementConcurrency(Integer requestedLeadershipMovementConcurrency) {
-    _executor.setRequestedLeadershipMovementConcurrency(requestedLeadershipMovementConcurrency);
+  public void setExecutionConcurrencyForAllBrokers(Integer requestedExecutionConcurrency, ConcurrencyType concurrencyType) {
+    _executor.setExecutionConcurrencyForAllBrokers(requestedExecutionConcurrency, concurrencyType);
   }
 
   /**

@@ -47,11 +47,11 @@ public class ChangeExecutionConcurrencyParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_request);
-    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true, false);
-    _concurrentIntraBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, false, true);
-    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false, false);
-    _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_request);
+    _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_requestContext);
+    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_requestContext, true, false);
+    _concurrentIntraBrokerPartitionMovements = ParameterUtils.concurrentMovements(_requestContext, false, true);
+    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_requestContext, false, false);
+    _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_requestContext);
   }
 
   /**

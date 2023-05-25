@@ -30,8 +30,4 @@ public class CpuCapacityGoal extends CapacityGoal {
     return Resource.CPU;
   }
 
-  @Override
-  public String name() {
-    return CpuCapacityGoal.class.getSimpleName();
-  }
 }

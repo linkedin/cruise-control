@@ -140,11 +140,6 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
   }
 
   @Override
-  public String name() {
-    return LeaderBytesInDistributionGoal.class.getSimpleName();
-  }
-
-  @Override
   public boolean isHardGoal() {
     return false;
   }

@@ -6,7 +6,7 @@ package com.linkedin.cruisecontrol.servlet.response;
 
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import java.io.IOException;
-import javax.servlet.http.HttpServletResponse;
+import com.linkedin.cruisecontrol.http.CruiseControlRequestContext;
 
 
 /**
@@ -28,9 +28,9 @@ public interface CruiseControlResponse {
    * Write success response with the given parameters to the provided HTTP response.
    *
    * @param parameters Parameters of the HTTP request of user.
-   * @param response HTTP response to return to user.
+   * @param requestContext The request context.
    */
-  void writeSuccessResponse(CruiseControlParameters parameters, HttpServletResponse response) throws IOException;
+  void writeSuccessResponse(CruiseControlParameters parameters, CruiseControlRequestContext requestContext) throws IOException;
 
   /**
    * Return the relevant response kept in-memory after {@link #discardIrrelevantResponse(CruiseControlParameters)} is called.

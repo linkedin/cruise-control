@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
@@ -150,7 +151,7 @@ public final class KafkaCruiseControlIntegrationTestUtils {
   public static String callCruiseControl(String serverUrl, String path) {
     try {
       HttpURLConnection stateEndpointConnection = (HttpURLConnection) new URI(serverUrl)
-          .resolve(path).toURL().openConnection();
+          .resolve(path.toLowerCase(Locale.ROOT)).toURL().openConnection();
       return IOUtils.toString(stateEndpointConnection.getInputStream(), Charset.defaultCharset());
     } catch (Exception e) {
       throw new RuntimeException(e);

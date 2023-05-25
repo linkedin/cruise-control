@@ -5,12 +5,15 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
-import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.rackaware.RackAwareGoalRackIdMapper;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -22,6 +25,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.stream.Collectors;
@@ -45,9 +49,28 @@ public final class GoalUtils {
   public static final int DENOMINATOR_FOR_MIN_VALID_WINDOWS_FOR_SELF_HEALING = 14;
   private static final double DEAD_BROKER_UTILIZATION = 1.0;
   private static final double DEAD_DISK_UTILIZATION = 1.0;
+  private static final String KAFKA_CRUISE_CONTROL_OBJECT_CONFIG = "kafka.cruise.control.object";
 
   private GoalUtils() {
 
+  }
+
+  /**
+   * @param config The configurations for Cruise Control.
+   * @return Configured {@link RackAwareGoalRackIdMapper} instance
+   */
+
+  public static RackAwareGoalRackIdMapper getRackAwareGoalRackIdMapper(KafkaCruiseControlConfig config) {
+    return config.getConfiguredInstance(AnalyzerConfig.RACK_AWARE_GOAL_RACK_ID_MAPPER_CLASS_CONFIG,
+                                        RackAwareGoalRackIdMapper.class);
+  }
+
+  /**
+   * @param configs The configs used to configure {@link Goal} instance.
+   * @return Configured {@link RackAwareGoalRackIdMapper} instance
+   */
+  public static RackAwareGoalRackIdMapper getRackAwareGoalRackIdMapper(Map<String, ?> configs) {
+    return getRackAwareGoalRackIdMapper(new KafkaCruiseControlConfig(configs));
   }
 
   /**

@@ -94,9 +94,9 @@ public class ExecutionTaskManagerTest {
                                         Collections.emptySet(),
                                         strategyOptions,
                                         null);
-      taskManager.setRequestedInterBrokerPartitionMovementConcurrency(null);
-      taskManager.setRequestedIntraBrokerPartitionMovementConcurrency(null);
-      taskManager.setRequestedLeadershipMovementConcurrency(null);
+      taskManager.getExecutionConcurrencyManager().setExecutionConcurrencyForAllBrokers(null, ConcurrencyType.INTRA_BROKER_REPLICA);
+      taskManager.getExecutionConcurrencyManager().setExecutionConcurrencyForAllBrokers(null, ConcurrencyType.INTER_BROKER_REPLICA);
+      taskManager.getExecutionConcurrencyManager().setExecutionConcurrencyForAllBrokers(null, ConcurrencyType.LEADERSHIP);
       List<ExecutionTask> tasks = taskManager.getInterBrokerReplicaMovementTasks();
       assertEquals(1, tasks.size());
       ExecutionTask task = tasks.get(0);
@@ -105,7 +105,12 @@ public class ExecutionTaskManagerTest {
 
     // Verify that the movement concurrency matches the default configuration
     for (ConcurrencyType concurrencyType : ConcurrencyType.cachedValues()) {
-      assertEquals(MOCK_DEFAULT_CONCURRENCY.get(concurrencyType).intValue(), taskManager.movementConcurrency(concurrencyType));
+      assertEquals(MOCK_DEFAULT_CONCURRENCY.get(concurrencyType).intValue(),
+                   taskManager.getExecutionConcurrencyManager().getExecutionConcurrency(0, concurrencyType));
+      assertEquals(MOCK_DEFAULT_CONCURRENCY.get(concurrencyType).intValue(),
+                   taskManager.getExecutionConcurrencyManager().getExecutionConcurrency(1, concurrencyType));
+      assertEquals(MOCK_DEFAULT_CONCURRENCY.get(concurrencyType).intValue(),
+                   taskManager.getExecutionConcurrencyManager().getExecutionConcurrency(2, concurrencyType));
     }
   }
 

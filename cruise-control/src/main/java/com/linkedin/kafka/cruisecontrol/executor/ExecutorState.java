@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
+import com.linkedin.kafka.cruisecontrol.executor.concurrency.ExecutionConcurrencySummary;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -44,6 +45,10 @@ public final class ExecutorState {
   private static final String CANCELLED_LEADERSHIP_MOVEMENT = "cancelledLeadershipMovement";
   @JsonResponseField(required = false)
   private static final String MAXIMUM_CONCURRENT_LEADER_MOVEMENTS = "maximumConcurrentLeaderMovements";
+  @JsonResponseField(required = false)
+  private static final String MINIMUM_CONCURRENT_LEADER_MOVEMENTS = "minimumConcurrentLeaderMovements";
+  @JsonResponseField(required = false)
+  private static final String AVERAGE_CONCURRENT_LEADER_MOVEMENTS = "averageConcurrentLeaderMovements";
 
   @JsonResponseField(required = false)
   private static final String NUM_TOTAL_INTER_BROKER_PARTITION_MOVEMENTS = "numTotalPartitionMovements";
@@ -77,6 +82,10 @@ public final class ExecutorState {
   private static final String TOTAL_INTER_BROKER_DATA_TO_MOVE = "totalDataToMove";
   @JsonResponseField(required = false)
   private static final String MAXIMUM_CONCURRENT_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER = "maximumConcurrentPartitionMovementsPerBroker";
+  @JsonResponseField(required = false)
+  private static final String MINIMUM_CONCURRENT_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER = "minimumConcurrentPartitionMovementsPerBroker";
+  @JsonResponseField(required = false)
+  private static final String AVERAGE_CONCURRENT_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER = "averageConcurrentPartitionMovementsPerBroker";
 
   @JsonResponseField(required = false)
   private static final String NUM_TOTAL_INTRA_BROKER_PARTITION_MOVEMENTS = "numTotalIntraBrokerPartitionMovements";
@@ -111,6 +120,12 @@ public final class ExecutorState {
   @JsonResponseField(required = false)
   private static final String MAXIMUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER
       = "maximumConcurrentIntraBrokerPartitionMovementsPerBroker";
+  @JsonResponseField(required = false)
+  private static final String MINIMUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER
+      = "minimumConcurrentIntraBrokerPartitionMovementsPerBroker";
+  @JsonResponseField(required = false)
+  private static final String AVERAGE_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER
+      = "averageConcurrentIntraBrokerPartitionMovementsPerBroker";
 
   @JsonResponseField(required = false)
   private static final String ERROR = "error";
@@ -134,9 +149,7 @@ public final class ExecutorState {
   // Execution task statistics to report.
   private final ExecutionTaskTracker.ExecutionTasksSummary _executionTasksSummary;
   // Configs to report.
-  private final int _maximumConcurrentInterBrokerPartitionMovementsPerBroker;
-  private final int _maximumConcurrentIntraBrokerPartitionMovementsPerBroker;
-  private final int _maximumConcurrentLeaderMovements;
+  private final ExecutionConcurrencySummary _executionConcurrencySummary;
   private final String _uuid;
   private final String _reason;
   private final boolean _isTriggeredByUserRequest;
@@ -145,9 +158,7 @@ public final class ExecutorState {
 
   private ExecutorState(State state,
                         ExecutionTasksSummary executionTasksSummary,
-                        int maximumConcurrentInterBrokerPartitionMovementsPerBroker,
-                        int maximumConcurrentIntraBrokerPartitionMovementsPerBroker,
-                        int maximumConcurrentLeaderMovements,
+                        ExecutionConcurrencySummary executionConcurrencySummary,
                         String uuid,
                         String reason,
                         Set<Integer> recentlyDemotedBrokers,
@@ -155,9 +166,7 @@ public final class ExecutorState {
                         boolean isTriggeredByUserRequest) {
     _state = state;
     _executionTasksSummary = executionTasksSummary;
-    _maximumConcurrentInterBrokerPartitionMovementsPerBroker = maximumConcurrentInterBrokerPartitionMovementsPerBroker;
-    _maximumConcurrentIntraBrokerPartitionMovementsPerBroker = maximumConcurrentIntraBrokerPartitionMovementsPerBroker;
-    _maximumConcurrentLeaderMovements = maximumConcurrentLeaderMovements;
+    _executionConcurrencySummary = executionConcurrencySummary;
     _uuid = uuid;
     _reason = reason;
     _recentlyDemotedBrokers = recentlyDemotedBrokers;
@@ -174,9 +183,7 @@ public final class ExecutorState {
                                                Set<Integer> recentlyRemovedBrokers) {
     return new ExecutorState(State.NO_TASK_IN_PROGRESS,
                              null,
-                             0,
-                             0,
-                             0,
+                             null,
                              "",
                              "",
                              recentlyDemotedBrokers,
@@ -199,9 +206,7 @@ public final class ExecutorState {
                                                 boolean isTriggeredByUserRequest) {
     return new ExecutorState(State.STARTING_EXECUTION,
                              null,
-                             0,
-                             0,
-                             0,
+                             null,
                              uuid,
                              reason,
                              recentlyDemotedBrokers,
@@ -224,9 +229,7 @@ public final class ExecutorState {
                                                           boolean isTriggeredByUserRequest) {
     return new ExecutorState(State.INITIALIZING_PROPOSAL_EXECUTION,
                              null,
-                             0,
-                             0,
-                             0,
+                             null,
                              uuid,
                              reason,
                              recentlyDemotedBrokers,
@@ -249,9 +252,7 @@ public final class ExecutorState {
                                                               boolean isTriggeredByUserRequest) {
     return new ExecutorState(State.GENERATING_PROPOSALS_FOR_EXECUTION,
                              null,
-                             0,
-                             0,
-                             0,
+                             null,
                              uuid,
                              reason,
                              recentlyDemotedBrokers,
@@ -263,9 +264,7 @@ public final class ExecutorState {
    * @param state State of executor.
    * @param reason Reason of the current execution.
    * @param executionTasksSummary Summary of the execution tasks.
-   * @param maximumConcurrentInterBrokerPartitionMovementsPerBroker Maximum concurrent inter-broker partition movement per broker.
-   * @param maximumConcurrentIntraBrokerPartitionMovementsPerBroker Maximum concurrent intra-broker partition movement per broker.
-   * @param maximumConcurrentLeaderMovements Maximum concurrent leader movements.
+   * @param executionConcurrencySummary Summary of the execution concurrency
    * @param uuid UUID of the current execution.
    * @param recentlyDemotedBrokers Recently demoted broker IDs.
    * @param recentlyRemovedBrokers Recently removed broker IDs.
@@ -274,9 +273,7 @@ public final class ExecutorState {
    */
   public static ExecutorState operationInProgress(State state,
                                                   ExecutionTasksSummary executionTasksSummary,
-                                                  int maximumConcurrentInterBrokerPartitionMovementsPerBroker,
-                                                  int maximumConcurrentIntraBrokerPartitionMovementsPerBroker,
-                                                  int maximumConcurrentLeaderMovements,
+                                                  ExecutionConcurrencySummary executionConcurrencySummary,
                                                   String uuid,
                                                   String reason,
                                                   Set<Integer> recentlyDemotedBrokers,
@@ -287,9 +284,7 @@ public final class ExecutorState {
     }
     return new ExecutorState(state,
                              executionTasksSummary,
-                             maximumConcurrentInterBrokerPartitionMovementsPerBroker,
-                             maximumConcurrentIntraBrokerPartitionMovementsPerBroker,
-                             maximumConcurrentLeaderMovements,
+                             executionConcurrencySummary,
                              uuid,
                              reason,
                              recentlyDemotedBrokers,
@@ -397,7 +392,10 @@ public final class ExecutorState {
       case LEADER_MOVEMENT_TASK_IN_PROGRESS:
         populateUuidFieldInJsonStructure(execState, _uuid);
         execState.put(TRIGGERED_TASK_REASON, _reason);
-        execState.put(MAXIMUM_CONCURRENT_LEADER_MOVEMENTS, _maximumConcurrentLeaderMovements);
+        execState.put(MAXIMUM_CONCURRENT_LEADER_MOVEMENTS, _executionConcurrencySummary.getMaxExecutionConcurrency(
+            ConcurrencyType.LEADERSHIP));
+        execState.put(MINIMUM_CONCURRENT_LEADER_MOVEMENTS, _executionConcurrencySummary.getMinExecutionConcurrency(ConcurrencyType.LEADERSHIP));
+        execState.put(AVERAGE_CONCURRENT_LEADER_MOVEMENTS, _executionConcurrencySummary.getAvgExecutionConcurrency(ConcurrencyType.LEADERSHIP));
         execState.put(NUM_PENDING_LEADERSHIP_MOVEMENTS, _executionTasksSummary.taskStat().get(LEADER_ACTION).get(ExecutionTaskState.PENDING));
         execState.put(NUM_FINISHED_LEADERSHIP_MOVEMENTS, numFinishedMovements(LEADER_ACTION));
         execState.put(NUM_TOTAL_LEADERSHIP_MOVEMENTS, numTotalMovements(LEADER_ACTION));
@@ -409,7 +407,12 @@ public final class ExecutorState {
         interBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTER_BROKER_REPLICA_ACTION);
         populateUuidFieldInJsonStructure(execState, _uuid);
         execState.put(TRIGGERED_TASK_REASON, _reason);
-        execState.put(MAXIMUM_CONCURRENT_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER, _maximumConcurrentInterBrokerPartitionMovementsPerBroker);
+        execState.put(MAXIMUM_CONCURRENT_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER,
+                      _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.INTER_BROKER_REPLICA));
+        execState.put(MINIMUM_CONCURRENT_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER,
+                      _executionConcurrencySummary.getMinExecutionConcurrency(ConcurrencyType.INTER_BROKER_REPLICA));
+        execState.put(AVERAGE_CONCURRENT_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER,
+                      _executionConcurrencySummary.getAvgExecutionConcurrency(ConcurrencyType.INTER_BROKER_REPLICA));
         execState.put(NUM_IN_PROGRESS_INTER_BROKER_PARTITION_MOVEMENTS, interBrokerPartitionMovementStats.get(ExecutionTaskState.IN_PROGRESS));
         execState.put(NUM_ABORTING_INTER_BROKER_PARTITION_MOVEMENTS, interBrokerPartitionMovementStats.get(ExecutionTaskState.ABORTING));
         execState.put(NUM_PENDING_INTER_BROKER_PARTITION_MOVEMENTS, interBrokerPartitionMovementStats.get(ExecutionTaskState.PENDING));
@@ -430,7 +433,12 @@ public final class ExecutorState {
         intraBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION);
         populateUuidFieldInJsonStructure(execState, _uuid);
         execState.put(TRIGGERED_TASK_REASON, _reason);
-        execState.put(MAXIMUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER, _maximumConcurrentIntraBrokerPartitionMovementsPerBroker);
+        execState.put(MAXIMUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER,
+                      _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.INTRA_BROKER_REPLICA));
+        execState.put(MINIMUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER,
+                      _executionConcurrencySummary.getMinExecutionConcurrency(ConcurrencyType.INTRA_BROKER_REPLICA));
+        execState.put(AVERAGE_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER,
+                      _executionConcurrencySummary.getAvgExecutionConcurrency(ConcurrencyType.INTRA_BROKER_REPLICA));
         execState.put(NUM_IN_PROGRESS_INTRA_BROKER_PARTITION_MOVEMENTS, intraBrokerPartitionMovementStats.get(ExecutionTaskState.IN_PROGRESS));
         execState.put(NUM_ABORTING_INTRA_BROKER_PARTITION_MOVEMENTS, intraBrokerPartitionMovementStats.get(ExecutionTaskState.ABORTING));
         execState.put(NUM_PENDING_INTRA_BROKER_PARTITION_MOVEMENTS, intraBrokerPartitionMovementStats.get(ExecutionTaskState.PENDING));
@@ -452,9 +460,11 @@ public final class ExecutorState {
         intraBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION);
         populateUuidFieldInJsonStructure(execState, _uuid);
         execState.put(TRIGGERED_TASK_REASON, _reason);
-        execState.put(MAXIMUM_CONCURRENT_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER, _maximumConcurrentInterBrokerPartitionMovementsPerBroker);
-        execState.put(MAXIMUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER, _maximumConcurrentIntraBrokerPartitionMovementsPerBroker);
-        execState.put(MAXIMUM_CONCURRENT_LEADER_MOVEMENTS, _maximumConcurrentLeaderMovements);
+        execState.put(MAXIMUM_CONCURRENT_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER,
+                      _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.INTER_BROKER_REPLICA));
+        execState.put(MAXIMUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER,
+                      _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.INTRA_BROKER_REPLICA));
+        execState.put(MAXIMUM_CONCURRENT_LEADER_MOVEMENTS, _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.LEADERSHIP));
         execState.put(NUM_CANCELLED_LEADERSHIP_MOVEMENTS, _executionTasksSummary.taskStat().get(LEADER_ACTION).get(ExecutionTaskState.PENDING));
         execState.put(NUM_IN_PROGRESS_INTER_BROKER_PARTITION_MOVEMENTS, interBrokerPartitionMovementStats.get(ExecutionTaskState.IN_PROGRESS));
         execState.put(NUM_ABORTING_INTER_BROKER_PARTITION_MOVEMENTS, interBrokerPartitionMovementStats.get(ExecutionTaskState.ABORTING));
@@ -501,9 +511,13 @@ public final class ExecutorState {
                              _isTriggeredByUserRequest ? TRIGGERED_USER_TASK_ID : TRIGGERED_SELF_HEALING_TASK_ID,
                              _uuid, TRIGGERED_TASK_REASON, _reason, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case LEADER_MOVEMENT_TASK_IN_PROGRESS:
-        return String.format("{%s: %s, finished(%d)/total(%d) leadership movements, maximum concurrent leadership movements: %d, %s: %s, %s: %s%s%s}",
+        return String.format("{%s: %s, finished(%d)/total(%d) leadership movements,"
+                             + " max/min/avg concurrent leadership movements: %d/%d/%.2f, %s: %s, %s: %s%s%s}",
                              STATE, _state, numFinishedMovements(LEADER_ACTION), numTotalMovements(LEADER_ACTION),
-                             _maximumConcurrentLeaderMovements, _isTriggeredByUserRequest ? TRIGGERED_USER_TASK_ID : TRIGGERED_SELF_HEALING_TASK_ID,
+                             _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.LEADERSHIP),
+                             _executionConcurrencySummary.getMinExecutionConcurrency(ConcurrencyType.LEADERSHIP),
+                             _executionConcurrencySummary.getAvgExecutionConcurrency(ConcurrencyType.LEADERSHIP),
+                             _isTriggeredByUserRequest ? TRIGGERED_USER_TASK_ID : TRIGGERED_SELF_HEALING_TASK_ID,
                              _uuid, TRIGGERED_TASK_REASON, _reason, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS:
 
@@ -516,8 +530,8 @@ public final class ExecutorState {
         }
 
         return String.format("{%s: %s, pending(%d)/in-progress(%d)/aborting(%d)/finished(%d)/total(%d) inter-broker partition movements,"
-                             + " completed(%d)/total(%d) bytes in MBs: %.2f%%, maximum concurrent inter-broker partition movements per-broker:"
-                             + " %d, %s: %s, %s: %s%s%s}",
+                             + " completed(%d)/total(%d) bytes in MBs: %.2f%%, max/min/avg concurrent inter-broker partition movements per-broker:"
+                             + " %d/%d/%.2f, %s: %s, %s: %s%s%s}",
                              STATE, _state,
                              interBrokerPartitionMovementStats.get(ExecutionTaskState.PENDING),
                              interBrokerPartitionMovementStats.get(ExecutionTaskState.IN_PROGRESS),
@@ -527,7 +541,9 @@ public final class ExecutorState {
                              finishedInterBrokerDataMovementInMB,
                              numTotalInterBrokerDataToMove,
                              finishedInterBrokerDataPercent,
-                             _maximumConcurrentInterBrokerPartitionMovementsPerBroker,
+                             _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.INTER_BROKER_REPLICA),
+                             _executionConcurrencySummary.getMinExecutionConcurrency(ConcurrencyType.INTER_BROKER_REPLICA),
+                             _executionConcurrencySummary.getAvgExecutionConcurrency(ConcurrencyType.INTER_BROKER_REPLICA),
                              _isTriggeredByUserRequest ? TRIGGERED_USER_TASK_ID : TRIGGERED_SELF_HEALING_TASK_ID, _uuid,
                              TRIGGERED_TASK_REASON, _reason, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case INTRA_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS:
@@ -540,8 +556,8 @@ public final class ExecutorState {
         }
 
         return String.format("{%s: %s, pending(%d)/in-progress(%d)/aborting(%d)/finished(%d)/total(%d) intra-broker partition movements,"
-                             + "completed(%d)/total(%d) bytes in MBs: %.2f%%, maximum concurrent intra-broker partition movements per-broker:"
-                             + "%d, %s: %s, %s: %s%s%s}",
+                             + "completed(%d)/total(%d) bytes in MBs: %.2f%%, max/min/avg concurrent intra-broker partition movements per-broker:"
+                             + "%d/%d/%.2f, %s: %s, %s: %s%s%s}",
                              STATE, _state,
                              intraBrokerPartitionMovementStats.get(ExecutionTaskState.PENDING),
                              intraBrokerPartitionMovementStats.get(ExecutionTaskState.IN_PROGRESS),
@@ -551,7 +567,9 @@ public final class ExecutorState {
                              finishedIntraBrokerDataMovementInMB,
                              numTotalIntraBrokerDataToMove,
                              finishedIntraBrokerDataPercent,
-                             _maximumConcurrentIntraBrokerPartitionMovementsPerBroker,
+                             _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.INTRA_BROKER_REPLICA),
+                             _executionConcurrencySummary.getMinExecutionConcurrency(ConcurrencyType.INTRA_BROKER_REPLICA),
+                             _executionConcurrencySummary.getAvgExecutionConcurrency(ConcurrencyType.INTRA_BROKER_REPLICA),
                              _isTriggeredByUserRequest ? TRIGGERED_USER_TASK_ID : TRIGGERED_SELF_HEALING_TASK_ID, _uuid,
                              TRIGGERED_TASK_REASON, _reason, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case STOPPING_EXECUTION:
@@ -573,9 +591,9 @@ public final class ExecutorState {
                              numTotalMovements(INTER_BROKER_REPLICA_ACTION),
                              _executionTasksSummary.taskStat().get(LEADER_ACTION).get(ExecutionTaskState.PENDING),
                              numTotalMovements(LEADER_ACTION),
-                             _maximumConcurrentIntraBrokerPartitionMovementsPerBroker,
-                             _maximumConcurrentInterBrokerPartitionMovementsPerBroker,
-                             _maximumConcurrentLeaderMovements,
+                             _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.INTER_BROKER_REPLICA),
+                             _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.INTRA_BROKER_REPLICA),
+                             _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.LEADERSHIP),
                              _isTriggeredByUserRequest ? TRIGGERED_USER_TASK_ID : TRIGGERED_SELF_HEALING_TASK_ID, _uuid,
                              TRIGGERED_TASK_REASON, _reason, recentlyDemotedBrokers, recentlyRemovedBrokers);
       default:

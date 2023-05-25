@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet;
 
 import com.linkedin.cruisecontrol.common.config.ConfigException;
 import com.linkedin.cruisecontrol.servlet.EndPoint;
+import com.linkedin.cruisecontrol.http.CruiseControlRequestContext;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.RequestParameterWrapper;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
@@ -37,9 +38,10 @@ import static javax.servlet.http.HttpServletResponse.SC_OK;
 public final class KafkaCruiseControlServletUtils {
   public static final String GET_METHOD = "GET";
   public static final String POST_METHOD = "POST";
-  public static final String KAFKA_CRUISE_CONTROL_SERVLET_OBJECT_CONFIG = "kafka.cruise.control.servlet.object";
+  public static final String KAFKA_CRUISE_CONTROL_REQUEST_HANDLER_OBJECT_CONFIG = "kafka.cruise.control.request.handler.object";
   public static final String KAFKA_CRUISE_CONTROL_HTTP_SERVLET_REQUEST_OBJECT_CONFIG = "kafka.cruise.control.http.servlet.request.object";
   public static final String KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG = "kafka.cruise.control.config.object";
+  public static final String ROUTING_CONTEXT_OBJECT_CONFIG = "routing.context.object";
   private static final String ACCESS_CONTROL_ALLOW_ORIGIN = "Access-Control-Allow-Origin";
   private static final String ACCESS_CONTROL_ALLOW_METHODS = "Access-Control-Allow-Methods";
   private static final String ACCESS_CONTROL_ALLOW_HEADERS = "Access-Control-Allow-Headers";
@@ -164,18 +166,17 @@ public final class KafkaCruiseControlServletUtils {
 
   /**
    * Get the ip address of the client sending the request.
-   *
-   * @param request The http request.
+   * @param requestContext the request context.
    * @return The ip address of the client sending the request.
    */
-  public static String getClientIpAddress(HttpServletRequest request) {
+  public static String getClientIpAddress(CruiseControlRequestContext requestContext) {
     for (String header : HEADERS_TO_TRY) {
-      String ip = request.getHeader(header);
+      String ip = requestContext.getHeader(header);
       if (ip != null && ip.length() != 0 && !"unknown".equalsIgnoreCase(ip)) {
         return ip;
       }
     }
-    return request.getRemoteAddr();
+    return requestContext.getRemoteAddr();
   }
 
   static String urlEncode(String s) throws UnsupportedEncodingException {
@@ -186,22 +187,20 @@ public final class KafkaCruiseControlServletUtils {
    * Returns the GET or POST endpoint if the request contains a valid one, otherwise (1) writes the error response to
    * the given HTTP response and (2) returns null.
    *
-   * @param request HTTP request received by Cruise Control.
-   * @param response HTTP response of Cruise Control.
-   * @param config The config of Cruise Control.
+   * @param requestContext HTTP request received by Cruise Control.
    * @return The endpoint if the request contains a valid one, otherwise (1) writes the error response to the given HTTP
    * response and (2) returns null.
    */
-  static CruiseControlEndPoint getValidEndpoint(HttpServletRequest request, HttpServletResponse response, KafkaCruiseControlConfig config)
+  public static CruiseControlEndPoint getValidEndpoint(CruiseControlRequestContext requestContext)
       throws IOException {
-    CruiseControlEndPoint endPoint = endPoint(request);
+    CruiseControlEndPoint endPoint = endPoint(requestContext);
     if (endPoint == null) {
-      String method = request.getMethod();
+      String method = requestContext.getMethod();
       String errorMessage = String.format("Unrecognized endpoint in request '%s'%nSupported %s endpoints: %s",
-                                          request.getPathInfo(), method, method.equals(GET_METHOD)
+                                          requestContext.getPathInfo(), method, method.equals(GET_METHOD)
                                                                          ? CruiseControlEndPoint.getEndpoints()
                                                                          : CruiseControlEndPoint.postEndpoints());
-      writeErrorResponse(response, null, errorMessage, SC_NOT_FOUND, wantJSON(request), wantResponseSchema(request), config);
+      writeErrorResponse(requestContext, null, errorMessage, SC_NOT_FOUND, wantJSON(requestContext), wantResponseSchema(requestContext));
       return null;
     }
     return endPoint;
@@ -210,56 +209,44 @@ public final class KafkaCruiseControlServletUtils {
   /**
    * Creates a {@link HttpServletResponse#SC_BAD_REQUEST} Http servlet response.
    * @param ure User request exception to be handled.
-   * @param request HTTP request received by Cruise Control.
-   * @param response HTTP response of Cruise Control.
-   * @param config The configurations for Cruise Control.
+   * @param requestContext HTTP request received by Cruise Control.
    * @return The error message.
    */
-  static String handleUserRequestException(UserRequestException ure,
-                                           HttpServletRequest request,
-                                           HttpServletResponse response,
-                                           KafkaCruiseControlConfig config)
+  public static String handleUserRequestException(UserRequestException ure,
+                                                  CruiseControlRequestContext requestContext)
       throws IOException {
-    String errorMessage = String.format("Bad %s request '%s' due to '%s'.", request.getMethod(), request.getPathInfo(), ure.getMessage());
-    writeErrorResponse(response, ure, errorMessage, SC_BAD_REQUEST, wantJSON(request), wantResponseSchema(request), config);
+    String errorMessage = String.format("Bad %s request '%s' due to '%s'.", requestContext.getMethod(),
+            requestContext.getPathInfo(), ure.getMessage());
+    writeErrorResponse(requestContext, ure, errorMessage, SC_BAD_REQUEST, wantJSON(requestContext), wantResponseSchema(requestContext));
     return errorMessage;
   }
-
   /**
    * Creates a {@link HttpServletResponse#SC_FORBIDDEN} Http servlet response.
    * @param ce Config exception to be handled.
-   * @param request HTTP request received by Cruise Control.
-   * @param response HTTP response of Cruise Control.
-   * @param config The configurations for Cruise Control.
+   * @param requestContext HTTP request received by Cruise Control.
    * @return The error message.
    */
-  static String handleConfigException(ConfigException ce,
-                                      HttpServletRequest request,
-                                      HttpServletResponse response,
-                                      KafkaCruiseControlConfig config)
+  public static String handleConfigException(ConfigException ce,
+                                             CruiseControlRequestContext requestContext)
       throws IOException {
     String errorMessage = String.format("Cannot process %s request '%s' due to: '%s'.",
-                                        request.getMethod(), request.getPathInfo(), ce.getMessage());
-    writeErrorResponse(response, ce, errorMessage, SC_FORBIDDEN, wantJSON(request), wantResponseSchema(request), config);
+                                        requestContext.getMethod(), requestContext.getPathInfo(), ce.getMessage());
+    writeErrorResponse(requestContext, ce, errorMessage, SC_FORBIDDEN, wantJSON(requestContext), wantResponseSchema(requestContext));
     return errorMessage;
   }
 
   /**
    * Creates a {@link HttpServletResponse#SC_INTERNAL_SERVER_ERROR} Http servlet response.
    * @param e Exception to be handled
-   * @param request HTTP request received by Cruise Control.
-   * @param response HTTP response of Cruise Control.
-   * @param config The configurations for Cruise Control.
+   * @param requestContext HTTP request received by Cruise Control.
    * @return The error message.
    */
-  static String handleException(Exception e,
-                                HttpServletRequest request,
-                                HttpServletResponse response,
-                                KafkaCruiseControlConfig config)
+  public static String handleException(Exception e,
+                                       CruiseControlRequestContext requestContext)
       throws IOException {
     String errorMessage = String.format("Error processing %s request '%s' due to: '%s'.",
-                                        request.getMethod(), request.getPathInfo(), e.getMessage());
-    writeErrorResponse(response, e, errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request), wantResponseSchema(request), config);
+                                        requestContext.getMethod(), requestContext.getPathInfo(), e.getMessage());
+    writeErrorResponse(requestContext, e, errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(requestContext), wantResponseSchema(requestContext));
     return errorMessage;
   }
 
@@ -286,9 +273,16 @@ public final class KafkaCruiseControlServletUtils {
   /**
    * Ensure that the given headerName does not exist in the given request header.
    *
-   * @param request HTTP request received by Cruise Control.
+   * @param requestContext HTTP request received by Cruise Control.
    * @param headerName a <code>String</code> specifying the header name
    */
+  static void ensureHeaderNotPresent(CruiseControlRequestContext requestContext, String headerName) {
+    String value = requestContext.getHeaders().get(headerName);
+    if (value != null) {
+      throw new IllegalArgumentException(String.format("Unexpected header %s (value: %s) in the request.", value, headerName));
+    }
+  }
+
   static void ensureHeaderNotPresent(HttpServletRequest request, String headerName) {
     String value = request.getHeader(headerName);
     if (value != null) {
@@ -296,8 +290,8 @@ public final class KafkaCruiseControlServletUtils {
     }
   }
 
-  public static String httpServletRequestToString(HttpServletRequest request) {
-    return String.format("%s %s", request.getMethod(), request.getRequestURI());
+  public static String httpServletRequestToString(CruiseControlRequestContext requestContext) {
+    return String.format("%s %s", requestContext.getMethod(), requestContext.getRequestURI());
   }
 
   /**

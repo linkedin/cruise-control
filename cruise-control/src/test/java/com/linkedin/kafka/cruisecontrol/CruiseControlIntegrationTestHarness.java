@@ -43,7 +43,7 @@ public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegra
     super.setUp();
     _brokers.values().forEach(CCEmbeddedBroker::startup);
     setupConfig();
-    _app = new KafkaCruiseControlApp(_config, ANY_PORT, LOCALHOST);
+    _app = KafkaCruiseControlUtils.getCruiseControlApp(_config, ANY_PORT, LOCALHOST);
     _app.start();
   }
 
@@ -59,3 +59,4 @@ public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegra
     super.tearDown();
   }
 }
+

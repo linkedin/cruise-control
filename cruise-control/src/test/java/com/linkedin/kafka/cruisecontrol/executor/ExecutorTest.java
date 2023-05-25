@@ -34,6 +34,7 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
+import java.util.HashSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
@@ -67,12 +68,8 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.*
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorTestUtils.*;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.SamplingMode.*;
-import static org.easymock.EasyMock.expectLastCall;
-import static org.easymock.EasyMock.isA;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertEquals;
+import static org.easymock.EasyMock.*;
+import static org.junit.Assert.*;
 
 
 public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
@@ -81,6 +78,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   private static final TopicPartition TP1 = new TopicPartition(TOPIC1, PARTITION);
   private static final TopicPartition TP2 = new TopicPartition(TOPIC2, PARTITION);
   private static final TopicPartition TP3 = new TopicPartition(TOPIC3, PARTITION);
+  private static final int BROKER_ID_0 = 0;
+  private static final int BROKER_ID_1 = 1;
   private static final Random RANDOM = new Random(0xDEADBEEF);
   private static final int MOCK_BROKER_ID_TO_DROP = 1;
   private static final long MOCK_CURRENT_TIME = 1596842708000L;
@@ -369,21 +368,68 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   }
 
   @Test
+  public void testSetRequestedExecutionProgressCheckIntervalMs() {
+    KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
+    Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class),
+                                     null, EasyMock.mock(AnomalyDetectorManager.class));
+    long minExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
+
+    // RequestedExecutionProgressCheckIntervalMs has to be larger than minExecutionProgressCheckIntervalMs
+    executor.setRequestedExecutionProgressCheckIntervalMs(minExecutionProgressCheckIntervalMs);
+    assertEquals(minExecutionProgressCheckIntervalMs, executor.executionProgressCheckIntervalMs());
+    assertThrows(IllegalArgumentException.class,
+                 () -> executor.setRequestedExecutionProgressCheckIntervalMs(minExecutionProgressCheckIntervalMs - 1));
+  }
+
+  @Test
+  public void testSetExecutionProgressCheckIntervalMsWithRequestedValue() {
+    KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
+    Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class),
+                                     null, EasyMock.mock(AnomalyDetectorManager.class));
+    long defaultExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
+    long minExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
+
+    // Set requestedExecutionProgressCheckIntervalMs
+    long requestedExecutionProgressCheckIntervalMs = 2 * defaultExecutionProgressCheckIntervalMs;
+    executor.setRequestedExecutionProgressCheckIntervalMs(requestedExecutionProgressCheckIntervalMs);
+
+    // With requested executionProgressCheckIntervalMs, the value should be capped at requestedExecutionProgressCheckIntervalMs, and
+    //  set to at least minExecutionProgressCheckIntervalMs
+    executor.setExecutionProgressCheckIntervalMs(Long.MAX_VALUE);
+    assertEquals(requestedExecutionProgressCheckIntervalMs, executor.executionProgressCheckIntervalMs());
+
+    executor.setExecutionProgressCheckIntervalMs((long) 0);
+    assertEquals(minExecutionProgressCheckIntervalMs, executor.executionProgressCheckIntervalMs());
+  }
+
+  @Test
+  public void testSetExecutionProgressCheckIntervalMsWithNoRequestedValue() {
+    KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
+    Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class),
+                                     null, EasyMock.mock(AnomalyDetectorManager.class));
+    long defaultExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
+    long minExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
+
+    // With no requested executionProgressCheckIntervalMs, the value should be capped at defaultExecutionProgressCheckIntervalMs, and
+    //  set to at least minExecutionProgressCheckIntervalMs
+    executor.setExecutionProgressCheckIntervalMs(Long.MAX_VALUE);
+    assertEquals(defaultExecutionProgressCheckIntervalMs, executor.executionProgressCheckIntervalMs());
+
+    executor.setExecutionProgressCheckIntervalMs((long) 0);
+    assertEquals(minExecutionProgressCheckIntervalMs, executor.executionProgressCheckIntervalMs());
+
+    long validValue = minExecutionProgressCheckIntervalMs + (defaultExecutionProgressCheckIntervalMs - minExecutionProgressCheckIntervalMs) / 2;
+    executor.setExecutionProgressCheckIntervalMs(validValue);
+    assertEquals(validValue, executor.executionProgressCheckIntervalMs());
+  }
+
+  @Test
   public void testExecutionKnobs() {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
     assertThrows(IllegalStateException.class,
                  () -> new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class), null, null));
     Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class),
                                      null, EasyMock.mock(AnomalyDetectorManager.class));
-
-    // Verify correctness of set/get requested execution progress check interval.
-    long defaultExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
-    assertEquals(defaultExecutionProgressCheckIntervalMs, executor.executionProgressCheckIntervalMs());
-    long minExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
-    executor.setRequestedExecutionProgressCheckIntervalMs(minExecutionProgressCheckIntervalMs);
-    assertEquals(minExecutionProgressCheckIntervalMs, executor.executionProgressCheckIntervalMs());
-    assertThrows(IllegalArgumentException.class,
-                 () -> executor.setRequestedExecutionProgressCheckIntervalMs(minExecutionProgressCheckIntervalMs - 1));
 
     // Verify correctness of add/drop recently removed/demoted brokers.
     assertFalse(executor.dropRecentlyRemovedBrokers(Collections.emptySet()));
@@ -408,8 +454,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     Time time = new MockTime();
     MetadataClient mockMetadataClient = EasyMock.mock(MetadataClient.class);
     // Fake the metadata to never change so the leader movement will timeout.
-    Node node0 = new Node(0, "host0", 100);
-    Node node1 = new Node(1, "host1", 100);
+    Node node0 = new Node(BROKER_ID_0, "host0", 100);
+    Node node1 = new Node(BROKER_ID_1, "host1", 100);
     Node[] replicas = new Node[2];
     replicas[0] = node0;
     replicas[1] = node1;
@@ -562,7 +608,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
    */
   private Map<String, TopicDescription> createTopics(int produceSizeInBytes) throws InterruptedException {
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
+        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(BROKER_ID_0).plaintextAddr()));
     try {
       adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC0, Collections.singletonMap(0, Collections.singletonList(0))),
                                              new NewTopic(TOPIC1, Collections.singletonMap(0, List.of(0, 1)))));
@@ -577,9 +623,9 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     Map<String, TopicDescription> topicDescriptions1 = null;
     do {
       AdminClient adminClient0 = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-          AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
+          AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(BROKER_ID_0).plaintextAddr()));
       AdminClient adminClient1 = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-          AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(1).plaintextAddr()));
+          AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(BROKER_ID_1).plaintextAddr()));
       try {
         topicDescriptions0 = adminClient0.describeTopics(Arrays.asList(TOPIC0, TOPIC1)).all().get();
         topicDescriptions1 = adminClient1.describeTopics(Arrays.asList(TOPIC0, TOPIC1)).all().get();
@@ -603,7 +649,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
 
   private void verifyOngoingPartitionReassignments(Set<TopicPartition> partitions) {
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
+        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(BROKER_ID_0).plaintextAddr()));
     try {
       waitUntilTrue(() -> {
                       try {
@@ -654,6 +700,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
             .andReturn(LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING)
             .anyTimes();
     EasyMock.expect(mockLoadMonitor.samplingMode()).andReturn(ALL).anyTimes();
+    EasyMock.expect(mockLoadMonitor.deadBrokersWithReplicas(anyLong())).andReturn(new HashSet<>()).anyTimes();
     mockLoadMonitor.pauseMetricSampling(isA(String.class), EasyMock.anyBoolean());
     expectLastCall().anyTimes();
     mockLoadMonitor.setSamplingMode(ONGOING_EXECUTION);
@@ -662,6 +709,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     expectLastCall().anyTimes();
     mockLoadMonitor.setSamplingMode(ALL);
     expectLastCall().anyTimes();
+    EasyMock.expect(mockLoadMonitor.brokersWithReplicas(anyLong())).andReturn(Set.of(BROKER_ID_0, BROKER_ID_1)).anyTimes();
     return mockLoadMonitor;
   }
 
@@ -713,7 +761,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     } else {
       EasyMock.replay(mockUserTaskInfo, mockExecutorNotifier, mockLoadMonitor, mockAnomalyDetectorManager);
     }
-    Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), null, mockExecutorNotifier,
+    MetricRegistry metricRegistry = new MetricRegistry();
+    Executor executor = new Executor(configs, new SystemTime(), metricRegistry, null, mockExecutorNotifier,
                                      mockAnomalyDetectorManager);
     executor.setUserTaskManager(mockUserTaskManager);
     Map<TopicPartition, Integer> replicationFactors = new HashMap<>();
@@ -729,6 +778,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
 
     if (verifyProgress) {
       verifyOngoingPartitionReassignments(Collections.singleton(TP0));
+      assertTrue("Concurrency adjuster is not started during execution", executor.isConcurrencyAdjusterStarted());
+      assertTrue("Concurrency manager is not initialized during execution", executor.isConcurrencyManagerInitialized());
     }
 
     waitUntilTrue(() -> (!executor.hasOngoingExecution() && executor.state().state() == ExecutorState.State.NO_TASK_IN_PROGRESS),
@@ -760,6 +811,15 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     } else {
       EasyMock.verify(mockUserTaskInfo, mockExecutorNotifier, mockLoadMonitor, mockAnomalyDetectorManager);
     }
+
+    assertNotNull(metricRegistry.meter("Executor.inter-broker-partition-movement-rate"));
+    assertNotNull(metricRegistry.meter("Executor.intra-broker-partition-movement-rate"));
+    assertNotNull(metricRegistry.meter("Executor.leadership-movement-rate"));
+    assertNotNull(metricRegistry.meter("Executor.partition-data-movement-rate-MB"));
+    assertNotNull(metricRegistry.gauge("Executor.partition-movement-count-per-second"));
+    assertNotNull(metricRegistry.gauge("Executor.partition-movement-MB-per-second"));
+    assertFalse("Concurrency adjuster is not shutdown after execution", executor.isConcurrencyAdjusterStarted());
+    assertFalse("Concurrency manager is not reset after execution", executor.isConcurrencyManagerInitialized());
   }
 
   private Properties getExecutorProperties() {

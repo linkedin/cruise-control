@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.executor;
 import com.linkedin.cruisecontrol.common.utils.Utils;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.executor.concurrency.ExecutionConcurrencyManager;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.StrategyOptions;
@@ -295,16 +296,39 @@ public class ExecutionTaskPlanner {
   /**
    * Get the leadership movement tasks, and remove them from _remainingLeadershipMovements.
    *
-   * @param numTasks Number of tasks to remove from the _remainingLeadershipMovements. If _remainingLeadershipMovements
-   *                 has less than numTasks, all tasks are removed.
+   * @param executionConcurrencyManager the execution concurrency manager
    * @return The leadership movement tasks.
    */
-  public List<ExecutionTask> getLeadershipMovementTasks(int numTasks) {
+  public List<ExecutionTask> getLeadershipMovementTasks(ExecutionConcurrencyManager executionConcurrencyManager) {
+    Map<Integer, Integer> leadershipConcurrency =
+            new HashMap<>(executionConcurrencyManager.getExecutionConcurrencyPerBroker(ConcurrencyType.LEADERSHIP));
     List<ExecutionTask> leadershipMovementsList = new ArrayList<>();
     Iterator<ExecutionTask> leadershipMovementIter = _remainingLeadershipMovements.values().iterator();
-    for (int i = 0; i < numTasks && leadershipMovementIter.hasNext(); i++) {
-      leadershipMovementsList.add(leadershipMovementIter.next());
-      leadershipMovementIter.remove();
+    int taskQuota = executionConcurrencyManager.maxClusterLeadershipMovements();
+    while (leadershipMovementIter.hasNext() && taskQuota > 0) {
+      ExecutionTask leadershipMovementTask = leadershipMovementIter.next();
+      Set<Integer> replicas = leadershipMovementTask.proposal().newReplicas().stream().map(ReplicaPlacementInfo::brokerId).collect(
+          Collectors.toSet());
+      boolean canSchedule = true;
+      for (int broker: replicas) {
+        if (leadershipConcurrency.containsKey(broker)) {
+          if (leadershipConcurrency.get(broker) <= 0) {
+            canSchedule = false;
+            break;
+          }
+        } else {
+          leadershipConcurrency.put(broker, executionConcurrencyManager.getExecutionConcurrency(broker, ConcurrencyType.LEADERSHIP));
+        }
+      }
+
+      if (canSchedule) {
+        for (int broker: replicas) {
+          leadershipConcurrency.put(broker, leadershipConcurrency.get(broker) - 1);
+        }
+        leadershipMovementsList.add(leadershipMovementTask);
+        leadershipMovementIter.remove();
+        taskQuota--;
+      }
     }
     return leadershipMovementsList;
   }

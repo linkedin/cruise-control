@@ -39,8 +39,8 @@ public class DropRecentBrokersParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _dropRecentlyRemovedBrokers = ParameterUtils.dropRecentlyRemovedBrokers(_request);
-    _dropRecentlyDemotedBrokers = ParameterUtils.dropRecentlyDemotedBrokers(_request);
+    _dropRecentlyRemovedBrokers = ParameterUtils.dropRecentlyRemovedBrokers(_requestContext);
+    _dropRecentlyDemotedBrokers = ParameterUtils.dropRecentlyDemotedBrokers(_requestContext);
   }
 
   /**

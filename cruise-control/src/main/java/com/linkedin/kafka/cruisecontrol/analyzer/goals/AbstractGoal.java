@@ -67,7 +67,7 @@ public abstract class AbstractGoal implements Goal {
 
   @Override
   public void configure(Map<String, ?> configs) {
-    KafkaCruiseControlConfig parsedConfig = new KafkaCruiseControlConfig(configs, false);
+    KafkaCruiseControlConfig parsedConfig = new KafkaCruiseControlConfig(configs);
     _balancingConstraint = new BalancingConstraint(parsedConfig);
     _numWindows = parsedConfig.getInt(MonitorConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG);
     _minMonitoredPartitionPercentage = parsedConfig.getDouble(MonitorConfig.MIN_VALID_PARTITION_RATIO_CONFIG);
@@ -134,8 +134,14 @@ public abstract class AbstractGoal implements Goal {
     }
   }
 
+  /**
+   * A default implementation
+   * @return Dynamically obtained simple name of the class.  Works even with sub-classing
+   */
   @Override
-  public abstract String name();
+  public String name() {
+    return this.getClass().getSimpleName();
+  }
 
   @Override
   public void finish() {

@@ -3,7 +3,7 @@
 set -e
 
 BASE_DIR=$(pwd)
-SCHEMA_WORKDIR="$BASE_DIR/cruise-control/src/yaml"
+SCHEMA_WORKDIR="$BASE_DIR/cruise-control/src/main/resources/yaml"
 WIKI_TARGET="$BASE_DIR/target/api_wiki"
 
 rm -rf "$WIKI_TARGET"

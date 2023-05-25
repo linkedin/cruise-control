@@ -506,9 +506,4 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
   public ModelCompletenessRequirements clusterModelCompletenessRequirements() {
     return new ModelCompletenessRequirements(_numWindows, _minMonitoredPartitionPercentage, false);
   }
-
-  @Override
-  public String name() {
-    return this.getClass().getSimpleName();
-  }
 }

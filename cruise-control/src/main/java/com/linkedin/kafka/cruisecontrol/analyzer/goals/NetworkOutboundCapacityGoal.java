@@ -30,8 +30,4 @@ public class NetworkOutboundCapacityGoal extends CapacityGoal {
     return Resource.NW_OUT;
   }
 
-  @Override
-  public String name() {
-    return NetworkOutboundCapacityGoal.class.getSimpleName();
-  }
 }

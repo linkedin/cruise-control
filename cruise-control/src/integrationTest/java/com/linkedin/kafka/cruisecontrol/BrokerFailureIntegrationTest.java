@@ -18,6 +18,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.SelfHealingNotifier;
 import net.minidev.json.JSONArray;
@@ -46,15 +47,20 @@ public class BrokerFailureIntegrationTest extends CruiseControlIntegrationTestHa
 
   private static final int BROKER_ID_TO_REMOVE = 1;
 
-  private final Boolean _kafkaBrokerFailureDetectorEnable;
+  private final Boolean _vertxEnabled;
 
-  public BrokerFailureIntegrationTest(Boolean kafkaBrokerFailureDetectorEnable) {
-    this._kafkaBrokerFailureDetectorEnable = kafkaBrokerFailureDetectorEnable;
+  public BrokerFailureIntegrationTest(Boolean vertxEnabled) {
+    this._vertxEnabled = vertxEnabled;
   }
 
+  /**
+   * Sets different parameters for test runs.
+   * @return Parameters for the test runs.
+   */
   @Parameterized.Parameters
   public static Collection<Boolean> data() {
-    return Arrays.asList(true, false);
+    Boolean[] data = {true, false};
+    return Arrays.asList(data);
   }
 
   @Before
@@ -80,7 +86,6 @@ public class BrokerFailureIntegrationTest extends CruiseControlIntegrationTestHa
   @Override
   protected Map<String, Object> withConfigs() {
     Map<String, Object> configs = KafkaCruiseControlIntegrationTestUtils.ccConfigOverrides();
-    configs.put(AnomalyDetectorConfig.KAFKA_BROKER_FAILURE_DETECTION_ENABLE_CONFIG, String.valueOf(_kafkaBrokerFailureDetectorEnable));
     configs.put(AnomalyDetectorConfig.BROKER_FAILURE_DETECTION_INTERVAL_MS_CONFIG, "30000");
     configs.put(SelfHealingNotifier.BROKER_FAILURE_ALERT_THRESHOLD_MS_CONFIG, "1000");
     configs.put(SelfHealingNotifier.BROKER_FAILURE_SELF_HEALING_THRESHOLD_MS_CONFIG, "1500");
@@ -98,6 +103,7 @@ public class BrokerFailureIntegrationTest extends CruiseControlIntegrationTestHa
     configs.put(AnalyzerConfig.HARD_GOALS_CONFIG, new StringJoiner(",")
         .add(ReplicaCapacityGoal.class.getName())
         .add(MinTopicLeadersPerBrokerGoal.class.getName()).toString());
+    configs.put(WebServerConfig.VERTX_ENABLED_CONFIG, String.valueOf(_vertxEnabled));
     
     return configs;
   }

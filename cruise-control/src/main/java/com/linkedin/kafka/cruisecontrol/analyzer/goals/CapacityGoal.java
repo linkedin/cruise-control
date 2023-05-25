@@ -112,9 +112,6 @@ public abstract class CapacityGoal extends AbstractGoal {
     return new ModelCompletenessRequirements(MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING, _minMonitoredPartitionPercentage, true);
   }
 
-  @Override
-  public abstract String name();
-
   /**
    * This is a hard goal; hence, the proposals are not limited to broken broker replicas in case of self-healing.
    * Check if requirements of this goal are not violated if this action is applied to the given cluster state,

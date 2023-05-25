@@ -4,17 +4,22 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.rackaware.NoOpRackAwareGoalRackIdMapper;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.rackaware.RackAwareGoalRackIdMapper;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
+import com.linkedin.kafka.cruisecontrol.model.Rack;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
+import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.stream.Collectors;
@@ -22,8 +27,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
-import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.BROKER_REJECT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 
@@ -33,6 +38,24 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaS
  */
 public abstract class AbstractRackAwareGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractRackAwareGoal.class);
+  private static final RackAwareGoalRackIdMapper DEFAULT_RACK_ID_MAPPER = new NoOpRackAwareGoalRackIdMapper();
+
+  @VisibleForTesting
+  RackAwareGoalRackIdMapper _rackIdMapper = DEFAULT_RACK_ID_MAPPER;
+
+  protected String mappedRackIdOf(Broker broker) {
+    return mappedRackIdOf(broker.rack());
+  }
+
+  protected String mappedRackIdOf(Rack rack) {
+    return _rackIdMapper.apply(rack.id());
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
+    _rackIdMapper = GoalUtils.getRackAwareGoalRackIdMapper(configs);
+  }
 
   @Override
   public ClusterModelStatsComparator clusterModelStatsComparator() {
@@ -133,8 +156,8 @@ public abstract class AbstractRackAwareGoal extends AbstractGoal {
       if (maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers,
                                     ActionType.INTER_BROKER_REPLICA_MOVEMENT, optimizedGoals, optimizationOptions) == null) {
         if (throwExceptionIfCannotMove) {
-          Set<String> partitionRackIds = clusterModel.partition(replica.topicPartition()).partitionBrokers()
-                                                     .stream().map(partitionBroker -> partitionBroker.rack().id()).collect(Collectors.toSet());
+          Set<String> partitionRackIds = clusterModel.partition(replica.topicPartition()).partitionBrokers().stream()
+                                                     .map(this::mappedRackIdOf).collect(Collectors.toSet());
 
           ProvisionRecommendation recommendation = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
               .numBrokers(1).excludedRackIds(partitionRackIds).build();

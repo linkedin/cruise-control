@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.HashSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -46,9 +47,14 @@ class ReplicationThrottleHelper {
   private final AdminClient _adminClient;
   private final Long _throttleRate;
   private final int _retries;
+  private final Set<Integer> _deadBrokers;
 
   ReplicationThrottleHelper(AdminClient adminClient, Long throttleRate) {
     this(adminClient, throttleRate, RETRIES);
+  }
+
+  ReplicationThrottleHelper(AdminClient adminClient, Long throttleRate, Set<Integer> deadBrokers) {
+    this(adminClient, throttleRate, RETRIES, deadBrokers);
   }
 
   // for testing
@@ -56,6 +62,14 @@ class ReplicationThrottleHelper {
     this._adminClient = adminClient;
     this._throttleRate = throttleRate;
     this._retries = retries;
+    this._deadBrokers = new HashSet<Integer>();
+  }
+
+  ReplicationThrottleHelper(AdminClient adminClient, Long throttleRate, int retries, Set<Integer> deadBrokers) {
+    this._adminClient = adminClient;
+    this._throttleRate = throttleRate;
+    this._retries = retries;
+    this._deadBrokers = deadBrokers;
   }
 
   void setThrottles(List<ExecutionProposal> replicaMovementProposals)
@@ -144,6 +158,7 @@ class ReplicationThrottleHelper {
       participatingBrokers.addAll(proposal.oldReplicas().stream().map(ReplicaPlacementInfo::brokerId).collect(Collectors.toSet()));
       participatingBrokers.addAll(proposal.newReplicas().stream().map(ReplicaPlacementInfo::brokerId).collect(Collectors.toSet()));
     }
+    participatingBrokers.removeAll(_deadBrokers);
     return participatingBrokers;
   }
 
