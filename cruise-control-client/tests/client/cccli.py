@@ -12,7 +12,7 @@ def test__get_endpoint__add_broker(namespace_builder: Callable[[Any, Any], argpa
 
     endpoint = get_endpoint_from_args(namespace)
     parameters = extract_parameters(endpoint, namespace)
-    assert parameters.get('brokers').value == '123,456'
+    assert parameters.get('brokerid').value == '123,456'
     assert parameters.get('destination_broker_ids').value == '789,012'
     assert parameters.get('concurrent_partition_movements_per_broker').value == 40
 

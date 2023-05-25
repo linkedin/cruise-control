@@ -5,7 +5,7 @@
 import cruisecontrolclient.client.Endpoint as Endpoint
 
 # To be able to make more precise type hints
-from typing import Dict, List, Set, Tuple, Type
+from typing import Dict, List, Set, Type
 
 # Define the in-order available endpoints for programmatically building the argparse CLI
 AVAILABLE_ENDPOINTS: List[Type[Endpoint.AbstractEndpoint]] = [
