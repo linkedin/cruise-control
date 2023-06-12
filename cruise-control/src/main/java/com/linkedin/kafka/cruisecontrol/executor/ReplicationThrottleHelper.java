@@ -423,37 +423,30 @@ class ReplicationThrottleHelper {
     try {
       // First we try to get the LogConfig class for Kafka 3.5+
       logConfigClass = Class.forName(LOG_CONFIG_IN_KAFKA_3_5_AND_LATER);
-      LOG.info("Found class {} for Kafka 3.5 and newer.", LOG_CONFIG_IN_KAFKA_3_5_AND_LATER);
-      try {
-        Field field = logConfigClass.getDeclaredField(config.toString());
-        return field.get(null).toString();
-      } catch (NoSuchFieldException | IllegalAccessException e) {
-        LOG.info("Field {} not found. We are probably on Kafka 3.4 or older.", config);
-      }
-    } catch (ClassNotFoundException e) {
-      LOG.info("Class {} not found. We are probably on Kafka 3.4 or older.", LOG_CONFIG_IN_KAFKA_3_5_AND_LATER);
+
+      Field field = logConfigClass.getDeclaredField(config.toString());
+      return field.get(null).toString();
+    } catch (ClassNotFoundException | NoSuchFieldException | IllegalAccessException e) {
+      LOG.info("Failed to read config {} from LogConfig class since we are probably on kafka 3.4 or older: {}", config, e);
     }
 
     // We did not find the LogConfig class or field from Kafka 3.5+.
     // So we are probably on older Kafka version => we will try the older class for Kafka 3.4-.
     try {
       logConfigClass = Class.forName(LOG_CONFIG_IN_KAFKA_3_4_AND_EARLIER);
-      LOG.info("Found class {} for Kafka 3.4 and earlier.", LOG_CONFIG_IN_KAFKA_3_4_AND_EARLIER);
-      try {
-        String nameOfMethod = "";
-        if (config == LogConfig.LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG) {
-          nameOfMethod = "LeaderReplicationThrottledReplicasProp";
-        } else if (config == LogConfig.FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG) {
-          nameOfMethod = "FollowerReplicationThrottledReplicasProp";
-        }
-        Method method = logConfigClass.getMethod(nameOfMethod);
-        return method.invoke(null).toString();
-      } catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
-        throw new RuntimeException("Failed to get configuration", e);
+
+      String nameOfMethod = "";
+      if (config == LogConfig.LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG) {
+        nameOfMethod = "LeaderReplicationThrottledReplicasProp";
+      } else if (config == LogConfig.FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG) {
+        nameOfMethod = "FollowerReplicationThrottledReplicasProp";
       }
-    } catch (ClassNotFoundException e) {
-      // No class was found for any Kafka version => we should fail
-      throw new RuntimeException("Failed to find LogConfig class", e);
+
+      Method method = logConfigClass.getMethod(nameOfMethod);
+      return method.invoke(null).toString();
+      } catch (ClassNotFoundException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
+      // No class or method was found for any Kafka version => we should fail
+      throw new RuntimeException("Failed to read config " + config + " from LogConfig class:", e);
+      }
     }
-  }
 }
