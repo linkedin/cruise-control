@@ -299,7 +299,7 @@ project(':cruise-control') {
     api 'io.swagger.core.v3:swagger-annotations:2.0.2'
     api 'io.swagger.core.v3:swagger-core:2.0.2'
     api 'com.google.guava:guava:25.1-jre'
-    api 'org.json:json:20210307'
+    api 'org.json:json:20230227'
 
     testImplementation project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
     testImplementation project(path: ':cruise-control-core', configuration: 'testOutput')
