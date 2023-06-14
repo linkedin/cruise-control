@@ -43,6 +43,7 @@ import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.config.SslConfigs;
+import org.apache.kafka.common.config.TopicConfig;
 import org.apache.kafka.common.errors.ReassignmentInProgressException;
 import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.message.MetadataResponseData;
@@ -80,8 +81,6 @@ import scala.Option;
 
 import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.RECONNECT_BACKOFF_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_HARD_GOAL_CHECK_PARAM;
-import static kafka.log.LogConfig.CleanupPolicyProp;
-import static kafka.log.LogConfig.RetentionMsProp;
 
 
 /**
@@ -243,8 +242,8 @@ public final class KafkaCruiseControlUtils {
 
     NewTopic newTopic = new NewTopic(topic, partitionCount, replicationFactor);
     Map<String, String> config = new HashMap<>();
-    config.put(RetentionMsProp(), Long.toString(retentionMs));
-    config.put(CleanupPolicyProp(), DEFAULT_CLEANUP_POLICY);
+    config.put(TopicConfig.RETENTION_MS_CONFIG, Long.toString(retentionMs));
+    config.put(TopicConfig.CLEANUP_POLICY_CONFIG, DEFAULT_CLEANUP_POLICY);
     newTopic.configs(config);
 
     return newTopic;
