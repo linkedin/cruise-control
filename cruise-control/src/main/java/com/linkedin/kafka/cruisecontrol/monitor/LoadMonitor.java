@@ -62,6 +62,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.LOAD_MONITOR_SENSOR;
 import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.SKIP_LOADING_SAMPLES_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.getRackHandleNull;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.getReplicaPlacementInfo;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.populatePartitionLoad;
@@ -196,6 +197,12 @@ public class LoadMonitor {
     // The cluster has partitions with ISR > replicas (0: No such partitions, 1: Has such partitions)
     dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_SENSOR, "has-partitions-with-isr-greater-than-replicas"),
                                       (Gauge<Integer>) () -> MonitorUtils.hasPartitionsWithIsrGreaterThanReplicas(kafkaCluster()) ? 1 : 0);
+    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_SENSOR, "dead-brokers-with-replicas"),
+                                      (Gauge<Integer>) () -> deadBrokersWithReplicas(MAX_METADATA_WAIT_MS).size());
+    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_SENSOR, "brokers-with-replicas"),
+                                      (Gauge<Integer>) () -> brokersWithReplicas(MAX_METADATA_WAIT_MS).size());
+    dropwizardMetricRegistry.register(MetricRegistry.name(LOAD_MONITOR_SENSOR, "brokers-with-offline-replicas"),
+                                      (Gauge<Integer>) () -> brokersWithOfflineReplicas(MAX_METADATA_WAIT_MS).size());
   }
 
   /**
