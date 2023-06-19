@@ -176,8 +176,8 @@ project(':cruise-control-core') {
     api "org.eclipse.jetty:jetty-servlet:${jettyVersion}"
     implementation 'com.google.code.findbugs:jsr305:3.0.2'
 
-    api 'io.vertx:vertx-core:4.2.2'
-    api 'io.vertx:vertx-web:4.2.2'
+    api "io.vertx:vertx-core:${vertxVersion}"
+    api "io.vertx:vertx-web:${vertxVersion}"
 
     testImplementation 'junit:junit:4.13.2'
 
@@ -294,10 +294,10 @@ project(':cruise-control') {
     implementation 'com.google.guava:guava:31.1-jre'
     // Temporary pin for vulnerability
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.4.2'
-    api 'io.vertx:vertx-web-openapi:4.2.2'
-    api 'io.vertx:vertx-core:4.2.2'
-    api 'io.vertx:vertx-web:4.2.2'
-    api 'io.vertx:vertx-junit5:4.2.2'
+    api "io.vertx:vertx-web-openapi:${vertxVersion}"
+    api "io.vertx:vertx-core:${vertxVersion}"
+    api "io.vertx:vertx-web:${vertxVersion}"
+    api "io.vertx:vertx-junit5:${vertxVersion}"
     api 'io.swagger.core.v3:swagger-annotations:2.0.2'
     api 'io.swagger.core.v3:swagger-core:2.0.2'
     api 'com.google.guava:guava:25.1-jre'
