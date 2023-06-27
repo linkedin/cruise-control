@@ -40,6 +40,8 @@ import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.re
  * <ul>
  *   <li>{@link #PROMETHEUS_SERVER_ENDPOINT_CONFIG}: The config for the HTTP endpoint of the Prometheus server
  *   which is to be used as a source for sampling metrics.</li>
+ *   <li>{@link #PROMETHEUS_SERVER_ENDPOINT_BASIC_AUTH_CONFIG}: The config for the basic auth credentials of the
+ *   Prometheus server which is to be used as a source for sampling metrics in the form of {@code user:password}.</li>
  *   <li>{@link #PROMETHEUS_QUERY_RESOLUTION_STEP_MS_CONFIG}: The config for the resolution of the Prometheus
  *   query made to the server (default: {@link #DEFAULT_PROMETHEUS_QUERY_RESOLUTION_STEP_MS}).
  *   If this is set to 30 seconds for a 2 minutes query interval, the query returns with 4 values, which are
@@ -52,6 +54,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.re
 public class PrometheusMetricSampler extends AbstractMetricSampler {
     // Config name visible to tests
     static final String PROMETHEUS_SERVER_ENDPOINT_CONFIG = "prometheus.server.endpoint";
+    static final String PROMETHEUS_SERVER_ENDPOINT_BASIC_AUTH_CONFIG = "prometheus.server.endpoint.auth.basic";
 
     // Config name visible to tests
     static final String PROMETHEUS_QUERY_RESOLUTION_STEP_MS_CONFIG = "prometheus.query.resolution.step.ms";
@@ -104,6 +107,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
             throw new ConfigException(String.format(
                 "%s config is required by Prometheus metric sampler", PROMETHEUS_SERVER_ENDPOINT_CONFIG));
         }
+        final String basicAuth = (String) configs.get(PROMETHEUS_SERVER_ENDPOINT_BASIC_AUTH_CONFIG);
 
         try {
             HttpHost host = HttpHost.create(endpoint);
@@ -111,11 +115,11 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
                 throw new IllegalArgumentException();
             }
             _httpClient = HttpClients.createDefault();
-            _prometheusAdapter = new PrometheusAdapter(_httpClient, host, _samplingIntervalMs);
+            _prometheusAdapter = new PrometheusAdapter(_httpClient, host, basicAuth, _samplingIntervalMs);
         } catch (IllegalArgumentException ex) {
             throw new ConfigException(
                 String.format("Prometheus endpoint URI is malformed, "
-                              + "expected schema://host:port, provided %s", endpoint), ex);
+                              + "expected schema://host[:port], provided %s", endpoint), ex);
         }
     }
 

@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.io.IOUtils;
@@ -42,13 +43,16 @@ class PrometheusAdapter {
 
     private final CloseableHttpClient _httpClient;
     protected final HttpHost _prometheusEndpoint;
+    protected final String _prometheusBasicAuth;
     protected final int _samplingIntervalMs;
 
     PrometheusAdapter(CloseableHttpClient httpClient,
                       HttpHost prometheusEndpoint,
+                      String prometheusBasicAuth,
                       int samplingIntervalMs) {
         _httpClient = validateNotNull(httpClient, "httpClient cannot be null.");
         _prometheusEndpoint = validateNotNull(prometheusEndpoint, "prometheusEndpoint cannot be null.");
+        _prometheusBasicAuth = prometheusBasicAuth;
         _samplingIntervalMs = samplingIntervalMs;
     }
 
@@ -61,6 +65,12 @@ class PrometheusAdapter {
                                                    long endTimeMs) throws IOException {
         URI queryUri = URI.create(_prometheusEndpoint.toURI() + QUERY_RANGE_API_PATH);
         HttpPost httpPost = new HttpPost(queryUri);
+
+        if (_prometheusBasicAuth != null && !_prometheusBasicAuth.isEmpty()) {
+            httpPost.addHeader(
+                    "Authorization",
+                    "Basic " + Base64.getEncoder().encodeToString(_prometheusBasicAuth.getBytes(StandardCharsets.UTF_8)));
+        }
 
         List<NameValuePair> data = new ArrayList<>();
         data.add(new BasicNameValuePair(QUERY, queryString));
