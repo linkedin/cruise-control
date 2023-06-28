@@ -57,6 +57,9 @@ Cruise Control metrics are useful to monitor the state of Cruise Control itself.
 | The monitored partition percentage                                                                            | kafka.cruisecontrol:name=LoadMonitor.monitored-partitions-percentage                  |
 | Cluster model creation time in ms                                                                             | kafka.cruisecontrol:name=LoadMonitor.cluster-model-creation-timer                     |
 | The cluster has partitions with ISR > replicas (0: No such partitions, 1: Has such partitions)                | kafka.cruisecontrol:name=LoadMonitor.has-partitions-with-isr-greater-than-replicas    |
+| The number of dead brokers which host some replicas in the cluster                                            | kafka.cruisecontrol:name=LoadMonitor.dead-brokers-with-replicas                       |
+| The number of brokers in the cluster that has at least one replica assigned                                   | kafka.cruisecontrol:name=LoadMonitor.brokers-with-replicas                            |
+| The number of brokers in the cluster that has at least one offline replica                                    | kafka.cruisecontrol:name=LoadMonitor.brokers-with-offline-replicas                    |
 
 ### UserTaskManager Sensors
 

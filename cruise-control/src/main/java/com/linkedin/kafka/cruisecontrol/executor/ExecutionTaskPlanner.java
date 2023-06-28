@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.executor;
 import com.linkedin.cruisecontrol.common.utils.Utils;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.executor.concurrency.ExecutionConcurrencyManager;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.StrategyOptions;
@@ -295,25 +296,28 @@ public class ExecutionTaskPlanner {
   /**
    * Get the leadership movement tasks, and remove them from _remainingLeadershipMovements.
    *
-   * @param leadershipConcurrencyByBrokerId the leadership movement concurrency of each broker
-   * @param clusterLeadershipMovementConcurrency the allowed movement concurrency of the whole cluster
+   * @param executionConcurrencyManager the execution concurrency manager
    * @return The leadership movement tasks.
    */
-  public List<ExecutionTask> getLeadershipMovementTasks(Map<Integer, Integer> leadershipConcurrencyByBrokerId,
-                                                        int clusterLeadershipMovementConcurrency) {
-    Map<Integer, Integer> leadershipConcurrency = new HashMap<>(leadershipConcurrencyByBrokerId);
+  public List<ExecutionTask> getLeadershipMovementTasks(ExecutionConcurrencyManager executionConcurrencyManager) {
+    Map<Integer, Integer> leadershipConcurrency =
+            new HashMap<>(executionConcurrencyManager.getExecutionConcurrencyPerBroker(ConcurrencyType.LEADERSHIP));
     List<ExecutionTask> leadershipMovementsList = new ArrayList<>();
     Iterator<ExecutionTask> leadershipMovementIter = _remainingLeadershipMovements.values().iterator();
-    int taskQuota = clusterLeadershipMovementConcurrency;
+    int taskQuota = executionConcurrencyManager.maxClusterLeadershipMovements();
     while (leadershipMovementIter.hasNext() && taskQuota > 0) {
       ExecutionTask leadershipMovementTask = leadershipMovementIter.next();
       Set<Integer> replicas = leadershipMovementTask.proposal().newReplicas().stream().map(ReplicaPlacementInfo::brokerId).collect(
           Collectors.toSet());
       boolean canSchedule = true;
       for (int broker: replicas) {
-        if (leadershipConcurrency.containsKey(broker) && leadershipConcurrency.get(broker) <= 0) {
-          canSchedule = false;
-          break;
+        if (leadershipConcurrency.containsKey(broker)) {
+          if (leadershipConcurrency.get(broker) <= 0) {
+            canSchedule = false;
+            break;
+          }
+        } else {
+          leadershipConcurrency.put(broker, executionConcurrencyManager.getExecutionConcurrency(broker, ConcurrencyType.LEADERSHIP));
         }
       }
 

@@ -45,11 +45,6 @@ public class DiskUsageDistributionGoal extends ResourceDistributionGoal {
   }
 
   @Override
-  public String name() {
-    return DiskUsageDistributionGoal.class.getSimpleName();
-  }
-
-  @Override
   public ModelCompletenessRequirements clusterModelCompletenessRequirements() {
     return new ModelCompletenessRequirements(MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING, _minMonitoredPartitionPercentage, true);
   }

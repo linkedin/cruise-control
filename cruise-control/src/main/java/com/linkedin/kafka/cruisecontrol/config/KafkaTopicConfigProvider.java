@@ -109,7 +109,7 @@ public class KafkaTopicConfigProvider extends JsonFileTopicConfigProvider {
   public void configure(Map<String, ?> configs) {
     _connectString = (String) configs.get(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG);
     _zkSecurityEnabled = (Boolean) configs.get(ExecutorConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
-    _zkClientConfig = ZKConfigUtils.zkClientConfigFromKafkaConfig(new KafkaCruiseControlConfig(configs));
+    _zkClientConfig = ZKConfigUtils.zkClientConfigFromKafkaConfig(new KafkaCruiseControlConfig(configs, true));
     _clusterConfigs = loadClusterConfigs(configs);
   }
 

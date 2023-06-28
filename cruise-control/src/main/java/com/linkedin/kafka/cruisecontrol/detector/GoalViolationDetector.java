@@ -309,7 +309,7 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
                                                                                                                excludedBrokersForLeadership,
                                                                                                                excludedBrokersForReplicaMove);
       if (checkPartitionsWithRFGreaterThanNumRacks) {
-        _hasPartitionsWithRFGreaterThanNumRacks = clusterModel.maxReplicationFactor() > clusterModel.numAliveRacksAllowedReplicaMoves(options);
+        _hasPartitionsWithRFGreaterThanNumRacks = clusterModel.maxReplicationFactor() > clusterModel.aliveRacksAllowedReplicaMoves(options).size();
       }
       goal.optimize(clusterModel, Collections.emptySet(), options);
     } catch (OptimizationFailureException ofe) {

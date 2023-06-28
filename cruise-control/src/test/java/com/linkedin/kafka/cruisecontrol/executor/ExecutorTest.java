@@ -34,6 +34,7 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
+import java.util.HashSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
@@ -699,6 +700,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
             .andReturn(LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING)
             .anyTimes();
     EasyMock.expect(mockLoadMonitor.samplingMode()).andReturn(ALL).anyTimes();
+    EasyMock.expect(mockLoadMonitor.deadBrokersWithReplicas(anyLong())).andReturn(new HashSet<>()).anyTimes();
     mockLoadMonitor.pauseMetricSampling(isA(String.class), EasyMock.anyBoolean());
     expectLastCall().anyTimes();
     mockLoadMonitor.setSamplingMode(ONGOING_EXECUTION);

@@ -141,11 +141,6 @@ public class PotentialNwOutGoal extends AbstractGoal {
   }
 
   @Override
-  public String name() {
-    return PotentialNwOutGoal.class.getSimpleName();
-  }
-
-  @Override
   public boolean isHardGoal() {
     return false;
   }

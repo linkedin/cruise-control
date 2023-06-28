@@ -30,8 +30,4 @@ public class CpuUsageDistributionGoal extends ResourceDistributionGoal {
     return Resource.CPU;
   }
 
-  @Override
-  public String name() {
-    return CpuUsageDistributionGoal.class.getSimpleName();
-  }
 }

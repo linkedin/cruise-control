@@ -100,11 +100,6 @@ public class BrokerSetAwareGoal extends AbstractGoal {
   }
 
   @Override
-  public String name() {
-    return BrokerSetAwareGoal.class.getSimpleName();
-  }
-
-  @Override
   public boolean isHardGoal() {
     return true;
   }

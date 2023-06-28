@@ -26,8 +26,8 @@ discussed are unlikely to be accepted.
 5. Do not create a PR with "work-in-progress" (WIP) changes.
 6. Use clear and concise titles for submitted PRs and issues.
 7. Each PR should be linked to an existing issue corresponding to the PR 
-(see [PR template](https://github.com/linkedin/cruise-control/blob/migrate_to_kafka_2_4/docs/pull_request_template.md)).
+(see [PR template](./docs/pull_request_template.md)).
 8. If there are no existing issues about a PR, create one before submitting the PR.
 9. We strongly encourage the use of recommended code-style for the project 
-(see [code-style.xml](https://github.com/linkedin/cruise-control/blob/migrate_to_kafka_2_4/docs/code-style.xml)).
+(see [code-style.xml](./docs/code-style.xml)).
 10. A pre-commit CheckStyle hook can be run by adding `./checkstyle/checkstyle-pre-commit` to your `.git/hooks/pre-commit` script.

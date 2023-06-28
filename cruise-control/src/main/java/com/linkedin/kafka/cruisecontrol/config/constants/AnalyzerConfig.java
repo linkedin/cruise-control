@@ -27,6 +27,8 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.rackaware.NoOpRackAwareGoalRackIdMapper;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.rackaware.RackAwareGoalRackIdMapper;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.config.BrokerSetAssignmentPolicy;
@@ -240,6 +242,16 @@ public final class AnalyzerConfig {
   public static final String DEFAULT_OPTIMIZATION_OPTIONS_GENERATOR_CLASS = DefaultOptimizationOptionsGenerator.class.getName();
   public static final String OPTIMIZATION_OPTIONS_GENERATOR_CLASS_DOC = String.format("The class implementing %s interface and "
       + "is used to generate optimization options for proposal calculations.", OptimizationOptionsGenerator.class.getName());
+
+  /**
+   * <code>rack.aware.goal.rack.id.mapper.class</code>
+   */
+  public static final String RACK_AWARE_GOAL_RACK_ID_MAPPER_CLASS_CONFIG = "rack.aware.goal.rack.id.mapper.class";
+  public static final String DEFAULT_RACK_AWARE_GOAL_RACK_ID_MAPPER_CLASS = NoOpRackAwareGoalRackIdMapper.class.getName();
+  public static final String RACK_AWARE_GOAL_RACK_ID_MAPPER_CLASS_DOC =
+      String.format("The class implementing %s interface to use to transform rack IDs for RackAwareGoals."
+                    + " Rack-aware replica placement will be performed upon the transformed rack ID.",
+                    RackAwareGoalRackIdMapper.class.getName());
 
   /**
    * <code>goals</code>
@@ -642,6 +654,11 @@ public final class AnalyzerConfig {
                             DEFAULT_OPTIMIZATION_OPTIONS_GENERATOR_CLASS,
                             ConfigDef.Importance.LOW,
                             OPTIMIZATION_OPTIONS_GENERATOR_CLASS_DOC)
+                    .define(RACK_AWARE_GOAL_RACK_ID_MAPPER_CLASS_CONFIG,
+                            ConfigDef.Type.CLASS,
+                            DEFAULT_RACK_AWARE_GOAL_RACK_ID_MAPPER_CLASS,
+                            ConfigDef.Importance.LOW,
+                            RACK_AWARE_GOAL_RACK_ID_MAPPER_CLASS_DOC)
                     .define(OVERPROVISIONED_MIN_EXTRA_RACKS_CONFIG,
                             ConfigDef.Type.INT,
                             DEFAULT_OVERPROVISIONED_MIN_EXTRA_RACKS,

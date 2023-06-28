@@ -41,9 +41,4 @@ public class NetworkInboundCapacityGoal extends CapacityGoal {
     // Leadership movement won't cause inbound network utilization change.
     return action.balancingAction() == ActionType.LEADERSHIP_MOVEMENT ? ACCEPT : super.actionAcceptance(action, clusterModel);
   }
-
-  @Override
-  public String name() {
-    return NetworkInboundCapacityGoal.class.getSimpleName();
-  }
 }
