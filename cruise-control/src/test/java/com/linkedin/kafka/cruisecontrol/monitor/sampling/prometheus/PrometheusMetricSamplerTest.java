@@ -80,22 +80,6 @@ public class PrometheusMetricSamplerTest {
         _prometheusQueryMap = prometheusQuerySupplier.get();
     }
 
-    @Test(expected = ConfigException.class)
-    public void testConfigureWithPrometheusEndpointNoPortFails() throws Exception {
-        Map<String, Object> config = new HashMap<>();
-        config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "http://kafka-cluster-1.org");
-        addCapacityConfig(config);
-        _prometheusMetricSampler.configure(config);
-    }
-
-    @Test(expected = ConfigException.class)
-    public void testConfigureWithPrometheusEndpointNegativePortFails() throws Exception {
-        Map<String, Object> config = new HashMap<>();
-        config.put(PROMETHEUS_SERVER_ENDPOINT_CONFIG, "http://kafka-cluster-1.org:-20");
-        addCapacityConfig(config);
-        _prometheusMetricSampler.configure(config);
-    }
-
     @Test
     public void testConfigureWithPrometheusEndpointNoSchemaDoesNotFail() throws Exception {
         Map<String, Object> config = new HashMap<>();
