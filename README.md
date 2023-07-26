@@ -54,7 +54,7 @@ Cruise Control for Apache Kafka
 * The `migrate_to_kafka_2_4` branch of Cruise Control is compatible with Apache Kafka `2.4` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.4.*`).
 * The `kafka_2_0_to_2_3` branch (deprecated) of Cruise Control is compatible with Apache Kafka `2.0`, `2.1`, `2.2`, and `2.3` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.0.*`).
 * The `kafka_0_11_and_1_0` branch (deprecated) of Cruise Control is compatible with Apache Kafka `0.11.0.0`, `1.0`, and `1.1` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `0.1.*`).
-* The current default branch of Cruise Control is `migrate_to_kafka_2_4`.
+* The current default branch of Cruise Control is `migrate_to_kafka_2_5`.
 * `message.format.version` `0.10.0` and above is needed.
 * The `kafka_2_0_to_2_3` and `kafka_0_11_and_1_0` branches compile with `Scala 2.11`.
 * The branch `migrate_to_kafka_2_4` compiles with `Scala 2.12`.
