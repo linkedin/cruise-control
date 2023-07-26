@@ -353,6 +353,9 @@ project(':cruise-control') {
     archiveBaseName = project.name + '-all'
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
     from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    manifest {
+      attributes("Multi-Release": true)
+    }
     with jar
   }
 
