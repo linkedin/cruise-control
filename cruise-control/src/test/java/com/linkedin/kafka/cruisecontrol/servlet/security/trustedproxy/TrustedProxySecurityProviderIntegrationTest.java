@@ -10,22 +10,10 @@ import org.apache.kerby.kerberos.kerb.KrbException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import javax.security.auth.Subject;
-import javax.servlet.http.HttpServletResponse;
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.security.PrivilegedAction;
 import java.util.List;
 import java.util.Map;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.STATE;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DO_AS;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
-
 public class TrustedProxySecurityProviderIntegrationTest extends SpnegoIntegrationTestHarness {
-
-  private static final String CRUISE_CONTROL_STATE_ENDPOINT = "kafkacruisecontrol/" + STATE;
 
   private static final String AUTH_SERVICE_NAME = "testauthservice";
   private static final String AUTH_SERVICE_PRINCIPAL = AUTH_SERVICE_NAME + "/localhost";
@@ -55,7 +43,7 @@ public class TrustedProxySecurityProviderIntegrationTest extends SpnegoIntegrati
    */
   @Before
   public void setup() throws Exception {
-    super.start();
+    start();
   }
 
   /**
@@ -63,63 +51,21 @@ public class TrustedProxySecurityProviderIntegrationTest extends SpnegoIntegrati
    */
   @After
   public void teardown() {
-    super.stop();
+    stop();
   }
 
   @Test
   public void testSuccessfulAuthentication() throws Exception {
-    Subject subject = _miniKdc.loginAs(AUTH_SERVICE_PRINCIPAL);
-    Subject.doAs(subject, (PrivilegedAction<Object>) () -> {
-      try {
-        String endpoint = CRUISE_CONTROL_STATE_ENDPOINT + "?" + DO_AS + "=" + CC_TEST_ADMIN;
-        HttpURLConnection stateEndpointConnection = (HttpURLConnection) new URI(_app.serverUrl())
-        .resolve(endpoint).toURL().openConnection();
-        assertEquals(HttpServletResponse.SC_OK, stateEndpointConnection.getResponseCode());
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
-      return null;
-    });
+    TrustedProxySecurityProviderTestUtils.testSuccessfulAuthentication(_miniKdc, _app, AUTH_SERVICE_PRINCIPAL, CC_TEST_ADMIN);
   }
 
   @Test
   public void testNoDoAsParameter() throws Exception {
-    Subject subject = _miniKdc.loginAs(AUTH_SERVICE_PRINCIPAL);
-    Subject.doAs(subject, (PrivilegedAction<Object>) () -> {
-
-      HttpURLConnection stateEndpointConnection;
-      try {
-        stateEndpointConnection = (HttpURLConnection) new URI(_app.serverUrl())
-            .resolve(CRUISE_CONTROL_STATE_ENDPOINT).toURL().openConnection();
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
-      // There is a bug in the Jetty implementation and it doesn't seem to handle the connection
-      // properly in case of an error so it somehow doesn't send a response code. To work this around
-      // I catch the RuntimeException that it throws.
-      assertThrows(RuntimeException.class, stateEndpointConnection::getResponseCode);
-      return null;
-    });
+    TrustedProxySecurityProviderTestUtils.testNoDoAsParameter(_miniKdc, _app, AUTH_SERVICE_PRINCIPAL);
   }
 
   @Test
   public void testNotAdminServiceLogin() throws Exception {
-    Subject subject = _miniKdc.loginAs(SOME_OTHER_SERVICE_PRINCIPAL);
-    Subject.doAs(subject, (PrivilegedAction<Object>) () -> {
-
-        String endpoint = CRUISE_CONTROL_STATE_ENDPOINT + "?" + DO_AS + "=" + CC_TEST_ADMIN;
-      HttpURLConnection stateEndpointConnection;
-      try {
-        stateEndpointConnection = (HttpURLConnection) new URI(_app.serverUrl())
-            .resolve(endpoint).toURL().openConnection();
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
-      // There is a bug in the Jetty implementation and it doesn't seem to handle the connection
-      // properly in case of an error so it somehow doesn't send a response code. To work this around
-      // I catch the RuntimeException that it throws.
-      assertThrows(RuntimeException.class, stateEndpointConnection::getResponseCode);
-      return null;
-    });
+    TrustedProxySecurityProviderTestUtils.testNotAdminServiceLogin(_miniKdc, _app, SOME_OTHER_SERVICE_PRINCIPAL, CC_TEST_ADMIN);
   }
 }

@@ -25,6 +25,7 @@ public class TrustedProxySecurityProvider extends SpnegoSecurityProvider {
   private List<String> _trustedProxyServices;
   private String _trustedProxyServicesIpRegex;
   private boolean _fallbackToSpnegoAllowed;
+  private List<String> _spnegoPrincipalToLocalRules;
 
   private static final Logger LOG = LoggerFactory.getLogger(TrustedProxySecurityProvider.class);
 
@@ -33,6 +34,7 @@ public class TrustedProxySecurityProvider extends SpnegoSecurityProvider {
     super.init(config);
     _trustedProxyServices = config.getList(WebServerConfig.TRUSTED_PROXY_SERVICES_CONFIG);
     _fallbackToSpnegoAllowed = config.getBoolean(WebServerConfig.TRUSTED_PROXY_SPNEGO_FALLBACK_ENABLED_CONFIG);
+    _spnegoPrincipalToLocalRules = config.getList(WebServerConfig.SPNEGO_PRINCIPAL_TO_LOCAL_RULES_CONFIG);
     String ipWhitelistRegex = config.getString(WebServerConfig.TRUSTED_PROXY_SERVICES_IP_REGEX_CONFIG);
     if (ipWhitelistRegex != null) {
       _trustedProxyServicesIpRegex = ipWhitelistRegex;
@@ -43,8 +45,8 @@ public class TrustedProxySecurityProvider extends SpnegoSecurityProvider {
 
   @Override
   public LoginService loginService() {
-    TrustedProxyLoginService loginService = new TrustedProxyLoginService(
-        _spnegoPrincipal.realm(), authorizationService(), _trustedProxyServices, _trustedProxyServicesIpRegex, _fallbackToSpnegoAllowed);
+    TrustedProxyLoginService loginService = new TrustedProxyLoginService(_spnegoPrincipal.realm(), authorizationService(),
+            _trustedProxyServices, _trustedProxyServicesIpRegex, _fallbackToSpnegoAllowed, _spnegoPrincipalToLocalRules);
     loginService.setServiceName(_spnegoPrincipal.serviceName());
     loginService.setHostName(_spnegoPrincipal.hostName());
     loginService.setKeyTabPath(Paths.get(_keyTabPath));
