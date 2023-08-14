@@ -271,6 +271,20 @@ public class Executor {
   }
 
   /**
+   * Set _executionProgressCheckIntervalMs to initial value. _executionProgressCheckIntervalMs is currently used by both
+   * inter broker move tasks and leadership move task. _executionProgressCheckIntervalMs is adjusted dynamically
+   * at runtime when running inter broker move tasks based on whether a task batch has been completed within one check
+   * interval, while it is not adjusted when running leadership move tasks. So we need to reset it to initial value after
+   * inter broker tasks to have leadership move task running safely.
+   */
+  public synchronized void resetExecutionProgressCheckIntervalMs() {
+    _executionProgressCheckIntervalMs = _requestedExecutionProgressCheckIntervalMs == null ? _defaultExecutionProgressCheckIntervalMs
+        : _requestedExecutionProgressCheckIntervalMs;
+    LOG.info("ExecutionProgressCheckInterval has reset to {}, which equals requestedExecutionProgressCheckIntervalMs, "
+        + "or _defaultExecutionProgressCheckIntervalMs if no requested value", _executionProgressCheckIntervalMs);
+  }
+
+  /**
    * Dynamically set the interval between checking and updating (if needed) the progress of an initiated execution.
    * The value is rectified to _minExecutionProgressCheckIntervalMs if it is too small, and rectified to user's requested value if it is too big.
    *
@@ -1505,6 +1519,12 @@ public class Executor {
 
         throttleHelper.clearThrottles(completedTasks, inProgressTasks);
       }
+
+      // Currently, _executionProgressCheckIntervalMs is only runtime adjusted for inter broker move tasks, not
+      // in leadership move task. Thus reset it to initial value once interBrokerMoveReplicas has stopped to
+      // have it been safely used in following leadership move tasks.
+      resetExecutionProgressCheckIntervalMs();
+
       // At this point it is guaranteed that there are no in execution tasks to wait -- i.e. all tasks are completed or dead.
       if (_stopSignal.get() == NO_STOP_EXECUTION) {
         LOG.info("Inter-broker partition movements finished.");
