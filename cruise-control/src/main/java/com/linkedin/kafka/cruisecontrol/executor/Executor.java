@@ -521,6 +521,8 @@ public class Executor {
           return;
         }
 
+        // Only if ISR metrics suggest no change in concurrency, we will run broker-metric-based concurrency adjusting.
+        // That is, if ISR metrics suggesting to decrease concurrency, will not check broker metrics for further adjusting.
         if (concurrencyAdjustingRecommendation.noChangeRecommended() && canRunMetricsBasedCheck) {
           concurrencyAdjustingRecommendation = ExecutionUtils.recommendedConcurrency(_loadMonitor.currentBrokerMetricValues());
         }
@@ -546,6 +548,8 @@ public class Executor {
     }
 
     /**
+     * Determine whether to stop execution, decrease concurrency, or no change based on (At/Under)MinISR status of partitions.
+     * Note: no increase of concurrency would be recommended based on ISR.
      * @return {@code ConcurrencyAdjustingRecommendation.NO_CHANGE_RECOMMENDED} to indicate recommendation for no change in allowed
      * movement concurrency, {@code ConcurrencyAdjustingRecommendation.SHOULD_STOP_EXECUTION} to indicate recommendation to
      * cancel the execution

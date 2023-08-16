@@ -194,6 +194,7 @@ public final class ExecutionUtils {
           concurrencyAdjustingRecommendation.recommendConcurrencyDecrease(replica.id());
         }
       }
+      concurrencyAdjustingRecommendation.recommendDecreaseClusterConcurrency();
       return concurrencyAdjustingRecommendation;
     }
     return ConcurrencyAdjustingRecommendation.NO_CHANGE_RECOMMENDED;
@@ -202,7 +203,8 @@ public final class ExecutionUtils {
   /**
    * Provide concurrency recommendations for the ongoing movements based on broker metrics. For each broker, it recommends to increase
    * the concurrency if the all metrics values are within the limit, and recommends to decrease the concurrency otherwise.
-   *
+   * For cluster overall concurrency, it recommends to increase if all metrics of all brokers are within the limit,
+   * otherwise, it recommends to decrease.
    * @param currentMetricsByBroker Current metrics by broker.
    * @return the concurrency recommendation.
    */
@@ -215,6 +217,8 @@ public final class ExecutionUtils {
       overLimitDetailsByMetricName.put(metricName, new StringBuilder());
     }
 
+    boolean allBrokersWithinAdjusterLimit = true;
+
     // Iterate through brokers and adjust concurrency based on the current broker metric
     for (Map.Entry<BrokerEntity, ValuesAndExtrapolations> entry : currentMetricsByBroker.entrySet()) {
       BrokerEntity broker = entry.getKey();
@@ -225,6 +229,7 @@ public final class ExecutionUtils {
         concurrencyAdjustingRecommendation.recommendConcurrencyIncrease(broker.brokerId());
       } else {
         concurrencyAdjustingRecommendation.recommendConcurrencyDecrease(broker.brokerId());
+        allBrokersWithinAdjusterLimit = false;
       }
     }
 
@@ -233,6 +238,12 @@ public final class ExecutionUtils {
       if (brokersWithValues.length() > 0) {
         LOG.info("{} was over the acceptable limit for brokers with values: {}.", entry.getKey(), brokersWithValues);
       }
+    }
+
+    if (allBrokersWithinAdjusterLimit) {
+      concurrencyAdjustingRecommendation.recommendIncreaseClusterConcurrency();
+    } else {
+      concurrencyAdjustingRecommendation.recommendDecreaseClusterConcurrency();
     }
 
     return concurrencyAdjustingRecommendation;
