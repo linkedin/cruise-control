@@ -300,8 +300,8 @@ public class ExecutionTaskPlanner {
    * @return The leadership movement tasks.
    */
   public List<ExecutionTask> getLeadershipMovementTasks(ExecutionConcurrencyManager executionConcurrencyManager) {
-    Map<Integer, Integer> leadershipConcurrency =
-            new HashMap<>(executionConcurrencyManager.getExecutionConcurrencyPerBroker(ConcurrencyType.LEADERSHIP));
+    Map<Integer, Integer> brokerLeadershipConcurrency =
+            new HashMap<>(executionConcurrencyManager.getExecutionConcurrencyPerBroker(ConcurrencyType.LEADERSHIP_BROKER));
     List<ExecutionTask> leadershipMovementsList = new ArrayList<>();
     Iterator<ExecutionTask> leadershipMovementIter = _remainingLeadershipMovements.values().iterator();
     int taskQuota = executionConcurrencyManager.maxClusterLeadershipMovements();
@@ -311,19 +311,19 @@ public class ExecutionTaskPlanner {
           Collectors.toSet());
       boolean canSchedule = true;
       for (int broker: replicas) {
-        if (leadershipConcurrency.containsKey(broker)) {
-          if (leadershipConcurrency.get(broker) <= 0) {
+        if (brokerLeadershipConcurrency.containsKey(broker)) {
+          if (brokerLeadershipConcurrency.get(broker) <= 0) {
             canSchedule = false;
             break;
           }
         } else {
-          leadershipConcurrency.put(broker, executionConcurrencyManager.getExecutionConcurrency(broker, ConcurrencyType.LEADERSHIP));
+          brokerLeadershipConcurrency.put(broker, executionConcurrencyManager.getExecutionConcurrency(broker, ConcurrencyType.LEADERSHIP_BROKER));
         }
       }
 
       if (canSchedule) {
         for (int broker: replicas) {
-          leadershipConcurrency.put(broker, leadershipConcurrency.get(broker) - 1);
+          brokerLeadershipConcurrency.put(broker, brokerLeadershipConcurrency.get(broker) - 1);
         }
         leadershipMovementsList.add(leadershipMovementTask);
         leadershipMovementIter.remove();

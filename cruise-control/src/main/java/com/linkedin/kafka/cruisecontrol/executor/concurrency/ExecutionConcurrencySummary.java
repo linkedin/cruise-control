@@ -16,17 +16,20 @@ import java.util.Map;
 public class ExecutionConcurrencySummary {
   private final Map<Integer, Integer> _interBrokerPartitionMovementConcurrency;
   private final Map<Integer, Integer> _intraBrokerPartitionMovementConcurrency;
-  private final Map<Integer, Integer> _leadershipMovementConcurrency;
+  private final Map<Integer, Integer> _brokerLeadershipMovementConcurrency;
+  private final Integer _clusterLeadershipMovementConcurrency;
   private final boolean _initialized;
 
   public ExecutionConcurrencySummary(boolean initialized,
                                      Map<Integer, Integer> interBrokerPartitionMovementConcurrency,
                                      Map<Integer, Integer> intraBrokerPartitionMovementConcurrency,
-                                     Map<Integer, Integer> leadershipMovementConcurrency) {
+                                     Map<Integer, Integer> brokerLeadershipMovementConcurrency,
+                                     Integer clusterLeadershipMovementConcurrency) {
     _initialized = initialized;
     _interBrokerPartitionMovementConcurrency = new HashMap<>(interBrokerPartitionMovementConcurrency);
     _intraBrokerPartitionMovementConcurrency = new HashMap<>(intraBrokerPartitionMovementConcurrency);
-    _leadershipMovementConcurrency = new HashMap<>(leadershipMovementConcurrency);
+    _brokerLeadershipMovementConcurrency = new HashMap<>(brokerLeadershipMovementConcurrency);
+    _clusterLeadershipMovementConcurrency = clusterLeadershipMovementConcurrency;
   }
 
   /**
@@ -45,8 +48,8 @@ public class ExecutionConcurrencySummary {
         return Collections.min(_interBrokerPartitionMovementConcurrency.values());
       case INTRA_BROKER_REPLICA:
         return Collections.min(_intraBrokerPartitionMovementConcurrency.values());
-      case LEADERSHIP:
-        return Collections.min(_leadershipMovementConcurrency.values());
+      case LEADERSHIP_BROKER:
+        return Collections.min(_brokerLeadershipMovementConcurrency.values());
       default:
         throw new IllegalArgumentException("Unsupported concurrency type " + concurrencyType + " is provided.");
     }
@@ -68,8 +71,8 @@ public class ExecutionConcurrencySummary {
         return Collections.max(_interBrokerPartitionMovementConcurrency.values());
       case INTRA_BROKER_REPLICA:
         return Collections.max(_intraBrokerPartitionMovementConcurrency.values());
-      case LEADERSHIP:
-        return Collections.max(_leadershipMovementConcurrency.values());
+      case LEADERSHIP_BROKER:
+        return Collections.max(_brokerLeadershipMovementConcurrency.values());
       default:
         throw new IllegalArgumentException("Unsupported concurrency type " + concurrencyType + " is provided.");
     }
@@ -93,8 +96,8 @@ public class ExecutionConcurrencySummary {
       case INTRA_BROKER_REPLICA:
         return _intraBrokerPartitionMovementConcurrency.values().stream().mapToDouble(d -> d).average()
                                                        .orElse(-1);
-      case LEADERSHIP:
-        return _leadershipMovementConcurrency.values().stream().mapToDouble(d -> d).average()
+      case LEADERSHIP_BROKER:
+        return _brokerLeadershipMovementConcurrency.values().stream().mapToDouble(d -> d).average()
                                              .orElse(-1);
       default:
         throw new IllegalArgumentException("Unsupported concurrency type " + concurrencyType + " is provided.");
@@ -104,7 +107,7 @@ public class ExecutionConcurrencySummary {
   private void sanityCheckValidity() {
     if (_interBrokerPartitionMovementConcurrency.isEmpty()
         || _intraBrokerPartitionMovementConcurrency.isEmpty()
-        || _leadershipMovementConcurrency.isEmpty()) {
+        || _brokerLeadershipMovementConcurrency.isEmpty()) {
       throw new IllegalArgumentException("Broker concurrency is not populated.");
     }
   }

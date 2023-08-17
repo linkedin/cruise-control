@@ -111,20 +111,28 @@ public final class ExecutionUtils {
                                                   config.getDouble(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_CONFIG));
     ADDITIVE_INCREASE.put(ConcurrencyType.INTER_BROKER_REPLICA,
                           config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_INTER_BROKER_REPLICA_CONFIG));
-    ADDITIVE_INCREASE.put(ConcurrencyType.LEADERSHIP,
+    ADDITIVE_INCREASE.put(ConcurrencyType.LEADERSHIP_CLUSTER,
                           config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_LEADERSHIP_CONFIG));
+    ADDITIVE_INCREASE.put(ConcurrencyType.LEADERSHIP_BROKER,
+                          config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_LEADERSHIP_PER_BROKER_CONFIG));
     MULTIPLICATIVE_DECREASE.put(ConcurrencyType.INTER_BROKER_REPLICA,
                                 config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_INTER_BROKER_REPLICA_CONFIG));
-    MULTIPLICATIVE_DECREASE.put(ConcurrencyType.LEADERSHIP,
+    MULTIPLICATIVE_DECREASE.put(ConcurrencyType.LEADERSHIP_CLUSTER,
                                 config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_LEADERSHIP_CONFIG));
+    MULTIPLICATIVE_DECREASE.put(ConcurrencyType.LEADERSHIP_BROKER,
+                                config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_LEADERSHIP_PER_BROKER_CONFIG));
     MAX_CONCURRENCY.put(ConcurrencyType.INTER_BROKER_REPLICA,
                         config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_CONFIG));
-    MAX_CONCURRENCY.put(ConcurrencyType.LEADERSHIP,
+    MAX_CONCURRENCY.put(ConcurrencyType.LEADERSHIP_CLUSTER,
                         config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_CONFIG));
+    MAX_CONCURRENCY.put(ConcurrencyType.LEADERSHIP_BROKER,
+                        config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_PER_BROKER_CONFIG));
     MIN_CONCURRENCY.put(ConcurrencyType.INTER_BROKER_REPLICA,
                         config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_PARTITION_MOVEMENTS_PER_BROKER_CONFIG));
-    MIN_CONCURRENCY.put(ConcurrencyType.LEADERSHIP,
+    MIN_CONCURRENCY.put(ConcurrencyType.LEADERSHIP_CLUSTER,
                         config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_CONFIG));
+    MIN_CONCURRENCY.put(ConcurrencyType.LEADERSHIP_BROKER,
+                        config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_PER_BROKER_CONFIG));
     listPartitionReassignmentsTimeoutMs = config.getLong(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS_CONFIG);
     listPartitionReassignmentsMaxAttempts = config.getInt(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS_CONFIG);
   }

@@ -131,7 +131,7 @@ public class AdminRequest extends AbstractSyncRequest {
     // 3. Change leadership concurrency for all brokers.
     Integer concurrentLeaderMovements = changeExecutionConcurrencyParameters.concurrentLeaderMovements();
     if (concurrentLeaderMovements != null) {
-      _kafkaCruiseControl.setExecutionConcurrencyForAllBrokers(concurrentLeaderMovements, ConcurrencyType.LEADERSHIP);
+      _kafkaCruiseControl.setExecutionConcurrencyForAllBrokers(concurrentLeaderMovements, ConcurrencyType.LEADERSHIP_CLUSTER);
       sb.append(String.format("Leadership movement concurrency is set to %d%n", concurrentLeaderMovements));
       LOG.info("Leadership movement concurrency is set to: {} by user.", concurrentLeaderMovements);
     }

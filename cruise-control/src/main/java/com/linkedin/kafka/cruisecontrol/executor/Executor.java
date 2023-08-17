@@ -215,8 +215,10 @@ public class Executor {
     _concurrencyAdjusterEnabled = new ConcurrentHashMap<>(ConcurrencyType.cachedValues().size());
     _concurrencyAdjusterEnabled.put(ConcurrencyType.INTER_BROKER_REPLICA,
                                     config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_INTER_BROKER_REPLICA_ENABLED_CONFIG));
-    _concurrencyAdjusterEnabled.put(ConcurrencyType.LEADERSHIP,
+    _concurrencyAdjusterEnabled.put(ConcurrencyType.LEADERSHIP_CLUSTER,
                                     config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_LEADERSHIP_ENABLED_CONFIG));
+    _concurrencyAdjusterEnabled.put(ConcurrencyType.LEADERSHIP_BROKER,
+                                    config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_LEADERSHIP_PER_BROKER_ENABLED_CONFIG));
     // Support for intra-broker replica movement is pending https://github.com/linkedin/cruise-control/issues/1299.
     _concurrencyAdjusterEnabled.put(ConcurrencyType.INTRA_BROKER_REPLICA, false);
     _concurrencyAdjusterMinIsrCheckEnabled = config.getBoolean(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_ISR_CHECK_ENABLED_CONFIG);
@@ -386,19 +388,19 @@ public class Executor {
                                       (Gauge<Integer>) () -> _executionTaskManager
                                           .getExecutionConcurrencyManager()
                                           .getExecutionConcurrencySummary()
-                                          .getMaxExecutionConcurrency(ConcurrencyType.LEADERSHIP));
+                                          .getMaxExecutionConcurrency(ConcurrencyType.LEADERSHIP_BROKER));
     dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR,
                                                           GAUGE_EXECUTION_LEADERSHIP_MOVEMENTS_MIN_CONCURRENCY),
                                       (Gauge<Integer>) () -> _executionTaskManager
                                           .getExecutionConcurrencyManager()
                                           .getExecutionConcurrencySummary()
-                                          .getMinExecutionConcurrency(ConcurrencyType.LEADERSHIP));
+                                          .getMinExecutionConcurrency(ConcurrencyType.LEADERSHIP_BROKER));
     dropwizardMetricRegistry.register(MetricRegistry.name(EXECUTOR_SENSOR,
                                                           GAUGE_EXECUTION_LEADERSHIP_MOVEMENTS_AVG_CONCURRENCY),
                                       (Gauge<Double>) () -> _executionTaskManager
                                           .getExecutionConcurrencyManager()
                                           .getExecutionConcurrencySummary()
-                                          .getAvgExecutionConcurrency(ConcurrencyType.LEADERSHIP));
+                                          .getAvgExecutionConcurrency(ConcurrencyType.LEADERSHIP_BROKER));
   }
 
   private void removeExpiredDemotionHistory() {
@@ -463,18 +465,22 @@ public class Executor {
      *                                                         per broker(if null, use num.concurrent.partition.movements.per.broker).
      * @param requestedIntraBrokerPartitionMovementConcurrency The maximum number of concurrent intra-broker partition movements
      *                                                         per broker(if null, use num.concurrent.intra.broker.partition.movements).
-     * @param requestedLeadershipMovementConcurrency The maximum number of concurrent leader movements
+     * @param requestedClusterLeadershipMovementConcurrency The maximum number of concurrent leader movements in a cluster
+     *                                               (if null, use num.concurrent.leader.movements).
+     * @param requestedClusterLeadershipMovementConcurrency The maximum number of concurrent leader movements involved in a broker
      *                                               (if null, use num.concurrent.leader.movements).
      */
     public synchronized void initAdjustment(LoadMonitor loadMonitor,
                                             Integer requestedInterBrokerPartitionMovementConcurrency,
                                             Integer requestedIntraBrokerPartitionMovementConcurrency,
-                                            Integer requestedLeadershipMovementConcurrency) {
+                                            Integer requestedClusterLeadershipMovementConcurrency,
+                                            Integer requestedBrokerConcurrentLeaderMovements) {
       _loadMonitor = loadMonitor;
       _executionConcurrencyManager.initialize(loadMonitor.brokersWithReplicas(MAX_METADATA_WAIT_MS),
                                               requestedInterBrokerPartitionMovementConcurrency,
                                               requestedIntraBrokerPartitionMovementConcurrency,
-                                              requestedLeadershipMovementConcurrency);
+                                              requestedClusterLeadershipMovementConcurrency,
+                                              requestedBrokerConcurrentLeaderMovements);
       _started = true;
     }
 
@@ -501,7 +507,8 @@ public class Executor {
         return false;
       }
       switch (concurrencyType) {
-        case LEADERSHIP:
+        case LEADERSHIP_CLUSTER:
+        case LEADERSHIP_BROKER:
           return _executorState.state() == LEADER_MOVEMENT_TASK_IN_PROGRESS;
         case INTER_BROKER_REPLICA:
           return _executorState.state() == ExecutorState.State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS
@@ -597,7 +604,7 @@ public class Executor {
         if (_started) {
           boolean canRunMetricsBasedCheck = (_numChecks++ % _numMinIsrCheck) == 0;
           refreshConcurrency(canRunMetricsBasedCheck, ConcurrencyType.INTER_BROKER_REPLICA);
-          refreshConcurrency(canRunMetricsBasedCheck, ConcurrencyType.LEADERSHIP);
+          refreshConcurrency(canRunMetricsBasedCheck, ConcurrencyType.LEADERSHIP_CLUSTER);
         }
       } catch (Throwable t) {
         LOG.warn("Received exception when trying to adjust reassignment concurrency.", t);
@@ -690,7 +697,8 @@ public class Executor {
    * @return {@code true} if concurrency adjuster was enabled before for the given concurrency type, {@code false} otherwise.
    */
   public Boolean setConcurrencyAdjusterFor(ConcurrencyType concurrencyType, boolean isConcurrencyAdjusterEnabled) {
-    if (concurrencyType != ConcurrencyType.INTER_BROKER_REPLICA && concurrencyType != ConcurrencyType.LEADERSHIP) {
+    if (concurrencyType != ConcurrencyType.INTER_BROKER_REPLICA && concurrencyType != ConcurrencyType.LEADERSHIP_CLUSTER &&
+          concurrencyType != ConcurrencyType.LEADERSHIP_BROKER) {
       throw new IllegalArgumentException(String.format("Concurrency adjuster for %s is not yet supported.", concurrencyType));
     }
     return _concurrencyAdjusterEnabled.put(concurrencyType, isConcurrencyAdjusterEnabled);
@@ -721,8 +729,10 @@ public class Executor {
    *                                                         (if null, use num.concurrent.intra.broker.partition.movements).
    * @param requestedMaxClusterPartitionMovements The upper bound of concurrent inter broker partition movements in cluster
    *                                              (if null, use max.num.cluster.partition.movements).
-   * @param requestedLeadershipMovementConcurrency The maximum number of concurrent leader movements
+   * @param requestedClusterLeadershipMovementConcurrency The maximum number of concurrent leader movements in a cluster
    *                                               (if null, use num.concurrent.leader.movements).
+   * @param requestedBrokerConcurrentLeaderMovements The maximum number of concurrent leader movements involved in a broker
+   *                                               (if null, use num.concurrent.leader.movements.per.broker).
    * @param requestedExecutionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
    *                                                  execution (if null, use execution.progress.check.interval.ms).
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
@@ -741,7 +751,8 @@ public class Executor {
                                             Integer requestedInterBrokerPartitionMovementConcurrency,
                                             Integer requestedMaxClusterPartitionMovements,
                                             Integer requestedIntraBrokerPartitionMovementConcurrency,
-                                            Integer requestedLeadershipMovementConcurrency,
+                                            Integer requestedClusterLeadershipMovementConcurrency,
+                                            Integer requestedBrokerConcurrentLeaderMovements,
                                             Long requestedExecutionProgressCheckIntervalMs,
                                             ReplicaMovementStrategy replicaMovementStrategy,
                                             Long replicationThrottle,
@@ -754,8 +765,9 @@ public class Executor {
     _skipInterBrokerReplicaConcurrencyAdjustment = skipInterBrokerReplicaConcurrencyAdjustment;
     try {
       initProposalExecution(proposals, unthrottledBrokers, requestedInterBrokerPartitionMovementConcurrency, requestedMaxClusterPartitionMovements,
-                            requestedIntraBrokerPartitionMovementConcurrency, requestedLeadershipMovementConcurrency,
-                            requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, isTriggeredByUserRequest, loadMonitor);
+                            requestedIntraBrokerPartitionMovementConcurrency, requestedClusterLeadershipMovementConcurrency,
+                            requestedBrokerConcurrentLeaderMovements, requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy,
+                            isTriggeredByUserRequest, loadMonitor);
       startExecution(loadMonitor, null, removedBrokers, replicationThrottle, isTriggeredByUserRequest);
     } catch (Exception e) {
       processExecuteProposalsFailure();
@@ -785,7 +797,8 @@ public class Executor {
                                                   Integer requestedInterBrokerPartitionMovementConcurrency,
                                                   Integer requestedMaxInterBrokerPartitionMovements,
                                                   Integer requestedIntraBrokerPartitionMovementConcurrency,
-                                                  Integer requestedLeadershipMovementConcurrency,
+                                                  Integer requestedClusterLeadershipMovementConcurrency,
+                                                  Integer requestedBrokerConcurrentLeaderMovements,
                                                   Long requestedExecutionProgressCheckIntervalMs,
                                                   ReplicaMovementStrategy replicaMovementStrategy,
                                                   boolean isTriggeredByUserRequest,
@@ -800,7 +813,8 @@ public class Executor {
     _concurrencyAdjuster.initAdjustment(loadMonitor,
                                         requestedInterBrokerPartitionMovementConcurrency,
                                         requestedIntraBrokerPartitionMovementConcurrency,
-                                        requestedLeadershipMovementConcurrency);
+                                        requestedClusterLeadershipMovementConcurrency,
+                                        requestedBrokerConcurrentLeaderMovements);
     setRequestedMaxInterBrokerPartitionMovements(requestedMaxInterBrokerPartitionMovements);
     setRequestedExecutionProgressCheckIntervalMs(requestedExecutionProgressCheckIntervalMs);
   }

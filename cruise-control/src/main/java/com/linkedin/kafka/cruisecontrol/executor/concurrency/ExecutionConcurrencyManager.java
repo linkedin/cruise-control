@@ -50,12 +50,15 @@ public class ExecutionConcurrencyManager {
   // For leadership movement, dynamic adjusting of cluster concurrency based on isr and broker metrics is also supported
   // in addition to adjusting per broker concurrency.
   // The leadership movement task is more bottleneck on controller, so in general, the cluster allowed concurrency is
-  // greater than the broker allowed concurrency multiplied by the number of brokers in the cluster.
+  // smaller than the broker allowed concurrency multiplied by the number of brokers in the cluster.
   // It would be safer and more efficient to have both cluster and broker concurrency adjusters for leadership
   // movements. If with broker concurrency adjustor alone, the execution of leadership movements might be unnecessarily
   // slow due to low cluster concurrency; if with cluster concurrency adjuster alone, we do not have the ability to
   // limit the traffic to slow brokers.
   private Integer _requestedClusterLeadershipMovementConcurrency;
+  // The allowed initial leadership movement concurrency for a broker.
+  private final int _defaultPerBrokerLeadershipMovementConcurrency;
+  private Integer _requestedPerBrokerLeadershipMovementConcurrency;
 
   // The allowed inter-broker partition movement concurrency in the cluster.
   private final int _defaultClusterInterBrokerPartitionMovementConcurrency;
@@ -75,6 +78,7 @@ public class ExecutionConcurrencyManager {
     _defaultIntraBrokerPartitionMovementConcurrency = config.getInt(ExecutorConfig.NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG);
     _defaultClusterLeadershipMovementConcurrency = config.getInt(ExecutorConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
     _defaultClusterInterBrokerPartitionMovementConcurrency = config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_PARTITION_MOVEMENTS_CONFIG);
+    _defaultPerBrokerLeadershipMovementConcurrency = config.getInt(ExecutorConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_PER_BROKER_CONFIG);
     _interBrokerPartitionMovementConcurrency = new HashMap<>();
     _intraBrokerPartitionMovementConcurrency = new HashMap<>();
     _brokerLeadershipMovementConcurrency = new HashMap<>();
@@ -88,11 +92,13 @@ public class ExecutionConcurrencyManager {
    * @param requestedInterBrokerPartitionMovementConcurrency the requested inter broker partition movement concurrency per broker
    * @param requestedIntraBrokerPartitionMovementConcurrency the requested intra broker partition movement concurrency per broker
    * @param requestedClusterLeadershipMovementConcurrency the requested leadership movement concurrency in the cluster
+   * @param requestedClusterLeadershipMovementConcurrency the requested leadership movement concurrency involved in a broker
    */
   public synchronized void initialize(Set<Integer> brokers,
                                       Integer requestedInterBrokerPartitionMovementConcurrency,
                                       Integer requestedIntraBrokerPartitionMovementConcurrency,
-                                      Integer requestedClusterLeadershipMovementConcurrency) {
+                                      Integer requestedClusterLeadershipMovementConcurrency,
+                                      Integer requestedBrokerConcurrentLeaderMovements) {
 
     LOG.info("Initialize ExecutionConcurrencyManager with requested inter-broker/intra-broker/leadership concurrency: {}/{}/{} on brokers {}.",
              requestedInterBrokerPartitionMovementConcurrency,
@@ -105,10 +111,11 @@ public class ExecutionConcurrencyManager {
     _requestedInterBrokerPartitionMovementConcurrency = requestedInterBrokerPartitionMovementConcurrency;
     _requestedIntraBrokerPartitionMovementConcurrency = requestedIntraBrokerPartitionMovementConcurrency;
     _requestedClusterLeadershipMovementConcurrency = requestedClusterLeadershipMovementConcurrency;
+    _requestedPerBrokerLeadershipMovementConcurrency = requestedBrokerConcurrentLeaderMovements;
     for (int brokerId: brokers) {
       _interBrokerPartitionMovementConcurrency.put(brokerId, interBrokerPartitionMovementConcurrency());
       _intraBrokerPartitionMovementConcurrency.put(brokerId, intraBrokerPartitionMovementConcurrency());
-      _brokerLeadershipMovementConcurrency.put(brokerId, clusterLeadershipMovementConcurrency());
+      _brokerLeadershipMovementConcurrency.put(brokerId, requestedBrokerLeadershipMovementConcurrency());
     }
     _initialized = true;
     refreshExecutionConcurrencySummary();
@@ -122,6 +129,7 @@ public class ExecutionConcurrencyManager {
     _requestedInterBrokerPartitionMovementConcurrency = null;
     _requestedIntraBrokerPartitionMovementConcurrency = null;
     _requestedClusterLeadershipMovementConcurrency = null;
+    _requestedPerBrokerLeadershipMovementConcurrency = null;
     _requestedClusterInterBrokerPartitionMovementConcurrency = null;
     _interBrokerPartitionMovementConcurrency.clear();
     _intraBrokerPartitionMovementConcurrency.clear();
@@ -151,8 +159,10 @@ public class ExecutionConcurrencyManager {
         return interBrokerPartitionMovementConcurrency(brokerId);
       case INTRA_BROKER_REPLICA:
         return intraBrokerPartitionMovementConcurrency(brokerId);
-      case LEADERSHIP:
+      case LEADERSHIP_BROKER:
         return leadershipMovementConcurrency(brokerId);
+      case LEADERSHIP_CLUSTER:
+        return clusterLeadershipMovementConcurrency();
       default:
         throw new IllegalArgumentException("Unsupported concurrency type " + concurrencyType + " is provided.");
     }
@@ -170,7 +180,7 @@ public class ExecutionConcurrencyManager {
         return _interBrokerPartitionMovementConcurrency;
       case INTRA_BROKER_REPLICA:
         return _intraBrokerPartitionMovementConcurrency;
-      case LEADERSHIP:
+      case LEADERSHIP_BROKER:
         return _brokerLeadershipMovementConcurrency;
       default:
         throw new IllegalArgumentException("Unsupported concurrency type " + concurrencyType + " is provided.");
@@ -195,10 +205,12 @@ public class ExecutionConcurrencyManager {
         _requestedIntraBrokerPartitionMovementConcurrency = concurrency;
         _intraBrokerPartitionMovementConcurrency.replaceAll((k, v) -> concurrency);
         break;
-      case LEADERSHIP:
+      case LEADERSHIP_BROKER:
+        _requestedPerBrokerLeadershipMovementConcurrency = concurrency;
+        _brokerLeadershipMovementConcurrency.replaceAll((k, v) -> concurrency);
+        break;
+      case LEADERSHIP_CLUSTER:
         _requestedClusterLeadershipMovementConcurrency = concurrency;
-        int perBrokerConcurrency = clusterLeadershipMovementConcurrency();
-        _brokerLeadershipMovementConcurrency.replaceAll((k, v) -> perBrokerConcurrency);
         break;
       default:
         throw new IllegalArgumentException("Unsupported concurrency type " + concurrencyType + " is provided.");
@@ -221,7 +233,7 @@ public class ExecutionConcurrencyManager {
       case INTRA_BROKER_REPLICA:
         _intraBrokerPartitionMovementConcurrency.put(brokerId, concurrency);
         break;
-      case LEADERSHIP:
+      case LEADERSHIP_CLUSTER:
         _brokerLeadershipMovementConcurrency.put(brokerId, concurrency);
         break;
       default:
@@ -303,7 +315,8 @@ public class ExecutionConcurrencyManager {
     _executionConcurrencySummary = new ExecutionConcurrencySummary(isInitialized(),
                                                                    _interBrokerPartitionMovementConcurrency,
                                                                    _intraBrokerPartitionMovementConcurrency,
-        _brokerLeadershipMovementConcurrency);
+                                                                   _brokerLeadershipMovementConcurrency,
+                                                                   _requestedClusterLeadershipMovementConcurrency);
   }
 
   private synchronized int interBrokerPartitionMovementConcurrency(int brokerId) {
@@ -324,6 +337,11 @@ public class ExecutionConcurrencyManager {
            ? _requestedIntraBrokerPartitionMovementConcurrency : _defaultIntraBrokerPartitionMovementConcurrency;
   }
 
+  private synchronized int requestedBrokerLeadershipMovementConcurrency() {
+    return _requestedPerBrokerLeadershipMovementConcurrency != null ?
+        _requestedPerBrokerLeadershipMovementConcurrency: _defaultPerBrokerLeadershipMovementConcurrency;
+  }
+
   private synchronized int leadershipMovementConcurrency(int brokerId) {
     // Here we use cluster level leadership movement concurrency for each broker. The reason is that today users can only specify cluster
     //  level leadership movement concurrency. Use the cluster level concurrency for each broker doesn't harm, as the total movements are
@@ -333,7 +351,7 @@ public class ExecutionConcurrencyManager {
     // E.g. if num.concurrent.leader.movements=1000, and there are 100 brokers, previously (meaning before the individual node throttling
     //  feature launched) a broker can execute 1000 movements at once. If we use average value, only 10 movements can execute on a single broker.
     // That's why we choose to use cluster movement concurrency for each broker.
-    return _brokerLeadershipMovementConcurrency.getOrDefault(brokerId, clusterLeadershipMovementConcurrency());
+    return _brokerLeadershipMovementConcurrency.getOrDefault(brokerId, requestedBrokerLeadershipMovementConcurrency());
   }
 
   private synchronized int clusterLeadershipMovementConcurrency() {

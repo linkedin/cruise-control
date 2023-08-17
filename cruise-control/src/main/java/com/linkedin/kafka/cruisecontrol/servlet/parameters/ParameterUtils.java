@@ -99,6 +99,7 @@ public final class ParameterUtils {
   public static final String MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM = "max_partition_movements_in_cluster";
   public static final String CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM = "concurrent_intra_broker_partition_movements";
   public static final String CONCURRENT_LEADER_MOVEMENTS_PARAM = "concurrent_leader_movements";
+  public static final String PER_BROKER_CONCURRENT_LEADER_MOVEMENTS_PARAM = "per_broker_concurrent_leader_movements";
   public static final String DEFAULT_PARTITION_LOAD_RESOURCE = "disk";
   public static final String SUBSTATES_PARAM = "substates";
   public static final String MIN_VALID_PARTITION_RATIO_PARAM = "min_valid_partition_ratio";
