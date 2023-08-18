@@ -51,13 +51,16 @@ ExecutorState:
       type: array
       items:
         $ref: '#/ExecutionTask'
-    maximumConcurrentLeaderMovements:
+    maximumBrokerLeaderMovementsConcurrency:
       type: integer
       format: int32
-    minimumConcurrentLeaderMovements:
+    minimumBrokerLeaderMovementsConcurrency:
       type: integer
       format: int32
-    averageConcurrentLeaderMovements:
+    averageBrokerLeaderMovementsConcurrency:
+      type: integer
+      format: int32
+    clusterLeaderMovementsConcurrency:
       type: integer
       format: int32
     # inter broker partition information

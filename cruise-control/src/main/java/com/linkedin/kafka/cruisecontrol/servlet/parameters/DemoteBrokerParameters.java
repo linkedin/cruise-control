@@ -17,18 +17,7 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DRY_RUN_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.BROKER_ID_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_LEADER_MOVEMENTS_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_URP_DEMOTION_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.EXCLUDE_FOLLOWER_DEMOTION_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICA_MOVEMENT_STRATEGIES_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICATION_THROTTLE_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REVIEW_ID_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.BROKER_ID_AND_LOGDIRS_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.STOP_ONGOING_EXECUTION_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.*;
 
 
 /**
@@ -60,6 +49,7 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
     validParameterNames.add(REASON_PARAM);
     validParameterNames.add(BROKER_ID_PARAM);
     validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    validParameterNames.add(BROKER_CONCURRENT_LEADER_MOVEMENTS_PARAM);
     validParameterNames.add(EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
     validParameterNames.add(SKIP_URP_DEMOTION_PARAM);
     validParameterNames.add(EXCLUDE_FOLLOWER_DEMOTION_PARAM);
@@ -95,6 +85,7 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
     _brokerIds = ParameterUtils.brokerIds(_requestContext, false);
     _dryRun = ParameterUtils.getDryRun(_requestContext);
     _clusterLeaderMovementsConcurrency = ParameterUtils.concurrentMovements(_requestContext, ConcurrencyType.LEADERSHIP_CLUSTER);
+    _brokerLeaderMovementsConcurrency = ParameterUtils.concurrentMovements(_requestContext, ConcurrencyType.LEADERSHIP_BROKER);
     _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_requestContext);
     _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_requestContext);
     _skipUrpDemotion = ParameterUtils.skipUrpDemotion(_requestContext);
@@ -132,6 +123,8 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
   public Integer clusterLeaderMovementsConcurrency() {
     return _clusterLeaderMovementsConcurrency;
   }
+
+  public Integer brokerLeaderMovementsConcurrency() { return _brokerLeaderMovementsConcurrency; }
 
   public Long executionProgressCheckIntervalMs() {
     return _executionProgressCheckIntervalMs;
