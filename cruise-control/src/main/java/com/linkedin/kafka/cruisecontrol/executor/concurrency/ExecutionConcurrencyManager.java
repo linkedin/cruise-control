@@ -233,7 +233,7 @@ public class ExecutionConcurrencyManager {
       case INTRA_BROKER_REPLICA:
         _intraBrokerPartitionMovementConcurrency.put(brokerId, concurrency);
         break;
-      case LEADERSHIP_CLUSTER:
+      case LEADERSHIP_BROKER:
         _brokerLeadershipMovementConcurrency.put(brokerId, concurrency);
         break;
       default:

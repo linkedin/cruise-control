@@ -28,7 +28,8 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
 public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
   protected final Integer _concurrentInterBrokerPartitionMovements;
   protected final Integer _maxInterBrokerPartitionMovements;
-  protected final Integer _concurrentLeaderMovements;
+  protected final Integer _clusterLeaderMovementsConcurrency;
+  protected final Integer _brokerLeaderMovementsConcurrency;
   protected final Long _executionProgressCheckIntervalMs;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Long _replicationThrottle;
@@ -49,7 +50,7 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
           excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, anomalyId, reasonSupplier, stopOngoingExecution);
     _concurrentInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _maxInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
-    _concurrentLeaderMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
+    _clusterLeaderMovementsConcurrency = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
     _replicationThrottle = kafkaCruiseControl.config().getLong(DEFAULT_REPLICATION_THROTTLE_CONFIG);
@@ -63,7 +64,8 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
           uuid, parameters::reason);
     _concurrentInterBrokerPartitionMovements = parameters.concurrentInterBrokerPartitionMovements();
     _maxInterBrokerPartitionMovements = parameters.maxInterBrokerPartitionMovements();
-    _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
+    _clusterLeaderMovementsConcurrency = parameters.clusterLeaderMovementsConcurrency();
+    _brokerLeaderMovementsConcurrency = parameters.brokerLeaderMovementsConcurrency();
     _executionProgressCheckIntervalMs = parameters.executionProgressCheckIntervalMs();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
     _replicationThrottle = parameters.replicationThrottle();
@@ -103,7 +105,8 @@ public class FixOfflineReplicasRunnable extends GoalBasedOperationRunnable {
                                            _concurrentInterBrokerPartitionMovements,
                                            _maxInterBrokerPartitionMovements,
                                            null,
-                                           _concurrentLeaderMovements,
+                                           _clusterLeaderMovementsConcurrency,
+                                           _brokerLeaderMovementsConcurrency,
                                            _executionProgressCheckIntervalMs,
                                            _replicaMovementStrategy,
                                            _replicationThrottle,

@@ -129,12 +129,20 @@ public class AdminRequest extends AbstractSyncRequest {
       LOG.info("Intra-broker partition movement concurrency is set to: {} by user.", concurrentIntraBrokerPartitionMovements);
     }
     // 3. Change leadership concurrency for all brokers.
-    Integer concurrentLeaderMovements = changeExecutionConcurrencyParameters.concurrentLeaderMovements();
-    if (concurrentLeaderMovements != null) {
-      _kafkaCruiseControl.setExecutionConcurrencyForAllBrokers(concurrentLeaderMovements, ConcurrencyType.LEADERSHIP_CLUSTER);
-      sb.append(String.format("Leadership movement concurrency is set to %d%n", concurrentLeaderMovements));
-      LOG.info("Leadership movement concurrency is set to: {} by user.", concurrentLeaderMovements);
+    Integer clusterLeaderMovementsConcurrency = changeExecutionConcurrencyParameters.clusterLeaderMovementsConcurrency();
+    if (clusterLeaderMovementsConcurrency != null) {
+      _kafkaCruiseControl.setExecutionConcurrencyForAllBrokers(clusterLeaderMovementsConcurrency, ConcurrencyType.LEADERSHIP_CLUSTER);
+      sb.append(String.format("Cluster Leadership movement concurrency is set to %d%n", clusterLeaderMovementsConcurrency));
+      LOG.info("Cluster Leadership movement concurrency is set to: {} by user.", clusterLeaderMovementsConcurrency);
     }
+
+    Integer brokerLeaderMovementsConcurrency = changeExecutionConcurrencyParameters.brokerLeaderMovementsConcurrency();
+    if (brokerLeaderMovementsConcurrency != null) {
+      _kafkaCruiseControl.setExecutionConcurrencyForAllBrokers(clusterLeaderMovementsConcurrency, ConcurrencyType.LEADERSHIP_BROKER);
+      sb.append(String.format("Broker Leadership movement concurrency is set to %d%n", clusterLeaderMovementsConcurrency));
+      LOG.info("Broker Leadership movement concurrency is set to: {} by user.", clusterLeaderMovementsConcurrency);
+    }
+
     // 4. Change the interval between checking and updating (if needed) the progress of an initiated execution.
     Long executionProgressCheckIntervalMs = changeExecutionConcurrencyParameters.executionProgressCheckIntervalMs();
     if (executionProgressCheckIntervalMs != null) {

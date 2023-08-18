@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
+import com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
@@ -72,7 +73,8 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
   }
   protected boolean _dryRun;
   protected Set<Integer> _brokerIds;
-  protected Integer _concurrentLeaderMovements;
+  protected Integer _clusterLeaderMovementsConcurrency;
+  protected Integer _brokerLeaderMovementsConcurrency;
   protected Long _executionProgressCheckIntervalMs;
   protected boolean _skipUrpDemotion;
   protected boolean _excludeFollowerDemotion;
@@ -92,7 +94,7 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
     super.initParameters();
     _brokerIds = ParameterUtils.brokerIds(_requestContext, false);
     _dryRun = ParameterUtils.getDryRun(_requestContext);
-    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_requestContext, false, false);
+    _clusterLeaderMovementsConcurrency = ParameterUtils.concurrentMovements(_requestContext, ConcurrencyType.LEADERSHIP_CLUSTER);
     _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_requestContext);
     _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_requestContext);
     _skipUrpDemotion = ParameterUtils.skipUrpDemotion(_requestContext);
@@ -127,8 +129,8 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
     return _brokerIds;
   }
 
-  public Integer concurrentLeaderMovements() {
-    return _concurrentLeaderMovements;
+  public Integer clusterLeaderMovementsConcurrency() {
+    return _clusterLeaderMovementsConcurrency;
   }
 
   public Long executionProgressCheckIntervalMs() {

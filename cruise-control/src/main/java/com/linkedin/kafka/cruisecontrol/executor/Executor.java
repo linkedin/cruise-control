@@ -605,6 +605,7 @@ public class Executor {
           boolean canRunMetricsBasedCheck = (_numChecks++ % _numMinIsrCheck) == 0;
           refreshConcurrency(canRunMetricsBasedCheck, ConcurrencyType.INTER_BROKER_REPLICA);
           refreshConcurrency(canRunMetricsBasedCheck, ConcurrencyType.LEADERSHIP_CLUSTER);
+          refreshConcurrency(canRunMetricsBasedCheck, ConcurrencyType.LEADERSHIP_BROKER);
         }
       } catch (Throwable t) {
         LOG.warn("Received exception when trying to adjust reassignment concurrency.", t);
@@ -826,8 +827,10 @@ public class Executor {
    * @param demotedBrokers Demoted brokers.
    * @param loadMonitor Load monitor.
    * @param concurrentSwaps The number of concurrent swap operations per broker.
-   * @param requestedLeadershipMovementConcurrency The maximum number of concurrent leader movements
+   * @param requestedClusterLeadershipMovementConcurrency The maximum number of concurrent leader movements in a cluster
    *                                               (if null, use num.concurrent.leader.movements).
+   * @param requestedBrokerLeadershipMovementConcurrency The maximum number of concurrent leader movements involved in a broker
+   *                                               (if null, use num.concurrent.leader.movements.per.broker).
    * @param requestedExecutionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
    *                                                  execution (if null, use execution.progress.check.interval.ms).
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
@@ -840,7 +843,8 @@ public class Executor {
                                                   Collection<Integer> demotedBrokers,
                                                   LoadMonitor loadMonitor,
                                                   Integer concurrentSwaps,
-                                                  Integer requestedLeadershipMovementConcurrency,
+                                                  Integer requestedClusterLeadershipMovementConcurrency,
+                                                  Integer requestedBrokerLeadershipMovementConcurrency,
                                                   Long requestedExecutionProgressCheckIntervalMs,
                                                   ReplicaMovementStrategy replicaMovementStrategy,
                                                   Long replicationThrottle,
@@ -850,7 +854,8 @@ public class Executor {
     sanityCheckExecuteProposals(loadMonitor, uuid);
     _skipInterBrokerReplicaConcurrencyAdjustment = true;
     try {
-      initProposalExecution(proposals, demotedBrokers, concurrentSwaps, null, 0, requestedLeadershipMovementConcurrency,
+      initProposalExecution(proposals, demotedBrokers, concurrentSwaps, null, 0,
+                            requestedClusterLeadershipMovementConcurrency, requestedBrokerLeadershipMovementConcurrency,
                             requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy, isTriggeredByUserRequest, loadMonitor);
       startExecution(loadMonitor, demotedBrokers, null, replicationThrottle, isTriggeredByUserRequest);
     } catch (Exception e) {

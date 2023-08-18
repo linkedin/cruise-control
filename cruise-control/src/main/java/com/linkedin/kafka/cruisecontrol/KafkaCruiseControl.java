@@ -727,8 +727,10 @@ public class KafkaCruiseControl {
    * Execute the given balancing proposals for demote operations.
    * @param proposals The given balancing proposals
    * @param demotedBrokers Brokers to be demoted.
-   * @param concurrentLeaderMovements The maximum number of concurrent leader movements
+   * @param clusterLeaderMovementsConcurrency The maximum number of concurrent leader movements in a cluster
    *                                  (if null, use num.concurrent.leader.movements).
+   * @param brokerLeaderMovementsConcurrency The maximum number of concurrent leader movements involved in a broker
+   *                                          (if null, use num.concurrent.leader.movements.per.broker).
    * @param brokerCount Number of brokers in the cluster.
    * @param executionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
    *                                         execution (if null, use execution.progress.check.interval.ms).
@@ -741,7 +743,8 @@ public class KafkaCruiseControl {
    */
   public void executeDemotion(Set<ExecutionProposal> proposals,
                               Set<Integer> demotedBrokers,
-                              Integer concurrentLeaderMovements,
+                              Integer clusterLeaderMovementsConcurrency,
+                              Integer brokerLeaderMovementsConcurrency,
                               int brokerCount,
                               Long executionProgressCheckIntervalMs,
                               ReplicaMovementStrategy replicaMovementStrategy,
@@ -751,14 +754,14 @@ public class KafkaCruiseControl {
     if (hasProposalsToExecute(proposals, uuid)) {
       // (1) Kafka Assigner mode is irrelevant for demoting.
       // (2) Ensure that replica swaps within partitions, which are prerequisites for broker demotion and does not trigger data move,
-      //     are throttled by concurrentLeaderMovements and config max.num.cluster.movements.
-      int concurrentSwaps = concurrentLeaderMovements != null
-                            ? concurrentLeaderMovements
+      //     are throttled by clusterLeaderMovementsConcurrency and config max.num.cluster.movements.
+      int concurrentSwaps = clusterLeaderMovementsConcurrency != null
+                            ? clusterLeaderMovementsConcurrency
                             : _config.getInt(ExecutorConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
       concurrentSwaps = Math.min(_config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG) / brokerCount, concurrentSwaps);
 
-      _executor.executeDemoteProposals(proposals, demotedBrokers, _loadMonitor, concurrentSwaps, concurrentLeaderMovements,
-                                       executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle,
+      _executor.executeDemoteProposals(proposals, demotedBrokers, _loadMonitor, concurrentSwaps, clusterLeaderMovementsConcurrency,
+                                       brokerLeaderMovementsConcurrency, executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle,
                                        isTriggeredByUserRequest, uuid);
     } else {
       failGeneratingProposalsForExecution(uuid);

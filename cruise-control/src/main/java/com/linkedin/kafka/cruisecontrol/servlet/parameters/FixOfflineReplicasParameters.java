@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
+import com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
@@ -69,7 +70,8 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
   protected boolean _dryRun;
   protected Integer _concurrentInterBrokerPartitionMovements;
   protected Integer _maxInterBrokerPartitionMovements;
-  protected Integer _concurrentLeaderMovements;
+  protected Integer _clusterLeaderMovementsConcurrency;
+  protected Integer _brokerLeaderMovementsConcurrency;
   protected Long _executionProgressCheckIntervalMs;
   protected boolean _skipHardGoalCheck;
   protected ReplicaMovementStrategy _replicaMovementStrategy;
@@ -86,9 +88,10 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
     _dryRun = ParameterUtils.getDryRun(_requestContext);
-    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_requestContext, true, false);
+    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_requestContext, ConcurrencyType.INTER_BROKER_REPLICA);
     _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_requestContext);
-    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_requestContext, false, false);
+    _clusterLeaderMovementsConcurrency = ParameterUtils.concurrentMovements(_requestContext, ConcurrencyType.LEADERSHIP_CLUSTER);
+    _brokerLeaderMovementsConcurrency = ParameterUtils.concurrentMovements(_requestContext, ConcurrencyType.LEADERSHIP_BROKER);
     _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_requestContext);
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_requestContext);
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_requestContext, _config);
@@ -119,7 +122,7 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
   public Integer concurrentInterBrokerPartitionMovements() {
     return _concurrentInterBrokerPartitionMovements;
   }
-  
+
   public Integer maxInterBrokerPartitionMovements() {
     return _maxInterBrokerPartitionMovements;
   }
@@ -128,9 +131,11 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
     return _executionProgressCheckIntervalMs;
   }
 
-  public Integer concurrentLeaderMovements() {
-    return _concurrentLeaderMovements;
+  public Integer clusterLeaderMovementsConcurrency() {
+    return _clusterLeaderMovementsConcurrency;
   }
+
+  public Integer brokerLeaderMovementsConcurrency() { return _brokerLeaderMovementsConcurrency; }
 
   public boolean skipHardGoalCheck() {
     return _skipHardGoalCheck;

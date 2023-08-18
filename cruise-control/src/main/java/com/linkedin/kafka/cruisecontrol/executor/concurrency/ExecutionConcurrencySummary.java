@@ -104,6 +104,17 @@ public class ExecutionConcurrencySummary {
     }
   }
 
+  /**
+   * Get the cluster leadership movement concurrency.
+   * @return the cluster leadership movement concurrency. If not initialized or the concurrency is null, return 0.
+   */
+  public synchronized int getClusterLeadershipMovementConcurrency() {
+    if (!_initialized || _clusterLeadershipMovementConcurrency == null) {
+      return 0;
+    }
+    return _clusterLeadershipMovementConcurrency.intValue();
+  }
+
   private void sanityCheckValidity() {
     if (_interBrokerPartitionMovementConcurrency.isEmpty()
         || _intraBrokerPartitionMovementConcurrency.isEmpty()
