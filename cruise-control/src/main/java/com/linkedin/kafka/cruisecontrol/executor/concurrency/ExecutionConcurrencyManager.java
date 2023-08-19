@@ -149,7 +149,7 @@ public class ExecutionConcurrencyManager {
   /**
    * Retrieve the movement concurrency of the given concurrency type.
    *
-   * @param brokerId The brokerId to get concurrency
+   * @param brokerId The brokerId to get concurrency and is used only if broker concurrency.
    * @param concurrencyType The type of concurrency for which the allowed movement concurrency is requested.
    * @return The movement concurrency of the given concurrency type.
    */
@@ -162,7 +162,7 @@ public class ExecutionConcurrencyManager {
       case LEADERSHIP_BROKER:
         return leadershipMovementConcurrency(brokerId);
       case LEADERSHIP_CLUSTER:
-        return clusterLeadershipMovementConcurrency();
+        return maxClusterLeadershipMovements();
       default:
         throw new IllegalArgumentException("Unsupported concurrency type " + concurrencyType + " is provided.");
     }
@@ -220,11 +220,11 @@ public class ExecutionConcurrencyManager {
 
   /**
    * Set the allowed execution concurrency of a certain concurrency type for a broker
-   * @param brokerId the id of the broker to set allowed concurrency
+   * @param brokerId the id of the broker to set allowed concurrency, and it is used only for broker concurrency.
    * @param concurrency the allowed concurrency to set
    * @param concurrencyType the concurrency type of the execution
    */
-  public synchronized void setExecutionConcurrencyForBroker(int brokerId, Integer concurrency, ConcurrencyType concurrencyType) {
+  public synchronized void setExecutionConcurrency(int brokerId, Integer concurrency, ConcurrencyType concurrencyType) {
     sanityCheckRequestedConcurrency(concurrency, concurrencyType);
     switch (concurrencyType) {
       case INTER_BROKER_REPLICA:
@@ -236,6 +236,8 @@ public class ExecutionConcurrencyManager {
       case LEADERSHIP_BROKER:
         _brokerLeadershipMovementConcurrency.put(brokerId, concurrency);
         break;
+      case LEADERSHIP_CLUSTER:
+        _requestedClusterLeadershipMovementConcurrency = concurrency;
       default:
         throw new IllegalArgumentException("Unsupported concurrency type " + concurrencyType + " is provided.");
     }
@@ -352,10 +354,5 @@ public class ExecutionConcurrencyManager {
     //  feature launched) a broker can execute 1000 movements at once. If we use average value, only 10 movements can execute on a single broker.
     // That's why we choose to use cluster movement concurrency for each broker.
     return _brokerLeadershipMovementConcurrency.getOrDefault(brokerId, requestedBrokerLeadershipMovementConcurrency());
-  }
-
-  private synchronized int clusterLeadershipMovementConcurrency() {
-    return _requestedClusterLeadershipMovementConcurrency != null
-           ? _requestedClusterLeadershipMovementConcurrency : _defaultClusterLeadershipMovementConcurrency;
   }
 }

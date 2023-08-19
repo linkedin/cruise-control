@@ -124,10 +124,10 @@ public class ExecutionTaskPlannerTest {
 
     // 1: there should be no throttle if there is enough concurrency at both cluster level and broker level.
     manager.setExecutionConcurrencyForAllBrokers(4, ConcurrencyType.LEADERSHIP_CLUSTER);
-    manager.setExecutionConcurrencyForBroker(0, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
-    manager.setExecutionConcurrencyForBroker(1, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
-    manager.setExecutionConcurrencyForBroker(2, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
-    manager.setExecutionConcurrencyForBroker(3, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
+    manager.setExecutionConcurrency(0, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
+    manager.setExecutionConcurrency(1, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
+    manager.setExecutionConcurrency(2, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
+    manager.setExecutionConcurrency(3, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
     proposals = new ArrayList<>();
     proposals.add(_leaderMovement1);
     proposals.add(_leaderMovement2);
@@ -145,10 +145,10 @@ public class ExecutionTaskPlannerTest {
     // 2: task is throttled by cluster concurrency:
     // Cluster concurrency is 3 and there are 4 tasks. Only 3 tasks can be executed at once, and 1 task should be throttled.
     manager.setExecutionConcurrencyForAllBrokers(3, ConcurrencyType.LEADERSHIP_CLUSTER);
-    manager.setExecutionConcurrencyForBroker(0, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
-    manager.setExecutionConcurrencyForBroker(1, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
-    manager.setExecutionConcurrencyForBroker(2, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
-    manager.setExecutionConcurrencyForBroker(3, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
+    manager.setExecutionConcurrency(0, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
+    manager.setExecutionConcurrency(1, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
+    manager.setExecutionConcurrency(2, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
+    manager.setExecutionConcurrency(3, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
     proposals = new ArrayList<>();
     proposals.add(_leaderMovement1);
     proposals.add(_leaderMovement2);
@@ -165,10 +165,10 @@ public class ExecutionTaskPlannerTest {
     // 3: task is throttled by broker concurrency
     // The broker 1 have concurrency 1, but 3 of the tasks involves this broker. In this case, 2 tasks should be throttled.
     manager.setExecutionConcurrencyForAllBrokers(3, ConcurrencyType.LEADERSHIP_CLUSTER);
-    manager.setExecutionConcurrencyForBroker(0, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
-    manager.setExecutionConcurrencyForBroker(1, MIN_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
-    manager.setExecutionConcurrencyForBroker(2, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
-    manager.setExecutionConcurrencyForBroker(3, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
+    manager.setExecutionConcurrency(0, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
+    manager.setExecutionConcurrency(1, MIN_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
+    manager.setExecutionConcurrency(2, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
+    manager.setExecutionConcurrency(3, MAX_BROKER_CONCURRENCY, ConcurrencyType.LEADERSHIP_CLUSTER);
     proposals = new ArrayList<>();
     proposals.add(_leaderMovement1);
     proposals.add(_leaderMovement2);

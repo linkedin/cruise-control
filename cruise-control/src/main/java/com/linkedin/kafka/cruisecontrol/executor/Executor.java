@@ -535,11 +535,19 @@ public class Executor {
         }
 
         for (int broker: concurrencyAdjustingRecommendation.getBrokersToIncreaseConcurrency()) {
-          increaseExecutionConcurrencyForBroker(broker, concurrencyType);
+          increaseExecutionConcurrency(broker, concurrencyType);
         }
         for (int broker: concurrencyAdjustingRecommendation.getBrokersToDecreaseConcurrency()) {
-          decreaseExecutionConcurrencyForBroker(broker, concurrencyType);
+          decreaseExecutionConcurrency(broker, concurrencyType);
+        }
+
+        if (concurrencyType == ConcurrencyType.LEADERSHIP_BROKER) {
+          if (concurrencyAdjustingRecommendation.shouldIncreaseClusterConcurrency()) {
+            increaseExecutionConcurrency(0, ConcurrencyType.LEADERSHIP_CLUSTER);
+          } else if (concurrencyAdjustingRecommendation.shouldDecreaseClusterConcurrency()) {
+            decreaseExecutionConcurrency(0, ConcurrencyType.LEADERSHIP_CLUSTER);
           }
+        }
       }
     }
 
@@ -574,27 +582,29 @@ public class Executor {
       return ExecutionUtils.recommendedConcurrency(cluster, minIsrWithTimeByTopic);
     }
 
-    private void decreaseExecutionConcurrencyForBroker(int brokerId, ConcurrencyType concurrencyType) {
+    private void decreaseExecutionConcurrency(int brokerId, ConcurrencyType concurrencyType) {
       int minMovementsConcurrency = MIN_CONCURRENCY.get(concurrencyType);
       int currentMovementConcurrency = _executionConcurrencyManager.getExecutionConcurrency(brokerId, concurrencyType);
       // Multiplicative-decrease reassignment concurrency (MIN: minMovementsConcurrency).
       if (currentMovementConcurrency > minMovementsConcurrency) {
         int recommendedConcurrency = Math.max(minMovementsConcurrency, currentMovementConcurrency / MULTIPLICATIVE_DECREASE.get(concurrencyType));
-        _executionConcurrencyManager.setExecutionConcurrencyForBroker(brokerId, recommendedConcurrency, concurrencyType);
-        LOG.info("Concurrency adjuster decreased the {} movement concurrency to {} for broker {}",
-                 concurrencyType, recommendedConcurrency, brokerId);
+        _executionConcurrencyManager.setExecutionConcurrency(brokerId, recommendedConcurrency, concurrencyType);
+        String brokerName = concurrencyType == ConcurrencyType.LEADERSHIP_CLUSTER ? "" : " for broker " + brokerId;
+        LOG.info("Concurrency adjuster decreased the {} movement concurrency to {}{}",
+                 concurrencyType, recommendedConcurrency, brokerName);
       }
     }
 
-    private void increaseExecutionConcurrencyForBroker(int brokerId, ConcurrencyType concurrencyType) {
+    private void increaseExecutionConcurrency(int brokerId, ConcurrencyType concurrencyType) {
       int maxMovementsConcurrency = MAX_CONCURRENCY.get(concurrencyType);
       int currentMovementConcurrency = _executionConcurrencyManager.getExecutionConcurrency(brokerId, concurrencyType);
       // Additive-increase reassignment concurrency (MAX: maxMovementsConcurrency).
       if (currentMovementConcurrency < maxMovementsConcurrency) {
         int recommendedConcurrency = Math.min(maxMovementsConcurrency, currentMovementConcurrency + ADDITIVE_INCREASE.get(concurrencyType));
-        _executionConcurrencyManager.setExecutionConcurrencyForBroker(brokerId, recommendedConcurrency, concurrencyType);
-        LOG.info("Concurrency adjuster increased the {} movement concurrency to {} for broker {}",
-                 concurrencyType, recommendedConcurrency, brokerId);
+        _executionConcurrencyManager.setExecutionConcurrency(brokerId, recommendedConcurrency, concurrencyType);
+        String brokerName = concurrencyType == ConcurrencyType.LEADERSHIP_CLUSTER ? "" : " for broker " + brokerId;
+        LOG.info("Concurrency adjuster increased the {} movement concurrency to {}{}",
+                 concurrencyType, recommendedConcurrency, brokerName);
       }
     }
 
@@ -604,7 +614,7 @@ public class Executor {
         if (_started) {
           boolean canRunMetricsBasedCheck = (_numChecks++ % _numMinIsrCheck) == 0;
           refreshConcurrency(canRunMetricsBasedCheck, ConcurrencyType.INTER_BROKER_REPLICA);
-          refreshConcurrency(canRunMetricsBasedCheck, ConcurrencyType.LEADERSHIP_CLUSTER);
+          // Both broker and cluster leadership movement concurrency will be refreshed.
           refreshConcurrency(canRunMetricsBasedCheck, ConcurrencyType.LEADERSHIP_BROKER);
         }
       } catch (Throwable t) {
@@ -882,7 +892,7 @@ public class Executor {
    * @param concurrencyType The type of concurrency for which the requested movement concurrency will be set.
    */
   public synchronized void setExecutionConcurrencyForBroker(int brokerId, Integer concurrency, ConcurrencyType concurrencyType) {
-    _executionTaskManager.getExecutionConcurrencyManager().setExecutionConcurrencyForBroker(brokerId, concurrency, concurrencyType);
+    _executionTaskManager.getExecutionConcurrencyManager().setExecutionConcurrency(brokerId, concurrency, concurrencyType);
   }
 
   /**
