@@ -690,7 +690,7 @@ public class KafkaCruiseControl {
    *                                                (if null, use num.concurrent.partition.movements.per.broker).
    * @param maxInterBrokerPartitionMovements The upper bound of concurrent inter-broker partition movements in cluster
    *                                                (if null, use num.concurrent.partition.movements.per.broker).
-   * @param concurrentLeaderMovements The maximum number of concurrent leader movements
+   * @param clusterLeaderMovementsConcurrency The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
    * @param executionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
    *                                         execution (if null, use execution.progress.check.interval.ms).
@@ -707,7 +707,8 @@ public class KafkaCruiseControl {
                              boolean isKafkaAssignerMode,
                              Integer concurrentInterBrokerPartitionMovements,
                              Integer maxInterBrokerPartitionMovements,
-                             Integer concurrentLeaderMovements,
+                             Integer clusterLeaderMovementsConcurrency,
+                             Integer brokerLeaderMovementsConcurrency,
                              Long executionProgressCheckIntervalMs,
                              ReplicaMovementStrategy replicaMovementStrategy,
                              Long replicationThrottle,
@@ -716,7 +717,8 @@ public class KafkaCruiseControl {
     if (hasProposalsToExecute(proposals, uuid)) {
       _executor.executeProposals(proposals, throttleDecommissionedBroker ? Collections.emptySet() : removedBrokers, removedBrokers,
                                  _loadMonitor, concurrentInterBrokerPartitionMovements, maxInterBrokerPartitionMovements, 0,
-                                 concurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle,
+                                 clusterLeaderMovementsConcurrency, brokerLeaderMovementsConcurrency,
+                                 executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle,
                                  isTriggeredByUserRequest, uuid, isKafkaAssignerMode, false);
     } else {
       failGeneratingProposalsForExecution(uuid);

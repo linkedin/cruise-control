@@ -121,7 +121,7 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
     if (!_dryRun) {
       _kafkaCruiseControl.executeRemoval(result.goalProposals(), _throttleRemovedBrokers, _removedBrokerIds, isKafkaAssignerMode(_goals),
                                          _concurrentInterBrokerPartitionMovements, _maxInterBrokerPartitionMovements,
-          _clusterLeaderMovementsConcurrency,
+                                          _clusterLeaderMovementsConcurrency, _brokerLeaderMovementsConcurrency,
                                          _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle,
                                          _isTriggeredByUserRequest, _uuid);
     }
