@@ -87,6 +87,6 @@ public class ExecutionConcurrencySummaryTest {
     assertThrows(IllegalArgumentException.class, () -> summary.getMaxExecutionConcurrency(ConcurrencyType.LEADERSHIP_BROKER));
     assertThrows(IllegalArgumentException.class, () -> summary.getMinExecutionConcurrency(ConcurrencyType.LEADERSHIP_BROKER));
     assertThrows(IllegalArgumentException.class, () -> summary.getAvgExecutionConcurrency(ConcurrencyType.LEADERSHIP_BROKER));
-    assertEquals(summary.getClusterLeadershipMovementConcurrency(), 0);
+    assertEquals(summary.getClusterLeadershipMovementConcurrency(), 257);
   }
 }

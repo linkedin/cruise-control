@@ -32,7 +32,8 @@ public class ExecutionTaskManagerTest {
   private static final Map<ConcurrencyType, Integer> MOCK_DEFAULT_CONCURRENCY;
   static {
     MOCK_DEFAULT_CONCURRENCY =
-        Map.of(ConcurrencyType.INTER_BROKER_REPLICA, 4, ConcurrencyType.LEADERSHIP_CLUSTER, 500, ConcurrencyType.INTRA_BROKER_REPLICA, 2);
+        Map.of(ConcurrencyType.INTER_BROKER_REPLICA, 4, ConcurrencyType.LEADERSHIP_CLUSTER, 500,
+            ConcurrencyType.LEADERSHIP_BROKER, 100, ConcurrencyType.INTRA_BROKER_REPLICA, 2);
   }
   private static ExecutionTaskManager taskManager;
 
@@ -60,6 +61,8 @@ public class ExecutionTaskManagerTest {
                    Integer.toString(MOCK_DEFAULT_CONCURRENCY.get(ConcurrencyType.INTER_BROKER_REPLICA)));
     properties.put(ExecutorConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG,
                    Integer.toString(MOCK_DEFAULT_CONCURRENCY.get(ConcurrencyType.LEADERSHIP_CLUSTER)));
+    properties.put(ExecutorConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_PER_BROKER_CONFIG,
+                   Integer.toString(MOCK_DEFAULT_CONCURRENCY.get(ConcurrencyType.LEADERSHIP_BROKER)));
     properties.put(ExecutorConfig.NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG,
                    Integer.toString(MOCK_DEFAULT_CONCURRENCY.get(ConcurrencyType.INTRA_BROKER_REPLICA)));
     taskManager = new ExecutionTaskManager(null, new MetricRegistry(), new SystemTime(),
@@ -97,6 +100,7 @@ public class ExecutionTaskManagerTest {
       taskManager.getExecutionConcurrencyManager().setExecutionConcurrencyForAllBrokers(null, ConcurrencyType.INTRA_BROKER_REPLICA);
       taskManager.getExecutionConcurrencyManager().setExecutionConcurrencyForAllBrokers(null, ConcurrencyType.INTER_BROKER_REPLICA);
       taskManager.getExecutionConcurrencyManager().setExecutionConcurrencyForAllBrokers(null, ConcurrencyType.LEADERSHIP_CLUSTER);
+      taskManager.getExecutionConcurrencyManager().setExecutionConcurrencyForAllBrokers(null, ConcurrencyType.LEADERSHIP_BROKER);
       List<ExecutionTask> tasks = taskManager.getInterBrokerReplicaMovementTasks();
       assertEquals(1, tasks.size());
       ExecutionTask task = tasks.get(0);
