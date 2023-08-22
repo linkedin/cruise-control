@@ -643,7 +643,7 @@ public class KafkaCruiseControl {
    *                                                (if null, use num.concurrent.intra.broker.partition.movements).
    * @param clusterConcurrentLeaderMovements The maximum number of concurrent leader movements in a cluster
    *                                  (if null, use num.concurrent.leader.movements).
-   * @param clusterConcurrentLeaderMovements The maximum number of concurrent leader movements involved in a broker
+   * @param brokerConcurrentLeaderMovements The maximum number of concurrent leader movements involved in a broker
    *                                  (if null, use num.concurrent.leader.movements.per.broker).
    * @param executionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
    *                                         execution (if null, use execution.progress.check.interval.ms).
@@ -673,7 +673,7 @@ public class KafkaCruiseControl {
     if (hasProposalsToExecute(proposals, uuid)) {
       _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor, concurrentInterBrokerPartitionMovements,
                                  maxInterBrokerPartitionMovements, concurrentIntraBrokerPartitionMovements, clusterConcurrentLeaderMovements,
-                                 brokerConcurrentLeaderMovements,executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle,
+                                 brokerConcurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle,
                                  isTriggeredByUserRequest, uuid, isKafkaAssignerMode, skipInterBrokerReplicaConcurrencyAdjustment);
     } else {
       failGeneratingProposalsForExecution(uuid);
@@ -692,6 +692,8 @@ public class KafkaCruiseControl {
    *                                                (if null, use num.concurrent.partition.movements.per.broker).
    * @param clusterLeaderMovementsConcurrency The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
+   * @param brokerLeaderMovementsConcurrency The maximum number of concurrent leader movements involved in a broker
+   *                                  (if null, use num.concurrent.leader.movements.per.broker).
    * @param executionProgressCheckIntervalMs The interval between checking and updating the progress of an initiated
    *                                         execution (if null, use execution.progress.check.interval.ms).
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
@@ -763,8 +765,8 @@ public class KafkaCruiseControl {
       concurrentSwaps = Math.min(_config.getInt(ExecutorConfig.MAX_NUM_CLUSTER_MOVEMENTS_CONFIG) / brokerCount, concurrentSwaps);
 
       _executor.executeDemoteProposals(proposals, demotedBrokers, _loadMonitor, concurrentSwaps, clusterLeaderMovementsConcurrency,
-                                       brokerLeaderMovementsConcurrency, executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle,
-                                       isTriggeredByUserRequest, uuid);
+                                       brokerLeaderMovementsConcurrency, executionProgressCheckIntervalMs, replicaMovementStrategy,
+                                       replicationThrottle, isTriggeredByUserRequest, uuid);
     } else {
       failGeneratingProposalsForExecution(uuid);
     }

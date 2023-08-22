@@ -124,7 +124,9 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
     return _clusterLeaderMovementsConcurrency;
   }
 
-  public Integer brokerLeaderMovementsConcurrency() { return _brokerLeaderMovementsConcurrency; }
+  public Integer brokerLeaderMovementsConcurrency() {
+    return _brokerLeaderMovementsConcurrency;
+  }
 
   public Long executionProgressCheckIntervalMs() {
     return _executionProgressCheckIntervalMs;

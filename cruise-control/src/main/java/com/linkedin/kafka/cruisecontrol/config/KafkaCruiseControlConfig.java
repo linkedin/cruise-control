@@ -251,7 +251,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_PER_BROKER_CONFIG} >
    *     {@link ExecutorConfig#NUM_CONCURRENT_LEADER_MOVEMENTS_PER_BROKER_CONFIG}</li>
    *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_PER_BROKER_CONFIG} <=
-   *     {@link ExecutorConfig#MAX_NUM_CLUSTER_MOVEMENTS_CONFIG}</li>
+   *     {@link ExecutorConfig#CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_CONFIG}</li>
    *   <li>{@link ExecutorConfig#MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG} <=
    *     {@link ExecutorConfig#EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG}</li>
    * </ul>
@@ -348,10 +348,10 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
           concurrencyAdjusterMaxLeadershipMovementsPerBroker));
     }
 
-    if (concurrencyAdjusterMaxLeadershipMovementsPerBroker > maxClusterMovementConcurrency) {
+    if (concurrencyAdjusterMaxLeadershipMovementsPerBroker > concurrencyAdjusterMaxLeadershipMovements) {
       throw new ConfigException(String.format("Maximum per broker leadership movements of concurrency adjuster [%d] cannot be greater "
               + "than the maximum number of allowed movements in cluster [%d].",
-          concurrencyAdjusterMaxLeadershipMovementsPerBroker, maxClusterMovementConcurrency));
+          concurrencyAdjusterMaxLeadershipMovementsPerBroker, concurrencyAdjusterMaxLeadershipMovements));
     }
 
     long minExecutionProgressCheckIntervalMs = getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);

@@ -85,13 +85,21 @@ public class ConcurrencyAdjustingRecommendation {
     return _type.equals(ConcurrencyAdjustingRecommendationType.NO_CHANGE_RECOMMENDED);
   }
 
+  /**
+   * Check whether to increase cluster concurrency
+   * @return true if should increase cluster concurrency, otherwise return false.
+   */
   public boolean shouldIncreaseClusterConcurrency() {
-    return _type == ConcurrencyAdjustingRecommendationType.CHANGE_RECOMMENDED &&
-        _clusterConcurrencyAdjustRecommendation == ClusterConcurrencyAdjustType.INCREASE;
+    return _type == ConcurrencyAdjustingRecommendationType.CHANGE_RECOMMENDED
+        && _clusterConcurrencyAdjustRecommendation == ClusterConcurrencyAdjustType.INCREASE;
   }
 
+  /**
+   *  Check whether  to decrease cluster concurrency
+   * @return true if should decrease cluster concurrency, otherwise return false.
+   */
   public boolean shouldDecreaseClusterConcurrency() {
-    return _type == ConcurrencyAdjustingRecommendationType.CHANGE_RECOMMENDED &&
-        _clusterConcurrencyAdjustRecommendation == ClusterConcurrencyAdjustType.DECREASE;
+    return _type == ConcurrencyAdjustingRecommendationType.CHANGE_RECOMMENDED
+        && _clusterConcurrencyAdjustRecommendation == ClusterConcurrencyAdjustType.DECREASE;
   }
 }

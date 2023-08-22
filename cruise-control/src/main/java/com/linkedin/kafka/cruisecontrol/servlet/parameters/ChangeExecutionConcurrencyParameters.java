@@ -94,9 +94,13 @@ public class ChangeExecutionConcurrencyParameters extends AbstractParameters {
     return _concurrentIntraBrokerPartitionMovements;
   }
 
-  public Integer clusterLeaderMovementsConcurrency() { return _clusterLeaderMovementsConcurrency; }
+  public Integer clusterLeaderMovementsConcurrency() {
+    return _clusterLeaderMovementsConcurrency;
+  }
 
-  public Integer brokerLeaderMovementsConcurrency() { return _brokerLeaderMovementsConcurrency; }
+  public Integer brokerLeaderMovementsConcurrency() {
+    return _brokerLeaderMovementsConcurrency;
+  }
 
   public Integer maxInterBrokerPartitionMovements() {
     return _maxInterBrokerPartitionMovements;

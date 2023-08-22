@@ -139,7 +139,9 @@ public class RebalanceParameters extends ProposalsParameters {
     return _clusterLeaderMovementsConcurrency;
   }
 
-  public Integer brokerConcurrentLeaderMovements() { return _brokerLeaderMovementsConcurrency; }
+  public Integer brokerConcurrentLeaderMovements() {
+    return _brokerLeaderMovementsConcurrency;
+  }
 
   public boolean skipHardGoalCheck() {
     return _skipHardGoalCheck;

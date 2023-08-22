@@ -92,13 +92,13 @@ public class ExecutionConcurrencyManager {
    * @param requestedInterBrokerPartitionMovementConcurrency the requested inter broker partition movement concurrency per broker
    * @param requestedIntraBrokerPartitionMovementConcurrency the requested intra broker partition movement concurrency per broker
    * @param requestedClusterLeadershipMovementConcurrency the requested leadership movement concurrency in the cluster
-   * @param requestedClusterLeadershipMovementConcurrency the requested leadership movement concurrency involved in a broker
+   * @param requestedBrokerLeadershipMovementConcurrency the requested leadership movement concurrency involved in a broker
    */
   public synchronized void initialize(Set<Integer> brokers,
                                       Integer requestedInterBrokerPartitionMovementConcurrency,
                                       Integer requestedIntraBrokerPartitionMovementConcurrency,
                                       Integer requestedClusterLeadershipMovementConcurrency,
-                                      Integer requestedBrokerConcurrentLeaderMovements) {
+                                      Integer requestedBrokerLeadershipMovementConcurrency) {
 
     LOG.info("Initialize ExecutionConcurrencyManager with requested inter-broker/intra-broker/leadership concurrency: {}/{}/{} on brokers {}.",
              requestedInterBrokerPartitionMovementConcurrency,
@@ -111,7 +111,7 @@ public class ExecutionConcurrencyManager {
     _requestedInterBrokerPartitionMovementConcurrency = requestedInterBrokerPartitionMovementConcurrency;
     _requestedIntraBrokerPartitionMovementConcurrency = requestedIntraBrokerPartitionMovementConcurrency;
     _requestedClusterLeadershipMovementConcurrency = requestedClusterLeadershipMovementConcurrency;
-    _requestedPerBrokerLeadershipMovementConcurrency = requestedBrokerConcurrentLeaderMovements;
+    _requestedPerBrokerLeadershipMovementConcurrency = requestedBrokerLeadershipMovementConcurrency;
     for (int brokerId: brokers) {
       _interBrokerPartitionMovementConcurrency.put(brokerId, interBrokerPartitionMovementConcurrency());
       _intraBrokerPartitionMovementConcurrency.put(brokerId, intraBrokerPartitionMovementConcurrency());
@@ -153,7 +153,7 @@ public class ExecutionConcurrencyManager {
    * @param concurrencyType The type of concurrency for which the allowed movement concurrency is requested.
    * @return The movement concurrency of the given concurrency type.
    */
-  public int getExecutionConcurrency(int brokerId, ConcurrencyType concurrencyType) {
+  public synchronized int getExecutionConcurrency(int brokerId, ConcurrencyType concurrencyType) {
     switch (concurrencyType) {
       case INTER_BROKER_REPLICA:
         return interBrokerPartitionMovementConcurrency(brokerId);
@@ -174,7 +174,7 @@ public class ExecutionConcurrencyManager {
    * @param concurrencyType The type of concurrency for which the allowed movement concurrency is requested.
    * @return The movement concurrency of the given concurrency type.
    */
-  public Map<Integer, Integer> getExecutionConcurrencyPerBroker(ConcurrencyType concurrencyType) {
+  public synchronized Map<Integer, Integer> getExecutionConcurrencyPerBroker(ConcurrencyType concurrencyType) {
     switch (concurrencyType) {
       case INTER_BROKER_REPLICA:
         return _interBrokerPartitionMovementConcurrency;
@@ -238,6 +238,7 @@ public class ExecutionConcurrencyManager {
         break;
       case LEADERSHIP_CLUSTER:
         _requestedClusterLeadershipMovementConcurrency = concurrency;
+        break;
       default:
         throw new IllegalArgumentException("Unsupported concurrency type " + concurrencyType + " is provided.");
     }
@@ -340,8 +341,8 @@ public class ExecutionConcurrencyManager {
   }
 
   private synchronized int requestedBrokerLeadershipMovementConcurrency() {
-    return _requestedPerBrokerLeadershipMovementConcurrency != null ?
-        _requestedPerBrokerLeadershipMovementConcurrency: _defaultPerBrokerLeadershipMovementConcurrency;
+    return _requestedPerBrokerLeadershipMovementConcurrency != null
+        ? _requestedPerBrokerLeadershipMovementConcurrency : _defaultPerBrokerLeadershipMovementConcurrency;
   }
 
   private synchronized int leadershipMovementConcurrency(int brokerId) {

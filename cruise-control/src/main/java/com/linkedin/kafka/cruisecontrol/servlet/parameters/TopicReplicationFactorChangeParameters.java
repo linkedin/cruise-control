@@ -115,7 +115,9 @@ public class TopicReplicationFactorChangeParameters extends AbstractParameters {
     return _clusterLeaderMovementsConcurrency;
   }
 
-  public Integer brokerLeaderMovementsConcurrency() { return _brokerLeaderMovementsConcurrency; }
+  public Integer brokerLeaderMovementsConcurrency() {
+    return _brokerLeaderMovementsConcurrency;
+  }
 
   public boolean skipHardGoalCheck() {
     return _skipHardGoalCheck;

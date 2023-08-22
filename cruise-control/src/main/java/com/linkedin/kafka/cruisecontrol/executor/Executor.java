@@ -467,20 +467,20 @@ public class Executor {
      *                                                         per broker(if null, use num.concurrent.intra.broker.partition.movements).
      * @param requestedClusterLeadershipMovementConcurrency The maximum number of concurrent leader movements in a cluster
      *                                               (if null, use num.concurrent.leader.movements).
-     * @param requestedClusterLeadershipMovementConcurrency The maximum number of concurrent leader movements involved in a broker
-     *                                               (if null, use num.concurrent.leader.movements).
+     * @param requestedBrokerLeadershipMovementConcurrency The maximum number of concurrent leader movements involved in a broker
+     *                                               (if null, use num.concurrent.leader.movements.per.broker).
      */
     public synchronized void initAdjustment(LoadMonitor loadMonitor,
                                             Integer requestedInterBrokerPartitionMovementConcurrency,
                                             Integer requestedIntraBrokerPartitionMovementConcurrency,
                                             Integer requestedClusterLeadershipMovementConcurrency,
-                                            Integer requestedBrokerConcurrentLeaderMovements) {
+                                            Integer requestedBrokerLeadershipMovementConcurrency) {
       _loadMonitor = loadMonitor;
       _executionConcurrencyManager.initialize(loadMonitor.brokersWithReplicas(MAX_METADATA_WAIT_MS),
                                               requestedInterBrokerPartitionMovementConcurrency,
                                               requestedIntraBrokerPartitionMovementConcurrency,
                                               requestedClusterLeadershipMovementConcurrency,
-                                              requestedBrokerConcurrentLeaderMovements);
+                                              requestedBrokerLeadershipMovementConcurrency);
       _started = true;
     }
 
@@ -708,8 +708,8 @@ public class Executor {
    * @return {@code true} if concurrency adjuster was enabled before for the given concurrency type, {@code false} otherwise.
    */
   public Boolean setConcurrencyAdjusterFor(ConcurrencyType concurrencyType, boolean isConcurrencyAdjusterEnabled) {
-    if (concurrencyType != ConcurrencyType.INTER_BROKER_REPLICA && concurrencyType != ConcurrencyType.LEADERSHIP_CLUSTER &&
-          concurrencyType != ConcurrencyType.LEADERSHIP_BROKER) {
+    if (concurrencyType != ConcurrencyType.INTER_BROKER_REPLICA && concurrencyType != ConcurrencyType.LEADERSHIP_CLUSTER
+        && concurrencyType != ConcurrencyType.LEADERSHIP_BROKER) {
       throw new IllegalArgumentException(String.format("Concurrency adjuster for %s is not yet supported.", concurrencyType));
     }
     return _concurrencyAdjusterEnabled.put(concurrencyType, isConcurrencyAdjusterEnabled);

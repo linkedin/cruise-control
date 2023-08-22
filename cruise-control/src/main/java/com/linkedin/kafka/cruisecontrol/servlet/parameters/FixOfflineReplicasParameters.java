@@ -126,7 +126,9 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
     return _clusterLeaderMovementsConcurrency;
   }
 
-  public Integer brokerLeaderMovementsConcurrency() { return _brokerLeaderMovementsConcurrency; }
+  public Integer brokerLeaderMovementsConcurrency() {
+    return _brokerLeaderMovementsConcurrency;
+  }
 
   public boolean skipHardGoalCheck() {
     return _skipHardGoalCheck;

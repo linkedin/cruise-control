@@ -862,13 +862,13 @@ public final class ParameterUtils {
   /**
    * Get the execution concurrency requirement dynamically set from the Http request for different concurrency types.
    * @param requestContext                        The Http request.
-   * @param concurrencyType
+   * @param concurrencyType Concurrency type.
    * @return The execution concurrency requirement dynamically set from the Http request.
    */
   static Integer concurrentMovements(CruiseControlRequestContext requestContext,
                                      ConcurrencyType concurrencyType) {
     String parameter = "";
-    switch(concurrencyType) {
+    switch (concurrencyType) {
       case INTER_BROKER_REPLICA:
         parameter = CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM;
         break;

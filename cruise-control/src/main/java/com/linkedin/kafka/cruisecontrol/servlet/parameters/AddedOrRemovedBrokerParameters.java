@@ -106,9 +106,13 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
     return _executionProgressCheckIntervalMs;
   }
 
-  public Integer clusterLeaderMovementsConcurrency() { return _clusterLeaderMovementsConcurrency;}
+  public Integer clusterLeaderMovementsConcurrency() {
+    return _clusterLeaderMovementsConcurrency;
+  }
 
-  public Integer brokerLeaderMovementsConcurrency() { return _brokerLeaderMovementsConcurrency;}
+  public Integer brokerLeaderMovementsConcurrency() {
+    return _brokerLeaderMovementsConcurrency;
+  }
 
   public boolean dryRun() {
     return _dryRun;

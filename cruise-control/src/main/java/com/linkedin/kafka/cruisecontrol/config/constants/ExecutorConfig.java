@@ -360,7 +360,8 @@ public final class ExecutorConfig {
   public static final int DEFAULT_CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_PER_BROKER = 500;
   public static final String CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_PER_BROKER_DOC = "The maximum number of leadership movements "
       + "the concurrency auto adjustment will allow the executor to perform on a broker in one batch to avoid overwhelming the broker. "
-      + "It cannot be (1) smaller than num.concurrent.leader.movements.per.broker and (2) greater than concurrency.adjuster.max.leadership.movements.";
+      + "It cannot be (1) smaller than num.concurrent.leader.movements.per.broker and "
+      + "(2) greater than concurrency.adjuster.max.leadership.movements.";
 
   /**
    * <code>concurrency.adjuster.min.partition.movements.per.broker</code>
@@ -522,7 +523,6 @@ public final class ExecutorConfig {
   public static final String CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_LEADERSHIP_PER_BROKER_DOC = "The fixed number by which the "
       + "per broker concurrency cap on leadership movements will be divided by the concurrency adjuster (if enabled) when any "
       + "considered metric exceeds the concurrency adjuster limit.";
-
 
   /**
    * <code>list.partition.reassignment.timeout.ms</code>
