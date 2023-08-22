@@ -264,11 +264,10 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
    * @return {@code true} if utilization is over the limit, {@code false} otherwise.
    */
   private boolean isUtilizationOverLimit(Disk disk) {
-    boolean diskUtilizationValid = true;
-    if (_shouldEmptyZeroCapacityDisks) {
-      diskUtilizationValid = disk.utilization() > 0;
+    if (_shouldEmptyZeroCapacityDisks && disk.capacity() == 0) {
+      return disk.utilization() > 0 || disk.replicas().size() > 0;
     }
-    return diskUtilizationValid && disk.utilization() > disk.capacity() * _balancingConstraint.capacityThreshold(RESOURCE);
+    return disk.utilization() > disk.capacity() * _balancingConstraint.capacityThreshold(RESOURCE);
   }
 
   /**
