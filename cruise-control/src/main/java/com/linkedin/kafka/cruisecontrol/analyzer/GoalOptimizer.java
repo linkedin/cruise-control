@@ -328,7 +328,7 @@ public class GoalOptimizer implements Runnable {
             } else if (!_hasOngoingExplicitPrecomputation) {
               // Submit background computation if there is no ongoing explicit precomputation and wait for the cache update.
               _hasOngoingExplicitPrecomputation = true;
-              _proposalPrecomputingExecutor.submit(() -> computeCachedProposal(allowCapacityEstimation));
+              _proposalPrecomputingExecutor.execute(() -> computeCachedProposal(allowCapacityEstimation));
             }
             operationProgress.refer(_proposalPrecomputingProgress);
             _cacheLock.wait();

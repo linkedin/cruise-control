@@ -212,7 +212,7 @@ public class KafkaSampleStore extends AbstractKafkaSampleStore {
       prepareConsumers();
 
       for (Consumer<byte[], byte[]> consumer : _consumers) {
-        _metricProcessorExecutor.submit(
+        _metricProcessorExecutor.execute(
             new MetricLoader(consumer, sampleLoader, numLoadedSamples, numPartitionMetricSamples, numBrokerMetricSamples,
                              totalSamples));
       }

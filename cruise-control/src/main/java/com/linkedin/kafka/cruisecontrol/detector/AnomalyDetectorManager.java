@@ -239,9 +239,9 @@ public class AnomalyDetectorManager {
     scheduleDetectorAtFixedRate(DISK_FAILURE, _diskFailureDetector);
     scheduleDetectorAtFixedRate(BROKER_FAILURE, _brokerFailureDetector);
     LOG.debug("Starting {} detector.", MAINTENANCE_EVENT);
-    _detectorScheduler.submit(_maintenanceEventDetector);
+    _detectorScheduler.execute(_maintenanceEventDetector);
     LOG.debug("Starting anomaly handler.");
-    _detectorScheduler.submit(new AnomalyHandlerTask());
+    _detectorScheduler.execute(new AnomalyHandlerTask());
   }
 
   /**
@@ -551,10 +551,10 @@ public class AnomalyDetectorManager {
               }
               LOG.info("{} the anomaly {}.", fixStarted ? "Fixing" : "Cannot fix", _anomalyInProgress);
               String optimizationResult = fixStarted ? _anomalyInProgress.optimizationResult(false) : null;
-              _anomalyLoggerExecutor.submit(() -> logSelfHealingOperation(anomalyId, null, optimizationResult));
+              _anomalyLoggerExecutor.execute(() -> logSelfHealingOperation(anomalyId, null, optimizationResult));
             }
           } catch (OptimizationFailureException ofe) {
-            _anomalyLoggerExecutor.submit(() -> logSelfHealingOperation(anomalyId, ofe, null));
+            _anomalyLoggerExecutor.execute(() -> logSelfHealingOperation(anomalyId, ofe, null));
             skipReportingIfNotUpdated = anomalyType == KafkaAnomalyType.BROKER_FAILURE;
             throw ofe;
           } finally {

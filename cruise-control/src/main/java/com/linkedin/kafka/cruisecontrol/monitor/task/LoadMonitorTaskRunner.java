@@ -137,7 +137,7 @@ public class LoadMonitorTaskRunner {
   public void bootstrap(long startMs, long endMs, boolean clearMetrics) {
 
     if (_state.compareAndSet(RUNNING, BOOTSTRAPPING)) {
-      _samplingScheduler.submit(new BootstrapTask(startMs, endMs, clearMetrics, _metadataClient,
+      _samplingScheduler.execute(new BootstrapTask(startMs, endMs, clearMetrics, _metadataClient,
           _partitionMetricSampleAggregator,
                                                   this, _metricFetcherManager, _sampleStore, _configuredNumWindows,
                                                   _configuredWindowMs, _samplingIntervalMs, _time));
@@ -156,7 +156,7 @@ public class LoadMonitorTaskRunner {
   public void bootstrap(long startMs, boolean clearMetrics) {
 
     if (_state.compareAndSet(RUNNING, BOOTSTRAPPING)) {
-      _samplingScheduler.submit(new BootstrapTask(startMs, clearMetrics, _metadataClient,
+      _samplingScheduler.execute(new BootstrapTask(startMs, clearMetrics, _metadataClient,
           _partitionMetricSampleAggregator,
                                                   this, _metricFetcherManager, _sampleStore, _configuredNumWindows,
                                                   _configuredWindowMs, _samplingIntervalMs, _time));
@@ -173,7 +173,7 @@ public class LoadMonitorTaskRunner {
    */
   public void bootstrap(boolean clearMetrics) {
     if (_state.compareAndSet(RUNNING, BOOTSTRAPPING)) {
-      _samplingScheduler.submit(new BootstrapTask(clearMetrics, _metadataClient, _partitionMetricSampleAggregator,
+      _samplingScheduler.execute(new BootstrapTask(clearMetrics, _metadataClient, _partitionMetricSampleAggregator,
                                                   this, _metricFetcherManager, _sampleStore, _configuredNumWindows,
                                                   _configuredWindowMs, _samplingIntervalMs, _time));
     } else {
@@ -193,7 +193,7 @@ public class LoadMonitorTaskRunner {
    */
   private void loadSamples() {
     if (_state.compareAndSet(RUNNING, LOADING)) {
-      _samplingScheduler.submit(new SampleLoadingTask(_sampleStore,
+      _samplingScheduler.execute(new SampleLoadingTask(_sampleStore,
                                                       _partitionMetricSampleAggregator,
                                                       _brokerMetricSampleAggregator,
                                                       this));
@@ -214,7 +214,7 @@ public class LoadMonitorTaskRunner {
    */
   public void train(long startMs, long endMs) {
     if (_state.compareAndSet(RUNNING, TRAINING)) {
-      _samplingScheduler.submit(new TrainingTask(_time, this, _metricFetcherManager, _sampleStore,
+      _samplingScheduler.execute(new TrainingTask(_time, this, _metricFetcherManager, _sampleStore,
                                                  _configuredWindowMs, _samplingIntervalMs, startMs, endMs));
     } else {
       throw new IllegalStateException("Cannot start model training because the load monitor is in "

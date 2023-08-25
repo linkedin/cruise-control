@@ -222,7 +222,7 @@ public class KafkaCruiseControl {
     LOG.info("Starting Kafka Cruise Control...");
     _loadMonitor.startUp();
     _anomalyDetectorManager.startDetection();
-    _goalOptimizerExecutor.submit(_goalOptimizer);
+    _goalOptimizerExecutor.execute(_goalOptimizer);
     LOG.info("Kafka Cruise Control started.");
   }
 
