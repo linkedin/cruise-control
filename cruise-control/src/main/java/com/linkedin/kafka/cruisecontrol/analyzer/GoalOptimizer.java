@@ -481,13 +481,19 @@ public class GoalOptimizer implements Runnable {
         violatedGoalNamesAfterOptimization.add(goal.name());
       }
 
-      LOG.debug("[{}/{}] Generated {} proposals for {}{}.", optimizedGoals.size(), _goalsByPriority.size(), hasDiff ? "some" : "no",
-                isSelfHealing ? "self-healing " : "", goal.name());
       step.done();
       if (LOG.isDebugEnabled()) {
         LOG.debug("Broker level stats after optimization: {}", clusterModel.brokerStats(null));
       }
       provisionResponse.aggregate(goal.provisionResponse());
+      LOG.info("[{}/{}] Generated {} proposals for {}{}. Provision status: {}; aggregated provision status: {}",
+               optimizedGoals.size(),
+               _goalsByPriority.size(),
+               hasDiff ? "some" : "no",
+               isSelfHealing ? "self-healing " : "",
+               goal.name(),
+               goal.provisionResponse().status(),
+               provisionResponse.status());
     }
 
     setHasUnfixableProposalOptimization(false, goalsByPriority);
