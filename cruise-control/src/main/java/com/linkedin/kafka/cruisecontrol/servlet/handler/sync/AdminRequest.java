@@ -129,12 +129,20 @@ public class AdminRequest extends AbstractSyncRequest {
       LOG.info("Intra-broker partition movement concurrency is set to: {} by user.", concurrentIntraBrokerPartitionMovements);
     }
     // 3. Change leadership concurrency for all brokers.
-    Integer concurrentLeaderMovements = changeExecutionConcurrencyParameters.concurrentLeaderMovements();
-    if (concurrentLeaderMovements != null) {
-      _kafkaCruiseControl.setExecutionConcurrencyForAllBrokers(concurrentLeaderMovements, ConcurrencyType.LEADERSHIP);
-      sb.append(String.format("Leadership movement concurrency is set to %d%n", concurrentLeaderMovements));
-      LOG.info("Leadership movement concurrency is set to: {} by user.", concurrentLeaderMovements);
+    Integer clusterLeaderMovementConcurrency = changeExecutionConcurrencyParameters.clusterLeaderMovementConcurrency();
+    if (clusterLeaderMovementConcurrency != null) {
+      _kafkaCruiseControl.setExecutionConcurrencyForAllBrokers(clusterLeaderMovementConcurrency, ConcurrencyType.LEADERSHIP_CLUSTER);
+      sb.append(String.format("Cluster Leadership movement concurrency is set to %d%n", clusterLeaderMovementConcurrency));
+      LOG.info("Cluster Leadership movement concurrency is set to: {} by user.", clusterLeaderMovementConcurrency);
     }
+
+    Integer brokerLeaderMovementConcurrency = changeExecutionConcurrencyParameters.brokerLeaderMovementConcurrency();
+    if (brokerLeaderMovementConcurrency != null) {
+      _kafkaCruiseControl.setExecutionConcurrencyForAllBrokers(brokerLeaderMovementConcurrency, ConcurrencyType.LEADERSHIP_BROKER);
+      sb.append(String.format("Broker Leadership movement concurrency is set to %d%n", brokerLeaderMovementConcurrency));
+      LOG.info("Broker Leadership movement concurrency is set to: {} by user.", brokerLeaderMovementConcurrency);
+    }
+
     // 4. Change the interval between checking and updating (if needed) the progress of an initiated execution.
     Long executionProgressCheckIntervalMs = changeExecutionConcurrencyParameters.executionProgressCheckIntervalMs();
     if (executionProgressCheckIntervalMs != null) {

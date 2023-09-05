@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
+import com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
@@ -19,6 +20,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_LEADER_MOVEMENTS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.BROKER_CONCURRENT_LEADER_MOVEMENTS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_HARD_GOAL_CHECK_PARAM;
@@ -41,6 +43,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *    POST /kafkacruisecontrol/rebalance?dryRun=[true/false]&amp;goals=[goal1,goal2...]
  *    &amp;allow_capacity_estimation=[true/false]&amp;concurrent_partition_movements_per_broker=[POSITIVE-INTEGER]
  *    &amp;concurrent_intra_broker_partition_movements=[POSITIVE-INTEGER]&amp;concurrent_leader_movements=[POSITIVE-INTEGER]
+ *    &amp;broker_concurrent_leader_movements=[POSITIVE-INTEGER]
  *    &amp;max_partition_movements_in_cluster=[POSITIVE-INTEGER]
  *    &amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]
  *    &amp;use_ready_default_goals=[true/false]&amp;verbose=[true/false]&amp;exclude_recently_demoted_brokers=[true/false]
@@ -62,6 +65,7 @@ public class RebalanceParameters extends ProposalsParameters {
     validParameterNames.add(MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM);
     validParameterNames.add(CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM);
     validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    validParameterNames.add(BROKER_CONCURRENT_LEADER_MOVEMENTS_PARAM);
     validParameterNames.add(EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
     validParameterNames.add(SKIP_HARD_GOAL_CHECK_PARAM);
     validParameterNames.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
@@ -75,7 +79,8 @@ public class RebalanceParameters extends ProposalsParameters {
   protected Integer _concurrentInterBrokerPartitionMovements;
   protected Integer _maxInterBrokerPartitionMovements;
   protected Integer _concurrentIntraBrokerPartitionMovements;
-  protected Integer _concurrentLeaderMovements;
+  protected Integer _clusterLeaderMovementConcurrency;
+  protected Integer _brokerLeaderMovementConcurrency;
   protected Long _executionProgressCheckIntervalMs;
   protected boolean _skipHardGoalCheck;
   protected ReplicaMovementStrategy _replicaMovementStrategy;
@@ -92,10 +97,11 @@ public class RebalanceParameters extends ProposalsParameters {
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
     _dryRun = ParameterUtils.getDryRun(_requestContext);
-    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_requestContext, true, false);
+    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_requestContext, ConcurrencyType.INTER_BROKER_REPLICA);
     _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_requestContext);
-    _concurrentIntraBrokerPartitionMovements = ParameterUtils.concurrentMovements(_requestContext, false, true);
-    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_requestContext, false, false);
+    _concurrentIntraBrokerPartitionMovements = ParameterUtils.concurrentMovements(_requestContext, ConcurrencyType.INTRA_BROKER_REPLICA);
+    _clusterLeaderMovementConcurrency = ParameterUtils.concurrentMovements(_requestContext, ConcurrencyType.LEADERSHIP_CLUSTER);
+    _brokerLeaderMovementConcurrency = ParameterUtils.concurrentMovements(_requestContext, ConcurrencyType.LEADERSHIP_BROKER);
     _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_requestContext);
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_requestContext);
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_requestContext, _config);
@@ -133,7 +139,7 @@ public class RebalanceParameters extends ProposalsParameters {
   public Integer concurrentIntraBrokerPartitionMovements() {
     return _concurrentIntraBrokerPartitionMovements;
   }
-  
+
   public Integer maxInterBrokerPartitionMovements() {
     return _maxInterBrokerPartitionMovements;
   }
@@ -142,8 +148,12 @@ public class RebalanceParameters extends ProposalsParameters {
     return _executionProgressCheckIntervalMs;
   }
 
-  public Integer concurrentLeaderMovements() {
-    return _concurrentLeaderMovements;
+  public Integer clusterConcurrentLeaderMovements() {
+    return _clusterLeaderMovementConcurrency;
+  }
+
+  public Integer brokerConcurrentLeaderMovements() {
+    return _brokerLeaderMovementConcurrency;
   }
 
   public boolean skipHardGoalCheck() {

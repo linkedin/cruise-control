@@ -111,20 +111,28 @@ public final class ExecutionUtils {
                                                   config.getDouble(ExecutorConfig.CONCURRENCY_ADJUSTER_LIMIT_REQUEST_QUEUE_SIZE_CONFIG));
     ADDITIVE_INCREASE.put(ConcurrencyType.INTER_BROKER_REPLICA,
                           config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_INTER_BROKER_REPLICA_CONFIG));
-    ADDITIVE_INCREASE.put(ConcurrencyType.LEADERSHIP,
+    ADDITIVE_INCREASE.put(ConcurrencyType.LEADERSHIP_CLUSTER,
                           config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_LEADERSHIP_CONFIG));
+    ADDITIVE_INCREASE.put(ConcurrencyType.LEADERSHIP_BROKER,
+                          config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_ADDITIVE_INCREASE_LEADERSHIP_PER_BROKER_CONFIG));
     MULTIPLICATIVE_DECREASE.put(ConcurrencyType.INTER_BROKER_REPLICA,
                                 config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_INTER_BROKER_REPLICA_CONFIG));
-    MULTIPLICATIVE_DECREASE.put(ConcurrencyType.LEADERSHIP,
+    MULTIPLICATIVE_DECREASE.put(ConcurrencyType.LEADERSHIP_CLUSTER,
                                 config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_LEADERSHIP_CONFIG));
+    MULTIPLICATIVE_DECREASE.put(ConcurrencyType.LEADERSHIP_BROKER,
+                                config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_LEADERSHIP_PER_BROKER_CONFIG));
     MAX_CONCURRENCY.put(ConcurrencyType.INTER_BROKER_REPLICA,
                         config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_CONFIG));
-    MAX_CONCURRENCY.put(ConcurrencyType.LEADERSHIP,
+    MAX_CONCURRENCY.put(ConcurrencyType.LEADERSHIP_CLUSTER,
                         config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_CONFIG));
+    MAX_CONCURRENCY.put(ConcurrencyType.LEADERSHIP_BROKER,
+                        config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_PER_BROKER_CONFIG));
     MIN_CONCURRENCY.put(ConcurrencyType.INTER_BROKER_REPLICA,
                         config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_PARTITION_MOVEMENTS_PER_BROKER_CONFIG));
-    MIN_CONCURRENCY.put(ConcurrencyType.LEADERSHIP,
+    MIN_CONCURRENCY.put(ConcurrencyType.LEADERSHIP_CLUSTER,
                         config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_CONFIG));
+    MIN_CONCURRENCY.put(ConcurrencyType.LEADERSHIP_BROKER,
+                        config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_PER_BROKER_CONFIG));
     listPartitionReassignmentsTimeoutMs = config.getLong(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS_CONFIG);
     listPartitionReassignmentsMaxAttempts = config.getInt(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS_CONFIG);
   }
@@ -194,6 +202,7 @@ public final class ExecutionUtils {
           concurrencyAdjustingRecommendation.recommendConcurrencyDecrease(replica.id());
         }
       }
+      concurrencyAdjustingRecommendation.recommendDecreaseClusterConcurrency();
       return concurrencyAdjustingRecommendation;
     }
     return ConcurrencyAdjustingRecommendation.NO_CHANGE_RECOMMENDED;
@@ -202,7 +211,8 @@ public final class ExecutionUtils {
   /**
    * Provide concurrency recommendations for the ongoing movements based on broker metrics. For each broker, it recommends to increase
    * the concurrency if the all metrics values are within the limit, and recommends to decrease the concurrency otherwise.
-   *
+   * For cluster overall concurrency, it recommends to increase if all metrics of all brokers are within the limit,
+   * otherwise, it recommends to decrease.
    * @param currentMetricsByBroker Current metrics by broker.
    * @return the concurrency recommendation.
    */
@@ -215,6 +225,8 @@ public final class ExecutionUtils {
       overLimitDetailsByMetricName.put(metricName, new StringBuilder());
     }
 
+    boolean allBrokersWithinAdjusterLimit = true;
+
     // Iterate through brokers and adjust concurrency based on the current broker metric
     for (Map.Entry<BrokerEntity, ValuesAndExtrapolations> entry : currentMetricsByBroker.entrySet()) {
       BrokerEntity broker = entry.getKey();
@@ -225,6 +237,7 @@ public final class ExecutionUtils {
         concurrencyAdjustingRecommendation.recommendConcurrencyIncrease(broker.brokerId());
       } else {
         concurrencyAdjustingRecommendation.recommendConcurrencyDecrease(broker.brokerId());
+        allBrokersWithinAdjusterLimit = false;
       }
     }
 
@@ -233,6 +246,12 @@ public final class ExecutionUtils {
       if (brokersWithValues.length() > 0) {
         LOG.info("{} was over the acceptable limit for brokers with values: {}.", entry.getKey(), brokersWithValues);
       }
+    }
+
+    if (allBrokersWithinAdjusterLimit) {
+      concurrencyAdjustingRecommendation.recommendIncreaseClusterConcurrency();
+    } else {
+      concurrencyAdjustingRecommendation.recommendDecreaseClusterConcurrency();
     }
 
     return concurrencyAdjustingRecommendation;

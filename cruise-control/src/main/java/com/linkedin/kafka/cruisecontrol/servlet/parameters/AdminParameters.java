@@ -35,6 +35,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.UpdateSelfHeal
  *    POST /kafkacruisecontrol/admin?json=[true/false]&amp;disable_self_healing_for=[Set-of-{@link KafkaAnomalyType}]
  *    &amp;enable_self_healing_for=[Set-of-{@link KafkaAnomalyType}]&amp;concurrent_partition_movements_per_broker=[POSITIVE-INTEGER]
  *    &amp;concurrent_intra_broker_partition_movements=[POSITIVE-INTEGER]&amp;concurrent_leader_movements=[POSITIVE-INTEGER]
+ *    &amp;broker_concurrent_leader_movements=[POSITIVE-INTEGER]
  *    &amp;max_partition_movements_in_cluster=[POSITIVE-INTEGER]
  *    &amp;review_id=[id]&amp;drop_recently_demoted_brokers=[id1,id2...]&amp;drop_recently_removed_brokers=[id1,id2...]
  *    &amp;execution_progress_check_interval_ms=[interval_in_ms]&amp;get_response_schema=[true/false]

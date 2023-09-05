@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
+import com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
@@ -19,6 +20,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.BROKER_ID_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_LEADER_MOVEMENTS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.BROKER_CONCURRENT_LEADER_MOVEMENTS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DRY_RUN_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM;
@@ -38,6 +40,7 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
     validParameterNames.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
     validParameterNames.add(MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM);
     validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    validParameterNames.add(BROKER_CONCURRENT_LEADER_MOVEMENTS_PARAM);
     validParameterNames.add(EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
     validParameterNames.add(DRY_RUN_PARAM);
     validParameterNames.add(REASON_PARAM);
@@ -52,7 +55,8 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
   protected Set<Integer> _brokerIds;
   protected Integer _concurrentInterBrokerPartitionMovements;
   protected Integer _maxInterBrokerPartitionMovements;
-  protected Integer _concurrentLeaderMovements;
+  protected Integer _clusterLeaderMovementConcurrency;
+  protected Integer _brokerLeaderMovementConcurrency;
   protected Long _executionProgressCheckIntervalMs;
   protected boolean _dryRun;
   protected Long _replicationThrottle;
@@ -71,9 +75,10 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
     super.initParameters();
     _brokerIds = ParameterUtils.brokerIds(_requestContext, false);
     _dryRun = ParameterUtils.getDryRun(_requestContext);
-    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_requestContext, true, false);
+    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_requestContext, ConcurrencyType.INTER_BROKER_REPLICA);
     _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_requestContext);
-    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_requestContext, false, false);
+    _clusterLeaderMovementConcurrency = ParameterUtils.concurrentMovements(_requestContext, ConcurrencyType.LEADERSHIP_CLUSTER);
+    _brokerLeaderMovementConcurrency = ParameterUtils.concurrentMovements(_requestContext, ConcurrencyType.LEADERSHIP_BROKER);
     _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_requestContext);
     _replicationThrottle = ParameterUtils.replicationThrottle(_requestContext, _config);
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_requestContext);
@@ -104,7 +109,7 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
   public Integer concurrentInterBrokerPartitionMovements() {
     return _concurrentInterBrokerPartitionMovements;
   }
-  
+
   public Integer maxInterBrokerPartitionMovements() {
     return _maxInterBrokerPartitionMovements;
   }
@@ -113,8 +118,12 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
     return _executionProgressCheckIntervalMs;
   }
 
-  public Integer concurrentLeaderMovements() {
-    return _concurrentLeaderMovements;
+  public Integer clusterLeaderMovementConcurrency() {
+    return _clusterLeaderMovementConcurrency;
+  }
+
+  public Integer brokerLeaderMovementConcurrency() {
+    return _brokerLeaderMovementConcurrency;
   }
 
   public boolean dryRun() {
