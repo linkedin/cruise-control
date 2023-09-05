@@ -110,7 +110,7 @@ public class ZKBrokerFailureDetector extends AbstractBrokerFailureDetector {
       // Ensure that broker failures are not reported if there are no updates in already known failed brokers.
       // Anomaly Detector guarantees that a broker failure detection will not be lost. Skipping reporting if not updated
       // ensures that the broker failure detector will not report superfluous broker failures due to flaky zNode.
-      _detectionExecutor.submit(() -> detectBrokerFailures(true));
+      _detectionExecutor.execute(() -> detectBrokerFailures(true));
     }
   }
 

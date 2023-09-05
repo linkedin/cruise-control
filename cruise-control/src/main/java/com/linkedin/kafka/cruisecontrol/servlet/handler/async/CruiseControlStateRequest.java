@@ -24,7 +24,7 @@ public class CruiseControlStateRequest extends AbstractAsyncRequest {
   protected OperationFuture handle(String uuid) {
     OperationFuture future = new OperationFuture("Get state");
     pending(future.operationProgress());
-    _asyncKafkaCruiseControl.sessionExecutor().submit(new GetStateRunnable(_asyncKafkaCruiseControl, future, _parameters));
+    _asyncKafkaCruiseControl.sessionExecutor().execute(new GetStateRunnable(_asyncKafkaCruiseControl, future, _parameters));
     return future;
   }
 

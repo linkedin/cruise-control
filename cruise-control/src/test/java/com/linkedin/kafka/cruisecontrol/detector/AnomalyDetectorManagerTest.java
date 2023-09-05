@@ -106,12 +106,12 @@ public class AnomalyDetectorManagerTest {
     scheduleDetectorAtFixedRate(mockDetectorScheduler, mockTopicAnomalyDetector);
 
     // Starting maintenance event detector.
-    EasyMock.expect(mockDetectorScheduler.submit(mockMaintenanceEventDetector))
-            .andDelegateTo(executorService);
+    mockDetectorScheduler.execute(mockMaintenanceEventDetector);
+    EasyMock.expectLastCall().andDelegateTo(executorService);
 
     // Starting anomaly handler
-    EasyMock.expect(mockDetectorScheduler.submit(EasyMock.isA(AnomalyDetectorManager.AnomalyHandlerTask.class)))
-            .andDelegateTo(executorService);
+    mockDetectorScheduler.execute(EasyMock.isA(AnomalyDetectorManager.AnomalyHandlerTask.class));
+    EasyMock.expectLastCall().andDelegateTo(executorService);
   }
 
   private static void shutdownDetector(ScheduledExecutorService mockDetectorScheduler,

@@ -24,7 +24,7 @@ public class DemoteRequest extends AbstractAsyncRequest {
   protected OperationFuture handle(String uuid) {
     OperationFuture future = new OperationFuture("Demote");
     pending(future.operationProgress());
-    _asyncKafkaCruiseControl.sessionExecutor().submit(new DemoteBrokerRunnable(_asyncKafkaCruiseControl, future, uuid, _parameters));
+    _asyncKafkaCruiseControl.sessionExecutor().execute(new DemoteBrokerRunnable(_asyncKafkaCruiseControl, future, uuid, _parameters));
     return future;
   }
 

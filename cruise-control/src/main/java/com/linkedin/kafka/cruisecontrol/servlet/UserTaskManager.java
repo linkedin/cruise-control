@@ -344,14 +344,14 @@ public class UserTaskManager implements Closeable {
         _uuidToCompletedUserTaskInfoMap.get(entry.getValue().endPoint().endpointType())
                                        .put(entry.getKey(), entry.getValue().setState(TaskState.COMPLETED_WITH_ERROR));
         iter.remove();
-        _userTaskLoggerExecutor.submit(() -> entry.getValue().logOperation());
+        _userTaskLoggerExecutor.execute(() -> entry.getValue().logOperation());
       } else if (entry.getValue().isUserTaskDone()) {
         LOG.info("UserTask {} is completed and removed from active tasks list", entry.getKey());
         _successfulRequestExecutionTimer.get(entry.getValue().endPoint()).update(entry.getValue().executionTimeNs(), TimeUnit.NANOSECONDS);
         _uuidToCompletedUserTaskInfoMap.get(entry.getValue().endPoint().endpointType())
                                        .put(entry.getKey(), entry.getValue().setState(TaskState.COMPLETED));
         iter.remove();
-        _userTaskLoggerExecutor.submit(() -> entry.getValue().logOperation());
+        _userTaskLoggerExecutor.execute(() -> entry.getValue().logOperation());
       }
     }
   }

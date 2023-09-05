@@ -24,7 +24,7 @@ public class RemoveBrokerRequest extends AbstractAsyncRequest {
   protected OperationFuture handle(String uuid) {
     OperationFuture future = new OperationFuture("Remove brokers");
     pending(future.operationProgress());
-    _asyncKafkaCruiseControl.sessionExecutor().submit(new RemoveBrokersRunnable(_asyncKafkaCruiseControl, future, _parameters, uuid));
+    _asyncKafkaCruiseControl.sessionExecutor().execute(new RemoveBrokersRunnable(_asyncKafkaCruiseControl, future, _parameters, uuid));
     return future;
   }
 
