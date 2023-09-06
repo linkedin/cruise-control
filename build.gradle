@@ -279,7 +279,7 @@ project(':cruise-control') {
     api "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion"
     api "org.apache.kafka:kafka-clients:$kafkaVersion"
     // Add following dependency when upgrading to Kafka 3.5
-    //api "org.apache.kafka:kafka-storage:$kafkaVersion"
+    api "org.apache.kafka:kafka-storage:$kafkaVersion"
     implementation "org.scala-lang:scala-library:$scalaVersion"
     implementation 'org.apache.commons:commons-math3:3.6.1'
     implementation 'org.apache.httpcomponents:httpclient:4.5.13'
