@@ -33,7 +33,8 @@ public class UserPermissionsManager {
         _rolesPerUsers = createRolesPerUsersMap();
     }
 
-    /** Builds a map between existing users and their roles in Cruise Control
+    /**
+     * Builds a map between existing users and their roles in Cruise Control
      *
      * @return a map of usernames -> their assigned roles
      */
@@ -45,9 +46,7 @@ public class UserPermissionsManager {
             UserStore userStore = createUserStoreFromFile(privilegedFilePath);
             startUserStore(userStore);
 
-            Set<String> userNames = userStore
-                    .getKnownUserIdentities()
-                    .keySet();
+            Set<String> userNames = userStore.getKnownUserIdentities().keySet();
 
             for (String user : userNames) {
                 Subject userSubject = userStore.getUserIdentity(user).getSubject();
@@ -80,17 +79,17 @@ public class UserPermissionsManager {
         try {
             userStore.stop();
         } catch (Exception e) {
-            LOG.info("UserPermissionsManager user store cannot be stopped.");
+            LOG.info("UserPermissionsManager user store cannot be stopped. Exception:\n", e);
         }
     }
 
     /** Returns the set of roles for a given username
      *
-     * @param name the username
+     * @param userName the username
      * @return either Set with roles or an empty set
      */
-    public Set<String> getRolesBy(String name) {
-        return _rolesPerUsers.getOrDefault(name, Collections.emptySet());
+    public Set<String> getRolesBy(String userName) {
+        return _rolesPerUsers.getOrDefault(userName, Collections.emptySet());
     }
 
     /** Creates UserStore from an external file

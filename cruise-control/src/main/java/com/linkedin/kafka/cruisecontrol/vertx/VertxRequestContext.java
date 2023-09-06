@@ -137,7 +137,7 @@ public class VertxRequestContext implements CruiseControlRequestContext {
     public String getUserPrincipal() {
         JsonObject userPrincipal = _context.user().principal();
         return userPrincipal == null
-                ? ""
+                ? "null"
                 : userPrincipal.getString("username");
     }
 

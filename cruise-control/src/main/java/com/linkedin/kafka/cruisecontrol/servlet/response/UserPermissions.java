@@ -10,10 +10,15 @@ import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.UserPermissionsManager;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserPermissionsParameters;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import com.google.gson.Gson;
 import org.apache.commons.lang3.StringUtils;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
 /**
  * - If security enabled for Cruise Control, then the roles will be the result which were assigned to the user:
@@ -25,7 +30,7 @@ import org.apache.commons.lang3.StringUtils;
 public class UserPermissions extends AbstractCruiseControlResponse {
 
     @JsonResponseField(required = false)
-    protected static final String ROLES = "roles";
+    public static final String ROLES = "roles";
     protected Set<String> _roles = new HashSet<>();
 
     private boolean _securityEnabled;
@@ -40,7 +45,9 @@ public class UserPermissions extends AbstractCruiseControlResponse {
     protected String getJsonString(CruiseControlParameters parameters) {
         Gson gson = new Gson();
         UserPermissionsParameters params = (UserPermissionsParameters) parameters;
-        Set<String> jsonStructure = getJsonStructure(params.user());
+        Map<String, Object> jsonStructure = new HashMap<>();
+        jsonStructure.put(ROLES, getJsonStructure(params.getUser()));
+        jsonStructure.put(VERSION, JSON_VERSION);
         return gson.toJson(jsonStructure);
     }
 
@@ -54,7 +61,7 @@ public class UserPermissions extends AbstractCruiseControlResponse {
     }
 
     protected String getPlaintext(CruiseControlParameters parameters) {
-        fillPermissions(((UserPermissionsParameters) parameters).user());
+        fillPermissions(((UserPermissionsParameters) parameters).getUser());
         return StringUtils.join(_roles, ',');
     }
 

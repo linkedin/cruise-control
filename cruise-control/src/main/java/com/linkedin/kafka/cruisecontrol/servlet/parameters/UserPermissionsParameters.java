@@ -46,7 +46,7 @@ public class UserPermissionsParameters extends AbstractParameters {
      *
      * @return the username of the user making the request
      */
-    public String user() {
+    public String getUser() {
         String user = _requestContext.getUserPrincipal();
         return user.isEmpty()
                 ? ANONYMOUS

@@ -10,6 +10,7 @@ import com.google.gson.JsonPrimitive;
 import com.linkedin.kafka.cruisecontrol.CruiseControlIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.google.gson.JsonParser;
+import com.linkedin.kafka.cruisecontrol.servlet.response.UserPermissions;
 import org.eclipse.jetty.http.HttpHeader;
 import org.junit.After;
 import org.junit.Test;
@@ -71,7 +72,11 @@ public class UserPermissionsIntegrationTest extends CruiseControlIntegrationTest
         setup(true);
 
         HttpURLConnection permissionsEndpointConnection = setupConnection("ccTestAdmin", "TestPass123", true);
-        JsonArray response = JsonParser.parseString(getJsonResponse(permissionsEndpointConnection)).getAsJsonArray();
+        JsonArray response = JsonParser
+                .parseString(getJsonResponse(permissionsEndpointConnection))
+                .getAsJsonObject()
+                .get(UserPermissions.ROLES)
+                .getAsJsonArray();
 
         assertResponse(permissionsEndpointConnection.getResponseCode(), response, _adminElement, _userElement);
     }
@@ -91,7 +96,11 @@ public class UserPermissionsIntegrationTest extends CruiseControlIntegrationTest
         setup(true);
 
         HttpURLConnection permissionsEndpointConnection = setupConnection("ccTestUser", "TestPass123", true);
-        JsonArray response = JsonParser.parseString(getJsonResponse(permissionsEndpointConnection)).getAsJsonArray();
+        JsonArray response = JsonParser
+                .parseString(getJsonResponse(permissionsEndpointConnection))
+                .getAsJsonObject()
+                .get(UserPermissions.ROLES)
+                .getAsJsonArray();
 
         assertResponse(permissionsEndpointConnection.getResponseCode(), response, _userElement, _viewerElement);
     }
@@ -111,7 +120,11 @@ public class UserPermissionsIntegrationTest extends CruiseControlIntegrationTest
         setup(true);
 
         HttpURLConnection permissionsEndpointConnection = setupConnection("ccTestUser2", "TestPass123", true);
-        JsonArray response = JsonParser.parseString(getJsonResponse(permissionsEndpointConnection)).getAsJsonArray();
+        JsonArray response = JsonParser
+                .parseString(getJsonResponse(permissionsEndpointConnection))
+                .getAsJsonObject()
+                .get(UserPermissions.ROLES)
+                .getAsJsonArray();
 
         assertResponse(permissionsEndpointConnection.getResponseCode(), response, _viewerElement);
     }

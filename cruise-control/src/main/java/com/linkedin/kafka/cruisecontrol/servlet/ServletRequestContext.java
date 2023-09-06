@@ -163,7 +163,7 @@ public class ServletRequestContext implements CruiseControlRequestContext {
     public String getUserPrincipal() {
         Principal userPrincipal = _request.getUserPrincipal();
         return userPrincipal == null
-                ? ""
+                ? "null"
                 : userPrincipal.getName();
     }
 
