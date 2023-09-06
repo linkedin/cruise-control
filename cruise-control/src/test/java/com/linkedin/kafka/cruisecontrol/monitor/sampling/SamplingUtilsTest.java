@@ -35,8 +35,6 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.DEFAULT_C
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.maybeIncreasePartitionCount;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.maybeUpdateTopicConfig;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.wrapTopic;
-//import static kafka.log.LogConfig.CleanupPolicyProp;
-//import static kafka.log.LogConfig.RetentionMsProp;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
