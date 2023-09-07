@@ -97,10 +97,10 @@ public class ExecutionTaskManagerTest {
                                         Collections.emptySet(),
                                         strategyOptions,
                                         null);
-      taskManager.getExecutionConcurrencyManager().setExecutionConcurrencyForAllBrokers(null, ConcurrencyType.INTRA_BROKER_REPLICA);
-      taskManager.getExecutionConcurrencyManager().setExecutionConcurrencyForAllBrokers(null, ConcurrencyType.INTER_BROKER_REPLICA);
-      taskManager.getExecutionConcurrencyManager().setExecutionConcurrencyForAllBrokers(null, ConcurrencyType.LEADERSHIP_CLUSTER);
-      taskManager.getExecutionConcurrencyManager().setExecutionConcurrencyForAllBrokers(null, ConcurrencyType.LEADERSHIP_BROKER);
+      taskManager.getExecutionConcurrencyManager().setExecutionConcurrencyForAllBrokersOrCluster(null, ConcurrencyType.INTRA_BROKER_REPLICA);
+      taskManager.getExecutionConcurrencyManager().setExecutionConcurrencyForAllBrokersOrCluster(null, ConcurrencyType.INTER_BROKER_REPLICA);
+      taskManager.getExecutionConcurrencyManager().setExecutionConcurrencyForAllBrokersOrCluster(null, ConcurrencyType.LEADERSHIP_CLUSTER);
+      taskManager.getExecutionConcurrencyManager().setExecutionConcurrencyForAllBrokersOrCluster(null, ConcurrencyType.LEADERSHIP_BROKER);
       List<ExecutionTask> tasks = taskManager.getInterBrokerReplicaMovementTasks();
       assertEquals(1, tasks.size());
       ExecutionTask task = tasks.get(0);

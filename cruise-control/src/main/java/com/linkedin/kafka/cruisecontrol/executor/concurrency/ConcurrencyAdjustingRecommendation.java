@@ -36,8 +36,8 @@ public class ConcurrencyAdjustingRecommendation {
       new ConcurrencyAdjustingRecommendation(ConcurrencyAdjustingRecommendationType.STOP_EXECUTION);
   private final Set<Integer> _brokersToIncreaseConcurrency;
   private final Set<Integer> _brokersToDecreaseConcurrency;
-  private ClusterConcurrencyAdjustType _clusterConcurrencyAdjustRecommendation;
   private final ConcurrencyAdjustingRecommendationType _type;
+  private ClusterConcurrencyAdjustType _clusterConcurrencyAdjustRecommendation;
 
   public ConcurrencyAdjustingRecommendation() {
     _brokersToDecreaseConcurrency = new HashSet<>();

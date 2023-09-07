@@ -496,14 +496,14 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Dynamically set the execution concurrency per broker.
+   * Dynamically set the per broker execution concurrency for all brokers or set the cluster concurrency.
    * Notice that if concurrency type is LEADERSHIP, this value will also be used as max allowed concurrency at cluster level.
    *
-   * @param requestedExecutionConcurrency The maximum number of allowed concurrent execution per broker.
+   * @param requestedExecutionConcurrency The maximum number of allowed concurrent execution.
    * @param concurrencyType The type of the execution concurrency to set value for.
    */
-  public void setExecutionConcurrencyForAllBrokers(Integer requestedExecutionConcurrency, ConcurrencyType concurrencyType) {
-    _executor.setExecutionConcurrencyForAllBrokers(requestedExecutionConcurrency, concurrencyType);
+  public void setExecutionConcurrencyForAllBrokersOrCluster(Integer requestedExecutionConcurrency, ConcurrencyType concurrencyType) {
+    _executor.setExecutionConcurrencyForAllBrokersOrCluster(requestedExecutionConcurrency, concurrencyType);
   }
 
   /**

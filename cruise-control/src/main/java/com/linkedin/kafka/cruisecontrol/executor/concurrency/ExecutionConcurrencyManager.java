@@ -203,13 +203,11 @@ public class ExecutionConcurrencyManager {
   }
 
   /**
-   * Set the allowed execution concurrency of a certain concurrency type for all brokers
-   * Note if the concurrency type INTER_BROKER_REPLICA or INTRA_BROKER_REPLICA, the concurrency value is per-broker; if the type is
-   *  LEADERSHIP, the concurrency value is cluster level.
+   * Set the allowed per broker execution concurrency for all brokers or set the cluster concurrency.
    * @param concurrency the allowed concurrency to set
    * @param concurrencyType the concurrency type of the execution
    */
-  public synchronized void setExecutionConcurrencyForAllBrokers(Integer concurrency, ConcurrencyType concurrencyType) {
+  public synchronized void setExecutionConcurrencyForAllBrokersOrCluster(Integer concurrency, ConcurrencyType concurrencyType) {
     sanityCheckRequestedConcurrency(concurrency, concurrencyType);
     switch (concurrencyType) {
       case INTER_BROKER_REPLICA:

@@ -585,7 +585,7 @@ public class Executor {
     private void decreaseExecutionBrokerConcurrency(int brokerId, ConcurrencyType concurrencyType) {
       int currentMovementConcurrency = _executionConcurrencyManager.getExecutionBrokerConcurrency(brokerId, concurrencyType);
       int decreasedConcurrency = getDecreasedConcurrency(currentMovementConcurrency, concurrencyType);
-      if (decreasedConcurrency > 0) {
+      if (decreasedConcurrency != currentMovementConcurrency) {
         _executionConcurrencyManager.setExecutionConcurrencyForBroker(brokerId, decreasedConcurrency, concurrencyType);
         LOG.info("Concurrency adjuster decreased the {} movement concurrency to {} for broker {}.",
             concurrencyType, decreasedConcurrency, brokerId);
@@ -595,8 +595,8 @@ public class Executor {
     private void decreaseExecutionClusterConcurrency(ConcurrencyType concurrencyType) {
       int currentMovementConcurrency = _executionConcurrencyManager.getExecutionClusterConcurrency(concurrencyType);
       int decreasedConcurrency = getDecreasedConcurrency(currentMovementConcurrency, concurrencyType);
-      if (decreasedConcurrency > 0) {
-        _executionConcurrencyManager.setExecutionConcurrencyForAllBrokers(decreasedConcurrency, concurrencyType);
+      if (decreasedConcurrency != currentMovementConcurrency) {
+        _executionConcurrencyManager.setExecutionConcurrencyForAllBrokersOrCluster(decreasedConcurrency, concurrencyType);
         LOG.info("Concurrency adjuster decreased the {} movement concurrency to {}.", concurrencyType, decreasedConcurrency);
       }
     }
@@ -607,13 +607,13 @@ public class Executor {
         // Multiplicative-decrease reassignment concurrency (MIN: minMovementsConcurrency).
         return Math.max(minMovementsConcurrency, currentConcurrency / MULTIPLICATIVE_DECREASE.get(concurrencyType));
       }
-      return -1;
+      return currentConcurrency;
     }
 
     private void increaseExecutionBrokerConcurrency(int brokerId, ConcurrencyType concurrencyType) {
       int currentMovementConcurrency = _executionConcurrencyManager.getExecutionBrokerConcurrency(brokerId, concurrencyType);
       int increasedConcurrency = getIncreasedConcurrency(currentMovementConcurrency, concurrencyType);
-      if (increasedConcurrency > 0) {
+      if (increasedConcurrency != currentMovementConcurrency) {
         _executionConcurrencyManager.setExecutionConcurrencyForBroker(brokerId, increasedConcurrency, concurrencyType);
         LOG.info("Concurrency adjuster increased the {} movement concurrency to {} for broker {}.",
             concurrencyType, increasedConcurrency, brokerId);
@@ -623,8 +623,8 @@ public class Executor {
     private void increaseExecutionClusterConcurrency(ConcurrencyType concurrencyType) {
       int currentMovementConcurrency = _executionConcurrencyManager.getExecutionClusterConcurrency(concurrencyType);
       int increasedConcurrency = getIncreasedConcurrency(currentMovementConcurrency, concurrencyType);
-      if (increasedConcurrency > 0) {
-        _executionConcurrencyManager.setExecutionConcurrencyForAllBrokers(increasedConcurrency, concurrencyType);
+      if (increasedConcurrency != currentMovementConcurrency) {
+        _executionConcurrencyManager.setExecutionConcurrencyForAllBrokersOrCluster(increasedConcurrency, concurrencyType);
         LOG.info("Concurrency adjuster increased the {} movement concurrency to {}.", concurrencyType, increasedConcurrency);
       }
     }
@@ -635,7 +635,7 @@ public class Executor {
         // Additive-increase reassignment concurrency (MAX: maxMovementsConcurrency).
         return Math.min(maxMovementsConcurrency, currentConcurrency + ADDITIVE_INCREASE.get(concurrencyType));
       }
-      return -1;
+      return currentConcurrency;
     }
 
     @Override
@@ -905,13 +905,13 @@ public class Executor {
   }
 
   /**
-   * Dynamically set the movement concurrency of the given type for all brokers.
+   * Dynamically set the per broker movement concurrency of the given type for all brokers or set the cluster concurrency.
    *
    * @param concurrency The maximum number of concurrent movements.
    * @param concurrencyType The type of concurrency for which the requested movement concurrency will be set.
    */
-  public synchronized void setExecutionConcurrencyForAllBrokers(Integer concurrency, ConcurrencyType concurrencyType) {
-    _executionTaskManager.getExecutionConcurrencyManager().setExecutionConcurrencyForAllBrokers(concurrency, concurrencyType);
+  public synchronized void setExecutionConcurrencyForAllBrokersOrCluster(Integer concurrency, ConcurrencyType concurrencyType) {
+    _executionTaskManager.getExecutionConcurrencyManager().setExecutionConcurrencyForAllBrokersOrCluster(concurrency, concurrencyType);
   }
 
   /**
