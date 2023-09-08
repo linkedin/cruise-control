@@ -120,7 +120,7 @@ public class ExecutionTaskManagerTest {
                    taskManager.getExecutionConcurrencyManager().getExecutionBrokerConcurrency(2, concurrencyType));
     }
     assertEquals(MOCK_DEFAULT_CONCURRENCY.get(ConcurrencyType.LEADERSHIP_CLUSTER).intValue(),
-        taskManager.getExecutionConcurrencyManager().getExecutionClusterConcurrency(ConcurrencyType.LEADERSHIP_CLUSTER));
+        taskManager.getExecutionConcurrencyManager().getExecutionClusterLeadershipConcurrency());
   }
 
   private void verifyStateChangeSequence(List<ExecutionTaskState> stateSequence,

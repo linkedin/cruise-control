@@ -543,9 +543,9 @@ public class Executor {
 
         if (concurrencyType == ConcurrencyType.LEADERSHIP_BROKER && canRefreshConcurrency(ConcurrencyType.LEADERSHIP_CLUSTER)) {
           if (concurrencyAdjustingRecommendation.shouldIncreaseClusterConcurrency()) {
-            increaseExecutionClusterConcurrency(ConcurrencyType.LEADERSHIP_CLUSTER);
+            increaseExecutionClusterLeadershipConcurrency();
           } else if (concurrencyAdjustingRecommendation.shouldDecreaseClusterConcurrency()) {
-            decreaseExecutionClusterConcurrency(ConcurrencyType.LEADERSHIP_CLUSTER);
+            decreaseExecutionClusterLeadershipConcurrency();
           }
         }
       }
@@ -592,8 +592,9 @@ public class Executor {
       }
     }
 
-    private void decreaseExecutionClusterConcurrency(ConcurrencyType concurrencyType) {
-      int currentMovementConcurrency = _executionConcurrencyManager.getExecutionClusterConcurrency(concurrencyType);
+    private void decreaseExecutionClusterLeadershipConcurrency() {
+      ConcurrencyType concurrencyType = ConcurrencyType.LEADERSHIP_CLUSTER;
+      int currentMovementConcurrency = _executionConcurrencyManager.getExecutionClusterLeadershipConcurrency();
       int decreasedConcurrency = getDecreasedConcurrency(currentMovementConcurrency, concurrencyType);
       if (decreasedConcurrency != currentMovementConcurrency) {
         _executionConcurrencyManager.setExecutionConcurrencyForAllBrokersOrCluster(decreasedConcurrency, concurrencyType);
@@ -620,8 +621,9 @@ public class Executor {
       }
     }
 
-    private void increaseExecutionClusterConcurrency(ConcurrencyType concurrencyType) {
-      int currentMovementConcurrency = _executionConcurrencyManager.getExecutionClusterConcurrency(concurrencyType);
+    private void increaseExecutionClusterLeadershipConcurrency() {
+      ConcurrencyType concurrencyType = ConcurrencyType.LEADERSHIP_CLUSTER;
+      int currentMovementConcurrency = _executionConcurrencyManager.getExecutionClusterLeadershipConcurrency();
       int increasedConcurrency = getIncreasedConcurrency(currentMovementConcurrency, concurrencyType);
       if (increasedConcurrency != currentMovementConcurrency) {
         _executionConcurrencyManager.setExecutionConcurrencyForAllBrokersOrCluster(increasedConcurrency, concurrencyType);

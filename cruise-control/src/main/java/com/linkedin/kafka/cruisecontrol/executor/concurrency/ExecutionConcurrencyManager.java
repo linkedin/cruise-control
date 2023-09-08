@@ -170,17 +170,11 @@ public class ExecutionConcurrencyManager {
   }
 
   /**
-   * Retrieve the movement concurrency of the given cluster concurrency type.
-   * @param concurrencyType The type of concurrency for which the allowed movement concurrency is requested.
-   * @return The movement concurrency of the given concurrency type.
+   * Retrieve the cluster leadership concurrency.
+   * @return The cluster leadership concurrency.
    */
-  public synchronized int getExecutionClusterConcurrency(ConcurrencyType concurrencyType) {
-    switch (concurrencyType) {
-      case LEADERSHIP_CLUSTER:
-        return maxClusterLeadershipMovements();
-      default:
-        throw new IllegalArgumentException("Unsupported concurrency type " + concurrencyType + " is provided.");
-    }
+  public synchronized int getExecutionClusterLeadershipConcurrency() {
+    return maxClusterLeadershipMovements();
   }
 
   /**
