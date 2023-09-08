@@ -525,13 +525,14 @@ public final class ExecutorConfig {
       + "considered metric exceeds the concurrency adjuster limit.";
 
   /**
-   * <code>max.num.brokers.above.metric.limit.no.decrease.cluster.concurrency</code>
+   * <code>min.num.brokers.violate.metric.limit.to.decrease.cluster.concurrency</code>
    */
-  public static final String MAX_NUM_BROKERS_ABOVE_METRIC_LIMIT_NO_DECREASE_CLUSTER_CONCURRENCY_CONFIG
-      = "max.num.brokers.above.metric.limit.no.decrease.cluster.concurrency";
-  public static final int DEFAULT_MAX_NUM_BROKERS_ABOVE_METRIC_LIMIT_NO_DECREASE_CLUSTER_CONCURRENCY = 1;
-  public static final String MAX_NUM_BROKERS_ABOVE_METRIC_LIMIT_NO_DECREASE_CLUSTER_CONCURRENCY_DOC =
-      "The max number of brokers with metrics above concurrency adjuster limits before decreasing cluster concurrency.";
+  public static final String MIN_NUM_BROKERS_VIOLATE_METRIC_LIMIT_TO_DECREASE_CLUSTER_CONCURRENCY_CONFIG
+      = "min.num.brokers.violate.metric.limit.to.decrease.cluster.concurrency";
+  public static final int DEFAULT_MIN_NUM_BROKERS_VIOLATE_METRIC_LIMIT_TO_DECREASE_CLUSTER_CONCURRENCY = 2;
+  public static final String MIN_NUM_BROKERS_VIOLATE_METRIC_LIMIT_TO_DECREASE_CLUSTER_CONCURRENCY_DOC =
+      "The minimum number of brokers with metrics violating concurrency adjuster limits that can lead to "
+          + "cluster concurrency decrease.";
 
   /**
    * <code>list.partition.reassignment.timeout.ms</code>
@@ -932,12 +933,12 @@ public final class ExecutorConfig {
                             atLeast(2),
                             ConfigDef.Importance.LOW,
                             CONCURRENCY_ADJUSTER_MULTIPLICATIVE_DECREASE_LEADERSHIP_PER_BROKER_DOC)
-                    .define(MAX_NUM_BROKERS_ABOVE_METRIC_LIMIT_NO_DECREASE_CLUSTER_CONCURRENCY_CONFIG,
+                    .define(MIN_NUM_BROKERS_VIOLATE_METRIC_LIMIT_TO_DECREASE_CLUSTER_CONCURRENCY_CONFIG,
                             ConfigDef.Type.INT,
-                            DEFAULT_MAX_NUM_BROKERS_ABOVE_METRIC_LIMIT_NO_DECREASE_CLUSTER_CONCURRENCY,
-                            atLeast(0),
+                            DEFAULT_MIN_NUM_BROKERS_VIOLATE_METRIC_LIMIT_TO_DECREASE_CLUSTER_CONCURRENCY,
+                            atLeast(1),
                             ConfigDef.Importance.LOW,
-                            MAX_NUM_BROKERS_ABOVE_METRIC_LIMIT_NO_DECREASE_CLUSTER_CONCURRENCY_DOC)
+                            MIN_NUM_BROKERS_VIOLATE_METRIC_LIMIT_TO_DECREASE_CLUSTER_CONCURRENCY_DOC)
                     .define(LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS_CONFIG,
                             ConfigDef.Type.LONG,
                             DEFAULT_LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS,

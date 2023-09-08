@@ -90,7 +90,7 @@ public final class ExecutionUtils {
   static final Map<String, Double> CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME = new HashMap<>();
   // Cluster concurrency would be decreased if the number of brokers with metrics above the limits defined in
   // CONCURRENCY_ADJUSTER_LIMIT_BY_METRIC_NAME is greater than this value.
-  private static int maxNumBrokersAboveMetricLimitNoDecreaseClusterConcurrency;
+  private static int minNumBrokersViolateMetricLimitToDecreaseClusterConcurrency;
   private static long listPartitionReassignmentsTimeoutMs;
   private static int listPartitionReassignmentsMaxAttempts;
 
@@ -138,8 +138,8 @@ public final class ExecutionUtils {
                         config.getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_PER_BROKER_CONFIG));
     listPartitionReassignmentsTimeoutMs = config.getLong(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS_CONFIG);
     listPartitionReassignmentsMaxAttempts = config.getInt(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS_CONFIG);
-    maxNumBrokersAboveMetricLimitNoDecreaseClusterConcurrency =
-        Math.max(0, config.getInt(ExecutorConfig.MAX_NUM_BROKERS_ABOVE_METRIC_LIMIT_NO_DECREASE_CLUSTER_CONCURRENCY_CONFIG));
+    minNumBrokersViolateMetricLimitToDecreaseClusterConcurrency =
+        Math.max(1, config.getInt(ExecutorConfig.MIN_NUM_BROKERS_VIOLATE_METRIC_LIMIT_TO_DECREASE_CLUSTER_CONCURRENCY_CONFIG));
   }
 
   public static String toMetricName(Short metricId) {
@@ -230,7 +230,7 @@ public final class ExecutionUtils {
       overLimitDetailsByMetricName.put(metricName, new StringBuilder());
     }
 
-    int numBrokerAboveMetricLimit = 0;
+    int numBrokersAboveMetricLimit = 0;
 
     // Iterate through brokers and adjust concurrency based on the current broker metric
     for (Map.Entry<BrokerEntity, ValuesAndExtrapolations> entry : currentMetricsByBroker.entrySet()) {
@@ -242,7 +242,7 @@ public final class ExecutionUtils {
         concurrencyAdjustingRecommendation.recommendConcurrencyIncrease(broker.brokerId());
       } else {
         concurrencyAdjustingRecommendation.recommendConcurrencyDecrease(broker.brokerId());
-        numBrokerAboveMetricLimit += 1;
+        numBrokersAboveMetricLimit += 1;
       }
     }
 
@@ -253,7 +253,7 @@ public final class ExecutionUtils {
       }
     }
 
-    if (numBrokerAboveMetricLimit <= maxNumBrokersAboveMetricLimitNoDecreaseClusterConcurrency) {
+    if (numBrokersAboveMetricLimit < minNumBrokersViolateMetricLimitToDecreaseClusterConcurrency) {
       concurrencyAdjustingRecommendation.recommendIncreaseClusterConcurrency();
     } else {
       concurrencyAdjustingRecommendation.recommendDecreaseClusterConcurrency();

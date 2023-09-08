@@ -335,7 +335,7 @@ public class ConcurrencyAdjusterTest {
                       Integer.toString(MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER));
     props.setProperty(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_CONFIG,
                       Integer.toString(MOCK_MIN_LEADERSHIP_MOVEMENTS_CONFIG));
-    props.setProperty(ExecutorConfig.MAX_NUM_BROKERS_ABOVE_METRIC_LIMIT_NO_DECREASE_CLUSTER_CONCURRENCY_CONFIG, "1");
+    props.setProperty(ExecutorConfig.MIN_NUM_BROKERS_VIOLATE_METRIC_LIMIT_TO_DECREASE_CLUSTER_CONCURRENCY_CONFIG, "2");
 
     return props;
   }
