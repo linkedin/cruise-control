@@ -267,6 +267,21 @@ public class ConcurrencyAdjusterTest {
     assertEquals(0, concurrencyAdjustingRecommendation.getBrokersToDecreaseConcurrency().size());
     assertFalse(concurrencyAdjustingRecommendation.shouldDecreaseClusterConcurrency());
     assertTrue(concurrencyAdjustingRecommendation.shouldIncreaseClusterConcurrency());
+
+    // Test one broker having metrics above limit
+    metricValueByIdPerBroker.clear();
+    metricValueByIdPerBroker.add(populateMetricValues(1));
+    metricValueByIdPerBroker.add(populateMetricValues(0));
+    metricValueByIdPerBroker.add(populateMetricValues(0));
+    currentMetrics = createCurrentMetrics(metricValueByIdPerBroker);
+    concurrencyAdjustingRecommendation = ExecutionUtils.recommendedConcurrency(currentMetrics);
+
+    assertFalse(concurrencyAdjustingRecommendation.shouldStopExecution());
+    assertFalse(concurrencyAdjustingRecommendation.noChangeRecommended());
+    assertEquals(2, concurrencyAdjustingRecommendation.getBrokersToIncreaseConcurrency().size());
+    assertEquals(1, concurrencyAdjustingRecommendation.getBrokersToDecreaseConcurrency().size());
+    assertFalse(concurrencyAdjustingRecommendation.shouldDecreaseClusterConcurrency());
+    assertTrue(concurrencyAdjustingRecommendation.shouldIncreaseClusterConcurrency());
   }
 
   @Test
@@ -320,6 +335,7 @@ public class ConcurrencyAdjusterTest {
                       Integer.toString(MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER));
     props.setProperty(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_CONFIG,
                       Integer.toString(MOCK_MIN_LEADERSHIP_MOVEMENTS_CONFIG));
+    props.setProperty(ExecutorConfig.MAX_NUM_BROKERS_ABOVE_METRIC_LIMIT_NO_DECREASE_CLUSTER_CONCURRENCY_CONFIG, "1");
 
     return props;
   }
