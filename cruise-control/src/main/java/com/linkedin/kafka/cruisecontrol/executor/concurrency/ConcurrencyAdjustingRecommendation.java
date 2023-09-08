@@ -24,6 +24,12 @@ public class ConcurrencyAdjustingRecommendation {
     STOP_EXECUTION
   }
 
+  private enum ClusterConcurrencyAdjustType {
+    NO_CHANGE,
+    INCREASE,
+    DECREASE
+  }
+
   public static final ConcurrencyAdjustingRecommendation NO_CHANGE_RECOMMENDED
       = new ConcurrencyAdjustingRecommendation(ConcurrencyAdjustingRecommendationType.NO_CHANGE_RECOMMENDED);
   public static final ConcurrencyAdjustingRecommendation STOP_EXECUTION =
@@ -31,15 +37,19 @@ public class ConcurrencyAdjustingRecommendation {
   private final Set<Integer> _brokersToIncreaseConcurrency;
   private final Set<Integer> _brokersToDecreaseConcurrency;
   private final ConcurrencyAdjustingRecommendationType _type;
+  private ClusterConcurrencyAdjustType _clusterConcurrencyAdjustRecommendation;
+
   public ConcurrencyAdjustingRecommendation() {
     _brokersToDecreaseConcurrency = new HashSet<>();
     _brokersToIncreaseConcurrency = new HashSet<>();
     _type = ConcurrencyAdjustingRecommendationType.CHANGE_RECOMMENDED;
+    _clusterConcurrencyAdjustRecommendation = ClusterConcurrencyAdjustType.NO_CHANGE;
   }
 
   private ConcurrencyAdjustingRecommendation(ConcurrencyAdjustingRecommendationType type) {
     _brokersToDecreaseConcurrency = new HashSet<>();
     _brokersToIncreaseConcurrency = new HashSet<>();
+    _clusterConcurrencyAdjustRecommendation = ClusterConcurrencyAdjustType.NO_CHANGE;
     _type = type;
   }
 
@@ -49,6 +59,14 @@ public class ConcurrencyAdjustingRecommendation {
 
   public void recommendConcurrencyDecrease(int brokerId) {
     _brokersToDecreaseConcurrency.add(brokerId);
+  }
+
+  public void recommendDecreaseClusterConcurrency() {
+    _clusterConcurrencyAdjustRecommendation = ClusterConcurrencyAdjustType.DECREASE;
+  }
+
+  public void recommendIncreaseClusterConcurrency() {
+    _clusterConcurrencyAdjustRecommendation = ClusterConcurrencyAdjustType.INCREASE;
   }
 
   public Set<Integer> getBrokersToIncreaseConcurrency() {
@@ -65,5 +83,23 @@ public class ConcurrencyAdjustingRecommendation {
 
   public boolean noChangeRecommended() {
     return _type.equals(ConcurrencyAdjustingRecommendationType.NO_CHANGE_RECOMMENDED);
+  }
+
+  /**
+   * Check whether to increase cluster concurrency
+   * @return true if should increase cluster concurrency, otherwise return false.
+   */
+  public boolean shouldIncreaseClusterConcurrency() {
+    return _type == ConcurrencyAdjustingRecommendationType.CHANGE_RECOMMENDED
+        && _clusterConcurrencyAdjustRecommendation == ClusterConcurrencyAdjustType.INCREASE;
+  }
+
+  /**
+   *  Check whether  to decrease cluster concurrency
+   * @return true if should decrease cluster concurrency, otherwise return false.
+   */
+  public boolean shouldDecreaseClusterConcurrency() {
+    return _type == ConcurrencyAdjustingRecommendationType.CHANGE_RECOMMENDED
+        && _clusterConcurrencyAdjustRecommendation == ClusterConcurrencyAdjustType.DECREASE;
   }
 }

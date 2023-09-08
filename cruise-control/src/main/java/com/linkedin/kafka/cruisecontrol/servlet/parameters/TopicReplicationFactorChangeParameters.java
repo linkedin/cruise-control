@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
@@ -19,6 +20,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_RACK_AWARENESS_CHECK_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_HARD_GOAL_CHECK_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_LEADER_MOVEMENTS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.BROKER_CONCURRENT_LEADER_MOVEMENTS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICA_MOVEMENT_STRATEGIES_PARAM;
@@ -39,6 +41,7 @@ public class TopicReplicationFactorChangeParameters extends AbstractParameters {
     validParameterNames.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
     validParameterNames.add(MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM);
     validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    validParameterNames.add(BROKER_CONCURRENT_LEADER_MOVEMENTS_PARAM);
     validParameterNames.add(EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
     validParameterNames.add(SKIP_HARD_GOAL_CHECK_PARAM);
     validParameterNames.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
@@ -50,7 +53,8 @@ public class TopicReplicationFactorChangeParameters extends AbstractParameters {
   protected boolean _skipRackAwarenessCheck;
   protected Integer _concurrentInterBrokerPartitionMovements;
   protected Integer _maxInterBrokerPartitionMovements;
-  protected Integer _concurrentLeaderMovements;
+  protected Integer _clusterLeaderMovementConcurrency;
+  protected Integer _brokerLeaderMovementConcurrency;
   protected Long _executionProgressCheckIntervalMs;
   protected boolean _skipHardGoalCheck;
   protected ReplicaMovementStrategy _replicaMovementStrategy;
@@ -68,9 +72,10 @@ public class TopicReplicationFactorChangeParameters extends AbstractParameters {
       throw new UserRequestException("Target replication factor cannot be set to smaller than 1.");
     }
     _skipRackAwarenessCheck = ParameterUtils.skipRackAwarenessCheck(_requestContext);
-    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_requestContext, true, false);
+    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_requestContext, ConcurrencyType.INTER_BROKER_REPLICA);
     _maxInterBrokerPartitionMovements = ParameterUtils.maxPartitionMovements(_requestContext);
-    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_requestContext, false, false);
+    _clusterLeaderMovementConcurrency = ParameterUtils.concurrentMovements(_requestContext, ConcurrencyType.LEADERSHIP_CLUSTER);
+    _brokerLeaderMovementConcurrency = ParameterUtils.concurrentMovements(_requestContext, ConcurrencyType.LEADERSHIP_BROKER);
     _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_requestContext);
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_requestContext);
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_requestContext, _config);
@@ -116,8 +121,12 @@ public class TopicReplicationFactorChangeParameters extends AbstractParameters {
     return _executionProgressCheckIntervalMs;
   }
 
-  public Integer concurrentLeaderMovements() {
-    return _concurrentLeaderMovements;
+  public Integer clusterLeaderMovementConcurrency() {
+    return _clusterLeaderMovementConcurrency;
+  }
+
+  public Integer brokerLeaderMovementConcurrency() {
+    return _brokerLeaderMovementConcurrency;
   }
 
   public boolean skipHardGoalCheck() {

@@ -106,7 +106,7 @@ public class ExecutionTaskManager {
                                                                                      _brokersToSkipConcurrencyCheck);
     inProgressReplicaMovementsByBrokerId.forEach((brokerId, inProgressReplicaMovements) -> {
       int brokerConcurrency = _brokersToSkipConcurrencyCheck.contains(brokerId)
-                              ? unthrottledConcurrency : _executionConcurrencyManager.getExecutionConcurrency(brokerId, concurrencyType);
+                              ? unthrottledConcurrency : _executionConcurrencyManager.getExecutionBrokerConcurrency(brokerId, concurrencyType);
       readyBrokers.put(brokerId, Math.max(0, brokerConcurrency - inProgressReplicaMovements));
     });
 

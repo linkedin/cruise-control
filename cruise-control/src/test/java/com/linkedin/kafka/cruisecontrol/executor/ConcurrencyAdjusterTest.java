@@ -17,14 +17,17 @@ import com.linkedin.kafka.cruisecontrol.executor.concurrency.ConcurrencyAdjustin
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
+import com.nimbusds.jose.util.Pair;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
+import java.util.Set;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
@@ -51,7 +54,9 @@ public class ConcurrencyAdjusterTest {
   private static final int MOCK_MIN_LEADERSHIP_MOVEMENTS_CONFIG = 50;
   private static final long MOCK_TIME_MS = 100L;
   private static final String TOPIC1 = "topic1";
+  private static final String TOPIC2 = "topic2";
   private static final TopicPartition TP1 = new TopicPartition(TOPIC1, 0);
+  private static final TopicPartition TP2 = new TopicPartition(TOPIC2, 0);
 
   /**
    * Setup the test.
@@ -117,96 +122,112 @@ public class ConcurrencyAdjusterTest {
   }
 
   /**
-   * A cluster that contains a single partition {@link #TP1} with two replicas on Nodes 0 and 1.
+   * A cluster that contains partitions with two replicas on Nodes 0 and 1.
    * Staring from node-0, given number of replicas are in-sync.
    * Out of sync replicas are offline if isOutOfSyncOffline is {@code true}, they are online otherwise.
    *
-   * @param numInSync Number of in-sync replicas.
+   * @param topicNumInSyncs topicPartition: Number of in-sync replicas.
    * @param isOutOfSyncOffline {@code true} if out of sync replicas are offline, {@code false} otherwise.
-   * @return A cluster that contains a single partition with two replicas, containing given number of in-sync replicas.
+   * @return A cluster that contains partitions with two replicas, containing given number of in-sync replicas.
    */
-  private static Cluster getClusterWithOutOfSyncPartition(int numInSync, boolean isOutOfSyncOffline) {
-    if (numInSync > 2 || numInSync < 0) {
-      throw new IllegalArgumentException(String.format("numInSync must be in [0,2] (Given: %d).", numInSync));
-    }
-
+  private static Cluster getClusterWithOutOfSyncPartition(List<Pair<TopicPartition, Integer>> topicNumInSyncs, boolean isOutOfSyncOffline) {
     Node node0 = new Node(0, "host0", 100);
     Node node1 = new Node(1, "host1", 100);
-    Node[] replicas = new Node[2];
-    replicas[0] = node0;
-    replicas[1] = node1;
-    Node[] inSyncReplicas = new Node[numInSync];
-    if (numInSync > 0) {
-      inSyncReplicas[0] = node0;
-      if (numInSync > 1) {
-        inSyncReplicas[1] = node1;
-      }
-    }
-    PartitionInfo partitionInfo;
-    if (!isOutOfSyncOffline) {
-      partitionInfo = new PartitionInfo(TP1.topic(), TP1.partition(), node0, replicas, inSyncReplicas);
-    } else {
-      Node[] offlineReplicas = new Node[2 - numInSync];
-      if (numInSync == 1) {
-        offlineReplicas[0] = node1;
-      } else if (numInSync == 0) {
-        offlineReplicas[0] = node0;
-        offlineReplicas[1] = node1;
+    Set<PartitionInfo> partitionInfos = new HashSet<>();
+    for (Pair<TopicPartition, Integer> topicNumInSync : topicNumInSyncs) {
+      int numInSync = topicNumInSync.getRight();
+      if (numInSync > 2 || numInSync < 0) {
+        throw new IllegalArgumentException(String.format("numInSync must be in [0,2] (Given: %d).", numInSync));
       }
 
-      partitionInfo = new PartitionInfo(TP1.topic(), TP1.partition(), node0, replicas, inSyncReplicas, offlineReplicas);
+      Node[] replicas = new Node[2];
+      replicas[0] = node0;
+      replicas[1] = node1;
+      Node[] inSyncReplicas = new Node[numInSync];
+      if (numInSync > 0) {
+        inSyncReplicas[0] = node0;
+        if (numInSync > 1) {
+          inSyncReplicas[1] = node1;
+        }
+      }
+      PartitionInfo partitionInfo;
+      TopicPartition tp = topicNumInSync.getLeft();
+      if (!isOutOfSyncOffline) {
+        partitionInfo = new PartitionInfo(tp.topic(), tp.partition(), node0, replicas, inSyncReplicas);
+      } else {
+        Node[] offlineReplicas = new Node[2 - numInSync];
+        if (numInSync == 1) {
+          offlineReplicas[0] = node1;
+        } else if (numInSync == 0) {
+          offlineReplicas[0] = node0;
+          offlineReplicas[1] = node1;
+        }
+        partitionInfo = new PartitionInfo(tp.topic(), tp.partition(), node0, replicas, inSyncReplicas, offlineReplicas);
+      }
+      partitionInfos.add(partitionInfo);
     }
-    return new Cluster("id", Arrays.asList(node0, node1), Collections.singleton(partitionInfo),
-                       Collections.emptySet(), Collections.emptySet());
+    return new Cluster("id", Arrays.asList(node0, node1), partitionInfos, Collections.emptySet(), Collections.emptySet());
 
   }
 
   @Test
   public void testRecommendedMinIsrBasedConcurrency() {
     // Cluster with an online out of sync partition.
-    Cluster cluster = getClusterWithOutOfSyncPartition(1, false);
+    Cluster cluster = getClusterWithOutOfSyncPartition(Arrays.asList(Pair.of(TP1, 2), Pair.of(TP2, 1)), false);
 
     // 1. Verify a recommended decrease in concurrency for different concurrency types due to AtMinISR partitions without offline replicas.
-    // Cache with a single entry that makes the TP1 in cluster AtMinISR. Since there are 2 replicas of the minISR partition, both brokers
+    // Cache with a single entry that makes the TP2 in cluster AtMinISR. Since there are 2 replicas of the minISR partition, both brokers
     // should decrease the concurrency.
-    Map<String, MinIsrWithTime> minIsrWithTimeByTopic = Collections.singletonMap(TOPIC1, new MinIsrWithTime((short) 1, MOCK_TIME_MS));
+    Map<String, MinIsrWithTime> minIsrWithTimeByTopic = Map.of(TOPIC1, new MinIsrWithTime((short) 1, MOCK_TIME_MS),
+        TOPIC2, new MinIsrWithTime((short) 1, MOCK_TIME_MS));
 
     ConcurrencyAdjustingRecommendation concurrencyAdjustingRecommendation = ExecutionUtils.recommendedConcurrency(cluster,
                                                                                                                   minIsrWithTimeByTopic);
     assertFalse(concurrencyAdjustingRecommendation.shouldStopExecution());
     assertFalse(concurrencyAdjustingRecommendation.noChangeRecommended());
     assertEquals(2, concurrencyAdjustingRecommendation.getBrokersToDecreaseConcurrency().size());
+    assertTrue(concurrencyAdjustingRecommendation.shouldDecreaseClusterConcurrency());
 
     // 2. Verify a recommended cancellation of the execution (i.e. concurrency types is irrelevant) due to UnderMinISR partitions without
     // offline replicas.
-    // Cache with a single entry that makes the TP1 in cluster UnderMinISR.
-    minIsrWithTimeByTopic = Collections.singletonMap(TOPIC1, new MinIsrWithTime((short) 2, MOCK_TIME_MS));
+    // Cache with a single entry that makes the TP2 in cluster UnderMinISR.
+    minIsrWithTimeByTopic = Map.of(TOPIC1, new MinIsrWithTime((short) 1, MOCK_TIME_MS),
+        TOPIC2, new MinIsrWithTime((short) 2, MOCK_TIME_MS));
     concurrencyAdjustingRecommendation = ExecutionUtils.recommendedConcurrency(cluster, minIsrWithTimeByTopic);
     assertTrue(concurrencyAdjustingRecommendation.shouldStopExecution());
+    assertFalse(concurrencyAdjustingRecommendation.STOP_EXECUTION.shouldDecreaseClusterConcurrency());
+    assertFalse(concurrencyAdjustingRecommendation.STOP_EXECUTION.shouldIncreaseClusterConcurrency());
 
     // 3. Verify that if the minISR value for topics containing (At/Under)MinISR partitions in the given Kafka cluster is missing from the
     // given cache, then no change in concurrency is recommended.
     concurrencyAdjustingRecommendation = ExecutionUtils.recommendedConcurrency(cluster, Collections.emptyMap());
     assertFalse(concurrencyAdjustingRecommendation.shouldStopExecution());
     assertTrue(concurrencyAdjustingRecommendation.noChangeRecommended());
+    assertFalse(concurrencyAdjustingRecommendation.STOP_EXECUTION.shouldDecreaseClusterConcurrency());
+    assertFalse(concurrencyAdjustingRecommendation.STOP_EXECUTION.shouldIncreaseClusterConcurrency());
 
     // 4. Verify no change in concurrency due to lack of (At/Under)MinISR partitions (i.e. concurrency types is irrelevant)
     // Cluster with an all in-sync partition.
-    cluster = getClusterWithOutOfSyncPartition(2, false);
+    cluster = getClusterWithOutOfSyncPartition(Arrays.asList(Pair.of(TP1, 2), Pair.of(TP2, 2)), false);
     // Cache with a single entry that makes the TP1 in cluster not (At/Under)MinISR.
-    minIsrWithTimeByTopic = Collections.singletonMap(TOPIC1, new MinIsrWithTime((short) 1, MOCK_TIME_MS));
+    minIsrWithTimeByTopic = Map.of(TOPIC1, new MinIsrWithTime((short) 1, MOCK_TIME_MS),
+        TOPIC2, new MinIsrWithTime((short) 1, MOCK_TIME_MS));
 
     concurrencyAdjustingRecommendation = ExecutionUtils.recommendedConcurrency(cluster, minIsrWithTimeByTopic);
     assertFalse(concurrencyAdjustingRecommendation.shouldStopExecution());
     assertTrue(concurrencyAdjustingRecommendation.noChangeRecommended());
+    assertFalse(concurrencyAdjustingRecommendation.STOP_EXECUTION.shouldDecreaseClusterConcurrency());
+    assertFalse(concurrencyAdjustingRecommendation.STOP_EXECUTION.shouldIncreaseClusterConcurrency());
 
     // 5. Verify no change in concurrency due to (At/Under)MinISR partitions with an offline replica (i.e. concurrency types is irrelevant)
     // Cluster with an offline out of sync partition.
-    cluster = getClusterWithOutOfSyncPartition(1, true);
+    cluster = getClusterWithOutOfSyncPartition(Arrays.asList(Pair.of(TP1, 2), Pair.of(TP2, 1)), true);
     concurrencyAdjustingRecommendation = ExecutionUtils.recommendedConcurrency(cluster,
                                                                    minIsrWithTimeByTopic);
     assertFalse(concurrencyAdjustingRecommendation.shouldStopExecution());
     assertTrue(concurrencyAdjustingRecommendation.noChangeRecommended());
+    assertFalse(concurrencyAdjustingRecommendation.STOP_EXECUTION.shouldDecreaseClusterConcurrency());
+    assertFalse(concurrencyAdjustingRecommendation.STOP_EXECUTION.shouldIncreaseClusterConcurrency());
   }
 
   @Test
@@ -229,6 +250,38 @@ public class ConcurrencyAdjusterTest {
     assertFalse(concurrencyAdjustingRecommendation.noChangeRecommended());
     assertEquals(1, concurrencyAdjustingRecommendation.getBrokersToIncreaseConcurrency().size());
     assertEquals(3, concurrencyAdjustingRecommendation.getBrokersToDecreaseConcurrency().size());
+    assertTrue(concurrencyAdjustingRecommendation.shouldDecreaseClusterConcurrency());
+    assertFalse(concurrencyAdjustingRecommendation.shouldIncreaseClusterConcurrency());
+
+    // Test on all brokers having metrics within limit
+    metricValueByIdPerBroker.clear();
+    metricValueByIdPerBroker.add(populateMetricValues(0));
+    metricValueByIdPerBroker.add(populateMetricValues(0));
+    metricValueByIdPerBroker.add(populateMetricValues(0));
+    currentMetrics = createCurrentMetrics(metricValueByIdPerBroker);
+    concurrencyAdjustingRecommendation = ExecutionUtils.recommendedConcurrency(currentMetrics);
+
+    assertFalse(concurrencyAdjustingRecommendation.shouldStopExecution());
+    assertFalse(concurrencyAdjustingRecommendation.noChangeRecommended());
+    assertEquals(3, concurrencyAdjustingRecommendation.getBrokersToIncreaseConcurrency().size());
+    assertEquals(0, concurrencyAdjustingRecommendation.getBrokersToDecreaseConcurrency().size());
+    assertFalse(concurrencyAdjustingRecommendation.shouldDecreaseClusterConcurrency());
+    assertTrue(concurrencyAdjustingRecommendation.shouldIncreaseClusterConcurrency());
+
+    // Test one broker having metrics above limit
+    metricValueByIdPerBroker.clear();
+    metricValueByIdPerBroker.add(populateMetricValues(1));
+    metricValueByIdPerBroker.add(populateMetricValues(0));
+    metricValueByIdPerBroker.add(populateMetricValues(0));
+    currentMetrics = createCurrentMetrics(metricValueByIdPerBroker);
+    concurrencyAdjustingRecommendation = ExecutionUtils.recommendedConcurrency(currentMetrics);
+
+    assertFalse(concurrencyAdjustingRecommendation.shouldStopExecution());
+    assertFalse(concurrencyAdjustingRecommendation.noChangeRecommended());
+    assertEquals(2, concurrencyAdjustingRecommendation.getBrokersToIncreaseConcurrency().size());
+    assertEquals(1, concurrencyAdjustingRecommendation.getBrokersToDecreaseConcurrency().size());
+    assertFalse(concurrencyAdjustingRecommendation.shouldDecreaseClusterConcurrency());
+    assertTrue(concurrencyAdjustingRecommendation.shouldIncreaseClusterConcurrency());
   }
 
   @Test
@@ -282,6 +335,7 @@ public class ConcurrencyAdjusterTest {
                       Integer.toString(MOCK_MIN_PARTITION_MOVEMENTS_PER_BROKER));
     props.setProperty(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_CONFIG,
                       Integer.toString(MOCK_MIN_LEADERSHIP_MOVEMENTS_CONFIG));
+    props.setProperty(ExecutorConfig.MIN_NUM_BROKERS_VIOLATE_METRIC_LIMIT_TO_DECREASE_CLUSTER_CONCURRENCY_CONFIG, "2");
 
     return props;
   }
