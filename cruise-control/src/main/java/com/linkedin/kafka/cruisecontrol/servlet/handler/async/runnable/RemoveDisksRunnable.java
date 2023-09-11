@@ -61,10 +61,9 @@ public class RemoveDisksRunnable extends GoalBasedOperationRunnable {
     @Override
     protected void init() {
         _kafkaCruiseControl.sanityCheckDryRun(_dryRun, _stopOngoingExecution);
-        _goalsByPriority = new ArrayList<>(1);
         Goal intraBrokerDiskCapacityGoal = new IntraBrokerDiskCapacityGoal(true);
         intraBrokerDiskCapacityGoal.configure(_kafkaCruiseControl.config().mergedConfigValues());
-        _goalsByPriority.add(intraBrokerDiskCapacityGoal);
+        _goalsByPriority = new ArrayList<>(Collections.singletonList(intraBrokerDiskCapacityGoal));
 
         _operationProgress = _future.operationProgress();
         if (_stopOngoingExecution) {
@@ -136,9 +135,11 @@ public class RemoveDisksRunnable extends GoalBasedOperationRunnable {
             Broker broker = clusterModel.broker(brokerId);
             Set<String> brokerLogDirs = broker.disks().stream().map(Disk::logDir).collect(Collectors.toSet());
             if (!brokerLogDirs.containsAll(logDirsToRemove)) {
+                LOG.error("Invalid log dirs provided for broker {}.", brokerId);
                 throw new IllegalArgumentException(String.format("Invalid log dirs provided for broker %d.", brokerId));
             }
             if (broker.disks().size() == logDirsToRemove.size()) {
+                LOG.error("No log dir remaining to move replicas to for broker {}.", brokerId);
                 throw new IllegalArgumentException(String.format("No log dir remaining to move replicas to for broker %d.", brokerId));
             }
 
@@ -151,7 +152,8 @@ public class RemoveDisksRunnable extends GoalBasedOperationRunnable {
                 }
             }
             if (futureUsage / remainingCapacity > capacityThreshold) {
-                throw new IllegalArgumentException("Not enough remaining capacity to move replicas to.");
+                LOG.error("Not enough remaining capacity to move replicas to for broker {}.", brokerId);
+                throw new IllegalArgumentException(String.format("Not enough remaining capacity to move replicas to for broker %d.", brokerId));
             }
         }
     }

@@ -43,6 +43,7 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(IntraBrokerDiskCapacityGoal.class);
   private static final int MIN_NUM_VALID_WINDOWS = 1;
   private static final Resource RESOURCE = Resource.DISK;
+  // This is only used for the remove disks endpoint
   private final boolean _shouldEmptyZeroCapacityDisks;
 
   /**
@@ -160,10 +161,13 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
   protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
     Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
     Disk destinationDisk = clusterModel.broker(action.destinationBrokerId()).disk(action.destinationBrokerLogdir());
-    boolean shouldMoveReplica = sourceReplica.load().expectedUtilizationFor(RESOURCE) > 0;
+    boolean shouldMoveReplica;
     if (_shouldEmptyZeroCapacityDisks) {
       // should also move replicas with 0 expected disk utilization
       shouldMoveReplica = sourceReplica.load().expectedUtilizationFor(RESOURCE) >= 0;
+    } else {
+      // In general CC tries to reduce number of replica move. Since empty replicas does not affect balance, CC tries to avoid moving them.
+      shouldMoveReplica = sourceReplica.load().expectedUtilizationFor(RESOURCE) > 0;
     }
     return shouldMoveReplica && isMovementAcceptableForCapacity(sourceReplica, destinationDisk);
   }
@@ -209,7 +213,7 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
         if (d == null) {
           LOG.debug("Failed to move replica {} to any disk {} in broker {}", replica, candidateDisks, replica.broker());
         }
-        if (!isUtilizationOverLimit(disk) && !_shouldEmptyZeroCapacityDisks) {
+        if (!isUtilizationOverLimit(disk)) {
           break;
         }
       }
@@ -236,7 +240,7 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
           throw new OptimizationFailureException(String.format("[%s] Utilization (%.2f) for disk %s on broker %d is above capacity limit.",
                                                                name(), disk.utilization(), disk, broker.id()), recommendation);
         }
-        if (_shouldEmptyZeroCapacityDisks && disk.capacity() == 0 && disk.replicas().size() > 0) {
+        if (_shouldEmptyZeroCapacityDisks && disk.capacity() == 0 && !disk.replicas().isEmpty()) {
           throw new OptimizationFailureException(String.format("[%s] Could not move all replicas from disk %s on broker %d",
                                                                name(), disk.logDir(), broker.id()));
         }
@@ -265,7 +269,7 @@ public class IntraBrokerDiskCapacityGoal extends AbstractGoal {
    */
   private boolean isUtilizationOverLimit(Disk disk) {
     if (_shouldEmptyZeroCapacityDisks && disk.capacity() == 0) {
-      return disk.utilization() > 0 || disk.replicas().size() > 0;
+      return disk.utilization() > 0 || !disk.replicas().isEmpty();
     }
     return disk.utilization() > disk.capacity() * _balancingConstraint.capacityThreshold(RESOURCE);
   }
