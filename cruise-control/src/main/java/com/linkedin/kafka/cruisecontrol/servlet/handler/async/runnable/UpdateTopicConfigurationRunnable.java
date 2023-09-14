@@ -75,7 +75,8 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
   protected final boolean _skipRackAwarenessCheck;
   protected final Integer _concurrentInterBrokerPartitionMovements;
   protected final Integer _maxInterBrokerPartitionMovements;
-  protected final Integer _concurrentLeaderMovements;
+  protected final Integer _clusterLeaderMovementConcurrency;
+  protected final Integer _brokerLeaderMovementConcurrency;
   protected final Long _executionProgressCheckIntervalMs;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Long _replicationThrottle;
@@ -101,7 +102,8 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
       _skipRackAwarenessCheck = topicReplicationFactorChangeParameters.skipRackAwarenessCheck();
       _concurrentInterBrokerPartitionMovements = topicReplicationFactorChangeParameters.concurrentInterBrokerPartitionMovements();
       _maxInterBrokerPartitionMovements = topicReplicationFactorChangeParameters.maxInterBrokerPartitionMovements();
-      _concurrentLeaderMovements = topicReplicationFactorChangeParameters.concurrentLeaderMovements();
+      _clusterLeaderMovementConcurrency = topicReplicationFactorChangeParameters.clusterLeaderMovementConcurrency();
+      _brokerLeaderMovementConcurrency = topicReplicationFactorChangeParameters.brokerLeaderMovementConcurrency();
       _executionProgressCheckIntervalMs = topicReplicationFactorChangeParameters.executionProgressCheckIntervalMs();
       _replicaMovementStrategy = topicReplicationFactorChangeParameters.replicaMovementStrategy();
       _replicationThrottle = topicReplicationFactorChangeParameters.replicationThrottle();
@@ -110,7 +112,8 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
       _skipRackAwarenessCheck = false;
       _concurrentInterBrokerPartitionMovements = null;
       _maxInterBrokerPartitionMovements = null;
-      _concurrentLeaderMovements = null;
+      _clusterLeaderMovementConcurrency = null;
+      _brokerLeaderMovementConcurrency = null;
       _executionProgressCheckIntervalMs = null;
       _replicaMovementStrategy = null;
       _replicationThrottle = null;
@@ -141,7 +144,8 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
     _skipRackAwarenessCheck = skipRackAwarenessCheck;
     _concurrentInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _maxInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
-    _concurrentLeaderMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
+    _clusterLeaderMovementConcurrency = SELF_HEALING_CONCURRENT_MOVEMENTS;
+    _brokerLeaderMovementConcurrency = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
     _replicationThrottle = kafkaCruiseControl.config().getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
@@ -204,8 +208,8 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
     if (!_dryRun) {
       _kafkaCruiseControl.executeProposals(result.goalProposals(), Collections.emptySet(), false, _concurrentInterBrokerPartitionMovements,
           _maxInterBrokerPartitionMovements,
-          0, _concurrentLeaderMovements, _executionProgressCheckIntervalMs,
-          _replicaMovementStrategy, _replicationThrottle, _isTriggeredByUserRequest, _uuid,
+          0, _clusterLeaderMovementConcurrency, _brokerLeaderMovementConcurrency,
+          _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle, _isTriggeredByUserRequest, _uuid,
           SKIP_AUTO_REFRESHING_CONCURRENCY);
     }
     return result;

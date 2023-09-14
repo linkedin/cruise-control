@@ -232,6 +232,8 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    *     {@link ExecutorConfig#NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG}</li>
    *   <li>{@link ExecutorConfig#MAX_NUM_CLUSTER_MOVEMENTS_CONFIG} >=
    *     {@link ExecutorConfig#NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG}</li>
+   *   <li>{@link ExecutorConfig#NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG} >=
+   *     {@link ExecutorConfig#NUM_CONCURRENT_LEADER_MOVEMENTS_PER_BROKER_CONFIG}</li>
    *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_CONFIG} >
    *     {@link ExecutorConfig#NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG}</li>
    *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_CONFIG} <=
@@ -244,6 +246,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    *     {@link ExecutorConfig#NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG}</li>
    *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_CONFIG} <=
    *     {@link ExecutorConfig#MAX_NUM_CLUSTER_MOVEMENTS_CONFIG}</li>
+   *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_PER_BROKER_CONFIG} <=
+   *     {@link ExecutorConfig#NUM_CONCURRENT_LEADER_MOVEMENTS_PER_BROKER_CONFIG}</li>
+   *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_PER_BROKER_CONFIG} >=
+   *     {@link ExecutorConfig#NUM_CONCURRENT_LEADER_MOVEMENTS_PER_BROKER_CONFIG}</li>
+   *   <li>{@link ExecutorConfig#CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_PER_BROKER_CONFIG} <=
+   *     {@link ExecutorConfig#CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_CONFIG}</li>
    *   <li>{@link ExecutorConfig#MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG} <=
    *     {@link ExecutorConfig#EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG}</li>
    * </ul>
@@ -277,6 +285,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       throw new ConfigException(String.format("Leadership movement concurrency [%d] cannot be greater than the maximum number"
                                               + " of allowed movements in cluster [%d].",
                                               leadershipMovementConcurrency, maxClusterMovementConcurrency));
+    }
+
+    int leadershipMovementConcurrencyPerBroker = getInt(ExecutorConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_PER_BROKER_CONFIG);
+    if (leadershipMovementConcurrencyPerBroker > leadershipMovementConcurrency) {
+      throw new ConfigException(String.format("Leadership movement concurrency of a broker [%d] cannot be greater than the"
+              + " allowed leadership movements in cluster [%d].",
+          leadershipMovementConcurrencyPerBroker, leadershipMovementConcurrency));
     }
 
     int concurrencyAdjusterMaxPartitionMovementsPerBroker = getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_PARTITION_MOVEMENTS_PER_BROKER_CONFIG);
@@ -318,6 +333,27 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                                               + "than the maximum number of allowed movements in cluster [%d].",
                                               concurrencyAdjusterMaxLeadershipMovements, maxClusterMovementConcurrency));
     }
+
+    int concurrencyAdjusterMinLeadershipMovementsPerBroker = getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MIN_LEADERSHIP_MOVEMENTS_PER_BROKER_CONFIG);
+    if (leadershipMovementConcurrencyPerBroker < concurrencyAdjusterMinLeadershipMovementsPerBroker) {
+      throw new ConfigException(String.format("Leadership movement per broker concurrency [%d] cannot be smaller than the concurrency "
+              + "adjuster minimum per broker leadership movements [%d].", leadershipMovementConcurrencyPerBroker,
+          concurrencyAdjusterMinLeadershipMovementsPerBroker));
+    }
+
+    int concurrencyAdjusterMaxLeadershipMovementsPerBroker = getInt(ExecutorConfig.CONCURRENCY_ADJUSTER_MAX_LEADERSHIP_MOVEMENTS_PER_BROKER_CONFIG);
+    if (leadershipMovementConcurrencyPerBroker > concurrencyAdjusterMaxLeadershipMovementsPerBroker) {
+      throw new ConfigException(String.format("Leadership movement concurrency per broker [%d] cannot be greater than the concurrency "
+              + "adjuster maximum per broker leadership movements [%d].", leadershipMovementConcurrencyPerBroker,
+          concurrencyAdjusterMaxLeadershipMovementsPerBroker));
+    }
+
+    if (concurrencyAdjusterMaxLeadershipMovementsPerBroker > concurrencyAdjusterMaxLeadershipMovements) {
+      throw new ConfigException(String.format("Maximum per broker leadership movements of concurrency adjuster [%d] cannot be greater "
+              + "than the maximum number of allowed movements in cluster [%d].",
+          concurrencyAdjusterMaxLeadershipMovementsPerBroker, concurrencyAdjusterMaxLeadershipMovements));
+    }
+
     long minExecutionProgressCheckIntervalMs = getLong(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
     long defaultExecutionProgressCheckIntervalMs = getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
     if (minExecutionProgressCheckIntervalMs > defaultExecutionProgressCheckIntervalMs) {

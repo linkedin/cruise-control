@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
+import com.linkedin.kafka.cruisecontrol.executor.ConcurrencyType;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
@@ -19,6 +20,7 @@ import java.util.TreeSet;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DRY_RUN_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.BROKER_ID_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_LEADER_MOVEMENTS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.BROKER_CONCURRENT_LEADER_MOVEMENTS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_URP_DEMOTION_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.EXCLUDE_FOLLOWER_DEMOTION_PARAM;
@@ -42,7 +44,8 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  * <pre>
  * Demote a broker
  *    POST /kafkacruisecontrol/demote_broker?brokerid=[id1,id2...]&amp;dryRun=[true/false]
- *    &amp;concurrent_leader_movements=[POSITIVE-INTEGER]&amp;allow_capacity_estimation=[true/false]&amp;json=[true/false]
+ *    &amp;concurrent_leader_movements=[POSITIVE-INTEGER]&amp;broker_concurrent_leader_movements=[POSITIVE-INTEGER]
+ *    &amp;allow_capacity_estimation=[true/false]&amp;json=[true/false]
  *    &amp;skip_urp_demotion=[true/false]&amp;exclude_follower_demotion=[true/false]&amp;verbose=[true/false]
  *    &amp;exclude_recently_demoted_brokers=[true/false]&amp;replica_movement_strategies=[strategy1,strategy2...]
  *    &amp;brokerid_and_logdirs=[broker_id1-logdir1,broker_id2-logdir2]&amp;review_id=[id]
@@ -59,6 +62,7 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
     validParameterNames.add(REASON_PARAM);
     validParameterNames.add(BROKER_ID_PARAM);
     validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    validParameterNames.add(BROKER_CONCURRENT_LEADER_MOVEMENTS_PARAM);
     validParameterNames.add(EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM);
     validParameterNames.add(SKIP_URP_DEMOTION_PARAM);
     validParameterNames.add(EXCLUDE_FOLLOWER_DEMOTION_PARAM);
@@ -72,7 +76,8 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
   }
   protected boolean _dryRun;
   protected Set<Integer> _brokerIds;
-  protected Integer _concurrentLeaderMovements;
+  protected Integer _clusterLeaderMovementConcurrency;
+  protected Integer _brokerLeaderMovementConcurrency;
   protected Long _executionProgressCheckIntervalMs;
   protected boolean _skipUrpDemotion;
   protected boolean _excludeFollowerDemotion;
@@ -92,7 +97,8 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
     super.initParameters();
     _brokerIds = ParameterUtils.brokerIds(_requestContext, false);
     _dryRun = ParameterUtils.getDryRun(_requestContext);
-    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_requestContext, false, false);
+    _clusterLeaderMovementConcurrency = ParameterUtils.concurrentMovements(_requestContext, ConcurrencyType.LEADERSHIP_CLUSTER);
+    _brokerLeaderMovementConcurrency = ParameterUtils.concurrentMovements(_requestContext, ConcurrencyType.LEADERSHIP_BROKER);
     _executionProgressCheckIntervalMs = ParameterUtils.executionProgressCheckIntervalMs(_requestContext);
     _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_requestContext);
     _skipUrpDemotion = ParameterUtils.skipUrpDemotion(_requestContext);
@@ -127,8 +133,12 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
     return _brokerIds;
   }
 
-  public Integer concurrentLeaderMovements() {
-    return _concurrentLeaderMovements;
+  public Integer clusterLeaderMovementConcurrency() {
+    return _clusterLeaderMovementConcurrency;
+  }
+
+  public Integer brokerLeaderMovementConcurrency() {
+    return _brokerLeaderMovementConcurrency;
   }
 
   public Long executionProgressCheckIntervalMs() {
