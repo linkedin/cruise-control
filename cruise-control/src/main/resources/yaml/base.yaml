@@ -52,3 +52,5 @@ paths:
     $ref: 'endpoints/train.yaml#/TrainEndpoint'
   /user_tasks:
     $ref: 'endpoints/userTasks.yaml#/UserTasksEndpoint'
+  /remove_disks:
+    $ref: 'endpoints/removeDisks.yaml#/RemoveDisksEndpoint'
