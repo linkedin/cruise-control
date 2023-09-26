@@ -41,7 +41,8 @@ public class RemoveDisksRunnable extends GoalBasedOperationRunnable {
     private static final int CONCURRENT_INTER_BROKER_PARTITION_MOVEMENTS = 0;
     private static final int MAX_INTER_BROKER_PARTITION_MOVEMENTS = 0;
     private static final int CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS = 1;
-    private static final int CONCURRENT_LEADER_MOVEMENTS = 1;
+    private static final int CLUSTER_CONCURRENT_LEADER_MOVEMENTS = 1;
+    private static final int BROKER_CONCURRENT_LEADER_MOVEMENTS = 1;
     private final Map<Integer, Set<String>> _brokerIdAndLogdirs;
 
     public RemoveDisksRunnable(KafkaCruiseControl kafkaCruiseControl,
@@ -113,7 +114,8 @@ public class RemoveDisksRunnable extends GoalBasedOperationRunnable {
                     CONCURRENT_INTER_BROKER_PARTITION_MOVEMENTS,
                     MAX_INTER_BROKER_PARTITION_MOVEMENTS,
                     CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS,
-                    CONCURRENT_LEADER_MOVEMENTS,
+                    CLUSTER_CONCURRENT_LEADER_MOVEMENTS,
+                    BROKER_CONCURRENT_LEADER_MOVEMENTS,
                     SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS,
                     SELF_HEALING_REPLICA_MOVEMENT_STRATEGY,
                     _kafkaCruiseControl.config().getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG),
