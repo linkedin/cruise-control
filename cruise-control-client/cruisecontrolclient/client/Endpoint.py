@@ -6,9 +6,12 @@ from abc import ABCMeta
 
 # To allow us to make use of the Parameter convenience class
 import cruisecontrolclient.client.CCParameter as CCParameter
+from cruisecontrolclient.client.ParameterSet import ParameterSet
 
 # To allow us to make more-precise type hints
-from typing import Callable, ClassVar, Dict, List, Tuple, Union
+from typing import ClassVar, Dict, Tuple, Type, Union
+
+primitive = Union[str, float, int, bool]
 
 
 class AbstractEndpoint(metaclass=ABCMeta):
@@ -37,7 +40,7 @@ class AbstractEndpoint(metaclass=ABCMeta):
     can_execute_proposal: ClassVar[bool]
 
     # An ordered collection of the known Parameter classes that can be instantiated for this Endpoint.
-    available_Parameters: ClassVar[Tuple[CCParameter.AbstractParameter]]
+    available_parameters: ClassVar[Tuple[Type[CCParameter.AbstractParameter]]]
 
     # Define a convenience data structure to help in programmatically building CLIs
     argparse_properties: ClassVar[Dict[str, Union[Tuple[str], Dict[str, str]]]] = \
@@ -46,113 +49,8 @@ class AbstractEndpoint(metaclass=ABCMeta):
             'kwargs': {}
         }
 
-    def __init__(self):
-        # A mapping of 'parameter' strings
-        self.parameter_name_to_available_Parameters: Dict[
-            str, Callable[[Union[str, int, bool]], CCParameter.AbstractParameter]] = \
-            {ap.name: ap for ap in self.available_Parameters}
-
-        # Stores the instantiated Parameters for this Endpoint.
-        #
-        # As parameters are added via add_param, if their 'parameter'
-        self.parameter_name_to_instantiated_Parameters: Dict[str, CCParameter.AbstractParameter] = {}
-
-        # Stores the URL parameters for which there is no Parameter class defined.
-        #
-        # This is intended to future-proof against cruise-control adding new
-        # parameters before this client has a chance to implement them.
-        self.parameter_name_to_value: Dict[str, str] = {}
-
-    def add_param(self, parameter_name: str, value: Union[str, int, bool]) -> None:
-        """
-        Adds this parameter to this Endpoint, overriding any previous value-definition
-        for this parameter.
-
-        If the supplied 'parameter' matches one of the known Parameters for this
-        Endpoint, that Parameter will be instantiated and its value validated.
-        If the supplied value is not valid, Parameter will raise a ValueError.
-
-        If the supplied 'parameter' does not match one of the known Parameters
-        for this Endpoint, that 'parameter': 'value' mapping will be added to
-        self.parameter_name_to_value without validation.
-
-        :param parameter_name:
-        :param value:
-        :return:
-        """
-        if parameter_name in self.parameter_name_to_available_Parameters:
-            Parameter_to_instantiate = self.parameter_name_to_available_Parameters[parameter_name]
-            self.parameter_name_to_instantiated_Parameters[parameter_name] = Parameter_to_instantiate(value)
-        else:
-            self.parameter_name_to_value[parameter_name] = value
-
-    def get_value(self, parameter_name: str) -> Union[str, None]:
-        """
-        Returns value if this parameter exists in this endpoint.
-
-        Returns None otherwise
-
-        :param parameter_name:
-        :return:
-        """
-        if parameter_name in self.parameter_name_to_instantiated_Parameters:
-            return self.parameter_name_to_instantiated_Parameters[parameter_name].value
-        elif parameter_name in self.parameter_name_to_value:
-            return self.parameter_name_to_value[parameter_name]
-        else:
-            return None
-
-    def has_param(self, parameter_name: str) -> bool:
-        """
-        Returns True if this endpoint already has this parameter, False otherwise.
-
-        :param parameter_name:
-        :return:
-        """
-        return parameter_name in self.parameter_name_to_instantiated_Parameters or parameter_name in self.parameter_name_to_value
-
-    def remove_param(self, parameter_name: str) -> None:
-        """
-        Remove this parameter from this Endpoint.
-
-        If the supplied 'parameter' matches one of the known Parameters for this
-        Endpoint, that Parameter will be removed from self.parameter_name_to_instantiated_Parameters.
-
-        If the supplied 'parameter' does not match one of the known Parameters
-        for this Endpoint, that 'parameter': 'value' mapping will be removed from
-        self.parameter_name_to_value, if present.
-
-        :param parameter_name:
-        :return:
-        """
-        if parameter_name in self.parameter_name_to_instantiated_Parameters:
-            self.parameter_name_to_instantiated_Parameters.pop(parameter_name)
-        elif parameter_name in self.parameter_name_to_value:
-            self.parameter_name_to_value.pop(parameter_name)
-
-    def get_composed_params(self) -> Dict[str, Union[bool, int, str]]:
-        """
-        Returns a requests-compatible dictionary of this Endpoint's current parameters.
-
-        :return: A dict like:
-            {'json': True,
-             'allow_capacity_estimation': False}
-        """
-        # All parameter:value mappings that have been specified for this endpoint.
-        #
-        # First, add the parameter=value pairs from the Parameters we could instantiate.
-        # Next, add (or override) with the parameter=value pairs that were explicitly defined.
-        combined_parameter_to_value = {}
-
-        # Update our mapping with parameter: value pairs from Parameter objects
-        if self.parameter_name_to_instantiated_Parameters:
-            combined_parameter_to_value.update(
-                {name: ip.value for name, ip in self.parameter_name_to_instantiated_Parameters.items()})
-        # Update our mapping with parameter: value pairs that lack Parameter objects
-        if self.parameter_name_to_value:
-            combined_parameter_to_value.update(self.parameter_name_to_value)
-
-        return combined_parameter_to_value
+    def init_parameter_set(self) -> ParameterSet:
+        return ParameterSet(self.available_parameters)
 
 
 class AddBrokerEndpoint(AbstractEndpoint):
@@ -160,7 +58,7 @@ class AddBrokerEndpoint(AbstractEndpoint):
     description = "Move partitions to the specified brokers, according to the specified goals"
     http_method = "POST"
     can_execute_proposal = True
-    available_Parameters = (
+    available_parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.BrokerIdParameter,
         CCParameter.ConcurrentLeaderMovementsParameter,
@@ -185,17 +83,13 @@ class AddBrokerEndpoint(AbstractEndpoint):
         'kwargs': dict(aliases=['add_brokers', 'add-broker', 'add-brokers'], help=description)
     }
 
-    def __init__(self, broker_ids: Union[str, List[str]]):
-        AbstractEndpoint.__init__(self)
-        self.add_param("brokerid", broker_ids)
-
 
 class AdminEndpoint(AbstractEndpoint):
     name = "admin"
     description = "Used to change runtime configurations on the cruise-control server itself"
     http_method = "POST"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.ConcurrentLeaderMovementsParameter,
         CCParameter.ConcurrentPartitionMovementsPerBrokerParameter,
         CCParameter.DisableSelfHealingForParameter,
@@ -216,7 +110,7 @@ class BootstrapEndpoint(AbstractEndpoint):
     description = "Bootstrap the load monitor"
     http_method = "GET"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.ClearMetricsParameter,
         CCParameter.EndParameter,
         CCParameter.JSONParameter,
@@ -233,7 +127,7 @@ class DemoteBrokerEndpoint(AbstractEndpoint):
     description = "Remove leadership and preferred leadership from the specified brokers"
     http_method = "POST"
     can_execute_proposal = True
-    available_Parameters = (
+    available_parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.BrokerIdParameter,
         CCParameter.ConcurrentLeaderMovementsParameter,
@@ -253,10 +147,6 @@ class DemoteBrokerEndpoint(AbstractEndpoint):
         'kwargs': dict(aliases=['demote_brokers', 'demote-broker', 'demote-brokers'], help=description)
     }
 
-    def __init__(self, broker_ids: Union[str, List[str]]):
-        AbstractEndpoint.__init__(self)
-        self.add_param("brokerid", broker_ids)
-
 
 class FixOfflineReplicasEndpoint(AbstractEndpoint):
     # Warning, this Endpoint is only supported in kafka 1.1 and above
@@ -264,7 +154,7 @@ class FixOfflineReplicasEndpoint(AbstractEndpoint):
     description = "Fixes the offline replicas in the cluster (kafka 1.1+ only)"
     http_method = "POST"
     can_execute_proposal = True
-    available_Parameters = (
+    available_parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.ConcurrentLeaderMovementsParameter,
         CCParameter.ConcurrentPartitionMovementsPerBrokerParameter,
@@ -293,7 +183,7 @@ class KafkaClusterStateEndpoint(AbstractEndpoint):
     description = "Get under-replicated and offline partitions (and under MinISR partitions in kafka 2.0+)"
     http_method = "GET"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.TopicParameter,
         CCParameter.JSONParameter,
         CCParameter.VerboseParameter
@@ -309,7 +199,7 @@ class LoadEndpoint(AbstractEndpoint):
     description = "Get the load on each kafka broker"
     http_method = "GET"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.JSONParameter,
         CCParameter.TimeParameter
@@ -319,16 +209,13 @@ class LoadEndpoint(AbstractEndpoint):
         'kwargs': dict(help=description)
     }
 
-    def __init__(self):
-        AbstractEndpoint.__init__(self)
-
 
 class PartitionLoadEndpoint(AbstractEndpoint):
     name = "partition_load"
     description = "Get the resource load for each partition"
     http_method = "GET"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.EndParameter,
         CCParameter.EntriesParameter,
@@ -351,7 +238,7 @@ class PauseSamplingEndpoint(AbstractEndpoint):
     description = "Pause metrics load sampling"
     http_method = "POST"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.JSONParameter,
         CCParameter.ReasonParameter,
         CCParameter.ReviewIDParameter,
@@ -367,7 +254,7 @@ class ProposalsEndpoint(AbstractEndpoint):
     description = "Get current proposals"
     http_method = "GET"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.DataFromParameter,
         CCParameter.ExcludeRecentlyDemotedBrokersParameter,
@@ -390,7 +277,7 @@ class RebalanceEndpoint(AbstractEndpoint):
     description = "Rebalance the partition distribution in the kafka cluster, according to the specified goals"
     http_method = "POST"
     can_execute_proposal = True
-    available_Parameters = (
+    available_parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.ConcurrentLeaderMovementsParameter,
         CCParameter.ConcurrentPartitionMovementsPerBrokerParameter,
@@ -415,16 +302,13 @@ class RebalanceEndpoint(AbstractEndpoint):
         'kwargs': dict(help=description)
     }
 
-    def __init__(self):
-        AbstractEndpoint.__init__(self)
-
 
 class RemoveBrokerEndpoint(AbstractEndpoint):
     name = "remove_broker"
     description = "Remove all partitions from the specified brokers, according to the specified goals"
     http_method = "POST"
     can_execute_proposal = True
-    available_Parameters = (
+    available_parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.BrokerIdParameter,
         CCParameter.ConcurrentLeaderMovementsParameter,
@@ -450,17 +334,13 @@ class RemoveBrokerEndpoint(AbstractEndpoint):
         'kwargs': dict(aliases=['remove_brokers', 'remove-broker', 'remove-brokers'], help=description)
     }
 
-    def __init__(self, broker_ids: Union[str, List[str]]):
-        AbstractEndpoint.__init__(self)
-        self.add_param("brokerid", broker_ids)
-
 
 class ResumeSamplingEndpoint(AbstractEndpoint):
     name = "resume_sampling"
     description = "Resume metrics load sampling"
     http_method = "POST"
     can_execute_proposal = False
-    available_Parameters = {
+    available_parameters = {
         CCParameter.JSONParameter,
         CCParameter.ReasonParameter,
         CCParameter.ReviewIDParameter,
@@ -476,7 +356,7 @@ class ReviewEndpoint(AbstractEndpoint):
     description = "Create, approve, or discard reviews"
     http_method = "POST"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.ApproveParameter,
         CCParameter.DiscardParameter,
         CCParameter.JSONParameter,
@@ -493,7 +373,7 @@ class ReviewBoardEndpoint(AbstractEndpoint):
     description = "View already-created reviews"
     http_method = "GET"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.JSONParameter,
         CCParameter.ReviewIDsParameter
     )
@@ -508,7 +388,7 @@ class RightsizeEndpoint(AbstractEndpoint):
     description = "Rightsize the broker or partition count"
     http_method = "POST"
     can_execute_proposal = True
-    available_Parameters = (
+    available_parameters = (
         CCParameter.JSONParameter,
         CCParameter.TopicParameter,
         CCParameter.PartitionCountParameter,
@@ -525,7 +405,7 @@ class StateEndpoint(AbstractEndpoint):
     description = "Get the state of cruise control"
     http_method = "GET"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.JSONParameter,
         CCParameter.SubstatesParameter,
         CCParameter.SuperVerboseParameter,
@@ -536,19 +416,13 @@ class StateEndpoint(AbstractEndpoint):
         'kwargs': dict(help=description)
     }
 
-    def __init__(self):
-        AbstractEndpoint.__init__(self)
-        # Note that we most often want the executor substate, so set that
-        # as a default parameter
-        self.add_param("substates", "executor")
-
 
 class StopProposalExecutionEndpoint(AbstractEndpoint):
     name = "stop_proposal_execution"
     description = "Stop the currently-executing proposal"
     http_method = "POST"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.ForceStopParameter,
         CCParameter.JSONParameter,
         CCParameter.ReviewIDParameter,
@@ -564,7 +438,7 @@ class TopicConfigurationEndpoint(AbstractEndpoint):
     description = "Update the configuration of the specified topics"
     http_method = "POST"
     can_execute_proposal = True
-    available_Parameters = (
+    available_parameters = (
         CCParameter.AllowCapacityEstimationParameter,
         CCParameter.ConcurrentLeaderMovementsParameter,
         CCParameter.ConcurrentPartitionMovementsPerBrokerParameter,
@@ -594,7 +468,7 @@ class TrainEndpoint(AbstractEndpoint):
     description = "Train the linear regression model"
     http_method = "GET"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.EndParameter,
         CCParameter.JSONParameter,
         CCParameter.StartParameter
@@ -610,7 +484,7 @@ class UserTasksEndpoint(AbstractEndpoint):
     description = "Get the recent user tasks from cruise control"
     http_method = "GET"
     can_execute_proposal = False
-    available_Parameters = (
+    available_parameters = (
         CCParameter.ClientIdsParameter,
         CCParameter.EndpointsParameter,
         CCParameter.EntriesParameter,

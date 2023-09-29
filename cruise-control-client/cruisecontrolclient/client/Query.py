@@ -12,9 +12,7 @@ def generate_url_from_cc_socket_address(cc_socket_address: str, endpoint: Abstra
     """
     Given a cruise-control hostname[:port] and an Endpoint, return the correct URL
     for this cruise-control operation.
-
     Note that this URL _includes_ parameters.
-
     :param cc_socket_address: like hostname[:port], ip-address[:port]
     :param endpoint:
     :return: URL, the correct URL to perform the Endpoint's operation

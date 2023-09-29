@@ -5,134 +5,24 @@
 
 # To be able to easily parse command-line arguments
 import argparse
+from typing import Any, Dict, Optional, Set, Tuple, Type
 
 # To be able to easily pass around the available endpoints and parameters
-from cruisecontrolclient.client.ExecutionContext import ExecutionContext
-
+from cruisecontrolclient.client.ExecutionContext import (AVAILABLE_ENDPOINTS,
+                                                         NAME_TO_ENDPOINT,
+                                                         NON_PARAMETER_FLAGS,
+                                                         FLAG_TO_PARAMETER_NAME)
 # To be able to instantiate Endpoint objects
 import cruisecontrolclient.client.Endpoint as Endpoint
+
+# To be able to bundle the parameters sent to an endpoint
+from cruisecontrolclient.client.ParameterSet import ParameterSet
 
 # To be able to make long-running requests to cruise-control
 from cruisecontrolclient.client.Responder import CruiseControlResponder
 
 
-def get_endpoint(args: argparse.Namespace,
-                 execution_context: ExecutionContext) -> Endpoint.AbstractEndpoint:
-    # Use a __dict__ view of args for a more pythonic processing idiom.
-    #
-    # Also, shallow copy this dict, since otherwise deletions of keys from
-    # this dict would have the unintended consequence of mutating `args` outside
-    # of the scope of this function.
-    #
-    # A deep copy is not needed here since in this method we're only ever
-    # removing properties, not mutating the objects which those properties reference.
-    arg_dict = vars(args).copy()
-
-    # If we have a broker list, we need to make it into a comma-separated list
-    # and pass it to the Endpoint at instantiation.
-    if 'brokers' in arg_dict:
-        comma_broker_id_list = ",".join(args.brokers)
-        endpoint: Endpoint.AbstractEndpoint = execution_context.dest_to_Endpoint[args.endpoint_subparser](
-            comma_broker_id_list)
-        # Prevent trying to add this parameter a second time.
-        del arg_dict['brokers']
-
-    # Otherwise we can directly instantiate the Endpoint
-    else:
-        endpoint: Endpoint.AbstractEndpoint = execution_context.dest_to_Endpoint[args.endpoint_subparser]()
-
-    # Iterate only over the parameter flags; warn user if conflicts exist
-    for flag in arg_dict:
-        if flag in execution_context.non_parameter_flags:
-            pass
-        else:
-            # Presume None is ternary for ignore
-            if arg_dict[flag] is not None:
-                param_name = execution_context.flag_to_parameter_name[flag]
-                # Check for conflicts in this endpoint's parameter-space,
-                # which here probably means that the user is specifying more
-                # than one irresolvable flag.
-                #
-                # For the StateEndpoint only, we don't care if we overwrite it.
-                # This is because we presume 'substates:executor' at instantiation.
-                if endpoint.has_param(param_name) and not isinstance(endpoint, Endpoint.StateEndpoint):
-                    existing_value = endpoint.get_value(param_name)
-                    raise ValueError(
-                        f"Parameter {param_name}={existing_value} already exists in this endpoint.\n"
-                        f"Unclear whether it's safe to remap to {param_name}={arg_dict[flag]}")
-                else:
-                    # If we have a destination broker list, we need to make it into a comma-separated list
-                    if flag == 'destination_broker':
-                        comma_broker_id_list = ",".join(arg_dict[flag])
-                        endpoint.add_param(param_name, comma_broker_id_list)
-                    else:
-                        endpoint.add_param(param_name, arg_dict[flag])
-
-    # We added this parameter already; don't attempt to add it again
-    if 'destination_broker' in arg_dict:
-        del arg_dict['destination_broker']
-
-    # Handle add-parameter and remove-parameter flags
-    #
-    # Handle deconflicting adding and removing parameters, but don't
-    # warn the user if they're overwriting an existing flag, since
-    # these flags are meant as an admin-mode workaround to well-meaning defaults
-    adding_parameter = 'add_parameter' in arg_dict and arg_dict['add_parameter']
-    if adding_parameter:
-        # Build a dictionary of parameters to add
-        parameters_to_add = {}
-
-        for item in arg_dict['add_parameter']:
-            # Check that parameter contains an =
-            if '=' not in item:
-                raise ValueError("Expected \"=\" in the given parameter")
-
-            # Check that the parameter=value string is correctly formatted
-            split_item = item.split("=")
-            if len(split_item) != 2:
-                raise ValueError("Expected only one \"=\" in the given parameter")
-            if not split_item[0]:
-                raise ValueError("Expected parameter preceding \"=\"")
-            if not split_item[1]:
-                raise ValueError("Expected value after \"=\" in the given parameter")
-
-            # If we are here, split_item is a correctly-formatted list of 2 items
-            parameter, value = split_item
-            # Add it to our running dictionary
-            parameters_to_add[parameter] = value
-
-    # The 'remove_parameter' string may not be in our namespace, and even if it
-    # is, there may be no parameters supplied to it.
-    #
-    # Accordingly, check both conditions and store as a simpler boolean.
-    removing_parameter = 'remove_parameter' in arg_dict and arg_dict['remove_parameter']
-    if removing_parameter:
-        # Build a set of parameters to remove
-        parameters_to_remove = set()
-        for item in arg_dict['remove_parameter']:
-            parameters_to_remove.add(item)
-
-    # Validate that we didn't receive ambiguous input
-    if adding_parameter and removing_parameter:
-        if set(parameters_to_add) & parameters_to_remove:
-            raise ValueError("Parameter present in --add-parameter and in --remove-parameter; unclear how to proceed")
-
-    # Having validated parameters, now actually add or remove them.
-    #
-    # Do this without checking for conflicts from existing parameter=value mappings,
-    # since we presume that if the user supplied these, they really want them
-    # to override existing parameter=value mappings
-    if adding_parameter:
-        for parameter, value in parameters_to_add.items():
-            endpoint.add_param(parameter, value)
-    if removing_parameter:
-        for parameter in parameters_to_remove:
-            endpoint.remove_param(parameter)
-
-    return endpoint
-
-
-def build_argument_parser(execution_context: ExecutionContext) -> argparse.ArgumentParser:
+def build_argument_parser() -> argparse.ArgumentParser:
     """
     Builds and returns an argument parser for interacting with cruise-control via CLI.
 
@@ -154,7 +44,6 @@ def build_argument_parser(execution_context: ExecutionContext) -> argparse.Argum
                        help="Manually specify one or more parameter and its value in the cruise-control endpoint, "
                             "like 'param=value'",
                        nargs='+')
-        execution_context.non_parameter_flags.add('add_parameter')
 
     def add_remove_parameter_argument(p: argparse.ArgumentParser):
         """
@@ -170,13 +59,11 @@ def build_argument_parser(execution_context: ExecutionContext) -> argparse.Argum
         p.add_argument('--remove-parameter', '--remove-parameters', metavar='PARAM',
                        help="Manually remove one or more parameter from the cruise-control endpoint, like 'param'",
                        nargs='+')
-        execution_context.non_parameter_flags.add('remove_parameter')
 
     # Display command-line arguments for interacting with cruise-control
     parser = argparse.ArgumentParser()
     parser.add_argument('-a', '--socket-address', help="The hostname[:port] of the cruise-control to interact with",
                         required=True)
-    execution_context.non_parameter_flags.add('socket_address')
 
     # Define subparser for the different cruise-control endpoints
     #
@@ -186,17 +73,16 @@ def build_argument_parser(execution_context: ExecutionContext) -> argparse.Argum
                                                description='Which cruise-control endpoint to interact with',
                                                # 'endpoint' would collide with an existing cc parameter
                                                dest='endpoint_subparser')
-    execution_context.non_parameter_flags.add('endpoint_subparser')
 
     # A map from endpoint names to that endpoint's argparse parser
     endpoint_to_parser_instance = {}
 
     # Dynamically build an argparse CLI from the Endpoint and Parameter properties
-    for endpoint in execution_context.available_endpoints:
+    for endpoint in AVAILABLE_ENDPOINTS:
         endpoint_parser = endpoint_subparser.add_parser(*endpoint.argparse_properties['args'],
                                                         **endpoint.argparse_properties['kwargs'])
         endpoint_to_parser_instance[endpoint.name] = endpoint_parser
-        for parameter in endpoint.available_Parameters:
+        for parameter in endpoint.available_parameters:
             endpoint_parser.add_argument(*parameter.argparse_properties['args'],
                                          **parameter.argparse_properties['kwargs'])
         # Hack in some future-proofing by allowing users to add and remove parameter=value mappings
@@ -206,23 +92,118 @@ def build_argument_parser(execution_context: ExecutionContext) -> argparse.Argum
     return parser
 
 
-def main():
-    # Instantiate a convenience class to pass around information about available endpoints and parameters.
-    e = ExecutionContext()
+def get_endpoint_from_args(args: argparse.Namespace) -> Endpoint.AbstractEndpoint:
+    return NAME_TO_ENDPOINT[args.endpoint_subparser]()
 
+
+def extract_parameters_for(endpoint: Endpoint.AbstractEndpoint, args: argparse.Namespace) -> ParameterSet:
+    # Use a __dict__ view of args for a more pythonic processing idiom.
+    #
+    # Also, shallow copy this dict, since otherwise deletions of keys from
+    # this dict would have the unintended consequence of mutating `args` outside
+    # the scope of this function.
+    #
+    # A deep copy is not needed here since in this method we're only ever
+    # removing properties, not mutating the objects which those properties reference.
+    arg_dict = vars(args).copy()
+
+    parameters = set_known_parameters_for(endpoint, arg_dict)
+    parameters_to_add, parameters_to_remove = handle_adhoc_parameters(arg_dict)
+
+    # Having validated parameters, now actually add or remove them.
+    #
+    # Do this without checking for conflicts from existing parameter=value mappings,
+    # since we presume that if the user supplied these, they really want them
+    # to override existing parameter=value mappings
+    for parameter, value in parameters_to_add.items():
+        parameters.add((parameter, value))
+
+    for parameter in parameters_to_remove:
+        parameters.discard(parameter)
+
+    return parameters
+
+
+def set_known_parameters_for(endpoint: Endpoint, arguments: Dict[str, Any]) -> ParameterSet:
+    # Iterate only over the known parameter flags
+    parameters = endpoint.init_parameter_set()
+    for flag in arguments:
+        if flag in NON_PARAMETER_FLAGS:
+            pass
+        else:
+            # Presume None is ternary for ignore
+            value = arguments[flag]
+            if value is not None:
+                parameters.add(FLAG_TO_PARAMETER_NAME[flag], value)
+    return parameters
+
+
+def handle_adhoc_parameters(arg_dict: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], Optional[Set]]:
+    """
+    Handles the add-parameter and remove-parameter flags that allow newer API versions to be
+    supported with an earlier client.
+
+    Handle de-conflicting adding and removing parameters, but doesn't warn the user if they're
+    overwriting an existing flag, since they are meant as an admin-mode workaround to well-meaning
+    defaults.
+    """
+    parameters_to_add = {}
+
+    # Handle de-conflicting adding and removing parameters, but don't
+    # warn the user if they're overwriting an existing flag, since
+    # these flags are meant as an admin-mode workaround to well-meaning defaults
+    if 'add_parameter' in arg_dict and arg_dict['add_parameter']:
+        # Build a dictionary of parameters to add
+        for item in arg_dict['add_parameter']:
+            # Check that parameter contains an =
+            if '=' not in item:
+                raise ValueError("Expected \"=\" in the given parameter")
+
+            # Check that the parameter=value string is correctly formatted
+            split_item = item.split("=")
+            if len(split_item) != 2:
+                raise ValueError("Expected only one \"=\" in the given parameter")
+            if not split_item[0]:
+                raise ValueError("Expected parameter preceding \"=\"")
+            if not split_item[1]:
+                raise ValueError("Expected value after \"=\" in the given parameter")
+
+            # If we are here, split_item is a correctly-formatted list of 2 items
+            parameter, value = split_item
+            # Add it to our running dictionary
+            parameters_to_add[parameter] = value
+
+    parameters_to_remove = set()
+
+    # The 'remove_parameter' string may not be in our namespace, and even if it
+    # is, there may be no parameters supplied to it, so check both conditions
+    if 'remove_parameter' in arg_dict and arg_dict['remove_parameter']:
+        # Build a set of parameters to remove
+        for item in arg_dict['remove_parameter']:
+            parameters_to_remove.add(item)
+
+    if set(parameters_to_add) & parameters_to_remove:
+        raise ValueError("Parameter present in --add-parameter and in --remove-parameter; "
+                         "unclear how to proceed")
+
+    return parameters_to_add, parameters_to_remove
+
+
+def main():
     # Display and parse command-line arguments for interacting with cruise-control
-    parser = build_argument_parser(e)
+    parser = build_argument_parser()
     args = parser.parse_args()
 
     # Get the endpoint that the parsed args specify
-    endpoint = get_endpoint(args=args, execution_context=e)
+    endpoint = get_endpoint_from_args(args=args)
 
-    # Get the socket address for the cruise-control we're communicating with
-    cc_socket_address = args.socket_address
+    # Get the parameter set to submit to the endpoint
+    parameters = extract_parameters_for(endpoint, args=args)
 
     # Retrieve the response and display it
-    json_responder = CruiseControlResponder()
-    response = json_responder.retrieve_response_from_Endpoint(cc_socket_address, endpoint)
+    response = CruiseControlResponder().retrieve_response_from_Endpoint(args.socket_address,
+                                                                        endpoint=endpoint,
+                                                                        parameters=parameters)
     print(response.text)
 
 

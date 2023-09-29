@@ -10,6 +10,9 @@ from cruisecontrolclient.client.Endpoint import AbstractEndpoint
 # To be able to more-easily retrieve the base url of cruise-control
 from cruisecontrolclient.client.Query import generate_base_url_from_cc_socket_address
 
+# To be able to separate an Endpoint class instance from the parameters it executes
+from cruisecontrolclient.client.ParameterSet import ParameterSet
+
 # To be able to make HTTP calls
 import requests
 
@@ -124,6 +127,7 @@ class CruiseControlResponder(requests.Session):
     def retrieve_response_from_Endpoint(self,
                                         cc_socket_address: str,
                                         endpoint: AbstractEndpoint,
+                                        parameters: ParameterSet,
                                         **kwargs):
         """
         Returns a final requests.Response object from cruise-control
@@ -134,11 +138,12 @@ class CruiseControlResponder(requests.Session):
         :return: requests.Response
         :param cc_socket_address: like someCruiseControlAddress:9090
         :param endpoint: an instance of an Endpoint
+        :param parameters: set of parameters to pass to endpoint
         :return:
         """
         return self.retrieve_response(
             method=endpoint.http_method,
             url=generate_base_url_from_cc_socket_address(cc_socket_address, endpoint),
-            params=endpoint.get_composed_params(),
+            params=parameters.compose(),
             **kwargs
         )
