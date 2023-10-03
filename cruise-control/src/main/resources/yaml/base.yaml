@@ -30,6 +30,8 @@ paths:
     $ref: 'endpoints/pauseSampling.yaml#/PauseSamplingEndpoint'
   /proposals:
     $ref: 'endpoints/proposals.yaml#/ProposalsEndpoint'
+  /permissions:
+    $ref: 'endpoints/permissions.yaml#/PermissionsEndpoint'
   /rebalance:
     $ref: 'endpoints/rebalance.yaml#/RebalanceEndpoint'
   /remove_broker:

@@ -24,6 +24,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameter
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RebalanceParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AdminParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserPermissionsParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RightsizeParameters;
 import org.apache.kafka.common.config.ConfigDef;
 
@@ -181,6 +182,13 @@ public final class CruiseControlParametersConfig {
   public static final String RIGHTSIZE_PARAMETERS_CLASS_DOC = "The class for parameters of a provision rightsize request.";
 
   /**
+   * <code>permissions.parameters.class</code>
+   */
+  public static final String PERMISSIONS_PARAMETERS_CLASS_CONFIG = "permissions.parameters.class";
+  public static final String DEFAULT_PERMISSIONS_PARAMETERS_CLASS = UserPermissionsParameters.class.getName();
+  public static final String PERMISSIONS_PARAMETERS_CLASS_DOC = "The class for parameters of user permissons request.";
+  
+  /**
    * <code>remove.disks.parameters.class</code>
    */
   public static final String REMOVE_DISKS_PARAMETERS_CLASS_CONFIG = "remove.disks.parameters.class";
@@ -302,6 +310,11 @@ public final class CruiseControlParametersConfig {
                             DEFAULT_RIGHTSIZE_PARAMETERS_CLASS,
                             ConfigDef.Importance.MEDIUM,
                             RIGHTSIZE_PARAMETERS_CLASS_DOC)
+                    .define(PERMISSIONS_PARAMETERS_CLASS_CONFIG,
+                            ConfigDef.Type.CLASS,
+                            DEFAULT_PERMISSIONS_PARAMETERS_CLASS,
+                            ConfigDef.Importance.MEDIUM,
+                            PERMISSIONS_PARAMETERS_CLASS_DOC)
                     .define(REMOVE_DISKS_PARAMETERS_CLASS_CONFIG,
                             ConfigDef.Type.CLASS,
                             DEFAULT_REMOVE_DISKS_PARAMETERS_CLASS,

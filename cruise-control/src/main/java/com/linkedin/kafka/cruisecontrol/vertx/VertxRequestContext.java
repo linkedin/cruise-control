@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils;
 import io.vertx.core.MultiMap;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 import java.io.IOException;
 import java.util.HashMap;
@@ -130,6 +131,14 @@ public class VertxRequestContext implements CruiseControlRequestContext {
         overrides.put(KAFKA_CRUISE_CONTROL_HTTP_SERVLET_REQUEST_OBJECT_CONFIG, _context.request());
         overrides.put(ROUTING_CONTEXT_OBJECT_CONFIG, _context);
         return overrides;
+    }
+
+    @Override
+    public String getUserPrincipal() {
+        JsonObject userPrincipal = _context.user().principal();
+        return userPrincipal == null
+                ? "null"
+                : userPrincipal.getString("username");
     }
 
     /**

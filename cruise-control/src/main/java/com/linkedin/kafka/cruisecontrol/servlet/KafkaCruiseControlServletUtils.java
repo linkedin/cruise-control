@@ -92,6 +92,9 @@ public final class KafkaCruiseControlServletUtils {
     RequestParameterWrapper pauseSampling = new RequestParameterWrapper(PAUSE_SAMPLING_PARAMETERS_CLASS_CONFIG,
                                                                         PAUSE_RESUME_PARAMETER_OBJECT_CONFIG,
                                                                         PAUSE_SAMPLING_REQUEST_CLASS_CONFIG);
+    RequestParameterWrapper permissions = new RequestParameterWrapper(PERMISSIONS_PARAMETERS_CLASS_CONFIG,
+                                                                       PERMISSIONS_PARAMETER_OBJECT_CONFIG,
+                                                                        PERMISSIONS_REQUEST_CLASS_CONFIG);
     RequestParameterWrapper resumeSampling = new RequestParameterWrapper(RESUME_SAMPLING_PARAMETERS_CLASS_CONFIG,
                                                                          PAUSE_RESUME_PARAMETER_OBJECT_CONFIG,
                                                                          RESUME_SAMPLING_REQUEST_CLASS_CONFIG);
@@ -141,6 +144,7 @@ public final class KafkaCruiseControlServletUtils {
     requestParameterConfigs.put(REVIEW_BOARD, reviewBoard);
     requestParameterConfigs.put(TOPIC_CONFIGURATION, topicConfiguration);
     requestParameterConfigs.put(RIGHTSIZE, rightsize);
+    requestParameterConfigs.put(PERMISSIONS, permissions);
     requestParameterConfigs.put(REMOVE_DISKS, removeDisks);
 
     REQUEST_PARAMETER_CONFIGS = Collections.unmodifiableMap(requestParameterConfigs);

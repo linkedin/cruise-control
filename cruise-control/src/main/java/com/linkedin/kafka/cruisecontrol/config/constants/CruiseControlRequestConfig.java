@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.handler.async.CruiseControlState
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.TopicConfigurationRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.AddBrokerRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.RemoveBrokerRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.UserPermissionRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.RemoveDisksRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.DemoteRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.RebalanceRequest;
@@ -183,6 +184,13 @@ public final class CruiseControlRequestConfig {
   public static final String RIGHTSIZE_REQUEST_CLASS_DOC = "The class to handle a provision rightsize request.";
 
   /**
+   * <code>permissions.request.class</code>
+   */
+  public static final String PERMISSIONS_REQUEST_CLASS_CONFIG = "permissions.request.class";
+  public static final String DEFAULT_PERMISSIONS_REQUEST_CLASS = UserPermissionRequest.class.getName();
+  public static final String PERMISSIONS_REQUEST_CLASS_DOC = "The class to handle a user permission request.";
+  
+  /**
    * <code>remove.disks.request.class</code>
    */
   public static final String REMOVE_DISKS_REQUEST_CLASS_CONFIG = "remove.disks.request.class";
@@ -304,6 +312,11 @@ public final class CruiseControlRequestConfig {
                             DEFAULT_RIGHTSIZE_REQUEST_CLASS,
                             ConfigDef.Importance.MEDIUM,
                             RIGHTSIZE_REQUEST_CLASS_DOC)
+                    .define(PERMISSIONS_REQUEST_CLASS_CONFIG,
+                            ConfigDef.Type.CLASS,
+                            DEFAULT_PERMISSIONS_REQUEST_CLASS,
+                            ConfigDef.Importance.MEDIUM,
+                            PERMISSIONS_REQUEST_CLASS_DOC)
                     .define(REMOVE_DISKS_REQUEST_CLASS_CONFIG,
                             ConfigDef.Type.CLASS,
                             DEFAULT_REMOVE_DISKS_REQUEST_CLASS,

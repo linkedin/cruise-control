@@ -361,6 +361,19 @@ class PauseSamplingEndpoint(AbstractEndpoint):
         'kwargs': dict(aliases=[name.replace('_', '-')], help=description)
     }
 
+class PermissionsEndpoint(AbstractEndpoint):
+    name = "permissions"
+    description = "Get the permissions of a user specified as a query parameter"
+    http_method = "GET"
+    can_execute_proposal = False
+    available_Parameters = (
+        CCParameter.JSONParameter,
+        CCParameter.ReasonParameter
+    )
+    argparse_properties = {
+        'args': (name,),
+        'kwargs': dict(help=description)
+    }
 
 class ProposalsEndpoint(AbstractEndpoint):
     name = "proposals"
