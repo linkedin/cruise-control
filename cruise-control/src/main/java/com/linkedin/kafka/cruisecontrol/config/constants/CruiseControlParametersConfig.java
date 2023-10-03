@@ -24,8 +24,6 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameter
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RebalanceParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AdminParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.TrainParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserTasksParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserPermissionsParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RightsizeParameters;
 import org.apache.kafka.common.config.ConfigDef;
