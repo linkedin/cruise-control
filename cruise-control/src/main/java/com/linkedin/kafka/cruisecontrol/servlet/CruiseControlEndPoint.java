@@ -36,7 +36,8 @@ public enum CruiseControlEndPoint implements EndPoint {
   TOPIC_CONFIGURATION(KAFKA_ADMIN),
   RIGHTSIZE(KAFKA_ADMIN),
   PERMISSIONS(CRUISE_CONTROL_MONITOR);
-
+  REMOVE_DISKS(KAFKA_ADMIN);
+  
   private static final List<CruiseControlEndPoint> CACHED_VALUES = List.of(values());
   private static final List<CruiseControlEndPoint> GET_ENDPOINTS = Arrays.asList(BOOTSTRAP,
                                                                                  TRAIN,
@@ -59,7 +60,8 @@ public enum CruiseControlEndPoint implements EndPoint {
                                                                                   ADMIN,
                                                                                   REVIEW,
                                                                                   TOPIC_CONFIGURATION,
-                                                                                  RIGHTSIZE);
+                                                                                  RIGHTSIZE,
+                                                                                  REMOVE_DISKS);
 
   private final EndpointType _endpointType;
 

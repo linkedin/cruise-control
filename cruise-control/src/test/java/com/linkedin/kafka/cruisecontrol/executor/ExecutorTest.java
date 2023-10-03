@@ -424,6 +424,21 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   }
 
   @Test
+  public void testResetExecutionProgressCheckIntervalMs() {
+    KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
+    Executor executor = new Executor(config, null, new MetricRegistry(), EasyMock.mock(MetadataClient.class),
+        null, EasyMock.mock(AnomalyDetectorManager.class));
+    long defaultExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
+    executor.resetExecutionProgressCheckIntervalMs();
+    assertEquals(defaultExecutionProgressCheckIntervalMs, executor.executionProgressCheckIntervalMs());
+
+    // Set requestedExecutionProgressCheckIntervalMs
+    long requestedExecutionProgressCheckIntervalMs = 2 * defaultExecutionProgressCheckIntervalMs;
+    executor.setRequestedExecutionProgressCheckIntervalMs(requestedExecutionProgressCheckIntervalMs);
+    assertEquals(requestedExecutionProgressCheckIntervalMs, executor.executionProgressCheckIntervalMs());
+  }
+
+  @Test
   public void testExecutionKnobs() {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getExecutorProperties());
     assertThrows(IllegalStateException.class,
@@ -488,6 +503,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                               null,
                               null,
                               null,
+                              null,
                               true,
                               RANDOM_UUID,
                               false,
@@ -522,6 +538,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                                                  null,
                                                  null,
                                                  null,
+                                                 null,
                                                  true,
                                                  RANDOM_UUID,
                                                  false,
@@ -535,6 +552,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                               null,
                               mockLoadMonitor,
                               null, null,
+                              null,
                               null,
                               null,
                               null,
@@ -773,7 +791,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
 
     executor.setGeneratingProposalsForExecution(RANDOM_UUID, ExecutorTest.class::getSimpleName, isTriggeredByUserRequest);
     executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, mockLoadMonitor, null, null,
-                              null, null, null, null,
+                              null, null, null, null, null,
                               replicationThrottle, isTriggeredByUserRequest, RANDOM_UUID, false, false);
 
     if (verifyProgress) {

@@ -39,7 +39,14 @@ FixOfflineReplicasEndpoint:
           minimum: 1
       - name: concurrent_leader_movements
         in: query
-        description: The upper bound of ongoing leadership movements.
+        description: The upper bound of cluster ongoing leadership movements.
+        schema:
+          type: integer
+          format: int32
+          minimum: 1
+      - name: broker_concurrent_leader_movements
+        in: query
+        description: The upper bound of per broker ongoing leadership movements.
         schema:
           type: integer
           format: int32

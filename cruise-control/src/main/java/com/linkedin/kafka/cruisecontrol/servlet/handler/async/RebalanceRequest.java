@@ -29,7 +29,7 @@ public class RebalanceRequest extends AbstractAsyncRequest {
     OperationFuture future = new OperationFuture("Rebalance");
     pending(future.operationProgress());
     _runnable = new RebalanceRunnable(_asyncKafkaCruiseControl, future, _parameters, uuid);
-    _asyncKafkaCruiseControl.sessionExecutor().submit(_runnable);
+    _asyncKafkaCruiseControl.sessionExecutor().execute(_runnable);
     return future;
   }
 

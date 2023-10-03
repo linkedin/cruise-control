@@ -37,7 +37,8 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
   protected final boolean _throttleAddedBrokers;
   protected final Integer _concurrentInterBrokerPartitionMovements;
   protected final Integer _maxInterBrokerPartitionMovements;
-  protected final Integer _concurrentLeaderMovements;
+  protected final Integer _clusterLeaderMovementConcurrency;
+  protected final Integer _brokerLeaderMovementConcurrency;
   protected final Long _executionProgressCheckIntervalMs;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Long _replicationThrottle;
@@ -61,7 +62,8 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
     _throttleAddedBrokers = false;
     _concurrentInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _maxInterBrokerPartitionMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
-    _concurrentLeaderMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
+    _clusterLeaderMovementConcurrency = SELF_HEALING_CONCURRENT_MOVEMENTS;
+    _brokerLeaderMovementConcurrency = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
     _replicationThrottle = kafkaCruiseControl.config().getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
@@ -77,7 +79,8 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
     _throttleAddedBrokers = parameters.throttleAddedBrokers();
     _concurrentInterBrokerPartitionMovements = parameters.concurrentInterBrokerPartitionMovements();
     _maxInterBrokerPartitionMovements = parameters.maxInterBrokerPartitionMovements();
-    _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
+    _clusterLeaderMovementConcurrency = parameters.clusterLeaderMovementConcurrency();
+    _brokerLeaderMovementConcurrency = parameters.brokerLeaderMovementConcurrency();
     _executionProgressCheckIntervalMs = parameters.executionProgressCheckIntervalMs();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
     _replicationThrottle = parameters.replicationThrottle();
@@ -119,7 +122,8 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
                                            _concurrentInterBrokerPartitionMovements,
                                            _maxInterBrokerPartitionMovements,
                                            null,
-                                           _concurrentLeaderMovements,
+                                           _clusterLeaderMovementConcurrency,
+                                           _brokerLeaderMovementConcurrency,
                                            _executionProgressCheckIntervalMs,
                                            _replicaMovementStrategy,
                                            _replicationThrottle,

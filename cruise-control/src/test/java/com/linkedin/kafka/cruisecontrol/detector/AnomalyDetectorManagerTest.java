@@ -106,12 +106,12 @@ public class AnomalyDetectorManagerTest {
     scheduleDetectorAtFixedRate(mockDetectorScheduler, mockTopicAnomalyDetector);
 
     // Starting maintenance event detector.
-    EasyMock.expect(mockDetectorScheduler.submit(mockMaintenanceEventDetector))
-            .andDelegateTo(executorService);
+    mockDetectorScheduler.execute(mockMaintenanceEventDetector);
+    EasyMock.expectLastCall().andDelegateTo(executorService);
 
     // Starting anomaly handler
-    EasyMock.expect(mockDetectorScheduler.submit(EasyMock.isA(AnomalyDetectorManager.AnomalyHandlerTask.class)))
-            .andDelegateTo(executorService);
+    mockDetectorScheduler.execute(EasyMock.isA(AnomalyDetectorManager.AnomalyHandlerTask.class));
+    EasyMock.expectLastCall().andDelegateTo(executorService);
   }
 
   private static void shutdownDetector(ScheduledExecutorService mockDetectorScheduler,
@@ -312,6 +312,7 @@ public class AnomalyDetectorManagerTest {
                                               EasyMock.anyObject(),
                                               EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
                                               EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
+                                              EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
                                               EasyMock.eq(SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS),
                                               EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
                                               EasyMock.eq(null),
@@ -345,6 +346,7 @@ public class AnomalyDetectorManagerTest {
                                               EasyMock.anyObject(),
                                               EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
                                               EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
+                                              EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
                                               EasyMock.eq(SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS),
                                               EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
                                               EasyMock.eq(null),
@@ -375,6 +377,7 @@ public class AnomalyDetectorManagerTest {
               .andReturn(mockOptimizerResult);
       mockKafkaCruiseControl.executeDemotion(EasyMock.anyObject(),
                                              EasyMock.anyObject(),
+                                             EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
                                              EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
                                              EasyMock.eq(smallCluster.brokers().size()),
                                              EasyMock.eq(SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS),
@@ -408,6 +411,7 @@ public class AnomalyDetectorManagerTest {
                                               EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
                                               EasyMock.anyObject(),
                                               EasyMock.eq(0),
+                                              EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
                                               EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
                                               EasyMock.eq(SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS),
                                               EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),

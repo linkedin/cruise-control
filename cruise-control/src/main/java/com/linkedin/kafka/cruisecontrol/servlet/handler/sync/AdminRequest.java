@@ -117,24 +117,34 @@ public class AdminRequest extends AbstractSyncRequest {
     // 1. Change inter-broker partition concurrency for all brokers.
     Integer concurrentInterBrokerPartitionMovements = changeExecutionConcurrencyParameters.concurrentInterBrokerPartitionMovements();
     if (concurrentInterBrokerPartitionMovements != null) {
-      _kafkaCruiseControl.setExecutionConcurrencyForAllBrokers(concurrentInterBrokerPartitionMovements, ConcurrencyType.INTER_BROKER_REPLICA);
+      _kafkaCruiseControl.setExecutionConcurrencyForAllBrokersOrCluster(concurrentInterBrokerPartitionMovements,
+                                                                        ConcurrencyType.INTER_BROKER_REPLICA);
       sb.append(String.format("Inter-broker partition movement concurrency is set to %d%n", concurrentInterBrokerPartitionMovements));
       LOG.info("Inter-broker partition movement concurrency is set to: {} by user.", concurrentInterBrokerPartitionMovements);
     }
     // 2. Change intra-broker partition concurrency for all brokers.
     Integer concurrentIntraBrokerPartitionMovements = changeExecutionConcurrencyParameters.concurrentIntraBrokerPartitionMovements();
     if (concurrentIntraBrokerPartitionMovements != null) {
-      _kafkaCruiseControl.setExecutionConcurrencyForAllBrokers(concurrentIntraBrokerPartitionMovements, ConcurrencyType.INTRA_BROKER_REPLICA);
+      _kafkaCruiseControl.setExecutionConcurrencyForAllBrokersOrCluster(concurrentIntraBrokerPartitionMovements,
+                                                                        ConcurrencyType.INTRA_BROKER_REPLICA);
       sb.append(String.format("Intra-broker partition movement concurrency is set to %d%n", concurrentIntraBrokerPartitionMovements));
       LOG.info("Intra-broker partition movement concurrency is set to: {} by user.", concurrentIntraBrokerPartitionMovements);
     }
-    // 3. Change leadership concurrency for all brokers.
-    Integer concurrentLeaderMovements = changeExecutionConcurrencyParameters.concurrentLeaderMovements();
-    if (concurrentLeaderMovements != null) {
-      _kafkaCruiseControl.setExecutionConcurrencyForAllBrokers(concurrentLeaderMovements, ConcurrencyType.LEADERSHIP);
-      sb.append(String.format("Leadership movement concurrency is set to %d%n", concurrentLeaderMovements));
-      LOG.info("Leadership movement concurrency is set to: {} by user.", concurrentLeaderMovements);
+    // 3. Change cluster leadership concurrency and per broker leadership concurrency for all brokers.
+    Integer clusterLeaderMovementConcurrency = changeExecutionConcurrencyParameters.clusterLeaderMovementConcurrency();
+    if (clusterLeaderMovementConcurrency != null) {
+      _kafkaCruiseControl.setExecutionConcurrencyForAllBrokersOrCluster(clusterLeaderMovementConcurrency, ConcurrencyType.LEADERSHIP_CLUSTER);
+      sb.append(String.format("Cluster Leadership movement concurrency is set to %d%n", clusterLeaderMovementConcurrency));
+      LOG.info("Cluster Leadership movement concurrency is set to: {} by user.", clusterLeaderMovementConcurrency);
     }
+
+    Integer brokerLeaderMovementConcurrency = changeExecutionConcurrencyParameters.brokerLeaderMovementConcurrency();
+    if (brokerLeaderMovementConcurrency != null) {
+      _kafkaCruiseControl.setExecutionConcurrencyForAllBrokersOrCluster(brokerLeaderMovementConcurrency, ConcurrencyType.LEADERSHIP_BROKER);
+      sb.append(String.format("Broker Leadership movement concurrency is set to %d%n", brokerLeaderMovementConcurrency));
+      LOG.info("Broker Leadership movement concurrency is set to: {} by user.", brokerLeaderMovementConcurrency);
+    }
+
     // 4. Change the interval between checking and updating (if needed) the progress of an initiated execution.
     Long executionProgressCheckIntervalMs = changeExecutionConcurrencyParameters.executionProgressCheckIntervalMs();
     if (executionProgressCheckIntervalMs != null) {

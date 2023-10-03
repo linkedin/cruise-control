@@ -4,18 +4,19 @@
 
 package com.linkedin.kafka.cruisecontrol.config.constants;
 
-import com.linkedin.kafka.cruisecontrol.servlet.handler.async.AddBrokerRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.ClusterLoadRequest;
-import com.linkedin.kafka.cruisecontrol.servlet.handler.async.CruiseControlStateRequest;
-import com.linkedin.kafka.cruisecontrol.servlet.handler.async.DemoteRequest;
-import com.linkedin.kafka.cruisecontrol.servlet.handler.async.FixOfflineReplicasRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.PartitionLoadRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.ProposalsRequest;
-import com.linkedin.kafka.cruisecontrol.servlet.handler.async.RebalanceRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.CruiseControlStateRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.TopicConfigurationRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.AddBrokerRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.RemoveBrokerRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.UserPermissionRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.RemoveDisksRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.DemoteRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.RebalanceRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.FixOfflineReplicasRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.RightsizeRequest;
-import com.linkedin.kafka.cruisecontrol.servlet.handler.async.TopicConfigurationRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.AdminRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.BootstrapRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.KafkaClusterStateRequest;
@@ -188,6 +189,13 @@ public final class CruiseControlRequestConfig {
   public static final String PERMISSIONS_REQUEST_CLASS_CONFIG = "permissions.request.class";
   public static final String DEFAULT_PERMISSIONS_REQUEST_CLASS = UserPermissionRequest.class.getName();
   public static final String PERMISSIONS_REQUEST_CLASS_DOC = "The class to handle a user permission request.";
+  
+  /**
+   * <code>remove.disks.request.class</code>
+   */
+  public static final String REMOVE_DISKS_REQUEST_CLASS_CONFIG = "remove.disks.request.class";
+  public static final String DEFAULT_REMOVE_DISKS_REQUEST_CLASS = RemoveDisksRequest.class.getName();
+  public static final String REMOVE_DISKS_REQUEST_CLASS_DOC = "The class to handle a disks removal request.";
 
   private CruiseControlRequestConfig() {
   }
@@ -309,5 +317,10 @@ public final class CruiseControlRequestConfig {
                             DEFAULT_PERMISSIONS_REQUEST_CLASS,
                             ConfigDef.Importance.MEDIUM,
                             PERMISSIONS_REQUEST_CLASS_DOC);
+                    .define(REMOVE_DISKS_REQUEST_CLASS_CONFIG,
+                            ConfigDef.Type.CLASS,
+                            DEFAULT_REMOVE_DISKS_REQUEST_CLASS,
+                            ConfigDef.Importance.MEDIUM,
+                            REMOVE_DISKS_REQUEST_CLASS_DOC);
   }
 }

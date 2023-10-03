@@ -328,7 +328,7 @@ public class GoalOptimizer implements Runnable {
             } else if (!_hasOngoingExplicitPrecomputation) {
               // Submit background computation if there is no ongoing explicit precomputation and wait for the cache update.
               _hasOngoingExplicitPrecomputation = true;
-              _proposalPrecomputingExecutor.submit(() -> computeCachedProposal(allowCapacityEstimation));
+              _proposalPrecomputingExecutor.execute(() -> computeCachedProposal(allowCapacityEstimation));
             }
             operationProgress.refer(_proposalPrecomputingProgress);
             _cacheLock.wait();
@@ -481,13 +481,19 @@ public class GoalOptimizer implements Runnable {
         violatedGoalNamesAfterOptimization.add(goal.name());
       }
 
-      LOG.debug("[{}/{}] Generated {} proposals for {}{}.", optimizedGoals.size(), _goalsByPriority.size(), hasDiff ? "some" : "no",
-                isSelfHealing ? "self-healing " : "", goal.name());
       step.done();
       if (LOG.isDebugEnabled()) {
         LOG.debug("Broker level stats after optimization: {}", clusterModel.brokerStats(null));
       }
       provisionResponse.aggregate(goal.provisionResponse());
+      LOG.info("[{}/{}] Generated {} proposals for {}{}. Provision status: {}; aggregated provision status: {}",
+               optimizedGoals.size(),
+               _goalsByPriority.size(),
+               hasDiff ? "some" : "no",
+               isSelfHealing ? "self-healing " : "",
+               goal.name(),
+               goal.provisionResponse().status(),
+               provisionResponse.status());
     }
 
     setHasUnfixableProposalOptimization(false, goalsByPriority);

@@ -24,7 +24,7 @@ public class AddBrokerRequest extends AbstractAsyncRequest {
   protected OperationFuture handle(String uuid) {
     OperationFuture future = new OperationFuture("Add brokers");
     pending(future.operationProgress());
-    _asyncKafkaCruiseControl.sessionExecutor().submit(new AddBrokersRunnable(_asyncKafkaCruiseControl, future, _parameters, uuid));
+    _asyncKafkaCruiseControl.sessionExecutor().execute(new AddBrokersRunnable(_asyncKafkaCruiseControl, future, _parameters, uuid));
     return future;
   }
 

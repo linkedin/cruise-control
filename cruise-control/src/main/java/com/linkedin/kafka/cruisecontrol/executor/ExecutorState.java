@@ -44,12 +44,13 @@ public final class ExecutorState {
   @JsonResponseField(required = false)
   private static final String CANCELLED_LEADERSHIP_MOVEMENT = "cancelledLeadershipMovement";
   @JsonResponseField(required = false)
-  private static final String MAXIMUM_CONCURRENT_LEADER_MOVEMENTS = "maximumConcurrentLeaderMovements";
+  private static final String MAXIMUM_BROKER_LEADER_MOVEMENT_CONCURRENCY = "maximumBrokerLeaderMovementConcurrency";
   @JsonResponseField(required = false)
-  private static final String MINIMUM_CONCURRENT_LEADER_MOVEMENTS = "minimumConcurrentLeaderMovements";
+  private static final String MINIMUM_BROKER_LEADER_MOVEMENT_CONCURRENCY = "minimumBrokerLeaderMovementConcurrency";
   @JsonResponseField(required = false)
-  private static final String AVERAGE_CONCURRENT_LEADER_MOVEMENTS = "averageConcurrentLeaderMovements";
-
+  private static final String AVERAGE_BROKER_LEADER_MOVEMENT_CONCURRENCY = "averageBrokerLeaderMovementConcurrency";
+  @JsonResponseField(required = false)
+  private static final String CLUSTER_LEADER_MOVEMENT_CONCURRENCY = "clusterLeaderMovementConcurrency";
   @JsonResponseField(required = false)
   private static final String NUM_TOTAL_INTER_BROKER_PARTITION_MOVEMENTS = "numTotalPartitionMovements";
   @JsonResponseField(required = false)
@@ -392,10 +393,13 @@ public final class ExecutorState {
       case LEADER_MOVEMENT_TASK_IN_PROGRESS:
         populateUuidFieldInJsonStructure(execState, _uuid);
         execState.put(TRIGGERED_TASK_REASON, _reason);
-        execState.put(MAXIMUM_CONCURRENT_LEADER_MOVEMENTS, _executionConcurrencySummary.getMaxExecutionConcurrency(
-            ConcurrencyType.LEADERSHIP));
-        execState.put(MINIMUM_CONCURRENT_LEADER_MOVEMENTS, _executionConcurrencySummary.getMinExecutionConcurrency(ConcurrencyType.LEADERSHIP));
-        execState.put(AVERAGE_CONCURRENT_LEADER_MOVEMENTS, _executionConcurrencySummary.getAvgExecutionConcurrency(ConcurrencyType.LEADERSHIP));
+        execState.put(MAXIMUM_BROKER_LEADER_MOVEMENT_CONCURRENCY, _executionConcurrencySummary.getMaxExecutionConcurrency(
+            ConcurrencyType.LEADERSHIP_BROKER));
+        execState.put(MINIMUM_BROKER_LEADER_MOVEMENT_CONCURRENCY,
+            _executionConcurrencySummary.getMinExecutionConcurrency(ConcurrencyType.LEADERSHIP_BROKER));
+        execState.put(AVERAGE_BROKER_LEADER_MOVEMENT_CONCURRENCY,
+            _executionConcurrencySummary.getAvgExecutionConcurrency(ConcurrencyType.LEADERSHIP_BROKER));
+        execState.put(CLUSTER_LEADER_MOVEMENT_CONCURRENCY, _executionConcurrencySummary.getClusterLeadershipMovementConcurrency());
         execState.put(NUM_PENDING_LEADERSHIP_MOVEMENTS, _executionTasksSummary.taskStat().get(LEADER_ACTION).get(ExecutionTaskState.PENDING));
         execState.put(NUM_FINISHED_LEADERSHIP_MOVEMENTS, numFinishedMovements(LEADER_ACTION));
         execState.put(NUM_TOTAL_LEADERSHIP_MOVEMENTS, numTotalMovements(LEADER_ACTION));
@@ -464,7 +468,9 @@ public final class ExecutorState {
                       _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.INTER_BROKER_REPLICA));
         execState.put(MAXIMUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PER_BROKER,
                       _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.INTRA_BROKER_REPLICA));
-        execState.put(MAXIMUM_CONCURRENT_LEADER_MOVEMENTS, _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.LEADERSHIP));
+        execState.put(MAXIMUM_BROKER_LEADER_MOVEMENT_CONCURRENCY,
+            _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.LEADERSHIP_BROKER));
+        execState.put(CLUSTER_LEADER_MOVEMENT_CONCURRENCY, _executionConcurrencySummary.getClusterLeadershipMovementConcurrency());
         execState.put(NUM_CANCELLED_LEADERSHIP_MOVEMENTS, _executionTasksSummary.taskStat().get(LEADER_ACTION).get(ExecutionTaskState.PENDING));
         execState.put(NUM_IN_PROGRESS_INTER_BROKER_PARTITION_MOVEMENTS, interBrokerPartitionMovementStats.get(ExecutionTaskState.IN_PROGRESS));
         execState.put(NUM_ABORTING_INTER_BROKER_PARTITION_MOVEMENTS, interBrokerPartitionMovementStats.get(ExecutionTaskState.ABORTING));
@@ -512,11 +518,14 @@ public final class ExecutorState {
                              _uuid, TRIGGERED_TASK_REASON, _reason, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case LEADER_MOVEMENT_TASK_IN_PROGRESS:
         return String.format("{%s: %s, finished(%d)/total(%d) leadership movements,"
-                             + " max/min/avg concurrent leadership movements: %d/%d/%.2f, %s: %s, %s: %s%s%s}",
+                             + " max/min/avg broker leadership movement concurrency: %d/%d/%.2f, "
+                             + "cluster leadership movement concurrency: %d, "
+                             + "%s: %s, %s: %s%s%s}",
                              STATE, _state, numFinishedMovements(LEADER_ACTION), numTotalMovements(LEADER_ACTION),
-                             _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.LEADERSHIP),
-                             _executionConcurrencySummary.getMinExecutionConcurrency(ConcurrencyType.LEADERSHIP),
-                             _executionConcurrencySummary.getAvgExecutionConcurrency(ConcurrencyType.LEADERSHIP),
+                             _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.LEADERSHIP_BROKER),
+                             _executionConcurrencySummary.getMinExecutionConcurrency(ConcurrencyType.LEADERSHIP_BROKER),
+                             _executionConcurrencySummary.getAvgExecutionConcurrency(ConcurrencyType.LEADERSHIP_BROKER),
+                             _executionConcurrencySummary.getClusterLeadershipMovementConcurrency(),
                              _isTriggeredByUserRequest ? TRIGGERED_USER_TASK_ID : TRIGGERED_SELF_HEALING_TASK_ID,
                              _uuid, TRIGGERED_TASK_REASON, _reason, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS:
@@ -578,7 +587,9 @@ public final class ExecutorState {
         return String.format("{%s: %s, cancelled(%d)/in-progress(%d)/aborting(%d)/total(%d) intra-broker partition movements,"
                              + "cancelled(%d)/in-progress(%d)/aborting(%d)/total(%d) inter-broker partition movements movements,"
                              + "cancelled(%d)/total(%d) leadership movements, maximum concurrent intra-broker partition movements per-broker: %d, "
-                             + "maximum concurrent inter-broker partition movements per-broker: %d, maximum concurrent leadership movements: %d, "
+                             + "maximum concurrent inter-broker partition movements per-broker: %d, "
+                             + "maximum broker leadership movement concurrency: %d, "
+                             + "cluster leadership movements concurrency: %d, "
                              + "%s: %s, %s: %s%s%s}",
                              STATE, _state,
                              intraBrokerPartitionMovementStats.get(ExecutionTaskState.PENDING),
@@ -593,7 +604,8 @@ public final class ExecutorState {
                              numTotalMovements(LEADER_ACTION),
                              _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.INTER_BROKER_REPLICA),
                              _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.INTRA_BROKER_REPLICA),
-                             _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.LEADERSHIP),
+                             _executionConcurrencySummary.getMaxExecutionConcurrency(ConcurrencyType.LEADERSHIP_BROKER),
+                             _executionConcurrencySummary.getClusterLeadershipMovementConcurrency(),
                              _isTriggeredByUserRequest ? TRIGGERED_USER_TASK_ID : TRIGGERED_SELF_HEALING_TASK_ID, _uuid,
                              TRIGGERED_TASK_REASON, _reason, recentlyDemotedBrokers, recentlyRemovedBrokers);
       default:
