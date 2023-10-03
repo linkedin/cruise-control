@@ -143,7 +143,6 @@ public final class KafkaCruiseControlServletUtils {
     requestParameterConfigs.put(REVIEW, review);
     requestParameterConfigs.put(REVIEW_BOARD, reviewBoard);
     requestParameterConfigs.put(TOPIC_CONFIGURATION, topicConfiguration);
-    requestParameterConfigs.put(RIGHTSIZE, rightsize);
     requestParameterConfigs.put(PERMISSIONS, permissions);
     requestParameterConfigs.put(REMOVE_DISKS, removeDisks);
 

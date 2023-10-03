@@ -316,7 +316,7 @@ public final class CruiseControlRequestConfig {
                             ConfigDef.Type.CLASS,
                             DEFAULT_PERMISSIONS_REQUEST_CLASS,
                             ConfigDef.Importance.MEDIUM,
-                            PERMISSIONS_REQUEST_CLASS_DOC);
+                            PERMISSIONS_REQUEST_CLASS_DOC)
                     .define(REMOVE_DISKS_REQUEST_CLASS_CONFIG,
                             ConfigDef.Type.CLASS,
                             DEFAULT_REMOVE_DISKS_REQUEST_CLASS,

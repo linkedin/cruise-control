@@ -35,7 +35,7 @@ public enum CruiseControlEndPoint implements EndPoint {
   REVIEW(CRUISE_CONTROL_ADMIN),
   TOPIC_CONFIGURATION(KAFKA_ADMIN),
   RIGHTSIZE(KAFKA_ADMIN),
-  PERMISSIONS(CRUISE_CONTROL_MONITOR);
+  PERMISSIONS(CRUISE_CONTROL_MONITOR),
   REMOVE_DISKS(KAFKA_ADMIN);
   
   private static final List<CruiseControlEndPoint> CACHED_VALUES = List.of(values());

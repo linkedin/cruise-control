@@ -316,7 +316,7 @@ public final class CruiseControlParametersConfig {
                             ConfigDef.Type.CLASS,
                             DEFAULT_PERMISSIONS_PARAMETERS_CLASS,
                             ConfigDef.Importance.MEDIUM,
-                            PERMISSIONS_PARAMETERS_CLASS_DOC);
+                            PERMISSIONS_PARAMETERS_CLASS_DOC)
                     .define(REMOVE_DISKS_PARAMETERS_CLASS_CONFIG,
                             ConfigDef.Type.CLASS,
                             DEFAULT_REMOVE_DISKS_PARAMETERS_CLASS,
