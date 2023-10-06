@@ -1346,17 +1346,17 @@ public class Executor {
 
     public void run() {
       LOG.info("Starting executing balancing proposals.");
-      final long start = System.nanoTime();
+      final long start = System.currentTimeMillis();
       try {
         UserTaskManager.UserTaskInfo userTaskInfo = initExecution();
         execute(userTaskInfo);
       } catch (Exception e) {
         LOG.error("ProposalExecutionRunnable got exception during run", e);
       } finally {
-        final long duration = System.nanoTime() - start;
-        _proposalExecutionTimer.update(duration, TimeUnit.NANOSECONDS);
+        final long duration = System.currentTimeMillis() - start;
+        _proposalExecutionTimer.update(duration, TimeUnit.MILLISECONDS);
         if (_executionTimerInvolveBrokerRemovalOrDemotion != null) {
-          _executionTimerInvolveBrokerRemovalOrDemotion.update(duration, TimeUnit.NANOSECONDS);
+          _executionTimerInvolveBrokerRemovalOrDemotion.update(duration, TimeUnit.MILLISECONDS);
         }
       }
       LOG.info("Execution finished.");
