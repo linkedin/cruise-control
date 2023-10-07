@@ -420,7 +420,9 @@ public class UserTaskManager implements Closeable {
    * @param completeWithError Whether the task execution finished with error or not.
    */
   public synchronized void markTaskExecutionFinished(String uuid, boolean completeWithError) {
-    LOG.debug("Task execution with uuid {} completed{}.", uuid, completeWithError ? " with error" : "");
+    final long requestCompleteTime = _time.milliseconds() - _inExecutionUserTaskInfo._startMs;
+    _successfulRequestExecutionTimer.get(_inExecutionUserTaskInfo.endPoint()).update(requestCompleteTime, TimeUnit.MILLISECONDS);
+    LOG.info("Task execution with uuid {} completed{}. Total time: {} ms", uuid, completeWithError ? " with error" : "", requestCompleteTime);
     if (!_inExecutionUserTaskInfo.userTaskId().equals(UUID.fromString(uuid))) {
       throw new IllegalStateException(String.format("Task %s is not found in UserTaskManager.", uuid));
     }
@@ -432,6 +434,7 @@ public class UserTaskManager implements Closeable {
     _uuidToCompletedUserTaskInfoMap.get(_inExecutionUserTaskInfo.endPoint().endpointType())
                                    .put(_inExecutionUserTaskInfo.userTaskId(), _inExecutionUserTaskInfo);
     _inExecutionUserTaskInfo = null;
+
   }
 
   /**
