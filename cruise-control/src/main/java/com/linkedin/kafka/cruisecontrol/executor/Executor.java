@@ -1346,12 +1346,14 @@ public class Executor {
 
       // If the task is triggered from a user request, mark the task to be in-execution state in user task manager and
       // retrieve the associated user task information.
+      //If the task is triggered from a user request, mark the task to be in-execution state in user task manager and
+      //retrieve the associated user task information.
       if (_isTriggeredByUserRequest) {
         // For userTaskInfo that involves proposal execution, we would like its successfulRequestExecutionTimer be updated
         // after the proposal execution being completed and be updated in markTaskExecutionFinished instead of in
         // checkActiveUserTasks. checkActiveUserTasks would update the timer if _userTaskInfo.isUserTaskDone() is true.
-        // _userTaskInfo.isUserTaskDone() is associated whether the OptimizationResult is computed, and is not associated
-        // whether the proposal execution is completed or not. Thus, call markTaskExecutionBegan in the constructor to
+        // _userTaskInfo.isUserTaskDone() is associated with whether the OptimizationResult is computed, and is not associated
+        // with whether the proposal execution is completed or not. Thus, call markTaskExecutionBegan in the constructor to
         // remove _userTaskInfo from _uuidToActiveUserTaskInfoMap before _userTaskInfo.isUserTaskDone() being true.
         _userTaskInfo = _userTaskManager.markTaskExecutionBegan(_uuid);
       } else {
@@ -1378,6 +1380,7 @@ public class Executor {
     }
 
     private void initExecution() {
+      _userTaskManager.logInExecutionTask();
       String reason = _reasonSupplier.get();
       _executorState = ExecutorState.executionStarting(_uuid, reason, _recentlyDemotedBrokers, _recentlyRemovedBrokers, _isTriggeredByUserRequest);
       OPERATION_LOG.info("Task [{}] execution starts. The reason of execution is {}.", _uuid, reason);
