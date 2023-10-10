@@ -485,7 +485,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     UserTaskManager.UserTaskInfo mockUserTaskInfo = getMockUserTaskInfo();
     // This tests runs two consecutive executions. First one completes w/o error, but the second one with error.
     UserTaskManager mockUserTaskManager = getMockUserTaskManager(RANDOM_UUID, mockUserTaskInfo, Arrays.asList(false, true));
-    mockUserTaskManager.logInExecutionTask();
+    mockUserTaskManager.logInExecutionTaskOperation();
     EasyMock.replay(mockMetadataClient, mockLoadMonitor, mockAnomalyDetectorManager, mockUserTaskInfo, mockUserTaskManager);
 
     Collection<ExecutionProposal> proposalsToExecute = Collections.singletonList(proposal);
@@ -700,7 +700,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                                                         UserTaskManager.UserTaskInfo userTaskInfo,
                                                         List<Boolean> completeWithError) {
     UserTaskManager mockUserTaskManager = EasyMock.mock(UserTaskManager.class);
-    mockUserTaskManager.logInExecutionTask();
+    mockUserTaskManager.logInExecutionTaskOperation();
     // Handle the case that the execution started, but did not finish.
     if (completeWithError.isEmpty()) {
       EasyMock.expect(mockUserTaskManager.markTaskExecutionBegan(uuid)).andReturn(userTaskInfo).once();

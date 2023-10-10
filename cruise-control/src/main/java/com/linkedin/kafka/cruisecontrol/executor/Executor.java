@@ -1347,8 +1347,6 @@ public class Executor {
 
       // If the task is triggered from a user request, mark the task to be in-execution state in user task manager and
       // retrieve the associated user task information.
-      //If the task is triggered from a user request, mark the task to be in-execution state in user task manager and
-      //retrieve the associated user task information.
       if (_isTriggeredByUserRequest) {
         // For userTaskInfo that involves proposal execution, we would like its successfulRequestExecutionTimer be updated
         // after the proposal execution being completed and be updated in markTaskExecutionFinished instead of in
@@ -1382,7 +1380,7 @@ public class Executor {
 
     private void initExecution() {
       if (_isTriggeredByUserRequest) {
-        _userTaskManager.logInExecutionTask();
+        _userTaskManager.logInExecutionTaskOperation();
       }
       String reason = _reasonSupplier.get();
       _executorState = ExecutorState.executionStarting(_uuid, reason, _recentlyDemotedBrokers, _recentlyRemovedBrokers, _isTriggeredByUserRequest);

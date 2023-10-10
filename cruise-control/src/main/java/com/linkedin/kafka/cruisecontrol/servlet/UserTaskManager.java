@@ -410,11 +410,12 @@ public class UserTaskManager implements Closeable {
     return _inExecutionUserTaskInfo;
   }
 
-  /** Normally a user task's operation result is logged when the task's state is transferred from ACTIVE to COMPLETED or
+  /**
+   * Normally a user task's operation result is logged when the task's state is transferred from ACTIVE to COMPLETED or
    * COMPLETED_WITH_ERROR. If the user task's state is transferred from ACTIVE directly to IN_EXECUTION,
    * need to log the task's operation result.
    */
-  public synchronized void logInExecutionTask() {
+  public synchronized void logInExecutionTaskOperation() {
     if (_inExecutionUserTaskInfo != null) {
       _inExecutionUserTaskInfo.logOperation();
     }
