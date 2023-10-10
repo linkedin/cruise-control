@@ -78,6 +78,9 @@ public final class ExecutionUtils {
   public static final String GAUGE_EXECUTION_LEADERSHIP_MOVEMENTS_MAX_CONCURRENCY = "leadership-movements-max-concurrency";
   public static final String GAUGE_EXECUTION_LEADERSHIP_MOVEMENTS_MIN_CONCURRENCY = "leadership-movements-min-concurrency";
   public static final String GAUGE_EXECUTION_LEADERSHIP_MOVEMENTS_AVG_CONCURRENCY = "leadership-movements-avg-concurrency";
+  public static final String TIMER_PROPOSAL_EXECUTION_TIME_INVOLVE_BROKER_REMOVAL = "proposal_execution-time-involve-broker-removal";
+  public static final String TIMER_PROPOSAL_EXECUTION_TIME_INVOLVE_BROKER_DEMOTION_ONLY = "proposal-execution-time-involve-broker-demotion-only";
+  public static final String TIMER_PROPOSAL_EXECUTION_TIME = "proposal-execution-time";
 
   public static final String PARTITION_MOVEMENT_PER_SEC = "partition-movement-count-per-second";
   public static final String PARTITION_MOVEMENT_MB_PER_SEC = "partition-movement-MB-per-second";
