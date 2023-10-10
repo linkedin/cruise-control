@@ -1310,6 +1310,7 @@ public class Executor {
         _noOngoingExecutionSemaphore.release();
         _stopSignal.set(NO_STOP_EXECUTION);
         _executionStoppedByUser.set(false);
+        _userTaskInfo = null;
         LOG.error("Failed to initialize proposal execution.");
         throw new IllegalStateException("User task manager cannot be null.");
       }
@@ -1380,7 +1381,9 @@ public class Executor {
     }
 
     private void initExecution() {
-      _userTaskManager.logInExecutionTask();
+      if (_isTriggeredByUserRequest) {
+        _userTaskManager.logInExecutionTask();
+      }
       String reason = _reasonSupplier.get();
       _executorState = ExecutorState.executionStarting(_uuid, reason, _recentlyDemotedBrokers, _recentlyRemovedBrokers, _isTriggeredByUserRequest);
       OPERATION_LOG.info("Task [{}] execution starts. The reason of execution is {}.", _uuid, reason);

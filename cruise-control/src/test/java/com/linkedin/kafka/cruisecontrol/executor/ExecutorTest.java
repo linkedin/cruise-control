@@ -699,6 +699,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                                                         UserTaskManager.UserTaskInfo userTaskInfo,
                                                         List<Boolean> completeWithError) {
     UserTaskManager mockUserTaskManager = EasyMock.mock(UserTaskManager.class);
+    mockUserTaskManager.logInExecutionTask();
     // Handle the case that the execution started, but did not finish.
     if (completeWithError.isEmpty()) {
       EasyMock.expect(mockUserTaskManager.markTaskExecutionBegan(uuid)).andReturn(userTaskInfo).once();
