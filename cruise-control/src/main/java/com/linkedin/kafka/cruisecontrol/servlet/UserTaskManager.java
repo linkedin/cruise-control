@@ -441,7 +441,6 @@ public class UserTaskManager implements Closeable {
     _uuidToCompletedUserTaskInfoMap.get(_inExecutionUserTaskInfo.endPoint().endpointType())
                                    .put(_inExecutionUserTaskInfo.userTaskId(), _inExecutionUserTaskInfo);
     _inExecutionUserTaskInfo = null;
-
   }
 
   /**
