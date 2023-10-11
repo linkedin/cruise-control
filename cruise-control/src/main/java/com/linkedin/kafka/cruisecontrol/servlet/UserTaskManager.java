@@ -405,12 +405,20 @@ public class UserTaskManager implements Closeable {
 
     if (_uuidToActiveUserTaskInfoMap.containsKey(userTaskId)) {
       _inExecutionUserTaskInfo = _uuidToActiveUserTaskInfoMap.remove(userTaskId).setState(TaskState.IN_EXECUTION);
-      // Normally a user task's operation result is logged when the task's state is transferred from ACTIVE to COMPLETED_WITH_ERROR.
-      // If the user task's state is transferred from ACTIVE directly to IN_EXECUTION, need to log the task's operation result here.
-      _inExecutionUserTaskInfo.logOperation();
     }
 
     return _inExecutionUserTaskInfo;
+  }
+
+  /**
+   * Normally a user task's operation result is logged when the task's state is transferred from ACTIVE to COMPLETED or
+   * COMPLETED_WITH_ERROR. If the user task's state is transferred from ACTIVE directly to IN_EXECUTION,
+   * need to log the task's operation result.
+   */
+  public synchronized void logInExecutionTaskOperation() {
+    if (_inExecutionUserTaskInfo != null) {
+      _inExecutionUserTaskInfo.logOperation();
+    }
   }
 
   /**
@@ -420,7 +428,9 @@ public class UserTaskManager implements Closeable {
    * @param completeWithError Whether the task execution finished with error or not.
    */
   public synchronized void markTaskExecutionFinished(String uuid, boolean completeWithError) {
-    LOG.debug("Task execution with uuid {} completed{}.", uuid, completeWithError ? " with error" : "");
+    final long requestCompleteTime = _time.milliseconds() - _inExecutionUserTaskInfo._startMs;
+    _successfulRequestExecutionTimer.get(_inExecutionUserTaskInfo.endPoint()).update(requestCompleteTime, TimeUnit.MILLISECONDS);
+    LOG.info("Task execution with uuid {} completed{}. Total time: {} ms", uuid, completeWithError ? " with error" : "", requestCompleteTime);
     if (!_inExecutionUserTaskInfo.userTaskId().equals(UUID.fromString(uuid))) {
       throw new IllegalStateException(String.format("Task %s is not found in UserTaskManager.", uuid));
     }
