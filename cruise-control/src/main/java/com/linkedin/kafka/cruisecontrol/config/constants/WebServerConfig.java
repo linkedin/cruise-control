@@ -25,6 +25,13 @@ public final class WebServerConfig {
   public static final String WEBSERVER_HTTP_PORT_DOC = "Cruise Control Webserver bind port.";
 
   /**
+   * <code>webserver.http.max.header.size</code>
+   */
+  public static final String WEBSERVER_HTTP_MAX_HEADER_SIZE = "webserver.http.header.size";
+  public static final int DEFAULT_WEBSERVER_HTTP_MAX_HEADER_SIZE = 8 * 1024;
+  public static final String WEBSERVER_HTTP_MAX_HEADER_SIZE_DOC = "Cruise Control Webserver max request header size.";
+
+  /**
    * <code>webserver.http.address</code>
    */
   public static final String WEBSERVER_HTTP_ADDRESS_CONFIG = "webserver.http.address";
@@ -365,6 +372,12 @@ public final class WebServerConfig {
                             atLeast(0),
                             ConfigDef.Importance.HIGH,
                             WEBSERVER_HTTP_PORT_DOC)
+                    .define(WEBSERVER_HTTP_MAX_HEADER_SIZE,
+                            ConfigDef.Type.INT,
+                            DEFAULT_WEBSERVER_HTTP_MAX_HEADER_SIZE,
+                            atLeast(8 * 1024),
+                            ConfigDef.Importance.MEDIUM,
+                            WEBSERVER_HTTP_MAX_HEADER_SIZE_DOC)
                     .define(WEBSERVER_HTTP_ADDRESS_CONFIG,
                             ConfigDef.Type.STRING,
                             DEFAULT_WEBSERVER_HTTP_ADDRESS,
