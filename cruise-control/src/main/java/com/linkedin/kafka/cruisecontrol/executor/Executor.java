@@ -1490,10 +1490,11 @@ public class Executor {
     private void notifyFinishedTask(UserTaskManager.UserTaskInfo userTaskInfo) {
       // If the finished task was triggered by a user request, update task status in user task manager; if task is triggered
       // by an anomaly self-healing, update the task status in anomaly detector.
+      boolean completeWithError = (_executorState.state() == STOPPING_EXECUTION || _executionException != null);
       if (userTaskInfo != null) {
-        _userTaskManager.markTaskExecutionFinished(_uuid, _executorState.state() == STOPPING_EXECUTION || _executionException != null);
+        _userTaskManager.markTaskExecutionFinished(_uuid, completeWithError);
       } else {
-        _anomalyDetectorManager.markSelfHealingFinished(_uuid);
+        _anomalyDetectorManager.markSelfHealingFinished(_uuid, completeWithError);
       }
 
       String prefix = String.format("Task [%s] %s execution is ", _uuid,

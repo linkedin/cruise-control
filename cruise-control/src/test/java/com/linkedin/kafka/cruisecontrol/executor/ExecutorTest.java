@@ -739,7 +739,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     expectLastCall().anyTimes();
     mockAnomalyDetectorManager.resetHasUnfixableGoals();
     expectLastCall().anyTimes();
-    mockAnomalyDetectorManager.markSelfHealingFinished(anomalyId);
+    mockAnomalyDetectorManager.markSelfHealingFinished(anomalyId, false);
     expectLastCall().anyTimes();
     return mockAnomalyDetectorManager;
   }
