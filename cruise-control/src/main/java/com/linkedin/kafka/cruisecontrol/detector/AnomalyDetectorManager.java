@@ -129,7 +129,7 @@ public class AnomalyDetectorManager {
     _anomalyInProgress = null;
     _numCheckedWithDelay = new AtomicLong();
     _shutdownLock = new Object();
-    // Register gauge sensors.
+    // Register sensors.
     _selfHealingFixGenerationTimer = new HashMap<>();
     registerSensors(dropwizardMetricRegistry);
     _anomalyDetectorState = new AnomalyDetectorState(time, _anomalyNotifier, numCachedRecentAnomalyStates, dropwizardMetricRegistry);
