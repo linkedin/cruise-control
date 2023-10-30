@@ -301,9 +301,9 @@ project(':cruise-control') {
     api 'io.swagger.core.v3:swagger-annotations:2.0.2'
     api 'io.swagger.core.v3:swagger-core:2.0.2'
     api 'com.google.guava:guava:25.1-jre'
-    api 'org.json:json:20230227'
+    api 'org.json:json:20231013'
     api 'org.xerial.snappy:snappy-java:1.1.10.1'
-    
+
     testImplementation project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
     testImplementation project(path: ':cruise-control-core', configuration: 'testOutput')
     testImplementation "org.scala-lang:scala-library:$scalaVersion"
