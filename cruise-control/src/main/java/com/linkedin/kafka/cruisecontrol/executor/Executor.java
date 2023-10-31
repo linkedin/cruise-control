@@ -1381,7 +1381,7 @@ public class Executor {
           _executionTimerInvolveBrokerRemovalOrDemotion.update(duration, TimeUnit.MILLISECONDS);
         }
 
-        OPERATION_LOG.info("Execution Finished: task Id: {}; removed brokers: {}; demoted brokers: {}; total time used (in milliseconds): {}.",
+        OPERATION_LOG.info("Execution Finished: task Id: {}; removed brokers: {}; demoted brokers: {}; total time used: {}ms.",
                            _userTaskInfo != null ? _userTaskInfo.userTaskId() : "N/A (triggered by self-healing)",
                            _removedBrokers,
                            _demotedBrokers,
