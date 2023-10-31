@@ -1382,7 +1382,7 @@ public class Executor {
         }
 
         OPERATION_LOG.info("Execution Finished: task Id: {}; removed brokers: {}; demoted brokers: {}; total time used (in milliseconds): {}.",
-                           _userTaskInfo != null ? _userTaskInfo.userTaskId(): "N/A (triggered by self-healing)",
+                           _userTaskInfo != null ? _userTaskInfo.userTaskId() : "N/A (triggered by self-healing)",
                            _removedBrokers,
                            _demotedBrokers,
                            duration);
