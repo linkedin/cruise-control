@@ -303,9 +303,14 @@ public class AnomalyDetectorState {
                                                     anomalyId, AnomalyState.Status.FIX_STARTED));
     }
     long totalTime = _time.milliseconds() - _ongoingSelfHealingAnomaly.detectionTimeMs();
-    LOG.info("Self-healing for anomalyId {} completed{}. Total time: {} ms", anomalyId, completeWithError ? " with error" : "", totalTime);
-    // Time the duration no matter whether the self-healing is completed successfully or not.
-    _anomalyDetectToFixCompleteTimer.get(_ongoingSelfHealingAnomaly.anomalyType()).update(totalTime, TimeUnit.MILLISECONDS);
+    LOG.info("Self-healing for anomalyId {} completed{}. Total time: {} ms", anomalyId, completeWithError
+        ? " with error" : " successfully", totalTime);
+    if (!completeWithError) {
+      // Time the duration if the self-healing is completed successfully.
+      // completeWithError is true if the proposal execution is interrupted (receive stop signal) or encountered exception.
+      // execution-stopped metrics track the number of stopped execution.
+      _anomalyDetectToFixCompleteTimer.get(_ongoingSelfHealingAnomaly.anomalyType()).update(totalTime, TimeUnit.MILLISECONDS);
+    }
     _ongoingSelfHealingAnomaly = null;
   }
 
