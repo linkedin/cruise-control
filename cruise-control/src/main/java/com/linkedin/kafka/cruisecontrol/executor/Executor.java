@@ -1381,13 +1381,19 @@ public class Executor {
           _executionTimerInvolveBrokerRemovalOrDemotion.update(duration, TimeUnit.MILLISECONDS);
         }
 
-        OPERATION_LOG.info("Execution finished: task Id: {}; removed brokers: {}; demoted brokers: {}; total time used: {}ms.",
-                           _uuid,
-                           _removedBrokers,
-                           _demotedBrokers,
-                           duration);
+        String executionStatusString = String.format(" task Id: %s; removed brokers: %s; demoted brokers: %s; total time used: %dms.",
+                                               _uuid,
+                                               _removedBrokers,
+                                               _demotedBrokers,
+                                               duration
+                                               );
+
+        if (_executionException != null) {
+          LOG.info("Execution failed: {}. Exception: {}", executionStatusString, _executionException.getMessage());
+        } else {
+          LOG.info("Execution finished: {}. ", executionStatusString);
+        }
       }
-      LOG.info("Execution finished.");
     }
 
     private void initExecution() {
