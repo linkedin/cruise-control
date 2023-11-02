@@ -1297,12 +1297,18 @@ public class Executor {
     private final Timer _executionTimerInvolveBrokerRemovalOrDemotion;
     private final UserTaskManager.UserTaskInfo _userTaskInfo;
 
+    private final Collection<Integer> _demotedBrokers;
+
+    private final Collection<Integer> _removedBrokers;
+
     ProposalExecutionRunnable(LoadMonitor loadMonitor,
                               Collection<Integer> demotedBrokers,
                               Collection<Integer> removedBrokers,
                               Long replicationThrottle,
                               boolean isTriggeredByUserRequest) {
       _loadMonitor = loadMonitor;
+      _demotedBrokers = demotedBrokers;
+      _removedBrokers = removedBrokers;
       _executionException = null;
       if (isTriggeredByUserRequest && _userTaskManager == null) {
         processExecuteProposalsFailure();
@@ -1314,18 +1320,18 @@ public class Executor {
         LOG.error("Failed to initialize proposal execution.");
         throw new IllegalStateException("User task manager cannot be null.");
       }
-      if (demotedBrokers != null) {
+      if (_demotedBrokers != null) {
         // Add/overwrite the latest demotion time of (non-permanent) demoted brokers (if any).
-        demotedBrokers.forEach(id -> {
+        _demotedBrokers.forEach(id -> {
           Long demoteStartTime = _latestDemoteStartTimeMsByBrokerId.get(id);
           if (demoteStartTime == null || demoteStartTime != ExecutionUtils.PERMANENT_TIMESTAMP) {
             _latestDemoteStartTimeMsByBrokerId.put(id, _time.milliseconds());
           }
         });
       }
-      if (removedBrokers != null) {
+      if (_removedBrokers != null) {
         // Add/overwrite the latest removal time of (non-permanent) removed brokers (if any).
-        removedBrokers.forEach(id -> {
+        _removedBrokers.forEach(id -> {
           Long removeStartTime = _latestRemoveStartTimeMsByBrokerId.get(id);
           if (removeStartTime == null || removeStartTime != ExecutionUtils.PERMANENT_TIMESTAMP) {
             _latestRemoveStartTimeMsByBrokerId.put(id, _time.milliseconds());
@@ -1337,9 +1343,9 @@ public class Executor {
       _replicationThrottle = replicationThrottle;
       _isTriggeredByUserRequest = isTriggeredByUserRequest;
       _lastSlowTaskReportingTimeMs = -1L;
-      if (removedBrokers != null && !removedBrokers.isEmpty()) {
+      if (_removedBrokers != null && !_removedBrokers.isEmpty()) {
         _executionTimerInvolveBrokerRemovalOrDemotion = _proposalExecutionTimerInvolveBrokerRemoval;
-      } else if (demotedBrokers != null && !demotedBrokers.isEmpty()) {
+      } else if (_demotedBrokers != null && !_demotedBrokers.isEmpty()) {
         _executionTimerInvolveBrokerRemovalOrDemotion = _proposalExecutionTimerInvolveBrokerDemotionOnly;
       } else {
         _executionTimerInvolveBrokerRemovalOrDemotion = null;
@@ -1374,8 +1380,20 @@ public class Executor {
         if (_executionTimerInvolveBrokerRemovalOrDemotion != null) {
           _executionTimerInvolveBrokerRemovalOrDemotion.update(duration, TimeUnit.MILLISECONDS);
         }
+
+        String executionStatusString = String.format("task Id: %s; removed brokers: %s; demoted brokers: %s; total time used: %dms.",
+                                               _uuid,
+                                               _removedBrokers,
+                                               _demotedBrokers,
+                                               duration
+                                               );
+
+        if (_executionException != null) {
+          LOG.info("Execution failed: {}. Exception: {}", executionStatusString, _executionException.getMessage());
+        } else {
+          LOG.info("Execution succeeded: {}. ", executionStatusString);
+        }
       }
-      LOG.info("Execution finished.");
     }
 
     private void initExecution() {
