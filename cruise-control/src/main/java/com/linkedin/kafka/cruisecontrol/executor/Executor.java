@@ -1391,7 +1391,7 @@ public class Executor {
         if (_executionException != null) {
           LOG.info("Execution failed: {}. Exception: {}", executionStatusString, _executionException.getMessage());
         } else {
-          LOG.info("Execution finished: {}. ", executionStatusString);
+          LOG.info("Execution succeeded: {}. ", executionStatusString);
         }
       }
     }
