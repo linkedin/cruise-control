@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotifier;
@@ -18,6 +19,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
@@ -78,6 +80,7 @@ public class AnomalyDetectorState {
   private final Map<AnomalyType, Meter> _anomalyRateByType;
   private double _balancednessScore;
   private boolean _hasUnfixableGoals;
+  private final Map<AnomalyType, Timer> _anomalyDetectToFixCompleteTimer;
 
   public AnomalyDetectorState(Time time,
                               AnomalyNotifier anomalyNotifier,
@@ -108,7 +111,7 @@ public class AnomalyDetectorState {
       meanTimeBetweenAnomaliesMs.put(anomalyType, 0.0);
     }
     _metrics = new AnomalyMetrics(meanTimeBetweenAnomaliesMs, 0.0, 0L, 0L, 0L);
-
+    _anomalyDetectToFixCompleteTimer = new HashMap<>();
     if (dropwizardMetricRegistry != null) {
       dropwizardMetricRegistry.register(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "mean-time-to-start-fix-ms"),
                                         (Gauge<Double>) this::meanTimeToStartFixMs);
@@ -134,6 +137,11 @@ public class AnomalyDetectorState {
                              dropwizardMetricRegistry.meter(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "topic-anomaly-rate")));
       _anomalyRateByType.put(MAINTENANCE_EVENT,
                              dropwizardMetricRegistry.meter(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "maintenance-event-rate")));
+      for (KafkaAnomalyType anomalyType : KafkaAnomalyType.cachedValues()) {
+        Timer timer = dropwizardMetricRegistry.timer(
+            MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, String.format("%s-detect-to-fix-complete-timer", anomalyType.toString().toLowerCase())));
+        _anomalyDetectToFixCompleteTimer.put(anomalyType, timer);
+      }
     } else {
       _anomalyRateByType = new HashMap<>();
       KafkaAnomalyType.cachedValues().forEach(anomalyType -> _anomalyRateByType.put(anomalyType, new Meter()));
@@ -287,11 +295,21 @@ public class AnomalyDetectorState {
    * Update anomaly status once associated self-healing operation has finished.
    *
    * @param anomalyId Unique id of anomaly which triggered self-healing operation.
+   * @param completeWithError Whether the task execution finished with error.
    */
-  public synchronized void markSelfHealingFinished(String anomalyId) {
+  public synchronized void markSelfHealingFinished(String anomalyId, boolean completeWithError) {
     if (_ongoingSelfHealingAnomaly == null || !_ongoingSelfHealingAnomaly.anomalyId().equals(anomalyId)) {
       throw new IllegalStateException(String.format("Anomaly %s is not marked as %s state in AnomalyDetector.",
                                                     anomalyId, AnomalyState.Status.FIX_STARTED));
+    }
+    long totalTime = _time.milliseconds() - _ongoingSelfHealingAnomaly.detectionTimeMs();
+    LOG.info("Self-healing for anomalyId {} completed{}. Total time: {} ms", anomalyId, completeWithError
+        ? " with error" : " successfully", totalTime);
+    if (!completeWithError) {
+      // Time the duration if the self-healing is completed successfully.
+      // completeWithError is true if the proposal execution is interrupted (receive stop signal) or encountered exception.
+      // execution-stopped metrics track the number of stopped execution.
+      _anomalyDetectToFixCompleteTimer.get(_ongoingSelfHealingAnomaly.anomalyType()).update(totalTime, TimeUnit.MILLISECONDS);
     }
     _ongoingSelfHealingAnomaly = null;
   }

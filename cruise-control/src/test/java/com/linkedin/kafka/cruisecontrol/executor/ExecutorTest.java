@@ -481,7 +481,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     EasyMock.expect(mockMetadataClient.refreshMetadata()).andReturn(clusterAndGeneration).anyTimes();
     EasyMock.expect(mockMetadataClient.cluster()).andReturn(clusterAndGeneration.cluster()).anyTimes();
     LoadMonitor mockLoadMonitor = getMockLoadMonitor();
-    AnomalyDetectorManager mockAnomalyDetectorManager = getMockAnomalyDetector(RANDOM_UUID);
+    AnomalyDetectorManager mockAnomalyDetectorManager = getMockAnomalyDetector(RANDOM_UUID, false);
     UserTaskManager.UserTaskInfo mockUserTaskInfo = getMockUserTaskInfo();
     // This tests runs two consecutive executions. First one completes w/o error, but the second one with error.
     UserTaskManager mockUserTaskManager = getMockUserTaskManager(RANDOM_UUID, mockUserTaskInfo, Arrays.asList(false, true));
@@ -733,13 +733,13 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     return mockLoadMonitor;
   }
 
-  private static AnomalyDetectorManager getMockAnomalyDetector(String anomalyId) {
+  private static AnomalyDetectorManager getMockAnomalyDetector(String anomalyId, boolean completeWithError) {
     AnomalyDetectorManager mockAnomalyDetectorManager = EasyMock.mock(AnomalyDetectorManager.class);
     mockAnomalyDetectorManager.maybeClearOngoingAnomalyDetectionTimeMs();
     expectLastCall().anyTimes();
     mockAnomalyDetectorManager.resetHasUnfixableGoals();
     expectLastCall().anyTimes();
-    mockAnomalyDetectorManager.markSelfHealingFinished(anomalyId);
+    mockAnomalyDetectorManager.markSelfHealingFinished(anomalyId, completeWithError);
     expectLastCall().anyTimes();
     return mockAnomalyDetectorManager;
   }
@@ -767,7 +767,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     ExecutorNotifier mockExecutorNotifier = EasyMock.mock(ExecutorNotifier.class);
     LoadMonitor mockLoadMonitor = getMockLoadMonitor();
     Capture<String> captureMessage = Capture.newInstance(CaptureType.FIRST);
-    AnomalyDetectorManager mockAnomalyDetectorManager = getMockAnomalyDetector(RANDOM_UUID);
+    AnomalyDetectorManager mockAnomalyDetectorManager = getMockAnomalyDetector(RANDOM_UUID, completeWithError);
 
     if (completeWithError) {
       mockExecutorNotifier.sendAlert(EasyMock.capture(captureMessage));
