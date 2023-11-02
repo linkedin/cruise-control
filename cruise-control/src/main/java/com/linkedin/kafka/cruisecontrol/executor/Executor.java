@@ -1381,7 +1381,7 @@ public class Executor {
           _executionTimerInvolveBrokerRemovalOrDemotion.update(duration, TimeUnit.MILLISECONDS);
         }
 
-        String executionStatusString = String.format(" task Id: %s; removed brokers: %s; demoted brokers: %s; total time used: %dms.",
+        String executionStatusString = String.format("task Id: %s; removed brokers: %s; demoted brokers: %s; total time used: %dms.",
                                                _uuid,
                                                _removedBrokers,
                                                _demotedBrokers,
