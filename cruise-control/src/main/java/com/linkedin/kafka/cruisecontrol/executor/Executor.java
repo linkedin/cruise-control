@@ -1831,7 +1831,12 @@ public class Executor {
         List<ExecutionTask> stoppedInterBrokerReplicaTasks = new ArrayList<>();
         List<ExecutionTask> slowTasksToReport = new ArrayList<>();
         final int numInExecutionTasks = inExecutionTasks().size();
-        int numSuccessfullyCompletedTasks = 0;
+        // numFinishedOrDeletedTasks instead of finishedTasks.size() is used to decide whether to dynamically adjust
+        // executionProgressCheckIntervalMs.
+        // If the task is completed or the related topic is deleted, numFinishedOrDeletedTasks is increased.
+        // If the destination broker is dead, it may not be safe to increase numFinishedOrDeletedTasks as it may not be safe
+        // to speed up inter broker replica move with new broker being down.
+        int numFinishedOrDeletedTasks = 0;
         boolean shouldReportSlowTasks = _time.milliseconds() - _lastSlowTaskReportingTimeMs > _slowTaskAlertingBackoffTimeMs;
         for (ExecutionTask task : inExecutionTasks()) {
           TopicPartition tp = task.proposal().topicPartition();
@@ -1845,9 +1850,10 @@ public class Executor {
             _executionTaskManager.markTaskDead(task);
             stoppedInterBrokerReplicaTasks.add(task);
           } else if (cluster.partition(tp) == null || deletedUponSubmission.contains(tp)) {
+            numFinishedOrDeletedTasks++;
             handleProgressWithTopicDeletion(task, finishedTasks, deletedTaskIds);
           } else if (ExecutionUtils.isInterBrokerReplicaActionDone(cluster, task)) {
-            numSuccessfullyCompletedTasks++;
+            numFinishedOrDeletedTasks++;
             handleProgressWithCompletion(task, finishedTasks);
           } else {
             if (shouldReportSlowTasks) {
@@ -1865,7 +1871,7 @@ public class Executor {
         // Dynamically adjust the _executionProgressCheckIntervalMs based on execution result
         // 1. If all inExecutionTasks are completed check interval, then we should reduce the interval to avoid unnecessary wait time.
         // 2. Else, we should increase the interval, to give the tasks more time to complete.
-        if (numSuccessfullyCompletedTasks == numInExecutionTasks) {
+        if (numFinishedOrDeletedTasks == numInExecutionTasks) {
           setExecutionProgressCheckIntervalMs(_executionProgressCheckIntervalMs - EXECUTION_PROGRESS_CHECK_INTERVAL_ADJUSTING_MS);
         } else {
           setExecutionProgressCheckIntervalMs(_executionProgressCheckIntervalMs + EXECUTION_PROGRESS_CHECK_INTERVAL_ADJUSTING_MS);
