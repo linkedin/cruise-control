@@ -149,9 +149,19 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(mockAdminClient, throttleRate);
 
     // Case 1: a situation where Topic0 does not exist. Hence no property is returned upon read.
-    expectDescribeBrokerConfigs(mockAdminClient, brokers);
+
+    // Before the dynamic broker config is removed for the follower throttle rate
+    Config brokerConfig = new Config(Arrays.asList(
+            mockConfigEntry(ReplicationThrottleHelper.LEADER_THROTTLED_RATE, "200", ConfigEntry.ConfigSource.STATIC_BROKER_CONFIG),
+            mockConfigEntry(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE, "200", ConfigEntry.ConfigSource.DYNAMIC_BROKER_CONFIG)));
+    // After the dynamic broker config is removed for the follower throttle rate
+    Config brokerConfig2 = new Config(Arrays.asList(
+            mockConfigEntry(ReplicationThrottleHelper.LEADER_THROTTLED_RATE, "200", ConfigEntry.ConfigSource.STATIC_BROKER_CONFIG),
+            mockConfigEntry(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE, "300", ConfigEntry.ConfigSource.STATIC_BROKER_CONFIG)));
+    // Expect that only the dynamic throttle rate configs are removed when clearing throttles
+    expectDescribeBrokerConfigs(mockAdminClient, brokers, brokerConfig);
     expectIncrementalBrokerConfigs(mockAdminClient, brokers);
-    expectDescribeBrokerConfigs(mockAdminClient, brokers, EMPTY_CONFIG);
+    expectDescribeBrokerConfigs(mockAdminClient, brokers, brokerConfig2);
     expectDescribeTopicConfigs(mockAdminClient, TOPIC0, EMPTY_CONFIG, false);
     expectListTopics(mockAdminClient, Collections.emptySet());
     ExecutionTask mockCompleteTask = prepareMockCompleteTask(proposal);
@@ -272,14 +282,15 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
 
     ExecutionTask task = completedTaskForProposal(0, proposal);
 
-    // Broker 0 has an existing leader and follower throttle; we expect these to be preserved.
+    // Broker 0 has an existing leader throttle rate of 200 and follower throttle rate of 100
+    // We expect to overwrite the leader throttle to the desired throttleRate of 100
     long preExistingBroker0ThrottleRate = 200L;
     List<AlterConfigOp> broker0Configs = Arrays.asList(
       new AlterConfigOp(
               new ConfigEntry(ReplicationThrottleHelper.LEADER_THROTTLED_RATE, String.valueOf(preExistingBroker0ThrottleRate)),
               AlterConfigOp.OpType.SET),
       new AlterConfigOp(
-              new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE, String.valueOf(preExistingBroker0ThrottleRate)),
+              new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_THROTTLED_RATE, String.valueOf(throttleRate)),
               AlterConfigOp.OpType.SET)
     );
     throttleHelper.changeBrokerConfigs(0, broker0Configs);
@@ -300,7 +311,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
 
     throttleHelper.setThrottles(Collections.singletonList(proposal));
 
-    assertExpectedThrottledRateForBroker(0, preExistingBroker0ThrottleRate);
+    assertExpectedThrottledRateForBroker(0, throttleRate);
     assertExpectedThrottledRateForBroker(1, throttleRate);
     assertExpectedThrottledRateForBroker(2, throttleRate);
     // No throttle on broker 3 because it's not involved in any of the execution proposals:
@@ -510,6 +521,13 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     assertFalse(ReplicationThrottleHelper.configsEqual(new Config(entries), expectedConfigs));
     expectedConfigs.put("name4", "other-value");
     assertTrue(ReplicationThrottleHelper.configsEqual(new Config(entries), expectedConfigs));
+
+    // In the case that a dynamic config is deleted and a static config exists, the comparison is skipped
+    ConfigEntry mockStaticConfig = mockConfigEntry("name5", "value5", ConfigEntry.ConfigSource.STATIC_BROKER_CONFIG);
+    expectedConfigs.put("name5", null);
+    entries.add(mockStaticConfig);
+    assertTrue(ReplicationThrottleHelper.configsEqual(new Config(entries), expectedConfigs));
+    EasyMock.verify(mockStaticConfig);
   }
 
   private ExecutionTask prepareMockCompleteTask(ExecutionProposal proposal) {
@@ -519,6 +537,15 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     EasyMock.expect(mockCompleteTask.proposal()).andReturn(proposal).once();
     EasyMock.replay(mockCompleteTask);
     return mockCompleteTask;
+  }
+
+  private ConfigEntry mockConfigEntry(String name, String value, ConfigEntry.ConfigSource configSource) {
+    ConfigEntry configEntry = EasyMock.mock(ConfigEntry.class);
+    EasyMock.expect(configEntry.name()).andReturn(name).atLeastOnce();
+    EasyMock.expect(configEntry.value()).andReturn(value).atLeastOnce();
+    EasyMock.expect(configEntry.source()).andReturn(configSource).atLeastOnce();
+    EasyMock.replay(configEntry);
+    return configEntry;
   }
 
   private void expectDescribeTopicConfigs(AdminClient adminClient, String topic, Config topicConfig, boolean topicExists)
