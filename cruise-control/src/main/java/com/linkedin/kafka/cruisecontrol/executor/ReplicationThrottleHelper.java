@@ -85,7 +85,7 @@ class ReplicationThrottleHelper {
       Set<Integer> participatingBrokers = getParticipatingBrokers(replicaMovementProposals);
       Map<String, Set<String>> throttledReplicas = getThrottledReplicasByTopic(replicaMovementProposals);
       for (int broker : participatingBrokers) {
-        setThrottledRateIfUnset(broker);
+        setThrottledRateIfNecessary(broker);
       }
       for (Map.Entry<String, Set<String>> entry : throttledReplicas.entrySet()) {
         setThrottledReplicas(entry.getKey(), entry.getValue());
@@ -183,7 +183,7 @@ class ReplicationThrottleHelper {
     return throttledReplicasByTopic;
   }
 
-  private void setThrottledRateIfUnset(int brokerId) throws ExecutionException, InterruptedException, TimeoutException {
+  private void setThrottledRateIfNecessary(int brokerId) throws ExecutionException, InterruptedException, TimeoutException {
     if (_throttleRate == null) {
       throw new IllegalStateException("Throttle rate cannot be null");
     }
@@ -191,12 +191,9 @@ class ReplicationThrottleHelper {
     List<AlterConfigOp> ops = new ArrayList<>();
     for (String replicaThrottleRateConfigKey : Arrays.asList(LEADER_THROTTLED_RATE, FOLLOWER_THROTTLED_RATE)) {
       ConfigEntry currThrottleRate = brokerConfigs.get(replicaThrottleRateConfigKey);
-      if (currThrottleRate == null) {
+      if (currThrottleRate == null || !currThrottleRate.value().equals(String.valueOf(_throttleRate))) {
         LOG.debug("Setting {} to {} bytes/second for broker {}", replicaThrottleRateConfigKey, _throttleRate, brokerId);
-       ops.add(new AlterConfigOp(new ConfigEntry(replicaThrottleRateConfigKey, String.valueOf(_throttleRate)), AlterConfigOp.OpType.SET));
-      } else {
-        LOG.debug("Not setting {} for broker {} because pre-existing throttle of {} was already set",
-                replicaThrottleRateConfigKey, brokerId, currThrottleRate);
+        ops.add(new AlterConfigOp(new ConfigEntry(replicaThrottleRateConfigKey, String.valueOf(_throttleRate)), AlterConfigOp.OpType.SET));
       }
     }
     if (!ops.isEmpty()) {
@@ -346,18 +343,18 @@ class ReplicationThrottleHelper {
     ConfigEntry currFollowerThrottle = brokerConfigs.get(FOLLOWER_THROTTLED_RATE);
     List<AlterConfigOp> ops = new ArrayList<>();
     if (currLeaderThrottle != null) {
-      if (currLeaderThrottle.value().equals(WILDCARD_ASTERISK)) {
-        LOG.debug("Existing config throttles all leader replicas. So, do not remove any leader replica throttle on broker {}", brokerId);
+      if (currLeaderThrottle.source().equals(ConfigEntry.ConfigSource.STATIC_BROKER_CONFIG)) {
+        LOG.debug("Skipping removal for static leader throttle rate: {}", currFollowerThrottle);
       } else {
-        LOG.debug("Removing leader throttle on broker {}", brokerId);
+        LOG.debug("Removing leader throttle rate: {} on broker {}", currLeaderThrottle, brokerId);
         ops.add(new AlterConfigOp(new ConfigEntry(LEADER_THROTTLED_RATE, null), AlterConfigOp.OpType.DELETE));
       }
     }
     if (currFollowerThrottle != null) {
-      if (currFollowerThrottle.value().equals(WILDCARD_ASTERISK)) {
-        LOG.debug("Existing config throttles all follower replicas. So, do not remove any follower replica throttle on broker {}", brokerId);
+      if (currFollowerThrottle.source().equals(ConfigEntry.ConfigSource.STATIC_BROKER_CONFIG)) {
+        LOG.debug("Skipping removal for static follower throttle rate: {}", currFollowerThrottle);
       } else {
-        LOG.debug("Removing follower throttle on broker {}", brokerId);
+        LOG.debug("Removing follower throttle rate: {} on broker {}", currFollowerThrottle, brokerId);
         ops.add(new AlterConfigOp(new ConfigEntry(FOLLOWER_THROTTLED_RATE, null), AlterConfigOp.OpType.DELETE));
       }
     }
@@ -390,6 +387,8 @@ class ReplicationThrottleHelper {
         if (entry.getValue() != null) {
           return false;
         }
+      } else if (configEntry.source().equals(ConfigEntry.ConfigSource.STATIC_BROKER_CONFIG) && entry.getValue() == null) {
+        LOG.debug("Found static broker config: {}, skipping comparison", configEntry);
       } else if (!Objects.equals(entry.getValue(), configEntry.value())) {
         return false;
       }
