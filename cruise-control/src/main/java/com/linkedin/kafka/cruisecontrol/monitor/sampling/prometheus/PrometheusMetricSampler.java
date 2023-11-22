@@ -107,10 +107,6 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
         }
 
         final String path = (String) configs.get(PROMETHEUS_SERVER_PATH_CONFIG);
-        if (path == null) {
-            throw new ConfigException(String.format(
-                "%s config is required by Prometheus metric sampler", PROMETHEUS_SERVER_PATH_CONFIG));
-        }
 
         try {
             HttpHost host = HttpHost.create(endpoint);
