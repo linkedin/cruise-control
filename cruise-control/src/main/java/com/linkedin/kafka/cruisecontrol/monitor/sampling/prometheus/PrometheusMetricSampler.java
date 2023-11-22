@@ -52,6 +52,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.re
 public class PrometheusMetricSampler extends AbstractMetricSampler {
     // Config name visible to tests
     static final String PROMETHEUS_SERVER_ENDPOINT_CONFIG = "prometheus.server.endpoint";
+    static final String PROMETHEUS_SERVER_PATH_CONFIG = "prometheus.server.path";
 
     // Config name visible to tests
     static final String PROMETHEUS_QUERY_RESOLUTION_STEP_MS_CONFIG = "prometheus.query.resolution.step.ms";
@@ -105,13 +106,19 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
                 "%s config is required by Prometheus metric sampler", PROMETHEUS_SERVER_ENDPOINT_CONFIG));
         }
 
+        final String path = (String) configs.get(PROMETHEUS_SERVER_PATH_CONFIG);
+        if (path == null) {
+            throw new ConfigException(String.format(
+                "%s config is required by Prometheus metric sampler", PROMETHEUS_SERVER_PATH_CONFIG));
+        }
+
         try {
             HttpHost host = HttpHost.create(endpoint);
             if (host.getPort() < 0) {
                 throw new IllegalArgumentException();
             }
             _httpClient = HttpClients.createDefault();
-            _prometheusAdapter = new PrometheusAdapter(_httpClient, host, _samplingIntervalMs);
+            _prometheusAdapter = new PrometheusAdapter(_httpClient, host, path, _samplingIntervalMs);
         } catch (IllegalArgumentException ex) {
             throw new ConfigException(
                 String.format("Prometheus endpoint URI is malformed, "

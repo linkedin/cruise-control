@@ -32,11 +32,13 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
     private static final long START_TIME_MS = START_TIME_SECS * SEC_TO_MS;
     private static final long END_TIME_MS = END_TIME_SECS * SEC_TO_MS;
     private static final int SAMPLING_INTERVAL_MS = (int) TimeUnit.SECONDS.toMillis(30);
+    private static final String PROMETHEUS_ENDPOINT = "/api/v1/query_range";
+
     private static final int ONE_KB = 1024;
 
     @Test
     public void testSuccessfulResponseDeserialized() throws Exception {
-        this.serverBootstrap.registerHandler(PrometheusAdapter.QUERY_RANGE_API_PATH, new HttpRequestHandler() {
+        this.serverBootstrap.registerHandler(PrometheusAdapter.DEFAULT_QUERY_RANGE_API_PATH, new HttpRequestHandler() {
             @Override
             public void handle(HttpRequest request, HttpResponse response, HttpContext context) {
                 response.setStatusCode(HttpServletResponse.SC_OK);
@@ -46,7 +48,7 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
 
         HttpHost httpHost = this.start();
         PrometheusAdapter prometheusAdapter
-            = new PrometheusAdapter(this.httpclient, httpHost, SAMPLING_INTERVAL_MS);
+            = new PrometheusAdapter(this.httpclient, httpHost, PROMETHEUS_ENDPOINT, SAMPLING_INTERVAL_MS);
         final List<PrometheusQueryResult> prometheusQueryResults = prometheusAdapter.queryMetric(
             "kafka_server_BrokerTopicMetrics_OneMinuteRate{name=\"BytesOutPerSec\",topic=\"\"}",
             START_TIME_MS, END_TIME_MS);
@@ -127,7 +129,7 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
 
     @Test(expected = IOException.class)
     public void testFailureResponseWith200Code() throws Exception {
-        this.serverBootstrap.registerHandler(PrometheusAdapter.QUERY_RANGE_API_PATH, new HttpRequestHandler() {
+        this.serverBootstrap.registerHandler(PrometheusAdapter.DEFAULT_QUERY_RANGE_API_PATH, new HttpRequestHandler() {
             @Override
             public void handle(HttpRequest request, HttpResponse response, HttpContext context) {
                 response.setStatusCode(HttpServletResponse.SC_OK);
@@ -138,7 +140,7 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
 
         HttpHost httpHost = this.start();
         PrometheusAdapter prometheusAdapter
-            = new PrometheusAdapter(this.httpclient, httpHost, SAMPLING_INTERVAL_MS);
+            = new PrometheusAdapter(this.httpclient, httpHost, PROMETHEUS_ENDPOINT, SAMPLING_INTERVAL_MS);
 
         prometheusAdapter.queryMetric(
             "kafka_server_BrokerTopicMetrics_OneMinuteRate{name=\"BytesOutPerSec\",topic=\"\"}",
@@ -158,7 +160,7 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
 
         HttpHost httpHost = this.start();
         PrometheusAdapter prometheusAdapter
-            = new PrometheusAdapter(this.httpclient, httpHost, SAMPLING_INTERVAL_MS);
+            = new PrometheusAdapter(this.httpclient, httpHost, PROMETHEUS_ENDPOINT, SAMPLING_INTERVAL_MS);
 
         prometheusAdapter.queryMetric(
             "kafka_server_BrokerTopicMetrics_OneMinuteRate{name=\"BytesOutPerSec\",topic=\"\"}",
@@ -178,7 +180,7 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
 
         HttpHost httpHost = this.start();
         PrometheusAdapter prometheusAdapter
-            = new PrometheusAdapter(this.httpclient, httpHost, SAMPLING_INTERVAL_MS);
+            = new PrometheusAdapter(this.httpclient, httpHost, PROMETHEUS_ENDPOINT, SAMPLING_INTERVAL_MS);
 
         prometheusAdapter.queryMetric(
             "kafka_server_BrokerTopicMetrics_OneMinuteRate{name=\"BytesOutPerSec\",topic=\"\"}",
@@ -198,7 +200,7 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
 
         HttpHost httpHost = this.start();
         PrometheusAdapter prometheusAdapter
-            = new PrometheusAdapter(this.httpclient, httpHost, SAMPLING_INTERVAL_MS);
+            = new PrometheusAdapter(this.httpclient, httpHost, PROMETHEUS_ENDPOINT, SAMPLING_INTERVAL_MS);
 
         prometheusAdapter.queryMetric(
             "kafka_server_BrokerTopicMetrics_OneMinuteRate{name=\"BytesOutPerSec\",topic=\"\"}",
@@ -218,7 +220,7 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
 
         HttpHost httpHost = this.start();
         PrometheusAdapter prometheusAdapter
-            = new PrometheusAdapter(this.httpclient, httpHost, SAMPLING_INTERVAL_MS);
+            = new PrometheusAdapter(this.httpclient, httpHost, PROMETHEUS_ENDPOINT, SAMPLING_INTERVAL_MS);
 
         prometheusAdapter.queryMetric(
             "kafka_server_BrokerTopicMetrics_OneMinuteRate{name=\"BytesOutPerSec\",topic=\"\"}",
@@ -227,7 +229,7 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
 
     @Test(expected = IOException.class)
     public void testEmptyResult() throws Exception {
-        this.serverBootstrap.registerHandler(PrometheusAdapter.QUERY_RANGE_API_PATH, new HttpRequestHandler() {
+        this.serverBootstrap.registerHandler(PrometheusAdapter.DEFAULT_QUERY_RANGE_API_PATH, new HttpRequestHandler() {
             @Override
             public void handle(HttpRequest request, HttpResponse response, HttpContext context) {
                 response.setStatusCode(HttpServletResponse.SC_OK);
@@ -238,7 +240,7 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
 
         HttpHost httpHost = this.start();
         PrometheusAdapter prometheusAdapter
-            = new PrometheusAdapter(this.httpclient, httpHost, SAMPLING_INTERVAL_MS);
+            = new PrometheusAdapter(this.httpclient, httpHost, PROMETHEUS_ENDPOINT, SAMPLING_INTERVAL_MS);
 
         prometheusAdapter.queryMetric(
             "kafka_server_BrokerTopicMetrics_OneMinuteRate{name=\"BytesOutPerSec\",topic=\"\"}",

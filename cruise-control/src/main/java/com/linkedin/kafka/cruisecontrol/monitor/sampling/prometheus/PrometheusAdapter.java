@@ -33,7 +33,7 @@ import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
  */
 class PrometheusAdapter {
     private static final Gson GSON = new Gson();
-    static final String QUERY_RANGE_API_PATH = "/api/v1/query_range";
+    static final String DEFAULT_QUERY_RANGE_API_PATH = "/api/v1/query_range";
     static final String SUCCESS = "success";
     private static final String QUERY = "query";
     private static final String START = "start";
@@ -42,13 +42,20 @@ class PrometheusAdapter {
 
     private final CloseableHttpClient _httpClient;
     protected final HttpHost _prometheusEndpoint;
+    protected final String _prometheusPath;
     protected final int _samplingIntervalMs;
 
     PrometheusAdapter(CloseableHttpClient httpClient,
                       HttpHost prometheusEndpoint,
+                      String prometheusPath,
                       int samplingIntervalMs) {
         _httpClient = validateNotNull(httpClient, "httpClient cannot be null.");
         _prometheusEndpoint = validateNotNull(prometheusEndpoint, "prometheusEndpoint cannot be null.");
+        if (prometheusPath == null) {
+            _prometheusPath = DEFAULT_QUERY_RANGE_API_PATH;
+        } else {
+            _prometheusPath = prometheusPath;
+        }
         _samplingIntervalMs = samplingIntervalMs;
     }
 
@@ -59,7 +66,7 @@ class PrometheusAdapter {
     public List<PrometheusQueryResult> queryMetric(String queryString,
                                                    long startTimeMs,
                                                    long endTimeMs) throws IOException {
-        URI queryUri = URI.create(_prometheusEndpoint.toURI() + QUERY_RANGE_API_PATH);
+        URI queryUri = URI.create(_prometheusEndpoint.toURI() + _prometheusPath);
         HttpPost httpPost = new HttpPost(queryUri);
 
         List<NameValuePair> data = new ArrayList<>();
