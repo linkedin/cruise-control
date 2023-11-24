@@ -9,7 +9,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
-import com.linkedin.kafka.cruisecontrol.exception.PartitionNotFoundException;
+import com.linkedin.kafka.cruisecontrol.exception.PartitionNotExistsException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
@@ -71,7 +71,7 @@ public class PreferredLeaderElectionGoal implements Goal {
     boolean skipUrp = false;
     try {
       skipUrp = _skipUrpDemotion && isPartitionUnderReplicated(_kafkaCluster, replica.topicPartition());
-    } catch (PartitionNotFoundException ex) {
+    } catch (PartitionNotExistsException ex) {
       skipUrp = true;
     }
     if (!skipUrp
@@ -87,7 +87,7 @@ public class PreferredLeaderElectionGoal implements Goal {
     // the partition doesn't exist while making the URP check leadership change operation will be skipped
     try {
       return _skipUrpDemotion && isPartitionUnderReplicated(_kafkaCluster, tp);
-    } catch (PartitionNotFoundException ex) {
+    } catch (PartitionNotExistsException ex) {
       LOG.warn("Partition ", tp, " not exists. Skip leadership change operation ");
       return true;
     }

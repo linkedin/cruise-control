@@ -7,8 +7,8 @@ package com.linkedin.kafka.cruisecontrol.exception;
 /**
  * An exception thrown when a partition does not exist.
  */
-public class PartitionNotFoundException extends KafkaCruiseControlException {
-    public PartitionNotFoundException(String message) {
+public class PartitionNotExistsException extends KafkaCruiseControlException {
+    public PartitionNotExistsException(String message) {
       super(message);
     }
 }

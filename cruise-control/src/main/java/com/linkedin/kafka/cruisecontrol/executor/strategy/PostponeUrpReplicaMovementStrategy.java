@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.executor.strategy;
 
-import com.linkedin.kafka.cruisecontrol.exception.PartitionNotFoundException;
+import com.linkedin.kafka.cruisecontrol.exception.PartitionNotExistsException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionTask;
 import java.util.Comparator;
 import org.apache.kafka.common.Cluster;
@@ -27,13 +27,13 @@ public class PostponeUrpReplicaMovementStrategy extends AbstractReplicaMovementS
         isTask1PartitionUnderReplicated = isPartitionUnderReplicated(strategyOptions.cluster(),
             task1.proposal().topicPartition());
         task1PartitionExists = true;
-      } catch (PartitionNotFoundException e) {
+      } catch (PartitionNotExistsException e) {
       }
       try {
         isTask2PartitionUnderReplicated = isPartitionUnderReplicated(strategyOptions.cluster(),
             task2.proposal().topicPartition());
         task2PartitionExists = true;
-      } catch (PartitionNotFoundException e) {
+      } catch (PartitionNotExistsException e) {
       }
 
       if (task1PartitionExists && task2PartitionExists) {
