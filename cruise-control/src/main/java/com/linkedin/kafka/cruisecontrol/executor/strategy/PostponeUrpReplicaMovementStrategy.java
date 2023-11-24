@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.executor.strategy;
 
+import com.linkedin.kafka.cruisecontrol.exception.PartitionNotFoundException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionTask;
 import java.util.Comparator;
 import org.apache.kafka.common.Cluster;
@@ -17,11 +18,36 @@ public class PostponeUrpReplicaMovementStrategy extends AbstractReplicaMovementS
 
   @Override
   public Comparator<ExecutionTask> taskComparator(StrategyOptions strategyOptions) {
-    return (task1, task2) -> isPartitionUnderReplicated(strategyOptions.cluster(), task1.proposal().topicPartition())
-                             ? (isPartitionUnderReplicated(strategyOptions.cluster(), task2.proposal().topicPartition()) ? PRIORITIZE_NONE
-                                                                                                                         : PRIORITIZE_TASK_2)
-                             : (isPartitionUnderReplicated(strategyOptions.cluster(), task2.proposal().topicPartition()) ? PRIORITIZE_TASK_1
-                                                                                                                         : PRIORITIZE_NONE);
+    return (task1, task2) -> {
+      boolean isTask1PartitionUnderReplicated = false;
+      boolean isTask2PartitionUnderReplicated = false;
+      boolean task1PartitionExists = false;
+      boolean task2PartitionExists = false;
+      try {
+        isTask1PartitionUnderReplicated = isPartitionUnderReplicated(strategyOptions.cluster(),
+            task1.proposal().topicPartition());
+        task1PartitionExists = true;
+      } catch (PartitionNotFoundException e) {
+      }
+      try {
+        isTask2PartitionUnderReplicated = isPartitionUnderReplicated(strategyOptions.cluster(),
+            task2.proposal().topicPartition());
+        task2PartitionExists = true;
+      } catch (PartitionNotFoundException e) {
+      }
+
+      if (task1PartitionExists && task2PartitionExists) {
+        return isTask1PartitionUnderReplicated
+            ? (isTask2PartitionUnderReplicated ? PRIORITIZE_NONE : PRIORITIZE_TASK_2)
+            : (isTask2PartitionUnderReplicated ? PRIORITIZE_TASK_1 : PRIORITIZE_NONE);
+      } else if (task1PartitionExists) {
+        return isTask1PartitionUnderReplicated ? PRIORITIZE_NONE : PRIORITIZE_TASK_1;
+      } else if (task2PartitionExists) {
+        return isTask2PartitionUnderReplicated ? PRIORITIZE_NONE : PRIORITIZE_TASK_2;
+      } else {
+        return PRIORITIZE_NONE;
+      }
+    };
   }
 
   @Override

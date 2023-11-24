@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
+import com.linkedin.kafka.cruisecontrol.exception.PartitionNotFoundException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
@@ -63,21 +64,38 @@ public class PreferredLeaderElectionGoal implements Goal {
   }
 
   private void maybeMoveReplicaToEndOfReplicaList(Replica replica, ClusterModel clusterModel) {
-    // There are two scenarios where replica swap operation is skipped:
+    // There are three scenarios where replica swap operation is skipped:
     // 1.the replica is not leader replica and _excludeFollowerDemotion is true.
     // 2.the replica's partition is currently under replicated and _skipUrpDemotion is true.
-    if (!(_skipUrpDemotion && isPartitionUnderReplicated(_kafkaCluster, replica.topicPartition()))
+    // 3.the replica doesn't exist.
+    boolean skipUrp = false;
+    try {
+      skipUrp = _skipUrpDemotion && isPartitionUnderReplicated(_kafkaCluster, replica.topicPartition());
+    } catch (PartitionNotFoundException ex) {
+      skipUrp = true;
+    }
+    if (!skipUrp
         && !(_excludeFollowerDemotion && !replica.isLeader())) {
       Partition p = clusterModel.partition(replica.topicPartition());
       p.moveReplicaToEnd(replica);
     }
   }
 
+  private boolean skipLeadershipChange(TopicPartition tp) {
+    // skip leadership change operation if
+    // the leader replica's partition is currently under replicated and _skipUrpDemotion is true,
+    // the partition doesn't exist while making the URP check leadership change operation will be skipped
+    try {
+      return _skipUrpDemotion && isPartitionUnderReplicated(_kafkaCluster, tp);
+    } catch (PartitionNotFoundException ex) {
+      LOG.warn("Partition ", tp, " not exists. Skip leadership change operation ");
+      return true;
+    }
+  }
+
   private void maybeChangeLeadershipForPartition(Set<Replica> leaderReplicas, Set<TopicPartition> partitionsToMove) {
-    // If the leader replica's partition is currently under replicated and _skipUrpDemotion is true, skip leadership
-    // change operation.
     leaderReplicas.stream()
-                  .filter(r -> !(_skipUrpDemotion && isPartitionUnderReplicated(_kafkaCluster, r.topicPartition())))
+                  .filter(r -> !skipLeadershipChange(r.topicPartition()))
                   .forEach(r -> partitionsToMove.add(r.topicPartition()));
   }
 
