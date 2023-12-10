@@ -63,39 +63,35 @@ public class PreferredLeaderElectionGoal implements Goal {
     }
   }
 
+  private boolean skipOperationOnURP(TopicPartition tp, String operation) {
+    // Return true if the partition is under replicated and the flag to skip URP demotion is set.
+    // Return false otherwise.
+    // If the partition doesn't exist, return true.
+    // Operation string is solely for logging purpose in case of partition not found.
+    try {
+      return _skipUrpDemotion && isPartitionUnderReplicated(_kafkaCluster, tp);
+    } catch (PartitionNotExistsException ex) {
+      LOG.warn("Skip {} operation for partition {} due to exception: {}", operation, tp, ex);
+      return true;
+    }
+  }
+
   private void maybeMoveReplicaToEndOfReplicaList(Replica replica, ClusterModel clusterModel) {
     // There are three scenarios where replica swap operation is skipped:
     // 1.the replica is not leader replica and _excludeFollowerDemotion is true.
     // 2.the replica's partition is currently under replicated and _skipUrpDemotion is true.
     // 3.the replica doesn't exist.
-    boolean skipUrp = false;
-    try {
-      skipUrp = _skipUrpDemotion && isPartitionUnderReplicated(_kafkaCluster, replica.topicPartition());
-    } catch (PartitionNotExistsException ex) {
-      skipUrp = true;
-    }
-    if (!skipUrp
+    boolean skipReplicaMove = skipOperationOnURP(replica.topicPartition(), "replica move");
+    if (!skipReplicaMove
         && !(_excludeFollowerDemotion && !replica.isLeader())) {
       Partition p = clusterModel.partition(replica.topicPartition());
       p.moveReplicaToEnd(replica);
     }
   }
 
-  private boolean skipLeadershipChange(TopicPartition tp) {
-    // skip leadership change operation if
-    // the leader replica's partition is currently under replicated and _skipUrpDemotion is true,
-    // the partition doesn't exist while making the URP check leadership change operation will be skipped
-    try {
-      return _skipUrpDemotion && isPartitionUnderReplicated(_kafkaCluster, tp);
-    } catch (PartitionNotExistsException ex) {
-      LOG.warn("Partition ", tp, " not exists. Skip leadership change operation ");
-      return true;
-    }
-  }
-
   private void maybeChangeLeadershipForPartition(Set<Replica> leaderReplicas, Set<TopicPartition> partitionsToMove) {
     leaderReplicas.stream()
-                  .filter(r -> !skipLeadershipChange(r.topicPartition()))
+                  .filter(r -> !skipOperationOnURP(r.topicPartition(), "leadership change"))
                   .forEach(r -> partitionsToMove.add(r.topicPartition()));
   }
 

@@ -8,6 +8,8 @@ import com.linkedin.kafka.cruisecontrol.exception.PartitionNotExistsException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionTask;
 import java.util.Comparator;
 import org.apache.kafka.common.Cluster;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.isPartitionUnderReplicated;
 
@@ -15,6 +17,8 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.isPartiti
  * The strategy, which tries to first move replicas of partitions which currently are not under replicated.
  */
 public class PostponeUrpReplicaMovementStrategy extends AbstractReplicaMovementStrategy {
+
+  private static final Logger LOG = LoggerFactory.getLogger(PostponeUrpReplicaMovementStrategy.class);
 
   @Override
   public Comparator<ExecutionTask> taskComparator(StrategyOptions strategyOptions) {
@@ -28,12 +32,14 @@ public class PostponeUrpReplicaMovementStrategy extends AbstractReplicaMovementS
             task1.proposal().topicPartition());
         task1PartitionExists = true;
       } catch (PartitionNotExistsException e) {
+        LOG.warn("Task 1 - Partition {} does not exist in cluster.", task1.proposal().topicPartition());
       }
       try {
         isTask2PartitionUnderReplicated = isPartitionUnderReplicated(strategyOptions.cluster(),
             task2.proposal().topicPartition());
         task2PartitionExists = true;
       } catch (PartitionNotExistsException e) {
+        LOG.warn("Task 2 - Partition {} does not exist in cluster.", task2.proposal().topicPartition());
       }
 
       if (task1PartitionExists && task2PartitionExists) {
