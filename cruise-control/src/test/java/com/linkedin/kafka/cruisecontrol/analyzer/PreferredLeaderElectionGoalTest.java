@@ -378,7 +378,7 @@ public class PreferredLeaderElectionGoalTest {
     createReplicaAndSetLoad(clusterModel, "r3", 4, logdir(populateDiskInfo, 2, 4), T2P2, 2, true);
 
     // The following topic exists in cluster model and not in the cluster
-    // This is to simulate a case where a topic is deleted from the cluster
+    // This is to simulate a case where a topic is deleted from the cluster during an ongoing PLE
     createReplicaAndSetLoad(clusterModel, "r2", 3, logdir(populateDiskInfo, 0, 4), T3P0, 0, true);
     createReplicaAndSetLoad(clusterModel, "r3", 4, logdir(populateDiskInfo, 0, 3), T3P1, 0, true);
     createReplicaAndSetLoad(clusterModel, "r3", 4, logdir(populateDiskInfo, 0, 4), T3P2, 0, true);

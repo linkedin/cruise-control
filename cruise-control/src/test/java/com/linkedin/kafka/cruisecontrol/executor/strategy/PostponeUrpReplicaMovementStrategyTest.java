@@ -24,12 +24,17 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.common.TestConstants.*;
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC2;
 
+/*
+  * Unit test for testing the strategy of postponing the movement of URP replicas.
+ */
+public class PostponeUrpReplicaMovementStrategyTest {
 
-public class PostponseUrpReplicaMovementStrategyTest {
+  private static final Logger LOG = LoggerFactory.getLogger(PostponeUrpReplicaMovementStrategyTest.class);
 
-  private static final Logger LOG = LoggerFactory.getLogger(PostponseUrpReplicaMovementStrategyTest.class);
   private static final TopicPartition INSYNCP0 = new TopicPartition(TOPIC0, 0);
   private static final TopicPartition INSYNCP1 = new TopicPartition(TOPIC0, 1);
 
@@ -56,30 +61,45 @@ public class PostponseUrpReplicaMovementStrategyTest {
    */
   @Before
   public void setUp() {
+    /*
+     * Create a cluster with the following strategy:
+     * 1. TOPIC0 has 2 partitions with 3 replicas each. Both the partitions have all replicas in sync
+     * 2. TOPIC1 Topic has 2 partitions with 3 replicas each. Both the partitions are URPs.
+     * 3. TOPIC2 has 2 partitions with 3 replicas each. This topic is deleted from the cluster.
+     */
     Set<PartitionInfo> partitions = new HashSet<>();
     Node[] nodes = new Node [NUM_RACKS + 1];
     for (int i = 0; i < NUM_RACKS + 1; i++) {
       nodes[i] = new Node(i, "h" + i, 100);
     }
 
+    // Add the insync topic partitions to the cluster
     partitions.add(new PartitionInfo(INSYNCP0.topic(), INSYNCP0.partition(), nodes[0], new Node[]{nodes[0], nodes[4], nodes[3]},
         new Node[]{nodes[0], nodes[4], nodes[3]}));
-
     partitions.add(new PartitionInfo(INSYNCP1.topic(), INSYNCP1.partition(), nodes[1], new Node[]{nodes[1], nodes[2], nodes[4]},
         new Node[]{nodes[1], nodes[2], nodes[4]}));
 
+    // Add under replicated topic partitions to the cluster
     partitions.add(new PartitionInfo(URP0.topic(), URP0.partition(), nodes[1], new Node[]{nodes[1], nodes[3], nodes[2]},
         new Node[]{nodes[1], nodes[3]}));
-
     partitions.add(new PartitionInfo(URP1.topic(), URP1.partition(), nodes[3], new Node[]{nodes[3], nodes[4], nodes[0]},
         new Node[]{nodes[3], nodes[4]}));
 
+    // Build the cluster object to be used by the test cases
     _cluster = new Cluster(null, Arrays.asList(nodes),
         partitions,
         Collections.emptySet(),
         Collections.emptySet());
   }
 
+  /*
+  * Testcase class for testing the task comparator.
+  * Contains the following fields:
+  * 1. Description of the test case
+  * 2. The first task to be compared
+  * 3. The second task to be compared
+  * 4. The expected result of the comparison
+  */
   private static class TaskComparatorTestCase {
     private final String _description;
     private final ExecutionTask _task0;
@@ -116,11 +136,12 @@ public class PostponseUrpReplicaMovementStrategyTest {
 
     ReplicaPlacementInfo replicaPlacementInfoPlaceHolder = new ReplicaPlacementInfo(BROKER_ID_PLACEHOLDER);
 
-    ExecutionProposal inSyncProposal0 =
+    // Create proposals for each of the above partitions to be used for different test cases
+    ExecutionProposal inSyncPartitionProposal0 =
         new ExecutionProposal(INSYNCP0, PRODUCE_SIZE_IN_BYTES, replicaPlacementInfoPlaceHolder,
             Collections.singletonList(replicaPlacementInfoPlaceHolder),
             Collections.singletonList(replicaPlacementInfoPlaceHolder));
-    ExecutionProposal inSyncProposal1 =
+    ExecutionProposal inSyncPartitionProposal1 =
         new ExecutionProposal(INSYNCP1, PRODUCE_SIZE_IN_BYTES, replicaPlacementInfoPlaceHolder,
             Collections.singletonList(replicaPlacementInfoPlaceHolder),
             Collections.singletonList(replicaPlacementInfoPlaceHolder));
@@ -141,9 +162,10 @@ public class PostponseUrpReplicaMovementStrategyTest {
             Collections.singletonList(replicaPlacementInfoPlaceHolder),
             Collections.singletonList(replicaPlacementInfoPlaceHolder));
 
-    ExecutionTask inSyncTask0 = new ExecutionTask(EXECUTION_ID_PLACEHOLDER, inSyncProposal0,
+    // Create execution tasks for each of the above proposals to be used for different test cases
+    ExecutionTask inSyncPartitionTask0 = new ExecutionTask(EXECUTION_ID_PLACEHOLDER, inSyncPartitionProposal0,
         ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION, EXECUTION_ALERTING_THRESHOLD_MS);
-    ExecutionTask inSyncTask1 = new ExecutionTask(EXECUTION_ID_PLACEHOLDER, inSyncProposal1,
+    ExecutionTask inSyncPartitionTask1 = new ExecutionTask(EXECUTION_ID_PLACEHOLDER, inSyncPartitionProposal1,
         ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION, EXECUTION_ALERTING_THRESHOLD_MS);
     ExecutionTask urpTask0 = new ExecutionTask(EXECUTION_ID_PLACEHOLDER, urpProposal0,
         ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION, EXECUTION_ALERTING_THRESHOLD_MS);
@@ -163,29 +185,32 @@ public class PostponseUrpReplicaMovementStrategyTest {
     // Test cases
     List<TaskComparatorTestCase> tcList = new ArrayList<>();
 
-    // Test 1: both tasks are in-sync replicas.
-    tcList.add(new TaskComparatorTestCase("Both tasks are in-sync replicas.", inSyncTask0, inSyncTask1, prioritizeNone));
+    // Test 1: both tasks are in-sync replicas - prioritize none.
+    tcList.add(new TaskComparatorTestCase("Both tasks are for in-sync replica movements", inSyncPartitionTask0,
+        inSyncPartitionTask1, prioritizeNone));
 
-    // Test 2: insync task and urp task - prioritze insync task.
-    tcList.add(new TaskComparatorTestCase("Task1 insync task 2 urp", inSyncTask1, urpTask1, prioritizeTask1));
-    tcList.add(new TaskComparatorTestCase("Task1 urp task 2 insync", urpTask1, inSyncTask1, prioritizeTask2));
+    // Test 2: insync task and urp task - prioritize insync task.
+    tcList.add(new TaskComparatorTestCase("Task1-insync Task2-urp", inSyncPartitionTask1, urpTask1, prioritizeTask1));
+    tcList.add(new TaskComparatorTestCase("Task1-urp Task2-insync", urpTask1, inSyncPartitionTask1, prioritizeTask2));
 
     // Test 3: insync task and deleted partition task - prioritize insync task.
-    tcList.add(new TaskComparatorTestCase("Task1 insync task 2 deleted partition", inSyncTask1,
+    tcList.add(new TaskComparatorTestCase("Task1-insync Task2-deleted partition", inSyncPartitionTask1,
         deletedPartitionTask0, prioritizeTask1));
-    tcList.add(new TaskComparatorTestCase("Task1 deleted partition task2-insync", deletedPartitionTask0,
-        inSyncTask1, prioritizeTask2));
+    tcList.add(new TaskComparatorTestCase("Task1-deleted partition Task2-insync", deletedPartitionTask0,
+        inSyncPartitionTask1, prioritizeTask2));
 
-    // Test 4: Both up tasks - prioritize none
+    // Test 4: Both urp tasks - prioritize none
     tcList.add(new TaskComparatorTestCase("Both tasks are urps.", urpTask0, urpTask1, prioritizeNone));
 
     // Test 5: urp task and deleted partition task - prioritize None
-    tcList.add(new TaskComparatorTestCase("Task 1 URP Task 2 Deleted", urpTask1, deletedPartitionTask1, prioritizeNone));
-    tcList.add(new TaskComparatorTestCase("Task 1 Deleted 2 URP Task", deletedPartitionTask1, urpTask1, prioritizeNone));
+    tcList.add(new TaskComparatorTestCase("Task1-URP Task2-Deleted Partition", urpTask1, deletedPartitionTask1, prioritizeNone));
+    tcList.add(new TaskComparatorTestCase("Task1-Deleted Partition Task2-URP ", deletedPartitionTask1, urpTask1, prioritizeNone));
 
     // Test 6: Both deleted partition tasks - prioritize none
     tcList.add(new TaskComparatorTestCase("Both tasks are for deleted topics", deletedPartitionTask1, deletedPartitionTask0, prioritizeNone));
 
+    // Iterate over all the test cases and run the comparator
+    // Assert with the expected result
     for (TaskComparatorTestCase tc : tcList) {
       LOG.info("Test case: {}", tc.description());
       int result = taskComparator.compare(tc.task0(), tc.task1());

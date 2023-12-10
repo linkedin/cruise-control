@@ -90,6 +90,8 @@ public class PreferredLeaderElectionGoal implements Goal {
   }
 
   private void maybeChangeLeadershipForPartition(Set<Replica> leaderReplicas, Set<TopicPartition> partitionsToMove) {
+    // If the leader replica's partition is currently under replicated and _skipUrpDemotion is true, skip leadership
+    // change operation. If the partition is not found skip the operation as well.
     leaderReplicas.stream()
                   .filter(r -> !skipOperationOnURP(r.topicPartition(), "leadership change"))
                   .forEach(r -> partitionsToMove.add(r.topicPartition()));
