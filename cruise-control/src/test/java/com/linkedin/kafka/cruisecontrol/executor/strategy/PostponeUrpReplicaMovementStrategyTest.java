@@ -98,7 +98,7 @@ public class PostponeUrpReplicaMovementStrategyTest {
   * 1. Description of the test case
   * 2. The first task to be compared
   * 3. The second task to be compared
-  * 4. The expected result of the comparison
+  * 4. The expected result of the task priority comparison
   */
   private static class TaskComparatorTestCase {
     private final String _description;
