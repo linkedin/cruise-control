@@ -1878,7 +1878,7 @@ public final class DeterministicCluster {
     return cluster;
   }
 
-  private static AggregatedMetricValues createLoad(double cpu, double networkIn, double networkOut, double disk) {
+  public static AggregatedMetricValues createLoad(double cpu, double networkIn, double networkOut, double disk) {
     return getAggregatedMetricValues(cpu, networkIn, networkOut, disk);
   }
 

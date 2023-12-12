@@ -976,7 +976,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     double prevDiff = (sourceBrokerUtilization / sourceBrokerCapacity) - (destinationBrokerUtilization / destinationBrokerCapacity);
     double nextDiff = prevDiff + (sourceUtilizationDelta / sourceBrokerCapacity) + (sourceUtilizationDelta / destinationBrokerCapacity);
 
-    return Math.abs(nextDiff) < Math.abs(prevDiff);
+    return Math.abs(nextDiff) <= Math.abs(prevDiff);
   }
 
   private boolean isSwapViolatingLimit(Replica sourceReplica, Replica destinationReplica) {
