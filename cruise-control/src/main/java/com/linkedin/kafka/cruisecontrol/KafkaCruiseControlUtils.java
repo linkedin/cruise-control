@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
+import com.linkedin.kafka.cruisecontrol.exception.PartitionNotExistsException;
 import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtils;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.config.EnvConfigProvider;
@@ -781,8 +782,12 @@ public final class KafkaCruiseControlUtils {
    * @param tp The topic partition to check.
    * @return {@code true} if the partition is currently under replicated.
    */
-  public static boolean isPartitionUnderReplicated(Cluster cluster, TopicPartition tp) {
+  public static boolean isPartitionUnderReplicated(Cluster cluster, TopicPartition tp) throws
+                                                                                       PartitionNotExistsException {
     PartitionInfo partitionInfo = cluster.partition(tp);
+    if (partitionInfo == null) {
+      throw new PartitionNotExistsException("Partition " + tp + " does not exist.");
+    }
     return partitionInfo.inSyncReplicas().length != partitionInfo.replicas().length;
   }
 
