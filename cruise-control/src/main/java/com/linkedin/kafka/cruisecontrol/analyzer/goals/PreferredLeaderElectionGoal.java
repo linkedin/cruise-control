@@ -63,7 +63,7 @@ public class PreferredLeaderElectionGoal implements Goal {
     }
   }
 
-  private boolean skipOperationOnURP(TopicPartition tp, String operation) {
+  private boolean shouldSkipOperationOnURP(TopicPartition tp, String operation) {
     // Return true if the partition is under replicated and the flag to skip URP demotion is set.
     // Return false otherwise.
     // If the partition doesn't exist, return true.
@@ -81,7 +81,7 @@ public class PreferredLeaderElectionGoal implements Goal {
     // 1.the replica is not leader replica and _excludeFollowerDemotion is true.
     // 2.the replica's partition is currently under replicated and _skipUrpDemotion is true.
     // 3.the replica doesn't exist.
-    boolean skipReplicaMove = skipOperationOnURP(replica.topicPartition(), "replica move");
+    boolean skipReplicaMove = shouldSkipOperationOnURP(replica.topicPartition(), "replica move");
     if (!skipReplicaMove
         && !(_excludeFollowerDemotion && !replica.isLeader())) {
       Partition p = clusterModel.partition(replica.topicPartition());
@@ -93,7 +93,7 @@ public class PreferredLeaderElectionGoal implements Goal {
     // If the leader replica's partition is currently under replicated and _skipUrpDemotion is true, skip leadership
     // change operation. If the partition is not found skip the operation as well.
     leaderReplicas.stream()
-                  .filter(r -> !skipOperationOnURP(r.topicPartition(), "leadership change"))
+                  .filter(r -> !shouldSkipOperationOnURP(r.topicPartition(), "leadership change"))
                   .forEach(r -> partitionsToMove.add(r.topicPartition()));
   }
 

@@ -32,14 +32,16 @@ public class PostponeUrpReplicaMovementStrategy extends AbstractReplicaMovementS
             task1.proposal().topicPartition());
         task1PartitionExists = true;
       } catch (PartitionNotExistsException e) {
-        LOG.warn("Task 1 - Partition {} does not exist in cluster.", task1.proposal().topicPartition());
+        LOG.warn("Task {} skipped comparison since partition {} does not exist in cluster.",
+            task1, task1.proposal().topicPartition());
       }
       try {
         isTask2PartitionUnderReplicated = isPartitionUnderReplicated(strategyOptions.cluster(),
             task2.proposal().topicPartition());
         task2PartitionExists = true;
       } catch (PartitionNotExistsException e) {
-        LOG.warn("Task 2 - Partition {} does not exist in cluster.", task2.proposal().topicPartition());
+        LOG.warn("Task {} skipped comparison since partition {} does not exist in cluster.",
+            task2, task2.proposal().topicPartition());
       }
 
       if (task1PartitionExists && task2PartitionExists) {
