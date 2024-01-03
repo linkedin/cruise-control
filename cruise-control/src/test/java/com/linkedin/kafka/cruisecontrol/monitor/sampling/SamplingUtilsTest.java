@@ -35,6 +35,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.maybeIncr
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.maybeUpdateTopicConfig;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.wrapTopic;
 import static kafka.log.LogConfig.CleanupPolicyProp;
+import static kafka.log.LogConfig.MinInSyncReplicasProp;
 import static kafka.log.LogConfig.RetentionMsProp;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -48,6 +49,7 @@ public class SamplingUtilsTest {
   private static final int MOCK_PARTITION_COUNT = 1;
   private static final int MOCK_DESIRED_PARTITION_COUNT = 2;
   private static final short MOCK_REPLICATION_FACTOR = 3;
+  private static final short MOCK_MIN_IN_SYNC_REPLICAS = 2;
   private static final long MOCK_DESIRED_RETENTION_MS = TimeUnit.SECONDS.toMillis(10);
   private static final String MOCK_CURRENT_RETENTION_MS = "100";
   private static final ConfigResource MOCK_TOPIC_RESOURCE = new ConfigResource(ConfigResource.Type.TOPIC, MOCK_TOPIC);
@@ -66,12 +68,15 @@ public class SamplingUtilsTest {
     Map<ConfigResource, KafkaFuture<Void>> alterConfigsValues = Collections.singletonMap(MOCK_TOPIC_RESOURCE,
                                                                                          EasyMock.createMock(KafkaFuture.class));
 
-    NewTopic topicToUpdateConfigs = wrapTopic(MOCK_TOPIC, MOCK_PARTITION_COUNT, MOCK_REPLICATION_FACTOR, MOCK_DESIRED_RETENTION_MS);
+    NewTopic topicToUpdateConfigs = wrapTopic(MOCK_TOPIC, MOCK_PARTITION_COUNT, MOCK_REPLICATION_FACTOR, MOCK_MIN_IN_SYNC_REPLICAS,
+            MOCK_DESIRED_RETENTION_MS);
     EasyMock.expect(adminClient.describeConfigs(EasyMock.eq(Collections.singleton(MOCK_TOPIC_RESOURCE)))).andReturn(describeConfigsResult);
     EasyMock.expect(describeConfigsResult.values()).andReturn(describeConfigsValues);
     EasyMock.expect(describedConfigsFuture.get(CLIENT_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS)).andReturn(topicConfig);
     EasyMock.expect(topicConfig.get(EasyMock.eq(CleanupPolicyProp()))).andReturn(new ConfigEntry(CleanupPolicyProp(),
                                                                                                  DEFAULT_CLEANUP_POLICY));
+    EasyMock.expect(topicConfig.get(EasyMock.eq(MinInSyncReplicasProp()))).andReturn(new ConfigEntry(MinInSyncReplicasProp(),
+            Short.toString(MOCK_MIN_IN_SYNC_REPLICAS)));
     EasyMock.expect(topicConfig.get(EasyMock.eq(RetentionMsProp()))).andReturn(new ConfigEntry(RetentionMsProp(),
                                                                                                MOCK_CURRENT_RETENTION_MS));
     EasyMock.expect(adminClient.incrementalAlterConfigs(EasyMock.eq(Collections.singletonMap(MOCK_TOPIC_RESOURCE,
@@ -88,7 +93,8 @@ public class SamplingUtilsTest {
   @Test
   public void testMaybeIncreasePartitionCount() throws InterruptedException, ExecutionException, TimeoutException {
     AdminClient adminClient = EasyMock.createMock(AdminClient.class);
-    NewTopic topicToAddPartitions = wrapTopic(MOCK_TOPIC, MOCK_DESIRED_PARTITION_COUNT, MOCK_REPLICATION_FACTOR, MOCK_DESIRED_RETENTION_MS);
+    NewTopic topicToAddPartitions = wrapTopic(MOCK_TOPIC, MOCK_DESIRED_PARTITION_COUNT, MOCK_REPLICATION_FACTOR, MOCK_MIN_IN_SYNC_REPLICAS,
+            MOCK_DESIRED_RETENTION_MS);
     DescribeTopicsResult describeTopicsResult = EasyMock.createMock(DescribeTopicsResult.class);
     KafkaFuture<TopicDescription> topicDescriptionFuture = EasyMock.createMock(KafkaFuture.class);
     TopicDescription topicDescription = EasyMock.createMock(TopicDescription.class);

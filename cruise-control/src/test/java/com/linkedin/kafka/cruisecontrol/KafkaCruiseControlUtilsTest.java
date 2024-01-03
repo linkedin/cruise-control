@@ -25,7 +25,7 @@ import static org.junit.Assert.assertTrue;
 
 
 public class KafkaCruiseControlUtilsTest {
-  private static final NewTopic TEST_TOPIC = wrapTopic("mock-topic", 10, (short) 3, TimeUnit.MINUTES.toMillis(10));
+  private static final NewTopic TEST_TOPIC = wrapTopic("mock-topic", 10, (short) 3, (short) 2, TimeUnit.MINUTES.toMillis(10));
 
   @Test
   public void testCreateTopic() throws ExecutionException, InterruptedException, TimeoutException {

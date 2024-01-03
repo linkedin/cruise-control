@@ -32,10 +32,12 @@ import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.bo
 public abstract class AbstractKafkaSampleStore implements SampleStore {
   protected static final Duration PRODUCER_CLOSE_TIMEOUT = Duration.ofMinutes(3);
   protected static final short DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR = 2;
+  protected static final short DEFAULT_SAMPLE_STORE_TOPIC_MIN_IN_SYNC_REPLICAS = 1;
   protected static final int DEFAULT_PARTITION_SAMPLE_STORE_TOPIC_PARTITION_COUNT = 32;
 
   protected volatile boolean _shutdown = false;
   protected Short _sampleStoreTopicReplicationFactor;
+  protected Short _sampleStoreTopicMinInSyncReplicas;
   protected Producer<byte[], byte[]> _producer;
 
   protected void createProducer(Map<String, ?> config, String producerClientId) {
@@ -95,6 +97,18 @@ public abstract class AbstractKafkaSampleStore implements SampleStore {
     } else {
       throw new IllegalStateException(errorMsg.get());
     }
+  }
+
+  /**
+   * Retrieve the desired min insync replicas of sample store topics.
+   *
+   * @return Desired min insync replicas of sample store topics, or {@code null} if failed to resolve min insync replicas.
+   */
+  protected short sampleStoreTopicMinInsyncReplicas() {
+    if (_sampleStoreTopicMinInSyncReplicas != null) {
+      return _sampleStoreTopicMinInSyncReplicas;
+    }
+    return DEFAULT_SAMPLE_STORE_TOPIC_MIN_IN_SYNC_REPLICAS;
   }
 
   protected void ensureTopicCreated(AdminClient adminClient, NewTopic sampleStoreTopic) {
