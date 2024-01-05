@@ -1118,7 +1118,7 @@ public class Executor {
   public synchronized void failGeneratingProposalsForExecution(String uuid) {
     if (_executorState.state() == GENERATING_PROPOSALS_FOR_EXECUTION) {
       if (uuid != null && uuid.equals(_uuid)) {
-        LOG.info("Failed to generate proposals for execution (UUID: {} reason: {}).", uuid, _reasonSupplier.get());
+        LOG.warn("Failed to generate proposals for execution (UUID: {} reason: {}).", uuid, _reasonSupplier.get());
         _uuid = null;
         _reasonSupplier = null;
         _executorState = ExecutorState.noTaskInProgress(recentlyDemotedBrokers(), recentlyRemovedBrokers());
