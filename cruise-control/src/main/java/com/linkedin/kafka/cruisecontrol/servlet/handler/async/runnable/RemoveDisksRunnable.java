@@ -49,7 +49,7 @@ public class RemoveDisksRunnable extends GoalBasedOperationRunnable {
                                OperationFuture future,
                                RemoveDisksParameters parameters,
                                String uuid) {
-        super(kafkaCruiseControl, future, parameters, false, parameters.stopOngoingExecution(), parameters.skipHardGoalCheck(),
+        super(kafkaCruiseControl, future, parameters, parameters.dryRun(), parameters.stopOngoingExecution(), parameters.skipHardGoalCheck(),
                 uuid, parameters::reason);
         _brokerIdAndLogdirs = parameters.brokerIdAndLogdirs();
     }
