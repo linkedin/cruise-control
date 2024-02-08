@@ -12,8 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.io.IOUtils;
+import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.HttpEntity;
-import org.apache.http.HttpHost;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -41,12 +41,12 @@ class PrometheusAdapter {
     private static final String STEP = "step";
 
     private final CloseableHttpClient _httpClient;
-    protected final HttpHost _prometheusEndpoint;
+    protected final URIBuilder _prometheusEndpoint;
     protected final int _samplingIntervalMs;
 
     PrometheusAdapter(CloseableHttpClient httpClient,
-                      HttpHost prometheusEndpoint,
-                      int samplingIntervalMs) {
+                    URIBuilder prometheusEndpoint,
+                    int samplingIntervalMs) {
         _httpClient = validateNotNull(httpClient, "httpClient cannot be null.");
         _prometheusEndpoint = validateNotNull(prometheusEndpoint, "prometheusEndpoint cannot be null.");
         _samplingIntervalMs = samplingIntervalMs;
@@ -59,7 +59,7 @@ class PrometheusAdapter {
     public List<PrometheusQueryResult> queryMetric(String queryString,
                                                    long startTimeMs,
                                                    long endTimeMs) throws IOException {
-        URI queryUri = URI.create(_prometheusEndpoint.toURI() + QUERY_RANGE_API_PATH);
+        URI queryUri = URI.create(_prometheusEndpoint.toString() + QUERY_RANGE_API_PATH);
         HttpPost httpPost = new HttpPost(queryUri);
 
         List<NameValuePair> data = new ArrayList<>();
