@@ -9,15 +9,15 @@ import org.junit.Test;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class BackingMethodTest {
+public class PersistMethodTest {
 
     /**
      * Ensure fromString accepts valid values ignoring case.
      */
     @Test
     public void fromStringAcceptsValidValuesIgnoringCase() {
-        assertThat(BackingMethod.fromString("kafka"), is(BackingMethod.KAFKA));
-        assertThat(BackingMethod.fromString("Kafka"), is(BackingMethod.KAFKA));
+        assertThat(PersistMethod.fromString("kafka"), is(PersistMethod.KAFKA));
+        assertThat(PersistMethod.fromString("Kafka"), is(PersistMethod.KAFKA));
     }
 
     /**
@@ -25,7 +25,7 @@ public class BackingMethodTest {
      */
     @Test(expected = IllegalArgumentException.class)
     public void fromStringRejectsInvalidValues() {
-        BackingMethod.fromString("invalid");
+        PersistMethod.fromString("invalid");
     }
 
     /**
@@ -34,7 +34,7 @@ public class BackingMethodTest {
     @Test
     public void stringValuesGetsAllEnumsLowercaseAndSorted() {
         List<String> expected = List.of("kafka", "memory");
-        List<String> actual = BackingMethod.stringValues();
+        List<String> actual = PersistMethod.stringValues();
         assertThat(actual, is(expected));
     }
 }

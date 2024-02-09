@@ -3,7 +3,7 @@
  */
 package com.linkedin.kafka.cruisecontrol.config.constants;
 
-import com.linkedin.kafka.cruisecontrol.persisteddata.BackingMethod;
+import com.linkedin.kafka.cruisecontrol.persisteddata.PersistMethod;
 import org.apache.kafka.common.config.ConfigDef;
 
 import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
@@ -18,16 +18,16 @@ public final class PersistedDataConfig {
     public static final String CONFIG_PREFIX = "persisted.data.";
 
     /**
-     * <code>persisted.data.backing.method</code>
+     * <code>persisted.data.persist.method</code>
      */
-    public static final String BACKING_METHOD_CONFIG = CONFIG_PREFIX + "backing.method";
-    public static final String DEFAULT_BACKING_METHOD = "memory";
-    public static final String BACKING_METHOD_DOC =
+    public static final String PERSIST_METHOD_CONFIG = CONFIG_PREFIX + "persist.method";
+    public static final String DEFAULT_PERSIST_METHOD = "memory";
+    public static final String PERSIST_METHOD_DOC =
             "The method to use to store persisted data. This is the first "
                     + "\"persisted.data\" config to set which will determine which other configs "
                     + "of the series should be configured. The available options are: "
-                    + BackingMethod.stringValues().toString()
-                    + ". The default is \"" + DEFAULT_BACKING_METHOD + "\", which doesn't durably "
+                    + PersistMethod.stringValues().toString()
+                    + ". The default is \"" + DEFAULT_PERSIST_METHOD + "\", which doesn't durably "
                     + "persist any runtime data.";
 
     /**
@@ -37,7 +37,7 @@ public final class PersistedDataConfig {
     public static final String DEFAULT_KAFKA_TOPIC_NAME = "__CruiseControlPersistentData";
     public static final String KAFKA_TOPIC_NAME_DOC =
             "The name of the kafka topic to use to persist data when " + "\""
-                    + BACKING_METHOD_CONFIG + "\" is set to \"kafka\". If the topic is not "
+                    + PERSIST_METHOD_CONFIG + "\" is set to \"kafka\". If the topic is not "
                     + "present, then it will be created.";
 
     /**
@@ -48,7 +48,7 @@ public final class PersistedDataConfig {
     public static final int DEFAULT_KAFKA_TOPIC_PARTITION_COUNT = 2;
     public static final String KAFKA_TOPIC_PARTITION_COUNT_DOC =
             "The number of partitions to ensure are present "
-                    + "for the kafka topic. Only applies when \"" + BACKING_METHOD_CONFIG
+                    + "for the kafka topic. Only applies when \"" + PERSIST_METHOD_CONFIG
                     + "\" is set to \"kafka\". If the topic has fewer than this number of "
                     + "partitions, then partitions will be added.";
 
@@ -60,7 +60,7 @@ public final class PersistedDataConfig {
     public static final short DEFAULT_KAFKA_TOPIC_REPLICATION_FACTOR = 2;
     public static final String KAFKA_TOPIC_REPLICATION_FACTOR_DOC =
             "The replication factor to use for the kafka " + "topic. Only applies when \""
-                    + BACKING_METHOD_CONFIG + "\" is set to \"kafka\". Multiple partition "
+                    + PERSIST_METHOD_CONFIG + "\" is set to \"kafka\". Multiple partition "
                     + "replicas are desirable to ensure the topic is reasonably available.";
 
     /**
@@ -71,7 +71,7 @@ public final class PersistedDataConfig {
     public static final String DEFAULT_KAFKA_TOPIC_ADDITIONAL_CONFIGS_MAP = "";
     public static final String KAFKA_TOPIC_ADDITIONAL_CONFIGS_MAP_DOC =
             "The configs to apply to the kafka topic used to "
-                    + "persist Cruise Control data. Only applies if \"" + BACKING_METHOD_CONFIG
+                    + "persist Cruise Control data. Only applies if \"" + PERSIST_METHOD_CONFIG
                     + "\" is set to \"kafka\". This \"list\" should be a semicolon separated "
                     + "string of 'key=value' pairs. The keys and values need to be valid Kafka "
                     + "Topic configs. See: "
@@ -86,7 +86,7 @@ public final class PersistedDataConfig {
     public static final String KAFKA_PRODUCER_ADDITIONAL_CONFIGS_MAP_DOC =
             "The additional configs to use when creating the kafka "
                     + "producer to persist Cruise Control data. Only applies if \""
-                    + BACKING_METHOD_CONFIG + "\" is set to \"kafka\". This \"list\" should be a "
+                    + PERSIST_METHOD_CONFIG + "\" is set to \"kafka\". This \"list\" should be a "
                     + "semicolon separated string of 'key=value' pairs. The keys and values need "
                     + "to be valid Kafka Producer configs. See: "
                     + "https://kafka.apache.org/documentation/#producerconfigs";
@@ -100,7 +100,7 @@ public final class PersistedDataConfig {
     public static final String KAFKA_CONSUMER_ADDITIONAL_CONFIGS_MAP_DOC =
             "The additional configs to use when creating the kafka "
                     + "consumer to read persisted Cruise Control data. Only applies if \""
-                    + BACKING_METHOD_CONFIG + "\" is set to \"kafka\". This \"list\" should be a "
+                    + PERSIST_METHOD_CONFIG + "\" is set to \"kafka\". This \"list\" should be a "
                     + "semicolon separated string of 'key=value' pairs. The keys and values need "
                     + "to be valid Kafka Consumer configs. See: "
                     + "https://kafka.apache.org/documentation/#consumerconfigs";
@@ -116,11 +116,11 @@ public final class PersistedDataConfig {
      */
     public static ConfigDef define(ConfigDef configDef) {
         return configDef
-                .define(BACKING_METHOD_CONFIG,
+                .define(PERSIST_METHOD_CONFIG,
                         ConfigDef.Type.STRING,
-                        DEFAULT_BACKING_METHOD,
+                        DEFAULT_PERSIST_METHOD,
                         ConfigDef.Importance.MEDIUM,
-                        BACKING_METHOD_DOC)
+                        PERSIST_METHOD_DOC)
                 .define(KAFKA_TOPIC_NAME_CONFIG,
                         ConfigDef.Type.STRING,
                         DEFAULT_KAFKA_TOPIC_NAME,

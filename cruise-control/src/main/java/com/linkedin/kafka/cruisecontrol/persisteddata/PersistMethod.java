@@ -8,30 +8,30 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Defines the backing method types of persistent data.
+ * Defines the persist method types of persistent data.
  */
-public enum BackingMethod {
+public enum PersistMethod {
     MEMORY,
     KAFKA;
 
     /**
-     * Parse the string version of a backing method into the enum.
+     * Parse the string version of a persist method into the enum.
      *
      * @param value The value to parse.
      * @return The correctly parsed enum.
      */
-    public static BackingMethod fromString(String value) {
+    public static PersistMethod fromString(String value) {
         return valueOf(value.toUpperCase());
     }
 
     /**
-     * Get the lower case string values of all backing methods.
+     * Get the lower case string values of all persist methods.
      *
-     * @return The list of all the backing methods as lower case strings.
+     * @return The list of all the persist methods as lower case strings.
      */
     public static List<String> stringValues() {
-        return Arrays.stream(BackingMethod.values())
-                .map(backingMethod -> backingMethod.toString().toLowerCase())
+        return Arrays.stream(PersistMethod.values())
+                .map(persistMethod -> persistMethod.toString().toLowerCase())
                 .sorted()
                 .collect(Collectors.toList());
     }

@@ -46,7 +46,7 @@ public class PersistedMapFactoryTest {
 
     private static PersistedMapFactory configureAndGetPersistedMapFactory(String backingMethod) {
         KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(
-                Map.of(PersistedDataConfig.BACKING_METHOD_CONFIG, backingMethod,
+                Map.of(PersistedDataConfig.PERSIST_METHOD_CONFIG, backingMethod,
                         CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "fake",
                         ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, "connect:1234"));
         return new PersistedMapFactory(config,
