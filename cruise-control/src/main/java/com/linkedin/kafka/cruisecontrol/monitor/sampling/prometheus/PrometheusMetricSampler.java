@@ -114,7 +114,7 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
         } catch (URISyntaxException ex) {
             throw new ConfigException(
                 String.format("Prometheus endpoint URI is malformed, "
-                              + "expected schema://host:port[/uri], provided %s", endpoint), ex);
+                              + "expected schema://host:port[/path], provided %s", endpoint), ex);
         }
     }
 
