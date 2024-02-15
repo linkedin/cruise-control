@@ -217,9 +217,11 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
       MetricSampleAggregationResult<G, E> result = new MetricSampleAggregationResult<>(generation(), completeness);
       Set<E> entitiesToInclude =
           interpretedOptions.includeInvalidEntities() ? interpretedOptions.interestedEntities() : completeness.validEntities();
+      LOG.debug("Including {} entities during metric aggregation.", entitiesToInclude.size());
       for (E entity : entitiesToInclude) {
         RawMetricValues rawValues = _rawMetrics.get(entity);
         if (rawValues == null) {
+          LOG.debug("Failed to find entity {} from _rawMetrics.", entity);
           ValuesAndExtrapolations
               valuesAndExtrapolations = ValuesAndExtrapolations.empty(completeness.validWindowIndices().size(), _metricDef);
           valuesAndExtrapolations.setWindows(windows);
