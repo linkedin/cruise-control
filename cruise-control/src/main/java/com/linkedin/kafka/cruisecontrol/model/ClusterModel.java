@@ -1134,6 +1134,7 @@ public class ClusterModel implements Serializable {
    */
   public List<Partition> replicasSortedByUtilization(Resource resource, boolean wantMaxLoad, boolean wantAvgLoad) {
     List<Partition> partitionList = new ArrayList<>(_partitionsByTopicPartition.values());
+    LOG.debug("Fetching {} partitions from the cluster model", _partitionsByTopicPartition.size());
     partitionList.sort((o1, o2) -> Double.compare(o2.leader().load().expectedUtilizationFor(resource, wantMaxLoad, wantAvgLoad),
                                                   o1.leader().load().expectedUtilizationFor(resource, wantMaxLoad, wantAvgLoad)));
     return partitionList;

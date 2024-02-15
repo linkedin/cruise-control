@@ -289,6 +289,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
   private AggregationOptions<String, PartitionEntity> toAggregationOptions(Cluster cluster,
                                                                            ModelCompletenessRequirements requirements) {
     Set<PartitionEntity> allPartitions = allPartitions(cluster);
+    LOG.debug("Fetching {} partition entities from the cluster metadata.", allPartitions.size());
     return new AggregationOptions<>(requirements.minMonitoredPartitionsPercentage(),
                                     0.0,
                                     requirements.minRequiredNumWindows(),
