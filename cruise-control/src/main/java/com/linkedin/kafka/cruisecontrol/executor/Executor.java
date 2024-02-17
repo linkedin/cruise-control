@@ -47,6 +47,7 @@ import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AlterPartitionReassignmentsResult;
 import org.apache.kafka.clients.admin.DescribeConfigsResult;
 import org.apache.kafka.clients.admin.ElectLeadersResult;
+import org.apache.kafka.clients.admin.PartitionReassignment;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
@@ -1048,15 +1049,17 @@ public class Executor {
    */
   private void sanityCheckOngoingMovement() throws OngoingExecutionException {
     boolean hasOngoingPartitionReassignments;
+    Map<TopicPartition, PartitionReassignment> ongoingPartitionReassignments;
     try {
-      hasOngoingPartitionReassignments = hasOngoingPartitionReassignments();
+       ongoingPartitionReassignments = ExecutionUtils.ongoingPartitionReassignments(_adminClient);
+       hasOngoingPartitionReassignments = !ongoingPartitionReassignments.keySet().isEmpty();
     } catch (TimeoutException | InterruptedException | ExecutionException e) {
       // This may indicate transient (e.g. network) issues.
       throw new IllegalStateException("Failed to retrieve if there are already ongoing partition reassignments.", e);
     }
     // Note that in case there is an ongoing partition reassignment, we do not unpause metric sampling.
     if (hasOngoingPartitionReassignments) {
-      throw new OngoingExecutionException("There are ongoing inter-broker partition movements.");
+      throw new OngoingExecutionException("There are ongoing inter-broker partition movements: " + ongoingPartitionReassignments);
     } else {
       boolean hasOngoingIntraBrokerReplicaMovement;
       try {
