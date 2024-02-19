@@ -95,6 +95,7 @@ public class KafkaSampleStore extends AbstractKafkaSampleStore {
   public static final String BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG = "broker.metric.sample.store.topic";
   public static final String NUM_SAMPLE_LOADING_THREADS_CONFIG = "num.sample.loading.threads";
   public static final String SAMPLE_STORE_TOPIC_REPLICATION_FACTOR_CONFIG = "sample.store.topic.replication.factor";
+  public static final String SAMPLE_STORE_TOPIC_MIN_IN_SYNC_REPLICAS_CONFIG = "sample.store.topic.min.insync.replicas";
   public static final String PARTITION_SAMPLE_STORE_TOPIC_PARTITION_COUNT_CONFIG = "partition.sample.store.topic.partition.count";
   public static final String BROKER_SAMPLE_STORE_TOPIC_PARTITION_COUNT_CONFIG = "broker.sample.store.topic.partition.count";
   public static final String MIN_PARTITION_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS_CONFIG = "min.partition.sample.store.topic.retention.time.ms";
@@ -108,6 +109,11 @@ public class KafkaSampleStore extends AbstractKafkaSampleStore {
     _sampleStoreTopicReplicationFactor = metricSampleStoreTopicReplicationFactorString == null
                                          || metricSampleStoreTopicReplicationFactorString.isEmpty()
                                          ? null : Short.parseShort(metricSampleStoreTopicReplicationFactorString);
+    String metricSampleStoreMinInSyncReplicasString = (String) config.get(SAMPLE_STORE_TOPIC_MIN_IN_SYNC_REPLICAS_CONFIG);
+    _sampleStoreTopicMinInSyncReplicas = metricSampleStoreMinInSyncReplicasString == null
+            || metricSampleStoreMinInSyncReplicasString.isEmpty()
+            ? DEFAULT_SAMPLE_STORE_TOPIC_MIN_IN_SYNC_REPLICAS
+            : Short.parseShort(metricSampleStoreMinInSyncReplicasString);
     String partitionSampleStoreTopicPartitionCountString = (String) config.get(PARTITION_SAMPLE_STORE_TOPIC_PARTITION_COUNT_CONFIG);
     _partitionSampleStoreTopicPartitionCount = partitionSampleStoreTopicPartitionCountString == null
                                                || partitionSampleStoreTopicPartitionCountString.isEmpty()
@@ -149,6 +155,7 @@ public class KafkaSampleStore extends AbstractKafkaSampleStore {
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient((Map<String, Object>) config);
     try {
       short replicationFactor = sampleStoreTopicReplicationFactor(config, adminClient);
+      short minInSyncReplicas = sampleStoreTopicMinInsyncReplicas();
 
       // Retention
       long partitionSampleWindowMs = (Long) config.get(MonitorConfig.PARTITION_METRICS_WINDOW_MS_CONFIG);
@@ -164,9 +171,9 @@ public class KafkaSampleStore extends AbstractKafkaSampleStore {
 
       // New topics
       NewTopic partitionSampleStoreNewTopic = wrapTopic(_partitionMetricSampleStoreTopic, _partitionSampleStoreTopicPartitionCount,
-                                                        replicationFactor, partitionSampleRetentionMs);
+                                                        replicationFactor, minInSyncReplicas, partitionSampleRetentionMs);
       NewTopic brokerSampleStoreNewTopic = wrapTopic(_brokerMetricSampleStoreTopic, _brokerSampleStoreTopicPartitionCount,
-                                                     replicationFactor, brokerSampleRetentionMs);
+                                                     replicationFactor, minInSyncReplicas, brokerSampleRetentionMs);
 
       ensureTopicCreated(adminClient, partitionSampleStoreNewTopic);
       ensureTopicCreated(adminClient, brokerSampleStoreNewTopic);

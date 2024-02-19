@@ -231,18 +231,25 @@ public final class KafkaCruiseControlUtils {
    * @param topic The name of the topic.
    * @param partitionCount Desired partition count.
    * @param replicationFactor Desired replication factor.
+   * @param minInSyncReplicas Desired min insync replicas count.
    * @param retentionMs Desired retention in milliseconds.
    * @return A wrapper around the topic with the given desired properties.
    */
-  public static NewTopic wrapTopic(String topic, int partitionCount, short replicationFactor, long retentionMs) {
-    if (partitionCount <= 0 || replicationFactor <= 0 || retentionMs <= 0) {
-      throw new IllegalArgumentException(String.format("Partition count (%d), replication factor (%d), and retention ms (%d)"
-                                                       + " must be positive for the topic (%s).", partitionCount,
-                                                       replicationFactor, retentionMs, topic));
+  public static NewTopic wrapTopic(String topic, int partitionCount, short replicationFactor, short minInSyncReplicas, long retentionMs) {
+    if (partitionCount <= 0 || replicationFactor <= 0 || retentionMs <= 0 || minInSyncReplicas <= 0) {
+      throw new IllegalArgumentException(String.format("Partition count (%d), replication factor (%d), min insync replicas (%s),"
+                                                       + " and retention ms (%d) must be positive for the topic (%s).", partitionCount,
+                                                       replicationFactor, minInSyncReplicas, retentionMs, topic));
+    }
+    if (replicationFactor < minInSyncReplicas) {
+      throw new IllegalArgumentException(String.format("Replication factor (%d) should be greater than or equal to"
+                                                       + " min insync replicas (%s) for the topic (%s).",
+              replicationFactor, minInSyncReplicas, topic));
     }
 
     NewTopic newTopic = new NewTopic(topic, partitionCount, replicationFactor);
     Map<String, String> config = new HashMap<>();
+    config.put(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, Short.toString(minInSyncReplicas));
     config.put(TopicConfig.RETENTION_MS_CONFIG, Long.toString(retentionMs));
     config.put(TopicConfig.CLEANUP_POLICY_CONFIG, DEFAULT_CLEANUP_POLICY);
     newTopic.configs(config);

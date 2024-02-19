@@ -54,6 +54,8 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyTyp
  *   from (default: {@link #DEFAULT_MAINTENANCE_EVENT_TOPIC}).</li>
  *   <li>{@link #MAINTENANCE_EVENT_TOPIC_REPLICATION_FACTOR_CONFIG}: The config for the replication factor of the maintenance
  *   event topic (default: min({@link #DEFAULT_MAINTENANCE_EVENT_TOPIC_REPLICATION_FACTOR}, broker-count-in-the-cluster)).</li>
+ *   <li>{@link #MAINTENANCE_EVENT_TOPIC_MIN_IN_SYNC_REPLICAS_CONFIG}: The config for the min insync replicas count of the maintenance
+ *   event topic (default: {@link #DEFAULT_MAINTENANCE_EVENT_TOPIC_MIN_IN_SYNC_REPLICAS}).</li>
  *   <li>{@link #MAINTENANCE_EVENT_TOPIC_PARTITION_COUNT_CONFIG}: The config for the partition count of the maintenance
  *   event topic (default: {@link #DEFAULT_MAINTENANCE_EVENT_TOPIC_PARTITION_COUNT}).</li>
  *   <li>{@link #MAINTENANCE_EVENT_TOPIC_RETENTION_MS_CONFIG}: The config for the retention of the maintenance event topic
@@ -81,6 +83,8 @@ public class MaintenanceEventTopicReader implements MaintenanceEventReader {
   public static final String DEFAULT_MAINTENANCE_EVENT_TOPIC = "__MaintenanceEvent";
   public static final String MAINTENANCE_EVENT_TOPIC_REPLICATION_FACTOR_CONFIG = "maintenance.event.topic.replication.factor";
   public static final short DEFAULT_MAINTENANCE_EVENT_TOPIC_REPLICATION_FACTOR = 2;
+  public static final String MAINTENANCE_EVENT_TOPIC_MIN_IN_SYNC_REPLICAS_CONFIG = "maintenance.event.topic.min.insync.replicas";
+  public static final short DEFAULT_MAINTENANCE_EVENT_TOPIC_MIN_IN_SYNC_REPLICAS = 1;
   public static final String MAINTENANCE_EVENT_TOPIC_PARTITION_COUNT_CONFIG = "maintenance.event.topic.partition.count";
   public static final int DEFAULT_MAINTENANCE_EVENT_TOPIC_PARTITION_COUNT = 8;
   public static final String MAINTENANCE_EVENT_TOPIC_RETENTION_MS_CONFIG = "maintenance.event.topic.retention.ms";
@@ -294,6 +298,12 @@ public class MaintenanceEventTopicReader implements MaintenanceEventReader {
     return Short.parseShort(maintenanceEventTopicRF);
   }
 
+  protected static short maintenanceEventTopicMinInSyncReplicas(Map<String, ?> config) {
+    String maintenanceEventTopicMinIsr = (String) config.get(MAINTENANCE_EVENT_TOPIC_MIN_IN_SYNC_REPLICAS_CONFIG);
+    return maintenanceEventTopicMinIsr == null || maintenanceEventTopicMinIsr.isEmpty()
+            ? DEFAULT_MAINTENANCE_EVENT_TOPIC_MIN_IN_SYNC_REPLICAS : Short.parseShort(maintenanceEventTopicMinIsr);
+  }
+
   protected static long maintenanceEventTopicRetentionMs(Map<String, ?> config) {
     String maintenanceEventTopicRetentionMs = (String) config.get(MAINTENANCE_EVENT_TOPIC_RETENTION_MS_CONFIG);
     return maintenanceEventTopicRetentionMs == null || maintenanceEventTopicRetentionMs.isEmpty()
@@ -310,10 +320,11 @@ public class MaintenanceEventTopicReader implements MaintenanceEventReader {
   protected void ensureTopicCreated(Map<String, ?> config) {
     AdminClient adminClient = _kafkaCruiseControl.adminClient();
     short replicationFactor = maintenanceEventTopicReplicationFactor(config, adminClient);
+    short minInSyncReplicas = maintenanceEventTopicMinInSyncReplicas(config);
     long retentionMs = maintenanceEventTopicRetentionMs(config);
     int partitionCount = maintenanceEventTopicPartitionCount(config);
 
-    NewTopic maintenanceEventTopic = wrapTopic(_maintenanceEventTopic, partitionCount, replicationFactor, retentionMs);
+    NewTopic maintenanceEventTopic = wrapTopic(_maintenanceEventTopic, partitionCount, replicationFactor, minInSyncReplicas, retentionMs);
     maybeCreateOrUpdateTopic(adminClient, maintenanceEventTopic);
   }
 

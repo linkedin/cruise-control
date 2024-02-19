@@ -76,10 +76,11 @@ public class KafkaPartitionMetricSampleOnExecutionStore extends AbstractKafkaSam
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient((Map<String, Object>) config);
     try {
       short replicationFactor = sampleStoreTopicReplicationFactor(config, adminClient);
+      short minInSyncReplicas = sampleStoreTopicMinInsyncReplicas();
 
       // New topics
       NewTopic partitionSampleStoreNewTopic = wrapTopic(_partitionMetricSampleStoreTopic, topicPartitionCount,
-                                                        replicationFactor, topicRetentionTimeMs);
+                                                        replicationFactor, minInSyncReplicas, topicRetentionTimeMs);
       ensureTopicCreated(adminClient, partitionSampleStoreNewTopic);
     } finally {
       KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);

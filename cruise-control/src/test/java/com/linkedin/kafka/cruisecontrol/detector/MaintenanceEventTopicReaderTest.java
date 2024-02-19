@@ -39,6 +39,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.createAdm
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.MaintenanceEventTopicReader.DEFAULT_MAINTENANCE_PLAN_EXPIRATION_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.MaintenanceEventTopicReader.MAINTENANCE_EVENT_TOPIC_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.MaintenanceEventTopicReader.MAINTENANCE_EVENT_TOPIC_MIN_IN_SYNC_REPLICAS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.MaintenanceEventTopicReader.MAINTENANCE_EVENT_TOPIC_REPLICATION_FACTOR_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.MaintenanceEventTopicReader.MAINTENANCE_EVENT_TOPIC_PARTITION_COUNT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.MaintenanceEventTopicReader.MAINTENANCE_EVENT_TOPIC_RETENTION_MS_CONFIG;
@@ -52,6 +53,7 @@ import static org.junit.Assert.fail;
 public class MaintenanceEventTopicReaderTest extends CruiseControlIntegrationTestHarness {
   private static final String TEST_TOPIC = "__CloudMaintenanceEvent";
   private static final String TEST_TOPIC_REPLICATION_FACTOR = "1";
+  private static final String TEST_TOPIC_MIN_INSYNC_REPLICAS = "1";
   private static final String TEST_TOPIC_PARTITION_COUNT = "8";
   private static final String TEST_TOPIC_RETENTION_TIME_MS = Long.toString(TimeUnit.HOURS.toMillis(1));
   private static final String RETENTION_MS_CONFIG = "retention.ms";
@@ -134,6 +136,7 @@ public class MaintenanceEventTopicReaderTest extends CruiseControlIntegrationTes
   protected Map<String, Object> withConfigs() {
     return Map.of(MAINTENANCE_EVENT_TOPIC_CONFIG, TEST_TOPIC,
                   MAINTENANCE_EVENT_TOPIC_REPLICATION_FACTOR_CONFIG, TEST_TOPIC_REPLICATION_FACTOR,
+            MAINTENANCE_EVENT_TOPIC_MIN_IN_SYNC_REPLICAS_CONFIG, TEST_TOPIC_MIN_INSYNC_REPLICAS,
                   MAINTENANCE_EVENT_TOPIC_PARTITION_COUNT_CONFIG, TEST_TOPIC_PARTITION_COUNT,
                   MAINTENANCE_EVENT_TOPIC_RETENTION_MS_CONFIG, TEST_TOPIC_RETENTION_TIME_MS,
                   AnomalyDetectorConfig.MAINTENANCE_EVENT_READER_CLASS_CONFIG, MaintenanceEventTopicReader.class.getName());
