@@ -56,7 +56,8 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  */
 public class DemoteBrokerRunnable extends GoalBasedOperationRunnable {
   protected final Set<Integer> _brokerIds;
-  protected final Integer _concurrentLeaderMovements;
+  protected final Integer _clusterLeaderMovementConcurrency;
+  protected final Integer _brokerLeaderMovementConcurrency;
   protected final Long _executionProgressCheckIntervalMs;
   protected final boolean _skipUrpDemotion;
   protected final boolean _excludeFollowerDemotion;
@@ -79,7 +80,8 @@ public class DemoteBrokerRunnable extends GoalBasedOperationRunnable {
           allowCapacityEstimation, excludeRecentlyDemotedBrokers, false, anomalyId, reasonSupplier,
           SELF_HEALING_IS_TRIGGERED_BY_USER_REQUEST, SELF_HEALING_FAST_MODE);
     _brokerIds = demotedBrokerIds;
-    _concurrentLeaderMovements = SELF_HEALING_CONCURRENT_MOVEMENTS;
+    _clusterLeaderMovementConcurrency = SELF_HEALING_CONCURRENT_MOVEMENTS;
+    _brokerLeaderMovementConcurrency = SELF_HEALING_CONCURRENT_MOVEMENTS;
     _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
     _skipUrpDemotion = SELF_HEALING_SKIP_URP_DEMOTION;
     _excludeFollowerDemotion = SELF_HEALING_EXCLUDE_FOLLOWER_DEMOTION;
@@ -98,7 +100,8 @@ public class DemoteBrokerRunnable extends GoalBasedOperationRunnable {
           parameters.allowCapacityEstimation(), parameters.excludeRecentlyDemotedBrokers(), false,
           uuid, parameters::reason, true, false);
     _brokerIds = parameters.brokerIds();
-    _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
+    _clusterLeaderMovementConcurrency = parameters.clusterLeaderMovementConcurrency();
+    _brokerLeaderMovementConcurrency = parameters.brokerLeaderMovementConcurrency();
     _executionProgressCheckIntervalMs = parameters.executionProgressCheckIntervalMs();
     _skipUrpDemotion = parameters.skipUrpDemotion();
     _excludeFollowerDemotion = parameters.excludeFollowerDemotion();
@@ -177,7 +180,8 @@ public class DemoteBrokerRunnable extends GoalBasedOperationRunnable {
 
     OptimizerResult result = _kafkaCruiseControl.optimizations(clusterModel, _goalsByPriority, _operationProgress, null, optimizationOptions);
     if (!_dryRun) {
-      _kafkaCruiseControl.executeDemotion(result.goalProposals(), _brokerIds, _concurrentLeaderMovements, clusterModel.brokers().size(),
+      _kafkaCruiseControl.executeDemotion(result.goalProposals(), _brokerIds, _clusterLeaderMovementConcurrency,
+                                          _brokerLeaderMovementConcurrency, clusterModel.brokers().size(),
                                           _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle,
                                           _isTriggeredByUserRequest, _uuid);
     }

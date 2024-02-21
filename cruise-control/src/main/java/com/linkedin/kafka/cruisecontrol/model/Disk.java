@@ -111,6 +111,13 @@ public class Disk implements Comparable<Disk> {
   }
 
   /**
+   * Set disk capacity to 0 to mark it for removal.
+   */
+  public void markDiskForRemoval() {
+    _capacity = 0;
+  }
+
+  /**
    * Add replica to the disk.
    *
    * @param replica Replica to be added to the current disk.

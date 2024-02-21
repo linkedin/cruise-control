@@ -84,6 +84,7 @@ public class KafkaCruiseControlServletApp extends KafkaCruiseControlApp {
     private HttpConnectionFactory configureConnectionFactoryForHsts() {
         Long stsMaxAge = _config.getLong(WebServerConfig.WEBSERVER_SSL_STS_MAX_AGE);
         Boolean stsIncludeSubDomains = _config.getBoolean(WebServerConfig.WEBSERVER_SSL_STS_INCLUDE_SUBDOMAINS);
+        Integer maxHeaderSize = _config.getInt(WebServerConfig.WEBSERVER_HTTP_MAX_HEADER_SIZE);
 
         SecureRequestCustomizer src = new SecureRequestCustomizer();
         src.setStsMaxAge(stsMaxAge);
@@ -91,7 +92,7 @@ public class KafkaCruiseControlServletApp extends KafkaCruiseControlApp {
 
         HttpConfiguration httpsConfig = new HttpConfiguration();
         httpsConfig.addCustomizer(src);
-
+        httpsConfig.setRequestHeaderSize(maxHeaderSize);
         return new HttpConnectionFactory(httpsConfig);
     }
 

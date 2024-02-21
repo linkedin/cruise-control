@@ -78,6 +78,7 @@ The GET requests in Kafka Cruise Control REST API are for read only operations, 
 * [Query partition and replica state](#query-partition-and-replica-state)
 * [Get optimization proposals](#get-optimization-proposals)
 * [Query the user request result](#query-the-user-request-result)
+* [Query user permissions](#query-user-permissions)
 
 ### Query the state of Cruise Control
 
@@ -286,6 +287,23 @@ Supported parameters are:
 User can use `user_task_ids`/`client_ids`/`endpoints`/`types` make Cruise Control only return requests they are interested. By default all the requests get returned.
 
 If `fetch_completed_task` is set to `true`, the original response of each request will be returned. In the case where a task completed with errors the response will be `CompletedWithError`.
+
+### Query user permissions
+
+The following get request will return the currently authenticated user's permissions as a list of the assigned user roles. The role list can include any of the following: `"ADMIN"`, `"USER"` and `"VIEWER"`. 
+
+    GET /kafkacruisecontrol/permissions
+
+Supported parameters are:
+
+| PARAMETER           | TYPE    | DESCRIPTION                                      | DEFAULT              | OPTIONAL |
+|---------------------|---------|--------------------------------------------------|----------------------|----------|
+| doAs                | string  | propagated user by the trusted proxy service     | null                 | yes      |
+| json                | boolean | return in JSON format or not                     | false                | yes      | 
+| get_response_schema | boolean | return JSON schema in the response header or not | false                | yes      |
+| reason              | string  | reason for the request                           | "No reason provided" | yes      |
+
+In case there is no security enabled in the Kafka Cluster, the request will return with `400` HTTP error code and the following message: `"Unable to retrieve privilege information for an unsecure connection". 
 
 ## POST Requests
 The post requests of Kafka Cruise Control REST API are operations that will have impact on the Kafka cluster. The post operations include:
@@ -548,27 +566,28 @@ The following POST request can change topic's replication factor.
 
 Supported parameters are:
 
-| PARAMETER                                 | TYPE      | DESCRIPTION                                                                                                                           | DEFAULT               | OPTIONAL  |
-|-------------------------------------------|-----------|---------------------------------------------------------------------------------------------------------------------------------------|-----------------------|-----------|
-| dryrun                                    | boolean   | whether dry-run the request or not                                                                                                    | true                  | yes       | 
-| topic                                     | regex     | regular expression to specify subject topics                                                                                          | N/A                   | **no**    | 
-| replication_factor                        | Integer   | target replication factor                                                                                                             | N/A                   | **no**    | 
-| data_from                                 | string    | whether generate proposal from available valid partitions or valid windows                                                            | `VALID_WINDOW`        | yes       | 
-| goals                                     | list      | list of goals used to generate proposal                                                                                               | default goals         | yes       | 
-| allow_capacity_estimation                 | boolean   | whether to allow broker capacity to be estimated                                                                                      | true                  | yes       | 
-| concurrent_partition_movements_per_broker | integer   | upper bound of ongoing replica movements going into/out of each broker                                                                | null                  | yes       | 
-| max_partition_movements_in_cluster        | integer   | upper bound of maximum replica movements going into/out of brokers across cluster                                                     | `default_config`                  | yes       | 
-| concurrent_leader_movements               | integer   | upper bound of ongoing leadership movements                                                                                           | null                  | yes       | 
-| skip_hard_goal_check                      | boolean   | Whether allow hard goals be skipped in proposal generation                                                                            | false                 | yes       | 
-| exclude_recently_demoted_brokers          | Boolean   | Whether to allow leader replicas to be moved to recently demoted brokers                                                              | false                 | yes       | 
-| exclude_recently_removed_brokers          | Boolean   | Whether allow replicas to be moved to recently removed broker                                                                         | false                 | yes       | 
-| replica_movement_strategies               | string    | [replica movement strategy](https://github.com/linkedin/cruise-control/wiki/Pluggable-Components#replica-movement-strategy) to use    | null                  | yes       | 
-| replication_throttle                      | long      | upper bound on the bandwidth used to move replicas (in bytes per second)                                                              | null                  | yes       | 
-| json                                      | boolean   | return in JSON format or not                                                                                                          | false                 | yes       | 
-| verbose                                   | boolean   | return detailed state information                                                                                                     | false                 | yes       | 
-| reason                                    | string    | reason for the request                                                                                                                | "No reason provided"  | yes       | 
-| doAs                                      | string    | propagated user by the trusted proxy service                                                                                          | null                  | yes       | 
-| fast_mode                                 | boolean   | true to compute proposals in fast mode, false otherwise                                                                               | true                  | yes       |
+| PARAMETER                                  | TYPE     | DESCRIPTION                                                                                                                          | DEFAULT                | OPTIONAL  |
+|--------------------------------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------|------------------------|-----------|
+| dryrun                                     | boolean  | whether dry-run the request or not                                                                                                   | true                   | yes       | 
+| topic                                      | regex    | regular expression to specify subject topics                                                                                         | N/A                    | **no**    | 
+| replication_factor                         | Integer  | target replication factor                                                                                                            | N/A                    | **no**    | 
+| data_from                                  | string   | whether generate proposal from available valid partitions or valid windows                                                           | `VALID_WINDOW`         | yes       | 
+| goals                                      | list     | list of goals used to generate proposal                                                                                              | default goals          | yes       | 
+| allow_capacity_estimation                  | boolean  | whether to allow broker capacity to be estimated                                                                                     | true                   | yes       | 
+| concurrent_partition_movements_per_broker  | integer  | upper bound of ongoing replica movements going into/out of each broker                                                               | null                   | yes       | 
+| max_partition_movements_in_cluster         | integer  | upper bound of maximum replica movements going into/out of brokers across cluster                                                    | `default_config`       | yes       | 
+| concurrent_leader_movements                | integer  | upper bound of ongoing leadership movements                                                                                          | null                   | yes       | 
+| skip_hard_goal_check                       | boolean  | Whether allow hard goals be skipped in proposal generation                                                                           | false                  | yes       | 
+| skip_rack_awareness_check                  | boolean  | Whether to skip the rack awareness sanity check or not                                                                               | false                  | yes       |
+| exclude_recently_demoted_brokers           | Boolean  | Whether to allow leader replicas to be moved to recently demoted brokers                                                             | false                  | yes       | 
+| exclude_recently_removed_brokers           | Boolean  | Whether allow replicas to be moved to recently removed broker                                                                        | false                  | yes       | 
+| replica_movement_strategies                | string   | [replica movement strategy](https://github.com/linkedin/cruise-control/wiki/Pluggable-Components#replica-movement-strategy) to use   | null                   | yes       | 
+| replication_throttle                       | long     | upper bound on the bandwidth used to move replicas (in bytes per second)                                                             | null                   | yes       | 
+| json                                       | boolean  | return in JSON format or not                                                                                                         | false                  | yes       | 
+| verbose                                    | boolean  | return detailed state information                                                                                                    | false                  | yes       | 
+| reason                                     | string   | reason for the request                                                                                                               | "No reason provided"   | yes       | 
+| doAs                                       | string   | propagated user by the trusted proxy service                                                                                         | null                   | yes       | 
+| fast_mode                                  | boolean  | true to compute proposals in fast mode, false otherwise                                                                              | true                   | yes       |
 
 Changing topic's replication factor will not move any existing replicas. `goals` are used to determine which replica to be deleted(to decrease topic's replication factor) and which broker to assign new replica (to increase topic's replication factor).
 

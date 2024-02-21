@@ -30,6 +30,8 @@ paths:
     $ref: 'endpoints/pauseSampling.yaml#/PauseSamplingEndpoint'
   /proposals:
     $ref: 'endpoints/proposals.yaml#/ProposalsEndpoint'
+  /permissions:
+    $ref: 'endpoints/permissions.yaml#/PermissionsEndpoint'
   /rebalance:
     $ref: 'endpoints/rebalance.yaml#/RebalanceEndpoint'
   /remove_broker:
@@ -52,3 +54,5 @@ paths:
     $ref: 'endpoints/train.yaml#/TrainEndpoint'
   /user_tasks:
     $ref: 'endpoints/userTasks.yaml#/UserTasksEndpoint'
+  /remove_disks:
+    $ref: 'endpoints/removeDisks.yaml#/RemoveDisksEndpoint'

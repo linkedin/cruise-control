@@ -129,9 +129,9 @@ public class AnomalyDetectorManager {
     _anomalyInProgress = null;
     _numCheckedWithDelay = new AtomicLong();
     _shutdownLock = new Object();
-    // Register gauge sensors.
+    // Register sensors.
     _selfHealingFixGenerationTimer = new HashMap<>();
-    registerGaugeSensors(dropwizardMetricRegistry);
+    registerSensors(dropwizardMetricRegistry);
     _anomalyDetectorState = new AnomalyDetectorState(time, _anomalyNotifier, numCachedRecentAnomalyStates, dropwizardMetricRegistry);
   }
 
@@ -176,10 +176,10 @@ public class AnomalyDetectorManager {
   }
 
   /**
-   * Register gauge sensors.
+   * Register sensors.
    * @param dropwizardMetricRegistry The metric registry that holds all the metrics for monitoring Cruise Control.
    */
-  private void registerGaugeSensors(MetricRegistry dropwizardMetricRegistry) {
+  private void registerSensors(MetricRegistry dropwizardMetricRegistry) {
     dropwizardMetricRegistry.register(MetricRegistry.name(ANOMALY_DETECTOR_SENSOR, "balancedness-score"),
                                       (Gauge<Double>) _goalViolationDetector::balancednessScore);
 
@@ -330,10 +330,11 @@ public class AnomalyDetectorManager {
    * Update anomaly status once associated self-healing operation has finished.
    *
    * @param anomalyId Unique id of anomaly which triggered self-healing operation.
+   * @param completeWithError Whether the task execution finished with error or not.
    */
-  public void markSelfHealingFinished(String anomalyId) {
+  public void markSelfHealingFinished(String anomalyId, boolean completeWithError) {
     LOG.debug("Self healing with id {} has finished.", anomalyId);
-    _anomalyDetectorState.markSelfHealingFinished(anomalyId);
+    _anomalyDetectorState.markSelfHealingFinished(anomalyId, completeWithError);
   }
 
   /**

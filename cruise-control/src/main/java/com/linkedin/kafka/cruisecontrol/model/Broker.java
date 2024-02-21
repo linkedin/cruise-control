@@ -429,9 +429,14 @@ public class Broker implements Serializable, Comparable<Broker> {
     }
   }
 
-  private void updateSortedReplicas(Replica replica) {
+  private void removeSortedReplicas(Replica replica) {
     _sortedReplicas.values().forEach(sr -> {
       sr.remove(replica);
+    });
+  }
+
+  private void addSortedReplicas(Replica replica) {
+    _sortedReplicas.values().forEach(sr -> {
       sr.add(replica);
     });
   }
@@ -447,12 +452,14 @@ public class Broker implements Serializable, Comparable<Broker> {
   AggregatedMetricValues makeFollower(TopicPartition tp) {
     Replica replica = replica(tp);
     _leadershipLoadForNwResources.subtractLoad(replica.load());
+    // Remove once before load change for replica
+    removeSortedReplicas(replica);
 
     AggregatedMetricValues leadershipLoadDelta = replica.makeFollower();
     // Remove leadership load from load.
     _load.subtractLoad(leadershipLoadDelta);
     _leaderReplicas.remove(replica);
-    updateSortedReplicas(replica);
+    addSortedReplicas(replica);
     return leadershipLoadDelta;
   }
 
@@ -466,12 +473,14 @@ public class Broker implements Serializable, Comparable<Broker> {
    */
   void makeLeader(TopicPartition tp, AggregatedMetricValues leadershipLoadDelta) {
     Replica replica = replica(tp);
+    // Remove once before load change for replica
+    removeSortedReplicas(replica);
     replica.makeLeader(leadershipLoadDelta);
     _leadershipLoadForNwResources.addLoad(replica.load());
     // Add leadership load to load.
     _load.addLoad(leadershipLoadDelta);
     _leaderReplicas.add(replica);
-    updateSortedReplicas(replica);
+    addSortedReplicas(replica);
   }
 
   /**

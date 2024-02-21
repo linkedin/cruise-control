@@ -34,8 +34,10 @@ public enum CruiseControlEndPoint implements EndPoint {
   ADMIN(CRUISE_CONTROL_ADMIN),
   REVIEW(CRUISE_CONTROL_ADMIN),
   TOPIC_CONFIGURATION(KAFKA_ADMIN),
-  RIGHTSIZE(KAFKA_ADMIN);
-
+  RIGHTSIZE(KAFKA_ADMIN),
+  PERMISSIONS(CRUISE_CONTROL_MONITOR),
+  REMOVE_DISKS(KAFKA_ADMIN);
+  
   private static final List<CruiseControlEndPoint> CACHED_VALUES = List.of(values());
   private static final List<CruiseControlEndPoint> GET_ENDPOINTS = Arrays.asList(BOOTSTRAP,
                                                                                  TRAIN,
@@ -45,7 +47,8 @@ public enum CruiseControlEndPoint implements EndPoint {
                                                                                  STATE,
                                                                                  KAFKA_CLUSTER_STATE,
                                                                                  USER_TASKS,
-                                                                                 REVIEW_BOARD);
+                                                                                 REVIEW_BOARD,
+                                                                                 PERMISSIONS);
   private static final List<CruiseControlEndPoint> POST_ENDPOINTS = Arrays.asList(ADD_BROKER,
                                                                                   REMOVE_BROKER,
                                                                                   FIX_OFFLINE_REPLICAS,
@@ -57,7 +60,8 @@ public enum CruiseControlEndPoint implements EndPoint {
                                                                                   ADMIN,
                                                                                   REVIEW,
                                                                                   TOPIC_CONFIGURATION,
-                                                                                  RIGHTSIZE);
+                                                                                  RIGHTSIZE,
+                                                                                  REMOVE_DISKS);
 
   private final EndpointType _endpointType;
 

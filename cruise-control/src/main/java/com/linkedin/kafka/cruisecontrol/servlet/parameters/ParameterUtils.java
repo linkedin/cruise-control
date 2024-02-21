@@ -99,6 +99,7 @@ public final class ParameterUtils {
   public static final String MAX_PARTITION_MOVEMENTS_IN_CLUSTER_PARAM = "max_partition_movements_in_cluster";
   public static final String CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM = "concurrent_intra_broker_partition_movements";
   public static final String CONCURRENT_LEADER_MOVEMENTS_PARAM = "concurrent_leader_movements";
+  public static final String BROKER_CONCURRENT_LEADER_MOVEMENTS_PARAM = "broker_concurrent_leader_movements";
   public static final String DEFAULT_PARTITION_LOAD_RESOURCE = "disk";
   public static final String SUBSTATES_PARAM = "substates";
   public static final String MIN_VALID_PARTITION_RATIO_PARAM = "min_valid_partition_ratio";
@@ -160,6 +161,8 @@ public final class ParameterUtils {
   public static final String REVIEW_PARAMETER_OBJECT_CONFIG = "review.parameter.object";
   public static final String TOPIC_CONFIGURATION_PARAMETER_OBJECT_CONFIG = "topic.configuration.parameter.object";
   public static final String RIGHTSIZE_PARAMETER_OBJECT_CONFIG = "rightsize.parameter.object";
+  public static final String PERMISSIONS_PARAMETER_OBJECT_CONFIG = "permissions.parameter.object";
+  public static final String REMOVE_DISKS_PARAMETER_OBJECT_CONFIG = "remove.disks.parameter.object";
 
   private ParameterUtils() {
   }
@@ -859,27 +862,31 @@ public final class ParameterUtils {
   }
 
   /**
-   * Get the execution concurrency requirement dynamically set from the Http request.
-   * Based on value of isInterBrokerPartitionMovement and isIntraBrokerPartitionMovement, different type of concurrency
-   * requirement is set. The mapping is as follows.
-   * <ul>
-   *   <li>{false, false} -> leader movement concurrency requirement</li>
-   *   <li>{true , false} -> per-broker inter-broker partition movement concurrency requirement</li>
-   *   <li>{false, true}  -> intra-broker partition movement concurrency requirement</li>
-   *   <li>{true , true}  -> not defined</li>
-   * </ul>
-   *
+   * Get the execution concurrency requirement dynamically set from the Http request for different concurrency types.
    * @param requestContext                        The Http request.
-   * @param isInterBrokerPartitionMovement {@code true} if inter-broker partition movement per broker.
-   * @param isIntraBrokerPartitionMovement {@code true} if intra-broker partition movement.
+   * @param concurrencyType Concurrency type.
    * @return The execution concurrency requirement dynamically set from the Http request.
    */
   static Integer concurrentMovements(CruiseControlRequestContext requestContext,
-                                     boolean isInterBrokerPartitionMovement,
-                                     boolean isIntraBrokerPartitionMovement) {
-    String parameter = isInterBrokerPartitionMovement
-                       ? CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM
-                       : isIntraBrokerPartitionMovement ? CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM : CONCURRENT_LEADER_MOVEMENTS_PARAM;
+                                     ConcurrencyType concurrencyType) {
+    String parameter = "";
+    switch (concurrencyType) {
+      case INTER_BROKER_REPLICA:
+        parameter = CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM;
+        break;
+      case INTRA_BROKER_REPLICA:
+        parameter = CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM;
+        break;
+      case LEADERSHIP_BROKER:
+        parameter = BROKER_CONCURRENT_LEADER_MOVEMENTS_PARAM;
+        break;
+      case LEADERSHIP_CLUSTER:
+        parameter = CONCURRENT_LEADER_MOVEMENTS_PARAM;
+        break;
+      default:
+        throw new IllegalArgumentException("Unsupported concurrency type " + concurrencyType + " is provided.");
+    }
+
     String parameterString = caseSensitiveParameterName(requestContext.getParameterMap(), parameter);
     if (parameterString == null) {
       return null;

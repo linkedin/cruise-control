@@ -42,6 +42,8 @@ public interface CruiseControlRequestContext {
 
     String getRemoteAddr();
 
+    String getUserPrincipal();
+
     Map<String, String[]> getParameterMap();
 
     String getRequestUri();

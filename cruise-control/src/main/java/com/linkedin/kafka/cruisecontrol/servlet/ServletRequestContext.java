@@ -17,6 +17,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.security.Principal;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
@@ -156,6 +157,14 @@ public class ServletRequestContext implements CruiseControlRequestContext {
         Map<String, Object> overrides = new HashMap<>();
         overrides.put(KAFKA_CRUISE_CONTROL_HTTP_SERVLET_REQUEST_OBJECT_CONFIG, _request);
         return overrides;
+    }
+
+    @Override
+    public String getUserPrincipal() {
+        Principal userPrincipal = _request.getUserPrincipal();
+        return userPrincipal == null
+                ? "null"
+                : userPrincipal.getName();
     }
 
     public HttpServletRequest getRequest() {

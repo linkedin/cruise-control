@@ -38,6 +38,7 @@ import static com.linkedin.kafka.cruisecontrol.common.TestConstants.LOGDIR1;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC2;
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC3;
 
 
 public class PreferredLeaderElectionGoalTest {
@@ -52,6 +53,10 @@ public class PreferredLeaderElectionGoalTest {
   private static final TopicPartition T2P0 = new TopicPartition(TOPIC2, 0);
   private static final TopicPartition T2P1 = new TopicPartition(TOPIC2, 1);
   private static final TopicPartition T2P2 = new TopicPartition(TOPIC2, 2);
+
+  private static final TopicPartition T3P0 = new TopicPartition(TOPIC3, 0);
+  private static final TopicPartition T3P1 = new TopicPartition(TOPIC3, 1);
+  private static final TopicPartition T3P2 = new TopicPartition(TOPIC3, 2);
 
   private static final int NUM_RACKS = 4;
 
@@ -371,6 +376,20 @@ public class PreferredLeaderElectionGoalTest {
     createReplicaAndSetLoad(clusterModel, "r3", 4, logdir(populateDiskInfo, 2, 4), T2P0, 2, true);
     createReplicaAndSetLoad(clusterModel, "r2", 3, logdir(populateDiskInfo, 2, 3), T2P1, 2, true);
     createReplicaAndSetLoad(clusterModel, "r3", 4, logdir(populateDiskInfo, 2, 4), T2P2, 2, true);
+
+    // The following topic exists in cluster model and not in the cluster
+    // This is to simulate a case where a topic is deleted from the cluster during an ongoing PLE
+    createReplicaAndSetLoad(clusterModel, "r2", 3, logdir(populateDiskInfo, 0, 4), T3P0, 0, true);
+    createReplicaAndSetLoad(clusterModel, "r3", 4, logdir(populateDiskInfo, 0, 3), T3P1, 0, true);
+    createReplicaAndSetLoad(clusterModel, "r3", 4, logdir(populateDiskInfo, 0, 4), T3P2, 0, true);
+
+    createReplicaAndSetLoad(clusterModel, "r0", 0, logdir(populateDiskInfo, 1, 4), T3P0, 1, false);
+    createReplicaAndSetLoad(clusterModel, "r1", 2, logdir(populateDiskInfo, 1, 3), T3P1, 1, false);
+    createReplicaAndSetLoad(clusterModel, "r2", 3, logdir(populateDiskInfo, 1, 4), T3P2, 1, false);
+
+    createReplicaAndSetLoad(clusterModel, "r3", 4, logdir(populateDiskInfo, 2, 4), T3P0, 2, false);
+    createReplicaAndSetLoad(clusterModel, "r2", 3, logdir(populateDiskInfo, 2, 3), T3P1, 2, false);
+    createReplicaAndSetLoad(clusterModel, "r1", 2, logdir(populateDiskInfo, 2, 4), T3P2, 2, false);
 
     Cluster cluster = null;
     if (!skipClusterInfoGeneration) {

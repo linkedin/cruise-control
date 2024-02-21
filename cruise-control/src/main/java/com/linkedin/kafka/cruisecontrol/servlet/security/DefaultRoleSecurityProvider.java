@@ -46,7 +46,8 @@ public abstract class DefaultRoleSecurityProvider implements SecurityProvider {
     CruiseControlEndPoint.getEndpoints().forEach(ep -> {
       if (ep == CruiseControlEndPoint.KAFKA_CLUSTER_STATE
           || ep == CruiseControlEndPoint.USER_TASKS
-          || ep == CruiseControlEndPoint.REVIEW_BOARD) {
+          || ep == CruiseControlEndPoint.REVIEW_BOARD
+          || ep == CruiseControlEndPoint.PERMISSIONS) {
         constraintMappings.add(mapping(ep, VIEWER, USER, ADMIN));
       } else if (ep == CruiseControlEndPoint.BOOTSTRAP || ep == CruiseControlEndPoint.TRAIN) {
         constraintMappings.add(mapping(ep, ADMIN));

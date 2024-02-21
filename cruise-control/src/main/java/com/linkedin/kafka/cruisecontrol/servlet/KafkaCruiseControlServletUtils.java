@@ -92,6 +92,9 @@ public final class KafkaCruiseControlServletUtils {
     RequestParameterWrapper pauseSampling = new RequestParameterWrapper(PAUSE_SAMPLING_PARAMETERS_CLASS_CONFIG,
                                                                         PAUSE_RESUME_PARAMETER_OBJECT_CONFIG,
                                                                         PAUSE_SAMPLING_REQUEST_CLASS_CONFIG);
+    RequestParameterWrapper permissions = new RequestParameterWrapper(PERMISSIONS_PARAMETERS_CLASS_CONFIG,
+                                                                       PERMISSIONS_PARAMETER_OBJECT_CONFIG,
+                                                                        PERMISSIONS_REQUEST_CLASS_CONFIG);
     RequestParameterWrapper resumeSampling = new RequestParameterWrapper(RESUME_SAMPLING_PARAMETERS_CLASS_CONFIG,
                                                                          PAUSE_RESUME_PARAMETER_OBJECT_CONFIG,
                                                                          RESUME_SAMPLING_REQUEST_CLASS_CONFIG);
@@ -116,6 +119,9 @@ public final class KafkaCruiseControlServletUtils {
     RequestParameterWrapper rightsize = new RequestParameterWrapper(RIGHTSIZE_PARAMETERS_CLASS_CONFIG,
                                                                     RIGHTSIZE_PARAMETER_OBJECT_CONFIG,
                                                                     RIGHTSIZE_REQUEST_CLASS_CONFIG);
+    RequestParameterWrapper removeDisks = new RequestParameterWrapper(REMOVE_DISKS_PARAMETERS_CLASS_CONFIG,
+                                                                      REMOVE_DISKS_PARAMETER_OBJECT_CONFIG,
+                                                                      REMOVE_DISKS_REQUEST_CLASS_CONFIG);
 
     requestParameterConfigs.put(BOOTSTRAP, bootstrap);
     requestParameterConfigs.put(TRAIN, train);
@@ -138,6 +144,8 @@ public final class KafkaCruiseControlServletUtils {
     requestParameterConfigs.put(REVIEW_BOARD, reviewBoard);
     requestParameterConfigs.put(TOPIC_CONFIGURATION, topicConfiguration);
     requestParameterConfigs.put(RIGHTSIZE, rightsize);
+    requestParameterConfigs.put(PERMISSIONS, permissions);
+    requestParameterConfigs.put(REMOVE_DISKS, removeDisks);
 
     REQUEST_PARAMETER_CONFIGS = Collections.unmodifiableMap(requestParameterConfigs);
   }
