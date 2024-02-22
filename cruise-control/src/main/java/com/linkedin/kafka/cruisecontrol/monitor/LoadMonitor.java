@@ -502,6 +502,7 @@ public class LoadMonitor {
     MetricSampleAggregationResult<String, PartitionEntity> partitionMetricSampleAggregationResult =
         _partitionMetricSampleAggregator.aggregate(cluster, from, to, requirements, operationProgress);
     Map<PartitionEntity, ValuesAndExtrapolations> partitionValuesAndExtrapolations = partitionMetricSampleAggregationResult.valuesAndExtrapolations();
+    LOG.info("Fetched {} partition values and extrapolations from aggregated metrics", partitionValuesAndExtrapolations.size());
     GeneratingClusterModel step = new GeneratingClusterModel(partitionValuesAndExtrapolations.size());
     operationProgress.addStep(step);
 
