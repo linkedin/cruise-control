@@ -192,6 +192,7 @@ public class Executor {
     _metadataClient = metadataClient != null ? metadataClient
                                              : new MetadataClient(config,
                                                                   new Metadata(ExecutionUtils.METADATA_REFRESH_BACKOFF,
+                                                                               ExecutionUtils.METADATA_REFRESH_BACKOFF_MAX,
                                                                                ExecutionUtils.METADATA_EXPIRY_MS,
                                                                                new LogContext(),
                                                                                new ClusterResourceListeners()),

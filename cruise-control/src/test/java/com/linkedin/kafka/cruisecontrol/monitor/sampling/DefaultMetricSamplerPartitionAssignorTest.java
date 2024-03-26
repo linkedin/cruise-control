@@ -27,6 +27,7 @@ import java.util.Random;
 import java.util.Set;
 
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.METADATA_REFRESH_BACKOFF;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.METADATA_REFRESH_BACKOFF_MAX;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.METADATA_EXPIRY_MS;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.NODE_0;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.nodes;
@@ -62,6 +63,7 @@ public class DefaultMetricSamplerPartitionAssignorTest {
     }
     Cluster cluster = new Cluster("cluster", Arrays.asList(nodes()), partitions, Collections.emptySet(), Collections.emptySet());
     Metadata metadata = new Metadata(METADATA_REFRESH_BACKOFF,
+                                     METADATA_REFRESH_BACKOFF_MAX,
                                      METADATA_EXPIRY_MS,
                                      new LogContext(),
                                      new ClusterResourceListeners());
