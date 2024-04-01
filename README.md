@@ -47,6 +47,7 @@ Cruise Control for Apache Kafka
     * Adjust replication factor
 
 ### Environment Requirements ###
+* The `migrate_to_kafka_3_5` branch of Cruise Control is compatible with Apache Kafka `3.5` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `3.5.*`)
 * The `migrate_to_kafka_2_5` branch of Cruise Control is compatible with Apache Kafka `2.5` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.*`),
   `2.6` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.11+`), `2.7` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.36+`),
   `2.8` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.66+`), `3.0` (i.e. [Releases](https://github.com/linkedin/cruise-control/releases) with `2.5.85+`),
