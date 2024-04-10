@@ -1,0 +1,23 @@
+name: CI build
+on:
+  push:
+  
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: 11
+
+    - name: Setup Gradle to generate and submit dependency graphs
+      uses: gradle/actions/setup-gradle@v3
+      with:
+        dependency-graph: generate-and-submit
+    - name: Run the usual CI build (dependency-graph will be generated and submitted post-job)
+      run: ./gradlew build
