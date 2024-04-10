@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+      with:
+        # enable full git history for gradle
+        fetch-depth: 0
     - uses: actions/setup-java@v4
       with:
         distribution: temurin
