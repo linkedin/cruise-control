@@ -15,19 +15,7 @@ else
   CYGWIN=0
 fi
 
-copyJars() {
-  if [ -z $1 ]; then
-    return 0
-  fi
-  files=$1
-  jars=(${files//,/ })
-  for usrJar in ${jars[@]};
-  do
-    cp $usrJar "$base_dir"/cruise-control/build/dependant-libs/
-  done
-}
-
-base_dir=$(dirname $0)
+base_dir=/usr/odp/current/cruise-control
 
 if [ -z "$SCALA_VERSION" ]; then
   SCALA_VERSION=2.13.6
@@ -39,7 +27,7 @@ fi
 
 # run ./gradlew copyDependantLibs to get all dependant jars in a local dir
 shopt -s nullglob
-for dir in "$base_dir"/cruise-control/build/dependant-libs;
+for dir in "$base_dir"/dependant-libs;
 do
   if [ -z "$CLASSPATH" ] ; then
     CLASSPATH="$dir/*"
@@ -49,16 +37,11 @@ do
 done
 
 if [ -z "$CLASSPATH" ]; then
-  CLASSPATH="$base_dir/cruise-control/build/libs/*"
+  CLASSPATH="$base_dir/libs/*"
 else
-  CLASSPATH="$CLASSPATH:$base_dir/cruise-control/build/libs/*"
+  CLASSPATH="$CLASSPATH:$base_dir/libs/*"
 fi
 
-if [ -z "$CLASSPATH" ]; then
-  CLASSPATH="$base_dir/cruise-control-metrics-reporter/build/libs/*"
-else
-  CLASSPATH="$CLASSPATH:$base_dir/cruise-control-metrics-reporter/build/libs/*"
-fi
 shopt -u nullglob
 
 # JMX settings
@@ -73,13 +56,13 @@ fi
 
 # Log directory to use
 if [ "x$LOG_DIR" = "x" ]; then
-  LOG_DIR="$base_dir/logs"
+  LOG_DIR="/var/log/kafka"
 fi
 
 # Log4j settings
 if [ -z "$KAFKA_LOG4J_OPTS" ]; then
   # Log to console. This is a tool.
-  LOG4J_DIR="$base_dir/config/log4j.properties"
+  LOG4J_DIR="$base_dir/conf/log4j.properties"
   # If Cygwin is detected, LOG4J_DIR is converted to Windows format.
   (( CYGWIN )) && LOG4J_DIR=$(cygpath --path --mixed "${LOG4J_DIR}")
   KAFKA_LOG4J_OPTS="-Dlog4j.configurationFile=file:${LOG4J_DIR}"
@@ -137,9 +120,9 @@ if [ -z "$KAFKA_JVM_PERFORMANCE_OPTS" ]; then
 fi
 
 #Add jaas file to KAFKA_OPTS if present
-if [ -f $base_dir/config/cruise_control_jaas.conf ]
+if [ -f $base_dir/conf/cruise_control_jaas.conf ]
 then
-  KAFKA_OPTS="-Djava.security.auth.login.config=$base_dir/config/cruise_control_jaas.conf $KAFKA_OPTS"
+  KAFKA_OPTS="-Djava.security.auth.login.config=$base_dir/conf/cruise_control_jaas.conf $KAFKA_OPTS"
 fi
 
 DAEMON_NAME="kafka-cruise-control"

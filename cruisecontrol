@@ -1,0 +1,233 @@
+#!/bin/bash
+
+#
+#  Licensed to the Apache Software Foundation (ASF) under one or more
+#  contributor license agreements.  See the NOTICE file distributed with
+#  this work for additional information regarding copyright ownership.
+#  The ASF licenses this file to You under the Apache License, Version 2.0
+#  (the "License"); you may not use this file except in compliance with
+#  the License.  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
+
+# Home dir
+CC_HOME=/usr/odp/current/cruise-control
+# cruise-control env script
+. $CC_HOME/conf/cruise-control-env.sh
+#cruise-control PID
+PID=0
+
+# Start, stop, status, clean or setup
+CC_LAUNCH_COMMAND=$1
+
+# User Name for setup parameter
+CC_USER=kafka
+
+#App name
+APP_NAME=cruise-control
+
+#Cruise Control
+CC_CMD="$CC_HOME/bin/kafka-cruise-control-start.sh  $CC_HOME/conf/cruisecontrol.properties"
+
+#PID & LOG DIRs
+[ -z $PID_DIR ] && PID_DIR="/var/run/kafka"
+[ -z $LOG_DIR ] && LOG_DIR="/var/log/kafka/cruise-control"
+
+#Name of PID file
+PID_FILE="$PID_DIR/$APP_NAME.pid"
+
+#Name of LOG ERR file
+ERR_FILE="$LOG_DIR/$APP_NAME.err"
+
+[ -z $MAX_WAIT_TIME ] && MAX_WAIT_TIME=120
+
+function main {
+   case "$1" in
+      start)
+         ccStart
+         ;;
+      stop)
+         ccStop
+         ;;
+      status)
+         ccStatus
+         ;;
+      clean)
+         ccClean
+         ;;
+      *)
+         printf "Usage: $0 {start|stop|status|clean}\n"
+         ;;
+   esac
+}
+
+function ccStart {
+   getPID
+   ccIsRunning $PID
+   if [ $? -eq 1 ]; then
+     printf "cruise-control is already running with PID=$PID.\n"
+     exit 0
+   fi
+
+   printf "Starting cruise-control "
+
+   # Start cruise-control
+   rm -f $PID_FILE
+   nohup $CC_CMD >>/dev/null 2>>$ERR_FILE &
+
+   # Add a sleep time of 10 seconds after executing CC_CMD
+   sleep 15
+
+   # Get the PID of the process running on port 9090
+   CC_PID=$(ss -ltnp | grep ":$PORT" | awk '{print $6}' | grep -oP "(?<=pid=)\d+")
+
+   # Check if CC_PID is not empty
+   if [ -z "$CC_PID" ]; then
+       echo "No process found running on port $PORT"
+       exit 1
+   fi
+
+   # Update the PID file with the obtained PID
+   echo $CC_PID > $PID_FILE
+
+   # Re-check if the process is running
+   getPID
+   ccIsRunning $PID
+   if [ $? -ne 1 ]; then
+      printf "failed.\n"
+      exit 1
+   fi
+
+   printf "succeeded with PID=$PID.\n"
+   return 0
+}
+
+
+function ccStop {
+   getPID
+   ccIsRunning $PID
+   if [ $? -eq 0 ]; then
+     printf "cruise-control is not running.\n"
+     rm -f $PID_FILE
+     return 0
+   fi
+
+   printf "Stopping cruise-control [$PID] "
+   ccKill $PID >>/dev/null 2>>$ERR_FILE
+
+   if [ $? -ne 0 ]; then
+     printf "failed. \n"
+     exit 1
+   else
+     rm -f $PID_FILE
+     printf "succeeded.\n"
+     return 0
+   fi
+}
+
+function ccStatus {
+   printf "Kafka "
+   getPID
+   if [ $? -eq 1 ]; then
+     printf "is not running. No pid file found.\n"
+     return 0
+   fi
+
+   ccIsRunning $PID
+   if [ $? -eq 1 ]; then
+     printf "is running with PID=$PID.\n"
+     exit 1
+   else
+     printf "is not running.\n"
+     return 0
+   fi
+}
+
+# Removed the cc PID file if cc is not run
+function ccClean {
+   getPID
+   ccIsRunning $PID
+   if [ $? -eq 0 ]; then
+     deleteLogFiles
+     return 0
+   else
+     printf "Can't clean files.  cruise-control is running with PID=$PID.\n"
+     exit 1
+   fi
+}
+
+# Returns 0 if the Knox is running and sets the $PID variable.
+function getPID {
+   if [ ! -d $PID_DIR ]; then
+      printf "Can't find pid dir.\n"
+      exit 1
+   fi
+   if [ ! -f $PID_FILE ]; then
+     PID=0
+     return 1
+   fi
+
+   PID="$(<$PID_FILE)"
+   return 0
+}
+
+function ccIsRunning {
+   if [ $1 -eq 0 ]; then return 0; fi
+
+   ps -p $1 > /dev/null
+
+   if [ $? -eq 1 ]; then
+     return 0
+   else
+     return 1
+   fi
+}
+
+function ccKill {
+   local localPID=$1
+   kill $localPID || return 1
+   for ((i=0; i<MAX_WAIT_TIME; i++)); do
+      ccIsRunning $localPID
+      if [ $? -eq 0 ]; then return 0; fi
+      sleep 1
+   done
+
+   kill -s KILL $localPID || return 1
+   for ((i=0; i<MAX_WAIT_TIME; i++)); do
+      ccIsRunning $localPID
+      if [ $? -eq 0 ]; then return 0; fi
+      sleep 1
+   done
+
+   return 1
+}
+
+function createLogFiles {
+   if [ ! -d "$LOG_DIR" ]; then
+      printf "Can't find log dir.  Run sudo $0 setup.\n"
+      exit 1
+   fi
+   if [ ! -f "$OUT_FILE" ]; then touch $OUT_FILE; fi
+   if [ ! -f "$ERR_FILE" ]; then touch $ERR_FILE; fi
+}
+
+function deleteLogFiles {
+     rm -f $PID_FILE
+     printf "Removed the cruise-control PID file: $PID_FILE.\n"
+
+     rm -f $OUT_FILE
+     printf "Removed the cruise-control OUT file: $OUT_FILE.\n"
+
+     rm -f $ERR_FILE
+     printf "Removed the cruise-control ERR file: $ERR_FILE.\n"
+}
+
+#Starting main
+main $CC_LAUNCH_COMMAND
