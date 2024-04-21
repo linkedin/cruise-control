@@ -1602,8 +1602,7 @@ public class Executor {
 
     private void interBrokerMoveReplicas() throws InterruptedException, ExecutionException, TimeoutException {
       Set<Integer> currentDeadBrokersWithReplicas = _loadMonitor.deadBrokersWithReplicas(MAX_METADATA_WAIT_MS);
-      ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(_adminClient, _replicationThrottle,
-          currentDeadBrokersWithReplicas);
+      ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(_adminClient, currentDeadBrokersWithReplicas);
       int numTotalPartitionMovements = _executionTaskManager.numRemainingInterBrokerPartitionMovements();
       long totalDataToMoveInMB = _executionTaskManager.remainingInterBrokerDataToMoveInMB();
       long startTime = System.currentTimeMillis();
@@ -1618,7 +1617,9 @@ public class Executor {
 
         AlterPartitionReassignmentsResult result = null;
         if (!tasksToExecute.isEmpty()) {
-          throttleHelper.setThrottles(tasksToExecute.stream().map(ExecutionTask::proposal).collect(Collectors.toList()));
+          if (_replicationThrottle != null) {
+            throttleHelper.setThrottles(tasksToExecute.stream().map(ExecutionTask::proposal).collect(Collectors.toList()), _replicationThrottle);
+          }
           // Execute the tasks.
           _executionTaskManager.markTasksInProgress(tasksToExecute);
           result = ExecutionUtils.submitReplicaReassignmentTasks(_adminClient, tasksToExecute);
@@ -1640,7 +1641,9 @@ public class Executor {
             .collect(Collectors.toList());
         inProgressTasks.addAll(inExecutionTasks());
 
-        throttleHelper.clearThrottles(completedTasks, inProgressTasks);
+        if (_replicationThrottle != null) {
+          throttleHelper.clearThrottles(completedTasks, inProgressTasks);
+        }
       }
 
       // Currently, _executionProgressCheckIntervalMs is only runtime adjusted for inter broker move tasks, not
