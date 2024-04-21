@@ -81,7 +81,7 @@ class ReplicationThrottleHelper {
     Set<Integer> participatingBrokers = getParticipatingBrokers(replicaMovementProposals);
     Map<String, Set<String>> throttledReplicas = getThrottledReplicasByTopic(replicaMovementProposals);
     for (int broker : participatingBrokers) {
-      setThrottledRateIfNecessary(broker, throttleRate);
+      setReplicationThrottledRateIfNecessary(broker, throttleRate);
     }
     for (Map.Entry<String, Set<String>> entry : throttledReplicas.entrySet()) {
       setThrottledReplicas(entry.getKey(), entry.getValue());
@@ -138,7 +138,7 @@ class ReplicationThrottleHelper {
 
     LOG.info("Removing replica movement throttles from brokers in the cluster: {}", brokersToRemoveThrottlesFrom);
     for (int broker : brokersToRemoveThrottlesFrom) {
-      removeThrottledRateFromBroker(broker);
+      removeReplicationThrottledRateFromBroker(broker);
     }
 
     Map<String, Set<String>> throttledReplicas = getThrottledReplicasByTopic(completedProposals);
@@ -172,7 +172,7 @@ class ReplicationThrottleHelper {
     return throttledReplicasByTopic;
   }
 
-  private void setThrottledRateIfNecessary(int brokerId, long throttleRate) throws ExecutionException, InterruptedException, TimeoutException {
+  private void setReplicationThrottledRateIfNecessary(int brokerId, long throttleRate) throws ExecutionException, InterruptedException, TimeoutException {
     Config brokerConfigs = getBrokerConfigs(brokerId);
     List<AlterConfigOp> ops = new ArrayList<>();
     for (String replicaThrottleRateConfigKey : Arrays.asList(LEADER_THROTTLED_RATE, FOLLOWER_THROTTLED_RATE)) {
@@ -322,7 +322,7 @@ class ReplicationThrottleHelper {
     }
   }
 
-  private void removeThrottledRateFromBroker(Integer brokerId)
+  private void removeReplicationThrottledRateFromBroker(Integer brokerId)
   throws ExecutionException, InterruptedException, TimeoutException {
     Config brokerConfigs = getBrokerConfigs(brokerId);
     ConfigEntry currLeaderThrottle = brokerConfigs.get(LEADER_THROTTLED_RATE);
