@@ -1618,7 +1618,8 @@ public class Executor {
         AlterPartitionReassignmentsResult result = null;
         if (!tasksToExecute.isEmpty()) {
           if (_replicationThrottle != null) {
-            throttleHelper.setReplicationThrottles(tasksToExecute.stream().map(ExecutionTask::proposal).collect(Collectors.toList()), _replicationThrottle);
+            throttleHelper.setReplicationThrottles(tasksToExecute.stream().map(ExecutionTask::proposal).collect(Collectors.toList()),
+                _replicationThrottle);
           }
           // Execute the tasks.
           _executionTaskManager.markTasksInProgress(tasksToExecute);
