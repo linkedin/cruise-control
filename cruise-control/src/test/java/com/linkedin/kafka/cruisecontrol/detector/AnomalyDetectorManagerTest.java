@@ -316,6 +316,7 @@ public class AnomalyDetectorManagerTest {
                                               EasyMock.eq(SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS),
                                               EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
                                               EasyMock.eq(null),
+                                              EasyMock.eq(null),
                                               EasyMock.eq(false),
                                               EasyMock.anyString(),
                                               EasyMock.eq(false));
@@ -349,6 +350,7 @@ public class AnomalyDetectorManagerTest {
                                               EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
                                               EasyMock.eq(SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS),
                                               EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
+                                              EasyMock.eq(null),
                                               EasyMock.eq(null),
                                               EasyMock.eq(false),
                                               EasyMock.anyString(),
@@ -415,6 +417,7 @@ public class AnomalyDetectorManagerTest {
                                               EasyMock.eq(SELF_HEALING_CONCURRENT_MOVEMENTS),
                                               EasyMock.eq(SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS),
                                               EasyMock.eq(SELF_HEALING_REPLICA_MOVEMENT_STRATEGY),
+                                              EasyMock.eq(null),
                                               EasyMock.eq(null),
                                               EasyMock.eq(false),
                                               EasyMock.anyString(),
@@ -531,7 +534,7 @@ public class AnomalyDetectorManagerTest {
     KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
-    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).times(2);
+    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).times(3);
 
     startRunnableDetectors(mockDetectorScheduler, mockGoalViolationDetector, mockMetricAnomalyDetector, mockDiskFailureDetector,
                            mockBrokerFailureDetector, mockTopicAnomalyDetector, mockMaintenanceEventDetector, executorService);
