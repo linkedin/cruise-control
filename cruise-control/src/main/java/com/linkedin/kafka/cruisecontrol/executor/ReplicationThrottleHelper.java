@@ -75,7 +75,7 @@ class ReplicationThrottleHelper {
     this._deadBrokers = deadBrokers;
   }
 
-  void setThrottles(List<ExecutionProposal> replicaMovementProposals, long throttleRate)
+  void setReplicationThrottles(List<ExecutionProposal> replicaMovementProposals, long throttleRate)
   throws ExecutionException, InterruptedException, TimeoutException {
     LOG.info("Setting a rebalance throttle of {} bytes/sec", throttleRate);
     Set<Integer> participatingBrokers = getParticipatingBrokers(replicaMovementProposals);

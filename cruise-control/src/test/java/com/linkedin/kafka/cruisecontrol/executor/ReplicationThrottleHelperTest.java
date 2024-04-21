@@ -196,7 +196,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     expectListTopics(mockAdminClient, Collections.emptySet());
     EasyMock.replay(mockAdminClient);
     // Expect no exception
-    throttleHelper.setThrottles(Collections.singletonList(proposal), throttleRate);
+    throttleHelper.setReplicationThrottles(Collections.singletonList(proposal), throttleRate);
     EasyMock.verify(mockAdminClient);
 
     // Case 2: a situation where Topic0 gets deleted after its configs were read. Change configs should not fail.
@@ -211,7 +211,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     expectListTopics(mockAdminClient, Collections.emptySet());
     EasyMock.replay(mockAdminClient);
     // Expect no exception
-    throttleHelper.setThrottles(Collections.singletonList(proposal), throttleRate);
+    throttleHelper.setReplicationThrottles(Collections.singletonList(proposal), throttleRate);
     EasyMock.verify(mockAdminClient);
   }
 
@@ -229,7 +229,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
 
     ExecutionTask task = completedTaskForProposal(0, proposal);
 
-    throttleHelper.setThrottles(Collections.singletonList(proposal), throttleRate);
+    throttleHelper.setReplicationThrottles(Collections.singletonList(proposal), throttleRate);
 
     assertExpectedThrottledRateForBroker(0, throttleRate);
     assertExpectedThrottledRateForBroker(1, throttleRate);
@@ -289,7 +289,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
       new AlterConfigOp(new ConfigEntry(ReplicationThrottleHelper.FOLLOWER_THROTTLED_REPLICAS, "1:1"), AlterConfigOp.OpType.SET));
     throttleHelper.changeTopicConfigs(TOPIC1, topic1Config);
 
-    throttleHelper.setThrottles(Collections.singletonList(proposal), throttleRate);
+    throttleHelper.setReplicationThrottles(Collections.singletonList(proposal), throttleRate);
 
     assertExpectedThrottledRateForBroker(0, throttleRate);
     assertExpectedThrottledRateForBroker(1, throttleRate);
@@ -337,7 +337,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
                                                         Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(3)),
                                                         Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(2)));
 
-    throttleHelper.setThrottles(Arrays.asList(proposal, proposal2), throttleRate);
+    throttleHelper.setReplicationThrottles(Arrays.asList(proposal, proposal2), throttleRate);
 
     ExecutionTask completedTask = completedTaskForProposal(0, proposal);
     ExecutionTask inProgressTask = inProgressTaskForProposal(1, proposal2);
@@ -404,7 +404,7 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
                                                         Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(3)),
                                                         Arrays.asList(new ReplicaPlacementInfo(0), new ReplicaPlacementInfo(2)));
 
-    throttleHelper.setThrottles(Arrays.asList(proposal, proposal2), throttleRate);
+    throttleHelper.setReplicationThrottles(Arrays.asList(proposal, proposal2), throttleRate);
 
     ExecutionTask completedTask = completedTaskForProposal(0, proposal);
     ExecutionTask inProgressTask = inProgressTaskForProposal(1, proposal2);
