@@ -42,6 +42,7 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
   protected final Long _executionProgressCheckIntervalMs;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Long _replicationThrottle;
+  protected final Long _logDirThrottle;
   protected static final boolean SKIP_AUTO_REFRESHING_CONCURRENCY = false;
 
   /**
@@ -67,6 +68,7 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
     _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
     _replicationThrottle = kafkaCruiseControl.config().getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
+    _logDirThrottle = kafkaCruiseControl.config().getLong(ExecutorConfig.DEFAULT_LOG_DIR_THROTTLE_CONFIG);
   }
 
   public AddBrokersRunnable(KafkaCruiseControl kafkaCruiseControl,
@@ -84,6 +86,7 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
     _executionProgressCheckIntervalMs = parameters.executionProgressCheckIntervalMs();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
     _replicationThrottle = parameters.replicationThrottle();
+    _logDirThrottle = parameters.logDirThrottle();
   }
 
   @Override
@@ -127,6 +130,7 @@ public class AddBrokersRunnable extends GoalBasedOperationRunnable {
                                            _executionProgressCheckIntervalMs,
                                            _replicaMovementStrategy,
                                            _replicationThrottle,
+                                           _logDirThrottle,
                                            _isTriggeredByUserRequest,
                                            _uuid,
                                            SKIP_AUTO_REFRESHING_CONCURRENCY);

@@ -119,6 +119,7 @@ public class RemoveDisksRunnable extends GoalBasedOperationRunnable {
                     SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS,
                     SELF_HEALING_REPLICA_MOVEMENT_STRATEGY,
                     _kafkaCruiseControl.config().getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG),
+                    _kafkaCruiseControl.config().getLong(ExecutorConfig.DEFAULT_LOG_DIR_THROTTLE_CONFIG),
                     _isTriggeredByUserRequest,
                     _uuid,
                     false

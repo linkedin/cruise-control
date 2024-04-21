@@ -80,6 +80,7 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
   protected final Long _executionProgressCheckIntervalMs;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Long _replicationThrottle;
+  protected final Long _logDirThrottle;
   protected Cluster _cluster;
   protected Map<Short, Set<String>> _topicsToChangeByReplicationFactor;
   protected static final boolean SKIP_AUTO_REFRESHING_CONCURRENCY = true;
@@ -107,6 +108,7 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
       _executionProgressCheckIntervalMs = topicReplicationFactorChangeParameters.executionProgressCheckIntervalMs();
       _replicaMovementStrategy = topicReplicationFactorChangeParameters.replicaMovementStrategy();
       _replicationThrottle = topicReplicationFactorChangeParameters.replicationThrottle();
+      _logDirThrottle = topicReplicationFactorChangeParameters.logDirThrottle();
       } else {
       _topicPatternByReplicationFactor = null;
       _skipRackAwarenessCheck = false;
@@ -117,6 +119,7 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
       _executionProgressCheckIntervalMs = null;
       _replicaMovementStrategy = null;
       _replicationThrottle = null;
+      _logDirThrottle = null;
     }
   }
 
@@ -149,6 +152,7 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
     _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
     _replicationThrottle = kafkaCruiseControl.config().getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
+    _logDirThrottle = kafkaCruiseControl.config().getLong(ExecutorConfig.DEFAULT_LOG_DIR_THROTTLE_CONFIG);
   }
 
   @Override
@@ -209,8 +213,8 @@ public class UpdateTopicConfigurationRunnable extends GoalBasedOperationRunnable
       _kafkaCruiseControl.executeProposals(result.goalProposals(), Collections.emptySet(), false, _concurrentInterBrokerPartitionMovements,
           _maxInterBrokerPartitionMovements,
           0, _clusterLeaderMovementConcurrency, _brokerLeaderMovementConcurrency,
-          _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle, _isTriggeredByUserRequest, _uuid,
-          SKIP_AUTO_REFRESHING_CONCURRENCY);
+          _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle, _logDirThrottle,
+          _isTriggeredByUserRequest, _uuid, SKIP_AUTO_REFRESHING_CONCURRENCY);
     }
     return result;
   }
