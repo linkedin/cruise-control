@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -374,7 +375,7 @@ class ReplicationThrottleHelper {
       } catch (ExecutionException | InterruptedException | TimeoutException e) {
         return false;
       }
-    }, _retries);
+    }, Duration.ofMillis(5).toMillis(), 2, _retries);
     if (!retryResponse) {
       throw new IllegalStateException("The following configs " + ops + " were not applied to " + cf + " within the time limit");
     }
