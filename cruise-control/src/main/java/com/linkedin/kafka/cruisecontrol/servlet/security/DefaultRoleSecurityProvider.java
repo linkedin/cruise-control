@@ -8,6 +8,9 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.eclipse.jetty.security.ConstraintMapping;
@@ -60,7 +63,7 @@ public abstract class DefaultRoleSecurityProvider implements SecurityProvider {
 
   @Override
   public Set<String> roles() {
-    return Set.of(VIEWER, USER, ADMIN);
+    return Collections.unmodifiableSet(new HashSet<>(Arrays.asList(VIEWER, USER, ADMIN)));
   }
 
   private ConstraintMapping mapping(CruiseControlEndPoint endpoint, String... roles) {

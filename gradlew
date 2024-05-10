@@ -62,8 +62,9 @@
 #
 ##############################################################################
 
+# This should now work with jdk-1.8
 #Set JAVA_HOME to JAVA 11
-export JAVA_HOME=/usr/lib/jvm/java-11
+#export JAVA_HOME=/usr/lib/jvm/java-11
 
 
 # Attempt to set APP_HOME

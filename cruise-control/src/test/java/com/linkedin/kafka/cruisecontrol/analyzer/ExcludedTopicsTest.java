@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -117,7 +118,7 @@ public class ExcludedTopicsTest {
 
     Set<String> noExclusion = Collections.emptySet();
     Set<String> excludeT1 = Collections.singleton(T1);
-    Set<String> excludeAllTopics = Set.of(T1, T2);
+    Set<String> excludeAllTopics = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(T1, T2)));
     Set<Integer> noDeadBroker = Collections.emptySet();
     Set<Integer> deadBroker0 = Collections.singleton(0);
 

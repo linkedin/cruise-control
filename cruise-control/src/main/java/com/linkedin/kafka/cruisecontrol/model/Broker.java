@@ -601,7 +601,11 @@ public class Broker implements Serializable, Comparable<Broker> {
     for (Replica replica : _replicas) {
       replicaList.add(replica.getJsonStructure());
     }
-    return Map.of(ModelUtils.BROKER_ID, _id, ModelUtils.BROKER_STATE, _state, ModelUtils.REPLICAS, replicaList);
+    Map<String, Object> brokerMap = new HashMap<>(3);
+    brokerMap.put(ModelUtils.BROKER_ID, _id);
+    brokerMap.put(ModelUtils.BROKER_STATE, _state);
+    brokerMap.put(ModelUtils.REPLICAS, replicaList);
+    return brokerMap;
   }
 
   /**

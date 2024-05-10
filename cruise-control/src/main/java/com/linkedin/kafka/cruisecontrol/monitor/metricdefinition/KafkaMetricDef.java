@@ -10,6 +10,7 @@ import com.linkedin.cruisecontrol.metricdef.ValueComputingStrategy;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -105,7 +106,7 @@ public enum KafkaMetricDef {
   private final DefScope _defScope;
   private final boolean _toPredict;
   private static final Map<RawMetricType, KafkaMetricDef> TYPE_TO_DEF = new HashMap<>();
-  private static final List<KafkaMetricDef> CACHED_VALUES = List.of(KafkaMetricDef.values());
+  private static final List<KafkaMetricDef> CACHED_VALUES = Arrays.asList(KafkaMetricDef.values());
   private static final List<KafkaMetricDef> CACHED_COMMON_DEF_VALUES = buildCachedCommonDefValues();
   private static final List<KafkaMetricDef> CACHED_BROKER_DEF_VALUES = CACHED_VALUES;
   // Ensure that COMMON_METRIC_DEF and BROKER_METRIC_DEF are created after CACHED_COMMON_DEF_VALUES and CACHED_BROKER_DEF_VALUES

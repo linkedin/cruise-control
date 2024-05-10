@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.model.LinearRegressionModelParameters;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitorState;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlStateParameters;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -203,7 +204,7 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
   public enum SubState {
     ANALYZER, MONITOR, EXECUTOR, ANOMALY_DETECTOR;
 
-    protected static final List<SubState> CACHED_VALUES = List.of(values());
+    protected static final List<SubState> CACHED_VALUES = Arrays.asList(values());
 
     /**
      * Use this instead of values() because values() creates a new array each time.

@@ -5,6 +5,8 @@ package com.linkedin.cruisecontrol;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import org.junit.Test;
 
@@ -16,9 +18,12 @@ public class CruiseControlUtilsTest {
   private static final long MAX_ESTIMATED_PAUSE = 30L;
   private static final Map<Long, String> RESPONSE_BY_TIME_MS;
   static {
-    RESPONSE_BY_TIME_MS =
-        Map.of(0L, "1970-01-01T00:00:00Z", -10L, "1969-12-31T23:59:59Z", Long.MAX_VALUE, "+292278994-08-17T07:12:55Z", 1614978098383L,
-               "2021-03-05T21:01:38Z");
+    Map<Long, String> responseByTimeMs = new HashMap<>(4);
+    responseByTimeMs.put(0L, "1970-01-01T00:00:00Z");
+    responseByTimeMs.put(-10L, "1969-12-31T23:59:59Z");
+    responseByTimeMs.put(Long.MAX_VALUE, "+292278994-08-17T07:12:55Z");
+    responseByTimeMs.put(1614978098383L, "2021-03-05T21:01:38Z");
+    RESPONSE_BY_TIME_MS = Collections.unmodifiableMap(responseByTimeMs);
   }
 
   @Test

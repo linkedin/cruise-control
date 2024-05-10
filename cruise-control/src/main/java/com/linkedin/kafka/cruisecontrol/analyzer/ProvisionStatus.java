@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -24,7 +25,7 @@ import java.util.List;
 public enum ProvisionStatus {
   UNDER_PROVISIONED, RIGHT_SIZED, OVER_PROVISIONED, UNDECIDED;
 
-  private static final List<ProvisionStatus> CACHED_VALUES = List.of(values());
+  private static final List<ProvisionStatus> CACHED_VALUES = Arrays.asList(values());
 
   /**
    * Use this instead of values() because values() creates a new array each time.

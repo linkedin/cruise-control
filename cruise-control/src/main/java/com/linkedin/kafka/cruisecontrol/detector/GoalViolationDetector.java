@@ -28,6 +28,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -85,8 +86,9 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
     _balancednessScore = MAX_BALANCEDNESS_SCORE;
     _provisionResponse = new ProvisionResponse(ProvisionStatus.UNDECIDED);
     _hasPartitionsWithRFGreaterThanNumRacks = false;
-    Map<String, Object> overrideConfigs = Map.of(KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG, config,
-                                                 ADMIN_CLIENT_CONFIG, _kafkaCruiseControl.adminClient());
+    Map<String, Object> overrideConfigs = new HashMap<>(2);
+    overrideConfigs.put(KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG, config);
+    overrideConfigs.put(ADMIN_CLIENT_CONFIG, _kafkaCruiseControl.adminClient());
     _optimizationOptionsGenerator = config.getConfiguredInstance(AnalyzerConfig.OPTIMIZATION_OPTIONS_GENERATOR_CLASS_CONFIG,
                                                                  OptimizationOptionsGenerator.class,
                                                                  overrideConfigs);
@@ -162,8 +164,10 @@ public class GoalViolationDetector extends AbstractAnomalyDetector implements Ru
 
     AutoCloseable clusterModelSemaphore = null;
     try {
-      Map<String, Object> parameterConfigOverrides = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl,
-                                                            ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
+      Map<String, Object> parameterConfigOverrides = new HashMap<>(2);
+      parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl);
+      parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
+
       GoalViolations goalViolations = _kafkaCruiseControl.config().getConfiguredInstance(AnomalyDetectorConfig.GOAL_VIOLATIONS_CLASS_CONFIG,
                                                                                          GoalViolations.class,
                                                                                          parameterConfigOverrides);

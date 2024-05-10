@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet;
 
 import com.linkedin.cruisecontrol.servlet.EndPoint;
 import com.linkedin.cruisecontrol.servlet.EndpointType;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -36,7 +37,7 @@ public enum CruiseControlEndPoint implements EndPoint {
   TOPIC_CONFIGURATION(KAFKA_ADMIN),
   RIGHTSIZE(KAFKA_ADMIN);
 
-  private static final List<CruiseControlEndPoint> CACHED_VALUES = List.of(values());
+  private static final List<CruiseControlEndPoint> CACHED_VALUES = new ArrayList<>(Arrays.asList(values()));
   private static final List<CruiseControlEndPoint> GET_ENDPOINTS = Arrays.asList(BOOTSTRAP,
                                                                                  TRAIN,
                                                                                  LOAD,

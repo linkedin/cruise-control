@@ -197,10 +197,15 @@ public class AnomalyDetectorManagerTest {
 
     try {
       anomalyDetectorManager.startDetection();
-      Map<String, Object> parameterConfigOverrides = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl,
+      Map<String, Object> parameterConfigOverrides = new HashMap<>();
+      parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
+      parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, Collections.singletonMap(0, 100L));
+      parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 100L);
+      parameterConfigOverrides.put(BROKER_FAILURES_FIXABLE_CONFIG, true);
+      /*Map<String, Object> parameterConfigOverrides = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl,
                                                             FAILED_BROKERS_OBJECT_CONFIG, Collections.singletonMap(0, 100L),
                                                             ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 100L,
-                                                            BROKER_FAILURES_FIXABLE_CONFIG, true);
+                                                            BROKER_FAILURES_FIXABLE_CONFIG, true);*/
       anomalies.add(kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.BROKER_FAILURES_CLASS_CONFIG,
                                                                    BrokerFailures.class,
                                                                    parameterConfigOverrides));
@@ -548,8 +553,11 @@ public class AnomalyDetectorManagerTest {
 
     try {
       anomalyDetectorManager.startDetection();
-      Map<String, Object> parameterConfigOverrides = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl,
-                                                            ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 100L);
+      Map<String, Object> parameterConfigOverrides = new HashMap<>(4);
+      parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
+      parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, Collections.singletonMap(0, 100L));
+      parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, 100L);
+      parameterConfigOverrides.put(BROKER_FAILURES_FIXABLE_CONFIG, true);
       anomalies.add(kafkaCruiseControlConfig.getConfiguredInstance(AnomalyDetectorConfig.GOAL_VIOLATIONS_CLASS_CONFIG,
                                                                    GoalViolations.class,
                                                                    parameterConfigOverrides));

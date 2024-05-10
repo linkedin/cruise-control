@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import java.util.HashMap;
 import java.util.Map;
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -22,12 +23,12 @@ import static com.linkedin.kafka.cruisecontrol.detector.BasicProvisioner.PARTITI
 
 public abstract class AbstractProvisionerTest {
   protected static final KafkaCruiseControl MOCK_KAFKA_CRUISE_CONTROL = EasyMock.createMock(KafkaCruiseControl.class);
-  protected static final Map<String, Object> PROVISIONER_CONFIGS = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG,
-                                                                          MOCK_KAFKA_CRUISE_CONTROL,
-                                                                          BROKER_PROVISIONER_CLASS_CONFIG,
-                                                                          DEFAULT_BROKER_PROVISIONER_CLASS.getName(),
-                                                                          PARTITION_PROVISIONER_CLASS_CONFIG,
-                                                                          DEFAULT_PARTITION_PROVISIONER_CLASS.getName());
+  protected static final Map<String, Object> PROVISIONER_CONFIGS = new HashMap<>();
+  static {
+        PROVISIONER_CONFIGS.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, MOCK_KAFKA_CRUISE_CONTROL);
+        PROVISIONER_CONFIGS.put(BROKER_PROVISIONER_CLASS_CONFIG, DEFAULT_BROKER_PROVISIONER_CLASS.getName());
+        PROVISIONER_CONFIGS.put(PARTITION_PROVISIONER_CLASS_CONFIG, DEFAULT_PARTITION_PROVISIONER_CLASS.getName());
+  }
   protected static final ProvisionRecommendation BROKER_REC_TO_EXECUTE = new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED)
       .numBrokers(2).resource(Resource.CPU).build();
   public static final String RECOMMENDER_TO_EXECUTE = "ToExecute";

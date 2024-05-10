@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.RequestInfo;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -105,7 +106,9 @@ public class ReviewResult extends AbstractCruiseControlResponse {
         jsonRequestInfoList.add(entry.getValue().getJsonStructure(entry.getKey()));
       }
     }
-    Map<String, Object> jsonResponse = Map.of(REQUEST_INFO, jsonRequestInfoList, VERSION, JSON_VERSION);
+    Map<String, Object> jsonResponse = new HashMap<>(2);
+    jsonResponse.put(REQUEST_INFO, jsonRequestInfoList);
+    jsonResponse.put(VERSION, JSON_VERSION);
     return new Gson().toJson(jsonResponse);
   }
 

@@ -13,6 +13,7 @@ import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Properties;
@@ -58,7 +59,7 @@ public class GoalOptimizerTest {
     // 4 topics in total and 2 of them are excluded
     String excludedTopicPrefix = "excluded_topic_";
     String notExcludedTopicPrefix = "not_excluded_topic_";
-    Set<String> expectedExcludedTopics = Set.of(excludedTopicPrefix + 1, excludedTopicPrefix + 2);
+    Set<String> expectedExcludedTopics = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(excludedTopicPrefix + 1, excludedTopicPrefix + 2)));
     Set<String> allTopics = new HashSet<>();
     allTopics.addAll(expectedExcludedTopics);
     allTopics.add(notExcludedTopicPrefix + 1);

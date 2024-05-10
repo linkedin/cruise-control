@@ -180,9 +180,12 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
     }
 
     protected Map<String, Object> getJsonStructure() {
-      return Map.of(GOAL, _goalName, STATUS, _optimizerResult.goalResultDescription(_goalName),
-                    CLUSTER_MODEL_STATS, _optimizerResult.statsByGoalName().get(_goalName).getJsonStructure(),
-                    OPTIMIZATION_TIME_MS, _optimizerResult.optimizationDuration(_goalName).toMillis());
+      Map<String, Object> goalMap = new HashMap<>(3);
+      goalMap.put(GOAL, _goalName);
+      goalMap.put(STATUS, _optimizerResult.goalResultDescription(_goalName));
+      goalMap.put(CLUSTER_MODEL_STATS, _optimizerResult.statsByGoalName().get(_goalName).getJsonStructure());
+      goalMap.put(OPTIMIZATION_TIME_MS, _optimizerResult.optimizationDuration(_goalName).toMillis());
+      return goalMap;
     }
   }
 }

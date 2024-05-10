@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
+import java.util.HashMap;
 import java.util.Map;
 
 @JsonResponseClass
@@ -27,6 +28,10 @@ public class ClusterModelStatsMetaData {
   }
 
   protected Map<String, Integer> getJsonStructure() {
-    return Map.of(BROKERS, _numBrokers, REPLICAS, _numReplicas, TOPICS, _numTopics);
+    Map<String, Integer> basicMap = new HashMap<>(3);
+    basicMap.put(BROKERS, _numBrokers);
+    basicMap.put(REPLICAS, _numReplicas);
+    basicMap.put(TOPICS, _numTopics);
+    return basicMap;
   }
 }

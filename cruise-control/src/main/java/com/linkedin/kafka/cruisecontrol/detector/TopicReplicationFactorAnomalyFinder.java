@@ -196,10 +196,11 @@ public class TopicReplicationFactorAnomalyFinder implements TopicAnomalyFinder {
 
   private TopicAnomaly createTopicReplicationFactorAnomaly(Map<Short, Set<TopicReplicationFactorAnomalyEntry>> badTopicsByDesiredRF,
                                                            short targetReplicationFactor) {
-    Map<String, Object> configs = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl,
-                                         BAD_TOPICS_BY_DESIRED_RF_CONFIG, badTopicsByDesiredRF,
-                                         SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG, targetReplicationFactor,
-                                         ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
+    Map<String, Object> configs = new HashMap<>();
+    configs.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl);
+    configs.put(BAD_TOPICS_BY_DESIRED_RF_CONFIG, badTopicsByDesiredRF);
+    configs.put(SELF_HEALING_TARGET_TOPIC_REPLICATION_FACTOR_CONFIG, targetReplicationFactor);
+    configs.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
     return getConfiguredInstance(_topicReplicationTopicAnomalyClass, TopicAnomaly.class, configs);
   }
 

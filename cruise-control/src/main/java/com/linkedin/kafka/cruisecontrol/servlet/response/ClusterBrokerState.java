@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.response;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -85,10 +86,16 @@ public class ClusterBrokerState {
    * @return response with JSON structure.
    */
   public Map<String, Object> getJsonStructure() {
-    return Map.of(LEADER_COUNT, _leaderCountByBrokerId, OUT_OF_SYNC_COUNT, _outOfSyncCountByBrokerId,
-                  REPLICA_COUNT, _replicaCountByBrokerId, OFFLINE_REPLICA_COUNT, _offlineReplicaCountByBrokerId,
-                  IS_CONTROLLER, _isControllerByBrokerId, ONLINE_LOGDIRS, _onlineLogDirsByBrokerId, OFFLINE_LOGDIRS, _offlineLogDirsByBrokerId,
-                  SUMMARY, new ClusterStats(_kafkaCluster.topics().size(), _replicaCountByBrokerId, _leaderCountByBrokerId).getJsonStructure());
+    Map<String, Object> jsonMap = new HashMap<>(8);
+    jsonMap.put(LEADER_COUNT, _leaderCountByBrokerId);
+    jsonMap.put(OUT_OF_SYNC_COUNT, _outOfSyncCountByBrokerId);
+    jsonMap.put(REPLICA_COUNT, _replicaCountByBrokerId);
+    jsonMap.put(OFFLINE_REPLICA_COUNT, _offlineReplicaCountByBrokerId);
+    jsonMap.put(IS_CONTROLLER, _isControllerByBrokerId);
+    jsonMap.put(ONLINE_LOGDIRS, _onlineLogDirsByBrokerId);
+    jsonMap.put(OFFLINE_LOGDIRS, _offlineLogDirsByBrokerId);
+    jsonMap.put(SUMMARY, new ClusterStats(_kafkaCluster.topics().size(), _replicaCountByBrokerId, _leaderCountByBrokerId).getJsonStructure());
+    return jsonMap;
   }
 
   /**

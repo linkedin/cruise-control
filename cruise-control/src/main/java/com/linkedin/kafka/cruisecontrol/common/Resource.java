@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.common;
 
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -35,7 +36,7 @@ public enum Resource {
   private final boolean _isBrokerResource;
   private final double _epsilon;
 
-  private static final List<Resource> CACHED_VALUES = List.of(values());
+  private static final List<Resource> CACHED_VALUES = Arrays.asList(values());
 
   Resource(String resource, int id, boolean isHostResource, boolean isBrokerResource, double epsilon) {
     _resource = resource;

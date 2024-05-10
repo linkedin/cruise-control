@@ -92,9 +92,10 @@ public class PartitionSizeAnomalyFinder implements TopicAnomalyFinder {
   }
 
   private TopicAnomaly createTopicPartitionSizeAnomaly(Map<TopicPartition, Double> partitionsWithLargeSize) {
-    Map<String, Object> configs = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl,
-                                         PARTITIONS_WITH_LARGE_SIZE_CONFIG, partitionsWithLargeSize,
-                                         ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
+    Map<String, Object> configs = new HashMap<>(3);
+    configs.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl);
+    configs.put(PARTITIONS_WITH_LARGE_SIZE_CONFIG, partitionsWithLargeSize);
+    configs.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
     return getConfiguredInstance(_topicPartitionSizeAnomalyClass, TopicAnomaly.class, configs);
   }
 

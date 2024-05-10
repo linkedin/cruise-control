@@ -4,6 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.junit.Test;
@@ -23,7 +26,7 @@ public class AnomalyUtilsTest {
 
     @Test
     public void testBuildTopicRegex() {
-        Set<String> topicsToMatch = Set.of(TOPIC1, TOPIC2);
+        Set<String> topicsToMatch = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(TOPIC1, TOPIC2)));
         Pattern pattern = buildTopicRegex(topicsToMatch);
 
         assertTrue(pattern.matcher(TOPIC1).matches());

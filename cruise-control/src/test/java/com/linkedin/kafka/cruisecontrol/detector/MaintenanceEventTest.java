@@ -95,10 +95,15 @@ public class MaintenanceEventTest {
   public void testAddBrokerEvent()
       throws KafkaCruiseControlException, InterruptedException, TimeoutException, NotEnoughValidWindowsException {
     // Populate parameter config overrides.
-    Map<String, Object> parameterConfigOverrides = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _mockKafkaCruiseControl,
+    Map<String, Object> parameterConfigOverrides = new HashMap<>();
+    parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _mockKafkaCruiseControl);
+    parameterConfigOverrides.put(BROKERS_OBJECT_CONFIG, MOCK_BROKERS_OBJECT);
+    parameterConfigOverrides.put(MAINTENANCE_EVENT_TYPE_CONFIG, MaintenanceEventType.ADD_BROKER);
+    parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_TIME_MS);
+    /*Map<String, Object> parameterConfigOverrides = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _mockKafkaCruiseControl,
                                                           BROKERS_OBJECT_CONFIG, MOCK_BROKERS_OBJECT,
                                                           MAINTENANCE_EVENT_TYPE_CONFIG, MaintenanceEventType.ADD_BROKER,
-                                                          ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_TIME_MS);
+                                                          ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_TIME_MS);*/
 
     // Expect mocks.
     EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(3);
@@ -168,10 +173,15 @@ public class MaintenanceEventTest {
   public void testRemoveBrokerEvent()
       throws KafkaCruiseControlException, InterruptedException, TimeoutException, NotEnoughValidWindowsException {
     // Populate parameter config overrides.
-    Map<String, Object> parameterConfigOverrides = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _mockKafkaCruiseControl,
+    Map<String, Object> parameterConfigOverrides = new HashMap<>();
+    parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _mockKafkaCruiseControl);
+    parameterConfigOverrides.put(BROKERS_OBJECT_CONFIG, MOCK_BROKERS_OBJECT);
+    parameterConfigOverrides.put(MAINTENANCE_EVENT_TYPE_CONFIG, MaintenanceEventType.REMOVE_BROKER);
+    parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_TIME_MS);
+    /*Map<String, Object> parameterConfigOverrides = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _mockKafkaCruiseControl,
                                                           BROKERS_OBJECT_CONFIG, MOCK_BROKERS_OBJECT,
                                                           MAINTENANCE_EVENT_TYPE_CONFIG, MaintenanceEventType.REMOVE_BROKER,
-                                                          ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_TIME_MS);
+                                                          ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_TIME_MS);*/
 
     // Expect mocks.
     EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(3);
@@ -239,9 +249,11 @@ public class MaintenanceEventTest {
   public void testFixOfflineReplicasEvent()
       throws KafkaCruiseControlException, InterruptedException, TimeoutException, NotEnoughValidWindowsException {
     // Populate parameter config overrides.
-    Map<String, Object> parameterConfigOverrides = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _mockKafkaCruiseControl,
-                                                          MAINTENANCE_EVENT_TYPE_CONFIG, MaintenanceEventType.FIX_OFFLINE_REPLICAS,
-                                                          ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_TIME_MS);
+    Map<String, Object> parameterConfigOverrides = new HashMap<>(4);
+    parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _mockKafkaCruiseControl);
+    parameterConfigOverrides.put(BROKERS_OBJECT_CONFIG, MOCK_BROKERS_OBJECT);
+    parameterConfigOverrides.put(MAINTENANCE_EVENT_TYPE_CONFIG, MaintenanceEventType.ADD_BROKER);
+    parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_TIME_MS);
 
     // Expect mocks.
     EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(3);
@@ -310,9 +322,11 @@ public class MaintenanceEventTest {
   public void testRebalanceEvent()
       throws KafkaCruiseControlException, InterruptedException, TimeoutException, NotEnoughValidWindowsException {
     // Populate parameter config overrides.
-    Map<String, Object> parameterConfigOverrides = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _mockKafkaCruiseControl,
-                                                          MAINTENANCE_EVENT_TYPE_CONFIG, MaintenanceEventType.REBALANCE,
-                                                          ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_TIME_MS);
+    Map<String, Object> parameterConfigOverrides = new HashMap<>(4);
+    parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _mockKafkaCruiseControl);
+    parameterConfigOverrides.put(BROKERS_OBJECT_CONFIG, MOCK_BROKERS_OBJECT);
+    parameterConfigOverrides.put(MAINTENANCE_EVENT_TYPE_CONFIG, MaintenanceEventType.REMOVE_BROKER);
+    parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_TIME_MS);
 
     // Expect mocks.
     EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(3);
@@ -398,10 +412,10 @@ public class MaintenanceEventTest {
   public void testDemoteBrokerEvent()
       throws KafkaCruiseControlException, InterruptedException, TimeoutException, NotEnoughValidWindowsException {
     // Populate parameter config overrides.
-    Map<String, Object> parameterConfigOverrides = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _mockKafkaCruiseControl,
-                                                          BROKERS_OBJECT_CONFIG, MOCK_BROKERS_OBJECT,
-                                                          MAINTENANCE_EVENT_TYPE_CONFIG, MaintenanceEventType.DEMOTE_BROKER,
-                                                          ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_TIME_MS);
+    Map<String, Object> parameterConfigOverrides = new HashMap<>(3);
+    parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _mockKafkaCruiseControl);
+    parameterConfigOverrides.put(MAINTENANCE_EVENT_TYPE_CONFIG, MaintenanceEventType.FIX_OFFLINE_REPLICAS);
+    parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_TIME_MS);
 
     // Expect mocks.
     EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(2);
@@ -466,10 +480,10 @@ public class MaintenanceEventTest {
   public void testTopicReplicationFactorEvent()
       throws KafkaCruiseControlException, InterruptedException, TimeoutException, NotEnoughValidWindowsException {
     // Populate parameter config overrides.
-    Map<String, Object> parameterConfigOverrides = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _mockKafkaCruiseControl,
-                                                          MAINTENANCE_EVENT_TYPE_CONFIG, MaintenanceEventType.TOPIC_REPLICATION_FACTOR,
-                                                          ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_TIME_MS,
-                                                          TOPICS_WITH_RF_UPDATE_CONFIG, MOCK_TOPICS_WITH_RF_UPDATE);
+    Map<String, Object> parameterConfigOverrides = new HashMap<>(3);
+    parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _mockKafkaCruiseControl);
+    parameterConfigOverrides.put(MAINTENANCE_EVENT_TYPE_CONFIG, MaintenanceEventType.REBALANCE);
+    parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, MOCK_TIME_MS);
 
     // Expect mocks.
     EasyMock.expect(_mockKafkaCruiseControl.config()).andReturn(_config).times(3);

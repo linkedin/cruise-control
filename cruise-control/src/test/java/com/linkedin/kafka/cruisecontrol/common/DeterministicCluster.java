@@ -42,13 +42,27 @@ public final class DeterministicCluster {
   public static final String CLUSTER_ID = "DETERMINISTIC_CLUSTER";
   public static final int PORT = 0;
   static {
-    RACK_BY_BROKER = Map.of(0, 0, 1, 0, 2, 1);
+    Map<Integer, Integer> racksByBrokerIds = new HashMap<>(3);
+    racksByBrokerIds.put(0, 0);
+    racksByBrokerIds.put(1, 0);
+    racksByBrokerIds.put(2, 1);
+    RACK_BY_BROKER = Collections.unmodifiableMap(racksByBrokerIds);
+  }
+
+  static {
+    Map<Integer, Integer> racksByBrokerIds = new HashMap<>(3);
+    racksByBrokerIds.put(0, 0);
+    racksByBrokerIds.put(1, 1);
+    racksByBrokerIds.put(2, 1);
+    RACK_BY_BROKER2 = Collections.unmodifiableMap(racksByBrokerIds);
   }
   static {
-    RACK_BY_BROKER2 = Map.of(0, 0, 1, 1, 2, 1);
-  }
-  static {
-    RACK_BY_BROKER3 = Map.of(0, 0, 1, 1, 2, 1, 3, 1);
+    Map<Integer, Integer> racksByBrokerIds = new HashMap<>(4);
+    racksByBrokerIds.put(0, 0);
+    racksByBrokerIds.put(1, 1);
+    racksByBrokerIds.put(2, 1);
+    racksByBrokerIds.put(3, 1);
+    RACK_BY_BROKER3 = Collections.unmodifiableMap(racksByBrokerIds);
   }
   private DeterministicCluster() {
 
@@ -65,7 +79,9 @@ public final class DeterministicCluster {
   }
 
   private static ClusterModel createUnbalanced(Set<String> topics, int numBrokers) {
-    Map<Integer, Integer> rackByBrokerId = Map.of(0, 0, 1, 1);
+    Map<Integer, Integer> rackByBrokerId = new HashMap<>(2);
+    rackByBrokerId.put(0, 0);
+    rackByBrokerId.put(1, 1);
     ClusterModel cluster = getHomogeneousCluster(rackByBrokerId, TestConstants.BROKER_CAPACITY, TestConstants.DISK_CAPACITY);
 
     for (String topic : topics) {
@@ -95,7 +111,7 @@ public final class DeterministicCluster {
    * @return Cluster model for the tests.
    */
   public static ClusterModel unbalanced5() {
-    Set<String> topics = Set.of(T1, T2);
+    Set<String> topics = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(T1, T2)));
     return createUnbalanced(topics, 14);
   }
 

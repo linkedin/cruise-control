@@ -43,10 +43,12 @@ public class MSTeamsSelfHealingNotifier extends SelfHealingNotifier {
             return;
         }
 
-        Map<String, String> facts = new HashMap<>(Map.of("Anomaly type", anomalyType.toString(),
-                "Anomaly", anomaly.toString(),
-                "Self Healing enabled", Boolean.toString(_selfHealingEnabled.get(anomalyType)),
-                "Auto fix triggered", Boolean.toString(autoFixTriggered)));
+        Map<String, String> facts = new HashMap<>();
+        facts.put("Anomaly type", anomalyType.toString());
+        facts.put("Anomaly", anomaly.toString());
+        facts.put("Self Healing enabled", Boolean.toString(_selfHealingEnabled.get(anomalyType)));
+        facts.put("Auto fix triggered", Boolean.toString(autoFixTriggered));
+
         if (_selfHealingEnabled.get(anomalyType)) {
             facts.put("Self Healing start time", utcDateFor(selfHealingStartTime));
         }

@@ -35,7 +35,7 @@ public class IdempotenceCache {
     KafkaCruiseControlConfig config = _kafkaCruiseControl.config();
     _idempotenceRetention = Duration.ofMillis(config.getLong(AnomalyDetectorConfig.MAINTENANCE_EVENT_IDEMPOTENCE_RETENTION_MS_CONFIG));
     int maxIdempotenceCacheSize = config.getInt(AnomalyDetectorConfig.MAINTENANCE_EVENT_MAX_IDEMPOTENCE_CACHE_SIZE_CONFIG);
-    _timeByMaintenanceEvent = new LinkedHashMap<>() {
+    _timeByMaintenanceEvent = new LinkedHashMap<MaintenanceEvent, Long>() {
       @Override
       protected boolean removeEldestEntry(Map.Entry<MaintenanceEvent, Long> eldest) {
         return this.size() > maxIdempotenceCacheSize;

@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.detector.notifier;
 import com.linkedin.cruisecontrol.detector.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorManager;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -40,7 +41,7 @@ public enum KafkaAnomalyType implements AnomalyType {
   @JsonResponseField
   TOPIC_ANOMALY(5);
 
-  private static final List<KafkaAnomalyType> CACHED_VALUES = List.of(values());
+  private static final List<KafkaAnomalyType> CACHED_VALUES = Arrays.asList(values());
   private final int _priority;
 
   KafkaAnomalyType(int priority) {

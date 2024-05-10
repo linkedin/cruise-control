@@ -87,7 +87,7 @@ public class AnomalyDetectorState {
     _numCachedRecentAnomalyStates = numCachedRecentAnomalyStates;
     _recentAnomaliesByType = new HashMap<>();
     for (AnomalyType anomalyType : KafkaAnomalyType.cachedValues()) {
-      _recentAnomaliesByType.put(anomalyType, new LinkedHashMap<>() {
+      _recentAnomaliesByType.put(anomalyType, new LinkedHashMap<String, AnomalyState>() {
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, AnomalyState> eldest) {
           return this.size() > _numCachedRecentAnomalyStates;
@@ -357,7 +357,10 @@ public class AnomalyDetectorState {
   }
 
   private Map<Boolean, Set<String>> getSelfHealingByEnableStatus() {
-    Map<Boolean, Set<String>> selfHealingByEnableStatus = Map.of(true, new HashSet<>(), false, new HashSet<>());
+    Map<Boolean, Set<String>> selfHealingByEnableStatus = new HashMap<>(); // Map.of(true, new HashSet<>(), false, new HashSet<>());
+    selfHealingByEnableStatus.put(true, new HashSet<>());
+    selfHealingByEnableStatus.put(false, new HashSet<>());
+
     _anomalyNotifier.selfHealingEnabled().forEach((key, value) -> selfHealingByEnableStatus.get(value).add(key.toString()));
     return selfHealingByEnableStatus;
   }

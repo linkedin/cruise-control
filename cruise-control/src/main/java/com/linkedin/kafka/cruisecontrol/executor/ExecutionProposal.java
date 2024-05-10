@@ -264,9 +264,14 @@ public class ExecutionProposal {
    * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure() {
-    return Map.of(TOPIC_PARTITION, _tp, OLD_LEADER, _oldLeader.brokerId(),
-                  OLD_REPLICAS, _oldReplicas.stream().mapToInt(ReplicaPlacementInfo::brokerId).boxed().collect(Collectors.toList()),
-                  NEW_REPLICAS, _newReplicas.stream().mapToInt(ReplicaPlacementInfo::brokerId).boxed().collect(Collectors.toList()));
+    Map<String, Object> proposalMap = new HashMap<>(4);
+    proposalMap.put(TOPIC_PARTITION, _tp);
+    proposalMap.put(OLD_LEADER, _oldLeader.brokerId());
+    proposalMap.put(OLD_REPLICAS,
+        _oldReplicas.stream().mapToInt(ReplicaPlacementInfo::brokerId).boxed().collect(Collectors.toList()));
+    proposalMap.put(NEW_REPLICAS,
+        _newReplicas.stream().mapToInt(ReplicaPlacementInfo::brokerId).boxed().collect(Collectors.toList()));
+    return proposalMap;
   }
 
   @Override

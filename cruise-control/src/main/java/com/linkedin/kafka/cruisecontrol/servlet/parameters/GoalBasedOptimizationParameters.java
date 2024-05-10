@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.io.UnsupportedEncodingException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedSet;
@@ -35,10 +36,16 @@ public abstract class GoalBasedOptimizationParameters extends KafkaOptimizationP
     CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
   }
   private static final boolean INCLUDE_ALL_TOPICS = true;
-  private static final Map<ParameterUtils.DataFrom, Integer> MIN_NUM_VALID_WINDOWS =
-      Map.of(ParameterUtils.DataFrom.VALID_PARTITIONS, Integer.MAX_VALUE, ParameterUtils.DataFrom.VALID_WINDOWS, 1);
-  private static final Map<ParameterUtils.DataFrom, Double> MIN_VALID_PARTITIONS_RATIO =
-      Map.of(ParameterUtils.DataFrom.VALID_PARTITIONS, 0.0, ParameterUtils.DataFrom.VALID_WINDOWS, 1.0);
+  private static final Map<ParameterUtils.DataFrom, Integer> MIN_NUM_VALID_WINDOWS = new HashMap<>(2);
+  private static final Map<ParameterUtils.DataFrom, Double> MIN_VALID_PARTITIONS_RATIO = new HashMap<>(2);
+  static {
+    MIN_NUM_VALID_WINDOWS.put(ParameterUtils.DataFrom.VALID_PARTITIONS, Integer.MAX_VALUE);
+    MIN_NUM_VALID_WINDOWS.put(ParameterUtils.DataFrom.VALID_WINDOWS, 1);
+  }
+  static {
+    MIN_VALID_PARTITIONS_RATIO.put(ParameterUtils.DataFrom.VALID_PARTITIONS, 0.0);
+    MIN_VALID_PARTITIONS_RATIO.put(ParameterUtils.DataFrom.VALID_WINDOWS, 1.0);
+  }
   protected ParameterUtils.DataFrom _dataFrom;
   protected boolean _useReadyDefaultGoals;
   protected Pattern _excludedTopics;

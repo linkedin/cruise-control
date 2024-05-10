@@ -595,7 +595,7 @@ public final class ExecutionUtils {
 
       for (Map.Entry<TopicPartition, Optional<Throwable>> entry : partitions.entrySet()) {
         TopicPartition tp = entry.getKey();
-        if (entry.getValue().isEmpty()) {
+        if (entry.getValue().isPresent()) {
           LOG.debug("Leader election for {} has succeeded.", tp);
         } else {
           if (Errors.ELECTION_NOT_NEEDED.exception().getClass() == entry.getValue().get().getClass()) {

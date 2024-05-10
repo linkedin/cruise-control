@@ -18,6 +18,7 @@ import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -39,7 +40,11 @@ public class LowResourceUtilizationTest {
 
   private static final Map<Resource, Double> BROKER_CAPACITY;
   static {
-    BROKER_CAPACITY = Map.of(Resource.CPU, 200.0, Resource.DISK, 1000.0, Resource.NW_IN, 2000.0, Resource.NW_OUT, 2000.0);
+    BROKER_CAPACITY = new HashMap<>();
+    BROKER_CAPACITY.put(Resource.CPU, 200.0);
+    BROKER_CAPACITY.put(Resource.DISK, 1000.0);
+    BROKER_CAPACITY.put(Resource.NW_IN, 2000.0);
+    BROKER_CAPACITY.put(Resource.NW_OUT, 2000.0);
   }
 
   private final ResourceDistributionGoal _resourceDistributionGoal;

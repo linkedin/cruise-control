@@ -57,7 +57,7 @@ public class Purgatory implements Closeable {
     _purgatoryRetentionTimeMs = config.getLong(WebServerConfig.TWO_STEP_PURGATORY_RETENTION_TIME_MS_CONFIG);
     int purgatoryMaxCachedRequests = config.getInt(WebServerConfig.TWO_STEP_PURGATORY_MAX_REQUESTS_CONFIG);
 
-    _requestInfoById = new LinkedHashMap<>() {
+    _requestInfoById = new LinkedHashMap<Integer, RequestInfo>() {
       @Override
       protected boolean removeEldestEntry(Map.Entry<Integer, RequestInfo> eldest) {
         return this.size() > purgatoryMaxCachedRequests;

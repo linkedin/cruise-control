@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -144,7 +145,9 @@ public class PartitionProvisionerTest extends AbstractProvisionerTest {
                                                                               .topicPattern(MOCK_TOPIC_PATTERN).build();
     Map<String, ProvisionRecommendation> provisionRecommendation;
     if (hasBrokerRecommendation) {
-      provisionRecommendation = Map.of(RECOMMENDER_UP, recommendation, RECOMMENDER_TO_EXECUTE, BROKER_REC_TO_EXECUTE);
+      provisionRecommendation = new HashMap<>();
+      provisionRecommendation.put(RECOMMENDER_UP, recommendation);
+      provisionRecommendation.put(RECOMMENDER_TO_EXECUTE, BROKER_REC_TO_EXECUTE);
     } else {
       provisionRecommendation = Collections.singletonMap(RECOMMENDER_UP, recommendation);
     }

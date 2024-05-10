@@ -253,7 +253,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     task.inProgress(MOCK_CURRENT_TIME);
 
     ElectLeadersResult result = ExecutionUtils.submitPreferredLeaderElection(adminClient, Collections.singletonList(task));
-    assertTrue(result.partitions().get().get(TP1).isEmpty());
+    assertTrue(result.partitions().get().get(TP1).isPresent());
 
     // Case 2: Handle "election not needed" -- i.e. the leader is already the preferred replica for TP0.
     oldLeader = new ReplicaPlacementInfo(topicDescriptions.get(TP0.topic()).partitions().get(PARTITION).leader().id());
@@ -581,7 +581,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
         AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
     try {
       adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC0, Collections.singletonMap(0, Collections.singletonList(0))),
-                                             new NewTopic(TOPIC1, Collections.singletonMap(0, List.of(0, 1)))));
+                                             new NewTopic(TOPIC1, Collections.singletonMap(0, new ArrayList<>(Arrays.asList(0, 1))))));
     } finally {
       KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
     }

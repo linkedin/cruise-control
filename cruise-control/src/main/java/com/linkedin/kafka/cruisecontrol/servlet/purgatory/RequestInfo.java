@@ -9,7 +9,10 @@ import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import javax.servlet.http.HttpServletRequest;
@@ -42,9 +45,13 @@ public class RequestInfo {
   public static final String REASON = "Reason";
   private static final String INIT_REASON = "Awaiting review.";
   private static final String FINAL_REASON = "Submitted approved request.";
-  private static final Map<ReviewStatus, Set<ReviewStatus>> VALID_TRANSFER =
-      Map.of(PENDING_REVIEW, Set.of(APPROVED, DISCARDED), APPROVED, Set.of(DISCARDED, SUBMITTED),
-             SUBMITTED, Collections.emptySet(), DISCARDED, Collections.emptySet());
+  private static final Map<ReviewStatus, Set<ReviewStatus>> VALID_TRANSFER = new HashMap<>();
+  static {
+    VALID_TRANSFER.put(PENDING_REVIEW, new HashSet<>(Arrays.asList(APPROVED, DISCARDED)));
+    VALID_TRANSFER.put(APPROVED, new HashSet<>(Arrays.asList(DISCARDED, SUBMITTED)));
+    VALID_TRANSFER.put(SUBMITTED, Collections.emptySet());
+    VALID_TRANSFER.put(DISCARDED, Collections.emptySet());
+  }
   private final String _submitterAddress;
   private final long _submissionTimeMs;
   private final Map<String, String[]> _parameterMap;
@@ -160,7 +167,13 @@ public class RequestInfo {
    * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure(Integer reviewId) {
-    return Map.of(ID, reviewId, SUBMITTER_ADDRESS, _submitterAddress, SUBMISSION_TIME_MS, _submissionTimeMs,
-                  STATUS, _status.toString(), ENDPOINT_WITH_PARAMS, endpointWithParams(), REASON, _reason);
+    Map<String, Object> jsonMap = new HashMap<>(6);
+    jsonMap.put(ID, reviewId);
+    jsonMap.put(SUBMITTER_ADDRESS, _submitterAddress);
+    jsonMap.put(SUBMISSION_TIME_MS, _submissionTimeMs);
+    jsonMap.put(STATUS, _status.toString());
+    jsonMap.put(ENDPOINT_WITH_PARAMS, endpointWithParams());
+    jsonMap.put(REASON, _reason);
+    return jsonMap;
   }
 }

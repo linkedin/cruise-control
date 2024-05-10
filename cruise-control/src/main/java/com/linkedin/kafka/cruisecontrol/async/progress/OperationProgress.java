@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.servlet.http.HttpSession;
@@ -104,7 +105,10 @@ public class OperationProgress {
    * @return The map describing the progress of the operation.
    */
   public Map<String, Object> getJsonStructure() {
-    return Map.of(OPERATION, _operation, OPERATION_PROGRESS, getProgress());
+    Map<String, Object> operationProgress = new HashMap<>(2);
+    operationProgress.put(OPERATION, _operation);
+    operationProgress.put(OPERATION_PROGRESS, getProgress());
+    return operationProgress;
   }
 
   private synchronized Object[] getProgress() {

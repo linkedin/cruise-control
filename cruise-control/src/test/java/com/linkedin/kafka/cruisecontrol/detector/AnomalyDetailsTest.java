@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.KafkaAnomalyType;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -24,7 +25,10 @@ public class AnomalyDetailsTest {
   private static final long MOCK_STATUS_UPDATE_MS = 200L;
   private static final Map<Boolean, List<String>> VIOLATED_GOALS_BY_FIXABILITY;
   static {
-    VIOLATED_GOALS_BY_FIXABILITY = Map.of(true, Collections.singletonList("Goal-1"), false, Collections.singletonList("Goal-2"));
+    Map<Boolean, List<String>> violatedGoalsByFixability = new HashMap<>(2);
+    violatedGoalsByFixability.put(true, Collections.singletonList("Goal-1"));
+    violatedGoalsByFixability.put(false, Collections.singletonList("Goal-2"));
+    VIOLATED_GOALS_BY_FIXABILITY = Collections.unmodifiableMap(violatedGoalsByFixability);
   }
   private static final Map<Integer, Long> FAILED_BROKERS = Collections.singletonMap(1, 100L);
   private static final Map<Integer, Map<String, Long>> FAILED_DISKS = Collections.singletonMap(1, Collections.singletonMap("logDir", 100L));

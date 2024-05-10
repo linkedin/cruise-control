@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import java.time.Duration;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -132,11 +133,13 @@ public class MaintenanceEventTopicReaderTest extends CruiseControlIntegrationTes
 
   @Override
   protected Map<String, Object> withConfigs() {
-    return Map.of(MAINTENANCE_EVENT_TOPIC_CONFIG, TEST_TOPIC,
-                  MAINTENANCE_EVENT_TOPIC_REPLICATION_FACTOR_CONFIG, TEST_TOPIC_REPLICATION_FACTOR,
-                  MAINTENANCE_EVENT_TOPIC_PARTITION_COUNT_CONFIG, TEST_TOPIC_PARTITION_COUNT,
-                  MAINTENANCE_EVENT_TOPIC_RETENTION_MS_CONFIG, TEST_TOPIC_RETENTION_TIME_MS,
-                  AnomalyDetectorConfig.MAINTENANCE_EVENT_READER_CLASS_CONFIG, MaintenanceEventTopicReader.class.getName());
+    Map<String, Object> configs = new HashMap<>(5);
+    configs.put(MAINTENANCE_EVENT_TOPIC_CONFIG, TEST_TOPIC);
+    configs.put(MAINTENANCE_EVENT_TOPIC_REPLICATION_FACTOR_CONFIG, TEST_TOPIC_REPLICATION_FACTOR);
+    configs.put(MAINTENANCE_EVENT_TOPIC_PARTITION_COUNT_CONFIG, TEST_TOPIC_PARTITION_COUNT);
+    configs.put(MAINTENANCE_EVENT_TOPIC_RETENTION_MS_CONFIG, TEST_TOPIC_RETENTION_TIME_MS);
+    configs.put(AnomalyDetectorConfig.MAINTENANCE_EVENT_READER_CLASS_CONFIG, MaintenanceEventTopicReader.class.getName());
+    return configs;
   }
 
   /**
@@ -201,10 +204,11 @@ public class MaintenanceEventTopicReaderTest extends CruiseControlIntegrationTes
     String newRetentionMs = String.valueOf(Long.MAX_VALUE);
 
     KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
-    Map<String, Object> parameterConfigOverrides = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl,
-                                                          MAINTENANCE_EVENT_TOPIC_REPLICATION_FACTOR_CONFIG, newRF,
-                                                          MAINTENANCE_EVENT_TOPIC_PARTITION_COUNT_CONFIG, newPartitionCount,
-                                                          MAINTENANCE_EVENT_TOPIC_RETENTION_MS_CONFIG, newRetentionMs);
+    Map<String, Object> parameterConfigOverrides = new HashMap<>(4);
+    parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
+    parameterConfigOverrides.put(MAINTENANCE_EVENT_TOPIC_REPLICATION_FACTOR_CONFIG, newRF);
+    parameterConfigOverrides.put(MAINTENANCE_EVENT_TOPIC_PARTITION_COUNT_CONFIG, newPartitionCount);
+    parameterConfigOverrides.put(MAINTENANCE_EVENT_TOPIC_RETENTION_MS_CONFIG, newRetentionMs);
 
     // The current time is expected to cause (1) a valid rebalance plan creation, but (2) an expired demote broker plan.
     long currentMockTime = TEST_REBALANCE_PLAN_TIME + DEFAULT_MAINTENANCE_PLAN_EXPIRATION_MS;

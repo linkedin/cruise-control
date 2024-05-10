@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.model;
 import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
+import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
@@ -19,10 +20,13 @@ import static org.junit.Assert.assertEquals;
  */
 public class ReplicasByTopicTest {
   private static final String NEW_TOPIC = "NEW_TOPIC";
-  private static final Map<Resource, Double> BROKER_CAPACITY = Map.of(Resource.CPU, TestConstants.LARGE_BROKER_CAPACITY,
-                                                                      Resource.DISK, TestConstants.LARGE_BROKER_CAPACITY,
-                                                                      Resource.NW_IN, TestConstants.LARGE_BROKER_CAPACITY,
-                                                                      Resource.NW_OUT, TestConstants.MEDIUM_BROKER_CAPACITY);
+  private static final Map<Resource, Double> BROKER_CAPACITY = new HashMap<>();
+  static {
+    BROKER_CAPACITY.put(Resource.CPU, TestConstants.LARGE_BROKER_CAPACITY);
+    BROKER_CAPACITY.put(Resource.DISK, TestConstants.LARGE_BROKER_CAPACITY);
+    BROKER_CAPACITY.put(Resource.NW_IN, TestConstants.LARGE_BROKER_CAPACITY);
+    BROKER_CAPACITY.put(Resource.NW_OUT, TestConstants.MEDIUM_BROKER_CAPACITY);
+  }
 
   @Test
   public void testRelocateReplica() {

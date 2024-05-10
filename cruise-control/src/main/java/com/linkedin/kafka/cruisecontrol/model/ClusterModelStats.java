@@ -232,12 +232,14 @@ public class ClusterModelStats {
    * @return An object that can be further used to encode into JSON.
    */
   public Map<String, Object> getJsonStructure() {
-    return Map.of(METADATA, new ClusterModelStatsMetaData(numBrokers(), numReplicasInCluster(), numTopics()).getJsonStructure(),
-                  STATISTICS, new ClusterModelStatsValue(_resourceUtilizationStats,
-                                                         _potentialNwOutUtilizationStats,
-                                                         _replicaStats,
-                                                         _leaderReplicaStats,
-                                                         _topicReplicaStats).getJsonStructure());
+    Map<String, Object> statMap = new HashMap<>(2);
+    statMap.put(METADATA, new ClusterModelStatsMetaData(numBrokers(), numReplicasInCluster(), numTopics()).getJsonStructure());
+    statMap.put(STATISTICS, new ClusterModelStatsValue(_resourceUtilizationStats,
+        _potentialNwOutUtilizationStats,
+        _replicaStats,
+        _leaderReplicaStats,
+        _topicReplicaStats).getJsonStructure());
+    return statMap;
   }
 
   /**

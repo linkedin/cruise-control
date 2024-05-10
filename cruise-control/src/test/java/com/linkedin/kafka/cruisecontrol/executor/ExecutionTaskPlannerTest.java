@@ -76,19 +76,19 @@ public class ExecutionTaskPlannerTest {
       new ExecutionProposal(new TopicPartition(TOPIC2, 3), 10, _r3, Arrays.asList(_r3, _r2), Arrays.asList(_r2, _r0));
 
   private final ExecutionProposal _rf4PartitionMovement0 =
-      new ExecutionProposal(new TopicPartition(TOPIC3, 0), 10, _r0, List.of(_r0, _r2, _r4, _r3), List.of(_r2, _r1, _r3, _r5));
+      new ExecutionProposal(new TopicPartition(TOPIC3, 0), 10, _r0, Arrays.asList(_r0, _r2, _r4, _r3), Arrays.asList(_r2, _r1, _r3, _r5));
   private final ExecutionProposal _rf4PartitionMovement1 =
-      new ExecutionProposal(new TopicPartition(TOPIC3, 1), 30, _r1, List.of(_r1, _r3, _r5, _r4), List.of(_r3, _r2, _r0, _r4));
+      new ExecutionProposal(new TopicPartition(TOPIC3, 1), 30, _r1, Arrays.asList(_r1, _r3, _r5, _r4), Arrays.asList(_r3, _r2, _r0, _r4));
   private final ExecutionProposal _rf4PartitionMovement2 =
-      new ExecutionProposal(new TopicPartition(TOPIC3, 2), 20, _r2, List.of(_r2, _r1, _r4, _r5), List.of(_r1, _r3, _r4, _r0));
+      new ExecutionProposal(new TopicPartition(TOPIC3, 2), 20, _r2, Arrays.asList(_r2, _r1, _r4, _r5), Arrays.asList(_r1, _r3, _r4, _r0));
   private final ExecutionProposal _rf4PartitionMovement3 =
-      new ExecutionProposal(new TopicPartition(TOPIC3, 3), 10, _r3, List.of(_r3, _r2, _r5, _r1), List.of(_r2, _r0, _r5, _r1));
+      new ExecutionProposal(new TopicPartition(TOPIC3, 3), 10, _r3, Arrays.asList(_r3, _r2, _r5, _r1), Arrays.asList(_r2, _r0, _r5, _r1));
 
   private final List<Node> _expectedNodes = Arrays.asList(new Node(0, "null", -1),
                                                           new Node(1, "null", -1),
                                                           new Node(2, "null", -1),
                                                           new Node(3, "null", -1));
-  private final List<Node> _rf4ExpectedNodes = List.of(new Node(0, "null", -1),
+  private final List<Node> _rf4ExpectedNodes = Arrays.asList(new Node(0, "null", -1),
                                                        new Node(1, "null", -1),
                                                        new Node(2, "null", -1),
                                                        new Node(3, "null", -1),

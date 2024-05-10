@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.async.progress;
 
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseClass;
 import com.linkedin.kafka.cruisecontrol.servlet.response.JsonResponseField;
+import java.util.HashMap;
 import java.util.Map;
 
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVAL_TO_PERCENTAGE;
@@ -30,8 +31,12 @@ public class StepProgress {
   }
 
   protected Map<String, Object> getJsonStructure() {
-    return Map.of(STEP, _step.name(), DESCRIPTION, _step.description(), TIME_IN_MS, _duration,
-                  COMPLETION_PERCENTAGE, _step.completionPercentage() * UNIT_INTERVAL_TO_PERCENTAGE);
+    Map<String, Object> stepProgressMap = new HashMap<>(4);
+    stepProgressMap.put(STEP, _step.name());
+    stepProgressMap.put(DESCRIPTION, _step.description());
+    stepProgressMap.put(TIME_IN_MS, _duration);
+    stepProgressMap.put(COMPLETION_PERCENTAGE, _step.completionPercentage() * UNIT_INTERVAL_TO_PERCENTAGE);
+    return stepProgressMap;
   }
 
   @Override

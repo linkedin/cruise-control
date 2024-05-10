@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -55,8 +56,16 @@ public class PartitionState {
   }
 
   protected Map<String, Object> getJsonStructure() {
-    return Map.of(TOPIC, _topic, PARTITION, _partition, LEADER, _leader, REPLICAS, _replicas, IN_SYNC, _inSyncReplicas,
-                  OUT_OF_SYNC, _outOfSyncReplicas, OFFLINE, _offlineReplicas, MIN_ISR, _minIsr);
+    Map<String, Object> jsonMap = new HashMap<>();
+    jsonMap.put(TOPIC, _topic);
+    jsonMap.put(PARTITION, _partition);
+    jsonMap.put(LEADER, _leader);
+    jsonMap.put(REPLICAS, _replicas);
+    jsonMap.put(IN_SYNC, _inSyncReplicas);
+    jsonMap.put(OUT_OF_SYNC, _outOfSyncReplicas);
+    jsonMap.put(OFFLINE, _offlineReplicas);
+    jsonMap.put(MIN_ISR, _minIsr);
+    return jsonMap;
   }
 
   protected String writeKafkaPartitionState(int topicNameLength) {

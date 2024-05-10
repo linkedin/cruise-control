@@ -19,6 +19,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -55,7 +56,8 @@ public final class RunnableUtils {
   public static final boolean SELF_HEALING_IS_TRIGGERED_BY_USER_REQUEST = false;
   public static final boolean SELF_HEALING_FAST_MODE = true;
   private static final Set<String> KAFKA_ASSIGNER_GOALS =
-      Set.of(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(), KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName());
+      Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+          KafkaAssignerEvenRackAwareGoal.class.getSimpleName(), KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName())));
 
   private RunnableUtils() {
   }

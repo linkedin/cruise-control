@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import java.lang.reflect.Constructor;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,22 +37,37 @@ public class ExecutionUtilsTest {
   private static final TopicPartition P0 = new TopicPartition(TOPIC_NAME, 0);
   private static final TopicPartition P1 = new TopicPartition(TOPIC_NAME, 1);
   // Both partitions are successful
-  private static final Map<TopicPartition, Optional<Throwable>> SUCCESSFUL_PARTITIONS = Map.of(P0, Optional.empty(), P1, Optional.empty());
+  private static final Map<TopicPartition, Optional<Throwable>> SUCCESSFUL_PARTITIONS = new HashMap<>();
   // One partition successful, the other has UnknownTopicOrPartitionException
-  private static final Map<TopicPartition, Optional<Throwable>> ONE_WITH_UTOP = Map.of(P0, Optional.empty(), P1,
-                                                                                       Optional.of(new UnknownTopicOrPartitionException()));
+  private static final Map<TopicPartition, Optional<Throwable>> ONE_WITH_UTOP = new HashMap<>();
   // One partition successful, the other has InvalidTopicException
-  private static final Map<TopicPartition, Optional<Throwable>> ONE_WITH_IT = Map.of(P0, Optional.empty(), P1,
-                                                                                     Optional.of(new InvalidTopicException()));
+  private static final Map<TopicPartition, Optional<Throwable>> ONE_WITH_IT = new HashMap<>();
   // One partition successful, the other has ElectionNotNeededException
-  private static final Map<TopicPartition, Optional<Throwable>> ONE_WITH_ENN = Map.of(P0, Optional.empty(), P1,
-                                                                                      Optional.of(new ElectionNotNeededException("")));
+  private static final Map<TopicPartition, Optional<Throwable>> ONE_WITH_ENN = new HashMap<>();
   // One partition successful, the other has PreferredLeaderNotAvailableException
-  private static final Map<TopicPartition, Optional<Throwable>> ONE_WITH_PLNA = Map.of(P0, Optional.empty(), P1,
-                                                                                       Optional.of(new PreferredLeaderNotAvailableException("")));
+  private static final Map<TopicPartition, Optional<Throwable>> ONE_WITH_PLNA = new HashMap<>();
   // One partition successful, the other has NotControllerException
-  private static final Map<TopicPartition, Optional<Throwable>> ONE_WITH_NC = Map.of(P0, Optional.empty(), P1,
-                                                                                     Optional.of(new NotControllerException("")));
+  private static final Map<TopicPartition, Optional<Throwable>> ONE_WITH_NC = new HashMap<>();
+
+  static {
+    SUCCESSFUL_PARTITIONS.put(P0, Optional.empty());
+    SUCCESSFUL_PARTITIONS.put(P1, Optional.empty());
+
+    ONE_WITH_UTOP.put(P0, Optional.empty());
+    ONE_WITH_UTOP.put(P1, Optional.of(new UnknownTopicOrPartitionException()));
+
+    ONE_WITH_IT.put(P0, Optional.empty());
+    ONE_WITH_IT.put(P1, Optional.of(new InvalidTopicException()));
+
+    ONE_WITH_ENN.put(P0, Optional.empty());
+    ONE_WITH_ENN.put(P1, Optional.of(new ElectionNotNeededException("")));
+
+    ONE_WITH_PLNA.put(P0, Optional.empty());
+    ONE_WITH_PLNA.put(P1, Optional.of(new PreferredLeaderNotAvailableException("")));
+
+    ONE_WITH_NC.put(P0, Optional.empty());
+    ONE_WITH_NC.put(P1, Optional.of(new NotControllerException("")));
+  }
 
   @Test
   public void testProcessAlterPartitionReassignmentResult() throws Exception {
@@ -141,7 +157,7 @@ public class ExecutionUtilsTest {
     // Case 3: Handle one partition successful, the other has ElectionNotNeededException
     // Case 4: Handle one partition successful, the other has PreferredLeaderNotAvailableException
     // Case 5: Handle one partition successful, the other has NotControllerException
-    for (Map<TopicPartition, Optional<Throwable>> entry : Set.of(SUCCESSFUL_PARTITIONS, ONE_WITH_ENN, ONE_WITH_PLNA, ONE_WITH_NC)) {
+    for (Map<TopicPartition, Optional<Throwable>> entry : Collections.unmodifiableSet(new HashSet<>(Arrays.asList(SUCCESSFUL_PARTITIONS, ONE_WITH_ENN, ONE_WITH_PLNA, ONE_WITH_NC)))) {
       result = constructor.newInstance(partitions);
 
       EasyMock.expect(partitions.get()).andReturn(entry).once();
@@ -154,7 +170,7 @@ public class ExecutionUtilsTest {
 
     // Case 6: Handle one partition successful, the other has UnknownTopicOrPartitionException
     // Case 7: Handle one partition successful, the other has InvalidTopicException
-    for (Map<TopicPartition, Optional<Throwable>> entry : Set.of(ONE_WITH_UTOP, ONE_WITH_IT)) {
+    for (Map<TopicPartition, Optional<Throwable>> entry : Collections.unmodifiableSet(new HashSet<>(Arrays.asList(ONE_WITH_UTOP, ONE_WITH_IT)))) {
       result = constructor.newInstance(partitions);
 
       EasyMock.expect(partitions.get()).andReturn(entry).once();
@@ -171,9 +187,10 @@ public class ExecutionUtilsTest {
     // Case 8: Handle execution timeout exception. Expect no side effect.
     // Case 9: Handle execution ClusterAuthorization exception. Expect no side effect.
     // Case 10: Handle unexpected execution exception (i.e. ControllerMovedException). Expect no side effect.
-    for (Throwable entry : Set.of(new org.apache.kafka.common.errors.TimeoutException(),
+    for (Throwable entry : Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+        new org.apache.kafka.common.errors.TimeoutException(),
                                   new org.apache.kafka.common.errors.ClusterAuthorizationException(""),
-                                  new org.apache.kafka.common.errors.ControllerMovedException(""))) {
+                                  new org.apache.kafka.common.errors.ControllerMovedException(""))))) {
       result = constructor.newInstance(partitions);
 
       EasyMock.expect(partitions.get()).andThrow(new ExecutionException(entry)).once();

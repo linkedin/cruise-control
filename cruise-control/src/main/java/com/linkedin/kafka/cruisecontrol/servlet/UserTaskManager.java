@@ -94,7 +94,7 @@ public class UserTaskManager implements Closeable {
                          Purgatory purgatory) {
     _purgatory = purgatory;
     _sessionKeyToUserTaskIdMap = new HashMap<>();
-    List<CruiseControlEndpointType> endpointTypes = List.of(CruiseControlEndpointType.values());
+    List<CruiseControlEndpointType> endpointTypes = Arrays.asList(CruiseControlEndpointType.values());
     _uuidToCompletedUserTaskInfoMap = new HashMap<>();
     _completedUserTaskRetentionTimeMs = new HashMap<>();
     initCompletedUserTaskRetentionPolicy(config, endpointTypes);
@@ -124,11 +124,11 @@ public class UserTaskManager implements Closeable {
     _purgatory = null;
     _sessionKeyToUserTaskIdMap = new HashMap<>();
     _uuidToActiveUserTaskInfoMap = new LinkedHashMap<>(maxActiveUserTasks);
-    List<CruiseControlEndpointType> endpointTypes = List.of(CruiseControlEndpointType.values());
+    List<CruiseControlEndpointType> endpointTypes = Arrays.asList(CruiseControlEndpointType.values());
     _uuidToCompletedUserTaskInfoMap = new HashMap<>();
     _completedUserTaskRetentionTimeMs = new HashMap<>();
     for (CruiseControlEndpointType endpointType : endpointTypes) {
-      _uuidToCompletedUserTaskInfoMap.put(endpointType, new LinkedHashMap<>() {
+      _uuidToCompletedUserTaskInfoMap.put(endpointType, new LinkedHashMap<UUID, UserTaskInfo>() {
         @Override
         protected boolean removeEldestEntry(Map.Entry<UUID, UserTaskInfo> eldest) {
           return this.size() > maxCachedCompletedUserTasks;
@@ -192,7 +192,7 @@ public class UserTaskManager implements Closeable {
           throw new IllegalStateException("Unknown endpoint type " + endpointType);
       }
       Integer mapSize = maxCachedCompletedUserTasks == null ? defaultMaxCachedCompletedUserTasks : maxCachedCompletedUserTasks;
-      _uuidToCompletedUserTaskInfoMap.put(endpointType, new LinkedHashMap<>() {
+      _uuidToCompletedUserTaskInfoMap.put(endpointType, new LinkedHashMap<UUID, UserTaskInfo>() {
         @Override
         protected boolean removeEldestEntry(Map.Entry<UUID, UserTaskInfo> eldest) {
           return this.size() > mapSize;
@@ -805,7 +805,7 @@ public class UserTaskManager implements Closeable {
     COMPLETED("Completed"),
     COMPLETED_WITH_ERROR("CompletedWithError");
 
-    private static final List<TaskState> CACHED_VALUES = List.of(values());
+    private static final List<TaskState> CACHED_VALUES = Arrays.asList(values());
     private final String _type;
     TaskState(String type) {
       _type = type;

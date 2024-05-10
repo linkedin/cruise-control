@@ -100,7 +100,7 @@ public final class MonitorUnitTestUtils {
    * @return Cluster that consists of {@link #NODE_0} and {@link #NODE_1} to be used in tests.
    */
   public static Cluster getCluster(Collection<TopicPartition> partitions) {
-    Set<Node> allNodes = Set.of(NODE_0, NODE_1);
+    Set<Node> allNodes = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(NODE_0, NODE_1)));
     Set<PartitionInfo> partitionInfo = new HashSet<>();
     for (TopicPartition tp : partitions) {
       partitionInfo.add(new PartitionInfo(tp.topic(), tp.partition(), NODE_0, NODES, NODES));

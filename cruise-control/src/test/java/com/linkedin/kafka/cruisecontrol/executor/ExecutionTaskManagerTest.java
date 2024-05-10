@@ -13,6 +13,7 @@ import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -31,8 +32,10 @@ import static org.junit.Assert.assertEquals;
 public class ExecutionTaskManagerTest {
   private static final Map<ConcurrencyType, Integer> MOCK_DEFAULT_CONCURRENCY;
   static {
-    MOCK_DEFAULT_CONCURRENCY =
-        Map.of(ConcurrencyType.INTER_BROKER_REPLICA, 4, ConcurrencyType.LEADERSHIP, 500, ConcurrencyType.INTRA_BROKER_REPLICA, 2);
+    MOCK_DEFAULT_CONCURRENCY = new HashMap<>();
+    MOCK_DEFAULT_CONCURRENCY.put(ConcurrencyType.INTER_BROKER_REPLICA, 4);
+    MOCK_DEFAULT_CONCURRENCY.put(ConcurrencyType.LEADERSHIP_CLUSTER, 500);
+    MOCK_DEFAULT_CONCURRENCY.put(ConcurrencyType.INTRA_BROKER_REPLICA, 2);
   }
   private static ExecutionTaskManager taskManager;
 

@@ -211,9 +211,11 @@ public class SlowBrokerFinderTest {
   }
 
   private Map<Short, Double> populateMetricValues(double leaderBytesInRate, double replicationBytesInRate, double logFlushTimeMs) {
-    return Map.of(KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.BROKER_LOG_FLUSH_TIME_MS_999TH.name()).id(), logFlushTimeMs,
-                  KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.LEADER_BYTES_IN.name()).id(), leaderBytesInRate,
-                  KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.REPLICATION_BYTES_IN_RATE.name()).id(), replicationBytesInRate);
+    Map<Short, Double> metricValueById = new HashMap<>(3);
+    metricValueById.put(KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.BROKER_LOG_FLUSH_TIME_MS_999TH.name()).id(), logFlushTimeMs);
+    metricValueById.put(KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.LEADER_BYTES_IN.name()).id(), leaderBytesInRate);
+    metricValueById.put(KafkaMetricDef.brokerMetricDef().metricInfo(KafkaMetricDef.REPLICATION_BYTES_IN_RATE.name()).id(), replicationBytesInRate);
+    return metricValueById;
   }
 
   private SlowBrokerFinder createSlowBrokerFinder() {

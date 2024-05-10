@@ -4,10 +4,10 @@
 
 package com.linkedin.kafka.cruisecontrol.detector.notifier;
 
-import java.util.Map;
-import org.junit.Test;
-
 import static org.junit.Assert.assertEquals;
+
+import java.util.Collections;
+import org.junit.Test;
 
 
 public class MSTeamsMessageTest {
@@ -17,6 +17,6 @@ public class MSTeamsMessageTest {
         String expectedJson = "{\"@type\": \"MessageCard\",\"@context\": \"http://schema.org/extensions\","
             + "\"themeColor\": \"0076D7\",\"summary\": \"Cruise-Control Alert\",\"sections\": "
             + "[{\"facts\": [{\"name\": \"title1\", \"value\": \"description1\"}]}]}";
-        assertEquals(expectedJson, new MSTeamsMessage(Map.of("title1", "description1")).toString());
+        assertEquals(expectedJson, new MSTeamsMessage(Collections.singletonMap("title1", "description1")).toString());
     }
 }

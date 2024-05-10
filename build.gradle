@@ -83,7 +83,7 @@ subprojects {
   apply plugin: 'jacoco'
 
   // This project requires Java 11
-  sourceCompatibility = JavaVersion.VERSION_11
+  sourceCompatibility = JavaVersion.VERSION_1_8
 
   task sourcesJar(type: Jar, dependsOn: classes) {
     archiveClassifier.set("sources")

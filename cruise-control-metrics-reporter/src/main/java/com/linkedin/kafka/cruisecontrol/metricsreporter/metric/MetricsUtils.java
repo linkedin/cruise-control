@@ -6,8 +6,10 @@ package com.linkedin.kafka.cruisecontrol.metricsreporter.metric;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.apache.kafka.common.metrics.KafkaMetric;
@@ -59,19 +61,33 @@ public final class MetricsUtils {
   static final String ATTRIBUTE_999TH_PERCENTILE = "999thPercentile";
 
   // Name Set.
-  private static final Set<String> INTERESTED_NETWORK_METRIC_NAMES =
-      Set.of(REQUESTS_PER_SEC, REQUEST_QUEUE_SIZE, RESPONSE_QUEUE_SIZE, REQUEST_QUEUE_TIME_MS, LOCAL_TIME_MS, TOTAL_TIME_MS);
+  private static final Set<String> INTERESTED_NETWORK_METRIC_NAMES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+          REQUESTS_PER_SEC,
+          REQUEST_QUEUE_SIZE,
+          RESPONSE_QUEUE_SIZE,
+          REQUEST_QUEUE_TIME_MS,
+          LOCAL_TIME_MS,
+          TOTAL_TIME_MS)));
 
-  private static final Set<String> INTERESTED_TOPIC_METRIC_NAMES =
-      Set.of(BYTES_IN_PER_SEC, BYTES_OUT_PER_SEC, REPLICATION_BYTES_IN_PER_SEC, REPLICATION_BYTES_OUT_PER_SEC, TOTAL_FETCH_REQUEST_PER_SEC,
-             TOTAL_PRODUCE_REQUEST_PER_SEC, MESSAGES_IN_PER_SEC);
-    private static final Set<String> INTERESTED_LOG_METRIC_NAMES = Set.of(SIZE, LOG_FLUSH_RATE_AND_TIME_MS);
+  private static final Set<String> INTERESTED_TOPIC_METRIC_NAMES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+          BYTES_IN_PER_SEC,
+          BYTES_OUT_PER_SEC,
+          REPLICATION_BYTES_IN_PER_SEC,
+          REPLICATION_BYTES_OUT_PER_SEC,
+          TOTAL_FETCH_REQUEST_PER_SEC,
+          TOTAL_PRODUCE_REQUEST_PER_SEC,
+          MESSAGES_IN_PER_SEC)));
+    private static final Set<String> INTERESTED_LOG_METRIC_NAMES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+        SIZE,
+        LOG_FLUSH_RATE_AND_TIME_MS)));
 
   private static final Set<String> INTERESTED_SERVER_METRIC_NAMES = Collections.singleton(REQUEST_HANDLER_AVG_IDLE_PERCENT);
 
   // Request type set
-  private static final Set<String> INTERESTED_REQUEST_TYPE =
-      Set.of(CONSUMER_FETCH_REQUEST_TYPE, FOLLOWER_FETCH_REQUEST_TYPE, PRODUCE_REQUEST_TYPE);
+  private static final Set<String> INTERESTED_REQUEST_TYPE = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+      CONSUMER_FETCH_REQUEST_TYPE,
+      FOLLOWER_FETCH_REQUEST_TYPE,
+      PRODUCE_REQUEST_TYPE)));
 
   private MetricsUtils() {
 

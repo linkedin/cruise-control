@@ -384,7 +384,7 @@ public final class ParameterUtils {
 
   static boolean capacityOnly(HttpServletRequest request) {
     Set<String> excludeParameters =
-        Set.of(TIME_PARAM, END_MS_PARAM, START_MS_PARAM, ALLOW_CAPACITY_ESTIMATION_PARAM, POPULATE_DISK_INFO_PARAM);
+        Collections.unmodifiableSet(new HashSet<>(Arrays.asList(TIME_PARAM, END_MS_PARAM, START_MS_PARAM, ALLOW_CAPACITY_ESTIMATION_PARAM, POPULATE_DISK_INFO_PARAM)));
     return getBooleanExcludeGiven(request, CAPACITY_ONLY_PARAM, excludeParameters);
   }
 
@@ -667,7 +667,9 @@ public final class ParameterUtils {
     ensureDisjoint(enableSelfHealingFor, disableSelfHealingFor,
                    "The same anomaly cannot be specified in both disable and enable parameters");
 
-    Map<Boolean, Set<AnomalyType>> selfHealingFor = Map.of(true, enableSelfHealingFor, false, disableSelfHealingFor);
+    Map<Boolean, Set<AnomalyType>> selfHealingFor = new HashMap<>();
+    selfHealingFor.put(true, enableSelfHealingFor);
+    selfHealingFor.put(false, disableSelfHealingFor);
     return selfHealingFor;
   }
 
@@ -686,8 +688,9 @@ public final class ParameterUtils {
     ensureDisjoint(enableConcurrencyAdjusterFor, disableConcurrencyAdjusterFor,
                    "The same concurrency type cannot be specified in both disable and enable parameters");
 
-    Map<Boolean, Set<ConcurrencyType>> concurrencyAdjusterFor = Map.of(true, enableConcurrencyAdjusterFor,
-                                                                       false, disableConcurrencyAdjusterFor);
+    Map<Boolean, Set<ConcurrencyType>> concurrencyAdjusterFor = new HashMap<>();
+    concurrencyAdjusterFor.put(true, enableConcurrencyAdjusterFor);
+    concurrencyAdjusterFor.put(false, disableConcurrencyAdjusterFor);
     return concurrencyAdjusterFor;
   }
 
@@ -771,13 +774,13 @@ public final class ParameterUtils {
       if (!goals.isEmpty()) {
         throw new UserRequestException("Kafka assigner mode does not support explicitly specifying goals in request.");
       }
-      return List.of(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(), KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName());
+      return new ArrayList<>(Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(), KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName()));
     }
     if (isRebalanceDiskMode) {
       if (!goals.isEmpty()) {
         throw new UserRequestException("Rebalance disk mode does not support explicitly specifying goals in request.");
       }
-      return List.of(IntraBrokerDiskCapacityGoal.class.getSimpleName(), IntraBrokerDiskUsageDistributionGoal.class.getSimpleName());
+      return new ArrayList<>(Arrays.asList(IntraBrokerDiskCapacityGoal.class.getSimpleName(), IntraBrokerDiskUsageDistributionGoal.class.getSimpleName()));
     }
     return goals;
   }
@@ -1059,7 +1062,9 @@ public final class ParameterUtils {
                                                    REVIEW, APPROVE_PARAM, DISCARD_PARAM));
     }
 
-    Map<ReviewStatus, Set<Integer>> reviewRequest = Map.of(APPROVED, approve, DISCARDED, discard);
+    Map<ReviewStatus, Set<Integer>> reviewRequest = new HashMap<>();
+    reviewRequest.put(APPROVED, approve);
+    reviewRequest.put(DISCARDED, discard);
     return reviewRequest;
   }
 

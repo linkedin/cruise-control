@@ -312,12 +312,13 @@ public class SlowBrokerFinder implements MetricAnomalyFinder<BrokerEntity> {
   }
 
   private SlowBrokers createSlowBrokersAnomaly(Map<BrokerEntity, Long> detectedBrokers, boolean fixable, boolean removeSlowBroker) {
-    Map<String, Object> parameterConfigOverrides = Map.of(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl,
-                                                          METRIC_ANOMALY_DESCRIPTION_OBJECT_CONFIG, getSlowBrokerDescription(detectedBrokers),
-                                                          METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG, detectedBrokers,
-                                                          REMOVE_SLOW_BROKER_CONFIG, removeSlowBroker,
-                                                          ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs(),
-                                                          METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG, fixable);
+    Map<String, Object> parameterConfigOverrides = new HashMap<>(6);
+    parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl);
+    parameterConfigOverrides.put(METRIC_ANOMALY_DESCRIPTION_OBJECT_CONFIG, getSlowBrokerDescription(detectedBrokers));
+    parameterConfigOverrides.put(METRIC_ANOMALY_BROKER_ENTITIES_OBJECT_CONFIG, detectedBrokers);
+    parameterConfigOverrides.put(REMOVE_SLOW_BROKER_CONFIG, removeSlowBroker);
+    parameterConfigOverrides.put(ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG, _kafkaCruiseControl.timeMs());
+    parameterConfigOverrides.put(METRIC_ANOMALY_FIXABLE_OBJECT_CONFIG, fixable);
     return _kafkaCruiseControl.config().getConfiguredInstance(AnomalyDetectorConfig.METRIC_ANOMALY_CLASS_CONFIG,
                                                               SlowBrokers.class,
                                                               parameterConfigOverrides);

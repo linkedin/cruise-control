@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -24,7 +25,7 @@ public enum AnomalyDetectionStatus {
   READY, SKIP_HAS_OFFLINE_REPLICAS, SKIP_LOAD_MONITOR_NOT_READY, SKIP_EXECUTOR_NOT_READY, SKIP_MODEL_GENERATION_NOT_CHANGED,
   SKIP_HAS_DEAD_BROKERS;
 
-  private static final List<AnomalyDetectionStatus> CACHED_VALUES = List.of(values());
+  private static final List<AnomalyDetectionStatus> CACHED_VALUES = Arrays.asList(values());
 
   /**
    * Use this instead of values() because values() creates a new array each time.

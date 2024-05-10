@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.purgatory;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -14,7 +15,7 @@ import java.util.List;
 public enum ReviewStatus {
   PENDING_REVIEW, APPROVED, SUBMITTED, DISCARDED;
 
-  private static final List<ReviewStatus> CACHED_VALUES = List.of(values());
+  private static final List<ReviewStatus> CACHED_VALUES = Arrays.asList(values());
 
   /**
    * Use this instead of values() because values() creates a new array each time.

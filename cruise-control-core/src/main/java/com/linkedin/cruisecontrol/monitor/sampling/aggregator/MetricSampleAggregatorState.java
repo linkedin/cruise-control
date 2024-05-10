@@ -41,7 +41,7 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
    */
   MetricSampleAggregatorState(int numWindows, long windowMs, int completenessCacheSize) {
     super();
-    _completenessCache = new LinkedHashMap<>() {
+    _completenessCache = new LinkedHashMap<AggregationOptions<G, E>, MetricSampleCompleteness<G, E>>() {
       @Override
       protected boolean removeEldestEntry(Map.Entry<AggregationOptions<G, E>, MetricSampleCompleteness<G, E>> eldest) {
         return this.size() > completenessCacheSize;
