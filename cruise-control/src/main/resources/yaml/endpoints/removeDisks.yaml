@@ -15,12 +15,6 @@ RemoveDisksEndpoint:
         schema:
           type: boolean
           default: false
-      - name: skip_hard_goal_check
-        in: query
-        description: Whether to allow hard goals be skipped in proposal generation.
-        schema:
-          type: boolean
-          default: false
       - name: verbose
         in: query
         description: Return detailed state information.
