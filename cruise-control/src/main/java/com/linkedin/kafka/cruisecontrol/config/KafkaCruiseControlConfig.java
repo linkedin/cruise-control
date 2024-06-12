@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.config;
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.PersistedDataConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.CruiseControlParametersConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.CruiseControlRequestConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
@@ -16,6 +17,7 @@ import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -23,6 +25,7 @@ import java.util.TreeSet;
 import com.linkedin.kafka.cruisecontrol.servlet.security.BasicSecurityProvider;
 import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityProvider;
 import com.linkedin.kafka.cruisecontrol.servlet.security.jwt.JwtSecurityProvider;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import java.util.Map;
@@ -38,9 +41,18 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final ConfigDef CONFIG;
 
   static {
-    CONFIG = CruiseControlRequestConfig.define(CruiseControlParametersConfig.define(AnomalyDetectorConfig.define(
-        AnalyzerConfig.define(ExecutorConfig.define(MonitorConfig.define(WebServerConfig.define(
-            UserTaskManagerConfig.define(new ConfigDef())))))))).withClientSslSupport().withClientSaslSupport();
+    ConfigDef configDef = new ConfigDef();
+    configDef = AnalyzerConfig.define(configDef);
+    configDef = AnomalyDetectorConfig.define(configDef);
+    configDef = CruiseControlParametersConfig.define(configDef);
+    configDef = CruiseControlRequestConfig.define(configDef);
+    configDef = ExecutorConfig.define(configDef);
+    configDef = MonitorConfig.define(configDef);
+    configDef = PersistedDataConfig.define(configDef);
+    configDef = UserTaskManagerConfig.define(configDef);
+    configDef = WebServerConfig.define(configDef);
+    configDef.withClientSslSupport().withClientSaslSupport();
+    CONFIG = configDef;
   }
 
   public KafkaCruiseControlConfig(Map<?, ?> originals) {
@@ -57,6 +69,18 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     sanityCheckSecurity();
     sanityCheckBalancingConstraints();
     sanityCheckWebServerUrlPrefix();
+  }
+
+  /**
+   * Package private for testing. Since configDef controls which configurations can be set, being
+   * able to set a simple or mocked one is helpful for unit testing.
+   *
+   * @param configDef Overriding the parse() method allows control over which configs end up in
+   * {@link KafkaCruiseControlConfig}'s map of configurations.
+   * @param originals The key/value pairs of configs to set.
+   */
+  KafkaCruiseControlConfig(ConfigDef configDef, Map<?, ?> originals) {
+    super(configDef, originals, false);
   }
 
   /**
@@ -120,6 +144,42 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       }
     }
     return objects;
+  }
+
+  /**
+   * Get the key and try to parse the value into a map. The map is expected to be encoded as a
+   * string of semicolon-separated key=value pairs, allowing comma-separated list type values.
+   * Empty values are allowed, but not empty keys. e.g. {@code "k1=v1;k2=v2a,v2b;k3="}
+   *
+   * @param key The config key to get the value for.
+   * @return The map with the parsed keys and values. An empty config value will return an empty
+   * map.
+   */
+  public Map<String, String> getMap(String key) {
+    Map<String, String> result = new HashMap<>();
+    String value = getString(key);
+    if (StringUtils.isBlank(value)) {
+      return result;
+    }
+
+    for (String pair : value.split(";")) {
+      if (StringUtils.isNotBlank(pair)) {
+        final String[] parts = pair.split("=");
+
+        // An empty value is allowed, but not an empty key.
+        if (parts.length == 2 && StringUtils.isNotBlank(parts[0])) {
+          result.put(parts[0].trim(), parts[1].trim());
+        } else if (parts.length == 1 && pair.stripTrailing().equals(parts[0] + "=")) {
+          result.put(parts[0].trim(), "");
+        } else {
+          throw new ConfigException(String.format(
+                  "Invalid configuration map entry: \"%s\", found for key: \"%s\". "
+                          + "Each entry must be a key=value pair.",
+                  pair, key));
+        }
+      }
+    }
+    return result;
   }
 
   /**
