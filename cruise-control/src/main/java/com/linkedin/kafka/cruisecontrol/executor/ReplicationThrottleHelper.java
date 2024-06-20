@@ -89,13 +89,15 @@ class ReplicationThrottleHelper {
     }
   }
 
-  void setLogDirThrottles(List<ExecutionProposal> replicaMovementProposals, long throttleRate)
-  throws ExecutionException, InterruptedException, TimeoutException {
+  Set<Integer> setLogDirThrottles(List<ExecutionProposal> replicaMovementProposals, long throttleRate)
+    throws ExecutionException, InterruptedException, TimeoutException {
     LOG.info("Setting a log dir throttle of {} bytes/sec", throttleRate);
     Set<Integer> participatingBrokers = getParticipatingBrokers(replicaMovementProposals);
     for (Integer broker: participatingBrokers) {
       setLogDirThrottledRateIfNecessary(broker, throttleRate);
     }
+
+    return participatingBrokers;
   }
 
   // Determines if a candidate task is ready to have its throttles removed.
@@ -116,7 +118,7 @@ class ReplicationThrottleHelper {
   }
 
   // clear throttles for a specific list of execution tasks
-  void clearThrottles(List<ExecutionTask> completedTasks, List<ExecutionTask> inProgressTasks)
+  void clearInterBrokerThrottles(List<ExecutionTask> completedTasks, List<ExecutionTask> inProgressTasks)
   throws ExecutionException, InterruptedException, TimeoutException {
     List<ExecutionProposal> completedProposals =
       completedTasks
@@ -154,6 +156,13 @@ class ReplicationThrottleHelper {
     Map<String, Set<String>> throttledReplicas = getThrottledReplicasByTopic(completedProposals);
     for (Map.Entry<String, Set<String>> entry : throttledReplicas.entrySet()) {
       removeThrottledReplicasFromTopic(entry.getKey(), entry.getValue());
+    }
+  }
+
+  void clearIntraBrokerThrottles(Set<Integer> participatingBrokers)
+          throws ExecutionException, InterruptedException, TimeoutException {
+    for (int broker : participatingBrokers) {
+      removeLogDirThrottledRateFromBroker(broker);
     }
   }
 
@@ -351,7 +360,6 @@ class ReplicationThrottleHelper {
     Config brokerConfigs = getBrokerConfigs(brokerId);
     ConfigEntry currLeaderThrottle = brokerConfigs.get(LEADER_THROTTLED_RATE);
     ConfigEntry currFollowerThrottle = brokerConfigs.get(FOLLOWER_THROTTLED_RATE);
-    ConfigEntry currLogDirThrottle = brokerConfigs.get(LOG_DIR_THROTTLED_RATE);
     List<AlterConfigOp> ops = new ArrayList<>();
     if (currLeaderThrottle != null) {
       if (currLeaderThrottle.source().equals(ConfigEntry.ConfigSource.STATIC_BROKER_CONFIG)) {
@@ -369,6 +377,20 @@ class ReplicationThrottleHelper {
         ops.add(new AlterConfigOp(new ConfigEntry(FOLLOWER_THROTTLED_RATE, null), AlterConfigOp.OpType.DELETE));
       }
     }
+    if (!ops.isEmpty()) {
+      changeBrokerConfigs(brokerId, ops);
+    }
+  }
+
+  /**
+   * Remove {@value #LOG_DIR_THROTTLED_RATE} on broker {@param brokerId}
+   *
+   * @param brokerId broker to remove {@value #LOG_DIR_THROTTLED_RATE}
+   */
+  private void removeLogDirThrottledRateFromBroker(Integer brokerId) throws ExecutionException, InterruptedException, TimeoutException {
+    Config brokerConfigs = getBrokerConfigs(brokerId);
+    ConfigEntry currLogDirThrottle = brokerConfigs.get(LOG_DIR_THROTTLED_RATE);
+    List<AlterConfigOp> ops = new ArrayList<>();
     if (currLogDirThrottle != null) {
       if (currLogDirThrottle.source().equals(ConfigEntry.ConfigSource.STATIC_BROKER_CONFIG)) {
         LOG.debug("Skipping removal for static log dir throttle rate: {}", currLogDirThrottle);

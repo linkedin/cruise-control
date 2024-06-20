@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.executor;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
+import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.AtomicDouble;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.common.TopicMinIsrCache;
@@ -1630,10 +1631,6 @@ public class Executor {
             throttleHelper.setReplicationThrottles(tasksToExecute.stream().map(ExecutionTask::proposal).collect(Collectors.toList()),
                 _replicationThrottle);
           }
-          if (_logDirThrottle != null) {
-            throttleHelper.setLogDirThrottles(tasksToExecute.stream().map(ExecutionTask::proposal).collect(Collectors.toList()),
-                _logDirThrottle);
-          }
           // Execute the tasks.
           _executionTaskManager.markTasksInProgress(tasksToExecute);
           result = ExecutionUtils.submitReplicaReassignmentTasks(_adminClient, tasksToExecute);
@@ -1655,8 +1652,8 @@ public class Executor {
             .collect(Collectors.toList());
         inProgressTasks.addAll(inExecutionTasks());
 
-        if (_replicationThrottle != null || _logDirThrottle != null) {
-          throttleHelper.clearThrottles(completedTasks, inProgressTasks);
+        if (_replicationThrottle != null) {
+          throttleHelper.clearInterBrokerThrottles(completedTasks, inProgressTasks);
         }
       }
 
@@ -1686,13 +1683,15 @@ public class Executor {
       }
     }
 
-    private void intraBrokerMoveReplicas() {
+    private void intraBrokerMoveReplicas() throws InterruptedException, ExecutionException, TimeoutException {
+      ReplicationThrottleHelper throttleHelper = new ReplicationThrottleHelper(_adminClient);
       int numTotalPartitionMovements = _executionTaskManager.numRemainingIntraBrokerPartitionMovements();
       long totalDataToMoveInMB = _executionTaskManager.remainingIntraBrokerDataToMoveInMB();
       long startTime = System.currentTimeMillis();
       LOG.info("Starting {} intra-broker partition movements.", numTotalPartitionMovements);
 
       int partitionsToMove = numTotalPartitionMovements;
+      Set<Integer> participatingBrokers = Sets.newHashSet();
       // Exhaust all the pending partition movements.
       while ((partitionsToMove > 0 || !inExecutionTasks().isEmpty()) && _stopSignal.get() == NO_STOP_EXECUTION) {
         // Get tasks to execute.
@@ -1700,6 +1699,12 @@ public class Executor {
         LOG.info("Executor will execute {} task(s)", tasksToExecute.size());
 
         if (!tasksToExecute.isEmpty()) {
+          if (_logDirThrottle != null) {
+            participatingBrokers = throttleHelper.setLogDirThrottles(
+              tasksToExecute.stream().map(ExecutionTask::proposal).collect(Collectors.toList()),
+              _logDirThrottle
+            );
+          }
           // Execute the tasks.
           _executionTaskManager.markTasksInProgress(tasksToExecute);
           executeIntraBrokerReplicaMovements(tasksToExecute, _adminClient, _executionTaskManager, _config);
@@ -1724,6 +1729,11 @@ public class Executor {
         waitForIntraBrokerReplicaTasksToFinish();
         inExecutionTasks = inExecutionTasks();
       }
+
+      if (_logDirThrottle != null) {
+        throttleHelper.clearIntraBrokerThrottles(participatingBrokers);
+      }
+
       if (inExecutionTasks().isEmpty()) {
         LOG.info("Intra-broker partition movements finished.");
       } else if (_stopSignal.get() != NO_STOP_EXECUTION) {
