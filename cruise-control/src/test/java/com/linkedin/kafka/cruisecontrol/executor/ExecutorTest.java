@@ -112,7 +112,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
       List<ExecutionProposal> proposalsToExecute = new ArrayList<>();
       List<ExecutionProposal> proposalsToCheck = new ArrayList<>();
       populateProposals(proposalsToExecute, proposalsToCheck, 0);
-      executeAndVerifyProposals(kafkaZkClient, proposalsToExecute, proposalsToCheck, false, null, false, true);
+      executeAndVerifyProposals(kafkaZkClient, proposalsToExecute, proposalsToCheck, false, null, null, false, true);
     } finally {
       KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
     }
@@ -130,7 +130,8 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
       List<ExecutionProposal> proposalsToCheck = new ArrayList<>();
       populateProposals(proposalsToExecute, proposalsToCheck, PRODUCE_SIZE_IN_BYTES);
       // Throttle rate is set to the half of the produce size.
-      executeAndVerifyProposals(kafkaZkClient, proposalsToExecute, proposalsToCheck, false, PRODUCE_SIZE_IN_BYTES / 2, true, true);
+      executeAndVerifyProposals(kafkaZkClient, proposalsToExecute, proposalsToCheck, false, PRODUCE_SIZE_IN_BYTES / 2, PRODUCE_SIZE_IN_BYTES,
+        true, true);
     } finally {
       KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
     }
@@ -162,7 +163,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                                               new ReplicaPlacementInfo(initialLeader1)));
 
       Collection<ExecutionProposal> proposalsToExecute = Arrays.asList(proposal0, proposal1);
-      executeAndVerifyProposals(kafkaZkClient, proposalsToExecute, Collections.emptyList(), true, null, false, false);
+      executeAndVerifyProposals(kafkaZkClient, proposalsToExecute, Collections.emptyList(), true, null, null, false, false);
 
       // We are doing the rollback. -- The leadership should be on the alive broker.
       assertEquals(initialLeader0, kafkaZkClient.getLeaderForPartition(TP0).get());
@@ -504,6 +505,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                               null,
                               null,
                               null,
+                              null,
                               true,
                               RANDOM_UUID,
                               false,
@@ -539,6 +541,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                                                  null,
                                                  null,
                                                  null,
+                                                 null,
                                                  true,
                                                  RANDOM_UUID,
                                                  false,
@@ -552,6 +555,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                               null,
                               mockLoadMonitor,
                               null, null,
+                              null,
                               null,
                               null,
                               null,
@@ -754,6 +758,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                                          Collection<ExecutionProposal> proposalsToCheck,
                                          boolean completeWithError,
                                          Long replicationThrottle,
+                                         Long logDirThrottle,
                                          boolean verifyProgress,
                                          boolean isTriggeredByUserRequest)
       throws OngoingExecutionException {
@@ -792,7 +797,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     executor.setGeneratingProposalsForExecution(RANDOM_UUID, ExecutorTest.class::getSimpleName, isTriggeredByUserRequest);
     executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, mockLoadMonitor, null, null,
                               null, null, null, null, null,
-                              replicationThrottle, isTriggeredByUserRequest, RANDOM_UUID, false, false);
+                              replicationThrottle, logDirThrottle, isTriggeredByUserRequest, RANDOM_UUID, false, false);
 
     if (verifyProgress) {
       verifyOngoingPartitionReassignments(Collections.singleton(TP0));
