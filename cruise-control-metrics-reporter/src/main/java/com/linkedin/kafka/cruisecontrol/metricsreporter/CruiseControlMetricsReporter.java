@@ -25,7 +25,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import kafka.server.KafkaConfig;
 import org.apache.kafka.clients.ClientUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -126,7 +125,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
 
   static String getBootstrapServers(Map<String, ?> configs) {
     Object port = configs.get("port");
-    String listeners = String.valueOf(configs.get(KafkaConfig.ListenersProp()));
+    String listeners = String.valueOf(configs.get("listeners"));
     if (!"null".equals(listeners) && listeners.length() != 0) {
       // See https://kafka.apache.org/documentation/#listeners for possible responses. If multiple listeners are configured, this function
       // picks the first listener in the list of listeners. Hence, users of this config must adjust their order accordingly.
@@ -184,7 +183,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       this.close();
     }
 
-    _brokerId = Integer.parseInt((String) configs.get(KafkaConfig.BrokerIdProp()));
+    _brokerId = Integer.parseInt((String) configs.get("broker.id"));
 
     _cruiseControlMetricsTopic = reporterConfig.getString(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG);
     _reportingIntervalMs = reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG);
