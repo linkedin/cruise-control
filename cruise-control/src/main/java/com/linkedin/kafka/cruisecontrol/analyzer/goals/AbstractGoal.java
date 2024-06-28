@@ -118,7 +118,8 @@ public abstract class AbstractGoal implements Goal {
         }
       }
       // Ensure that a cluster is not identified as over provisioned unless it has the minimum required number of alive brokers.
-      if (_provisionResponse.status() == OVER_PROVISIONED && clusterModel.aliveBrokers().size() < _balancingConstraint.overprovisionedMinBrokers()) {
+      if (provisionResponse().status() == OVER_PROVISIONED && GoalUtils.canNotBeOverprovisioned(
+          provisionResponse().recommendationByRecommender(), clusterModel, _balancingConstraint.overprovisionedMinBrokers())) {
         _provisionResponse = new ProvisionResponse(RIGHT_SIZED);
       }
       return _succeeded;

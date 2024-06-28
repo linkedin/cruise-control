@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.rackaware.RackAwareGoalRackIdMapper;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
@@ -598,5 +599,36 @@ public final class GoalUtils {
       balancePercentage *= balancingConstraint.goalViolationDistributionThresholdMultiplier();
     }
     return (balancePercentage - 1) * balanceMargin;
+  }
+
+  /**
+   * This method determines whether a cluster can be identified as over-provisioned based on two criteria:
+   * <ul>
+   *   <li>Number of alive brokers is larger than or equal to the value of {@link AnalyzerConfig#OVERPROVISIONED_MIN_BROKERS_CONFIG}.</li>
+   *   <li>Number of alive brokers is larger than or equal to the maximum replication factor.</li>
+   * </ul>
+   *
+   * @param recommendations map of provision recommendations, every recommendation status must be {@link ProvisionStatus#OVER_PROVISIONED}
+   * @param clusterModel cluster usage model
+   * @param overprovisionedMinBrokers value of the {@link AnalyzerConfig#OVERPROVISIONED_MIN_BROKERS_CONFIG}
+   * @throws IllegalArgumentException if any of the recommendations' status is not {@link ProvisionStatus#OVER_PROVISIONED}
+   * @return true if the cluster can be identified as over provisioned
+   */
+  public static boolean canNotBeOverprovisioned(Map<String, ProvisionRecommendation> recommendations, ClusterModel clusterModel,
+                                                      int overprovisionedMinBrokers) {
+    if (clusterModel.aliveBrokers().size() < overprovisionedMinBrokers) {
+      return true;
+    }
+    int numBrokersToRemove = Integer.MAX_VALUE;
+    for (ProvisionRecommendation recommendation : recommendations.values()) {
+      if (recommendation.status() != ProvisionStatus.OVER_PROVISIONED) {
+        throw new IllegalArgumentException("passed recommendation status must be OVER_PROVISIONED");
+      }
+      if (recommendation.numBrokers() < numBrokersToRemove) {
+        numBrokersToRemove = recommendation.numBrokers();
+      }
+    }
+    int numBrokersAfterProvisioning = clusterModel.aliveBrokers().size() - numBrokersToRemove;
+    return numBrokersAfterProvisioning < clusterModel.maxReplicationFactor();
   }
 }
