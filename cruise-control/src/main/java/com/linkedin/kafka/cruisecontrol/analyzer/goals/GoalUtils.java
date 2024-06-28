@@ -604,7 +604,7 @@ public final class GoalUtils {
    * This method determines whether a cluster can be identified as over-provisioned based on two criteria:
    * <ul>
    *   <li>Number of alive brokers is larger than or equal to the value of {@link AnalyzerConfig#OVERPROVISIONED_MIN_BROKERS_CONFIG}.</li>
-   *   <li>Number of alive brokers is larger than or equal to the maximum replication factor.</li>
+   *   <li>Expected number of alive brokers after the provisioning will still be larger than or equal to the maximum replication factor.</li>
    * </ul>
    *
    * @param recommendations map of provision recommendations, every recommendation status must be {@link ProvisionStatus#OVER_PROVISIONED}
@@ -619,6 +619,7 @@ public final class GoalUtils {
     if (clusterModel.aliveBrokers().size() < overprovisionedMinBrokers) {
       return true;
     }
+    // see the javadoc of the BasicBrokerProvisioner.executeFor to understand why numBrokersToRemove is calculated this way
     int numBrokersToRemove = Integer.MAX_VALUE;
     for (ProvisionRecommendation recommendation : recommendations.values()) {
       if (recommendation.status() != ProvisionStatus.OVER_PROVISIONED) {
