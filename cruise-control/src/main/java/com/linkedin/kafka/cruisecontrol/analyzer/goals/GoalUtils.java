@@ -9,7 +9,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
-import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.rackaware.RackAwareGoalRackIdMapper;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
@@ -611,11 +610,12 @@ public final class GoalUtils {
    * @param recommendations map of provision recommendations, every recommendation status must be {@link ProvisionStatus#OVER_PROVISIONED}
    * @param clusterModel cluster usage model
    * @param overprovisionedMinBrokers value of the {@link AnalyzerConfig#OVERPROVISIONED_MIN_BROKERS_CONFIG}
-   * @throws IllegalArgumentException if any of the recommendations' status is not {@link ProvisionStatus#OVER_PROVISIONED}
    * @return true if the cluster can be identified as over provisioned
+   * @throws IllegalArgumentException if any of the recommendations' status is not {@link ProvisionStatus#OVER_PROVISIONED}
    */
-  public static boolean canNotBeOverprovisioned(Map<String, ProvisionRecommendation> recommendations, ClusterModel clusterModel,
-                                                      int overprovisionedMinBrokers) {
+  public static boolean canNotBeOverprovisioned(Map<String, ProvisionRecommendation> recommendations,
+                                                ClusterModel clusterModel,
+                                                int overprovisionedMinBrokers) {
     if (clusterModel.aliveBrokers().size() < overprovisionedMinBrokers) {
       return true;
     }
