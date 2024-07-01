@@ -53,6 +53,7 @@ public final class ExecutionUtils {
   private static final Logger LOG = LoggerFactory.getLogger(ExecutionUtils.class);
   public static final int DEFAULT_RETRY_BACKOFF_BASE = 2;
   public static final long METADATA_REFRESH_BACKOFF = 100L;
+  public static final long METADATA_REFRESH_BACKOFF_MAX = 10000L;
   public static final long METADATA_EXPIRY_MS = Long.MAX_VALUE;
   public static final Duration MIN_ISR_CACHE_CLEANER_PERIOD = Duration.ofMinutes(10);
   public static final Duration MIN_ISR_CACHE_CLEANER_INITIAL_DELAY = Duration.ofMinutes(0);

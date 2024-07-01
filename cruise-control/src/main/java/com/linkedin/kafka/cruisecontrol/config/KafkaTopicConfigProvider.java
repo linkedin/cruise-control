@@ -57,7 +57,7 @@ public class KafkaTopicConfigProvider extends JsonFileTopicConfigProvider {
       _zkSecurityEnabled,
       _zkClientConfig);
     try {
-      AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
+      AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient, scala.None$.empty());
       return adminZkClient.fetchEntityConfig(ConfigType.Topic(), topic);
     } finally {
       KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
@@ -73,7 +73,7 @@ public class KafkaTopicConfigProvider extends JsonFileTopicConfigProvider {
                                                                               _zkClientConfig);
     Map<String, Properties> topicConfigs = new HashMap<>();
     try {
-      AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
+      AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient, scala.None$.empty());
 
       for (String topic : topics) {
         try {
@@ -98,7 +98,7 @@ public class KafkaTopicConfigProvider extends JsonFileTopicConfigProvider {
                                                                               _zkSecurityEnabled,
                                                                               _zkClientConfig);
     try {
-      AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
+      AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient, scala.None$.empty());
       return CollectionConverters.asJava(adminZkClient.getAllTopicConfigs());
     } finally {
       KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
