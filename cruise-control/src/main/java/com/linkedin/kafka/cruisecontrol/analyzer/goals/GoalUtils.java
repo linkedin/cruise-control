@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.rackaware.RackAwareGoalRackIdMapper;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
@@ -601,35 +602,50 @@ public final class GoalUtils {
   }
 
   /**
-   * This method determines whether a cluster can be identified as over-provisioned based on two criteria:
+   * This method validates that provision response is {@link ProvisionStatus#OVER_PROVISIONED} only if:
    * <ul>
    *   <li>Number of alive brokers is larger than or equal to the value of {@link AnalyzerConfig#OVERPROVISIONED_MIN_BROKERS_CONFIG}.</li>
    *   <li>Expected number of alive brokers after the provisioning will still be larger than or equal to the maximum replication factor.</li>
    * </ul>
+   * if any of the above conditions is violated then provision response is set to {@link ProvisionStatus#RIGHT_SIZED}
    *
-   * @param recommendations map of provision recommendations, every recommendation status must be {@link ProvisionStatus#OVER_PROVISIONED}
-   * @param clusterModel cluster usage model
-   * @param overprovisionedMinBrokers value of the {@link AnalyzerConfig#OVERPROVISIONED_MIN_BROKERS_CONFIG}
-   * @return true if the cluster can be identified as over provisioned
-   * @throws IllegalArgumentException if any of the recommendations' status is not {@link ProvisionStatus#OVER_PROVISIONED}
+   * @param provisionResponse Provision response after goal is optimization
+   * @param clusterModel Cluster usage model
+   * @param balancingConstraint Balancing constraint
+   * @throws IllegalArgumentException when provision status is {@link ProvisionStatus#OVER_PROVISIONED}
+   * and goal doesn't have exactly one recommendation
+   * @return Validated provision response
    */
-  public static boolean canNotBeOverprovisioned(Map<String, ProvisionRecommendation> recommendations,
-                                                ClusterModel clusterModel,
-                                                int overprovisionedMinBrokers) {
-    if (clusterModel.aliveBrokers().size() < overprovisionedMinBrokers) {
-      return true;
+  public static ProvisionResponse validateProvisionResponse(ProvisionResponse provisionResponse, ClusterModel clusterModel,
+                                                            BalancingConstraint balancingConstraint) {
+    if (provisionResponse.status() != ProvisionStatus.OVER_PROVISIONED) {
+      return provisionResponse;
     }
-    // see the javadoc of the BasicBrokerProvisioner.executeFor to understand why numBrokersToRemove is calculated this way
-    int numBrokersToRemove = Integer.MAX_VALUE;
-    for (ProvisionRecommendation recommendation : recommendations.values()) {
-      if (recommendation.status() != ProvisionStatus.OVER_PROVISIONED) {
-        throw new IllegalArgumentException("passed recommendation status must be OVER_PROVISIONED");
-      }
-      if (recommendation.numBrokers() < numBrokersToRemove) {
-        numBrokersToRemove = recommendation.numBrokers();
-      }
+    // ensure that a cluster is not identified as over provisioned unless it has the minimum required number of alive brokers
+    if (clusterModel.aliveBrokers().size() < balancingConstraint.overprovisionedMinBrokers()) {
+      return new ProvisionResponse(ProvisionStatus.RIGHT_SIZED);
     }
-    int numBrokersAfterProvisioning = clusterModel.aliveBrokers().size() - numBrokersToRemove;
-    return numBrokersAfterProvisioning < clusterModel.maxReplicationFactor();
+    // when status is OVER_PROVISIONED goal is expected to have exactly 1 recommendation
+    if (provisionResponse.recommendationByRecommender().size() != 1) {
+      throw new IllegalArgumentException(String.format("Expected to have exactly 1 provision recommendation, but got: %d",
+                                                       provisionResponse.recommendationByRecommender().size()));
+    }
+    String goalName = provisionResponse.recommendationByRecommender().keySet().iterator().next();
+    int numBrokersToDrop = provisionResponse.recommendationByRecommender().get(goalName).numBrokers();
+    // this variable indicates the maximum number of brokers that can be safely dropped.
+    int maxAllowedNumBrokersToDrop = clusterModel.aliveBrokers().size() - clusterModel.maxReplicationFactor();
+    if (numBrokersToDrop <= maxAllowedNumBrokersToDrop) {
+      // return provision response as it is if the recommended number of brokers to drop is smaller or equal to the max allowed number of
+      // brokers that can be safely dropped
+      return provisionResponse;
+    } else if (maxAllowedNumBrokersToDrop > 0) {
+      // change the recommended number of brokers to drop if the original recommendation can not be safely satisfied
+      ProvisionRecommendation recommendation =
+          new ProvisionRecommendation.Builder(ProvisionStatus.OVER_PROVISIONED).numBrokers(maxAllowedNumBrokersToDrop).build();
+      return new ProvisionResponse(ProvisionStatus.OVER_PROVISIONED, recommendation, goalName);
+    } else {
+      // change provision response status to RIGHT_SIZED if none of the brokers can be safely dropped
+      return new ProvisionResponse(ProvisionStatus.RIGHT_SIZED);
+    }
   }
 }

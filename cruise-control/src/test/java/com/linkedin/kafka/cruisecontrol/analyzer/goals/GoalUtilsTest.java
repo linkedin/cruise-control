@@ -77,13 +77,13 @@ public class GoalUtilsTest {
                new ProvisionRecommendation.Builder(ProvisionStatus.OVER_PROVISIONED).numBrokers(2).build(), "r3",
                new ProvisionRecommendation.Builder(ProvisionStatus.OVER_PROVISIONED).numBrokers(1).build());
 
-    assertFalse(GoalUtils.canNotBeOverprovisioned(recommendations, clusterModel(4), 5));
+    assertFalse(GoalUtils.validateProvisionResponse(recommendations, clusterModel(4), 5));
     // num brokers < min brokers
-    assertTrue(GoalUtils.canNotBeOverprovisioned(recommendations, clusterModel(4), 6));
+    assertTrue(GoalUtils.validateProvisionResponse(recommendations, clusterModel(4), 6));
     // expected num brokers < max RF
-    assertTrue(GoalUtils.canNotBeOverprovisioned(recommendations, clusterModel(5), 5));
+    assertTrue(GoalUtils.validateProvisionResponse(recommendations, clusterModel(5), 5));
 
-    IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> GoalUtils.canNotBeOverprovisioned(
+    IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> GoalUtils.validateProvisionResponse(
         Map.of("", new ProvisionRecommendation.Builder(ProvisionStatus.UNDER_PROVISIONED).numBrokers(1).build()), clusterModel(4), 5));
     assertEquals(e.getMessage(), "passed recommendation status must be OVER_PROVISIONED");
   }
