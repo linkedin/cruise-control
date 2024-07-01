@@ -119,7 +119,8 @@ public abstract class AbstractGoal implements Goal {
       }
       // Ensure that a cluster is not identified as over provisioned unless it has the minimum required number of alive brokers and
       // expected number of brokers after the provisioning will still be larger than or equal to the max RF
-      _provisionResponse = GoalUtils.validateProvisionResponse(_provisionResponse, clusterModel, _balancingConstraint);
+      _provisionResponse =
+          GoalUtils.validateProvisionResponse(_provisionResponse, clusterModel, _balancingConstraint.overprovisionedMinBrokers());
       return _succeeded;
     } catch (OptimizationFailureException ofe) {
       _provisionResponse = new ProvisionResponse(UNDER_PROVISIONED, ofe.provisionRecommendation(), name());

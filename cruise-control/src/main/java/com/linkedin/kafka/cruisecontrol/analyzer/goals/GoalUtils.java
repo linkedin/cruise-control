@@ -611,18 +611,18 @@ public final class GoalUtils {
    *
    * @param provisionResponse Provision response after goal is optimization
    * @param clusterModel Cluster usage model
-   * @param balancingConstraint Balancing constraint
+   * @param overprovisionedMinBrokers value of the {@link AnalyzerConfig#OVERPROVISIONED_MIN_BROKERS_CONFIG}
+   * @return Validated provision response
    * @throws IllegalArgumentException when provision status is {@link ProvisionStatus#OVER_PROVISIONED}
    * and goal doesn't have exactly one recommendation
-   * @return Validated provision response
    */
   public static ProvisionResponse validateProvisionResponse(ProvisionResponse provisionResponse, ClusterModel clusterModel,
-                                                            BalancingConstraint balancingConstraint) {
+                                                            int overprovisionedMinBrokers) {
     if (provisionResponse.status() != ProvisionStatus.OVER_PROVISIONED) {
       return provisionResponse;
     }
     // ensure that a cluster is not identified as over provisioned unless it has the minimum required number of alive brokers
-    if (clusterModel.aliveBrokers().size() < balancingConstraint.overprovisionedMinBrokers()) {
+    if (clusterModel.aliveBrokers().size() < overprovisionedMinBrokers) {
       return new ProvisionResponse(ProvisionStatus.RIGHT_SIZED);
     }
     // when status is OVER_PROVISIONED goal is expected to have exactly 1 recommendation
