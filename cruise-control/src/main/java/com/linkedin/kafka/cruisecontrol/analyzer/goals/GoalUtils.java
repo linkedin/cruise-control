@@ -631,7 +631,7 @@ public final class GoalUtils {
                                                        provisionResponse.recommendationByRecommender().size()));
     }
     String goalName = provisionResponse.recommendationByRecommender().keySet().iterator().next();
-    int numBrokersToDrop = provisionResponse.recommendationByRecommender().get(goalName).numBrokers();
+    int numBrokersToDrop = provisionResponse.recommendationByRecommender().values().iterator().next().numBrokers();
     // this variable indicates the maximum number of brokers that can be safely dropped.
     int maxAllowedNumBrokersToDrop = clusterModel.aliveBrokers().size() - clusterModel.maxReplicationFactor();
     if (numBrokersToDrop <= maxAllowedNumBrokersToDrop) {

@@ -72,7 +72,7 @@ public class GoalUtilsTest {
   }
 
   @Test
-  public void testCanNotBeOverprovisioned() {
+  public void testValidateProvisionResponse() {
     // min required num of brokers > num of brokers
     ProvisionResponse response = GoalUtils.validateProvisionResponse(provisionResponse(1), clusterModel(3), 6);
     assertEquals(RIGHT_SIZED, response.status());
