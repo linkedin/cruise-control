@@ -41,18 +41,10 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final ConfigDef CONFIG;
 
   static {
-    ConfigDef configDef = new ConfigDef();
-    configDef = AnalyzerConfig.define(configDef);
-    configDef = AnomalyDetectorConfig.define(configDef);
-    configDef = CruiseControlParametersConfig.define(configDef);
-    configDef = CruiseControlRequestConfig.define(configDef);
-    configDef = ExecutorConfig.define(configDef);
-    configDef = MonitorConfig.define(configDef);
-    configDef = PersistedDataConfig.define(configDef);
-    configDef = UserTaskManagerConfig.define(configDef);
-    configDef = WebServerConfig.define(configDef);
-    configDef.withClientSslSupport().withClientSaslSupport();
-    CONFIG = configDef;
+    CONFIG = CruiseControlRequestConfig.define(CruiseControlParametersConfig.define(AnomalyDetectorConfig.define(
+            AnalyzerConfig.define(ExecutorConfig.define(MonitorConfig.define(WebServerConfig.define(
+                    UserTaskManagerConfig.define(PersistedDataConfig.define(new ConfigDef())))))))))
+            .withClientSslSupport().withClientSaslSupport();
   }
 
   public KafkaCruiseControlConfig(Map<?, ?> originals) {
