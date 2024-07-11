@@ -5,10 +5,20 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.model.Broker;
+import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
+import java.util.Set;
 import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Test;
+
+import static com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus.OVER_PROVISIONED;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus.RIGHT_SIZED;
+import static org.junit.Assert.assertEquals;
+
 
 public class GoalUtilsTest {
 
@@ -59,5 +69,44 @@ public class GoalUtilsTest {
                                                                                            isLowerThreshold);
     EasyMock.verify(mockBalanceConstraint);
     Assert.assertEquals(expectedComputedBalanceThreshold, computedBalanceThreshold, 0.0);
+  }
+
+  @Test
+  public void testValidateProvisionResponse() {
+    // min required num of brokers > num of brokers
+    ProvisionResponse response = GoalUtils.validateProvisionResponse(provisionResponse(1), clusterModel(3), 6);
+    assertEquals(RIGHT_SIZED, response.status());
+
+    // recommended num of brokers to drop is 1 and max allowed num of brokers to drop is 2, so 1 broker can be safely dropped
+    response = GoalUtils.validateProvisionResponse(provisionResponse(1), clusterModel(2), 4);
+    assertEquals(OVER_PROVISIONED, response.status());
+    assertEquals(1, response.recommendationByRecommender().values().iterator().next().numBrokers());
+
+    // recommended num of brokers to drop is 3 but max allowed num of brokers to drop is 1, so final provision response is to drop 1 broker
+    response = GoalUtils.validateProvisionResponse(provisionResponse(3), clusterModel(3), 4);
+    assertEquals(OVER_PROVISIONED, response.status());
+    assertEquals(1, response.recommendationByRecommender().values().iterator().next().numBrokers());
+
+    // recommended num of brokers to drop is 1 but max allowed num of brokers to drop is 0, so none of the brokers can be dropped
+    response = GoalUtils.validateProvisionResponse(provisionResponse(1), clusterModel(4), 4);
+    assertEquals(RIGHT_SIZED, response.status());
+  }
+
+  private ClusterModel clusterModel(int maxRF) {
+    ClusterModel mockClusterModel = EasyMock.mock(ClusterModel.class);
+    EasyMock.expect(mockClusterModel.aliveBrokers())
+            .andReturn(
+                Set.of(EasyMock.mock(Broker.class), EasyMock.mock(Broker.class), EasyMock.mock(Broker.class), EasyMock.mock(Broker.class)))
+            .times(2);
+    EasyMock.expect(mockClusterModel.maxReplicationFactor()).andReturn(maxRF);
+    EasyMock.replay(mockClusterModel);
+
+    return mockClusterModel;
+  }
+
+  private ProvisionResponse provisionResponse(int numBrokers) {
+    ProvisionRecommendation recommendation =
+        new ProvisionRecommendation.Builder(OVER_PROVISIONED).numBrokers(numBrokers).build();
+    return new ProvisionResponse(OVER_PROVISIONED, recommendation, "goal");
   }
 }
