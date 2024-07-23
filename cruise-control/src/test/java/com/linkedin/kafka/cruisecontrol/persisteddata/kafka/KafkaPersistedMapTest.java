@@ -52,7 +52,7 @@ public class KafkaPersistedMapTest {
     private static final TopicPartition PARTITION_0 = new TopicPartition(TOPIC, 0);
     private static final CompletableFuture<RecordMetadata> SUCCESSFUL_PRODUCER_SEND_RESPONSE = CompletableFuture.completedFuture(
             new RecordMetadata(PARTITION_0, 1, 0, System.currentTimeMillis(), 0, 0));
-    private static final Map<String, String> ADDITIONAL_CONFIGS = Map.of("max.message.bytes",
+    private static final Map<String, Object> TOPIC_CONFIGS = Map.of("max.message.bytes",
             "10000");
     private static final String KEY_1 = "key1";
     private static final String VALUE_1 = "value1";
@@ -79,7 +79,7 @@ public class KafkaPersistedMapTest {
 
         // Initialize the object under test.
         this._persistedMap = new KafkaPersistedMap(this._backingMap, TOPIC, NUM_PARTITIONS,
-                (short) 1, ADDITIONAL_CONFIGS, t -> {
+                (short) 1, TOPIC_CONFIGS, t -> {
         },
                 () -> this._mockProducer, () -> this._mockConsumer);
     }
@@ -160,26 +160,21 @@ public class KafkaPersistedMapTest {
     @Test
     public void createKafkaClientAppliesAllTheConfig() {
         final String bootstrapServers = "bootstrapServers";
-        final Map<String, Object> defaultConfig = Map.of(
-                KEY_1, VALUE_1,
-                KEY_2, VALUE_1,
-                KEY_3, VALUE_1);
         final Map<String, Object> securityConfig = Map.of(
-                KEY_2, VALUE_2,
-                KEY_3, VALUE_2);
+                KEY_1, VALUE_1,
+                KEY_2, VALUE_1);
         final Map<String, Object> additionalConfig = Map.of(
-                KEY_3, VALUE_3);
+                KEY_2, VALUE_2);
         final Function<Map<String, Object>, Map<String, Object>> clientFactory =
                 config -> {
                     config.put("called", true);
                     return config;
                 };
         assertThat(KafkaPersistedMap.createKafkaClient(bootstrapServers,
-                defaultConfig, securityConfig, additionalConfig, clientFactory), equalTo(Map.of(
+                securityConfig, additionalConfig, clientFactory), equalTo(Map.of(
                 CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers,
                 KEY_1, VALUE_1,
                 KEY_2, VALUE_2,
-                KEY_3, VALUE_3,
                 "called", true)));
     }
 

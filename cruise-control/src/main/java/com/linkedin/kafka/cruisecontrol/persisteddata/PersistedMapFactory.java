@@ -15,10 +15,9 @@ import static com.linkedin.kafka.cruisecontrol.persisteddata.PersistMethod.KAFKA
 import static com.linkedin.kafka.cruisecontrol.persisteddata.PersistMethod.MEMORY;
 
 /**
- * Constructs the correct {@link PersistedMap} implementation based on the provided
- * {@link KafkaCruiseControlConfig}. In particular, it uses the value of
- * {@link PersistedDataConfig#PERSIST_METHOD_CONFIG} to determine which implementation to
- * construct.
+ * Constructs the correct {@link PersistedMap} implementation based on the provided {@link
+ * KafkaCruiseControlConfig}. In particular, it uses the value of {@link
+ * PersistedDataConfig#PERSIST_METHOD_CONFIG} to determine which implementation to construct.
  */
 public class PersistedMapFactory {
 
@@ -32,12 +31,13 @@ public class PersistedMapFactory {
      * Creates an instance that is able to construct the correct {@link PersistedMap}
      * implementation.
      *
-     * @param config The complete program configuration to evaluate. Specifically, the
-     * {@link PersistedDataConfig#PERSIST_METHOD_CONFIG} config is needed.
+     * @param config The complete program configuration to evaluate. Specifically, the {@link
+     *     PersistedDataConfig#PERSIST_METHOD_CONFIG} config is needed.
      * @param adminClient The admin client to pass to {@link KafkaPersistedMap}, if needed.
      */
     public PersistedMapFactory(KafkaCruiseControlConfig config, AdminClient adminClient) {
-        this(config,
+        this(
+                config,
                 () -> new KafkaPersistedMap(config, adminClient),
                 () -> new PersistedMap(new ConcurrentHashMap<>()));
     }
@@ -47,26 +47,35 @@ public class PersistedMapFactory {
      * implementation.
      *
      * @param kafkaSupplier The supplier for {@link KafkaPersistedMap}.
-     * @param memoryAndDefaultSupplier The supplier for {@link PersistedMap} and the default
-     * implementation.
+     * @param memorySupplier The supplier for {@link PersistedMap}.
      */
-    PersistedMapFactory(KafkaCruiseControlConfig config, Supplier<PersistedMap> kafkaSupplier,
-            Supplier<PersistedMap> memoryAndDefaultSupplier) {
+    PersistedMapFactory(
+            KafkaCruiseControlConfig config,
+            Supplier<PersistedMap> kafkaSupplier,
+            Supplier<PersistedMap> memorySupplier) {
         this._config = config;
-        this._suppliers = Map.of(
-                KAFKA, kafkaSupplier,
-                MEMORY, memoryAndDefaultSupplier);
+        this._suppliers =
+                Map.of(
+                        KAFKA, kafkaSupplier,
+                        MEMORY, memorySupplier);
     }
 
     /**
-     * Constructs the correct {@link PersistedMap} implementation based on the configured
-     * {@link PersistedDataConfig#PERSIST_METHOD_CONFIG}.
+     * Constructs the correct {@link PersistedMap} implementation based on the configured {@link
+     * PersistedDataConfig#PERSIST_METHOD_CONFIG}. The {@link
+     * PersistedDataConfig#DEFAULT_PERSIST_METHOD} is used if <code>PERSIST_METHOD_CONFIG</code> is
+     * not specified.
      *
      * @return The {@link PersistedMap} implementation.
      */
     public PersistedMap instance() {
-        PersistMethod backingMethod = PersistMethod.fromString(
-                _config.getString(PersistedDataConfig.PERSIST_METHOD_CONFIG));
-        return this._suppliers.getOrDefault(backingMethod, this._suppliers.get(MEMORY)).get();
+        PersistMethod backingMethod =
+                PersistMethod.fromString(
+                        _config.getString(PersistedDataConfig.PERSIST_METHOD_CONFIG));
+        PersistMethod defaultBackingMethod =
+                PersistMethod.fromString(PersistedDataConfig.DEFAULT_PERSIST_METHOD);
+        return this._suppliers
+                .getOrDefault(backingMethod, this._suppliers.get(defaultBackingMethod))
+                .get();
     }
 }
