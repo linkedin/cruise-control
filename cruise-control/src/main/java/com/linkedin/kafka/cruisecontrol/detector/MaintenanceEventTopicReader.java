@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import java.time.Duration;
@@ -30,9 +31,6 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.CLIENT_REQUEST_TIMEOUT_MS;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.consumptionDone;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.createTopic;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.maybeIncreasePartitionCount;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.maybeUpdateTopicConfig;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckOffsetFetch;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.wrapTopic;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.ANOMALY_DETECTION_TIME_MS_OBJECT_CONFIG;
@@ -333,11 +331,7 @@ public class MaintenanceEventTopicReader implements MaintenanceEventReader {
    * @param maintenanceEventTopic Maintenance event topic.
    */
   protected void maybeCreateOrUpdateTopic(AdminClient adminClient, NewTopic maintenanceEventTopic) {
-    if (!createTopic(adminClient, maintenanceEventTopic)) {
-      // Update topic config and partition count to ensure desired properties.
-      maybeUpdateTopicConfig(adminClient, maintenanceEventTopic);
-      maybeIncreasePartitionCount(adminClient, maintenanceEventTopic);
-    }
+    KafkaCruiseControlUtils.maybeCreateOrUpdateTopic(adminClient, maintenanceEventTopic);
   }
 
   @Override

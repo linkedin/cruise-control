@@ -191,42 +191,35 @@ public class AdminRequest extends AbstractSyncRequest {
       return null;
     }
 
-    StringBuilder sb = new StringBuilder();
-    Set<Integer> brokersToDropFromRecentlyRemoved = dropRecentBrokersParameters.dropRecentlyRemovedBrokers();
-    if (!brokersToDropFromRecentlyRemoved.isEmpty()) {
-      if (!_kafkaCruiseControl.dropRecentBrokers(brokersToDropFromRecentlyRemoved, true)) {
-        Set<Integer> recentlyRemovedBrokers = _kafkaCruiseControl.recentBrokers(true);
-        sb.append(String.format("None of the brokers to drop (%s) are in the recently removed broker set"
-                                + " (%s).%n", brokersToDropFromRecentlyRemoved, recentlyRemovedBrokers));
-        LOG.warn("None of the user-requested brokers to drop ({}) are in the recently removed broker set ({}).",
-                 brokersToDropFromRecentlyRemoved, recentlyRemovedBrokers);
+    StringBuilder resultDescription = new StringBuilder();
+    dropBrokersFromRecentSet(dropRecentBrokersParameters.dropRecentlyRemovedBrokers(), "removed",
+            true, resultDescription);
+    dropBrokersFromRecentSet(dropRecentBrokersParameters.dropRecentlyDemotedBrokers(), "demoted",
+            false, resultDescription);
+
+    return resultDescription.toString();
+  }
+
+  void dropBrokersFromRecentSet(Set<Integer> brokersToDrop, String brokerSetName, boolean isRemoved,
+          StringBuilder resultDescription) {
+    if (!brokersToDrop.isEmpty()) {
+      Set<Integer> recentBrokers = _kafkaCruiseControl.recentBrokers(isRemoved);
+      if (!_kafkaCruiseControl.dropRecentBrokers(brokersToDrop, isRemoved)) {
+        resultDescription.append(String.format("None of the brokers to drop (%s) are in the "
+                + "recently %s broker set (%s).%n", brokerSetName, brokersToDrop, recentBrokers));
+        LOG.warn("None of the user-requested brokers to drop ({}) are in the "
+                + "recently {} broker set ({}).", brokersToDrop, brokerSetName, recentBrokers);
       } else {
-        Set<Integer> recentlyRemovedBrokers = _kafkaCruiseControl.recentBrokers(true);
-        sb.append(String.format("Dropped recently removed brokers (requested: %s after-dropping: %s).%n",
-                                brokersToDropFromRecentlyRemoved, recentlyRemovedBrokers));
-        LOG.info("Recently removed brokers are dropped by user (requested: {} after-dropping: {}).",
-                 brokersToDropFromRecentlyRemoved, recentlyRemovedBrokers);
+        // The sets of recent brokers are updated eventually so this in-memory set math is necessary
+        // for the request to complete quickly.
+        recentBrokers.removeAll(brokersToDrop);
+        resultDescription.append(String.format("Dropped recently %s brokers "
+                        + "(requested: %s after-dropping: %s).%n",
+                        brokerSetName, brokersToDrop, recentBrokers));
+        LOG.info("Recently {} brokers are dropped by user (requested: {} after-dropping: {}).",
+                brokerSetName, brokersToDrop, recentBrokers);
       }
     }
-
-    Set<Integer> brokersToDropFromRecentlyDemoted = dropRecentBrokersParameters.dropRecentlyDemotedBrokers();
-    if (!brokersToDropFromRecentlyDemoted.isEmpty()) {
-      if (!_kafkaCruiseControl.dropRecentBrokers(brokersToDropFromRecentlyDemoted, false)) {
-        Set<Integer> recentlyDemotedBrokers = _kafkaCruiseControl.recentBrokers(false);
-        sb.append(String.format("None of the brokers to drop (%s) are in the recently demoted broker set"
-                                + " (%s).%n", brokersToDropFromRecentlyDemoted, recentlyDemotedBrokers));
-        LOG.warn("None of the user-requested brokers to drop ({}) are in the recently demoted broker set ({}).",
-                 brokersToDropFromRecentlyDemoted, recentlyDemotedBrokers);
-      } else {
-        Set<Integer> recentlyDemotedBrokers = _kafkaCruiseControl.recentBrokers(false);
-        sb.append(String.format("Dropped recently demoted brokers (requested: %s after-dropping: %s).%n",
-                                brokersToDropFromRecentlyDemoted, recentlyDemotedBrokers));
-        LOG.info("Recently demoted brokers are dropped by user (requested: {} after-dropping: {}).",
-                 brokersToDropFromRecentlyDemoted, recentlyDemotedBrokers);
-      }
-    }
-
-    return sb.toString();
   }
 
   @Override
