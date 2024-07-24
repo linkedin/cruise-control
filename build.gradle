@@ -169,6 +169,7 @@ project(':cruise-control-core') {
     configurations.all {
       exclude group: 'org.slf4j', module: 'slf4j-log4j12'
       exclude group: 'log4j', module: 'log4j'
+      exclude group: 'ch.qos.logback'
     }
     implementation "org.slf4j:slf4j-api:1.7.36"
     implementation "org.apache.logging.log4j:log4j-slf4j-impl:2.17.2"
@@ -267,6 +268,7 @@ project(':cruise-control') {
     configurations.all {
       exclude group: 'org.slf4j', module: 'slf4j-log4j12'
       exclude group: 'log4j', module: 'log4j'
+      exclude group: 'ch.qos.logback'
     }
 
     api project(':cruise-control-metrics-reporter')
@@ -437,6 +439,7 @@ project(':cruise-control-metrics-reporter') {
     configurations.all {
       exclude group: 'org.slf4j', module: 'slf4j-log4j12'
       exclude group: 'log4j', module: 'log4j'
+      exclude group: 'ch.qos.logback'
     }
 
     implementation "org.slf4j:slf4j-api:1.7.36"
