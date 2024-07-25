@@ -43,6 +43,7 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
   protected final Long _executionProgressCheckIntervalMs;
   protected final ReplicaMovementStrategy _replicaMovementStrategy;
   protected final Long _replicationThrottle;
+  protected final Long _logDirThrottle;
 
   /**
    * Constructor to be used for creating a runnable for self-healing.
@@ -68,6 +69,7 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
     _executionProgressCheckIntervalMs = SELF_HEALING_EXECUTION_PROGRESS_CHECK_INTERVAL_MS;
     _replicaMovementStrategy = SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
     _replicationThrottle = kafkaCruiseControl.config().getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
+    _logDirThrottle = kafkaCruiseControl.config().getLong(ExecutorConfig.DEFAULT_LOG_DIR_THROTTLE_CONFIG);
   }
 
   public RemoveBrokersRunnable(KafkaCruiseControl kafkaCruiseControl,
@@ -86,6 +88,7 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
     _executionProgressCheckIntervalMs = parameters.executionProgressCheckIntervalMs();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
     _replicationThrottle = parameters.replicationThrottle();
+    _logDirThrottle = parameters.logDirThrottle();
   }
 
   @Override
@@ -123,7 +126,7 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
                                          _concurrentInterBrokerPartitionMovements, _maxInterBrokerPartitionMovements,
                                          _clusterLeaderMovementConcurrency, _brokerLeaderMovementConcurrency,
                                          _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle,
-                                         _isTriggeredByUserRequest, _uuid);
+                                         _logDirThrottle, _isTriggeredByUserRequest, _uuid);
     }
 
     return result;
