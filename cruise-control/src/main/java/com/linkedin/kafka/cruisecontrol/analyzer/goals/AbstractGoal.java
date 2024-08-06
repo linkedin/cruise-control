@@ -117,10 +117,10 @@ public abstract class AbstractGoal implements Goal {
                                                         + " Reason: %s.", name(), comparator.explainLastComparison()));
         }
       }
-      // Ensure that a cluster is not identified as over provisioned unless it has the minimum required number of alive brokers.
-      if (_provisionResponse.status() == OVER_PROVISIONED && clusterModel.aliveBrokers().size() < _balancingConstraint.overprovisionedMinBrokers()) {
-        _provisionResponse = new ProvisionResponse(RIGHT_SIZED);
-      }
+      // Ensure that a cluster is not identified as over provisioned unless it has the minimum required number of alive brokers and
+      // expected number of brokers after the provisioning will still be larger than or equal to the max RF
+      _provisionResponse =
+          GoalUtils.validateProvisionResponse(_provisionResponse, clusterModel, _balancingConstraint.overprovisionedMinBrokers());
       return _succeeded;
     } catch (OptimizationFailureException ofe) {
       _provisionResponse = new ProvisionResponse(UNDER_PROVISIONED, ofe.provisionRecommendation(), name());

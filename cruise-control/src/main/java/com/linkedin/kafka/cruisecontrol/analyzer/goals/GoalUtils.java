@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionRecommendation;
+import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionResponse;
 import com.linkedin.kafka.cruisecontrol.analyzer.ProvisionStatus;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.rackaware.RackAwareGoalRackIdMapper;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
@@ -598,5 +599,53 @@ public final class GoalUtils {
       balancePercentage *= balancingConstraint.goalViolationDistributionThresholdMultiplier();
     }
     return (balancePercentage - 1) * balanceMargin;
+  }
+
+  /**
+   * This method validates that provision response is {@link ProvisionStatus#OVER_PROVISIONED} only if:
+   * <ul>
+   *   <li>Number of alive brokers is larger than or equal to the value of {@link AnalyzerConfig#OVERPROVISIONED_MIN_BROKERS_CONFIG}.</li>
+   *   <li>Expected number of alive brokers after the provisioning will still be larger than or equal to the maximum replication factor.</li>
+   * </ul>
+   * if any of the above conditions is violated then provision response is set to {@link ProvisionStatus#RIGHT_SIZED}
+   *
+   * @param provisionResponse Provision response after goal is optimization
+   * @param clusterModel Cluster usage model
+   * @param overprovisionedMinBrokers value of the {@link AnalyzerConfig#OVERPROVISIONED_MIN_BROKERS_CONFIG}
+   * @return Validated provision response
+   * @throws IllegalArgumentException when provision status is {@link ProvisionStatus#OVER_PROVISIONED}
+   * and goal doesn't have exactly one recommendation
+   */
+  public static ProvisionResponse validateProvisionResponse(ProvisionResponse provisionResponse, ClusterModel clusterModel,
+                                                            int overprovisionedMinBrokers) {
+    if (provisionResponse.status() != ProvisionStatus.OVER_PROVISIONED) {
+      return provisionResponse;
+    }
+    // ensure that a cluster is not identified as over provisioned unless it has the minimum required number of alive brokers
+    if (clusterModel.aliveBrokers().size() < overprovisionedMinBrokers) {
+      return new ProvisionResponse(ProvisionStatus.RIGHT_SIZED);
+    }
+    // when status is OVER_PROVISIONED goal is expected to have exactly 1 recommendation
+    if (provisionResponse.recommendationByRecommender().size() != 1) {
+      throw new IllegalArgumentException(String.format("Expected to have exactly 1 provision recommendation, but got: %d",
+                                                       provisionResponse.recommendationByRecommender().size()));
+    }
+    String goalName = provisionResponse.recommendationByRecommender().keySet().iterator().next();
+    int numBrokersToDrop = provisionResponse.recommendationByRecommender().values().iterator().next().numBrokers();
+    // this variable indicates the maximum number of brokers that can be safely dropped.
+    int maxAllowedNumBrokersToDrop = clusterModel.aliveBrokers().size() - clusterModel.maxReplicationFactor();
+    if (numBrokersToDrop <= maxAllowedNumBrokersToDrop) {
+      // return provision response as it is if the recommended number of brokers to drop is smaller or equal to the max allowed number of
+      // brokers that can be safely dropped
+      return provisionResponse;
+    } else if (maxAllowedNumBrokersToDrop > 0) {
+      // change the recommended number of brokers to drop if the original recommendation can not be safely satisfied
+      ProvisionRecommendation recommendation =
+          new ProvisionRecommendation.Builder(ProvisionStatus.OVER_PROVISIONED).numBrokers(maxAllowedNumBrokersToDrop).build();
+      return new ProvisionResponse(ProvisionStatus.OVER_PROVISIONED, recommendation, goalName);
+    } else {
+      // change provision response status to RIGHT_SIZED if none of the brokers can be safely dropped
+      return new ProvisionResponse(ProvisionStatus.RIGHT_SIZED);
+    }
   }
 }

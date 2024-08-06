@@ -9,7 +9,6 @@ import org.apache.kafka.common.config.ConfigDef;
 
 import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
 
-
 /**
  * A class to keep Cruise Control User Task Manager Configs and defaults.
  * DO NOT CHANGE EXISTING CONFIG NAMES AS CHANGES WOULD BREAK USER CODE.
