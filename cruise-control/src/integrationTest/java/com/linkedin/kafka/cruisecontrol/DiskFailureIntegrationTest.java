@@ -26,12 +26,12 @@ import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyState;
 import com.linkedin.kafka.cruisecontrol.detector.TopicReplicationFactorAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaTestUtils;
-import kafka.server.KafkaConfig;
 import net.minidev.json.JSONArray;
 import org.apache.commons.io.FileUtils;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.server.config.ServerLogConfigs;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -97,7 +97,7 @@ public class DiskFailureIntegrationTest extends CruiseControlIntegrationTestHarn
     Map<Object, Object> props = KafkaCruiseControlIntegrationTestUtils.createBrokerProps();
     Entry<File, File> logFolders = Map.entry(CCKafkaTestUtils.newTempDir(), CCKafkaTestUtils.newTempDir());
     _brokerLogDirs.add(logFolders);
-    props.put(KafkaConfig.LogDirsProp(), logFolders.getKey().getAbsolutePath() + "," + logFolders.getValue().getAbsolutePath());
+    props.put(ServerLogConfigs.LOG_DIR_CONFIG, logFolders.getKey().getAbsolutePath() + "," + logFolders.getValue().getAbsolutePath());
     return props;
   }
 
