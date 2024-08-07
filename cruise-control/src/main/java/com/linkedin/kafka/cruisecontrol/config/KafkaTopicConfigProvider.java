@@ -100,7 +100,7 @@ public class KafkaTopicConfigProvider extends JsonFileTopicConfigProvider {
                                                                               _zkClientConfig);
     try {
       AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient, Option.empty());
-      return CollectionConverters.asJava(adminZkClient.getAllTopicConfigs());
+      return CollectionConverters.asJava(adminZkClient.fetchAllEntityConfigs(ConfigType.TOPIC));
     } finally {
       KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
     }
