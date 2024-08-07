@@ -9,9 +9,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.concurrent.atomic.AtomicInteger;
-import kafka.server.KafkaConfig;
+import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.network.Mode;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
+import org.apache.kafka.coordinator.group.GroupCoordinatorConfig;
+import org.apache.kafka.network.SocketServerConfigs;
+import org.apache.kafka.server.config.ReplicationConfigs;
+import org.apache.kafka.server.config.ServerConfigs;
+import org.apache.kafka.server.config.ServerLogConfigs;
+import org.apache.kafka.server.config.ZkConfigs;
+import org.apache.kafka.storage.internals.log.CleanerConfig;
 import org.apache.kafka.test.TestSslUtils;
 
 
@@ -257,27 +264,27 @@ public class CCEmbeddedBrokerBuilder {
     if (_sslPort >= 0) {
       csvJoiner.add(SecurityProtocol.SSL.name + "://localhost:" + _sslPort);
     }
-    props.put(KafkaConfig.BrokerIdProp(), Integer.toString(_nodeId));
-    props.put(KafkaConfig.ListenersProp(), csvJoiner.toString());
-    props.put(KafkaConfig.LogDirProp(), _logDirectory.getAbsolutePath());
-    props.put(KafkaConfig.ZkConnectProp(), _zkConnect);
-    props.put(KafkaConfig.ReplicaSocketTimeoutMsProp(), Long.toString(_socketTimeoutMs));
-    props.put(KafkaConfig.ControllerSocketTimeoutMsProp(), Long.toString(_socketTimeoutMs));
-    props.put(KafkaConfig.ControlledShutdownEnableProp(), Boolean.toString(_enableControlledShutdown));
-    props.put(KafkaConfig.DeleteTopicEnableProp(), Boolean.toString(_enableDeleteTopic));
-    props.put(KafkaConfig.ControlledShutdownRetryBackoffMsProp(), Long.toString(_controlledShutdownRetryBackoff));
-    props.put(KafkaConfig.LogCleanerDedupeBufferSizeProp(), Long.toString(_logCleanerDedupBufferSize));
-    props.put(KafkaConfig.LogCleanerEnableProp(), Boolean.toString(_enableLogCleaner));
-    props.put(KafkaConfig.OffsetsTopicReplicationFactorProp(), "1");
-    props.put(KafkaConfig.SslEndpointIdentificationAlgorithmProp(), "");
+    props.put(ServerConfigs.BROKER_ID_CONFIG, Integer.toString(_nodeId));
+    props.put(SocketServerConfigs.LISTENERS_CONFIG, csvJoiner.toString());
+    props.put(ServerLogConfigs.LOG_DIR_CONFIG, _logDirectory.getAbsolutePath());
+    props.put(ZkConfigs.ZK_CONNECT_CONFIG, _zkConnect);
+    props.put(ReplicationConfigs.REPLICA_SOCKET_TIMEOUT_MS_CONFIG, Long.toString(_socketTimeoutMs));
+    props.put(ReplicationConfigs.CONTROLLER_SOCKET_TIMEOUT_MS_CONFIG, Long.toString(_socketTimeoutMs));
+    props.put(ServerConfigs.CONTROLLED_SHUTDOWN_ENABLE_CONFIG, Boolean.toString(_enableControlledShutdown));
+    props.put(ServerConfigs.DELETE_TOPIC_ENABLE_CONFIG, Boolean.toString(_enableDeleteTopic));
+    props.put(ServerConfigs.CONTROLLED_SHUTDOWN_RETRY_BACKOFF_MS_CONFIG, Long.toString(_controlledShutdownRetryBackoff));
+    props.put(CleanerConfig.LOG_CLEANER_DEDUPE_BUFFER_SIZE_PROP, Long.toString(_logCleanerDedupBufferSize));
+    props.put(CleanerConfig.LOG_CLEANER_ENABLE_PROP, Boolean.toString(_enableLogCleaner));
+    props.put(GroupCoordinatorConfig.OFFSETS_TOPIC_REPLICATION_FACTOR_CONFIG, "1");
+    props.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
     if (_rack != null) {
-      props.put(KafkaConfig.RackProp(), _rack);
+      props.put(ServerConfigs.BROKER_RACK_CONFIG, _rack);
     }
     if (_trustStore != null || _sslPort > 0) {
       try {
         props.putAll(TestSslUtils.createSslConfig(false, true, Mode.SERVER, _trustStore, "server" + _nodeId));
         // Switch interbroker to ssl
-        props.put(KafkaConfig.InterBrokerSecurityProtocolProp(), SecurityProtocol.SSL.name);
+        props.put(ReplicationConfigs.INTER_BROKER_SECURITY_PROTOCOL_CONFIG, SecurityProtocol.SSL.name);
       } catch (Exception e) {
         throw new IllegalStateException(e);
       }

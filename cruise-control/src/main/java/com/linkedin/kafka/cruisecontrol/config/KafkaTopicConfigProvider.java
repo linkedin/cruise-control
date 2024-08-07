@@ -6,15 +6,16 @@ package com.linkedin.kafka.cruisecontrol.config;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
-import kafka.server.ConfigType;
 import kafka.zk.AdminZkClient;
 import kafka.zk.KafkaZkClient;
+import org.apache.kafka.server.config.ConfigType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import scala.Option;
 import scala.jdk.javaapi.CollectionConverters;
 import org.apache.zookeeper.client.ZKClientConfig;
 
@@ -57,8 +58,8 @@ public class KafkaTopicConfigProvider extends JsonFileTopicConfigProvider {
       _zkSecurityEnabled,
       _zkClientConfig);
     try {
-      AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
-      return adminZkClient.fetchEntityConfig(ConfigType.Topic(), topic);
+      AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient, Option.empty());
+      return adminZkClient.fetchEntityConfig(ConfigType.TOPIC, topic);
     } finally {
       KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
     }
@@ -73,11 +74,11 @@ public class KafkaTopicConfigProvider extends JsonFileTopicConfigProvider {
                                                                               _zkClientConfig);
     Map<String, Properties> topicConfigs = new HashMap<>();
     try {
-      AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
+      AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient, Option.empty());
 
       for (String topic : topics) {
         try {
-          Properties topicConfig = adminZkClient.fetchEntityConfig(ConfigType.Topic(), topic);
+          Properties topicConfig = adminZkClient.fetchEntityConfig(ConfigType.TOPIC, topic);
           topicConfigs.put(topic, topicConfig);
         } catch (Exception e) {
           LOG.warn("Unable to retrieve config for topic '{}'", topic, e);
@@ -98,7 +99,7 @@ public class KafkaTopicConfigProvider extends JsonFileTopicConfigProvider {
                                                                               _zkSecurityEnabled,
                                                                               _zkClientConfig);
     try {
-      AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
+      AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient, Option.empty());
       return CollectionConverters.asJava(adminZkClient.getAllTopicConfigs());
     } finally {
       KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
