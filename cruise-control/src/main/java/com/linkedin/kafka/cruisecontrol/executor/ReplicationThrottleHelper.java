@@ -11,11 +11,9 @@ import org.apache.kafka.clients.admin.AlterConfigOp;
 import org.apache.kafka.clients.admin.Config;
 import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.common.config.ConfigResource;
+import org.apache.kafka.server.config.QuotaConfigs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -39,14 +37,10 @@ import java.util.stream.Stream;
 class ReplicationThrottleHelper {
   private static final Logger LOG = LoggerFactory.getLogger(ReplicationThrottleHelper.class);
   static final String WILDCARD_ASTERISK = "*";
-  static final String LEADER_THROTTLED_RATE = "leader.replication.throttled.rate";
-  static final String FOLLOWER_THROTTLED_RATE = "follower.replication.throttled.rate";
-  // LogConfig class in Kafka 3.5+
-  private static final String LOG_CONFIG_IN_KAFKA_3_5_AND_LATER = "org.apache.kafka.storage.internals.log.LogConfig";
-  // LogConfig class in Kafka 3.4-
-  private static final String LOG_CONFIG_IN_KAFKA_3_4_AND_EARLIER = "kafka.log.LogConfig";
-  static final String LEADER_THROTTLED_REPLICAS = getLogConfig(LogConfig.LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG);
-  static final String FOLLOWER_THROTTLED_REPLICAS = getLogConfig(LogConfig.FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG);
+  static final String LEADER_THROTTLED_RATE = QuotaConfigs.LEADER_REPLICATION_THROTTLED_RATE_CONFIG;
+  static final String FOLLOWER_THROTTLED_RATE = QuotaConfigs.FOLLOWER_REPLICATION_THROTTLED_RATE_CONFIG;
+  static final String LEADER_THROTTLED_REPLICAS = QuotaConfigs.LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG;
+  static final String FOLLOWER_THROTTLED_REPLICAS = QuotaConfigs.FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG;
   public static final long CLIENT_REQUEST_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(30);
   static final int RETRIES = 30;
 
@@ -395,57 +389,4 @@ class ReplicationThrottleHelper {
     }
     return true;
   }
-
-  private enum LogConfig {
-    LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG,
-    FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG,
-  }
-
-  /**
-   * Starting with Kafka 3.5.0, the location of the "LogConfig" class is "org.apache.kafka.storage.internals.log.LogConfig"
-   * and provides new constant fields in place of some methods of the original class.
-   *
-   *   - LogConfig class in Kafka 3.5+: org.apache.kafka.storage.internals.log.LogConfig
-   *   - LogConfig class in Kafka 3.4-: kafka.log.LogConfig
-   **
-   * The older LogConfig class does not work with the newer versions of Kafka. Therefore, if the new class exists, we use it and if
-   * it doesn't exist we will fall back on the older one.
-   *
-   * Once CC supports only 3.5.0 and newer, we can clean this up and use the LogConfig class from
-   * `org.apache.kafka.storage.internals.log.LogConfig`all the time.
-   * @param config LogConfig config name
-   * @return LogConfig config name in the format of a Kafka configuration property
-   */
-  private static String getLogConfig(LogConfig config) {
-    Class<?> logConfigClass;
-
-    try {
-      // First we try to get the LogConfig class for Kafka 3.5+
-      logConfigClass = Class.forName(LOG_CONFIG_IN_KAFKA_3_5_AND_LATER);
-
-      Field field = logConfigClass.getDeclaredField(config.toString());
-      return field.get(null).toString();
-    } catch (ClassNotFoundException | NoSuchFieldException | IllegalAccessException e) {
-      LOG.info("Failed to read config {} from LogConfig class since we are probably on kafka 3.4 or older: {}", config, e);
-    }
-
-    // We did not find the LogConfig class or field from Kafka 3.5+.
-    // So we are probably on older Kafka version => we will try the older class for Kafka 3.4-.
-    try {
-      logConfigClass = Class.forName(LOG_CONFIG_IN_KAFKA_3_4_AND_EARLIER);
-
-      String nameOfMethod = "";
-      if (config == LogConfig.LEADER_REPLICATION_THROTTLED_REPLICAS_CONFIG) {
-        nameOfMethod = "LeaderReplicationThrottledReplicasProp";
-      } else if (config == LogConfig.FOLLOWER_REPLICATION_THROTTLED_REPLICAS_CONFIG) {
-        nameOfMethod = "FollowerReplicationThrottledReplicasProp";
-      }
-
-      Method method = logConfigClass.getMethod(nameOfMethod);
-      return method.invoke(null).toString();
-      } catch (ClassNotFoundException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
-      // No class or method was found for any Kafka version => we should fail
-      throw new RuntimeException("Failed to read config " + config + " from LogConfig class:", e);
-      }
-    }
 }
