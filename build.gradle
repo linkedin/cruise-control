@@ -315,7 +315,7 @@ project(':cruise-control') {
     testImplementation 'commons-io:commons-io:2.11.0'
     testImplementation 'org.apache.httpcomponents:httpclient:4.5.13:tests'
     testImplementation 'org.bouncycastle:bcpkix-jdk15on:1.70'
-    testImplementation 'org.apache.kerby:kerb-simplekdc:2.0.1'
+    testImplementation 'org.apache.kerby:kerb-simplekdc:2.0.3'
     testImplementation 'com.jayway.jsonpath:json-path:2.7.0'
     testImplementation 'org.powermock:powermock-module-junit4:2.0.9'
     testImplementation 'org.powermock:powermock-api-easymock:2.0.9'
