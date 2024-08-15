@@ -89,7 +89,6 @@ public class KafkaSampleStore extends AbstractKafkaSampleStore {
   protected long _minPartitionSampleStoreTopicRetentionTimeMs;
   protected long _minBrokerSampleStoreTopicRetentionTimeMs;
   protected volatile double _loadingProgress;
-  protected boolean _skipSampleStoreTopicRackAwarenessCheck;
 
   public static final String PARTITION_METRIC_SAMPLE_STORE_TOPIC_CONFIG = "partition.metric.sample.store.topic";
   public static final String BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG = "broker.metric.sample.store.topic";
