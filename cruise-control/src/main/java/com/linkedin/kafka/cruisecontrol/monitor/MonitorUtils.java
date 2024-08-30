@@ -67,7 +67,7 @@ public final class MonitorUtils {
   /**
    * Derive follower load from the leader load.
    * <p>
-   * If linear regression model is used, the The way we derive the follower metrics is the following:
+   * If linear regression model is used, the way we derive the follower metrics is the following:
    * <ul>
    * <li>FOLLOWER_CPU = LEADER_NETWORK_IN * coefficient + residue </li>
    * <li>FOLLOWER_DISK = LEADER_DISK </li>

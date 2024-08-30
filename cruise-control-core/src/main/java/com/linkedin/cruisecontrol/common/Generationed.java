@@ -27,7 +27,7 @@ public interface Generationed<G> {
    * have a different comparing method along with the generation comparison.
    *
    * @param other another generationed object to compare the generation with.
-   * @return -1 if the the generation of this object is earlier than the other's. 0 when the generations are the same.
+   * @return -1 if the generation of this object is earlier than the other's. 0 when the generations are the same.
    * 1 when the generation of this object is later than the other's.
    */
   int compareGeneration(Generationed<G> other);
@@ -36,7 +36,7 @@ public interface Generationed<G> {
    * Compare the generation of this object with the given generation.
    *
    * @param generation the given generation.
-   * @return -1 if the the generation of this object is earlier than the given generation.
+   * @return -1 if the generation of this object is earlier than the given generation.
    * 0 when the generations are the same.
    * 1 when the generation of this object is later than the given one.
    */

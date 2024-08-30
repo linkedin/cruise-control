@@ -507,7 +507,7 @@ public class ExecutionTaskPlanner {
   /**
    * The comparing order:
    * <ul>
-   *   <li>Priority of the the first task of each broker</li>
+   *   <li>Priority of the first task of each broker</li>
    *   <li>The task set size of each broker. Prioritize broker with the larger size</li>
    *   <li>Broker ID integer. Prioritize broker with the smaller ID</li>
    * </ul>
