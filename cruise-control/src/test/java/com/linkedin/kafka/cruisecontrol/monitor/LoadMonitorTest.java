@@ -38,11 +38,11 @@ import org.apache.kafka.clients.admin.Config;
 import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.clients.admin.DescribeConfigsResult;
 import org.apache.kafka.clients.admin.DescribeLogDirsResult;
+import org.apache.kafka.clients.admin.LogDirDescription;
+import org.apache.kafka.clients.admin.ReplicaInfo;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigResource;
-import org.apache.kafka.common.protocol.Errors;
-import org.apache.kafka.common.requests.DescribeLogDirsResponse;
 import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.common.config.TopicConfig;
@@ -533,8 +533,8 @@ public class LoadMonitorTest {
 
     // Create mock DescribeLogDirsResult
     DescribeLogDirsResult mockDescribeLogDirsResult = EasyMock.mock(DescribeLogDirsResult.class);
-    EasyMock.expect(mockDescribeLogDirsResult.values())
-            .andReturn(getDescribeLogDirsResultValues())
+    EasyMock.expect(mockDescribeLogDirsResult.descriptions())
+        .andReturn(getDescribeLogDirsResultDescriptions())
             .anyTimes();
     EasyMock.replay(mockDescribeLogDirsResult);
 
@@ -607,28 +607,26 @@ public class LoadMonitorTest {
     return Collections.singletonMap(CLUSTER_CONFIG, clusterConfigFuture);
   }
 
-  private Map<Integer, KafkaFuture<Map<String, DescribeLogDirsResponse.LogDirInfo>>> getDescribeLogDirsResultValues() {
+  private Map<Integer, KafkaFuture<Map<String, LogDirDescription>>> getDescribeLogDirsResultDescriptions() {
 
-    Map<Integer, KafkaFuture<Map<String, DescribeLogDirsResponse.LogDirInfo>>> futureByBroker = new HashMap<>();
-    Map<String, DescribeLogDirsResponse.LogDirInfo> logdirInfoBylogdir = new HashMap<>();
-    Map<TopicPartition, DescribeLogDirsResponse.ReplicaInfo> replicaInfoByPartition = new HashMap<>();
-    replicaInfoByPartition.put(T0P0, new DescribeLogDirsResponse.ReplicaInfo(0, 0, false));
-    replicaInfoByPartition.put(T0P1, new DescribeLogDirsResponse.ReplicaInfo(0, 0, false));
-    replicaInfoByPartition.put(T1P0, new DescribeLogDirsResponse.ReplicaInfo(0, 0, false));
-    replicaInfoByPartition.put(T1P1, new DescribeLogDirsResponse.ReplicaInfo(0, 0, false));
-    logdirInfoBylogdir.put("/tmp/kafka-logs", new DescribeLogDirsResponse.LogDirInfo(Errors.NONE, replicaInfoByPartition));
+    Map<Integer, KafkaFuture<Map<String, LogDirDescription>>> futureByBroker = new HashMap<>();
+    Map<String, LogDirDescription> logdirInfoBylogdir = new HashMap<>();
+    Map<TopicPartition, ReplicaInfo> replicaInfoByPartition = new HashMap<>();
+    replicaInfoByPartition.put(T0P0, new ReplicaInfo(0, 0, false));
+    replicaInfoByPartition.put(T0P1, new ReplicaInfo(0, 0, false));
+    replicaInfoByPartition.put(T1P0, new ReplicaInfo(0, 0, false));
+    replicaInfoByPartition.put(T1P1, new ReplicaInfo(0, 0, false));
+    logdirInfoBylogdir.put("/tmp/kafka-logs", new LogDirDescription(null, replicaInfoByPartition));
     futureByBroker.put(0, completedFuture(logdirInfoBylogdir));
 
     logdirInfoBylogdir = new HashMap<>();
     replicaInfoByPartition = new HashMap<>();
-    replicaInfoByPartition.put(T0P0, new DescribeLogDirsResponse.ReplicaInfo(0, 0, false));
-    replicaInfoByPartition.put(T0P1, new DescribeLogDirsResponse.ReplicaInfo(0, 0, false));
-    replicaInfoByPartition.put(T1P0, new DescribeLogDirsResponse.ReplicaInfo(0, 0, false));
-    logdirInfoBylogdir.put("/tmp/kafka-logs-1", new DescribeLogDirsResponse.LogDirInfo(Errors.NONE, replicaInfoByPartition));
+    replicaInfoByPartition.put(T0P0, new ReplicaInfo(0, 0, false));
+    replicaInfoByPartition.put(T0P1, new ReplicaInfo(0, 0, false));
+    replicaInfoByPartition.put(T1P0, new ReplicaInfo(0, 0, false));
+    logdirInfoBylogdir.put("/tmp/kafka-logs-1", new LogDirDescription(null, replicaInfoByPartition));
     logdirInfoBylogdir.put("/tmp/kafka-logs-2",
-                           new DescribeLogDirsResponse.LogDirInfo(Errors.NONE,
-                                                                  Collections.singletonMap(T1P1,
-                                                                                           new DescribeLogDirsResponse.ReplicaInfo(0, 0, false))));
+        new LogDirDescription(null, Collections.singletonMap(T1P1, new ReplicaInfo(0, 0, false))));
     futureByBroker.put(1, completedFuture(logdirInfoBylogdir));
     return futureByBroker;
   }
