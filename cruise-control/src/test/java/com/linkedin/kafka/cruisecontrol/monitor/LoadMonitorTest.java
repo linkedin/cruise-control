@@ -534,7 +534,7 @@ public class LoadMonitorTest {
     // Create mock DescribeLogDirsResult
     DescribeLogDirsResult mockDescribeLogDirsResult = EasyMock.mock(DescribeLogDirsResult.class);
     EasyMock.expect(mockDescribeLogDirsResult.descriptions())
-        .andReturn(getDescribeLogDirsResultDescriptions())
+            .andReturn(getDescribeLogDirsResultDescriptions())
             .anyTimes();
     EasyMock.replay(mockDescribeLogDirsResult);
 
