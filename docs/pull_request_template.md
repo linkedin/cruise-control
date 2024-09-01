@@ -26,5 +26,6 @@
 - [ ] new feature
 - [ ] refactor
 - [ ] CVE
+- [ ] other
 
 This PR resolves #<Replace-Me-With-The-Issue-Number-Addressed-By-This-PR> if any.
