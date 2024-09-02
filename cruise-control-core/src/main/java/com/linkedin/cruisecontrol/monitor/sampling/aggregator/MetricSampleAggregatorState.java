@@ -124,7 +124,7 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
 
   /**
    * Get the list of window indices that need to be updated based on the current generation.
-   * This method also removes the windows that are older than the oldestWindowIndex from the the internal state
+   * This method also removes the windows that are older than the oldestWindowIndex from the internal state
    * of this class.
    *
    * @param oldestWindowIndex the index of the oldest window in the MetricSampleAggregator.

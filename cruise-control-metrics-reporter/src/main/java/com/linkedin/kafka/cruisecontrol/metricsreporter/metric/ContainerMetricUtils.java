@@ -43,7 +43,7 @@ public final class ContainerMetricUtils {
   }
 
   /**
-   * Gets the the number of logical cores available to the node.
+   * Gets the number of logical cores available to the node.
    * <p>
    * We can get this value while running in a container by using the "nproc" command.
    * Using other methods like OperatingSystemMXBean.getAvailableProcessors() and
