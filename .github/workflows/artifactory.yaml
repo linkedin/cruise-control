@@ -16,8 +16,8 @@ jobs:
           fetch-depth: 0 # so gradle doesn't fail traversing the history
       - uses: actions/setup-java@v4
         with:
-          java-version: ${{ matrix.java-ver }}
-          distribution: ${{ matrix.java-dist }}
+          java-version: 11
+          distribution: microsoft
           cache: gradle
       - uses: gradle/actions/setup-gradle@v4 # v4.0.0
       - name: publish
