@@ -27,6 +27,7 @@ jobs:
         with:
           java-version: ${{ matrix.java-ver }}
           distribution: ${{ matrix.java-dist }}
+          cache: gradle
       # see: https://github.com/gradle/actions/blob/main/setup-gradle/README.md
       - uses: gradle/actions/setup-gradle@v4 # v4.0.0
       - name: gradle build
@@ -48,6 +49,7 @@ jobs:
         with:
           java-version: ${{ matrix.java-ver }}
           distribution: ${{ matrix.java-dist }}
+          cache: gradle
       # see: https://github.com/gradle/actions/blob/main/setup-gradle/README.md
       - uses: gradle/actions/setup-gradle@v4 # v4.0.0
       - name: gradle integration test
