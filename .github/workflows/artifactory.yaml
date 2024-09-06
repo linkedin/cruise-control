@@ -2,8 +2,8 @@ name: Artifactory
 
 on:
   workflow_dispatch: # manual trigger
-  release:
-    types: [published]
+  #release:
+  #  types: [published]
 
 jobs:
   publish:
