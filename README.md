@@ -1,7 +1,9 @@
 Cruise Control for Apache Kafka
 ===================
 
+[![CI](https://github.com/linkedin/cruise-control/actions/workflows/ci.yaml/badge.svg)](https://github.com/linkedin/cruise-control/actions/workflows/ci.yaml)
 [![CircleCI](https://circleci.com/gh/linkedin/cruise-control.svg?style=svg)](https://circleci.com/gh/linkedin/cruise-control)
+
 
 ### Introduction ###
   Cruise Control is a product that helps run Apache Kafka clusters at large scale. Due to the popularity of 
