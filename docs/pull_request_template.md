@@ -22,10 +22,11 @@
 4. <!-- use <detail> tag for large snippets -->
 
 ## Categorization
+- [ ] documentation
 - [ ] bugfix
 - [ ] new feature
 - [ ] refactor
-- [ ] CVE
+- [ ] security/CVE
 - [ ] other
 
 This PR resolves #<Replace-Me-With-The-Issue-Number-Addressed-By-This-PR> if any.
