@@ -98,6 +98,18 @@ trusted.proxy.services=service1,service2
 The difference in this case is that the `webserver.auth.credentials.file` config stores the end-user credentials and
 not the trusted proxy credentials. These are listed in the `trusted.proxy.services` config.
 
+```
+spnego.principal.to.local.rules=
+```
+A list of rules for mapping from principal names to short names (typically operating system usernames). The rules are
+evaluated in order and the first rule that matches a principal name is used to map it to a short name. Any later rules
+in the list are ignored. By default, principal names of the form {username}/{hostname}@{REALM} are mapped to {username}.
+When not specified, the short name will be used.
+
+Use auth-to-local (ATL) rules to ensure only principals containing hostnames of the specific cluster are mapped to 
+legitimate users. Without ATL rules different clusters' users can be mapped to the same legitimate user, if the two
+different users are part of the same Kerberos realm.
+
 ## HTTPS
 
 HTTPS can be configured with the following configs:
