@@ -832,6 +832,9 @@ public class Executor {
                             isTriggeredByUserRequest, loadMonitor);
       startExecution(loadMonitor, null, removedBrokers, replicationThrottle, isTriggeredByUserRequest);
     } catch (Exception e) {
+      if (e instanceof OngoingExecutionException) {
+        LOG.info("Broker removal operation with uuid {} aborted due to ongoing execution", uuid);
+      }
       processExecuteProposalsFailure();
       throw e;
     }
