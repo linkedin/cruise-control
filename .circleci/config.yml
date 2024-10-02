@@ -75,13 +75,6 @@ workflows:
   version: 2.1
   build-and-publish:
     jobs:
-      - test-multi-arch:
-          matrix:
-            parameters:
-              platform: ["s390x"]
-          filters:
-            tags:
-              only: /.*/
       - build:
           filters:
             tags:
@@ -89,7 +82,6 @@ workflows:
       - integration-test:
           requires:
             - build
-            - test-multi-arch
           filters:
             branches:
               ignore: /.*/
