@@ -211,7 +211,7 @@ public abstract class GoalBasedOperationRunnable extends OperationRunnable {
    */
   protected void finish() {
     if (_operationProgress != null) {
-      long totalTime = _operationProgress.getCurrentTotalExecutionTime();
+      long totalTimeMs = _operationProgress.getCurrentTotalExecutionTimeMs();
       LOG.info("Operation {} finished with uuid {}; total time: {}ms; steps: {}",
           _operationProgress.getOperation(), _uuid, totalTime, _operationProgress);
     }
