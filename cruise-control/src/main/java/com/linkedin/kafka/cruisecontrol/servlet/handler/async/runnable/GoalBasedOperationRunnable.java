@@ -213,7 +213,7 @@ public abstract class GoalBasedOperationRunnable extends OperationRunnable {
     if (_operationProgress != null) {
       long totalTimeMs = _operationProgress.getCurrentTotalExecutionTimeMs();
       LOG.info("Operation {} finished with uuid {}; total time: {}ms; steps: {}",
-          _operationProgress.getOperation(), _uuid, totalTime, _operationProgress);
+          _operationProgress.getOperation(), _uuid, totalTimeMs, _operationProgress);
     }
     _operationProgress = null;
     _combinedCompletenessRequirements = null;
