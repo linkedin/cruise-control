@@ -11,7 +11,7 @@ jobs:
       DOCKER_CLI_EXPERIMENTAL: "enabled"
     working_directory: ~/workspace
     machine:
-      image: default
+      image: ubuntu-2004:current
     steps:
       - checkout
       - run: |
