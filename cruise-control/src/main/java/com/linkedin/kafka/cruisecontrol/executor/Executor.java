@@ -1370,19 +1370,19 @@ public class Executor {
         if (_executionTimerInvolveBrokerRemovalOrDemotion != null) {
           _executionTimerInvolveBrokerRemovalOrDemotion.update(duration, TimeUnit.MILLISECONDS);
         }
-
         String executionStatusString = String.format("task Id: %s; removed brokers: %s; demoted brokers: %s; total time used: %dms.",
                                                _uuid,
                                                _removedBrokers,
                                                _demotedBrokers,
                                                duration
                                                );
-
         if (_executionException != null) {
           LOG.info("Execution failed: {}. Exception: {}", executionStatusString, _executionException.getMessage());
         } else {
           LOG.info("Execution succeeded: {}. ", executionStatusString);
         }
+        // Clear completed execution.
+        clearCompletedExecution();
       }
     }
 
@@ -1494,8 +1494,6 @@ public class Executor {
         _executionException = t;
       } finally {
         notifyFinishedTask(userTaskInfo);
-        // Clear completed execution.
-        clearCompletedExecution();
       }
     }
 
