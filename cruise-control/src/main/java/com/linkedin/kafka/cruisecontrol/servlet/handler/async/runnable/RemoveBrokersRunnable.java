@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
+import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -19,7 +20,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION_LOGGER;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_DESTINATION_BROKER_IDS;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_CONCURRENT_MOVEMENTS;
@@ -33,6 +37,8 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
  * The async runnable for broker decommission.
  */
 public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
+  private static final Logger LOG = LoggerFactory.getLogger(RemoveBrokersRunnable.class);
+  private static final Logger OPERATION_LOG = LoggerFactory.getLogger(OPERATION_LOGGER);
   protected final Set<Integer> _removedBrokerIds;
   protected final Set<Integer> _destinationBrokerIds;
   protected final boolean _throttleRemovedBrokers;
@@ -116,10 +122,34 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
                                                                          _destinationBrokerIds,
                                                                          false,
                                                                          _fastMode);
-
+    LOG.info("Task {}: Optimization options: {}", _uuid, optimizationOptions);
     OptimizerResult result = _kafkaCruiseControl.optimizations(clusterModel, _goalsByPriority, _operationProgress, null, optimizationOptions);
+    LOG.info("Task {}: Optimization result: {}", _uuid, result.getProposalSummary());
+    Set<ExecutionProposal> goalProposals = result.goalProposals();
+    OPERATION_LOG.info("Task {}: Goal proposals: {}", _uuid, goalProposals);
     if (!_dryRun) {
-      _kafkaCruiseControl.executeRemoval(result.goalProposals(), _throttleRemovedBrokers, _removedBrokerIds, isKafkaAssignerMode(_goals),
+      LOG.info("Task {}: Execute broker removal. throttleRemovedBrokers={}, "
+          + "removedBrokerIds={}, "
+          + "concurrentInterBrokerPartitionMovements={}, "
+          + "maxInterBrokerPartitionMovements={}, "
+          + "clusterLeaderMovementConcurrency={}, "
+          + "brokerLeaderMovementConcurrency={}, "
+          + "executionProgressCheckIntervalMs={}, "
+          + "replicaMovementStrategy={}, "
+          + "replicationThrottle={}, "
+          + "isTriggeredByUserRequest={}",
+          _uuid,
+          _throttleRemovedBrokers,
+          _removedBrokerIds,
+          _concurrentInterBrokerPartitionMovements,
+          _maxInterBrokerPartitionMovements,
+          _clusterLeaderMovementConcurrency,
+          _brokerLeaderMovementConcurrency,
+          _executionProgressCheckIntervalMs,
+          _replicaMovementStrategy,
+          _replicationThrottle,
+          _isTriggeredByUserRequest);
+      _kafkaCruiseControl.executeRemoval(goalProposals, _throttleRemovedBrokers, _removedBrokerIds, isKafkaAssignerMode(_goals),
                                          _concurrentInterBrokerPartitionMovements, _maxInterBrokerPartitionMovements,
                                          _clusterLeaderMovementConcurrency, _brokerLeaderMovementConcurrency,
                                          _executionProgressCheckIntervalMs, _replicaMovementStrategy, _replicationThrottle,

@@ -833,7 +833,7 @@ public class Executor {
       startExecution(loadMonitor, null, removedBrokers, replicationThrottle, isTriggeredByUserRequest);
     } catch (Exception e) {
       if (e instanceof OngoingExecutionException) {
-        LOG.info("Broker removal operation with uuid {} aborted due to ongoing execution", uuid);
+        LOG.info("Task {}: Broker removal operation aborted due to ongoing execution", uuid);
       }
       processExecuteProposalsFailure();
       throw e;
@@ -1141,13 +1141,14 @@ public class Executor {
    */
   public synchronized void userTriggeredStopExecution(boolean stopExternalAgent) {
     if (stopExecution()) {
-      LOG.info("User requested to stop the ongoing proposal execution.");
+      LOG.info("Task {}: User requested to stop the ongoing proposal execution.", _uuid);
       _numExecutionStoppedByUser.incrementAndGet();
       _executionStoppedByUser.set(true);
     }
     if (stopExternalAgent) {
       if (maybeStopExternalAgent()) {
-        LOG.info("The request to stop ongoing external agent partition reassignment is submitted successfully.");
+        LOG.info("Task {}: The request to stop ongoing external agent partition reassignment is submitted successfully.",
+            _uuid);
       }
     }
   }
@@ -1321,7 +1322,7 @@ public class Executor {
         _noOngoingExecutionSemaphore.release();
         _stopSignal.set(NO_STOP_EXECUTION);
         _executionStoppedByUser.set(false);
-        LOG.error("Failed to initialize proposal execution.");
+        LOG.error("Task {}: Failed to initialize proposal execution.", _uuid);
         throw new IllegalStateException("User task manager cannot be null.");
       }
       if (_demotedBrokers != null) {
@@ -1357,29 +1358,28 @@ public class Executor {
     }
 
     public void run() {
-      LOG.info("Starting executing balancing proposals.");
+      LOG.info("Task {}: Starting executing balancing proposals.", _uuid);
       final long start = System.currentTimeMillis();
       try {
         UserTaskManager.UserTaskInfo userTaskInfo = initExecution();
         execute(userTaskInfo);
       } catch (Exception e) {
-        LOG.error("ProposalExecutionRunnable got exception during run", e);
+        LOG.error("Task {}: ProposalExecutionRunnable got exception during run", _uuid, e);
       } finally {
         final long duration = System.currentTimeMillis() - start;
         _proposalExecutionTimer.update(duration, TimeUnit.MILLISECONDS);
         if (_executionTimerInvolveBrokerRemovalOrDemotion != null) {
           _executionTimerInvolveBrokerRemovalOrDemotion.update(duration, TimeUnit.MILLISECONDS);
         }
-        String executionStatusString = String.format("task Id: %s; removed brokers: %s; demoted brokers: %s; total time used: %dms.",
-                                               _uuid,
+        String executionStatusString = String.format("removed brokers: %s; demoted brokers: %s; total time used: %dms.",
                                                _removedBrokers,
                                                _demotedBrokers,
                                                duration
                                                );
         if (_executionException != null) {
-          LOG.info("Execution failed: {}. Exception: {}", executionStatusString, _executionException.getMessage());
+          LOG.info("Task {}: Execution failed: {}. Exception: {}", _uuid, executionStatusString, _executionException.getMessage());
         } else {
-          LOG.info("Execution succeeded: {}. ", executionStatusString);
+          LOG.info("Task {}: Execution succeeded: {}. ", _uuid, executionStatusString);
         }
         // Clear completed execution.
         clearCompletedExecution();
@@ -1490,7 +1490,7 @@ public class Executor {
           updateOngoingExecutionState();
         }
       } catch (Throwable t) {
-        LOG.error("Executor got exception during execution", t);
+        LOG.error("Task {}: Executor got exception during execution", _uuid, t);
         _executionException = t;
       } finally {
         notifyFinishedTask(userTaskInfo);
@@ -1608,14 +1608,14 @@ public class Executor {
       int numTotalPartitionMovements = _executionTaskManager.numRemainingInterBrokerPartitionMovements();
       long totalDataToMoveInMB = _executionTaskManager.remainingInterBrokerDataToMoveInMB();
       long startTime = System.currentTimeMillis();
-      LOG.info("Starting {} inter-broker partition movements.", numTotalPartitionMovements);
+      LOG.info("Task {}: Starting {} inter-broker partition movements.", _uuid, numTotalPartitionMovements);
 
       int partitionsToMove = numTotalPartitionMovements;
       // Exhaust all the pending partition movements.
       while ((partitionsToMove > 0 || !inExecutionTasks().isEmpty()) && _stopSignal.get() == NO_STOP_EXECUTION) {
         // Get tasks to execute.
         List<ExecutionTask> tasksToExecute = _executionTaskManager.getInterBrokerReplicaMovementTasks();
-        LOG.info("Executor will execute {} task(s)", tasksToExecute.size());
+        LOG.info("Task {}: Executor will execute {} task(s)", _uuid, tasksToExecute.size());
 
         AlterPartitionReassignmentsResult result = null;
         if (!tasksToExecute.isEmpty()) {
@@ -1630,7 +1630,8 @@ public class Executor {
         int numFinishedPartitionMovements = _executionTaskManager.numFinishedInterBrokerPartitionMovements();
         long finishedDataMovementInMB = _executionTaskManager.finishedInterBrokerDataMovementInMB();
         updatePartitionMovementMetrics(numFinishedPartitionMovements, finishedDataMovementInMB, System.currentTimeMillis() - startTime);
-        LOG.info("{}/{} ({}%) inter-broker partition movements completed. {}/{} ({}%) MB have been moved.",
+        LOG.info("Task {}: {}/{} ({}%) inter-broker partition movements completed. {}/{} ({}%) MB have been moved.",
+                 _uuid,
                  numFinishedPartitionMovements, numTotalPartitionMovements,
                  String.format("%.2f", numFinishedPartitionMovements * UNIT_INTERVAL_TO_PERCENTAGE / numTotalPartitionMovements),
                  finishedDataMovementInMB, totalDataToMoveInMB,
@@ -1651,13 +1652,14 @@ public class Executor {
 
       // At this point it is guaranteed that there are no in execution tasks to wait -- i.e. all tasks are completed or dead.
       if (_stopSignal.get() == NO_STOP_EXECUTION) {
-        LOG.info("Inter-broker partition movements finished.");
+        LOG.info("Task {}: Inter-broker partition movements finished", _uuid);
       } else {
         ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary(Collections.emptySet());
         Map<ExecutionTaskState, Integer> partitionMovementTasksByState = executionTasksSummary.taskStat().get(INTER_BROKER_REPLICA_ACTION);
-        LOG.info("Inter-broker partition movements stopped. For inter-broker partition movements {} tasks cancelled, {} tasks in-progress, "
+        LOG.info("Task {}: Inter-broker partition movements stopped. For inter-broker partition movements {} tasks cancelled, {} tasks in-progress, "
                  + "{} tasks aborting, {} tasks aborted, {} tasks dead, {} tasks completed, {} remaining data to move; for intra-broker "
                  + "partition movement {} tasks cancelled; for leadership movements {} tasks cancelled.",
+                 _uuid,
                  partitionMovementTasksByState.get(ExecutionTaskState.PENDING),
                  partitionMovementTasksByState.get(ExecutionTaskState.IN_PROGRESS),
                  partitionMovementTasksByState.get(ExecutionTaskState.ABORTING),
@@ -1674,14 +1676,14 @@ public class Executor {
       int numTotalPartitionMovements = _executionTaskManager.numRemainingIntraBrokerPartitionMovements();
       long totalDataToMoveInMB = _executionTaskManager.remainingIntraBrokerDataToMoveInMB();
       long startTime = System.currentTimeMillis();
-      LOG.info("Starting {} intra-broker partition movements.", numTotalPartitionMovements);
+      LOG.info("Task {}: Starting {} intra-broker partition movements.", _uuid, numTotalPartitionMovements);
 
       int partitionsToMove = numTotalPartitionMovements;
       // Exhaust all the pending partition movements.
       while ((partitionsToMove > 0 || !inExecutionTasks().isEmpty()) && _stopSignal.get() == NO_STOP_EXECUTION) {
         // Get tasks to execute.
         List<ExecutionTask> tasksToExecute = _executionTaskManager.getIntraBrokerReplicaMovementTasks();
-        LOG.info("Executor will execute {} task(s)", tasksToExecute.size());
+        LOG.info("Task {}: Executor will execute {} task(s)", _uuid, tasksToExecute.size());
 
         if (!tasksToExecute.isEmpty()) {
           // Execute the tasks.
@@ -1694,7 +1696,8 @@ public class Executor {
         int numFinishedPartitionMovements = _executionTaskManager.numFinishedIntraBrokerPartitionMovements();
         long finishedDataToMoveInMB = _executionTaskManager.finishedIntraBrokerDataToMoveInMB();
         updatePartitionMovementMetrics(numFinishedPartitionMovements, finishedDataToMoveInMB, System.currentTimeMillis() - startTime);
-        LOG.info("{}/{} ({}%) intra-broker partition movements completed. {}/{} ({}%) MB have been moved.",
+        LOG.info("Task {}: {}/{} ({}%) intra-broker partition movements completed. {}/{} ({}%) MB have been moved.",
+                 _uuid,
                  numFinishedPartitionMovements, numTotalPartitionMovements,
                  String.format("%.2f", numFinishedPartitionMovements * UNIT_INTERVAL_TO_PERCENTAGE / numTotalPartitionMovements),
                  finishedDataToMoveInMB, totalDataToMoveInMB,
@@ -1703,19 +1706,20 @@ public class Executor {
       }
       Set<ExecutionTask> inExecutionTasks = inExecutionTasks();
       while (!inExecutionTasks.isEmpty()) {
-        LOG.info("Waiting for {} tasks moving {} MB to finish", inExecutionTasks.size(),
+        LOG.info("Task{}: Waiting for {} tasks moving {} MB to finish", _uuid, inExecutionTasks.size(),
                  _executionTaskManager.inExecutionIntraBrokerDataMovementInMB());
         waitForIntraBrokerReplicaTasksToFinish();
         inExecutionTasks = inExecutionTasks();
       }
       if (inExecutionTasks().isEmpty()) {
-        LOG.info("Intra-broker partition movements finished.");
+        LOG.info("Task {}: Intra-broker partition movements finished.", _uuid);
       } else if (_stopSignal.get() != NO_STOP_EXECUTION) {
         ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary(Collections.emptySet());
         Map<ExecutionTaskState, Integer> partitionMovementTasksByState = executionTasksSummary.taskStat().get(INTRA_BROKER_REPLICA_ACTION);
-        LOG.info("Intra-broker partition movements stopped. For intra-broker partition movements {} tasks cancelled, {} tasks in-progress, "
+        LOG.info("Task {}: Intra-broker partition movements stopped. For intra-broker partition movements {} tasks cancelled, {} tasks in-progress, "
                  + "{} tasks aborting, {} tasks aborted, {} tasks dead, {} tasks completed, {} remaining data to move; for leadership "
                  + "movements {} tasks cancelled.",
+                 _uuid,
                  partitionMovementTasksByState.get(ExecutionTaskState.PENDING),
                  partitionMovementTasksByState.get(ExecutionTaskState.IN_PROGRESS),
                  partitionMovementTasksByState.get(ExecutionTaskState.ABORTING),
@@ -1732,12 +1736,12 @@ public class Executor {
      */
     private void moveLeaderships() {
       int numTotalLeadershipMovements = _executionTaskManager.numRemainingLeadershipMovements();
-      LOG.info("Starting {} leadership movements.", numTotalLeadershipMovements);
+      LOG.info("Task {}: Starting {} leadership movements.", _uuid, numTotalLeadershipMovements);
       int numFinishedLeadershipMovements = 0;
       while (_executionTaskManager.numRemainingLeadershipMovements() != 0 && _stopSignal.get() == NO_STOP_EXECUTION) {
         updateOngoingExecutionState();
         numFinishedLeadershipMovements += moveLeadershipInBatch();
-        LOG.info("{}/{} ({}%) leadership movements completed.", numFinishedLeadershipMovements,
+        LOG.info("Task {}: {}/{} ({}%) leadership movements completed.", _uuid, numFinishedLeadershipMovements,
                  numTotalLeadershipMovements, numFinishedLeadershipMovements * 100 / numTotalLeadershipMovements);
       }
       if (inExecutionTasks().isEmpty()) {
@@ -1745,8 +1749,9 @@ public class Executor {
       } else if (_stopSignal.get() != NO_STOP_EXECUTION) {
         Map<ExecutionTaskState, Integer> leadershipMovementTasksByState =
             _executionTaskManager.getExecutionTasksSummary(Collections.emptySet()).taskStat().get(LEADER_ACTION);
-        LOG.info("Leadership movements stopped. {} tasks cancelled, {} tasks in-progress, {} tasks aborting, {} tasks aborted, "
+        LOG.info("Task {}: Leadership movements stopped. {} tasks cancelled, {} tasks in-progress, {} tasks aborting, {} tasks aborted, "
                  + "{} tasks dead, {} tasks completed.",
+                 _uuid,
                  leadershipMovementTasksByState.get(ExecutionTaskState.PENDING),
                  leadershipMovementTasksByState.get(ExecutionTaskState.IN_PROGRESS),
                  leadershipMovementTasksByState.get(ExecutionTaskState.ABORTING),
@@ -1880,7 +1885,7 @@ public class Executor {
         }
       } while (retry);
 
-      LOG.info("Finished tasks: {}.{}{}{}", finishedTasks,
+      LOG.info("Task {}: Finished tasks: {}.{}{}{}", _uuid, finishedTasks,
                stoppedTaskIds.isEmpty() ? "" : String.format(". [Stopped: %s]", stoppedTaskIds),
                deletedTaskIds.isEmpty() ? "" : String.format(". [Deleted: %s]", deletedTaskIds),
                deadTaskIds.isEmpty() ? "" : String.format(". [Dead: %s]", deadTaskIds));
@@ -1955,7 +1960,7 @@ public class Executor {
         }
       } while (retry);
 
-      LOG.info("Finished tasks: {}.{}{}{}", finishedTasks,
+      LOG.info("Task {}: Finished tasks: {}.{}{}{}", _uuid, finishedTasks,
                stoppedTaskIds.isEmpty() ? "" : String.format(". [Stopped: %s]", stoppedTaskIds),
                deletedTaskIds.isEmpty() ? "" : String.format(". [Deleted: %s]", deletedTaskIds),
                deadTaskIds.isEmpty() ? "" : String.format(". [Dead: %s]", deadTaskIds));
@@ -1998,7 +2003,7 @@ public class Executor {
         updateOngoingExecutionState();
       } while (!inExecutionTasks().isEmpty() && finishedTasks.isEmpty());
 
-      LOG.info("Finished tasks: {}.{}{}", finishedTasks,
+      LOG.info("Task {}: Finished tasks: {}.{}{}", _uuid, finishedTasks,
                deletedTaskIds.isEmpty() ? "" : String.format(". [Deleted: %s]", deletedTaskIds),
                deadTaskIds.isEmpty() ? "" : String.format(". [Dead: %s]", deadTaskIds));
     }
@@ -2042,7 +2047,7 @@ public class Executor {
 
         if (_stopSignal.get() == NO_STOP_EXECUTION) {
           // If there are dead tasks, Cruise Control stops the execution.
-          LOG.info("Stop the execution due to {} dead tasks: {}.", tasksToCancel.size(), tasksToCancel);
+          LOG.info("Task {}: Stop the execution due to {} dead tasks: {}.", _uuid, tasksToCancel.size(), tasksToCancel);
           stopExecution();
         }
 
@@ -2061,7 +2066,8 @@ public class Executor {
               break;
             }
             try {
-              LOG.info("Waiting for the rollback of ongoing inter-broker replica reassignments for {}.", intersection);
+              LOG.info("Task {}: Waiting for the rollback of ongoing inter-broker replica reassignments for {}.",
+                  _uuid, intersection);
               Thread.sleep(executionProgressCheckIntervalMs());
             } catch (InterruptedException e) {
               // let it go
@@ -2110,11 +2116,11 @@ public class Executor {
           case LEADER_ACTION:
             if (cluster.nodeById(task.proposal().newLeader().brokerId()) == null) {
               _executionTaskManager.markTaskDead(task);
-              LOG.warn("Killing execution for task {} because the target leader is down.", task);
+              LOG.warn("Task {}: Killing execution for task {} because the target leader is down.", _uuid, task);
               return true;
             } else if (_time.milliseconds() > task.startTimeMs() + _leaderMovementTimeoutMs) {
               _executionTaskManager.markTaskDead(task);
-              LOG.warn("Killing execution for task {} because it took longer than {} to finish.", task, _leaderMovementTimeoutMs);
+              LOG.warn("Task {}: Killing execution for task {} because it took longer than {} to finish.", _uuid, task, _leaderMovementTimeoutMs);
               return true;
             }
             break;
@@ -2124,7 +2130,7 @@ public class Executor {
               if (cluster.nodeById(broker.brokerId()) == null
                   || deadInterBrokerReassignments.contains(task.proposal().topicPartition())) {
                 _executionTaskManager.markTaskDead(task);
-                LOG.warn("Killing execution for task {} because the new replica {} is down.", task, broker);
+                LOG.warn("Task {}: Killing execution for task {} because the new replica {} is down.", _uuid, task, broker);
                 return true;
               }
             }
@@ -2133,7 +2139,7 @@ public class Executor {
           case INTRA_BROKER_REPLICA_ACTION:
             if (!logdirInfoByTask.containsKey(task)) {
               _executionTaskManager.markTaskDead(task);
-              LOG.warn("Killing execution for task {} because the destination disk is down.", task);
+              LOG.warn("Task {}: Killing execution for task {} because the destination disk is down.", _uuid, task);
               return true;
             }
             break;
@@ -2163,7 +2169,8 @@ public class Executor {
             candidateInterBrokerReplicaTasksToReexecute);
       } catch (TimeoutException | InterruptedException | ExecutionException e) {
         // This may indicate transient (e.g. network) issues.
-        LOG.warn("Failed to retrieve partitions being reassigned. Skipping reexecution check for inter-broker replica actions.", e);
+        LOG.warn("Task {}: Failed to retrieve partitions being reassigned. Skipping reexecution check for inter-broker replica actions.",
+            _uuid, e);
         tasksToReexecute = Collections.emptyList();
       }
       if (!tasksToReexecute.isEmpty()) {
@@ -2193,7 +2200,7 @@ public class Executor {
         }
       });
       if (!intraBrokerReplicaTasksToReexecute.isEmpty()) {
-        LOG.info("Reexecuting tasks {}", intraBrokerReplicaTasksToReexecute);
+        LOG.info("Task {}: Reexecuting tasks {}", _uuid, intraBrokerReplicaTasksToReexecute);
         executeIntraBrokerReplicaMovements(intraBrokerReplicaTasksToReexecute, _adminClient, _executionTaskManager, _config);
       }
     }
@@ -2208,7 +2215,7 @@ public class Executor {
     private void maybeReexecuteLeadershipTasks(Set<TopicPartition> deleted) {
       List<ExecutionTask> leaderActionsToReexecute = new ArrayList<>(_executionTaskManager.inExecutionTasks(Collections.singleton(LEADER_ACTION)));
       if (!leaderActionsToReexecute.isEmpty()) {
-        LOG.info("Reexecuting tasks {}", leaderActionsToReexecute);
+        LOG.info("Task {}: Reexecuting tasks {}", _uuid, leaderActionsToReexecute);
         ElectLeadersResult electLeadersResult = ExecutionUtils.submitPreferredLeaderElection(_adminClient, leaderActionsToReexecute);
         ExecutionUtils.processElectLeadersResult(electLeadersResult, deleted);
       }
