@@ -1709,7 +1709,7 @@ public class Executor {
       }
       Set<ExecutionTask> inExecutionTasks = inExecutionTasks();
       while (!inExecutionTasks.isEmpty()) {
-        LOG.info("Task{}: Waiting for {} tasks moving {} MB to finish", _uuid, inExecutionTasks.size(),
+        LOG.info("User task {}: Waiting for {} tasks moving {} MB to finish", _uuid, inExecutionTasks.size(),
                  _executionTaskManager.inExecutionIntraBrokerDataMovementInMB());
         waitForIntraBrokerReplicaTasksToFinish();
         inExecutionTasks = inExecutionTasks();
