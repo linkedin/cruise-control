@@ -101,6 +101,7 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
 
   @Override
   protected OptimizerResult workWithClusterModel() throws KafkaCruiseControlException, TimeoutException, NotEnoughValidWindowsException {
+    long start = System.currentTimeMillis();
     ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(_combinedCompletenessRequirements, _allowCapacityEstimation, _operationProgress);
     sanityCheckBrokersHavingOfflineReplicasOnBadDisks(_goals, clusterModel);
     _removedBrokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
@@ -110,7 +111,6 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
     if (!_destinationBrokerIds.isEmpty()) {
       _kafkaCruiseControl.sanityCheckBrokerPresence(_destinationBrokerIds);
     }
-
     OptimizationOptions optimizationOptions = computeOptimizationOptions(clusterModel,
                                                                          false,
                                                                          _kafkaCruiseControl,
@@ -122,13 +122,15 @@ public class RemoveBrokersRunnable extends GoalBasedOperationRunnable {
                                                                          _destinationBrokerIds,
                                                                          false,
                                                                          _fastMode);
-    LOG.info("Task {}: Optimization options: {}", _uuid, optimizationOptions);
+    LOG.info("User task {}: Optimization options: {}", _uuid, optimizationOptions);
     OptimizerResult result = _kafkaCruiseControl.optimizations(clusterModel, _goalsByPriority, _operationProgress, null, optimizationOptions);
-    LOG.info("Task {}: Optimization result: {}", _uuid, result.getProposalSummary());
+    long goalProposalGenerationTimeMs = System.currentTimeMillis() - start;
+    LOG.info("User task {}: Time in proposals generation: {}ms; Optimization result: {}", _uuid,
+        goalProposalGenerationTimeMs, result.getProposalSummary());
     Set<ExecutionProposal> goalProposals = result.goalProposals();
-    OPERATION_LOG.info("Task {}: Goal proposals: {}", _uuid, goalProposals);
+    OPERATION_LOG.info("User task {}: Goal proposals: {}", _uuid, goalProposals);
     if (!_dryRun) {
-      LOG.info("Task {}: Execute broker removal. throttleRemovedBrokers={}, "
+      LOG.info("User task {}: Execute broker removal. throttleRemovedBrokers={}, "
           + "removedBrokerIds={}, "
           + "concurrentInterBrokerPartitionMovements={}, "
           + "maxInterBrokerPartitionMovements={}, "
