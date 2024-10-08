@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
+import com.linkedin.kafka.cruisecontrol.detector.TopicAnomalyDetector;
 import com.linkedin.kafka.cruisecontrol.exception.PartitionNotExistsException;
 import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtils;
@@ -18,6 +19,7 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.config.EnvConfigProvider
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import kafka.zk.KafkaZkClient;
+import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.AlterConfigOp;
@@ -45,6 +47,7 @@ import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.config.TopicConfig;
+import org.apache.kafka.common.config.types.Password;
 import org.apache.kafka.common.errors.ReassignmentInProgressException;
 import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.message.MetadataResponseData;
@@ -63,7 +66,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
@@ -71,15 +73,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
 import java.util.stream.Collectors;
-import scala.Option;
 
+import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.DEFAULT_RECONNECT_BACKOFF_MS;
 import static com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig.RECONNECT_BACKOFF_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_HARD_GOAL_CHECK_PARAM;
 
@@ -205,11 +209,38 @@ public final class KafkaCruiseControlUtils {
   }
 
   /**
+   * If the topic does not exist, create it with the requested name, partition count, replication
+   * factor, and topic configs. Otherwise, if the existing topic has
+   * <ul>
+   *   <li>fewer than the requested number of partitions, increase the count to the requested value</li>
+   *   <li>different topic configs, then update the topic configs to match the desired configs</li>
+   * </ul>
+   *
+   * Note that the replication factor is not adjusted if an existing maintenance event topic has
+   * a different replication factor. Automated handling of replication factor inconsistencies is
+   * the responsibility of {@link TopicAnomalyDetector}.
+   *
+   * @param adminClient Admin client to use in topic creation, config checks, and required updates
+   * (if any).
+   * @param topic Desired topic and configuration.
+   */
+  public static void maybeCreateOrUpdateTopic(AdminClient adminClient, NewTopic topic) {
+    if (!createTopic(adminClient, topic)) {
+      // Update topic config and partition count to ensure desired properties.
+      maybeUpdateTopicConfig(adminClient, topic);
+      maybeIncreasePartitionCount(adminClient, topic);
+    }
+  }
+
+  /**
    * Describe cluster configs.
    *
    * @param adminClient The adminClient to send describeConfigs request.
    * @param timeout Timeout to describe cluster configs.
    * @return Cluster configs, or {@code null} if there is a timeout.
+   * @throws InterruptedException If the thread is interrupted while waiting for the
+   *   AdminClient.describeConfigs response.
+   * @throws ExecutionException If the AdminClient.describeConfigs response is failed.
    */
   public static Config describeClusterConfigs(AdminClient adminClient, Duration timeout)
       throws InterruptedException, ExecutionException {
@@ -362,6 +393,7 @@ public final class KafkaCruiseControlUtils {
    *
    * @param endOffsets End offsets retrieved by consumer.
    * @param offsetsForTimes Offsets for times retrieved by consumer.
+   * @throws SamplingException if there are any partitions that failed to fetch offsets.
    */
   public static void sanityCheckOffsetFetch(Map<TopicPartition, Long> endOffsets,
                                             Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes)
@@ -542,34 +574,17 @@ public final class KafkaCruiseControlUtils {
                                                   boolean zkSecurityEnabled,
                                                   ZKClientConfig zkClientConfig) {
     KafkaZkClient kafkaZkClient = null;
+    String zkClientName = String.format("%s-%s", metricGroup, metricType);
     try {
-      String zkClientName = String.format("%s-%s", metricGroup, metricType);
-      Method kafka31PlusMet = KafkaZkClient.class.getMethod("apply", String.class, boolean.class, int.class, int.class, int.class,
-                                                            org.apache.kafka.common.utils.Time.class, String.class, ZKClientConfig.class,
-                                                            String.class, String.class, boolean.class);
-      kafkaZkClient = (KafkaZkClient) kafka31PlusMet.invoke(null, connectString, zkSecurityEnabled, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT,
-                                                            Integer.MAX_VALUE, new SystemTime(), zkClientName, zkClientConfig, metricGroup,
-                                                            metricType, false);
-    } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-      LOG.debug("Unable to find apply method in KafkaZkClient for Kafka 3.1+.", e);
-    }
-    if (kafkaZkClient == null) {
-      try {
-        Option<String> zkClientName = Option.apply(String.format("%s-%s", metricGroup, metricType));
-        Option<ZKClientConfig> zkConfig = Option.apply(zkClientConfig);
-        Method kafka31MinusMet = KafkaZkClient.class.getMethod("apply", String.class, boolean.class, int.class, int.class, int.class,
-                                                               org.apache.kafka.common.utils.Time.class, String.class, String.class, Option.class,
-                                                               Option.class);
-        kafkaZkClient = (KafkaZkClient) kafka31MinusMet.invoke(null, connectString, zkSecurityEnabled, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT,
-                                                               Integer.MAX_VALUE, new SystemTime(), metricGroup, metricType, zkClientName, zkConfig);
-      } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-        LOG.debug("Unable to find apply method in KafkaZkClient for Kafka 3.1-.", e);
-      }
-    }
-    if (kafkaZkClient != null) {
+      LOG.info("Connecting to zookeeper, {}, with zkSecurityEnabled={}, zkClientConfig={}",
+              connectString, zkSecurityEnabled, zkClientConfig.toString());
+      kafkaZkClient = KafkaZkClient.apply(connectString, zkSecurityEnabled, ZK_SESSION_TIMEOUT,
+              ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE, new SystemTime(), zkClientName,
+              zkClientConfig, metricGroup, metricType, false);
       return kafkaZkClient;
-    } else {
-      throw new NoSuchElementException("Unable to find viable apply function version for the KafkaZkClient class ");
+    } catch (Exception e) {
+      LOG.error("Unable to create KafkaZkClient.", e);
+      throw new NoSuchElementException("Unable to create KafkaZkClient");
     }
   }
 
@@ -626,35 +641,44 @@ public final class KafkaCruiseControlUtils {
     adminClientConfigs.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, configs.getInt(ExecutorConfig.ADMIN_CLIENT_REQUEST_TIMEOUT_MS_CONFIG));
     adminClientConfigs.put(AdminClientConfig.RECONNECT_BACKOFF_MS_CONFIG, configs.getLong(RECONNECT_BACKOFF_MS_CONFIG));
 
-    // Add security protocol (if specified).
-    try {
-      String securityProtocol = configs.getString(AdminClientConfig.SECURITY_PROTOCOL_CONFIG);
-      adminClientConfigs.put(AdminClientConfig.SECURITY_PROTOCOL_CONFIG, securityProtocol);
-      setStringConfigIfExists(configs, adminClientConfigs, SaslConfigs.SASL_MECHANISM);
-      setClassConfigIfExists(configs, adminClientConfigs, SaslConfigs.SASL_LOGIN_CALLBACK_HANDLER_CLASS);
-      setClassConfigIfExists(configs, adminClientConfigs, SaslConfigs.SASL_CLIENT_CALLBACK_HANDLER_CLASS);
-      setPasswordConfigIfExists(configs, adminClientConfigs, SaslConfigs.SASL_JAAS_CONFIG);
-      setStringConfigIfExists(configs, adminClientConfigs, SaslConfigs.SASL_OAUTHBEARER_TOKEN_ENDPOINT_URL);
-
-      // Configure SSL configs (if security protocol is SSL or SASL_SSL)
-      if (securityProtocol.equals(SecurityProtocol.SSL.name) || securityProtocol.equals(SecurityProtocol.SASL_SSL.name)) {
-        setStringConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_TRUSTMANAGER_ALGORITHM_CONFIG);
-        setStringConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_KEYMANAGER_ALGORITHM_CONFIG);
-        setStringConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_KEYSTORE_TYPE_CONFIG);
-        setStringConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG);
-        setStringConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG);
-        setStringConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG);
-        setStringConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_SECURE_RANDOM_IMPLEMENTATION_CONFIG);
-        setStringConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG);
-        setPasswordConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG);
-        setPasswordConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_KEY_PASSWORD_CONFIG);
-        setPasswordConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG);
-      }
-    } catch (ConfigException ce) {
-      // let it go.
-    }
+    maybeAddSecurityConfig(configs, adminClientConfigs);
 
     return adminClientConfigs;
+  }
+
+  /**
+   * Add security config, if specified, to the target {@code config} map. Security config
+   * parameters in {@code cruiseControlConfig} are copied into {@code config}.
+   *
+   * @param cruiseControlConfig The application config to copy the configured security settings
+   * from.
+   * @param config The target configuration map to copy the security settings from.
+   * @return The modified {@code config} map with the security config added.
+   */
+  public static Map<String, Object> maybeAddSecurityConfig(AbstractConfig cruiseControlConfig, Map<String, Object> config) {
+    String securityProtocol = setStringConfigIfExists(cruiseControlConfig, config, CommonClientConfigs.SECURITY_PROTOCOL_CONFIG);
+    setStringConfigIfExists(cruiseControlConfig, config, SaslConfigs.SASL_MECHANISM);
+    setClassConfigIfExists(cruiseControlConfig, config, SaslConfigs.SASL_LOGIN_CALLBACK_HANDLER_CLASS);
+    setClassConfigIfExists(cruiseControlConfig, config, SaslConfigs.SASL_CLIENT_CALLBACK_HANDLER_CLASS);
+    setPasswordConfigIfExists(cruiseControlConfig, config, SaslConfigs.SASL_JAAS_CONFIG);
+    setStringConfigIfExists(cruiseControlConfig, config, SaslConfigs.SASL_OAUTHBEARER_TOKEN_ENDPOINT_URL);
+
+    // Configure SSL config (if security protocol is SSL or SASL_SSL)
+    if (SecurityProtocol.SSL.name.equals(securityProtocol)
+            || SecurityProtocol.SASL_SSL.name.equals(securityProtocol)) {
+      setStringConfigIfExists(cruiseControlConfig, config, SslConfigs.SSL_TRUSTMANAGER_ALGORITHM_CONFIG);
+      setStringConfigIfExists(cruiseControlConfig, config, SslConfigs.SSL_KEYMANAGER_ALGORITHM_CONFIG);
+      setStringConfigIfExists(cruiseControlConfig, config, SslConfigs.SSL_KEYSTORE_TYPE_CONFIG);
+      setStringConfigIfExists(cruiseControlConfig, config, SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG);
+      setStringConfigIfExists(cruiseControlConfig, config, SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG);
+      setStringConfigIfExists(cruiseControlConfig, config, SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG);
+      setStringConfigIfExists(cruiseControlConfig, config, SslConfigs.SSL_SECURE_RANDOM_IMPLEMENTATION_CONFIG);
+      setStringConfigIfExists(cruiseControlConfig, config, SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG);
+      setPasswordConfigIfExists(cruiseControlConfig, config, SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG);
+      setPasswordConfigIfExists(cruiseControlConfig, config, SslConfigs.SSL_KEY_PASSWORD_CONFIG);
+      setPasswordConfigIfExists(cruiseControlConfig, config, SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG);
+    }
+    return config;
   }
 
   /**
@@ -752,28 +776,28 @@ public final class KafkaCruiseControlUtils {
     return metadataResponseTopic;
   }
 
-  private static void setPasswordConfigIfExists(KafkaCruiseControlConfig configs, Map<String, Object> props, String name) {
+  private static <T> T setTypedConfigIfExists(Function<String, T> typedGetter, Map<String, Object> props, String name) {
+    final T result;
     try {
-      props.put(name, configs.getPassword(name));
+      result = typedGetter.apply(name);
     } catch (ConfigException ce) {
-      // let it go.
+      // Config key doesn't exist.
+      return null;
     }
+    props.put(name, result);
+    return result;
   }
 
-  private static void setStringConfigIfExists(KafkaCruiseControlConfig configs, Map<String, Object> props, String name) {
-    try {
-      props.put(name, configs.getString(name));
-    } catch (ConfigException ce) {
-      // let it go.
-    }
+  public static Password setPasswordConfigIfExists(AbstractConfig configs, Map<String, Object> props, String name) {
+    return setTypedConfigIfExists(configs::getPassword, props, name);
   }
 
-  private static void setClassConfigIfExists(KafkaCruiseControlConfig configs, Map<String, Object> props, String name) {
-    try {
-      props.put(name, configs.getClass(name));
-    } catch (ConfigException ce) {
-      // let it go.
-    }
+  public static String setStringConfigIfExists(AbstractConfig configs, Map<String, Object> props, String name) {
+    return setTypedConfigIfExists(configs::getString, props, name);
+  }
+
+  public static Class<?> setClassConfigIfExists(AbstractConfig configs, Map<String, Object> props, String name) {
+    return setTypedConfigIfExists(configs::getClass, props, name);
   }
 
   /**
@@ -781,9 +805,10 @@ public final class KafkaCruiseControlUtils {
    * @param cluster The current cluster state.
    * @param tp The topic partition to check.
    * @return {@code true} if the partition is currently under replicated.
+   * @throws PartitionNotExistsException if the partition does not exist.
    */
-  public static boolean isPartitionUnderReplicated(Cluster cluster, TopicPartition tp) throws
-                                                                                       PartitionNotExistsException {
+  public static boolean isPartitionUnderReplicated(Cluster cluster, TopicPartition tp)
+          throws PartitionNotExistsException {
     PartitionInfo partitionInfo = cluster.partition(tp);
     if (partitionInfo == null) {
       throw new PartitionNotExistsException("Partition " + tp + " does not exist.");
@@ -905,19 +930,19 @@ public final class KafkaCruiseControlUtils {
     consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
     consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, keyDeserializer.getName());
     consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDeserializer.getName());
-    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, configs.get(RECONNECT_BACKOFF_MS_CONFIG).toString());
+    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG,
+            Objects.requireNonNullElse(configs.get(RECONNECT_BACKOFF_MS_CONFIG), DEFAULT_RECONNECT_BACKOFF_MS).toString());
     return new KafkaConsumer<>(consumerProps);
   }
 
   /**
-   *
    * Returns the right KafkaCruiseControl app, depending on the vertx.enabled property.
    *
    * @param config The configurations for Cruise Control.
    * @param port The port for the REST API.
    * @param hostname The hostname for the REST API.
    * @return KafkaCruiseControlApp class depending on the vertx.enabled property.
-   * @throws ServletException
+   * @throws ServletException if there is an error during configuration.
    */
   public static KafkaCruiseControlApp getCruiseControlApp(KafkaCruiseControlConfig config, Integer port, String hostname) throws ServletException {
     if (config.getBoolean(WebServerConfig.VERTX_ENABLED_CONFIG)) {
