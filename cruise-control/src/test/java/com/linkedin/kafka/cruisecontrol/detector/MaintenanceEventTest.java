@@ -218,7 +218,7 @@ public class MaintenanceEventTest {
     EasyMock.expect(_optimizerResult.statsByGoalName()).andReturn(new LinkedHashMap<>(0)).times(2);
     EasyMock.expect(_optimizerResult.brokerStatsAfterOptimization()).andReturn(_brokerStats).times(2);
     EasyMock.expect(_brokerStats.getJsonStructure()).andReturn(Collections.emptyMap());
-    EasyMock.expect(_optimizerResult.getProposalSummary()).andReturn(null);
+    EasyMock.expect(_optimizerResult.getProposalSummary()).andReturn(null).times(2);
 
     // Replay mocks.
     EasyMock.replay(_mockKafkaCruiseControl, _optimizerResult, _brokerStats);
