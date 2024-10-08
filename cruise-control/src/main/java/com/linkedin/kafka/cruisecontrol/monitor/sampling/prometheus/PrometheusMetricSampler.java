@@ -5,11 +5,12 @@
 package com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import org.apache.http.HttpHost;
+import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.kafka.common.Cluster;
@@ -106,16 +107,14 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
         }
 
         try {
-            HttpHost host = HttpHost.create(endpoint);
-            if (host.getPort() < 0) {
-                throw new IllegalArgumentException();
-            }
+            URIBuilder uriBuilder = new URIBuilder(endpoint);
+
             _httpClient = HttpClients.createDefault();
-            _prometheusAdapter = new PrometheusAdapter(_httpClient, host, _samplingIntervalMs);
-        } catch (IllegalArgumentException ex) {
+            _prometheusAdapter = new PrometheusAdapter(_httpClient, uriBuilder, _samplingIntervalMs);
+        } catch (URISyntaxException ex) {
             throw new ConfigException(
                 String.format("Prometheus endpoint URI is malformed, "
-                              + "expected schema://host:port, provided %s", endpoint), ex);
+                              + "expected schema://host:port[/path], provided %s", endpoint), ex);
         }
     }
 
