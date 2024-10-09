@@ -651,6 +651,8 @@ public class KafkaCruiseControl {
    *                                (if null, use default.replica.movement.strategies).
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
    *                            when executing proposals (if null, no throttling is applied).
+   * @param logDirThrottle The throttle (bytes/second) to apply to replicas being moved between the log dirs
+   *                            when executing proposals (if null, no throttling is applied).
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
    * @param skipInterBrokerReplicaConcurrencyAdjustment {@code true} to skip auto adjusting concurrency of inter-broker
@@ -667,6 +669,7 @@ public class KafkaCruiseControl {
                                Long executionProgressCheckIntervalMs,
                                ReplicaMovementStrategy replicaMovementStrategy,
                                Long replicationThrottle,
+                               Long logDirThrottle,
                                boolean isTriggeredByUserRequest,
                                String uuid,
                                boolean skipInterBrokerReplicaConcurrencyAdjustment) throws OngoingExecutionException {
@@ -674,7 +677,7 @@ public class KafkaCruiseControl {
       _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor, concurrentInterBrokerPartitionMovements,
                                  maxInterBrokerPartitionMovements, concurrentIntraBrokerPartitionMovements, clusterConcurrentLeaderMovements,
                                  brokerConcurrentLeaderMovements, executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle,
-                                 isTriggeredByUserRequest, uuid, isKafkaAssignerMode, skipInterBrokerReplicaConcurrencyAdjustment);
+                                 logDirThrottle, isTriggeredByUserRequest, uuid, isKafkaAssignerMode, skipInterBrokerReplicaConcurrencyAdjustment);
     } else {
       failGeneratingProposalsForExecution(uuid);
     }
@@ -700,6 +703,8 @@ public class KafkaCruiseControl {
    *                                (if null, use default.replica.movement.strategies).
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
    *                            when executing remove operations (if null, no throttling is applied).
+   * @param logDirThrottle The throttle (bytes/second) to apply to replicas being moved between the log dirs
+   *                            when executing remove operations (if null, no throttling is applied).
    * @param isTriggeredByUserRequest Whether the execution is triggered by a user request.
    * @param uuid UUID of the execution.
    */
@@ -714,13 +719,14 @@ public class KafkaCruiseControl {
                              Long executionProgressCheckIntervalMs,
                              ReplicaMovementStrategy replicaMovementStrategy,
                              Long replicationThrottle,
+                             Long logDirThrottle,
                              boolean isTriggeredByUserRequest,
                              String uuid) throws OngoingExecutionException {
     if (hasProposalsToExecute(proposals, uuid)) {
       _executor.executeProposals(proposals, throttleDecommissionedBroker ? Collections.emptySet() : removedBrokers, removedBrokers,
                                  _loadMonitor, concurrentInterBrokerPartitionMovements, maxInterBrokerPartitionMovements, 0,
                                  clusterLeaderMovementConcurrency, brokerLeaderMovementConcurrency,
-                                 executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle,
+                                 executionProgressCheckIntervalMs, replicaMovementStrategy, replicationThrottle, logDirThrottle,
                                  isTriggeredByUserRequest, uuid, isKafkaAssignerMode, false);
     } else {
       failGeneratingProposalsForExecution(uuid);
