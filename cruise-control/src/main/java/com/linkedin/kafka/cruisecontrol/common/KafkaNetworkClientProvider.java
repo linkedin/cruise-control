@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.common;
 import org.apache.kafka.clients.ApiVersions;
 import org.apache.kafka.clients.ClientDnsLookup;
 import org.apache.kafka.clients.Metadata;
+import org.apache.kafka.clients.MetadataRecoveryStrategy;
 import org.apache.kafka.clients.NetworkClient;
 import org.apache.kafka.common.metrics.Metrics;
 import org.apache.kafka.common.network.ChannelBuilder;
@@ -48,17 +49,33 @@ public class KafkaNetworkClientProvider implements NetworkClientProvider {
                                            ApiVersions apiVersions) {
     NetworkClient networkClient = null;
     try {
-      Constructor<?> kafka30PlusCon = NetworkClient.class.getConstructor(Selectable.class, Metadata.class, String.class, int.class, long.class,
+      Constructor<?> kafka38PlusCon = NetworkClient.class.getConstructor(Selectable.class, Metadata.class, String.class, int.class, long.class,
                                                                          long.class, int.class, int.class, int.class, long.class, long.class,
-                                                                         Time.class, boolean.class, ApiVersions.class, LogContext.class);
-      networkClient = (NetworkClient) kafka30PlusCon.newInstance(new Selector(connectionMaxIdleMs, metrics, time, metricGrpPrefix, channelBuilder,
+                                                                         Time.class, boolean.class, ApiVersions.class, LogContext.class,
+                                                                         MetadataRecoveryStrategy.class);
+      networkClient = (NetworkClient) kafka38PlusCon.newInstance(new Selector(connectionMaxIdleMs, metrics, time, metricGrpPrefix, channelBuilder,
                                                                               new LogContext()), metadata, clientId,
                                                                  maxInFlightRequestsPerConnection, reconnectBackoffMs, reconnectBackoffMax,
                                                                  socketSendBuffer, socketReceiveBuffer, defaultRequestTimeoutMs,
                                                                  connectionSetupTimeoutMs, connectionSetupTimeoutMaxMs, time, discoverBrokerVersions,
-                                                                 apiVersions, new LogContext());
+                                                                 apiVersions, new LogContext(), MetadataRecoveryStrategy.NONE);
     } catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
-      LOG.debug("Unable to find Kafka 3.0+ constructor for KafkaSever class", e);
+      LOG.debug("Unable to find Kafka 3.8+ constructor for KafkaSever class", e);
+    }
+    if (networkClient == null) {
+      try {
+        Constructor<?> kafka30PlusCon = NetworkClient.class.getConstructor(Selectable.class, Metadata.class, String.class, int.class, long.class,
+                long.class, int.class, int.class, int.class, long.class, long.class,
+                Time.class, boolean.class, ApiVersions.class, LogContext.class);
+        networkClient = (NetworkClient) kafka30PlusCon.newInstance(new Selector(connectionMaxIdleMs, metrics, time, metricGrpPrefix, channelBuilder,
+                        new LogContext()), metadata, clientId,
+                maxInFlightRequestsPerConnection, reconnectBackoffMs, reconnectBackoffMax,
+                socketSendBuffer, socketReceiveBuffer, defaultRequestTimeoutMs,
+                connectionSetupTimeoutMs, connectionSetupTimeoutMaxMs, time, discoverBrokerVersions,
+                apiVersions, new LogContext());
+      } catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
+        LOG.debug("Unable to find Kafka 3.0+ constructor for KafkaSever class", e);
+      }
     }
     if (networkClient == null) {
       try {
