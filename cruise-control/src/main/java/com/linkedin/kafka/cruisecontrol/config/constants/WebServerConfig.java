@@ -322,6 +322,18 @@ public final class WebServerConfig {
       + "in the service/host@REALM format (service is usually HTTP).";
 
   /**
+   * <code>spnego.principal.to.local.rules</code>
+   */
+  public static final String SPNEGO_PRINCIPAL_TO_LOCAL_RULES_CONFIG =
+          "spnego.principal.to.local.rules";
+  public static final String DEFAULT_SPNEGO_PRINCIPAL_TO_LOCAL_RULES = null;
+  public static final String SPNEGO_PRINCIPAL_TO_LOCAL_RULES_DOC = "A list of rules for mapping from principal "
+          + "names to short names (typically operating system usernames). The rules are evaluated in order and the "
+          + "first rule that matches a principal name is used to map it to a short name. Any later rules in the list are "
+          + "ignored. By default, principal names of the form <code>{username}/{hostname}@{REALM}</code> are mapped "
+          + "to <code>{username}</code>. When not specified, the short name will be used.";
+
+  /**
    * <code>trusted.proxy.services</code>
    */
   public static final String TRUSTED_PROXY_SERVICES_CONFIG = "trusted.proxy.services";
@@ -573,6 +585,11 @@ public final class WebServerConfig {
                             DEFAULT_SPNEGO_PRINCIPAL,
                             ConfigDef.Importance.MEDIUM,
                             SPNEGO_PRINCIPAL_DOC)
+                    .define(SPNEGO_PRINCIPAL_TO_LOCAL_RULES_CONFIG,
+                            ConfigDef.Type.LIST,
+                            DEFAULT_SPNEGO_PRINCIPAL_TO_LOCAL_RULES,
+                            ConfigDef.Importance.MEDIUM,
+                            SPNEGO_PRINCIPAL_TO_LOCAL_RULES_DOC)
                     .define(TRUSTED_PROXY_SERVICES_CONFIG,
                             ConfigDef.Type.LIST,
                             DEFAULT_TRUSTED_PROXY_SERVICES,
