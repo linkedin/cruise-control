@@ -9,15 +9,19 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.SslConfigs;
+import org.apache.kafka.common.utils.Utils;
 
 public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   private static final ConfigDef CONFIG;
   private static final Set<String> CONFIGS = new HashSet<>();
   public static final String PREFIX = "cruise.control.metrics.reporter.";
+  static final Set<String> RECONFIGURABLE_CONFIGS = new HashSet<>();
   // Configurations
   public static final String CRUISE_CONTROL_METRICS_TOPIC_CONFIG = "cruise.control.metrics.topic";
   private static final String CRUISE_CONTROL_METRICS_TOPIC_DOC = "The topic to which Cruise Control metrics reporter "
@@ -57,6 +61,9 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   public static final String CRUISE_CONTROL_METRICS_REPORTER_KUBERNETES_MODE_CONFIG = PREFIX + "kubernetes.mode";
   public static final String CRUISE_CONTROL_METRICS_REPORTER_KUBERNETES_MODE_DOC = "Cruise Control metrics reporter will report "
       + "metrics using methods that are aware of container boundaries.";
+  public static final String CRUISE_CONTROL_METRICS_REPORTER_FORCE_RECONFIGURE_CONFIG = PREFIX + "force.reconfigure";
+  public static final String CRUISE_CONTROL_METRICS_REPORTER_FORCE_RECONFIGURE_CONFIG_DOC = "Cruise Control metrics reporter force reconfigure "
+      + "the flag. Set it a different value (like the current date) to trigger the reconfiguration.";
   // Default values
   public static final String DEFAULT_CRUISE_CONTROL_METRICS_TOPIC = "__CruiseControlMetrics";
   public static final Integer DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS = -1;
@@ -73,6 +80,10 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   public static final int DEFAULT_CRUISE_CONTROL_METRICS_BATCH_SIZE = 800 * 1000;
   public static final boolean DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_KUBERNETES_MODE = false;
   public static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_CREATE_RETRIES = 2;
+
+  public static final Set<String> EXCLUDED_PRODUCER_CONFIGS = Utils.mkSet(
+          CRUISE_CONTROL_METRICS_REPORTER_FORCE_RECONFIGURE_CONFIG
+  );
 
   public CruiseControlMetricsReporterConfig(Map<?, ?> originals, boolean doLog) {
     super(CONFIG, originals, doLog);
@@ -155,7 +166,15 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
                 ConfigDef.Type.INT,
                 DEFAULT_CRUISE_CONTROL_METRICS_BATCH_SIZE,
                 ConfigDef.Importance.LOW,
-                CRUISE_CONTROL_METRICS_REPORTER_BATCH_SIZE_DOC);
+                CRUISE_CONTROL_METRICS_REPORTER_BATCH_SIZE_DOC)
+        .define(CRUISE_CONTROL_METRICS_REPORTER_FORCE_RECONFIGURE_CONFIG,
+                ConfigDef.Type.STRING,
+                null,
+                ConfigDef.Importance.LOW,
+                CRUISE_CONTROL_METRICS_REPORTER_FORCE_RECONFIGURE_CONFIG_DOC);
+    RECONFIGURABLE_CONFIGS.addAll(SslConfigs.RECONFIGURABLE_CONFIGS.stream()
+            .map(config -> PREFIX + config).collect(Collectors.toSet()));
+    RECONFIGURABLE_CONFIGS.add(CRUISE_CONTROL_METRICS_REPORTER_FORCE_RECONFIGURE_CONFIG);
   }
 
   /**
@@ -173,7 +192,7 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   static Properties parseProducerConfigs(Map<String, ?> configMap) {
     Properties props = new Properties();
     for (Map.Entry<String, ?> entry : configMap.entrySet()) {
-      if (entry.getKey().startsWith(PREFIX)) {
+      if (entry.getKey().startsWith(PREFIX) && !EXCLUDED_PRODUCER_CONFIGS.contains(entry.getKey())) {
         props.put(entry.getKey().replace(PREFIX, ""), entry.getValue());
       }
     }
