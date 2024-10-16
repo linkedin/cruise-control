@@ -13,8 +13,8 @@ import com.linkedin.kafka.cruisecontrol.executor.strategy.PrioritizeOneAboveMinI
 import com.linkedin.kafka.cruisecontrol.executor.strategy.PrioritizeSmallReplicaMovementStrategy;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
-import kafka.server.KafkaConfig;
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.server.config.ZkConfigs;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
 import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
@@ -29,9 +29,9 @@ public final class ExecutorConfig {
   /**
    * <code>zookeeper.connect</code>
    */
-  public static final String ZOOKEEPER_CONNECT_CONFIG = KafkaConfig.ZkConnectProp();
+  public static final String ZOOKEEPER_CONNECT_CONFIG = ZkConfigs.ZK_CONNECT_CONFIG;
   public static final String DEFAULT_ZOOKEEPER_CONNECT = null;
-  public static final String ZOOKEEPER_CONNECT_DOC = KafkaConfig.ZkConnectDoc();
+  public static final String ZOOKEEPER_CONNECT_DOC = ZkConfigs.ZK_CONNECT_DOC;
 
   /**
    * <code>zookeeper.security.enabled</code>
@@ -43,100 +43,100 @@ public final class ExecutorConfig {
   /**
    * <code>zookeeper.ssl.client.enable</code>
    */
-  public static final String ZOOKEEPER_SSL_CLIENT_ENABLE_CONFIG = KafkaConfig.ZkSslClientEnableProp();
+  public static final String ZOOKEEPER_SSL_CLIENT_ENABLE_CONFIG = ZkConfigs.ZK_SSL_CLIENT_ENABLE_CONFIG;
   public static final boolean DEFAULT_ZOOKEEPER_SSL_CLIENT_ENABLE = false;
-  public static final String ZOOKEEPER_SSL_CLIENT_ENABLE_DOC = KafkaConfig.ZkSslClientEnableDoc();
+  public static final String ZOOKEEPER_SSL_CLIENT_ENABLE_DOC = ZkConfigs.ZK_SSL_CLIENT_ENABLE_DOC;
 
   /**
    * <code>zookeeper.clientCnxnSocket</code>
    */
-  public static final String ZOOKEEPER_SSL_CNXN_SOCKET_CONFIG = KafkaConfig.ZkClientCnxnSocketProp();
+  public static final String ZOOKEEPER_SSL_CNXN_SOCKET_CONFIG = ZkConfigs.ZK_CLIENT_CNXN_SOCKET_CONFIG;
   public static final String DEFAULT_ZOOKEEPER_SSL_CNXN_SOCKET = null;
-  public static final String ZOOKEEPER_SSL_CNXN_SOCKET_DOC = KafkaConfig.ZkClientCnxnSocketDoc();
+  public static final String ZOOKEEPER_SSL_CNXN_SOCKET_DOC = ZkConfigs.ZK_CLIENT_CNXN_SOCKET_DOC;
 
   /**
    * <code>zookeeper.ssl.keystore.location</code>
    */
-  public static final String ZOOKEEPER_SSL_KEYSTORE_LOCATION_CONFIG = KafkaConfig.ZkSslKeyStoreLocationProp();
+  public static final String ZOOKEEPER_SSL_KEYSTORE_LOCATION_CONFIG = ZkConfigs.ZK_SSL_KEY_STORE_LOCATION_CONFIG;
   public static final String DEFAULT_ZOOKEEPER_SSL_KEYSTORE_LOCATION = null;
-  public static final String ZOOKEEPER_SSL_KEYSTORE_LOCATION_DOC = KafkaConfig.ZkSslKeyStoreLocationDoc();
+  public static final String ZOOKEEPER_SSL_KEYSTORE_LOCATION_DOC = ZkConfigs.ZK_SSL_KEY_STORE_LOCATION_DOC;
 
   /**
    * <code>zookeeper.ssl.keystore.password</code>
    */
-  public static final String ZOOKEEPER_SSL_KEYSTORE_PASSWORD_CONFIG = KafkaConfig.ZkSslKeyStorePasswordProp();
+  public static final String ZOOKEEPER_SSL_KEYSTORE_PASSWORD_CONFIG = ZkConfigs.ZK_SSL_KEY_STORE_PASSWORD_CONFIG;
   public static final String DEFAULT_ZOOKEEPER_SSL_KEYSTORE_PASSWORD = null;
-  public static final String ZOOKEEPER_SSL_KEYSTORE_PASSWORD_DOC = KafkaConfig.ZkSslKeyStorePasswordDoc();
+  public static final String ZOOKEEPER_SSL_KEYSTORE_PASSWORD_DOC = ZkConfigs.ZK_SSL_KEY_STORE_PASSWORD_DOC;
 
   /**
    * <code>zookeeper.ssl.keystore.type</code>
    */
-  public static final String ZOOKEEPER_SSL_KEYSTORE_TYPE_CONFIG = KafkaConfig.ZkSslKeyStoreTypeProp();
+  public static final String ZOOKEEPER_SSL_KEYSTORE_TYPE_CONFIG = ZkConfigs.ZK_SSL_KEY_STORE_TYPE_CONFIG;
   public static final String DEFAULT_ZOOKEEPER_SSL_KEYSTORE_TYPE = null;
-  public static final String ZOOKEEPER_SSL_KEYSTORE_TYPE_DOC = KafkaConfig.ZkSslKeyStoreTypeDoc();
+  public static final String ZOOKEEPER_SSL_KEYSTORE_TYPE_DOC = ZkConfigs.ZK_SSL_KEY_STORE_TYPE_DOC;
 
   /**
    * <code>zookeeper.ssl.truststore.location</code>
    */
-  public static final String ZOOKEEPER_SSL_TRUSTSTORE_LOCATION_CONFIG = KafkaConfig.ZkSslTrustStoreLocationProp();
+  public static final String ZOOKEEPER_SSL_TRUSTSTORE_LOCATION_CONFIG = ZkConfigs.ZK_SSL_TRUST_STORE_LOCATION_CONFIG;
   public static final String DEFAULT_ZOOKEEPER_SSL_TRUSTSTORE_LOCATION = null;
-  public static final String ZOOKEEPER_SSL_TRUSTSTORE_LOCATION_DOC = KafkaConfig.ZkSslTrustStoreLocationDoc();
+  public static final String ZOOKEEPER_SSL_TRUSTSTORE_LOCATION_DOC = ZkConfigs.ZK_SSL_TRUST_STORE_LOCATION_DOC;
 
   /**
    * <code>zookeeper.ssl.truststore.password</code>
    */
-  public static final String ZOOKEEPER_SSL_TRUSTSTORE_PASSWORD_CONFIG = KafkaConfig.ZkSslTrustStorePasswordProp();
+  public static final String ZOOKEEPER_SSL_TRUSTSTORE_PASSWORD_CONFIG = ZkConfigs.ZK_SSL_TRUST_STORE_PASSWORD_CONFIG;
   public static final String DEFAULT_ZOOKEEPER_SSL_TRUSTSTORE_PASSWORD = null;
-  public static final String ZOOKEEPER_SSL_TRUSTSTORE_PASSWORD_DOC = KafkaConfig.ZkSslTrustStorePasswordDoc();
+  public static final String ZOOKEEPER_SSL_TRUSTSTORE_PASSWORD_DOC = ZkConfigs.ZK_SSL_TRUST_STORE_PASSWORD_DOC;
 
   /**
    * <code>zookeeper.ssl.truststore.type</code>
    */
-  public static final String ZOOKEEPER_SSL_TRUSTSTORE_TYPE_CONFIG = KafkaConfig.ZkSslTrustStoreTypeProp();
+  public static final String ZOOKEEPER_SSL_TRUSTSTORE_TYPE_CONFIG = ZkConfigs.ZK_SSL_TRUST_STORE_TYPE_CONFIG;
   public static final String DEFAULT_ZOOKEEPER_SSL_TRUSTSTORE_TYPE = null;
-  public static final String ZOOKEEPER_SSL_TRUSTSTORE_TYPE_DOC = KafkaConfig.ZkSslTrustStoreTypeDoc();
+  public static final String ZOOKEEPER_SSL_TRUSTSTORE_TYPE_DOC = ZkConfigs.ZK_SSL_TRUST_STORE_TYPE_DOC;
 
   /**
    * <code>zookeeper.ssl.protocol</code>
    */
-  public static final String ZOOKEEPER_SSL_PROTOCOL_CONFIG = KafkaConfig.ZkSslProtocolProp();
-  public static final String DEFAULT_ZOOKEEPER_SSL_PROTOCOL = "TLSv1.2";
-  public static final String ZOOKEEPER_SSL_PROTOCOL_DOC = KafkaConfig.ZkSslProtocolDoc();
+  public static final String ZOOKEEPER_SSL_PROTOCOL_CONFIG = ZkConfigs.ZK_SSL_PROTOCOL_CONFIG;
+  public static final String DEFAULT_ZOOKEEPER_SSL_PROTOCOL = ZkConfigs.ZK_SSL_PROTOCOL;
+  public static final String ZOOKEEPER_SSL_PROTOCOL_DOC = ZkConfigs.ZK_SSL_PROTOCOL_DOC;
 
   /**
    * <code>zookeeper.ssl.enabled.protocols</code>
    */
-  public static final String ZOOKEEPER_SSL_ENABLED_PROTOCOLS_CONFIG = KafkaConfig.ZkSslEnabledProtocolsProp();
+  public static final String ZOOKEEPER_SSL_ENABLED_PROTOCOLS_CONFIG = ZkConfigs.ZK_SSL_ENABLED_PROTOCOLS_CONFIG;
   public static final String DEFAULT_ZOOKEEPER_SSL_ENABLED_PROTOCOLS = null;
-  public static final String ZOOKEEPER_SSL_ENABLED_PROTOCOLS_DOC = KafkaConfig.ZkSslEnabledProtocolsDoc();
+  public static final String ZOOKEEPER_SSL_ENABLED_PROTOCOLS_DOC = ZkConfigs.ZK_SSL_ENABLED_PROTOCOLS_DOC;
 
   /**
    * <code>zookeeper.ssl.cipher.suites</code>
    */
-  public static final String ZOOKEEPER_SSL_CIPHER_SUITES_CONFIG = KafkaConfig.ZkSslCipherSuitesProp();
+  public static final String ZOOKEEPER_SSL_CIPHER_SUITES_CONFIG = ZkConfigs.ZK_SSL_CIPHER_SUITES_CONFIG;
   public static final String DEFAULT_ZOOKEEPER_SSL_CIPHER_SUITES = null;
-  public static final String ZOOKEEPER_SSL_CIPHER_SUITES_DOC = KafkaConfig.ZkSslCipherSuitesDoc();
+  public static final String ZOOKEEPER_SSL_CIPHER_SUITES_DOC = ZkConfigs.ZK_SSL_CIPHER_SUITES_DOC;
 
   /**
    * <code>zookeeper.ssl.endpoint.identification.algorithm</code>
    */
-  public static final String ZOOKEEPER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG = KafkaConfig.ZkSslEndpointIdentificationAlgorithmProp();
+  public static final String ZOOKEEPER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG = ZkConfigs.ZK_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG;
   public static final String DEFAULT_ZOOKEEPER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM = "HTTPS";
-  public static final String ZOOKEEPER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_DOC = KafkaConfig.ZkSslEndpointIdentificationAlgorithmDoc();
+  public static final String ZOOKEEPER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_DOC = ZkConfigs.ZK_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_DOC;
 
   /**
    * <code>zookeeper.ssl.crl.enable</code>
    */
-  public static final String ZOOKEEPER_SSL_CRL_ENABLE_CONFIG = KafkaConfig.ZkSslCrlEnableProp();
+  public static final String ZOOKEEPER_SSL_CRL_ENABLE_CONFIG = ZkConfigs.ZK_SSL_CRL_ENABLE_CONFIG;
   public static final boolean DEFAULT_ZOOKEEPER_SSL_CRL_ENABLE = false;
-  public static final String ZOOKEEPER_SSL_CRL_ENABLE_DOC = KafkaConfig.ZkSslCrlEnableDoc();
+  public static final String ZOOKEEPER_SSL_CRL_ENABLE_DOC = ZkConfigs.ZK_SSL_CRL_ENABLE_DOC;
 
   /**
    * <code>zookeeper.ssl.ocsp.enable</code>
    */
-  public static final String ZOOKEEPER_SSL_OCSP_ENABLE_CONFIG = KafkaConfig.ZkSslOcspEnableProp();
+  public static final String ZOOKEEPER_SSL_OCSP_ENABLE_CONFIG = ZkConfigs.ZK_SSL_OCSP_ENABLE_CONFIG;
   public static final boolean DEFAULT_ZOOKEEPER_SSL_OCSP_ENABLE = false;
-  public static final String ZOOKEEPER_SSL_OCSP_ENABLE_DOC = KafkaConfig.ZkSslOcspEnableDoc();
+  public static final String ZOOKEEPER_SSL_OCSP_ENABLE_DOC = ZkConfigs.ZK_SSL_OCSP_ENABLE_DOC;
 
   /**
    * <code>num.concurrent.partition.movements.per.broker</code>

@@ -18,6 +18,9 @@ import org.apache.commons.io.FileUtils;
 import org.apache.kafka.common.network.ListenerName;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.Time;
+import org.apache.kafka.network.SocketServerConfigs;
+import org.apache.kafka.server.config.ServerConfigs;
+import org.apache.kafka.server.config.ServerLogConfigs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Option;
@@ -94,11 +97,11 @@ public class CCEmbeddedBroker implements AutoCloseable {
   }
 
   private void parseConfigs(Map<Object, Object> config) {
-    _id = Integer.parseInt((String) config.get(KafkaConfig.BrokerIdProp()));
-    _logDir = new File((String) config.get(KafkaConfig.LogDirProp()));
+    _id = Integer.parseInt((String) config.get(ServerConfigs.BROKER_ID_CONFIG));
+    _logDir = new File((String) config.get(ServerLogConfigs.LOG_DIR_CONFIG));
 
     // Bind addresses
-    String listenersString = (String) config.get(KafkaConfig.ListenersProp());
+    String listenersString = (String) config.get(SocketServerConfigs.LISTENERS_CONFIG);
     for (String protocolAddr : listenersString.split("\\s*,\\s*")) {
       try {
         URI uri = new URI(protocolAddr.trim());
