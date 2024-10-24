@@ -37,7 +37,7 @@ public class CruiseControlMetricsReporterSampler extends AbstractMetricSampler {
   // Configurations
   public static final String METRIC_REPORTER_SAMPLER_BOOTSTRAP_SERVERS = "metric.reporter.sampler.bootstrap.servers";
   public static final String METRIC_REPORTER_TOPIC = "metric.reporter.topic";
-  public static final String METRIC_REPORTER_TOPIC_ASSERT_ATTEMPTS = "metric.reporter.topic.assert.attempts";
+  public static final String METRIC_REPORTER_TOPIC_ASSERT_ATTEMPTS = "metric.reporter.sampler.topic.assert.attempts";
 
   public static final int METRIC_REPORTER_TOPIC_ASSERT_ATTEMPTS_DEFAULT = 5;
 
