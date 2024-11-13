@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.config;
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnomalyDetectorConfig;
+import com.linkedin.kafka.cruisecontrol.config.constants.PersistedDataConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.CruiseControlParametersConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.CruiseControlRequestConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
@@ -39,8 +40,9 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
 
   static {
     CONFIG = CruiseControlRequestConfig.define(CruiseControlParametersConfig.define(AnomalyDetectorConfig.define(
-        AnalyzerConfig.define(ExecutorConfig.define(MonitorConfig.define(WebServerConfig.define(
-            UserTaskManagerConfig.define(new ConfigDef())))))))).withClientSslSupport().withClientSaslSupport();
+            AnalyzerConfig.define(ExecutorConfig.define(MonitorConfig.define(WebServerConfig.define(
+                    UserTaskManagerConfig.define(PersistedDataConfig.define(new ConfigDef())))))))))
+            .withClientSslSupport().withClientSaslSupport();
   }
 
   public KafkaCruiseControlConfig(Map<?, ?> originals) {
@@ -57,6 +59,18 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     sanityCheckSecurity();
     sanityCheckBalancingConstraints();
     sanityCheckWebServerUrlPrefix();
+  }
+
+  /**
+   * Package private for testing. Since configDef controls which configurations can be set, being
+   * able to set a simple or mocked one is helpful for unit testing.
+   *
+   * @param configDef Overriding the parse() method allows control over which configs end up in
+   * {@link KafkaCruiseControlConfig}'s map of configurations.
+   * @param originals The key/value pairs of configs to set.
+   */
+  KafkaCruiseControlConfig(ConfigDef configDef, Map<?, ?> originals) {
+    super(configDef, originals, false);
   }
 
   /**

@@ -41,6 +41,8 @@ import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
+import com.linkedin.kafka.cruisecontrol.persisteddata.PersistedMapFactory;
+import com.linkedin.kafka.cruisecontrol.persisteddata.namespace.ExecutorPersistedData;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 import java.io.InputStream;
@@ -82,6 +84,7 @@ public class KafkaCruiseControl {
   private final GoalOptimizer _goalOptimizer;
   private final ExecutorService _goalOptimizerExecutor;
   private final Executor _executor;
+  private final PersistedMapFactory _persistedMapFactory;
   private final AnomalyDetectorManager _anomalyDetectorManager;
   private final Time _time;
   private final AdminClient _adminClient;
@@ -122,7 +125,9 @@ public class KafkaCruiseControl {
                                                 Provisioner.class,
                                                 Collections.singletonMap(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, this));
     _anomalyDetectorManager = new AnomalyDetectorManager(this, _time, dropwizardMetricRegistry);
-    _executor = new Executor(config, _time, dropwizardMetricRegistry, _anomalyDetectorManager);
+    _persistedMapFactory = new PersistedMapFactory(config, _adminClient);
+    _executor = new Executor(config, _time, dropwizardMetricRegistry, _anomalyDetectorManager,
+            new ExecutorPersistedData(_persistedMapFactory.instance()));
     _loadMonitor = new LoadMonitor(config, _time, dropwizardMetricRegistry, KafkaMetricDef.commonMetricDef());
     _goalOptimizerExecutor = Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("GoalOptimizerExecutor"));
     _goalOptimizer = new GoalOptimizer(config, _loadMonitor, _time, dropwizardMetricRegistry, _executor, _adminClient);
@@ -138,11 +143,13 @@ public class KafkaCruiseControl {
                      LoadMonitor loadMonitor,
                      ExecutorService goalOptimizerExecutor,
                      GoalOptimizer goalOptimizer,
+                     PersistedMapFactory persistedMapFactory,
                      Provisioner provisioner) {
     _config = config;
     _time = time;
     _adminClient = createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
     _anomalyDetectorManager = anomalyDetectorManager;
+    _persistedMapFactory = persistedMapFactory;
     _executor = executor;
     _loadMonitor = loadMonitor;
     _goalOptimizerExecutor = goalOptimizerExecutor;
@@ -468,9 +475,9 @@ public class KafkaCruiseControl {
    */
   public void addRecentBrokersPermanently(Set<Integer> brokersToAdd, boolean isRemoved) {
     if (isRemoved) {
-      _executor.addRecentlyRemovedBrokers(brokersToAdd);
+      _executor.addRecentlyRemovedBrokersPermanently(brokersToAdd);
     } else {
-      _executor.addRecentlyDemotedBrokers(brokersToAdd);
+      _executor.addRecentlyDemotedBrokersPermanently(brokersToAdd);
     }
   }
 

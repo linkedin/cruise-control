@@ -22,6 +22,8 @@ import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrateg
 import com.linkedin.kafka.cruisecontrol.executor.strategy.StrategyOptions;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
+import com.linkedin.kafka.cruisecontrol.persisteddata.namespace.ExecutorPersistedData;
+import com.linkedin.kafka.cruisecontrol.persisteddata.namespace.ExecutorPersistedData.BrokerMapKey;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -117,11 +119,9 @@ public class Executor {
   private final AtomicInteger _numExecutionStartedInNonKafkaAssignerMode;
   private volatile boolean _isKafkaAssignerMode;
   private volatile boolean _skipInterBrokerReplicaConcurrencyAdjustment;
-  // TODO: Execution history is currently kept in memory, but ideally we should move it to a persistent store.
   private final long _demotionHistoryRetentionTimeMs;
   private final long _removalHistoryRetentionTimeMs;
-  private final ConcurrentMap<Integer, Long> _latestDemoteStartTimeMsByBrokerId;
-  private final ConcurrentMap<Integer, Long> _latestRemoveStartTimeMsByBrokerId;
+  private final ExecutorPersistedData _persistedData;
   private final ScheduledExecutorService _executionHistoryScannerExecutor;
   private UserTaskManager _userTaskManager;
   private final AnomalyDetectorManager _anomalyDetectorManager;
@@ -155,8 +155,10 @@ public class Executor {
   public Executor(KafkaCruiseControlConfig config,
                   Time time,
                   MetricRegistry dropwizardMetricRegistry,
-                  AnomalyDetectorManager anomalyDetectorManager) {
-    this(config, time, dropwizardMetricRegistry, null, null, anomalyDetectorManager);
+                  AnomalyDetectorManager anomalyDetectorManager,
+                  ExecutorPersistedData persistedData) {
+    this(config, time, dropwizardMetricRegistry, null, null, anomalyDetectorManager,
+            persistedData);
   }
 
   /**
@@ -170,7 +172,8 @@ public class Executor {
            MetricRegistry dropwizardMetricRegistry,
            MetadataClient metadataClient,
            ExecutorNotifier executorNotifier,
-           AnomalyDetectorManager anomalyDetectorManager) {
+           AnomalyDetectorManager anomalyDetectorManager,
+           ExecutorPersistedData persistedData) {
     _numExecutionStopped = new AtomicInteger(0);
     _numExecutionStoppedByUser = new AtomicInteger(0);
     _executionStoppedByUser = new AtomicBoolean(false);
@@ -203,8 +206,7 @@ public class Executor {
     _requestedExecutionProgressCheckIntervalMs = null;
     _proposalExecutor =
         Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("ProposalExecutor", false, LOG));
-    _latestDemoteStartTimeMsByBrokerId = new ConcurrentHashMap<>();
-    _latestRemoveStartTimeMsByBrokerId = new ConcurrentHashMap<>();
+    _persistedData = persistedData;
     _executorState = ExecutorState.noTaskInProgress(recentlyDemotedBrokers(), recentlyRemovedBrokers());
     _stopSignal = new AtomicInteger(NO_STOP_EXECUTION);
     _hasOngoingExecution = false;
@@ -422,22 +424,6 @@ public class Executor {
                                           .getAvgExecutionConcurrency(ConcurrencyType.LEADERSHIP_BROKER));
   }
 
-  private void removeExpiredDemotionHistory() {
-    LOG.debug("Remove expired demotion history");
-    _latestDemoteStartTimeMsByBrokerId.entrySet().removeIf(entry -> {
-      long startTime = entry.getValue();
-      return startTime != ExecutionUtils.PERMANENT_TIMESTAMP && startTime + _demotionHistoryRetentionTimeMs < _time.milliseconds();
-    });
-  }
-
-  private void removeExpiredRemovalHistory() {
-    LOG.debug("Remove expired broker removal history");
-    _latestRemoveStartTimeMsByBrokerId.entrySet().removeIf(entry -> {
-      long startTime = entry.getValue();
-      return startTime != ExecutionUtils.PERMANENT_TIMESTAMP && startTime + _removalHistoryRetentionTimeMs < _time.milliseconds();
-    });
-  }
-
   /**
    * A runnable class to remove expired execution history.
    */
@@ -445,8 +431,8 @@ public class Executor {
     @Override
     public void run() {
       try {
-        removeExpiredDemotionHistory();
-        removeExpiredRemovalHistory();
+        removeExpiredBrokerHistory(BrokerMapKey.DEMOTE, _demotionHistoryRetentionTimeMs);
+        removeExpiredBrokerHistory(BrokerMapKey.REMOVE, _removalHistoryRetentionTimeMs);
       } catch (Throwable t) {
         LOG.warn("Received exception when trying to expire execution history.", t);
       }
@@ -678,66 +664,113 @@ public class Executor {
    * Recently demoted brokers are the ones
    * <ul>
    *   <li>for which a broker demotion was started, regardless of how the corresponding process was completed, or</li>
-   *   <li>that are explicitly marked so -- e.g. via a pluggable component using {@link #addRecentlyDemotedBrokers(Set)}.</li>
+   *   <li>that are explicitly marked so -- e.g. via a pluggable component using {@link #addRecentlyDemotedBrokersPermanently(Set)}.</li>
    * </ul>
    *
    * @return IDs of recently demoted brokers -- i.e. demoted within the last {@link #_demotionHistoryRetentionTimeMs}.
    */
   public Set<Integer> recentlyDemotedBrokers() {
-    return Collections.unmodifiableSet(_latestDemoteStartTimeMsByBrokerId.keySet());
+    return _persistedData.getDemotedOrRemovedBrokers(BrokerMapKey.DEMOTE).keySet();
   }
 
   /**
    * Recently removed brokers are the ones
    * <ul>
    *   <li>for which a broker removal was started, regardless of how the corresponding process was completed, or</li>
-   *   <li>that are explicitly marked so -- e.g. via a pluggable component using {@link #addRecentlyRemovedBrokers(Set)}.</li>
+   *   <li>that are explicitly marked so -- e.g. via a pluggable component using {@link #addRecentlyRemovedBrokersPermanently(Set)}.</li>
    * </ul>
    *
    * @return IDs of recently removed brokers -- i.e. removed within the last {@link #_removalHistoryRetentionTimeMs}.
    */
   public Set<Integer> recentlyRemovedBrokers() {
-    return Collections.unmodifiableSet(_latestRemoveStartTimeMsByBrokerId.keySet());
+    return _persistedData.getDemotedOrRemovedBrokers(BrokerMapKey.REMOVE).keySet();
   }
 
   /**
-   * Drop the given brokers from the recently removed brokers.
+   * Removes expired brokers from the broker history map. Permanent brokers are not removed.
+   * Package protected for testing.
    *
-   * @param brokersToDrop Brokers to drop from the {@link #_latestRemoveStartTimeMsByBrokerId}.
-   * @return {@code true} if any elements were removed from {@link #_latestRemoveStartTimeMsByBrokerId}.
+   * @param persistenceKey The history map key.
+   * @param retentionTimeMs The configured retention time in ms to evict brokers after this much
+   * time has elapsed.
    */
-  public boolean dropRecentlyRemovedBrokers(Set<Integer> brokersToDrop) {
-    return _latestRemoveStartTimeMsByBrokerId.entrySet().removeIf(entry -> (brokersToDrop.contains(entry.getKey())));
+  void removeExpiredBrokerHistory(BrokerMapKey persistenceKey, long retentionTimeMs) {
+    LOG.debug("Remove expired {} history", persistenceKey);
+    _persistedData.modifyDemotedOrRemovedBrokers(persistenceKey,
+            data -> data.values().removeIf(startTime ->
+                    startTime != ExecutionUtils.PERMANENT_TIMESTAMP
+                            && startTime + retentionTimeMs < _time.milliseconds()));
+  }
+
+  /**
+   * Drop the given brokers from the recent brokers.
+   *
+   * @param persistenceKey The history map key.
+   * @param brokers The brokers to remove from the map of recent brokers.
+   * @return {@code true} if any elements were removed from the collection.
+   */
+  private boolean dropRecentBrokers(BrokerMapKey persistenceKey, Collection<Integer> brokers) {
+    return _persistedData.modifyDemotedOrRemovedBrokers(persistenceKey,
+            data -> data.keySet().removeAll(brokers));
   }
 
   /**
    * Drop the given brokers from the recently demoted brokers.
    *
-   * @param brokersToDrop Brokers to drop from the {@link #_latestDemoteStartTimeMsByBrokerId}.
-   * @return {@code true} if any elements were removed from {@link #_latestDemoteStartTimeMsByBrokerId}.
+   * @param brokersToDrop Brokers to drop from the collection of demoted brokers.
+   * @return {@code true} if any elements were removed from the collection.
    */
   public boolean dropRecentlyDemotedBrokers(Set<Integer> brokersToDrop) {
-    return _latestDemoteStartTimeMsByBrokerId.entrySet().removeIf(entry -> (brokersToDrop.contains(entry.getKey())));
+    return dropRecentBrokers(BrokerMapKey.DEMOTE, brokersToDrop);
   }
 
   /**
-   * Add the given brokers to the recently removed brokers permanently -- i.e. until they are explicitly dropped by user.
-   * If given set has brokers that were already removed recently, make them a permanent part of recently removed brokers.
+   * Drop the given brokers from the recently removed brokers.
    *
-   * @param brokersToAdd Brokers to add to the {@link #_latestRemoveStartTimeMsByBrokerId}.
+   * @param brokersToDrop Brokers to drop from the collection of removed brokers.
+   * @return {@code true} if any elements were removed from the collection.
    */
-  public void addRecentlyRemovedBrokers(Set<Integer> brokersToAdd) {
-    brokersToAdd.forEach(brokerId -> _latestRemoveStartTimeMsByBrokerId.put(brokerId, ExecutionUtils.PERMANENT_TIMESTAMP));
+  public boolean dropRecentlyRemovedBrokers(Set<Integer> brokersToDrop) {
+    return dropRecentBrokers(BrokerMapKey.REMOVE, brokersToDrop);
   }
 
   /**
    * Add the given brokers from the recently demoted brokers permanently -- i.e. until they are explicitly dropped by user.
    * If given set has brokers that were already demoted recently, make them a permanent part of recently demoted brokers.
    *
-   * @param brokersToAdd Brokers to add to the {@link #_latestDemoteStartTimeMsByBrokerId}.
+   * @param brokersToAdd Brokers to add to the collection of demoted brokers.
    */
-  public void addRecentlyDemotedBrokers(Set<Integer> brokersToAdd) {
-    brokersToAdd.forEach(brokerId -> _latestDemoteStartTimeMsByBrokerId.put(brokerId, ExecutionUtils.PERMANENT_TIMESTAMP));
+  public void addRecentlyDemotedBrokersPermanently(Set<Integer> brokersToAdd) {
+    addRecentBrokers(BrokerMapKey.DEMOTE, brokersToAdd, ExecutionUtils.PERMANENT_TIMESTAMP);
+  }
+
+  /**
+   * Add the given brokers to the recently removed brokers permanently -- i.e. until they are explicitly dropped by user.
+   * If given set has brokers that were already removed recently, make them a permanent part of recently removed brokers.
+   *
+   * @param brokersToAdd Brokers to add to the collection of removed brokers.
+   */
+  public void addRecentlyRemovedBrokersPermanently(Set<Integer> brokersToAdd) {
+    addRecentBrokers(BrokerMapKey.REMOVE, brokersToAdd, ExecutionUtils.PERMANENT_TIMESTAMP);
+  }
+
+  /**
+   * Add/overwrite the latest time of recent brokers (if any). Package protected for testing.
+   *
+   * @param persistenceKey The history map key.
+   * @param brokers The brokers to add the map of recent brokers.
+   * @param timestamp The time in unix milliseconds when the broker can be removed from the set.
+   */
+  void addRecentBrokers(BrokerMapKey persistenceKey, Collection<Integer> brokers,
+          Long timestamp) {
+    _persistedData.modifyDemotedOrRemovedBrokers(persistenceKey,
+            data -> {
+              brokers.forEach(id ->
+                      data.compute(id, (brokerId, startTime) ->
+                              startTime == null || startTime != ExecutionUtils.PERMANENT_TIMESTAMP
+                                      ? timestamp : startTime));
+              return null;
+            });
   }
 
   /**
@@ -1328,22 +1361,10 @@ public class Executor {
         throw new IllegalStateException("User task manager cannot be null.");
       }
       if (_demotedBrokers != null) {
-        // Add/overwrite the latest demotion time of (non-permanent) demoted brokers (if any).
-        _demotedBrokers.forEach(id -> {
-          Long demoteStartTime = _latestDemoteStartTimeMsByBrokerId.get(id);
-          if (demoteStartTime == null || demoteStartTime != ExecutionUtils.PERMANENT_TIMESTAMP) {
-            _latestDemoteStartTimeMsByBrokerId.put(id, _time.milliseconds());
-          }
-        });
+        addRecentBrokers(BrokerMapKey.DEMOTE, _demotedBrokers, _time.milliseconds());
       }
       if (_removedBrokers != null) {
-        // Add/overwrite the latest removal time of (non-permanent) removed brokers (if any).
-        _removedBrokers.forEach(id -> {
-          Long removeStartTime = _latestRemoveStartTimeMsByBrokerId.get(id);
-          if (removeStartTime == null || removeStartTime != ExecutionUtils.PERMANENT_TIMESTAMP) {
-            _latestRemoveStartTimeMsByBrokerId.put(id, _time.milliseconds());
-          }
-        });
+        addRecentBrokers(BrokerMapKey.REMOVE, _removedBrokers, _time.milliseconds());
       }
       _recentlyDemotedBrokers = recentlyDemotedBrokers();
       _recentlyRemovedBrokers = recentlyRemovedBrokers();
