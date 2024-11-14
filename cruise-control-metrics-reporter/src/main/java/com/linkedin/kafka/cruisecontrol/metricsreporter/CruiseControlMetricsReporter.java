@@ -142,42 +142,12 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
 
   @Override
   public void configure(Map<String, ?> configs) {
-    Properties producerProps = CruiseControlMetricsReporterConfig.parseProducerConfigs(configs);
-
-    //Add BootstrapServers if not set
-    if (!producerProps.containsKey(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG)) {
-      String bootstrapServers = getBootstrapServers(configs);
-      producerProps.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-      LOG.info("Using default value of {} for {}", bootstrapServers,
-               CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
-    }
-
-    //Add SecurityProtocol if not set
-    if (!producerProps.containsKey(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG)) {
-      String securityProtocol = "PLAINTEXT";
-      producerProps.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, securityProtocol);
-      LOG.info("Using default value of {} for {}", securityProtocol,
-               CruiseControlMetricsReporterConfig.config(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG));
-    }
-
     CruiseControlMetricsReporterConfig reporterConfig = new CruiseControlMetricsReporterConfig(configs, false);
 
-    setIfAbsent(producerProps,
-                ProducerConfig.CLIENT_ID_CONFIG,
-                reporterConfig.getString(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.CLIENT_ID_CONFIG)));
-    setIfAbsent(producerProps, ProducerConfig.LINGER_MS_CONFIG,
-        reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS_CONFIG).toString());
-    setIfAbsent(producerProps, ProducerConfig.BATCH_SIZE_CONFIG,
-        reporterConfig.getInt(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_BATCH_SIZE_CONFIG).toString());
-    setIfAbsent(producerProps, ProducerConfig.RETRIES_CONFIG, "5");
-    setIfAbsent(producerProps, ProducerConfig.COMPRESSION_TYPE_CONFIG, "gzip");
-    setIfAbsent(producerProps, ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-    setIfAbsent(producerProps, ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, MetricSerde.class.getName());
-    setIfAbsent(producerProps, ProducerConfig.ACKS_CONFIG, "all");
-
     _metricsReporterCreateRetries = reporterConfig.getInt(
-        CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_CREATE_RETRIES_CONFIG);
+            CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_CREATE_RETRIES_CONFIG);
 
+    Properties producerProps = buildProducerProperties(configs, reporterConfig);
     createCruiseControlMetricsProducer(producerProps);
     if (_producer == null) {
       this.close();
@@ -201,6 +171,61 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       } catch (CruiseControlMetricsReporterException e) {
         LOG.warn("Cruise Control metrics topic auto creation was disabled", e);
       }
+    }
+  }
+
+  private Properties buildProducerProperties(Map<String, ?> configs, CruiseControlMetricsReporterConfig reporterConfig) {
+    Properties producerProps = CruiseControlMetricsReporterConfig.parseProducerConfigs(configs);
+
+    //Add BootstrapServers if not set
+    if (!producerProps.containsKey(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG)) {
+      String bootstrapServers = getBootstrapServers(configs);
+      producerProps.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+      LOG.info("Using default value of {} for {}", bootstrapServers,
+              CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
+    }
+
+    //Add SecurityProtocol if not set
+    if (!producerProps.containsKey(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG)) {
+      String securityProtocol = "PLAINTEXT";
+      producerProps.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, securityProtocol);
+      LOG.info("Using default value of {} for {}", securityProtocol,
+              CruiseControlMetricsReporterConfig.config(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG));
+    }
+
+    setIfAbsent(producerProps,
+            ProducerConfig.CLIENT_ID_CONFIG,
+            reporterConfig.getString(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.CLIENT_ID_CONFIG)));
+    setIfAbsent(producerProps, ProducerConfig.LINGER_MS_CONFIG,
+            reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS_CONFIG).toString());
+    setIfAbsent(producerProps, ProducerConfig.BATCH_SIZE_CONFIG,
+            reporterConfig.getInt(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_BATCH_SIZE_CONFIG).toString());
+    setIfAbsent(producerProps, ProducerConfig.RETRIES_CONFIG, "5");
+    setIfAbsent(producerProps, ProducerConfig.COMPRESSION_TYPE_CONFIG, "gzip");
+    setIfAbsent(producerProps, ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    setIfAbsent(producerProps, ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, MetricSerde.class.getName());
+    setIfAbsent(producerProps, ProducerConfig.ACKS_CONFIG, "all");
+
+    return producerProps;
+  }
+
+  @Override
+  public Set<String> reconfigurableConfigs() {
+    return CruiseControlMetricsReporterConfig.RECONFIGURABLE_CONFIGS;
+  }
+
+  @Override
+  public void reconfigure(Map<String, ?> configs) {
+    if (_producer != null) {
+      _producer.close();
+    }
+
+    LOG.info("Reconfiguring Cruise Control metrics producer");
+    CruiseControlMetricsReporterConfig reporterConfig = new CruiseControlMetricsReporterConfig(configs, false);
+    Properties producerProps = buildProducerProperties(configs, reporterConfig);
+    createCruiseControlMetricsProducer(producerProps);
+    if (_producer == null) {
+      this.close();
     }
   }
 
