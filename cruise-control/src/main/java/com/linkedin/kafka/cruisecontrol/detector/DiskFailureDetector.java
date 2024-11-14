@@ -18,7 +18,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.Node;
-import org.apache.kafka.common.protocol.Errors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,10 +88,10 @@ public class DiskFailureDetector extends AbstractAnomalyDetector implements Runn
       }
       Map<Integer, Map<String, Long>> failedDisksByBroker = new HashMap<>();
       Set<Integer> aliveBrokers = _kafkaCruiseControl.kafkaCluster().nodes().stream().mapToInt(Node::id).boxed().collect(Collectors.toSet());
-      _adminClient.describeLogDirs(aliveBrokers).values().forEach((broker, future) -> {
+      _adminClient.describeLogDirs(aliveBrokers).descriptions().forEach((broker, future) -> {
         try {
           future.get(_config.getLong(LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG), TimeUnit.MILLISECONDS).forEach((logdir, info) -> {
-            if (info.error != Errors.NONE) {
+            if (info.error() != null) {
               failedDisksByBroker.putIfAbsent(broker, new HashMap<>());
               failedDisksByBroker.get(broker).put(logdir, _kafkaCruiseControl.timeMs());
             }
