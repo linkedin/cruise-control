@@ -92,6 +92,7 @@ public final class ParameterUtils {
   public static final String THROTTLE_ADDED_BROKER_PARAM = "throttle_added_broker";
   public static final String THROTTLE_REMOVED_BROKER_PARAM = "throttle_removed_broker";
   public static final String REPLICATION_THROTTLE_PARAM = "replication_throttle";
+  public static final String LOG_DIR_THROTTLE_PARAM = "log_dir_throttle";
   public static final String IGNORE_PROPOSAL_CACHE_PARAM = "ignore_proposal_cache";
   public static final String USE_READY_DEFAULT_GOALS_PARAM = "use_ready_default_goals";
   public static final String EXECUTION_PROGRESS_CHECK_INTERVAL_MS_PARAM = "execution_progress_check_interval_ms";
@@ -428,6 +429,14 @@ public final class ParameterUtils {
     Long value = getLongParam(requestContext, REPLICATION_THROTTLE_PARAM, config.getLong(ExecutorConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG));
     if (value != null && value < 0) {
       throw new UserRequestException(String.format("Requested rebalance throttle must be non-negative (Requested: %s).", value));
+    }
+    return value;
+  }
+
+  static Long logDirThrottle(CruiseControlRequestContext requestContext, KafkaCruiseControlConfig config) {
+    Long value = getLongParam(requestContext, LOG_DIR_THROTTLE_PARAM, config.getLong(ExecutorConfig.DEFAULT_LOG_DIR_THROTTLE_CONFIG));
+    if (value != null && value < 0) {
+      throw new UserRequestException(String.format("Requested log dir throttle must be non-negative (Requested: %s).", value));
     }
     return value;
   }
