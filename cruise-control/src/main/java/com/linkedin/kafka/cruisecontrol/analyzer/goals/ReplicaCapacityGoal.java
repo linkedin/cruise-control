@@ -264,7 +264,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
    *
    * A alive destination broker is eligible for a given replica if
    * (1) the broker contains less than allowed maximum number of replicas, or
-   * (2) If the the self healing mode is true.
+   * (2) If the self healing mode is true.
    *
    * Returned brokers are sorted by number of replicas on them in ascending order.
    *

@@ -1,14 +1,16 @@
 Cruise Control for Apache Kafka
 ===================
 
+[![CI](https://github.com/linkedin/cruise-control/actions/workflows/ci.yaml/badge.svg)](https://github.com/linkedin/cruise-control/actions/workflows/ci.yaml)
 [![CircleCI](https://circleci.com/gh/linkedin/cruise-control.svg?style=svg)](https://circleci.com/gh/linkedin/cruise-control)
+
 
 ### Introduction ###
   Cruise Control is a product that helps run Apache Kafka clusters at large scale. Due to the popularity of 
-  Apache Kafka, many companies have bigger and bigger Kafka clusters. At LinkedIn, we have ~7K+ Kafka brokers, 
+  Apache Kafka, many companies have increasingly large Kafka clusters with hundreds of brokers. At LinkedIn, we have 10K+ Kafka brokers, 
   which means broker deaths are an almost daily occurrence and balancing the workload of Kafka also becomes a big overhead. 
   
-  Kafka Cruise Control is designed to address this operation scalability issue.
+  Kafka Cruise Control is designed to address this operational scalability issue.
   
 ### Features ###
   Kafka Cruise Control provides the following features out of the box:

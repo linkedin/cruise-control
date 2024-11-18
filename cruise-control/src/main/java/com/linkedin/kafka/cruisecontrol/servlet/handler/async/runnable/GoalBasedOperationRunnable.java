@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPriority;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckGoals;
@@ -34,6 +36,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
  * An abstract class to extract the common logic of goal based operation runnables.
  */
 public abstract class GoalBasedOperationRunnable extends OperationRunnable {
+  private static final Logger LOG = LoggerFactory.getLogger(GoalBasedOperationRunnable.class);
   protected final List<String> _goals;
   protected final ModelCompletenessRequirements _modelCompletenessRequirements;
   protected final boolean _dryRun;
@@ -207,6 +210,11 @@ public abstract class GoalBasedOperationRunnable extends OperationRunnable {
    * Perform the memory clean up after {@link #computeResult()}.
    */
   protected void finish() {
+    if (_operationProgress != null) {
+      long totalTimeMs = _operationProgress.getCurrentTotalExecutionTimeMs();
+      LOG.info("User task {}: {} finished with total time: {}ms; steps: {}",
+          _uuid, _operationProgress.getOperation(), totalTimeMs, _operationProgress);
+    }
     _operationProgress = null;
     _combinedCompletenessRequirements = null;
     if (_goalsByPriority != null) {

@@ -101,6 +101,26 @@ public class OperationProgress {
   }
 
   /**
+   * @return the up-to-date total execution time on the progress
+   */
+  public synchronized long getCurrentTotalExecutionTimeMs() {
+    if (_startTimes.isEmpty()) {
+      return 0;
+    } else {
+      long currentTime = System.currentTimeMillis();
+      long startTime = _startTimes.get(0);
+      return currentTime - startTime;
+    }
+  }
+
+  /**
+   * @return the name of the operation
+   */
+  public String getOperation() {
+    return _operation;
+  }
+
+  /**
    * @return The map describing the progress of the operation.
    */
   public Map<String, Object> getJsonStructure() {
