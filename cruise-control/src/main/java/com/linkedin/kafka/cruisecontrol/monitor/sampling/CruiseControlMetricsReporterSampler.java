@@ -185,15 +185,15 @@ public class CruiseControlMetricsReporterSampler extends AbstractMetricSampler {
     _metricConsumer = createMetricConsumer(configs, CONSUMER_CLIENT_ID_PREFIX);
     _currentPartitionAssignment = Collections.emptySet();
 
-    LOG.info("Waiting for metrics reporter topic [{}] to be available in the target cluster.", _metricReporterTopic);
-    if (!CruiseControlMetricsUtils.retry(()->!this.isMetricsTopicExists(), metricTopicAssertAttempts)) {
+    LOG.info("Waiting for metrics reporter topic [{}] to be available in the Kafka cluster.", _metricReporterTopic);
+    if (!CruiseControlMetricsUtils.retry(()->!this.isMetricsTopicExists(), 5, 1, metricTopicAssertAttempts)) {
         throw new IllegalStateException("Cruise Control cannot find the metrics reporter topic that matches [" + _metricReporterTopic
-                                        + "] in the target cluster.");
+                                        + "] in the Kafka cluster.");
     }
 
     if (refreshPartitionAssignment()) {
       throw new IllegalStateException("Cruise Control cannot find partitions for the metrics reporter that topic matches ["
-                                      + _metricReporterTopic + "] in the target cluster.");
+                                      + _metricReporterTopic + "] in the Kafka cluster.");
     }
   }
 
