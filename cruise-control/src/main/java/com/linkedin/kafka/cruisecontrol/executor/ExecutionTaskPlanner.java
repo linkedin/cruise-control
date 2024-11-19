@@ -39,11 +39,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.INTER_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.INTRA_BROKER_REPLICA_MOVEMENT_RATE_ALERTING_THRESHOLD_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*;
+import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.PREFER_BROKER_ROUND_ROBIN_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig.TASK_EXECUTION_ALERTING_THRESHOLD_MS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION;
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.INTRA_BROKER_REPLICA_ACTION;
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.LEADER_ACTION;
 import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.ReplicaLogDirInfo;
 
 /**
@@ -80,6 +83,7 @@ public class ExecutionTaskPlanner {
   private final long _taskExecutionAlertingThresholdMs;
   private final double _interBrokerReplicaMovementRateAlertingThreshold;
   private final double _intraBrokerReplicaMovementRateAlertingThreshold;
+  private final boolean _preferRoundRobin;
   private static final int PRIORITIZE_BROKER_1 = -1;
   private static final int PRIORITIZE_BROKER_2 = 1;
   private static final int PRIORITIZE_NONE = 0;
@@ -120,6 +124,7 @@ public class ExecutionTaskPlanner {
 
       _defaultReplicaMovementTaskStrategy = _defaultReplicaMovementTaskStrategy.chainBaseReplicaMovementStrategyIfAbsent();
     }
+    _preferRoundRobin = config.getBoolean(PREFER_BROKER_ROUND_ROBIN_CONFIG);
   }
 
   /**
@@ -379,7 +384,7 @@ public class ExecutionTaskPlanner {
           break;
         }
         // If this broker has already involved in this round, skip it.
-        if (brokerInvolved.contains(brokerId)) {
+        if (_preferRoundRobin && brokerInvolved.contains(brokerId)) {
           continue;
         }
         // Check the available balancing proposals of this broker to see if we can find one ready to execute.
@@ -398,8 +403,8 @@ public class ExecutionTaskPlanner {
           int sourceBroker = task.proposal().oldLeader().brokerId();
           Set<Integer> destinationBrokers = task.proposal().replicasToAdd().stream().mapToInt(ReplicaPlacementInfo::brokerId)
                                                 .boxed().collect(Collectors.toSet());
-          if (brokerInvolved.contains(sourceBroker)
-              || KafkaCruiseControlUtils.containsAny(brokerInvolved, destinationBrokers)) {
+          if (_preferRoundRobin && (brokerInvolved.contains(sourceBroker)
+              || KafkaCruiseControlUtils.containsAny(brokerInvolved, destinationBrokers))) {
             continue;
           }
           TopicPartition tp = task.proposal().topicPartition();
