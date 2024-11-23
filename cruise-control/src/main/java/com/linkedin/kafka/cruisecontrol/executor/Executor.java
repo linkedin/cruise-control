@@ -71,6 +71,7 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.Exe
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorAdminUtils.*;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVAL_TO_PERCENTAGE;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler.SamplingMode.*;
+import static com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager.TaskState.COMPLETED;
 import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.ReplicaLogDirInfo;
 import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
 
@@ -1362,8 +1363,8 @@ public class Executor {
     public void run() {
       LOG.info("User task {}: Starting executing balancing proposals.", _uuid);
       final long start = System.currentTimeMillis();
+      UserTaskManager.UserTaskInfo userTaskInfo = initExecution();
       try {
-        UserTaskManager.UserTaskInfo userTaskInfo = initExecution();
         execute(userTaskInfo);
       } catch (Exception e) {
         LOG.error("User task {}: ProposalExecutionRunnable got exception during run", _uuid, e);
@@ -1381,7 +1382,8 @@ public class Executor {
         if (_executionException != null) {
           LOG.info("User task {}: Execution failed: {}. Exception: {}", _uuid, executionStatusString, _executionException.getMessage());
         } else {
-          LOG.info("User task {}: Execution succeeded: {}. ", _uuid, executionStatusString);
+          String status = userTaskInfo.state() == COMPLETED ? "succeeded" : userTaskInfo.state().toString();
+          LOG.info("User task {}: Execution {}: {}. ", _uuid, status, executionStatusString);
         }
         // Clear completed execution.
         clearCompletedExecution();

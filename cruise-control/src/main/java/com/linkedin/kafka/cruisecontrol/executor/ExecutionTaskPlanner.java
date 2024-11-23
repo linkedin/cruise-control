@@ -388,7 +388,7 @@ public class ExecutionTaskPlanner {
           continue;
         }
         // Check the available balancing proposals of this broker to see if we can find one ready to execute.
-        SortedSet<ExecutionTask> proposalsForBroker = _interPartMoveTasksByBrokerId.get(brokerId);
+        SortedSet<ExecutionTask> proposalsForBroker = new TreeSet<>(_interPartMoveTasksByBrokerId.get(brokerId));
         LOG.trace("Execution task for broker {} are {}", brokerId, proposalsForBroker);
         for (ExecutionTask task : proposalsForBroker) {
           // Break if max cap reached
@@ -434,8 +434,10 @@ public class ExecutionTaskPlanner {
             newTaskAdded = true;
             numInProgressPartitions++;
             LOG.debug("Found ready task {} for broker {}. Broker concurrency state: {}", task, brokerId, readyBrokers);
-            // We can stop the check for proposals for this broker because we have found a proposal.
-            break;
+            if (_preferRoundRobin) {
+              // We can stop the check for proposals for this broker because we have found a proposal.
+              break;
+            }
           }
         }
       }
