@@ -21,6 +21,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -543,5 +544,28 @@ public class ExecutionTaskPlanner {
                                     : taskSet1Size != taskSet2Size ? taskSet2Size - taskSet1Size
                                                                    : broker1 - broker2;
     };
+  }
+
+  Map<Integer, Integer> getSortedBrokerIdToInterBrokerMoveTaskCountMap() {
+    if (_interPartMoveTasksByBrokerId == null || _interPartMoveTasksByBrokerId.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    Map<Integer, Integer> resultMap = _interPartMoveTasksByBrokerId.entrySet()
+        .stream()
+        .collect(Collectors.toMap(
+            Map.Entry::getKey,
+            entry -> entry.getValue().size()
+        ))
+        .entrySet()
+        .stream()
+        .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+        .collect(Collectors.toMap(
+            Map.Entry::getKey,
+            Map.Entry::getValue,
+            (e1, e2) -> e1,
+            // maintain the order of the sorted map.
+            LinkedHashMap::new
+        ));
+    return resultMap;
   }
 }

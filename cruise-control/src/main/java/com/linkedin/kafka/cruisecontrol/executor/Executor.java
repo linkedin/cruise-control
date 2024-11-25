@@ -831,6 +831,22 @@ public class Executor {
                             requestedIntraBrokerPartitionMovementConcurrency, requestedClusterLeadershipMovementConcurrency,
                             requestedBrokerLeadershipMovementConcurrency, requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy,
                             isTriggeredByUserRequest, loadMonitor);
+      if (removedBrokers != null && !removedBrokers.isEmpty()) {
+        int count = 0;
+        int totalCount = 0;
+        for (ExecutionProposal proposal: proposals) {
+          Set<Integer> oldBrokers = proposal.oldReplicasBrokerIdSet();
+          Set<Integer> newBrokers = proposal.newReplicasBrokerIdSet();
+          if (!oldBrokers.equals(newBrokers)) {
+            // Only count the proposals that involve partition movement.
+            totalCount++;
+            if (oldBrokers.stream().anyMatch(removedBrokers::contains) || newBrokers.stream().anyMatch(removedBrokers::contains)) {
+              count++;
+            }
+          }
+        }
+        LOG.info("User task {}: {} of partition move proposals are related to removed brokers.", uuid, ((float) count) / totalCount);
+      }
       startExecution(loadMonitor, null, removedBrokers, replicationThrottle, isTriggeredByUserRequest);
     } catch (Exception e) {
       if (e instanceof OngoingExecutionException) {
@@ -1382,7 +1398,10 @@ public class Executor {
         if (_executionException != null) {
           LOG.info("User task {}: Execution failed: {}. Exception: {}", _uuid, executionStatusString, _executionException.getMessage());
         } else {
-          String status = userTaskInfo.state() == COMPLETED ? "succeeded" : userTaskInfo.state().toString();
+          String status = "succeeded";
+          if (userTaskInfo != null && userTaskInfo.state() != COMPLETED) {
+            status = userTaskInfo.state().toString();
+          }
           LOG.info("User task {}: Execution {}: {}. ", _uuid, status, executionStatusString);
         }
         // Clear completed execution.
@@ -1613,6 +1632,12 @@ public class Executor {
       long totalDataToMoveInMB = _executionTaskManager.remainingInterBrokerDataToMoveInMB();
       long startTime = System.currentTimeMillis();
       LOG.info("User task {}: Starting {} inter-broker partition movements.", _uuid, numTotalPartitionMovements);
+      Map<Integer, Integer> map = _executionTaskManager.getSotedBrokerIdToInterBrokerMoveTaskCountMap();
+      LOG.info("User task {}: Broker Id to Execution Task Count Map: {}", _uuid, map);
+      if (!map.isEmpty()) {
+        LOG.info("User task {}: Degree of task count skew towards the largest single broker", _uuid,
+            map.entrySet().iterator().next().getValue() / (float) numTotalPartitionMovements);
+      }
 
       int partitionsToMove = numTotalPartitionMovements;
       // Exhaust all the pending partition movements.
