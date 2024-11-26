@@ -568,4 +568,11 @@ public class ExecutionTaskPlanner {
         ));
     return resultMap;
   }
+
+  /*
+   * Package private for testing.
+   */
+  Map<Integer, SortedSet<ExecutionTask>> getInterPartMoveTasksByBrokerId() {
+    return _interPartMoveTasksByBrokerId;
+  }
 }

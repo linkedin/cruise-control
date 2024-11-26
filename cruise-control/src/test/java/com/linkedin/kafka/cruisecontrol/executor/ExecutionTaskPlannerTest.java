@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
+import java.util.SortedSet;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult;
 import org.apache.kafka.common.Cluster;
@@ -353,6 +354,13 @@ public class ExecutionTaskPlannerTest {
     readyBrokers.put(4, 5);
     readyBrokers.put(5, 6);
     prioritizeOneAboveMinIsrMovementPlanner.addExecutionProposals(proposals, strategyOptions, null);
+    Map<Integer, Integer> countMap = prioritizeOneAboveMinIsrMovementPlanner.getSortedBrokerIdToInterBrokerMoveTaskCountMap();
+    Map<Integer, SortedSet<ExecutionTask>> taskMap = prioritizeOneAboveMinIsrMovementPlanner.getInterPartMoveTasksByBrokerId();
+    for (Map.Entry<Integer, Integer> entry : countMap.entrySet()) {
+      int brokerId = entry.getKey();
+      int count = entry.getValue();
+      assertEquals(taskMap.get(brokerId).size(), count);
+    }
     List<ExecutionTask> partitionMovementTasks
         = prioritizeOneAboveMinIsrMovementPlanner.getInterBrokerReplicaMovementTasks(readyBrokers, Collections.emptySet(), _defaultPartitionsMaxCap);
     assertEquals("First task", _rf4PartitionMovement2, partitionMovementTasks.get(0).proposal());
