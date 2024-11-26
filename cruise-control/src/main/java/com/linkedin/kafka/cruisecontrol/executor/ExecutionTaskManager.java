@@ -156,7 +156,7 @@ public class ExecutionTaskManager {
     }
   }
 
-  Map<Integer, Integer> getSotedBrokerIdToInterBrokerMoveTaskCountMap() {
+  Map<Integer, Integer> getSortedBrokerIdToInterBrokerMoveTaskCountMap() {
     return _executionTaskPlanner.getSortedBrokerIdToInterBrokerMoveTaskCountMap();
   }
 

@@ -1632,7 +1632,7 @@ public class Executor {
       long totalDataToMoveInMB = _executionTaskManager.remainingInterBrokerDataToMoveInMB();
       long startTime = System.currentTimeMillis();
       LOG.info("User task {}: Starting {} inter-broker partition movements.", _uuid, numTotalPartitionMovements);
-      Map<Integer, Integer> map = _executionTaskManager.getSotedBrokerIdToInterBrokerMoveTaskCountMap();
+      Map<Integer, Integer> map = _executionTaskManager.getSortedBrokerIdToInterBrokerMoveTaskCountMap();
       LOG.info("User task {}: Broker Id to Execution Task Count Map: {}", _uuid, map);
       if (!map.isEmpty()) {
         LOG.info("User task {}: Degree of task count skew towards the largest single broker", _uuid,
