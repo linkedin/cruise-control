@@ -140,7 +140,7 @@ public class KafkaAdminTopicConfigProvider implements TopicConfigProvider {
     try {
       topicNames = _adminClient.listTopics().names().get();
     } catch (InterruptedException | ExecutionException e) {
-      LOG.warn("Unable to obtain list of all topic names from the Kafka Cluster");
+      LOG.warn("Unable to obtain list of all topic names from the Kafka Cluster: " + e);
     }
 
     if (topicNames == null) {
@@ -171,7 +171,7 @@ public class KafkaAdminTopicConfigProvider implements TopicConfigProvider {
     try {
       clusterConfigs = describeClusterConfigs(_adminClient, DESCRIBE_CLUSTER_CONFIGS_TIMEOUT);
     } catch (InterruptedException | ExecutionException e) {
-      throw new RuntimeException("Failed to describe Kafka cluster configs.");
+      throw new RuntimeException("Failed to describe Kafka cluster configs: " + e);
     }
 
     if (clusterConfigs != null) {
