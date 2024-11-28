@@ -50,6 +50,7 @@ import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.METADATA_EXPIRY_MS;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.METADATA_REFRESH_BACKOFF;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.METADATA_REFRESH_BACKOFF_MAX;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertNotNull;
@@ -106,6 +107,7 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
   public void testSimpleFetch() throws InterruptedException {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getLoadMonitorProperties());
     Metadata metadata = new Metadata(METADATA_REFRESH_BACKOFF,
+                                     METADATA_REFRESH_BACKOFF_MAX,
                                      METADATA_EXPIRY_MS,
                                      new LogContext(),
                                      new ClusterResourceListeners());
@@ -156,6 +158,7 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
   public void testSamplingError() {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getLoadMonitorProperties());
     Metadata metadata = new Metadata(METADATA_REFRESH_BACKOFF,
+                                     METADATA_REFRESH_BACKOFF_MAX,
                                      METADATA_EXPIRY_MS,
                                      new LogContext(),
                                      new ClusterResourceListeners());
