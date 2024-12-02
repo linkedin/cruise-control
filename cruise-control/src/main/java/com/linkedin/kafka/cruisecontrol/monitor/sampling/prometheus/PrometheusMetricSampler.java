@@ -62,6 +62,9 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
     static final String PROMETHEUS_QUERY_SUPPLIER_CONFIG = "prometheus.query.supplier";
     private static final Class<?> DEFAULT_PROMETHEUS_QUERY_SUPPLIER = DefaultPrometheusQuerySupplier.class;
 
+    // Add new config constant
+    static final String PROMETHEUS_SIGV4_REGION_CONFIG = "prometheus.sigv4.region";
+
     private static final Logger LOG = LoggerFactory.getLogger(PrometheusMetricSampler.class);
 
     protected int _samplingIntervalMs;
@@ -110,7 +113,11 @@ public class PrometheusMetricSampler extends AbstractMetricSampler {
             String endpointWithScheme = endpoint.startsWith("http") ? endpoint : "http://" + endpoint;
             URIBuilder uriBuilder = new URIBuilder(endpointWithScheme);
             _httpClient = HttpClients.createDefault();
-            _prometheusAdapter = new PrometheusAdapter(_httpClient, uriBuilder, _samplingIntervalMs);
+            
+            // Get region config
+            String region = (String) configs.get(PROMETHEUS_SIGV4_REGION_CONFIG);
+            
+            _prometheusAdapter = new PrometheusAdapter(_httpClient, uriBuilder, _samplingIntervalMs, region);
         } catch (URISyntaxException ex) {
             throw new ConfigException(
                 String.format("Prometheus endpoint URI is malformed, "

@@ -295,6 +295,8 @@ project(':cruise-control') {
     implementation 'com.google.code.findbugs:jsr305:3.0.2'
     // Temporary pin for vulnerability
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+    implementation "software.amazon.awssdk:auth:$awsSdkVersion"
+    implementation "software.amazon.awssdk:regions:$awsSdkVersion"
     api "io.vertx:vertx-web-openapi:${vertxVersion}"
     api "io.vertx:vertx-core:${vertxVersion}"
     api "io.vertx:vertx-web:${vertxVersion}"

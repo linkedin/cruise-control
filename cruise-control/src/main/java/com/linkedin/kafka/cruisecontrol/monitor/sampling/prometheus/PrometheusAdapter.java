@@ -9,7 +9,10 @@ import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
@@ -24,6 +27,14 @@ import org.apache.http.util.EntityUtils;
 import com.google.gson.Gson;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model.PrometheusQueryResult;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model.PrometheusResponse;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.auth.signer.Aws4Signer;
+import software.amazon.awssdk.auth.signer.params.Aws4SignerParams;
+import software.amazon.awssdk.http.SdkHttpFullRequest;
+import software.amazon.awssdk.http.SdkHttpFullRequest.Builder;
+import software.amazon.awssdk.http.SdkHttpMethod;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.utils.http.SdkHttpUtils;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.SEC_TO_MS;
 import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
@@ -39,17 +50,33 @@ class PrometheusAdapter {
     private static final String START = "start";
     private static final String END = "end";
     private static final String STEP = "step";
+    private static final String SERVICE_NAME = "aps";
 
     private final CloseableHttpClient _httpClient;
     protected final URIBuilder _prometheusEndpoint;
     protected final int _samplingIntervalMs;
+    private final Aws4Signer _signer;
+    private final Aws4SignerParams _signerParams;
 
     PrometheusAdapter(CloseableHttpClient httpClient,
         URIBuilder prometheusEndpoint,
-                      int samplingIntervalMs) {
+                      int samplingIntervalMs,
+                      String region) {
         _httpClient = validateNotNull(httpClient, "httpClient cannot be null.");
         _prometheusEndpoint = validateNotNull(prometheusEndpoint, "prometheusEndpoint cannot be null.");
         _samplingIntervalMs = samplingIntervalMs;
+        
+        if (region != null) {
+            _signer = Aws4Signer.create();
+            _signerParams = Aws4SignerParams.builder()
+                .awsCredentials(DefaultCredentialsProvider.create().resolveCredentials())
+                .signingName(SERVICE_NAME)
+                .signingRegion(Region.of(region))
+                .build();
+        } else {
+            _signer = null;
+            _signerParams = null;
+        }
     }
 
     public int samplingIntervalMs() {
@@ -74,6 +101,12 @@ class PrometheusAdapter {
         data.add(new BasicNameValuePair(STEP, String.valueOf((double) _samplingIntervalMs / SEC_TO_MS)));
 
         httpPost.setEntity(new UrlEncodedFormEntity(data));
+        
+        // Sign the request if SigV4 is enabled
+        if (_signer != null) {
+            signRequest(httpPost, data);
+        }
+
         try (CloseableHttpResponse response = _httpClient.execute(httpPost)) {
             int responseCode = response.getStatusLine().getStatusCode();
             HttpEntity entity = response.getEntity();
@@ -102,5 +135,31 @@ class PrometheusAdapter {
             EntityUtils.consume(entity);
             return prometheusResponse.data().result();
         }
+    }
+    
+    private void signRequest(HttpPost httpPost, List<NameValuePair> data) throws IOException {
+        // Convert HttpPost to SdkHttpFullRequest
+        Builder requestBuilder = SdkHttpFullRequest.builder()
+            .method(SdkHttpMethod.POST)
+            .uri(httpPost.getURI())
+            .encodedPath(httpPost.getURI().getPath())
+            .putHeader("Host", httpPost.getURI().getHost());
+            
+        // Add form parameters
+        Map<String, List<String>> parameters = new HashMap<>();
+        for (NameValuePair pair : data) {
+            parameters.put(
+                SdkHttpUtils.urlEncode(pair.getName()),
+                Collections.singletonList(SdkHttpUtils.urlEncode(pair.getValue()))
+            );
+        }
+        requestBuilder.rawQueryParameters(parameters);
+        
+        // Sign the request
+        SdkHttpFullRequest signedRequest = _signer.sign(requestBuilder.build(), _signerParams);
+        
+        // Copy signed headers back to HttpPost
+        signedRequest.headers().forEach((key, values) -> 
+            httpPost.setHeader(key, values.get(0)));
     }
 }
