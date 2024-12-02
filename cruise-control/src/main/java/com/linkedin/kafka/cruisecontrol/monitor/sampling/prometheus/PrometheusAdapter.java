@@ -10,9 +10,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
@@ -31,10 +29,10 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.signer.Aws4Signer;
 import software.amazon.awssdk.auth.signer.params.Aws4SignerParams;
 import software.amazon.awssdk.http.SdkHttpFullRequest;
-import software.amazon.awssdk.http.SdkHttpFullRequest.Builder;
 import software.amazon.awssdk.http.SdkHttpMethod;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.utils.http.SdkHttpUtils;
+import org.apache.http.client.utils.URLEncodedUtils;
+import java.io.ByteArrayInputStream;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.SEC_TO_MS;
 import static com.linkedin.cruisecontrol.common.utils.Utils.validateNotNull;
@@ -138,22 +136,25 @@ class PrometheusAdapter {
     }
     
     private void signRequest(HttpPost httpPost, List<NameValuePair> data) throws IOException {
+        // Convert form parameters to query string
+        String queryString = URLEncodedUtils.format(data, StandardCharsets.UTF_8);
+        
         // Convert HttpPost to SdkHttpFullRequest
-        Builder requestBuilder = SdkHttpFullRequest.builder()
+        SdkHttpFullRequest.Builder requestBuilder = SdkHttpFullRequest.builder()
             .method(SdkHttpMethod.POST)
             .uri(httpPost.getURI())
             .encodedPath(httpPost.getURI().getPath())
-            .putHeader("Host", httpPost.getURI().getHost());
-            
-        // Add form parameters
-        Map<String, List<String>> parameters = new HashMap<>();
-        for (NameValuePair pair : data) {
-            parameters.put(
-                SdkHttpUtils.urlEncode(pair.getName()),
-                Collections.singletonList(SdkHttpUtils.urlEncode(pair.getValue()))
-            );
-        }
-        requestBuilder.rawQueryParameters(parameters);
+            .putHeader("Host", httpPost.getURI().getHost())
+            .putHeader("Content-Type", "application/x-www-form-urlencoded");
+
+        // Add query string as raw query parameters
+        requestBuilder.rawQueryParameters(
+            Collections.singletonMap("", Collections.singletonList(queryString))
+        );
+        
+        // Add the same content as the request body
+        requestBuilder.contentStreamProvider(() -> 
+            new ByteArrayInputStream(queryString.getBytes(StandardCharsets.UTF_8)));
         
         // Sign the request
         SdkHttpFullRequest signedRequest = _signer.sign(requestBuilder.build(), _signerParams);
