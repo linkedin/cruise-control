@@ -389,6 +389,8 @@ public class ExecutionTaskPlanner {
           continue;
         }
         // Check the available balancing proposals of this broker to see if we can find one ready to execute.
+        // Make a TreeSet copy of the proposals for this broker to avoid ConcurrentModificationException and
+        // keep the same order of proposals.
         SortedSet<ExecutionTask> proposalsForBroker = new TreeSet<>(_interPartMoveTasksByBrokerId.get(brokerId));
         LOG.trace("Execution task for broker {} are {}", brokerId, proposalsForBroker);
         for (ExecutionTask task : proposalsForBroker) {

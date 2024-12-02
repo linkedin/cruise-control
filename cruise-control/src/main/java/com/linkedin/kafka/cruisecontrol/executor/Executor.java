@@ -832,20 +832,8 @@ public class Executor {
                             requestedBrokerLeadershipMovementConcurrency, requestedExecutionProgressCheckIntervalMs, replicaMovementStrategy,
                             isTriggeredByUserRequest, loadMonitor);
       if (removedBrokers != null && !removedBrokers.isEmpty()) {
-        int count = 0;
-        int totalCount = 0;
-        for (ExecutionProposal proposal: proposals) {
-          Set<Integer> oldBrokers = proposal.oldReplicasBrokerIdSet();
-          Set<Integer> newBrokers = proposal.newReplicasBrokerIdSet();
-          if (!oldBrokers.equals(newBrokers)) {
-            // Only count the proposals that involve partition movement.
-            totalCount++;
-            if (oldBrokers.stream().anyMatch(removedBrokers::contains) || newBrokers.stream().anyMatch(removedBrokers::contains)) {
-              count++;
-            }
-          }
-        }
-        LOG.info("User task {}: {} of partition move proposals are related to removed brokers.", uuid, ((float) count) / totalCount);
+        int[] numTasks = getNumTasksUnrelatedToBrokerRemoval(removedBrokers, proposals);
+        LOG.info("User task {}: {} of {} partition move proposals are unrelated to removed brokers.", uuid, numTasks[0], numTasks[1]);
       }
       startExecution(loadMonitor, null, removedBrokers, replicationThrottle, isTriggeredByUserRequest);
     } catch (Exception e) {
@@ -857,6 +845,32 @@ public class Executor {
       processExecuteProposalsFailure();
       throw e;
     }
+  }
+
+  /**
+   * Get the number of tasks unrelated to broker removal.
+   * @param removedBrokers removed brokers
+   * @param proposals proposals to execute
+   * @return an array of two integers, the first one is the number of tasks unrelated to broker removal,
+   *  the second one is the total number of tasks.
+   */
+  private int[] getNumTasksUnrelatedToBrokerRemoval(Set<Integer> removedBrokers, Collection<ExecutionProposal> proposals) {
+    int[] numTasks = new int[2];
+    int unrelatedCount = 0;
+    int totalCount = 0;
+    for (ExecutionProposal proposal: proposals) {
+      Set<Integer> oldBrokers = proposal.oldReplicasBrokerIdSet();
+      Set<Integer> newBrokers = proposal.newReplicasBrokerIdSet();
+      if (!oldBrokers.equals(newBrokers)) {
+        totalCount++;
+        if (oldBrokers.stream().noneMatch(removedBrokers::contains) && newBrokers.stream().noneMatch(removedBrokers::contains)) {
+          unrelatedCount++;
+        }
+      }
+    }
+    numTasks[0] = unrelatedCount;
+    numTasks[1] = totalCount;
+    return numTasks;
   }
 
   private void sanityCheckExecuteProposals(LoadMonitor loadMonitor, String uuid) throws OngoingExecutionException {
@@ -1400,6 +1414,7 @@ public class Executor {
         } else {
           String status = "succeeded";
           if (userTaskInfo != null && userTaskInfo.state() != COMPLETED) {
+            // The task may be in state of COMPLETED_WITH_ERROR if the user requested to stop the execution.
             status = userTaskInfo.state().toString();
           }
           LOG.info("User task {}: Execution {}: {}. ", _uuid, status, executionStatusString);
