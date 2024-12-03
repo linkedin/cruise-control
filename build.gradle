@@ -297,6 +297,8 @@ project(':cruise-control') {
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
     implementation "software.amazon.awssdk:auth:$awsSdkVersion"
     implementation "software.amazon.awssdk:regions:$awsSdkVersion"
+    implementation "software.amazon.awssdk:core:$awsSdkVersion"
+    implementation "software.amazon.awssdk:http-client:$awsSdkVersion"
     api "io.vertx:vertx-web-openapi:${vertxVersion}"
     api "io.vertx:vertx-core:${vertxVersion}"
     api "io.vertx:vertx-web:${vertxVersion}"
