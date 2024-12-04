@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus;
 
 import static com.linkedin.cruisecontrol.common.utils.Utils.*;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.*;
 
 import com.google.gson.Gson;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.prometheus.model.PrometheusQueryResult;
@@ -73,15 +74,15 @@ class PrometheusAdapter {
 
 
         List<NameValuePair> data = new ArrayList<>();
-        data.add(new BasicNameValuePair("query", "up"));
+        data.add(new BasicNameValuePair(QUERY, queryString));
         /* "start" and "end" are expected to be unix timestamp in seconds (number of seconds since the Unix epoch).
          They accept values with a decimal point (up to 64 bits). The samples returned are inclusive of the "end"
          timestamp provided.
          */
-        data.add(new BasicNameValuePair("start", "2024-12-02T10:10:30.781Z"));
-        data.add(new BasicNameValuePair("end", "2024-12-02T20:11:00.781Z"));
+        data.add(new BasicNameValuePair(START, String.valueOf((double) startTimeMs / SEC_TO_MS)));
+        data.add(new BasicNameValuePair(END, String.valueOf((double) endTimeMs / SEC_TO_MS)));
         // step is expected to be in seconds, and accept values with a decimal point (up to 64 bits).
-        data.add(new BasicNameValuePair("step", "15s"));
+        data.add(new BasicNameValuePair(STEP, String.valueOf((double) _samplingIntervalMs / SEC_TO_MS)));
 
         String queryParams = URLEncodedUtils.format(data, StandardCharsets.UTF_8);
         URI queryUri = URI.create(_prometheusEndpoint.toString() + QUERY_RANGE_API_PATH + "?" + queryParams);
