@@ -295,6 +295,14 @@ project(':cruise-control') {
     implementation 'com.google.code.findbugs:jsr305:3.0.2'
     // Temporary pin for vulnerability
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+    // AWS SDK for signing and region management
+    implementation "software.amazon.awssdk:auth:${awsSdkVersion}"
+    implementation "software.amazon.awssdk:regions:${awsSdkVersion}"
+    implementation "software.amazon.awssdk:sts:${awsSdkVersion}"
+
+    // OkHttp for HTTP requests
+    implementation 'com.squareup.okhttp3:okhttp:4.11.0'
+
     api "io.vertx:vertx-web-openapi:${vertxVersion}"
     api "io.vertx:vertx-core:${vertxVersion}"
     api "io.vertx:vertx-web:${vertxVersion}"
