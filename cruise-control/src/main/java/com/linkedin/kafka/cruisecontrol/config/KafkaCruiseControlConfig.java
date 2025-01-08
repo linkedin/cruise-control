@@ -199,9 +199,10 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
 
     // Ensure that default goals are supported inter-broker or intra-broker goals.
     if (defaultGoalNames.stream().anyMatch(g -> !interBrokerGoalNames.contains(g) && !intraBrokerGoalNames.contains(g))) {
-      throw new ConfigException(String.format("Attempt to configure default goals with unsupported goals (%s:%s and %s:%s).",
+      throw new ConfigException(String.format("Attempt to configure default goals with unsupported goals (%s:%s and %s:%s and %s:%s).",
                                               AnalyzerConfig.DEFAULT_GOALS_CONFIG, defaultGoalNames,
-                                              AnalyzerConfig.GOALS_CONFIG, interBrokerGoalNames));
+                                              AnalyzerConfig.GOALS_CONFIG, interBrokerGoalNames,
+                                              AnalyzerConfig.INTRA_BROKER_GOALS_CONFIG, intraBrokerGoalNames));
     }
 
     // Ensure that hard goals are contained in default goals.
