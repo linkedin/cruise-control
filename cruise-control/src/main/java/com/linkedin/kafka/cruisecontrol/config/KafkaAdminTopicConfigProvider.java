@@ -171,7 +171,7 @@ public class KafkaAdminTopicConfigProvider implements TopicConfigProvider {
     try {
       clusterConfigs = describeClusterConfigs(_adminClient, DESCRIBE_CLUSTER_CONFIGS_TIMEOUT);
     } catch (InterruptedException | ExecutionException e) {
-      throw new RuntimeException("Failed to describe Kafka cluster configs.");
+      throw new RuntimeException("Failed to describe Kafka cluster configs.", e);
     }
 
     if (clusterConfigs != null) {
