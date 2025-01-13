@@ -8,6 +8,7 @@ import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -28,11 +29,13 @@ public class CCEmbeddedBroker implements AutoCloseable {
   private static final Logger LOG = LoggerFactory.getLogger(CCEmbeddedBroker.class);
   private final Map<SecurityProtocol, Integer> _ports;
   private final Map<SecurityProtocol, String> _hosts;
+  private final Map<Object, Object> _config;
   private final KafkaServer _kafkaServer;
   private int _id;
   private File _logDir;
 
   public CCEmbeddedBroker(Map<Object, Object> config) {
+    _config = Collections.unmodifiableMap(config);
     _ports = new HashMap<>();
     _hosts = new HashMap<>();
 
@@ -114,6 +117,10 @@ public class CCEmbeddedBroker implements AutoCloseable {
 
   public int id() {
     return _id;
+  }
+
+  public Map<Object, Object> config() {
+    return _config;
   }
 
   /**
