@@ -279,6 +279,8 @@ project(':cruise-control') {
     implementation "io.netty:netty-handler:${nettyVersion}"
     implementation "io.netty:netty-transport-native-epoll:${nettyVersion}"
     api "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion"
+    api "org.apache.kafka:kafka-server:$kafkaVersion"
+    api "org.apache.kafka:kafka-server-common:$kafkaVersion"
     api "org.apache.kafka:kafka-clients:$kafkaVersion"
     // Add following dependency when upgrading to Kafka 3.5
     api "org.apache.kafka:kafka-storage:$kafkaVersion"
@@ -446,6 +448,7 @@ project(':cruise-control-metrics-reporter') {
     implementation "com.yammer.metrics:metrics-core:2.2.0"
     implementation "org.apache.logging.log4j:log4j-slf4j-impl:2.17.2"
     implementation "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion"
+    implementation "org.apache.kafka:kafka-server:$kafkaVersion"
     implementation "org.apache.kafka:kafka-clients:$kafkaVersion"
     implementation 'com.google.code.findbugs:jsr305:3.0.2'
     // Temporary pin for vulnerability
@@ -456,7 +459,9 @@ project(':cruise-control-metrics-reporter') {
     testImplementation 'org.powermock:powermock-module-junit4:2.0.9'
     testImplementation 'org.powermock:powermock-api-easymock:2.0.9'
     testImplementation "org.apache.kafka:kafka-clients:$kafkaVersion:test"
-    testImplementation "org.apache.kafka:kafka-clients:$kafkaVersion"
+    testImplementation "org.apache.kafka:kafka-server-common:$kafkaVersion"
+    testImplementation "org.apache.kafka:kafka-group-coordinator:$kafkaVersion"
+    testImplementation "org.apache.kafka:kafka-storage:$kafkaVersion"
     testImplementation 'commons-io:commons-io:2.11.0'
     testImplementation "org.apache.zookeeper:zookeeper:${zookeeperVersion}"
     testOutput sourceSets.test.output

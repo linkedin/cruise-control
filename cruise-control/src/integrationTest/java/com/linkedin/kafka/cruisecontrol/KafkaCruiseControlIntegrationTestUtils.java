@@ -34,7 +34,6 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsRepo
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
-import kafka.server.KafkaConfig;
 import org.apache.commons.io.IOUtils;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -45,6 +44,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.network.SocketServerConfigs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -168,7 +168,7 @@ public final class KafkaCruiseControlIntegrationTestUtils {
     StringJoiner csvJoiner = new StringJoiner(",");
     csvJoiner.add(SecurityProtocol.PLAINTEXT.name + "://localhost:"
         + KafkaCruiseControlIntegrationTestUtils.findRandomOpenPortOnAllLocalInterfaces());
-    props.put(KafkaConfig.ListenersProp(), csvJoiner.toString());
+    props.put(SocketServerConfigs.LISTENERS_CONFIG, csvJoiner.toString());
     props.put(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_CONFIG, "true");
     props.put(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_CONFIG, "2");
     props.put(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS_CONFIG, "1");

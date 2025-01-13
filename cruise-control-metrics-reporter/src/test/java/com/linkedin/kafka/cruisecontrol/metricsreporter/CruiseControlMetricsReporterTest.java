@@ -20,7 +20,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaTestUtils;
-import kafka.server.KafkaConfig;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.TopicDescription;
@@ -35,6 +34,10 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.coordinator.group.GroupCoordinatorConfig;
+import org.apache.kafka.network.SocketServerConfigs;
+import org.apache.kafka.server.config.ReplicationConfigs;
+import org.apache.kafka.server.config.ServerLogConfigs;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -86,13 +89,13 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     Properties props = new Properties();
     int port = CCKafkaTestUtils.findLocalPort();
     props.setProperty(CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG, CruiseControlMetricsReporter.class.getName());
-    props.setProperty(KafkaConfig.ListenersProp(), "PLAINTEXT://" + HOST + ":" + port);
+    props.setProperty(SocketServerConfigs.LISTENERS_CONFIG, "PLAINTEXT://" + HOST + ":" + port);
     props.setProperty(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG), HOST + ":" + port);
     props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG, "100");
     props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG, TOPIC);
-    props.setProperty(KafkaConfig.LogFlushIntervalMessagesProp(), "1");
-    props.setProperty(KafkaConfig.OffsetsTopicReplicationFactorProp(), "1");
-    props.setProperty(KafkaConfig.DefaultReplicationFactorProp(), "2");
+    props.setProperty(ServerLogConfigs.LOG_FLUSH_INTERVAL_MESSAGES_CONFIG, "1");
+    props.setProperty(GroupCoordinatorConfig.OFFSETS_TOPIC_REPLICATION_FACTOR_CONFIG, "1");
+    props.setProperty(ReplicationConfigs.DEFAULT_REPLICATION_FACTOR_CONFIG, "2");
     return props;
   }
 
@@ -210,7 +213,8 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
   public void testGetKafkaBootstrapServersConfigure() {
     // Test with a "listeners" config with a host
     Map<Object, Object> brokerConfig = buildBrokerConfigs().get(0);
-    Map<String, Object> listenersMap = Collections.singletonMap(KafkaConfig.ListenersProp(), brokerConfig.get(KafkaConfig.ListenersProp()));
+    Map<String, Object> listenersMap = Collections.singletonMap(
+            SocketServerConfigs.LISTENERS_CONFIG, brokerConfig.get(SocketServerConfigs.LISTENERS_CONFIG));
     String bootstrapServers = CruiseControlMetricsReporter.getBootstrapServers(listenersMap);
     String urlParse = "\\[?([0-9a-zA-Z\\-%._:]*)]?:(-?[0-9]+)";
     Pattern urlParsePattern = Pattern.compile(urlParse);
@@ -219,7 +223,7 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
 
     // Test with a "listeners" config without a host in the first listener.
     String listeners = "SSL://:1234,PLAINTEXT://myhost:4321";
-    listenersMap = Collections.singletonMap(KafkaConfig.ListenersProp(), listeners);
+    listenersMap = Collections.singletonMap(SocketServerConfigs.LISTENERS_CONFIG, listeners);
     bootstrapServers = CruiseControlMetricsReporter.getBootstrapServers(listenersMap);
     assertTrue(urlParsePattern.matcher(bootstrapServers).matches());
     assertEquals(DEFAULT_BOOTSTRAP_SERVERS_HOST, bootstrapServers.split(":")[0]);
@@ -227,7 +231,7 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
 
     // Test with "listeners" and "port" config together.
     listenersMap = new HashMap<>();
-    listenersMap.put(KafkaConfig.ListenersProp(), listeners);
+    listenersMap.put(SocketServerConfigs.LISTENERS_CONFIG, listeners);
     listenersMap.put("port", "43");
     bootstrapServers = CruiseControlMetricsReporter.getBootstrapServers(listenersMap);
     assertTrue(urlParsePattern.matcher(bootstrapServers).matches());
