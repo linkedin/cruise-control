@@ -49,7 +49,6 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
 
   public KafkaCruiseControlConfig(Map<?, ?> originals, boolean doLog) {
     super(CONFIG, originals, doLog);
-    sanityCheckZK();
     sanityCheckGoalNames();
     sanityCheckSamplingPeriod(originals);
     sanityCheckConcurrency();
@@ -120,30 +119,6 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       }
     }
     return objects;
-  }
-
-  /**
-   * Sanity check to ensure that {@link ExecutorConfig#ZOOKEEPER_CONNECT_CONFIG} is set if
-   * <ul>
-   *   <li>{@link AnomalyDetectorConfig#KAFKA_BROKER_FAILURE_DETECTION_ENABLE_CONFIG} is not enabled.</li>
-   *   <li>{@link MonitorConfig#TOPIC_CONFIG_PROVIDER_CLASS_CONFIG} is set to com.linkedin.kafka.cruisecontrol.config.KafkaTopicConfigProvider.</li>
-   * </ul>
-   */
-  private void sanityCheckZK() {
-    String zkConnect = getString(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG);
-    if (zkConnect == null || zkConnect.isEmpty()) {
-      if (!getBoolean(AnomalyDetectorConfig.KAFKA_BROKER_FAILURE_DETECTION_ENABLE_CONFIG)) {
-        throw new ConfigException(String.format("Missing required configuration, either %s must be set, or %s must be set to true.",
-                                                ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG,
-                                                AnomalyDetectorConfig.KAFKA_BROKER_FAILURE_DETECTION_ENABLE_CONFIG));
-      }
-      if (KafkaTopicConfigProvider.class.getName().equals(getClass(MonitorConfig.TOPIC_CONFIG_PROVIDER_CLASS_CONFIG).getName())) {
-        throw new ConfigException(String.format("Missing required configuration, either %s must be set, or %s must be set to %s.",
-                                  ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG,
-                                  MonitorConfig.TOPIC_CONFIG_PROVIDER_CLASS_CONFIG,
-                                  KafkaAdminTopicConfigProvider.class.getName()));
-      }
-    }
   }
 
   /**

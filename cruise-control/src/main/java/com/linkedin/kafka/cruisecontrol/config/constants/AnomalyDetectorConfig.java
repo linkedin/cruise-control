@@ -119,16 +119,6 @@ public final class AnomalyDetectorConfig {
       + "are excluded from optimizations during self healing, false otherwise.";
 
   /**
-   * @deprecated
-   * <code>failed.brokers.zk.path</code>
-   */
-  @Deprecated
-  public static final String FAILED_BROKERS_ZK_PATH_CONFIG = "failed.brokers.zk.path";
-  public static final String DEFAULT_FAILED_BROKERS_ZK_PATH = "/CruiseControlBrokerList";
-  public static final String FAILED_BROKERS_ZK_PATH_DOC = "The zk path to store the failed broker list. This is to "
-      + "persist the broker failure time in case Cruise Control failed and restarted when some brokers are down.";
-
-  /**
    * <code>failed.brokers.file.path</code>
    */
   public static final String FAILED_BROKERS_FILE_PATH_CONFIG = "failed.brokers.file.path";
@@ -190,22 +180,13 @@ public final class AnomalyDetectorConfig {
       + "will run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ".";
 
   /**
-   * <code>kafka.broker.failure.detection.enable</code>
-   */
-  public static final String KAFKA_BROKER_FAILURE_DETECTION_ENABLE_CONFIG = "kafka.broker.failure.detection.enable";
-  public static final boolean DEFAULT_KAFKA_BROKER_FAILURE_DETECTION_ENABLE = false;
-  public static final String KAFKA_BROKER_FAILURE_DETECTION_ENABLE_DOC = "Whether to use the Kafka API to detect broker failures "
-      + "instead of ZooKeeper.";
-
-  /**
    * <code>broker.failure.detection.interval.ms</code>
    */
   public static final String BROKER_FAILURE_DETECTION_INTERVAL_MS_CONFIG = "broker.failure.detection.interval.ms";
   public static final Long DEFAULT_BROKER_FAILURE_DETECTION_INTERVAL_MS = null;
   public static final String BROKER_FAILURE_DETECTION_INTERVAL_MS_DOC = "The interval in millisecond that broker failure "
       + "detector will run to detect broker failures. If this interval time is not specified, broker failure detector "
-      + "will run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG + ". This is only used when "
-      + KAFKA_BROKER_FAILURE_DETECTION_ENABLE_CONFIG + " is set to 'true'.";
+      + "will run with interval specified in " + ANOMALY_DETECTION_INTERVAL_MS_CONFIG;
 
   /**
    * <code>broker.failure.detection.backoff.ms</code>
@@ -377,11 +358,6 @@ public final class AnomalyDetectorConfig {
                             DEFAULT_SELF_HEALING_EXCLUDE_RECENT_BROKERS_CONFIG,
                             ConfigDef.Importance.MEDIUM,
                             SELF_HEALING_EXCLUDE_RECENTLY_REMOVED_BROKERS_DOC)
-                    .define(FAILED_BROKERS_ZK_PATH_CONFIG,
-                            ConfigDef.Type.STRING,
-                            DEFAULT_FAILED_BROKERS_ZK_PATH,
-                            ConfigDef.Importance.LOW,
-                            FAILED_BROKERS_ZK_PATH_DOC)
                     .define(FAILED_BROKERS_FILE_PATH_CONFIG,
                             ConfigDef.Type.STRING,
                             DEFAULT_FAILED_BROKERS_FILE_PATH,
@@ -417,11 +393,6 @@ public final class AnomalyDetectorConfig {
                             DEFAULT_DISK_FAILURE_DETECTION_INTERVAL_MS,
                             ConfigDef.Importance.LOW,
                             DISK_FAILURE_DETECTION_INTERVAL_MS_DOC)
-                    .define(KAFKA_BROKER_FAILURE_DETECTION_ENABLE_CONFIG,
-                            ConfigDef.Type.BOOLEAN,
-                            DEFAULT_KAFKA_BROKER_FAILURE_DETECTION_ENABLE,
-                            ConfigDef.Importance.LOW,
-                            KAFKA_BROKER_FAILURE_DETECTION_ENABLE_DOC)
                     .define(BROKER_FAILURE_DETECTION_INTERVAL_MS_CONFIG,
                             ConfigDef.Type.LONG,
                             DEFAULT_BROKER_FAILURE_DETECTION_INTERVAL_MS,

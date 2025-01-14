@@ -5,13 +5,11 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.codahale.metrics.MetricRegistry;
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.config.ZKConfigUtils;
 import com.linkedin.kafka.cruisecontrol.config.constants.AnalyzerConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
@@ -38,7 +36,7 @@ import java.util.HashSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
-import kafka.zk.KafkaZkClient;
+import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.AlterPartitionReassignmentsResult;
@@ -55,7 +53,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
-import org.apache.zookeeper.client.ZKClientConfig;
+import org.apache.kafka.server.config.ZkConfigs;
 import org.easymock.Capture;
 import org.easymock.CaptureType;
 import org.easymock.EasyMock;
@@ -82,8 +80,6 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
   private static final Random RANDOM = new Random(0xDEADBEEF);
   private static final int MOCK_BROKER_ID_TO_DROP = 1;
   private static final long MOCK_CURRENT_TIME = 1596842708000L;
-  private final ZKClientConfig _zkClientConfig = ZKConfigUtils.zkClientConfigFromKafkaConfig(
-          new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
 
   @Override
   public int clusterSize() {
@@ -102,46 +98,46 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
 
   @Test
   public void testReplicaReassignment() throws InterruptedException, OngoingExecutionException {
-    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
-                                                                              "ExecutorTestMetricGroup",
-                                                                              "ReplicaReassignment",
-                                                                              false,
-                                                                              _zkClientConfig);
+    KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(getExecutorProperties());
+    Map<String, Object> adminClientConfigs = KafkaCruiseControlUtils.parseAdminClientConfigs(kafkaCruiseControlConfig);
+    adminClientConfigs.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
+    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(adminClientConfigs);
+
     try {
       List<ExecutionProposal> proposalsToExecute = new ArrayList<>();
       List<ExecutionProposal> proposalsToCheck = new ArrayList<>();
       populateProposals(proposalsToExecute, proposalsToCheck, 0);
-      executeAndVerifyProposals(kafkaZkClient, proposalsToExecute, proposalsToCheck, false, null, false, true);
+      executeAndVerifyProposals(adminClient, proposalsToExecute, proposalsToCheck, false, null, false, true);
     } finally {
-      KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
+      KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
     }
   }
 
   @Test
   public void testReplicaReassignmentProgressWithThrottle() throws InterruptedException, OngoingExecutionException {
-    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
-                                                                              "ExecutorTestMetricGroup",
-                                                                              "ReplicaReassignmentProgressWithThrottle",
-                                                                              false,
-                                                                              _zkClientConfig);
+    KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(getExecutorProperties());
+    Map<String, Object> adminClientConfigs = KafkaCruiseControlUtils.parseAdminClientConfigs(kafkaCruiseControlConfig);
+    adminClientConfigs.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
+    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(adminClientConfigs);
+
     try {
       List<ExecutionProposal> proposalsToExecute = new ArrayList<>();
       List<ExecutionProposal> proposalsToCheck = new ArrayList<>();
       populateProposals(proposalsToExecute, proposalsToCheck, PRODUCE_SIZE_IN_BYTES);
       // Throttle rate is set to the half of the produce size.
-      executeAndVerifyProposals(kafkaZkClient, proposalsToExecute, proposalsToCheck, false, PRODUCE_SIZE_IN_BYTES / 2, true, true);
+      executeAndVerifyProposals(adminClient, proposalsToExecute, proposalsToCheck, false, PRODUCE_SIZE_IN_BYTES / 2, true, true);
     } finally {
-      KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
+      KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
     }
   }
 
   @Test
   public void testBrokerDiesBeforeMovingPartition() throws Exception {
-    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
-                                                                              "ExecutorTestMetricGroup",
-                                                                              "BrokerDiesBeforeMovingPartition",
-                                                                              false,
-                                                                              _zkClientConfig);
+    KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(getExecutorProperties());
+    Map<String, Object> adminClientConfigs = KafkaCruiseControlUtils.parseAdminClientConfigs(kafkaCruiseControlConfig);
+    adminClientConfigs.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
+    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(adminClientConfigs);
+
     try {
       Map<String, TopicDescription> topicDescriptions = createTopics((int) PRODUCE_SIZE_IN_BYTES);
       // initialLeader0 will be alive after killing a broker in cluster.
@@ -161,13 +157,15 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
                                               new ReplicaPlacementInfo(initialLeader1)));
 
       Collection<ExecutionProposal> proposalsToExecute = Arrays.asList(proposal0, proposal1);
-      executeAndVerifyProposals(kafkaZkClient, proposalsToExecute, Collections.emptyList(), true, null, false, false);
+      executeAndVerifyProposals(adminClient, proposalsToExecute, Collections.emptyList(), true, null, false, false);
 
       // We are doing the rollback. -- The leadership should be on the alive broker.
-      assertEquals(initialLeader0, kafkaZkClient.getLeaderForPartition(TP0).get());
-      assertEquals(initialLeader0, kafkaZkClient.getLeaderForPartition(TP1).get());
+      TopicDescription topic0 = adminClient.describeTopics(Collections.singleton(TOPIC0)).topicNameValues().get(TOPIC0).get();
+      TopicDescription topic1 = adminClient.describeTopics(Collections.singleton(TOPIC1)).topicNameValues().get(TOPIC1).get();
+      assertEquals(initialLeader0, topic0.partitions().get(PARTITION).leader().id());
+      assertEquals(initialLeader0, topic1.partitions().get(PARTITION).leader().id());
     } finally {
-      KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
+      KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
     }
   }
 
@@ -748,7 +746,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     return mockUserTaskInfo;
   }
 
-  private void executeAndVerifyProposals(KafkaZkClient kafkaZkClient,
+  private void executeAndVerifyProposals(AdminClient adminClient,
                                          Collection<ExecutionProposal> proposalsToExecute,
                                          Collection<ExecutionProposal> proposalsToCheck,
                                          boolean completeWithError,
@@ -810,17 +808,24 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     for (ExecutionProposal proposal : proposalsToCheck) {
       TopicPartition tp = new TopicPartition(proposal.topic(), proposal.partitionId());
       int expectedReplicationFactor = replicationFactors.get(tp);
+
+      TopicDescription topic = null;
+      try {
+        topic = adminClient.describeTopics(Collections.singleton(tp.topic())).topicNameValues().get(tp.topic()).get();
+      } catch (InterruptedException | ExecutionException e) {
+        fail("Topic description for topic " + tp.topic() + " is not available.");
+      }
       assertEquals("Replication factor for partition " + tp + " should be " + expectedReplicationFactor,
-                   expectedReplicationFactor, kafkaZkClient.getReplicasForPartition(tp).size());
+              expectedReplicationFactor, topic.partitions().get(tp.partition()).replicas().size());
 
       if (proposal.hasReplicaAction()) {
         for (ReplicaPlacementInfo r : proposal.newReplicas()) {
           assertTrue("The partition should have moved for " + tp,
-                     kafkaZkClient.getReplicasForPartition(tp).contains(r.brokerId()));
+                  topic.partitions().get(tp.partition()).replicas().stream().anyMatch(rep -> r.brokerId().equals(rep.id())));
         }
       }
       assertEquals("The leader should have moved for " + tp,
-                   proposal.newLeader().brokerId(), kafkaZkClient.getLeaderForPartition(tp).get());
+                   proposal.newLeader().brokerId().intValue(), topic.partitions().get(tp.partition()).leader().id());
 
     }
     if (isTriggeredByUserRequest) {
@@ -846,7 +851,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     props.setProperty(BrokerCapacityConfigFileResolver.CAPACITY_CONFIG_FILE, capacityConfigFile);
     props.setProperty(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
     props.setProperty(MonitorConfig.METRIC_SAMPLER_CLASS_CONFIG, NoopSampler.class.getName());
-    props.setProperty(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, zookeeper().connectionString());
+    props.setProperty(ZkConfigs.ZK_CONNECT_CONFIG, zookeeper().connectionString());
     props.setProperty(ExecutorConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG, "10");
     props.setProperty(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG, "400");
     props.setProperty(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG, "200");

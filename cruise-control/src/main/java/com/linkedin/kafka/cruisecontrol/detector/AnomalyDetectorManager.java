@@ -109,11 +109,7 @@ public class AnomalyDetectorManager {
     _selfHealingGoals = getSelfHealingGoalNames(config);
     sanityCheckGoals(_selfHealingGoals, false, config);
     _goalViolationDetector = new GoalViolationDetector(_anomalies, _kafkaCruiseControl, dropwizardMetricRegistry);
-    if (config.getBoolean(AnomalyDetectorConfig.KAFKA_BROKER_FAILURE_DETECTION_ENABLE_CONFIG)) {
-      _brokerFailureDetector = new KafkaBrokerFailureDetector(_anomalies, _kafkaCruiseControl);
-    } else {
-      _brokerFailureDetector = new ZKBrokerFailureDetector(_anomalies, _kafkaCruiseControl);
-    }
+    _brokerFailureDetector = new KafkaBrokerFailureDetector(_anomalies, _kafkaCruiseControl);
     _metricAnomalyDetector = new MetricAnomalyDetector(_anomalies, _kafkaCruiseControl);
     _diskFailureDetector = new DiskFailureDetector(_anomalies, _kafkaCruiseControl);
     _topicAnomalyDetector = new TopicAnomalyDetector(_anomalies, _kafkaCruiseControl);

@@ -5,11 +5,11 @@
 package com.linkedin.kafka.cruisecontrol;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCEmbeddedBroker;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
+import org.apache.kafka.server.config.ZkConfigs;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
@@ -29,7 +29,7 @@ public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegra
   private void setupConfig() {
     Properties properties = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     properties.put(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
-    properties.put(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, zkConnect());
+    properties.put(ZkConfigs.ZK_CONNECT_CONFIG, zkConnect());
     properties.put(KafkaSampleStore.PARTITION_METRIC_SAMPLE_STORE_TOPIC_CONFIG, "__partition_samples");
     properties.put(KafkaSampleStore.BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG, "__broker_samples");
     properties.putAll(withConfigs());
