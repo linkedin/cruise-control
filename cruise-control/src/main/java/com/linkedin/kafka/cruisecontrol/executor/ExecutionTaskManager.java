@@ -126,9 +126,7 @@ public class ExecutionTaskManager {
    * check privilege state with the new broker set.
    *
    * @param proposals the execution proposals to execute.
-   * @param brokersToSkipConcurrencyCheck Brokers that do not need to be throttled when moving the partitions. Note that
-   *                                      there would still be some throttling based on maxNumClusterMovementConcurrency
-   *                                      to ensure that default ZooKeeper zNode file size limit is not exceeded.
+   * @param brokersToSkipConcurrencyCheck Brokers that do not need to be throttled when moving the partitions.
    * @param strategyOptions Strategy options to be used during application of a replica movement strategy.
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    */
