@@ -29,13 +29,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.LogDirDescription;
+import org.apache.kafka.clients.admin.ReplicaInfo;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.protocol.Errors;
-import org.apache.kafka.common.requests.DescribeLogDirsResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -370,15 +370,15 @@ public final class MonitorUtils {
                                                                            AdminClient adminClient,
                                                                            KafkaCruiseControlConfig config) {
     Map<TopicPartition, Map<Integer, String>> replicaPlacementInfo = new HashMap<>();
-    Map<Integer, KafkaFuture<Map<String, DescribeLogDirsResponse.LogDirInfo>>> logDirsByBrokerId =
-        adminClient.describeLogDirs(cluster.nodes().stream().mapToInt(Node::id).boxed().collect(Collectors.toList())).values();
-    for (Map.Entry<Integer, KafkaFuture<Map<String, DescribeLogDirsResponse.LogDirInfo>>> entry : logDirsByBrokerId.entrySet()) {
+    Map<Integer, KafkaFuture<Map<String, LogDirDescription>>> logDirsByBrokerId =
+        adminClient.describeLogDirs(cluster.nodes().stream().mapToInt(Node::id).boxed().collect(Collectors.toList())).descriptions();
+    for (Map.Entry<Integer, KafkaFuture<Map<String, LogDirDescription>>> entry : logDirsByBrokerId.entrySet()) {
       Integer brokerId = entry.getKey();
       try {
         entry.getValue().get(config.getLong(LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG), TimeUnit.MILLISECONDS).forEach((logdir, info) -> {
-          if (info.error == Errors.NONE) {
-            for (Map.Entry<TopicPartition, DescribeLogDirsResponse.ReplicaInfo> e : info.replicaInfos.entrySet()) {
-              if (!e.getValue().isFuture) {
+          if (info.error() == null) {
+            for (Map.Entry<TopicPartition, ReplicaInfo> e : info.replicaInfos().entrySet()) {
+              if (!e.getValue().isFuture()) {
                 replicaPlacementInfo.putIfAbsent(e.getKey(), new HashMap<>());
                 replicaPlacementInfo.get(e.getKey()).put(brokerId, logdir);
               } else {
