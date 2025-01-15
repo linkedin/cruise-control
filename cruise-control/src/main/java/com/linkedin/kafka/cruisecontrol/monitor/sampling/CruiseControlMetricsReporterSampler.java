@@ -186,7 +186,7 @@ public class CruiseControlMetricsReporterSampler extends AbstractMetricSampler {
     _currentPartitionAssignment = Collections.emptySet();
 
     LOG.info("Waiting for metrics reporter topic [{}] to be available in the Kafka cluster.", _metricReporterTopic);
-    if (!CruiseControlMetricsUtils.retry(() -> !this.isMetricsTopicExists(), 5, 1, metricTopicAssertAttempts)) {
+    if (!CruiseControlMetricsUtils.retry(() -> !this.isMetricsTopicExists(), 2000, 2, metricTopicAssertAttempts, 30_000)) {
         throw new IllegalStateException("Cruise Control cannot find the metrics reporter topic that matches [" + _metricReporterTopic
                                         + "] in the Kafka cluster.");
     }
