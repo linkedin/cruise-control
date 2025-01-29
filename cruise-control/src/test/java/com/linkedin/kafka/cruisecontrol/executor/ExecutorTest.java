@@ -35,7 +35,9 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -53,7 +55,6 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
-import org.apache.kafka.server.config.ZkConfigs;
 import org.easymock.Capture;
 import org.easymock.CaptureType;
 import org.easymock.EasyMock;
@@ -144,7 +145,11 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
       int initialLeader0 = topicDescriptions.get(TOPIC0).partitions().get(0).leader().id();
       int initialLeader1 = topicDescriptions.get(TOPIC1).partitions().get(0).leader().id();
       // Kill broker before starting the reassignment.
-      _brokers.get(initialLeader0 == 0 ? 1 : 0).shutdown();
+      int brokerId = initialLeader0 == 0 ? 1 : 0;
+      _brokers.get(brokerId).shutdown();
+      // Wait until broker properly shuts down
+      waitUntilBrokerShutsDown(adminClient, brokerId);
+
       ExecutionProposal proposal0 =
           new ExecutionProposal(TP0, PRODUCE_SIZE_IN_BYTES, new ReplicaPlacementInfo(initialLeader0),
                                 Collections.singletonList(new ReplicaPlacementInfo(initialLeader0)),
@@ -171,6 +176,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
 
   @Test
   public void testSubmitReplicaReassignmentTasksWithDeadTaskAndNoReassignmentInProgress() throws InterruptedException {
+    createTopics(0);
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
         AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
 
@@ -264,6 +270,9 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
 
     // Case 4: Handle the scenario, where we tried to elect the preferred leader but it is offline.
     _brokers.get(0).shutdown();
+    // Allow broker to shut down properly
+    waitUntilBrokerShutsDown(adminClient, _brokers.get(0).id());
+
     task = new ExecutionTask(0,
                              new ExecutionProposal(TP0, 0, oldLeader, replicas, replicas),
                              ExecutionTask.TaskType.LEADER_ACTION,
@@ -851,7 +860,6 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     props.setProperty(BrokerCapacityConfigFileResolver.CAPACITY_CONFIG_FILE, capacityConfigFile);
     props.setProperty(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
     props.setProperty(MonitorConfig.METRIC_SAMPLER_CLASS_CONFIG, NoopSampler.class.getName());
-    props.setProperty(ZkConfigs.ZK_CONNECT_CONFIG, zookeeper().connectionString());
     props.setProperty(ExecutorConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG, "10");
     props.setProperty(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG, "400");
     props.setProperty(ExecutorConfig.MIN_EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG, "200");
@@ -860,6 +868,22 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
     props.setProperty(ExecutorConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG, Long.toString(REMOVAL_HISTORY_RETENTION_TIME_MS));
     props.setProperty(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS_CONFIG, Long.toString(LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS));
     props.setProperty(ExecutorConfig.LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS_CONFIG, Long.toString(LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS));
+    props.setProperty(ExecutorConfig.LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG, "120000");
     return props;
+  }
+
+  private void waitUntilBrokerShutsDown(AdminClient adminClient, int brokerId) {
+    waitUntilTrue(() -> {
+      Set<String> brokerIds;
+      try {
+        brokerIds = adminClient.describeCluster().nodes().get().stream()
+                .map(node -> String.valueOf(node.id()))
+                .collect(Collectors.toSet());
+      } catch (InterruptedException | ExecutionException e) {
+        throw new RuntimeException(e);
+      }
+      // Verify the brokerId is no longer in the list
+      return !brokerIds.contains(String.valueOf(brokerId));
+    }, "Broker did not shut down properly", TimeUnit.SECONDS.toMillis(60), TimeUnit.SECONDS.toMillis(5));
   }
 }

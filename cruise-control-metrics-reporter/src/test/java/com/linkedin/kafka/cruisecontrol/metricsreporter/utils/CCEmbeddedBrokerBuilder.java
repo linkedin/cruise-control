@@ -13,11 +13,14 @@ import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.coordinator.group.GroupCoordinatorConfig;
 import org.apache.kafka.network.SocketServerConfigs;
+import org.apache.kafka.raft.QuorumConfig;
+import org.apache.kafka.server.config.KRaftConfigs;
 import org.apache.kafka.server.config.ReplicationConfigs;
 import org.apache.kafka.server.config.ServerConfigs;
 import org.apache.kafka.server.config.ServerLogConfigs;
-import org.apache.kafka.server.config.ZkConfigs;
 import org.apache.kafka.storage.internals.log.CleanerConfig;
+
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaRaftServer.CLUSTER_ID_CONFIG;
 
 
 public class CCEmbeddedBrokerBuilder {
@@ -25,9 +28,11 @@ public class CCEmbeddedBrokerBuilder {
 
   //mandatory fields
   private int _nodeId = BROKER_ID_COUNTER.incrementAndGet();
-  private String _zkConnect;
+  private String _kraftConnect;
+  private String _clusterId;
   //storage config
   private File _logDirectory;
+  private File _metadataLogDirectory;
   //networking config
   private int _plaintextPort = -1;
   private int _sslPort = -1;
@@ -58,24 +63,41 @@ public class CCEmbeddedBrokerBuilder {
   }
 
   /**
-   * Set Zk connect.
-   *
-   * @param zkConnect Zk connect String.
+   * Set the KRaft quorum voters string
+   * @param kraftConnect quorum voters string
    * @return This.
    */
-  public CCEmbeddedBrokerBuilder zkConnect(String zkConnect) {
-    _zkConnect = zkConnect;
+  public CCEmbeddedBrokerBuilder kraftConnect(String kraftConnect) {
+    _kraftConnect = kraftConnect;
     return this;
   }
 
   /**
-   * Set Zk connect.
-   *
-   * @param zk Embedded Zookeeper.
+   * Set the KRaft quorum voters string
+   * @param kraft {@link CCEmbeddedBrokerBuilder} instance
    * @return This.
    */
-  public CCEmbeddedBrokerBuilder zkConnect(CCEmbeddedZookeeper zk) {
-    return zkConnect(zk.connectionString());
+  public CCEmbeddedBrokerBuilder kraftConnect(CCEmbeddedKRaftController kraft) {
+    return kraftConnect(kraft.quorumVoters());
+  }
+
+  /**
+   * Set the Kafka cluster ID
+   * @param clusterId the ID of the Kafka cluster
+   * @return This.
+   */
+  public CCEmbeddedBrokerBuilder clusterId(String clusterId) {
+    _clusterId = clusterId;
+    return this;
+  }
+
+  /**
+   * Set the Kafka cluster ID
+   * @param kraft {@link CCEmbeddedBrokerBuilder} instance
+   * @return This.
+   */
+  public CCEmbeddedBrokerBuilder clusterId(CCEmbeddedKRaftController kraft) {
+    return clusterId(kraft.clusterId());
   }
 
   /**
@@ -232,6 +254,9 @@ public class CCEmbeddedBrokerBuilder {
     if (_logDirectory == null) {
       _logDirectory = CCKafkaTestUtils.newTempDir();
     }
+    if (_metadataLogDirectory == null) {
+      _metadataLogDirectory = CCKafkaTestUtils.newTempDir();
+    }
   }
 
   private void validate() throws IllegalArgumentException {
@@ -241,8 +266,8 @@ public class CCEmbeddedBrokerBuilder {
     if (_logDirectory == null) {
       throw new IllegalArgumentException("log directory must be specified");
     }
-    if (_zkConnect == null) {
-      throw new IllegalArgumentException("zkConnect must be specified");
+    if (_metadataLogDirectory == null) {
+      throw new IllegalArgumentException("metadata log directory must be specified");
     }
   }
 
@@ -262,10 +287,15 @@ public class CCEmbeddedBrokerBuilder {
     if (_sslPort >= 0) {
       csvJoiner.add(SecurityProtocol.SSL.name + "://localhost:" + _sslPort);
     }
-    props.put(ServerConfigs.BROKER_ID_CONFIG, Integer.toString(_nodeId));
+    props.put(KRaftConfigs.PROCESS_ROLES_CONFIG, "broker");
+    props.put(KRaftConfigs.NODE_ID_CONFIG, Integer.toString(_nodeId));
+    props.put(QuorumConfig.QUORUM_VOTERS_CONFIG, _kraftConnect);
+    props.put(CLUSTER_ID_CONFIG, _clusterId);
+    props.put(KRaftConfigs.CONTROLLER_LISTENER_NAMES_CONFIG, "CONTROLLER");
+    props.put(SocketServerConfigs.LISTENER_SECURITY_PROTOCOL_MAP_CONFIG, "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,SSL:SSL");
     props.put(SocketServerConfigs.LISTENERS_CONFIG, csvJoiner.toString());
     props.put(ServerLogConfigs.LOG_DIR_CONFIG, _logDirectory.getAbsolutePath());
-    props.put(ZkConfigs.ZK_CONNECT_CONFIG, _zkConnect);
+    props.put(KRaftConfigs.METADATA_LOG_DIR_CONFIG, _metadataLogDirectory.getAbsolutePath());
     props.put(ReplicationConfigs.REPLICA_SOCKET_TIMEOUT_MS_CONFIG, Long.toString(_socketTimeoutMs));
     props.put(ReplicationConfigs.CONTROLLER_SOCKET_TIMEOUT_MS_CONFIG, Long.toString(_socketTimeoutMs));
     props.put(ServerConfigs.CONTROLLED_SHUTDOWN_ENABLE_CONFIG, Boolean.toString(_enableControlledShutdown));

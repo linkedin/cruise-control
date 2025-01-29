@@ -480,9 +480,10 @@ project(':cruise-control-metrics-reporter') {
     testImplementation "org.apache.kafka:kafka-clients:$kafkaVersion:test"
     testImplementation "org.apache.kafka:kafka-server-common:$kafkaVersion"
     testImplementation "org.apache.kafka:kafka-group-coordinator:$kafkaVersion"
+    testImplementation "org.apache.kafka:kafka-metadata:$kafkaVersion"
+    testImplementation "org.apache.kafka:kafka-raft:$kafkaVersion"
     testImplementation "org.apache.kafka:kafka-storage:$kafkaVersion"
     testImplementation 'commons-io:commons-io:2.11.0'
-    testImplementation "org.apache.zookeeper:zookeeper:${zookeeperVersion}"
     testOutput sourceSets.test.output
   }
 
