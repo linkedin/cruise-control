@@ -106,7 +106,7 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
       assertTrue(failedBrokerListString.isEmpty());
       // Kill the 2nd broker
       killBroker(1);
-      while (anomalies.size() == 1 && System.currentTimeMillis() < start + 30000) {
+      while (anomalies.size() == 1 && System.currentTimeMillis() < start + 60000) {
         // wait for the anomalies to be drained.
       }
       detector.run();
@@ -130,6 +130,10 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
       long anomalyTime = mockTime.milliseconds();
       killBroker(brokerId);
       // Start detection.
+      long start = System.currentTimeMillis();
+      while (detector.failedBrokers().isEmpty() && System.currentTimeMillis() < start + 15000) {
+        // wait for the anomalies to be drained.
+      }
       detector.run();
       assertEquals(Collections.singletonMap(brokerId, 100L), detector.failedBrokers());
       failedBrokerListString = detector.loadPersistedFailedBrokerList();
@@ -155,6 +159,10 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
       long anomalyTime = mockTime.milliseconds();
       // kill a broker and ensure the anomaly is detected
       killBroker(brokerId);
+      long start = System.currentTimeMillis();
+      while (detector.failedBrokers().isEmpty() && System.currentTimeMillis() < start + 15000) {
+        // wait for the anomalies to be drained.
+      }
       detector.run();
       assertEquals(Collections.singletonMap(brokerId, anomalyTime), detector.failedBrokers());
       // shutdown, advance the clock and create a new detector.

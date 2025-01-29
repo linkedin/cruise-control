@@ -5,51 +5,49 @@
 package com.linkedin.kafka.cruisecontrol.metricsreporter.utils;
 
 import java.io.File;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
-import kafka.metrics.KafkaMetricsReporter;
 import kafka.server.KafkaConfig;
-import kafka.server.KafkaServer;
 import org.apache.commons.io.FileUtils;
 import org.apache.kafka.common.network.ListenerName;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.network.SocketServerConfigs;
-import org.apache.kafka.server.config.ServerConfigs;
+import org.apache.kafka.server.config.KRaftConfigs;
 import org.apache.kafka.server.config.ServerLogConfigs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.Option;
-import scala.collection.Seq;
-import scala.collection.mutable.ArrayBuffer;
+
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaRaftServer.CLUSTER_ID_CONFIG;
 
 public class CCEmbeddedBroker implements AutoCloseable {
   private static final Logger LOG = LoggerFactory.getLogger(CCEmbeddedBroker.class);
   private final Map<SecurityProtocol, Integer> _ports;
   private final Map<SecurityProtocol, String> _hosts;
-  private final KafkaServer _kafkaServer;
+  private final CCKafkaRaftServer _kafkaServer;
   private int _id;
-  private File _logDir;
+  private final List<File> _logDirs;
+  private File _metadataLogDir;
 
   public CCEmbeddedBroker(Map<Object, Object> config) {
     _ports = new HashMap<>();
     _hosts = new HashMap<>();
+    _logDirs = new ArrayList<>();
 
     try {
       // Also validates the config
       KafkaConfig kafkaConfig = new KafkaConfig(config, true);
       parseConfigs(config);
 
-      _kafkaServer = createKafkaServer(kafkaConfig);
+      _kafkaServer = new CCKafkaRaftServer(kafkaConfig, config.get(CLUSTER_ID_CONFIG).toString(), Time.SYSTEM);
 
       startup();
       _ports.replaceAll((securityProtocol, port) -> {
         try {
-          return _kafkaServer.boundPort(ListenerName.forSecurityProtocol(securityProtocol));
+          return _kafkaServer.boundBrokerPort(ListenerName.forSecurityProtocol(securityProtocol));
         } catch (Exception e) {
           throw new IllegalStateException(e);
         }
@@ -59,46 +57,10 @@ public class CCEmbeddedBroker implements AutoCloseable {
     }
   }
 
-  /**
-   * Creates the {@link KafkaServer} instance using the appropriate constructor for the version of Kafka on the classpath.
-   * It will attempt to use the 2.8+ version first and then fall back to the 2.5+ version. If neither work, a
-   * {@link NoSuchElementException} will be thrown.
-   *
-   * @param kafkaConfig The {@link KafkaConfig} instance to be used to create the returned {@link KafkaServer} instance.
-   * @return A {@link KafkaServer} instance configured with the supplied {@link KafkaConfig}.
-   * @throws ClassNotFoundException If a version of {@link KafkaServer} cannot be found on the classpath.
-   */
-  private static KafkaServer createKafkaServer(KafkaConfig kafkaConfig) throws ClassNotFoundException {
-    // The KafkaServer constructor changed in 2.8, so we need to figure out which one we are using and invoke it with the correct parameters
-    KafkaServer kafkaServer = null;
-    Class<?> kafkaServerClass = Class.forName(KafkaServer.class.getName());
-
-    try {
-      Constructor<?> kafka28PlusCon = kafkaServerClass.getConstructor(KafkaConfig.class, Time.class, Option.class, boolean.class);
-      kafkaServer = (KafkaServer) kafka28PlusCon.newInstance(kafkaConfig, Time.SYSTEM, Option.empty(), false);
-    } catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
-      LOG.debug("Unable to find Kafka 2.8+ constructor for KafkaSever class", e);
-    }
-
-    if (kafkaServer == null) {
-      try {
-        Constructor<?> kafka25PlusCon = kafkaServerClass.getConstructor(KafkaConfig.class, Time.class, Option.class, Seq.class);
-        kafkaServer = (KafkaServer) kafka25PlusCon.newInstance(kafkaConfig, Time.SYSTEM, Option.empty(), new ArrayBuffer<KafkaMetricsReporter>());
-      } catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
-        LOG.debug("Unable to find Kafka 2.5+ constructor for KafkaSever class", e);
-      }
-    }
-
-    if (kafkaServer != null) {
-      return kafkaServer;
-    } else {
-      throw new NoSuchElementException("Unable to find viable constructor fo the KafkaServer class");
-    }
-  }
-
   private void parseConfigs(Map<Object, Object> config) {
-    _id = Integer.parseInt((String) config.get(ServerConfigs.BROKER_ID_CONFIG));
-    _logDir = new File((String) config.get(ServerLogConfigs.LOG_DIR_CONFIG));
+    readLogDirs(config);
+    _id = Integer.parseInt((String) config.get(KRaftConfigs.NODE_ID_CONFIG));
+    _metadataLogDir = new File((String) config.get(KRaftConfigs.METADATA_LOG_DIR_CONFIG));
 
     // Bind addresses
     String listenersString = (String) config.get(SocketServerConfigs.LISTENERS_CONFIG);
@@ -112,6 +74,14 @@ public class CCEmbeddedBroker implements AutoCloseable {
       } catch (Exception e) {
         throw new IllegalStateException(e);
       }
+    }
+  }
+
+  private void readLogDirs(Map<Object, Object> config) {
+    String logdir = (String) config.get(ServerLogConfigs.LOG_DIR_CONFIG);
+    String[] paths = logdir.split(",");
+    for (String path : paths) {
+      _logDirs.add(new File(path));
     }
   }
 
@@ -154,10 +124,9 @@ public class CCEmbeddedBroker implements AutoCloseable {
   public void close() {
     CCKafkaTestUtils.quietly(this::shutdown);
     CCKafkaTestUtils.quietly(this::awaitShutdown);
-    CCKafkaTestUtils.quietly(() -> FileUtils.forceDelete(_logDir));
-  }
-
-  public static CCEmbeddedBrokerBuilder newServer() {
-    return new CCEmbeddedBrokerBuilder();
+    CCKafkaTestUtils.quietly(() -> FileUtils.forceDelete(_metadataLogDir));
+    for (File logDir : _logDirs) {
+      CCKafkaTestUtils.quietly(() -> FileUtils.forceDelete(logDir));
+    }
   }
 }
