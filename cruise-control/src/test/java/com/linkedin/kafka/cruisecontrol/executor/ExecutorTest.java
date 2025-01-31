@@ -54,7 +54,6 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.utils.MockTime;
-import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
 import org.apache.zookeeper.client.ZKClientConfig;
 import org.easymock.Capture;
@@ -780,7 +779,7 @@ public class ExecutorTest extends CCKafkaClientsIntegrationTestHarness {
       EasyMock.replay(mockUserTaskInfo, mockExecutorNotifier, mockLoadMonitor, mockAnomalyDetectorManager);
     }
     MetricRegistry metricRegistry = new MetricRegistry();
-    Executor executor = new Executor(configs, new SystemTime(), metricRegistry, null, mockExecutorNotifier,
+    Executor executor = new Executor(configs, Time.SYSTEM, metricRegistry, null, mockExecutorNotifier,
                                      mockAnomalyDetectorManager);
     executor.setUserTaskManager(mockUserTaskManager);
     Map<TopicPartition, Integer> replicationFactors = new HashMap<>();
