@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCEmbeddedBroker;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaIntegrationTestHarness;
@@ -29,7 +28,6 @@ public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegra
   private void setupConfig() {
     Properties properties = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     properties.put(MonitorConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
-    properties.put(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, zkConnect());
     properties.put(KafkaSampleStore.PARTITION_METRIC_SAMPLE_STORE_TOPIC_CONFIG, "__partition_samples");
     properties.put(KafkaSampleStore.BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG, "__broker_samples");
     properties.putAll(withConfigs());
@@ -37,7 +35,7 @@ public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegra
   }
 
   /**
-   * Starts up an embedded Cruise Control environment with Zookeeper, Kafka brokers and a Cruise Control instance.
+   * Starts up an embedded Cruise Control environment with KRaft, Kafka brokers and a Cruise Control instance.
    */
   public void start() throws Exception {
     super.setUp();
@@ -48,7 +46,7 @@ public abstract class CruiseControlIntegrationTestHarness extends CCKafkaIntegra
   }
 
   /**
-   * Shuts down the Cruise Control instance, Kafka brokers and the Zookeeper instance.
+   * Shuts down the Cruise Control instance, Kafka brokers and KRaft controller instance.
    */
   public void stop() {
     if (_app != null) {

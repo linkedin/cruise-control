@@ -14,7 +14,6 @@ import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.config.constants.ExecutorConfig;
 import com.linkedin.kafka.cruisecontrol.config.constants.MonitorConfig;
 import com.linkedin.kafka.cruisecontrol.exception.BrokerCapacityResolutionException;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -567,7 +566,6 @@ public class LoadMonitorTest {
     props.put(TopicConfig.CLEANUP_POLICY_CONFIG, DEFAULT_CLEANUP_POLICY);
     props.put(MonitorConfig.SAMPLE_STORE_CLASS_CONFIG, NoopSampleStore.class.getName());
     props.put(MonitorConfig.SAMPLE_PARTITION_METRIC_STORE_ON_EXECUTION_CLASS_CONFIG, NoopSampleStore.class.getName());
-    props.put(ExecutorConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG, "false");
     props.put(MonitorConfig.MONITOR_STATE_UPDATE_INTERVAL_MS_CONFIG, MONITOR_STATE_UPDATE_INTERVAL_MS);
     if (isClusterJBOD) {
       String capacityConfigFileJBOD =
