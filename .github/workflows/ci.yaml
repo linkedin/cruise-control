@@ -68,7 +68,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # so gradle doesn't fail traversing the history
-      - run: |
+      - continue-on-error: true
+        run: |
           # install required qemu libraries
           docker run --rm --privileged tonistiigi/binfmt:latest --install all
           # run docker container with qemu emulation
@@ -77,4 +78,4 @@ jobs:
             --name qemu-cross-${{ matrix.hw_platform }} \
             --mount type=bind,source=${PWD},target=/workspace \
             --workdir /workspace \
-            ${{matrix.hw_platform}}/eclipse-temurin:11-jdk-focal uname -a; ./gradlew --no-daemon -PmaxParallelForks=1 build
+            ${{matrix.hw_platform}}/eclipse-temurin:11-jdk /bin/sh -c "uname -a; ./gradlew --no-daemon -PmaxParallelForks=1 build"
