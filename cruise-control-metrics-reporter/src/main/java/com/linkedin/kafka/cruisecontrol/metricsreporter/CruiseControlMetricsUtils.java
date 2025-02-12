@@ -163,10 +163,11 @@ public final class CruiseControlMetricsUtils {
    * @param scaleMs the scale for computing the delay
    * @param base the base for computing the delay
    * @param maxAttempts the max number of attempts on calling the function
+   * @param maxSleepMs the maximum sleep time between retries
    * @return {@code false} if the function requires a retry, but it cannot be retried, because the max attempts have been exceeded.
    * {@code true} if the function stopped requiring a retry before exceeding the max attempts.
    */
-  public static boolean retry(Supplier<Boolean> function, long scaleMs, int base, int maxAttempts) {
+  public static boolean retry(Supplier<Boolean> function, long scaleMs, int base, int maxAttempts, int maxSleepMs) {
     if (maxAttempts > 0) {
       int attempts = 0;
       long timeToSleep = scaleMs;
@@ -179,6 +180,9 @@ public final class CruiseControlMetricsUtils {
               return false;
             }
             timeToSleep *= base;
+            if (maxSleepMs > 0 && timeToSleep > maxSleepMs) {
+              timeToSleep = maxSleepMs;
+            }
             Thread.sleep(timeToSleep);
           } catch (InterruptedException ignored) {
 
@@ -200,7 +204,21 @@ public final class CruiseControlMetricsUtils {
    * {@code true} if the function stopped requiring a retry before exceeding the max attempts.
    */
   public static boolean retry(Supplier<Boolean> function, int maxAttempts) {
-    return retry(function, DEFAULT_RETRY_BACKOFF_SCALE_MS, DEFAULT_RETRY_BACKOFF_BASE, maxAttempts);
+    return retry(function, DEFAULT_RETRY_BACKOFF_SCALE_MS, DEFAULT_RETRY_BACKOFF_BASE, maxAttempts, -1);
+  }
+
+  /**
+   * Retries the {@code Supplier<Boolean>} function while it returns {@code true} and for the specified max number of attempts.
+   * It uses -1 as maxSleepMs, to not limit the sleep time between retries.
+   * @param function the code to call and retry if needed
+   * @param scaleMs the scale for computing the delay
+   * @param base the base for computing the delay
+   * @param maxAttempts the max number of attempts on calling the function
+   * @return {@code false} if the function requires a retry, but it cannot be retried, because the max attempts have been exceeded.
+   * {@code true} if the function stopped requiring a retry before exceeding the max attempts.
+   */
+  public static boolean retry(Supplier<Boolean> function, long scaleMs, int base, int maxAttempts) {
+    return retry(function, scaleMs, base, maxAttempts, -1);
   }
 
   /**
