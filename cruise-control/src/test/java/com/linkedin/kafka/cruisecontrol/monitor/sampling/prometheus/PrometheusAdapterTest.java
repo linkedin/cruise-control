@@ -11,9 +11,9 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.http.HttpEntity;
-import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
+import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.localserver.LocalServerTestBase;
 import org.apache.http.protocol.HttpContext;
@@ -44,9 +44,9 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
             }
         });
 
-        HttpHost httpHost = this.start();
+        URIBuilder httpHost = new URIBuilder(this.start().toURI());
         PrometheusAdapter prometheusAdapter
-            = new PrometheusAdapter(this.httpclient, httpHost, SAMPLING_INTERVAL_MS);
+            = new PrometheusAdapter(this.httpclient, httpHost, SAMPLING_INTERVAL_MS, null);
         final List<PrometheusQueryResult> prometheusQueryResults = prometheusAdapter.queryMetric(
             "kafka_server_BrokerTopicMetrics_OneMinuteRate{name=\"BytesOutPerSec\",topic=\"\"}",
             START_TIME_MS, END_TIME_MS);
@@ -136,9 +136,9 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
             }
         });
 
-        HttpHost httpHost = this.start();
+        URIBuilder httpHost = new URIBuilder(this.start().toURI());
         PrometheusAdapter prometheusAdapter
-            = new PrometheusAdapter(this.httpclient, httpHost, SAMPLING_INTERVAL_MS);
+            = new PrometheusAdapter(this.httpclient, httpHost, SAMPLING_INTERVAL_MS, null);
 
         prometheusAdapter.queryMetric(
             "kafka_server_BrokerTopicMetrics_OneMinuteRate{name=\"BytesOutPerSec\",topic=\"\"}",
@@ -156,9 +156,9 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
             }
         });
 
-        HttpHost httpHost = this.start();
+        URIBuilder httpHost = new URIBuilder(this.start().toURI());
         PrometheusAdapter prometheusAdapter
-            = new PrometheusAdapter(this.httpclient, httpHost, SAMPLING_INTERVAL_MS);
+            = new PrometheusAdapter(this.httpclient, httpHost, SAMPLING_INTERVAL_MS, null);
 
         prometheusAdapter.queryMetric(
             "kafka_server_BrokerTopicMetrics_OneMinuteRate{name=\"BytesOutPerSec\",topic=\"\"}",
@@ -176,9 +176,9 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
             }
         });
 
-        HttpHost httpHost = this.start();
+        URIBuilder httpHost = new URIBuilder(this.start().toURI());
         PrometheusAdapter prometheusAdapter
-            = new PrometheusAdapter(this.httpclient, httpHost, SAMPLING_INTERVAL_MS);
+            = new PrometheusAdapter(this.httpclient, httpHost, SAMPLING_INTERVAL_MS, null);
 
         prometheusAdapter.queryMetric(
             "kafka_server_BrokerTopicMetrics_OneMinuteRate{name=\"BytesOutPerSec\",topic=\"\"}",
@@ -196,9 +196,9 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
             }
         });
 
-        HttpHost httpHost = this.start();
+        URIBuilder httpHost = new URIBuilder(this.start().toURI());
         PrometheusAdapter prometheusAdapter
-            = new PrometheusAdapter(this.httpclient, httpHost, SAMPLING_INTERVAL_MS);
+            = new PrometheusAdapter(this.httpclient, httpHost, SAMPLING_INTERVAL_MS, null);
 
         prometheusAdapter.queryMetric(
             "kafka_server_BrokerTopicMetrics_OneMinuteRate{name=\"BytesOutPerSec\",topic=\"\"}",
@@ -216,9 +216,9 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
             }
         });
 
-        HttpHost httpHost = this.start();
+        URIBuilder httpHost = new URIBuilder(this.start().toURI());
         PrometheusAdapter prometheusAdapter
-            = new PrometheusAdapter(this.httpclient, httpHost, SAMPLING_INTERVAL_MS);
+            = new PrometheusAdapter(this.httpclient, httpHost, SAMPLING_INTERVAL_MS, null);
 
         prometheusAdapter.queryMetric(
             "kafka_server_BrokerTopicMetrics_OneMinuteRate{name=\"BytesOutPerSec\",topic=\"\"}",
@@ -236,9 +236,9 @@ public class PrometheusAdapterTest extends LocalServerTestBase {
             }
         });
 
-        HttpHost httpHost = this.start();
+        URIBuilder httpHost = new URIBuilder(this.start().toURI());
         PrometheusAdapter prometheusAdapter
-            = new PrometheusAdapter(this.httpclient, httpHost, SAMPLING_INTERVAL_MS);
+            = new PrometheusAdapter(this.httpclient, httpHost, SAMPLING_INTERVAL_MS, null);
 
         prometheusAdapter.queryMetric(
             "kafka_server_BrokerTopicMetrics_OneMinuteRate{name=\"BytesOutPerSec\",topic=\"\"}",
