@@ -16,7 +16,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,7 +80,7 @@ public class SelfHealingNotifier implements AnomalyNotifier {
   protected final Map<Boolean, Map<Integer, Long>> _latestFailedBrokersByAutoFixTriggered;
 
   public SelfHealingNotifier() {
-    this(new SystemTime());
+    this(Time.SYSTEM);
   }
 
   /**

@@ -21,7 +21,7 @@ import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.utils.SystemTime;
+import org.apache.kafka.common.utils.Time;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -65,7 +65,7 @@ public class ExecutionTaskManagerTest {
                    Integer.toString(MOCK_DEFAULT_CONCURRENCY.get(ConcurrencyType.LEADERSHIP_BROKER)));
     properties.put(ExecutorConfig.NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG,
                    Integer.toString(MOCK_DEFAULT_CONCURRENCY.get(ConcurrencyType.INTRA_BROKER_REPLICA)));
-    taskManager = new ExecutionTaskManager(null, new MetricRegistry(), new SystemTime(),
+    taskManager = new ExecutionTaskManager(null, new MetricRegistry(), Time.SYSTEM,
                                            new KafkaCruiseControlConfig(properties));
   }
 

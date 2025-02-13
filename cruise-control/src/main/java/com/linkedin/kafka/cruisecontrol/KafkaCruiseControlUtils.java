@@ -53,7 +53,7 @@ import org.apache.kafka.common.requests.AbstractResponse;
 import org.apache.kafka.common.requests.MetadataResponse;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.serialization.Deserializer;
-import org.apache.kafka.common.utils.SystemTime;
+import org.apache.kafka.common.utils.Time;
 import org.apache.zookeeper.client.ZKClientConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -548,7 +548,7 @@ public final class KafkaCruiseControlUtils {
               org.apache.kafka.common.utils.Time.class, String.class, ZKClientConfig.class,
               String.class, String.class, boolean.class, boolean.class);
       kafkaZkClient = (KafkaZkClient) kafka38PlusMet.invoke(null, connectString, zkSecurityEnabled, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT,
-              Integer.MAX_VALUE, new SystemTime(), zkClientName, zkClientConfig, metricGroup,
+              Integer.MAX_VALUE, Time.SYSTEM, zkClientName, zkClientConfig, metricGroup,
               metricType, false, true);
     } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
       LOG.debug("Unable to find apply method in KafkaZkClient for Kafka 3.8+.", e);
@@ -560,7 +560,7 @@ public final class KafkaCruiseControlUtils {
                 org.apache.kafka.common.utils.Time.class, String.class, ZKClientConfig.class,
                 String.class, String.class, boolean.class);
         kafkaZkClient = (KafkaZkClient) kafka31PlusMet.invoke(null, connectString, zkSecurityEnabled, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT,
-                Integer.MAX_VALUE, new SystemTime(), zkClientName, zkClientConfig, metricGroup,
+                Integer.MAX_VALUE, Time.SYSTEM, zkClientName, zkClientConfig, metricGroup,
                 metricType, false);
       } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
         LOG.debug("Unable to find apply method in KafkaZkClient for Kafka 3.1+.", e);
@@ -574,7 +574,7 @@ public final class KafkaCruiseControlUtils {
                                                                org.apache.kafka.common.utils.Time.class, String.class, String.class, Option.class,
                                                                Option.class);
         kafkaZkClient = (KafkaZkClient) kafka31MinusMet.invoke(null, connectString, zkSecurityEnabled, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT,
-                                                               Integer.MAX_VALUE, new SystemTime(), metricGroup, metricType, zkClientName, zkConfig);
+                                                               Integer.MAX_VALUE, Time.SYSTEM, metricGroup, metricType, zkClientName, zkConfig);
       } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
         LOG.debug("Unable to find apply method in KafkaZkClient for Kafka 3.1-.", e);
       }
