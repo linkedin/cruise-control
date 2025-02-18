@@ -120,12 +120,11 @@ public class ReplicaCapacityViolationIntegrationTest extends CruiseControlIntegr
         new NewTopic(TOPIC0, PARTITION_COUNT, (short) 2));
 
     waitForReplicaCapacityGoalViolation();
-
     Map<Object, Object> createBrokerConfig = createBrokerConfig(BROKER_ID_TO_ADD);
-    CCEmbeddedBroker broker = new CCEmbeddedBroker(createBrokerConfig);
-    broker.startup();
-
-    waitForReplicasCreatedOnNewBroker();
+    try (CCEmbeddedBroker broker = new CCEmbeddedBroker(createBrokerConfig)) {
+      broker.startup();
+      waitForReplicasCreatedOnNewBroker();
+    }
   }
 
   private void waitForReplicasCreatedOnNewBroker() {

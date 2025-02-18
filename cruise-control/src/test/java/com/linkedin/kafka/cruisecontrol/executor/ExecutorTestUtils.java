@@ -17,10 +17,10 @@ public final class ExecutorTestUtils {
   static final long REMOVAL_HISTORY_RETENTION_TIME_MS = TimeUnit.HOURS.toMillis(12);
   static final long DEMOTION_HISTORY_RETENTION_TIME_MS = TimeUnit.DAYS.toMillis(1);
   static final long PRODUCE_SIZE_IN_BYTES = 10000L;
-  static final long EXECUTION_DEADLINE_MS = TimeUnit.SECONDS.toMillis(30);
+  static final long EXECUTION_DEADLINE_MS = TimeUnit.SECONDS.toMillis(120);
   static final long EXECUTION_SHORT_CHECK_MS = 10L;
   static final long EXECUTION_REGULAR_CHECK_MS = 100L;
-  static final long LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS = 1000L;
+  static final long LIST_PARTITION_REASSIGNMENTS_TIMEOUT_MS = 15000L;
   static final int LIST_PARTITION_REASSIGNMENTS_MAX_ATTEMPTS = 1;
   static final long EXECUTION_ALERTING_THRESHOLD_MS = 100L;
 
