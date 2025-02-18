@@ -31,7 +31,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -172,7 +171,7 @@ public class AnomalyDetectorManager {
     _selfHealingFixGenerationTimer = new HashMap<>();
     cachedValues().forEach(anomalyType -> _selfHealingFixGenerationTimer.put(anomalyType, new Timer()));
     // Add anomaly detector state
-    _anomalyDetectorState = new AnomalyDetectorState(new SystemTime(), _anomalyNotifier, 10, null);
+    _anomalyDetectorState = new AnomalyDetectorState(Time.SYSTEM, _anomalyNotifier, 10, null);
   }
 
   /**
