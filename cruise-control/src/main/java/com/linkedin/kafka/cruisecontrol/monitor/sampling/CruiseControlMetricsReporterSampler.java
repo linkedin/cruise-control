@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.linkedin.kafka.cruisecontrol.exception.SamplingException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsUtils;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import java.time.Duration;
 import java.util.Collections;
@@ -36,6 +37,10 @@ public class CruiseControlMetricsReporterSampler extends AbstractMetricSampler {
   // Configurations
   public static final String METRIC_REPORTER_SAMPLER_BOOTSTRAP_SERVERS = "metric.reporter.sampler.bootstrap.servers";
   public static final String METRIC_REPORTER_TOPIC = "metric.reporter.topic";
+  public static final String METRIC_REPORTER_TOPIC_ASSERT_ATTEMPTS = "metric.reporter.sampler.topic.assert.attempts";
+
+  public static final int METRIC_REPORTER_TOPIC_ASSERT_ATTEMPTS_DEFAULT = 5;
+
   @Deprecated
   public static final String METRIC_REPORTER_SAMPLER_GROUP_ID = "metric.reporter.sampler.group.id";
   public static final Duration METRIC_REPORTER_CONSUMER_POLL_TIMEOUT = Duration.ofMillis(5000L);
@@ -151,12 +156,25 @@ public class CruiseControlMetricsReporterSampler extends AbstractMetricSampler {
     return false;
   }
 
+  private boolean isMetricsTopicExists() {
+    Map<String, List<PartitionInfo>> topics = _metricConsumer.listTopics();
+    if (!topics.containsKey(_metricReporterTopic)) {
+      return false;
+    }
+    return true;
+  }
+
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
     _metricReporterTopic = (String) configs.get(METRIC_REPORTER_TOPIC);
     if (_metricReporterTopic == null) {
       _metricReporterTopic = CruiseControlMetricsReporterConfig.DEFAULT_CRUISE_CONTROL_METRICS_TOPIC;
+    }
+    String metricTopicAssertAttemptsStr = (String) configs.get(METRIC_REPORTER_TOPIC_ASSERT_ATTEMPTS);
+    int metricTopicAssertAttempts = METRIC_REPORTER_TOPIC_ASSERT_ATTEMPTS_DEFAULT;
+    if (metricTopicAssertAttemptsStr != null) {
+        metricTopicAssertAttempts = Integer.parseInt(metricTopicAssertAttemptsStr);
     }
     CruiseControlMetricsReporterConfig reporterConfig = new CruiseControlMetricsReporterConfig(configs, false);
     _acceptableMetricRecordProduceDelayMs = ACCEPTABLE_NETWORK_DELAY_MS
@@ -166,9 +184,16 @@ public class CruiseControlMetricsReporterSampler extends AbstractMetricSampler {
                                                                                   .CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS_CONFIG));
     _metricConsumer = createMetricConsumer(configs, CONSUMER_CLIENT_ID_PREFIX);
     _currentPartitionAssignment = Collections.emptySet();
+
+    LOG.info("Waiting for metrics reporter topic [{}] to be available in the Kafka cluster.", _metricReporterTopic);
+    if (!CruiseControlMetricsUtils.retry(() -> !this.isMetricsTopicExists(), 2000, 2, metricTopicAssertAttempts, 30_000)) {
+        throw new IllegalStateException("Cruise Control cannot find the metrics reporter topic that matches [" + _metricReporterTopic
+                                        + "] in the Kafka cluster.");
+    }
+
     if (refreshPartitionAssignment()) {
-      throw new IllegalStateException("Cruise Control cannot find partitions for the metrics reporter that topic matches "
-                                      + _metricReporterTopic + " in the target cluster.");
+      throw new IllegalStateException("Cruise Control cannot find partitions for the metrics reporter that topic matches ["
+                                      + _metricReporterTopic + "] in the Kafka cluster.");
     }
   }
 
